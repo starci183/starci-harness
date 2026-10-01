@@ -1,5 +1,5 @@
 /**
- * RuleTester proofs of the three back-end project rules that serve the slot manifest's per-path judgement (scripts/lib/hfs-path-findings.mjs,
+ * RuleTester proofs of the three back-end project rules that serve the slot manifest's per-path judgement (scripts/hfs/path-findings.mjs,
  * origin "repo"): slot-undeclared, source-suffix and spec-placement. The project graph runs that judgement over `git ls-files` of the
  * fixture (the tester git-inits and adds every file) and each rule reports the findings of its codes on the TypeScript file ESLint visits.
  * A finding on a file that is not TypeScript stays in `hfs check` and is not on the lint surface (see the last test).

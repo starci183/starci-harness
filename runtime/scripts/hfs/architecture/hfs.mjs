@@ -4,8 +4,8 @@ import { isIP } from 'node:net';
 import { gitOutput } from '../../api/git/lib.mjs';
 import { repositoryName } from '../../lib/repo-identity.mjs';
 import { braceVariants } from '../../lib/glob.mjs';
-import { createSlotResolver, loadSlotManifest, openHfs } from '../../lib/hfs-slots.mjs';
-import { isFeTestPath } from '../../lib/hfs-rules/fe-no-tests.mjs';
+import { createSlotResolver, loadSlotManifest, openHfs } from '../slots.mjs';
+import { isFeTestPath } from '../rules/fe-no-tests.mjs';
 
 /**
  * HFS repository-tree check (knowledge/hfs/README.md): every StarCi repository is an

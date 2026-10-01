@@ -5,8 +5,8 @@
 //   - a tracked `.enc` that is not a sops envelope (an encrypted-looking file that holds plaintext);
 //   - a line of any other tracked text file that matches a secret pattern.
 // A finding names the file, the line and the pattern, never the value.
-import { FORBIDDEN_FILES, secretHits } from '../secret-patterns.mjs';
-import { isSopsEnvelope } from '../test-secrets.mjs';
+import { FORBIDDEN_FILES, secretHits } from '../../lib/secret-patterns.mjs';
+import { isSopsEnvelope } from '../../lib/test-secrets.mjs';
 import { found, readText } from './read.mjs';
 
 export const PLAINTEXT_SECRET = 'HFS_PLAINTEXT_SECRET';

@@ -7,7 +7,7 @@
 // Every check and lint rule of HFS reads knowledge/hfs/slots.yaml through this module; none keeps its own path
 // list. The manifest shape is modules/schemas/hfs-slots.schema.yaml and hfs.json is modules/schemas/hfs-repo.schema.yaml;
 // the installed runtime carries no npm dependency, so this file re-states those shapes instead of loading ajv
-// (tests/hfs-slots.spec.mjs proves the two agree).
+// (tests/hfs/hfs-slots.spec.mjs proves the two agree).
 //
 // A product is ONE app repository: hfs.json at the app root has kind `app` and declares its two sides, `be` and `fe`, each in
 // the folder of that name. The resolver of the app answers for the whole tree: a root path with the slots of profile `app`,
@@ -25,10 +25,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { skillRoot } from '../../engine/runtime-root.mjs';
 import { parseYaml } from '../../engine/yaml.mjs';
-import { braceVariants, globExpression } from './glob.mjs';
-import { posixPath } from './path-key.mjs';
+import { braceVariants, globExpression } from '../lib/glob.mjs';
+import { posixPath } from '../lib/path-key.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
-import { APP_KIND, ENV_PREFIX, MANIFEST_KINDS, NAME, PRESENCE, RUNTIME_KIND, SEMVER, SLOT_ID, TESTS, TRACKED, manifestKind, runtimeSemanticProblems, runtimeShapeProblems, slotProblems, tierMapProblems } from '../hfs/manifest-shape.mjs';
+import { APP_KIND, ENV_PREFIX, MANIFEST_KINDS, NAME, PRESENCE, RUNTIME_KIND, SEMVER, SLOT_ID, TESTS, TRACKED, manifestKind, runtimeSemanticProblems, runtimeShapeProblems, slotProblems, tierMapProblems } from './manifest-shape.mjs';
 
 export const HFS_MANIFEST_FILE = 'knowledge/hfs/slots.yaml';
 /** The manifest of kind runtime: the standard tree of the StarCi runtime repository (judged by scripts/hfs/runtime-check.mjs). */

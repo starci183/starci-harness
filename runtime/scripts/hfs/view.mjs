@@ -1,10 +1,10 @@
 // hfs-view.mjs - the frozen view of one side of an app (be/ or fe/, the side folder as its root) that the lint factories hand
 // their rules (`settings.starci.hfs`). Both @starci/eslint-canon-be and @starci/eslint-canon-fe ship a byte copy of this file in their
-// runtime/ bundle (packages/hfs/scripts/sync-runtime.mjs), so a path-scoped rule in either package asks the SAME resolver the
+// runtime/ bundle (scripts/hfs/sync-runtime.mjs), so a path-scoped rule in either package asks the SAME resolver the
 // architecture machine and `hfs check` use, and never tests a path with a regular expression of its own.
 import path from 'node:path';
-import { allowsFile } from './hfs-allows.mjs';
-import { openHfs } from './hfs-slots.mjs';
+import { allowsFile } from './allows.mjs';
+import { openHfs } from './slots.mjs';
 
 const posix = (p) => String(p).replace(/\\/g, '/');
 const isAbsoluteAny = (text) => path.isAbsolute(text) || /^[A-Za-z]:\//.test(text);

@@ -1,14 +1,14 @@
 // hfs-path-findings.mjs - the per-path judgements of the slot manifest: what a tracked path is. One function, two surfaces: `hfs check`
 // (checkRepo) runs it over the tracked tree and keeps the findings that have no TypeScript file to sit on; the lint canon's project graph
-// (scripts/lib/project-graph.mjs) runs it over the same tree and serves the findings on a TypeScript file as ESLint reports.
+// (scripts/hfs/project-graph.mjs) runs it over the same tree and serves the findings on a TypeScript file as ESLint reports.
 //   HFS_SLOT_UNDECLARED / HFS_SLOT_AMBIGUOUS / HFS_SLOT_NOT_ENABLED / HFS_FORBIDDEN_PRESENT / HFS_TOOL_CONFIG_LOCAL / HFS_TRACKED_MUST_BE_IGNORED (R01, R16)
 //   BE_SOURCE_FORM (R89, the file name), BE_SPEC_PLACEMENT (R102)
 import path from 'node:path';
-import { allowsFile } from './hfs-allows.mjs';
-import { isFeTestPath } from './hfs-rules/fe-no-tests.mjs';
-import { slotOwnsSecrets } from './hfs-rules/secrets.mjs';
-import { specPlacementFindings } from './hfs-rules/spec-placement.mjs';
-import { APP_SCOPE } from './hfs-slots.mjs';
+import { allowsFile } from './allows.mjs';
+import { isFeTestPath } from './rules/fe-no-tests.mjs';
+import { slotOwnsSecrets } from './rules/secrets.mjs';
+import { specPlacementFindings } from './rules/spec-placement.mjs';
+import { APP_SCOPE } from './slots.mjs';
 
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SOURCE_ROOT = /^(?:src|apps)\//;

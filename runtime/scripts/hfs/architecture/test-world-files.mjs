@@ -1,6 +1,6 @@
 import { treeOf } from './required-files.mjs';
-import { allowsFile } from '../../lib/hfs-allows.mjs';
-import { locateDeclaration } from '../../lib/hfs-slots.mjs';
+import { allowsFile } from '../allows.mjs';
+import { locateDeclaration } from '../slots.mjs';
 import { DEFAULT_ENVIRONMENT, STACKS_DIRECTORY, STATEFUL_KINDS, namesOfService, readStack } from '../../lib/stack-services.mjs';
 
 /**

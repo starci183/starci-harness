@@ -3,7 +3,7 @@ import { relativePath } from './typescript.mjs';
 
 /**
  * The file and owner graph the HFS architecture checks share. Every production source file the TypeScript context
- * loaded becomes a node classified by the slot manifest (config.hfs is the resolver of scripts/lib/hfs-slots.mjs);
+ * loaded becomes a node classified by the slot manifest (config.hfs is the resolver of scripts/hfs/slots.mjs);
  * every import, re-export and type-only import between two of them becomes an edge. Nothing here judges: the checks
  * in tiers.mjs, reachability.mjs, dead-exports.mjs, required-files.mjs and clones.mjs read it.
  *

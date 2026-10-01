@@ -1,4 +1,4 @@
-// project-rule.mjs - the factory of the lint rules that read the project graph (scripts/lib/project-graph.mjs).
+// project-rule.mjs - the factory of the lint rules that read the project graph (scripts/hfs/project-graph.mjs).
 //
 // A project rule judges nothing itself: the graph (the architecture machine's module graph and slot manifest, built once per
 // process) holds the findings of its codes, and the rule reports those of the file it is visiting, on the line the machine named.
@@ -6,8 +6,8 @@
 // Both lint canons ship a byte copy of this file in runtime/ and build their rules with it.
 import path from 'node:path';
 import { projectGraph } from './project-graph.mjs';
-import { posixPath } from './path-key.mjs';
-import { belongsTo, codeOf } from '../checks/architecture/surface.mjs';
+import { posixPath } from '../lib/path-key.mjs';
+import { belongsTo, codeOf } from './architecture/surface.mjs';
 
 /**
  * A rule reporting the graph findings of `codes` on the linted file.
