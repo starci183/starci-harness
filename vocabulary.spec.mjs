@@ -15,7 +15,7 @@ import { BREAKPOINTS, DECLARED, STATUS_TONES, VENDOR } from "./lib/vocabulary.ge
 import { isGrammarToken, isKnownToken } from "./lib/vocabulary.mjs"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const grammarSrc = path.resolve(here, "../grammar/src")
+const grammarSrc = path.resolve(here, "..", "grammar", "src")
 
 test("the generated vocabulary equals what the grammar CSS declares and reads", () => {
   const fresh = extractVocabulary(grammarSrc)

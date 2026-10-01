@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 import { COLOR_FUNCTION, HEX_COLOR, PIXEL_LENGTH, findRawBrandValue } from "./lib/brand-value.mjs"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const ESLINT_RULE = path.resolve(here, "../eslint/fe/brand-values.mjs")
+const ESLINT_RULE = path.resolve(here, "..", "eslint", "fe", "brand-values.mjs")
 const present = fs.existsSync(ESLINT_RULE)
 
 test("HEX_COLOR, COLOR_FUNCTION and PIXEL_LENGTH equal eslint-canon-fe's",
