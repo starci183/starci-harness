@@ -2,8 +2,8 @@
 // built once per process for a repository and cached, so every file a lint rule visits looks itself up in it.
 //
 // Both @starci/eslint-canon-be and @starci/eslint-canon-fe ship a byte copy of this file (and of the machine it imports) in their
-// runtime/ bundle (packages/hfs/scripts/sync-runtime.mjs). There is no second graph: `projectGraph` runs `checkArchitecture`
-// (scripts/checks/architecture/index.mjs) with `surface: 'lint'`, which judges exactly the checks whose findings attach to a
+// runtime/ bundle (scripts/hfs/sync-runtime.mjs). There is no second graph: `projectGraph` runs `checkArchitecture`
+// (scripts/hfs/architecture/index.mjs) with `surface: 'lint'`, which judges exactly the checks whose findings attach to a
 // TypeScript file, and indexes the findings by repository-relative path. `hfs check` runs the other surface ('check') and never
 // the lint one, so no rule has two enforcers.
 //
@@ -13,12 +13,12 @@
 // A graph that cannot be built (no tsconfig, unresolvable import, invalid declaration) is an error: a check that cannot run is
 // never a pass, so `projectGraph` throws the machine's own message and the lint run stops.
 import fs from 'node:fs';
-import { checkArchitecture } from '../checks/architecture/index.mjs';
-import { openHfs } from './hfs-slots.mjs';
-import { pathFindings } from './hfs-path-findings.mjs';
+import { checkArchitecture } from './architecture/index.mjs';
+import { openHfs } from './slots.mjs';
+import { pathFindings } from './path-findings.mjs';
 import { runGit } from '../api/git/lib.mjs';
-import { posixPath } from './path-key.mjs';
-import { onLintSurface } from '../checks/architecture/surface.mjs';
+import { posixPath } from '../lib/path-key.mjs';
+import { onLintSurface } from './architecture/surface.mjs';
 
 const cache = new Map();
 

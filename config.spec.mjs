@@ -21,7 +21,7 @@ import plugin, {
   why,
 } from "./index.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
-import { declaredHfsView } from "./runtime/scripts/lib/hfs-view.mjs"
+import { declaredHfsView } from "./runtime/scripts/hfs/view.mjs"
 import { appDeclaration } from "../be/fixtures/app.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "typed")

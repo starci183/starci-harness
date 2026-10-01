@@ -1,5 +1,5 @@
 /**
- * RuleTester proof of the front-end project rule that serves the slot manifest's per-path judgement (scripts/lib/hfs-path-findings.mjs,
+ * RuleTester proof of the front-end project rule that serves the slot manifest's per-path judgement (scripts/hfs/path-findings.mjs,
  * origin "repo"): slot-undeclared. The project graph runs it over `git ls-files` of the fixture and the rule reports the finding on the
  * TypeScript file ESLint visits. (source-suffix and spec-placement are back-end rules; see ../be/project-graph.paths.test.mjs.)
  *

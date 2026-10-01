@@ -5,7 +5,7 @@ import { gitOutput } from '../../api/git/lib.mjs';
 /**
  * HFS check 5: the files and directories the slot manifest requires (knowledge/hfs/slots.yaml `requires`,
  * `requiredInstances`, `minInstances`, required app kinds) must exist in the repository tree. Everything is read through the
- * resolver of scripts/lib/hfs-slots.mjs; nothing here names a path.
+ * resolver of scripts/hfs/slots.mjs; nothing here names a path.
  *
  *   BE_REQUIRED_MODULE_MISSING   a backend app, feature, domain, integrations or platform instance lacks a required file or
  *                                directory, or a required platform instance (config, logging, errors, primitives) is absent

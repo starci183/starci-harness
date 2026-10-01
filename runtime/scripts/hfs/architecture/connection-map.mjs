@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { machineKit, pascal, upperSnake } from './machine-ast.mjs';
-import { locateDeclaration } from '../../lib/hfs-slots.mjs';
+import { locateDeclaration } from '../slots.mjs';
 
 /**
  * R84 `connection-map` (BE_CONNECTION_DUPLICATE), folding RED01 and RED02. One physical database is one connection, one

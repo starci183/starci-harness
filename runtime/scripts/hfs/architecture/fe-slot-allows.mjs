@@ -1,6 +1,6 @@
 import { treeOf } from './required-files.mjs';
-import { allowsFile } from '../../lib/hfs-allows.mjs';
-import { isFeTestPath } from '../../lib/hfs-rules/fe-no-tests.mjs';
+import { allowsFile } from '../allows.mjs';
+import { isFeTestPath } from '../rules/fe-no-tests.mjs';
 
 /**
  * R94 `fe-slot-allows` (FE_SLOT_FILE_ROLE). A front-end slot that owns a whole directory (`fe.route`, `fe.feature`,
@@ -11,7 +11,7 @@ import { isFeTestPath } from '../../lib/hfs-rules/fe-no-tests.mjs';
  * Files no slot owns are HFS_PATH_NO_SLOT's (`hfs check`), so together every front-end file is placed by exactly one slot and
  * named by it. A test path (a `.spec.tsx` or `.test.tsx` beside a component, a test directory or test tooling) is FE_NO_TESTS's
  * (R97, contract-change fe-no-tests): that rule is the one finding of such a file, so this check leaves it alone, as
- * HFS_PATH_NO_SLOT does (scripts/lib/hfs-path-findings.mjs).
+ * HFS_PATH_NO_SLOT does (scripts/hfs/path-findings.mjs).
  */
 export const FE_SLOT_ALLOWS_RULE_IDS = ['FE_SLOT_FILE_ROLE'];
 

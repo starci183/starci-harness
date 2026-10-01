@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { slash } from '../../lib/path-key.mjs';
 import { readJsonFile as readJson } from '../../lib/json.mjs';
-import { isInside } from '../common.mjs';
-import { openHfs } from '../../lib/hfs-slots.mjs';
+import { isInside } from '../../lib/walk.mjs';
+import { openHfs } from '../slots.mjs';
 
 
 /** A file's identity: its resolved real path, or the resolved path when it does not exist. */

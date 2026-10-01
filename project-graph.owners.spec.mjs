@@ -1,6 +1,6 @@
 /**
  * RuleTester proofs of the front-end project rules that judge owners: where an owner sits, what it imports, what reaches it.
- * The findings come from the architecture machine over the project graph (scripts/checks/architecture); each rule reports the
+ * The findings come from the architecture machine over the project graph (scripts/hfs/architecture); each rule reports the
  * findings of its codes on the file ESLint visits. The trees below are the violating and the passing trees of
  * tests/architecture-*.spec.mjs, written to a hermetic repository (hfs.json, tsconfig, the files listed).
  *
