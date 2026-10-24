@@ -385,10 +385,23 @@ const COMPILED = new WeakMap()
 const tableOf = (specDoubles) => {
     let compiled = COMPILED.get(specDoubles)
     if (!compiled) {
-        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token) })), fallback: specDoubles.fallback }
+        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token), from: entry.from === undefined ? undefined : new RegExp(entry.from) })), fallback: specDoubles.fallback }
         COMPILED.set(specDoubles, compiled)
     }
     return compiled
+}
+
+/**
+ * Whether a table entry applies to a provider token. The spelling picks the entry; when the entry names the module its port lives
+ * in (`from`), an imported token is judged by that import too: a token of another module that merely ends alike
+ * (`CORRELATION_IDS` of logging against `IDS` of ids) is a different port, and a renamed import of the owner's token
+ * (`IDS as SYSTEM_SOURCE`) is still that port. A token that is not an import binding, or is imported by a relative path (it cannot be placed in a module from the file alone), is judged by its spelling alone.
+ */
+const entryApplies = (context, entry, spelled, token) => {
+    const bound = token?.type === "Identifier" ? importOf(context, token) : null
+    if (entry.from === undefined || bound === null || bound.source.startsWith(".")) return entry.pattern.test(spelled)
+    if (!entry.from.test(bound.source)) return false
+    return entry.pattern.test(spelled) || (bound.imported !== "*" && bound.imported !== "default" && entry.pattern.test(screamingSnake(bound.imported)))
 }
 
 /** A const identifier's initializer, or null when its value cannot be followed. */
@@ -489,7 +502,7 @@ export const specInfraDoubleFromKit = {
                 const spelled = tokenName(provide?.value)
                 if (spelled === null) return
                 const normalised = screamingSnake(spelled)
-                const entry = table.entries.find((candidate) => candidate.pattern.test(normalised)) ?? table.fallback
+                const entry = table.entries.find((candidate) => entryApplies(context, candidate, normalised, provide?.value)) ?? table.fallback
                 const found = formOf(context, node.value)
                 const want = describe(entry)
                 const data = { token: spelled, want, kit: table.kit }

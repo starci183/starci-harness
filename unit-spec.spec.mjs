@@ -176,6 +176,12 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("CHALLENGE_GRADING_HOLD", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("IDS", "fakeIds()") },
+            // the ids port is the token of platform/ids: by import, never by a shared suffix, and a renamed import is still that port
+            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "@modules/platform/ids"') },
+            { filename: SPEC, code: provide("SYSTEM_SOURCE", "fakeIds()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"') },
+            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "./ids.decorators"') },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "mock<CorrelationIds>()", 'import { CORRELATION_IDS } from "@modules/platform/logging"\ninterface CorrelationIds { create(): string }') },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "correlationIds", 'import { CORRELATION_IDS } from "@modules/platform/logging"\ninterface CorrelationIds { create(): string }\nconst correlationIds = mock<CorrelationIds>()') },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "builder({ retries: 3 })({ retries: 1 })") },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "{ retries: 3, region: 'eu' }") },
             { filename: SPEC, code: provide("KEYCLOAK_ADMIN", "mock<KeycloakAdmin>()", "interface KeycloakAdmin { users(): void }") },
@@ -206,6 +212,9 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("CACHE", "mock<Cache>()", "interface Cache { get(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "mock<Fence>()", "interface Fence { take(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("IDS", "{ next: () => 'a' }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "@modules/platform/ids"\ninterface Ids { next(): string }'), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("SYSTEM_SOURCE", "mock<Ids>()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"\ninterface Ids { next(): string }'), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "fakeIds()", 'import { CORRELATION_IDS } from "@modules/platform/logging"'), errors: [{ messageId: "wrong" }] },
             // options tokens are REAL values, never a mock
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "mock<PaymentOptions>()", "interface PaymentOptions { retries: number }"), errors: [{ messageId: "wrong" }] },
             // anything else is mock<T>()
