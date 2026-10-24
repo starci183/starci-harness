@@ -29,6 +29,7 @@ import { walk } from "./lib/ast.mjs"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.mjs"
 import { resolveVariable } from "./lib/transactions.mjs"
 import { isPackageType, typed } from "./lib/types.mjs"
+import { mutationIdempotent } from "./lib/client-idempotency.mjs"
 
 /** The `Inbox` port of `platform/inbox`. */
 const isInboxType = (context, node) => isOwnedType(context, node, { name: "Inbox", capability: "inbox", tier: "platform" })
@@ -175,9 +176,11 @@ export const inboxDedupeRequired = {
 /** The rule this law contributes to the plugin. */
 export const rules = {
     "inbox-dedupe-required": inboxDedupeRequired,
+    "mutation-idempotent": mutationIdempotent,
 }
 
 /** Starts at error: a duplicate charge or a duplicate side effect is never a warning. */
 export const recommended = {
     "starci-be/inbox-dedupe-required": "error",
+    "starci-be/mutation-idempotent": "error",
 }

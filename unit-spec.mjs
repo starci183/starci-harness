@@ -31,6 +31,7 @@ import { importOf, isImportedFrom } from "./lib/import-source.mjs"
 import { isPackageType, typeOrigins } from "./lib/types.mjs"
 import { baseOf, isServiceSpecFile, isUnitSpecFile, unitRoleOfSpec } from "./lib/unit-spec.mjs"
 import { isRealSubjectValue, valueObjectsOfSibling } from "./lib/subject-values.mjs"
+import { ownerNameOf } from "./lib/ports.mjs"
 
 const TESTING_PACKAGE = "@nestjs/testing"
 
@@ -403,6 +404,31 @@ const constantInitializer = (context, value) => {
     return null
 }
 
+/** An imported token retains its declared identity through const aliases and assertion wrappers. */
+const originsOfToken = (context, token) => {
+    let value = peel(token)
+    const seen = new Set()
+    while (value?.type === "Identifier" && !seen.has(value)) {
+        seen.add(value)
+        const initial = peel(constantInitializer(context, value))
+        if (!initial || !["Identifier", "MemberExpression"].includes(initial.type)) break
+        value = initial
+    }
+    return typeOrigins(context, value)
+}
+
+/** Inbox is the platform port; a service or producer whose name contains Inbox remains an ordinary collaborator. */
+const providerDoubleEntry = (context, hfs, table, token, normalised) => {
+    const named = (name) => table.entries.find((entry) => entry.pattern.test(screamingSnake(name))) ?? table.fallback
+    const lexical = named(normalised)
+    const inbox = named("INBOX")
+    const origins = originsOfToken(context, token)
+    const platform = origins.filter((origin) => origin.module === null && hfs.tierOf(origin.file) === "platform")
+    if (platform.some((origin) => origin.name === "INBOX" && ownerNameOf(hfs, origin.file) === "inbox")) return inbox
+    if (lexical !== inbox || origins.length === 0) return lexical
+    return platform.map((origin) => named(origin.name)).find((entry) => entry !== inbox) ?? table.fallback
+}
+
 /** A value's form and the double it names: `{ form, name }`, or null when it is not a form the table knows. */
 const formOf = (context, node, depth = 0) => {
     const value = peel(node)
@@ -489,7 +515,7 @@ export const specInfraDoubleFromKit = {
                 const spelled = tokenName(provide?.value)
                 if (spelled === null) return
                 const normalised = screamingSnake(spelled)
-                const entry = table.entries.find((candidate) => candidate.pattern.test(normalised)) ?? table.fallback
+                const entry = providerDoubleEntry(context, hfs, table, provide.value, normalised)
                 const found = formOf(context, node.value)
                 const want = describe(entry)
                 const data = { token: spelled, want, kit: table.kit }
