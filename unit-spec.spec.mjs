@@ -290,6 +290,19 @@ test("a value-object subject is built with new, a decorated or token-injected su
     })
 })
 
+test("a value-role spec (a zod schema) parses the declared value and builds no testing module; an injectable subject still does", () => {
+    const schemaSpec = at("src/modules/domain/order/order.schema.spec.ts")
+    const parse = ['import { orderSchema } from "./order.schema"', 'it("rejects an empty order", () => expect(orderSchema.safeParse({}).success).toBe(false))'].join("\n")
+    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+        valid: [{ filename: schemaSpec, code: parse }],
+        invalid: [{ filename: at("src/modules/domain/order/order.policy.spec.ts"), code: parse, errors: [{ messageId: "noModule" }] }],
+    })
+    tester.run("spec-no-new-subject", specNoNewSubject, {
+        valid: [{ filename: schemaSpec, code: parse }],
+        invalid: [],
+    })
+})
+
 test("spec-infra-double-from-kit: a member of a kit mock object is a kit double (A3)", () => {
     const base = 'import { mock, mockEntityManager } from "@starci/jest-preset"\ntype Open = (url: string) => void\n'
     const provide = (token, value) => `${base}const provider = { provide: ${token}, useValue: ${value} }`
