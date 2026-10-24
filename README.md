@@ -33,7 +33,7 @@ and the exclusions. A repository has no other jest setting to tune.
   runs on code that does not type-check.
 - **Coverage of the measured logic, per-file 100.** `collectCoverageFrom` is one glob per `coverage.roots` entry covering `<root>/**/*.{<roles>}.ts`
   (the `ruleParams.be.logicRoles` of the rendered scope), minus its `excludes`, `dist` and `coverage`, and `coverageThreshold` holds
-  `{ lines: 100, branches: 100, functions: 100, statements: 100 }` on each of those globs — a glob key applies to each file on its own, so every file of a
+  `{ lines: 100, branches: 100, functions: 100, statements: 100 }` on one union glob of those roots. Jest applies a glob threshold to each file on its own, so every file of a
   `ruleParams.be.logicRoles` role inside a measured slot must reach 100 on every metric (an average never passes). The
   managed `test` script runs the unit project with `--coverage` and fails below it. Coverage is measured by v8, which counts the
   real source. The unit project overlays `isolatedModules: true`, `importHelpers: true` and `sourceMap: true` on the repository tsconfig, so ts-jest
@@ -141,7 +141,20 @@ await inbox.claim("sepay", "e-1")        // true the first time, false for the s
 await inbox.release("sepay", "e-1")      // gives the claim back: the next claim answers true
 inbox.seen("sepay", "e-2")               // a redelivery: the next claim of the pair answers false
 inbox.claims; inbox.claimed; inbox.released; inbox.failNext("claim", new Error("db down")); inbox.clear()
+
+const clientInbox = fakeInbox(clock)     // the driven clock stamps client claims for retention tests
+await clientInbox.runClient({ principalId: "p-1", operation: "checkout.place", idempotencyKey: "key-1", request: { quantity: 2 } }, tx, async () => ({ kind: "ok", value: { orderId: "o-1" } }))
+clientInbox.clientEntries               // every client claim with its tx and inTransaction flag
+await clientInbox.sweepClients(cutoff, tx)
+clientInbox.sweeps                      // every sweep attempt's cutoff, tx and inTransaction flag, failures included
 ```
+
+Client repeats replay the stored JSON outcome, including a refusal; a different request for the same namespace and key
+rejects with `IDEMPOTENCY_KEY_REUSED`. Concurrent repeats wait for the first effect. A rejected effect gives its claim back.
+Delivery `release` preserves client receipts and their outcomes.
+The double records the transaction passed to it; a later outer transaction rollback needs real database integration proof.
+Without a clock, client claims use the Unix epoch. The sweep removes one bounded batch of completed expired client claims
+and preserves delivery claims.
 
 ## `builder`, `fakeIds` and the Outcome matchers
 

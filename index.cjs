@@ -37,6 +37,14 @@ function collectCoverageFrom(coverage) {
   return [...coverage.roots.map((root) => rootGlob(root, coverage.roles)), ...[...coverage.excludes, ...COVERAGE_EXCLUDES].map((glob) => `!${glob}`)]
 }
 
+/** One union glob keeps Jest's per-file checks while a scoped map may contain files from only one measured root. */
+function coverageThresholdOf(coverage, root) {
+  const rootGlobs = coverage.roots.map((entry) => rootGlob(entry, coverage.roles)).filter((glob) => hasCoverageSubjects(root, glob))
+  if (rootGlobs.length === 0) return {}
+  const glob = rootGlobs.length === 1 ? rootGlobs[0] : `{${rootGlobs.join(",")}}`
+  return { [`./${glob}`]: { ...COVERAGE_THRESHOLD } }
+}
+
 /**
  * Sonar `sonar.exclusions`: specs, e2e specs, dist and coverage output are not analysed at all. The list lives in sonar-exclusions.cjs, a
  * require-free module @starci/hfs also ships byte for byte (packages/hfs/runtime, scripts/hfs/sync-runtime.mjs), so `starci app scaffold`
@@ -236,7 +244,7 @@ function starciJestConfig(options) {
     ...(shard ? {} : {
       collectCoverageFrom: collectCoverageFrom(coverage),
       // A glob key is applied to every matching file on its own: each measured file must reach 100, not the average.
-      coverageThreshold: Object.fromEntries(coverage.roots.map((root) => rootGlob(root, coverage.roles)).filter((glob) => hasCoverageSubjects(process.cwd(), glob)).map((glob) => [`./${glob}`, { ...COVERAGE_THRESHOLD }])),
+      coverageThreshold: coverageThresholdOf(coverage, root),
     }),
     coverageDirectory: "coverage",
     // lcov is what Sonar imports (coverage/lcov.info); text-summary and text are what the developer reads; a shard writes the json the merge reads.

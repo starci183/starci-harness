@@ -90,7 +90,7 @@ export interface FakeTransaction<M extends MockEntityManager = MockEntityManager
   readonly rolledBackWrites: ReadonlyArray<TransactionWrite>
 }
 
-/** Makes `em.transaction(work)` run `work` with a scoped view of the double and record commit, rollback and writes. */
+/** Makes `em.transaction(work)` run `work` with a scoped view whose queryRunner stays active until commit or rollback. */
 export declare function fakeTransaction<M extends MockEntityManager = MockEntityManager>(em?: M): FakeTransaction<M>
 
 /** Whether `manager` is the view a `fakeTransaction` body received (used by `recordingEventBus` and `recordingQueueOutbox`). */

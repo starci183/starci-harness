@@ -276,19 +276,25 @@ test('coverage is measured on the logic roles of the rendered roots only, with a
   }
   assert.equal(preset.rootGlob('src/', ['service']), 'src/**/*.service.ts', 'one role needs no braces');
   const { coverageThreshold } = preset.starciJestConfig(OPTIONS);
-  const expected = new Set(SCOPE.roots.map((root) => `./${preset.rootGlob(root, SCOPE.roles)}`));
-  assert.ok(Object.keys(coverageThreshold).every((key) => expected.has(key)));
+  assert.ok(Object.keys(coverageThreshold).length <= 1, 'the measured roots share one glob threshold group');
+  assert.equal('global' in coverageThreshold, false, 'coverage is checked per file, never as a global average');
   for (const glob of Object.keys(coverageThreshold)) assert.deepEqual(coverageThreshold[glob], { lines: 100, branches: 100, functions: 100, statements: 100 });
 });
 
-test('a coverage glob with no file in the repository gets no threshold key (jest refuses a key that matches nothing); one with files gets it', async () => {
+test('empty roots have no threshold and populated roots share one glob with every metric held at 100', async () => {
   const fs = await import('node:fs');
   const os = await import('node:os');
   const path = await import('node:path');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-roles-'));
+  const previous = process.cwd();
   try {
+    process.chdir(root);
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {});
     fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'a.service.ts'), 'export {};\n');
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
+      './src/modules/domain/*/**/*.{service,guard}.ts': { lines: 100, branches: 100, functions: 100, statements: 100 },
+    });
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.{service,guard}.ts'), true);
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.guard.ts'), false, 'no guard yet');
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/platform/*/**/*.{service,guard}.ts'), false, 'no platform capability yet');
@@ -298,7 +304,15 @@ test('a coverage glob with no file in the repository gets no threshold key (jest
     fs.mkdirSync(path.join(root, 'src', 'modules', 'platform', 'node_modules', 'x'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'modules', 'platform', 'node_modules', 'x', 'x.service.ts'), 'export {};\n');
     assert.equal(preset.hasCoverageSubjects(root, 'src/modules/platform/**/*.service.ts'), false, 'dependencies are never subjects');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'platform', 'a'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'platform', 'a', 'a.guard.ts'), 'export {};\n');
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
+      './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/platform/*/**/*.{service,guard}.ts}':
+        { lines: 100, branches: 100, functions: 100, statements: 100 },
+    });
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).collectCoverageFrom, preset.collectCoverageFrom(SCOPE), 'threshold grouping preserves the full rendered collection scope');
   } finally {
+    process.chdir(previous);
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

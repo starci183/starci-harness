@@ -85,6 +85,7 @@ function createEntityManagerKit(makeFn) {
     const scopedFor = (run) => {
       const view = new Proxy(em, {
         get(target, property, receiver) {
+          if (property === "queryRunner") return { get isTransactionActive() { return run.outcome === "pending" } }
           const value = Reflect.get(target, property, receiver)
           if (property === "transaction") return (...args) => args[args.length - 1](view)
           if (typeof property !== "string" || typeof value !== "function") return value
