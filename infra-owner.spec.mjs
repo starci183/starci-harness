@@ -10,8 +10,10 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { at, fixtureHfs, typedTester } from "./fixtures/typed/tester.mjs"
+import { appDeclaration } from "./fixtures/app.mjs"
+import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "./fixtures/typed/tester.mjs"
 import { httpClientOnlyInIntegrations, infraImportOwner, rules } from "./infra-owner.mjs"
+import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { thirdPartyImportOwner } from "./third-party-owner.mjs"
 
 const tester = new RuleTester({
@@ -145,6 +147,28 @@ export { BullModule }`, errors: [{ messageId: "foreign" }] },
 export { Kafka }`, errors: [{ messageId: "foreign" }] },
             { filename: EVENT_BUS, code: `import { Worker } from "bullmq"
 export { Worker }`, errors: [{ messageId: "foreign" }] },
+        ],
+    })
+})
+
+test("infra-import-owner under lite: the queue and Redis libraries keep full's owners, Kafka is owned nowhere", () => {
+    const liteHfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT)
+    assert.deepEqual(liteHfs.ruleParams.infraOwners.bullmq, fixtureHfs().ruleParams.infraOwners.bullmq)
+    assert.deepEqual(liteHfs.ruleParams.infraOwners.kafkajs, [])
+    const lite = new RuleTester({
+        languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
+        settings: { starci: { hfs: liteHfs } },
+    })
+    lite.run("infra-import-owner", infraImportOwner, {
+        valid: [
+            { filename: QUEUE, code: `import { Queue, Worker } from "bullmq"\nexport { Queue, Worker }` },
+            { filename: REDIS, code: `import Redis from "ioredis"\nexport { Redis }` },
+            { filename: CACHE, code: `import { createClient } from "redis"\nexport { createClient }` },
+        ],
+        invalid: [
+            { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
+            { filename: EVENT_BUS, code: `import { Kafka } from "kafkajs"\nexport { Kafka }`, errors: [{ messageId: "nowhere" }] },
         ],
     })
 })
