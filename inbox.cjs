@@ -86,7 +86,12 @@ function fakeInbox(clock) {
       held.add(key)
       clients.set(key, entry)
       entry.result = Promise.resolve().then(effect).then((value) => {
-        const stored = snapshot(value)
+        let stored
+        try {
+          stored = snapshot(value)
+        } catch (cause) {
+          throw Object.assign(inboxError("INBOX_OUTCOME_INVALID"), { cause })
+        }
         entry.completed = true
         return stored
       }).catch((error) => {

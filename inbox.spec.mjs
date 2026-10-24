@@ -101,7 +101,7 @@ test('fakeInbox rejects non-JSON requests and outcomes without retaining a faile
     await assert.rejects(inbox.runClient(request({ request: body }), {}, async () => null), codeIs('IDEMPOTENCY_REQUEST_INVALID'));
   }
   for (const outcome of [undefined, { nested: undefined }, cycle]) {
-    await assert.rejects(inbox.runClient(request(), {}, async () => outcome), codeIs('IDEMPOTENCY_REQUEST_INVALID'));
+    await assert.rejects(inbox.runClient(request(), {}, async () => outcome), codeIs('INBOX_OUTCOME_INVALID'));
     assert.deepEqual(inbox.claimed, []);
   }
   assert.deepEqual(await inbox.runClient(request(), {}, async () => null), null);
@@ -114,7 +114,7 @@ test('fakeInbox rejects dates, maps, sets, class instances and sparse arrays on 
   const nonJson = [new Date(0), new Map([['quantity', 2]]), new Set([2]), new RequestBody(), sparse, { toJSON() { return {}; } }];
   for (const value of nonJson) {
     await assert.rejects(inbox.runClient(request({ request: { nested: value } }), {}, async () => null), codeIs('IDEMPOTENCY_REQUEST_INVALID'));
-    await assert.rejects(inbox.runClient(request(), {}, async () => ({ nested: value })), codeIs('IDEMPOTENCY_REQUEST_INVALID'));
+    await assert.rejects(inbox.runClient(request(), {}, async () => ({ nested: value })), codeIs('INBOX_OUTCOME_INVALID'));
     assert.deepEqual(inbox.claimed, []);
   }
 });
