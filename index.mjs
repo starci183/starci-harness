@@ -61,6 +61,7 @@ import { recommended as testWorldRecommended, rules as testWorldRules } from "./
 import { recommended as transportRecommended, rules as transportRules } from "./transport.mjs"
 import { recommended as typeSafetyRecommended, rules as typeSafetyRules } from "./type-safety.mjs"
 import { recommended as unitSpecRecommended, rules as unitSpecRules } from "./unit-spec.mjs"
+import { recommended as uploadsRecommended, rules as uploadsRules } from "./uploads.mjs"
 import { recommended as userCopyRecommended, rules as userCopyRules } from "./user-copy.mjs"
 import { recommended as webhooksRecommended, rules as webhooksRules } from "./webhooks.mjs"
 import { recommended as realtimeRecommended, rules as realtimeRules } from "./realtime.mjs"
@@ -114,6 +115,7 @@ const CONTRIBUTIONS = [
     { law: "transport", rules: transportRules, recommended: transportRecommended },
     { law: "type-safety", rules: typeSafetyRules, recommended: typeSafetyRecommended },
     { law: "unit-spec", rules: unitSpecRules, recommended: unitSpecRecommended },
+    { law: "uploads", rules: uploadsRules, recommended: uploadsRecommended },
     { law: "user-copy", rules: userCopyRules, recommended: userCopyRecommended },
     { law: "webhooks", rules: webhooksRules, recommended: webhooksRecommended },
     { law: "realtime", rules: realtimeRules, recommended: realtimeRecommended },
