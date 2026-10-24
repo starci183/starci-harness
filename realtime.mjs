@@ -2,18 +2,19 @@
  * The rules that hold the realtime kind (R184 `BE_REALTIME_SHAPE`, R185 `BE_REALTIME_WRITES`, R186 `BE_REALTIME_TOPIC_SCOPE`).
  *
  * A realtime door (`src/features/realtime/<channel>/transport/websocket/<channel>.gateway.ts` for a socket, `transport/graphql/<x>.subscription.ts` for a GraphQL
- * subscription, slot `be.feature.realtime`) READS and PUSHES. It never writes: the push is fed by a reactor that calls the `RealtimeHub`
+ * subscription, `transport/sse/<channel>.controller.ts` for server-sent events, slot `be.feature.realtime`) READS and PUSHES. It never writes: the push is fed by a reactor that calls the `RealtimeHub`
  * of `platform/realtime`, and the door only subscribes a client to a topic of that hub.
  *
  *   - `realtime-shape` (R184): a `.gateway.ts` holds one `@WebSocketGateway` class whose handlers are `@SubscribeMessage`, or a
  *     push-only gateway whose `@WebSocketServer` streams take the server's typed principal; a
- *     `.subscription.ts` holds one `@Resolver` class whose operations are `@Subscription`. Each is the door its file role names, and
- *     neither carries a query, a mutation or a REST route.
+ *     `.subscription.ts` holds one `@Resolver` class whose operations are `@Subscription`, and an SSE `.controller.ts` holds one
+ *     `@Controller` class whose one route is `@Sse`. Each is the door its file role names, and none carries a query, a mutation or a
+ *     plain REST route.
  *   - `realtime-read-only` (R185): the only value injected into a realtime door is the `RealtimeHub` of `platform/realtime`. No
  *     `EntityManager`, bus, queue, event bus or domain service reaches it.
- *   - `realtime-topic-scope` (R186): the topic passed to `hub.subscribe` is built from the principal parameter of the handler
+ *   - `realtime-topic-scope` (R186): the topic passed to `hub.subscribe` (or `hub.stream`, the SSE form) is built from the principal parameter of the handler
  *     (`@CurrentPrincipal()` of `domain/identity`, or `Principal` of `platform/cqrs` for a push-only stream), so a client
- *     can only listen to what the principal owns.
+ *     can only listen to what the principal owns. A `Last-Event-ID` header only picks where the replay resumes inside that topic.
  *
  * What a receiver is comes from its TYPE, what a decorator is from the import that binds it, and where a parameter comes
  * from from the declaration its name resolves to. No rule here tests a path pattern or a variable name.
@@ -25,19 +26,23 @@ import { decoratorCallee } from "./lib/import-source.mjs"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.mjs"
 
 /** The slot of realtime doors. */
-const DOOR_SLOTS = new Set(["be.feature.realtime.graphql", "be.feature.realtime.websocket"])
+const DOOR_SLOTS = new Set(["be.feature.realtime.graphql", "be.feature.realtime.websocket", "be.feature.realtime.sse"])
 
 /** The `RealtimeHub` port of `platform/realtime`. */
 const isHubType = (context, node) => isOwnedType(context, node, { name: "RealtimeHub", capability: "realtime", tier: "platform" })
+
+/** The plain HTTP route decorators of `@nestjs/common`: an SSE controller carries none of them, its one route is `@Sse`. */
+const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head"]
 
 /** The decorators that make a class a door of one kind of realtime file, by file role. */
 const ROLES = {
     gateway: { classDecorator: ["@nestjs/websockets", "WebSocketGateway"], operation: ["@nestjs/websockets", "SubscribeMessage"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField", "Subscription"]], ["@nestjs/common", ["Controller"]]] },
     subscription: { classDecorator: ["@nestjs/graphql", "Resolver"], operation: ["@nestjs/graphql", "Subscription"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField"]], ["@nestjs/websockets", ["WebSocketGateway", "SubscribeMessage"]], ["@nestjs/common", ["Controller"]]] },
+    controller: { classDecorator: ["@nestjs/common", "Controller"], operation: ["@nestjs/common", "Sse"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField", "Subscription", "Resolver"]], ["@nestjs/websockets", ["WebSocketGateway", "SubscribeMessage"]], ["@nestjs/common", HTTP_ROUTES]] },
 }
 
-/** The role (`gateway` or `subscription`) a realtime file name carries, or null. */
-const roleOf = (filename) => /\.(gateway|subscription)\.ts$/.exec(baseName(filename))?.[1] ?? null
+/** The role (`gateway`, `subscription` or `controller`) a realtime file name carries, or null. */
+const roleOf = (filename) => /\.(gateway|subscription|controller)\.ts$/.exec(baseName(filename))?.[1] ?? null
 
 /** The door classes of a file: every class with a class-level door decorator of the role. */
 const doorClasses = (context, program, role) => {
@@ -55,9 +60,10 @@ const hasSocketServer = (context, node) => node.body.body.some((member) =>
 /** The authenticated principal port the socket middleware passes to a push-only stream. */
 const isStreamPrincipal = (context, param) => isOwnedType(context, param, { name: "Principal", capability: "cqrs", tier: "platform" })
 
-/** Subscriptions on the platform's hub, including those inside closures. */
+/** The hub calls that open a client's stream: `subscribe` (an async iterable of frames) and `stream` (server-sent events), including those inside closures. */
+const OPENING_CALLS = new Set(["subscribe", "stream"])
 const hubSubscriptions = (context, method) => callsOf(method).filter(({ receiver, method: called }) =>
-    called === "subscribe" && receiver !== null && isHubType(context, receiver))
+    OPENING_CALLS.has(called) && receiver !== null && isHubType(context, receiver))
 
 /** The nonstatic methods a push-only gateway uses to feed its socket server. */
 const streamMethods = (context, node) => {
@@ -79,6 +85,7 @@ export const realtimeShape = {
         messages: {
             door: "A `<channel>.{{role}}.ts` file declares exactly one `{{decorator}}` class (this one declares {{count}}). One file is one door.",
             operations: "This {{role}} door has no `@{{operation}}` handler or principal-typed push stream through `@WebSocketServer`. A realtime door subscribes the client to a topic of the `RealtimeHub`.",
+            single: "This SSE controller declares {{count}} `@Sse` methods. A `<channel>.controller.ts` of the sse slot is one door with exactly one `@Sse` stream; a second stream is a second channel in its own folder.",
             foreign: "`@{{name}}` has no place in a realtime {{role}} door. A realtime door only subscribes and pushes; a query, a mutation, a field resolver or a REST route belongs in an api feature, and the other realtime protocol in its own file.",
         },
     },
@@ -95,6 +102,8 @@ export const realtimeShape = {
                     return
                 }
                 if (!hasOperation(context, doors[0], role)) context.report({ node: doors[0], messageId: "operations", data: { role, operation: spec.operation[1] } })
+                const streams = role === "controller" ? methodsDecoratedBy(context, doors[0], ...spec.operation).length : 1
+                if (streams > 1) context.report({ node: doors[0], messageId: "single", data: { count: String(streams) } })
                 walk(program, (node) => {
                     if (node.type !== "Decorator") return
                     for (const [source, names] of spec.foreign) {

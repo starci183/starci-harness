@@ -17,8 +17,11 @@ import { decoratorArguments, decoratorCallee, isImportedFrom } from "./lib/impor
 import { isTransportSlot } from "./lib/transport-slots.mjs"
 import { typed } from "./lib/types.mjs"
 
-/** The HTTP route decorators of `@nestjs/common`. */
-const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head"]
+/** The HTTP route decorators of `@nestjs/common` (`Sse` is a route too: a `text/event-stream` GET that needs its own evidence). */
+const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head", "Sse"]
+
+/** The slot of server-sent-events doors: the one place an `@Sse` route is evidence of itself. */
+const SSE_SLOT = "be.feature.realtime.sse"
 
 /** True when a declaration file is owned by the capability `operations` of a platform slot. */
 const declaredByOperations = (hfs, file) => hfs.slotOf(file) === "be.platform" && hfs.ownerOf(file)?.split("/").pop() === "operations"
@@ -275,9 +278,17 @@ const credentialGuardEvidence = (context, method) => {
     return false
 }
 
-/** Route-level evidence for probes, auth handshakes, signed webhooks, redirects, byte transfers and credential-guarded routes. */
+/**
+ * Event-stream evidence (BE_REST_DOOR_EVIDENCE, owner:lite-sse-door): the route is an `@Sse` method of `@nestjs/common` inside the sse slot of a
+ * realtime channel. It is structural, not a name list: the same `@Sse` anywhere else, or any other route inside the sse slot, proves nothing.
+ */
+const eventStreamEvidence = (context, method) =>
+    hfsOf(context).slotOf(context.filename) === SSE_SLOT
+    && (method.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Sse"))
+
+/** Route-level evidence for probes, auth handshakes, signed webhooks, redirects, byte transfers, event streams and credential-guarded routes. */
 export const restExceptionEvidence = (context, method) => {
-    if (credentialGuardEvidence(context, method)) return true
+    if (credentialGuardEvidence(context, method) || eventStreamEvidence(context, method)) return true
     for (const decorator of method.decorators ?? []) {
         const callee = decoratorCallee(decorator)
         if (isImportedFrom(context, callee, "@nestjs/common", "Redirect")) return true
@@ -317,7 +328,18 @@ export const restRouteDeclared = {
     },
 }
 
-/** An operation route takes the table's `OperationRequest` and answers its `OperationReply`, of one table. */
+/** True when a pipe argument is `new OperationValidationService(...)`, the class declared by the platform capability `http-security` (resolved by symbol). */
+const isOperationPipe = (hfs, checker, toTs, argument) => {
+    if (argument?.type !== "NewExpression") return false
+    const target = toTs(argument.callee)
+    if (!target) return false
+    return declarationsOfSymbol(checker, checker.getSymbolAtLocation(target)).some((declaration) => {
+        const file = String(declaration.getSourceFile().fileName).replace(/\\/g, "/")
+        return declaration.name?.text === "OperationValidationService" && hfs.slotOf(file) === "be.platform" && hfs.ownerOf(file)?.split("/").pop() === "http-security"
+    })
+}
+
+/** An operation route takes the table's `OperationRequest` and answers its `OperationReply`, of one table, and validates the body it takes. */
 export const operationRouteDrivenByTable = {
     meta: {
         type: "problem",
@@ -326,6 +348,8 @@ export const operationRouteDrivenByTable = {
         messages: {
             half: "This route takes or answers `{{one}}` but not `{{other}}`. An operation route is driven by the table on both sides: `@Body() request: OperationRequest<Table>` and `Promise<OperationReply<Table>>`.",
             table: "The request and the reply of this route name different operation tables. One route serves one table.",
+            unvalidated:
+                "The body of this operation route is typed by an alias, which leaves no class at run time, so the global pipe validates nothing. Bind it to the request class with `@Body(new OperationValidationService(RequestClass))` of `platform/http-security`.",
         },
     },
     create(context) {
@@ -337,14 +361,21 @@ export const operationRouteDrivenByTable = {
                 if (node.kind !== "method" || node.static) return
                 if (!(node.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", HTTP_ROUTES))) return
                 const params = node.value.params.filter((param) => (param.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Body")))
-                const request = params.map((param) => canonReference(hfs, checker, toTs, param.typeAnnotation ?? param.parameter?.typeAnnotation)).find(Boolean) ?? null
+                const references = params.map((param) => canonReference(hfs, checker, toTs, param.typeAnnotation ?? param.parameter?.typeAnnotation))
+                const request = references.find(Boolean) ?? null
                 const reply = canonReference(hfs, checker, toTs, unwrapPromise(node.value.returnType))
                 if (!request && !reply) return
                 if (!request || !reply) {
                     context.report({ node: node.key, messageId: "half", data: request ? { one: "OperationRequest", other: "OperationReply" } : { one: "OperationReply", other: "OperationRequest" } })
                     return
                 }
-                if (request.table !== reply.table) context.report({ node: node.key, messageId: "table" })
+                if (request.table !== reply.table) {
+                    context.report({ node: node.key, messageId: "table" })
+                    return
+                }
+                const body = params[references.indexOf(request)]
+                const pipes = (body.decorators ?? []).filter((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Body")).flatMap(decoratorArguments)
+                if (!pipes.some((pipe) => isOperationPipe(hfs, checker, toTs, pipe))) context.report({ node: body, messageId: "unvalidated" })
             },
         }
     },
