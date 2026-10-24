@@ -8,6 +8,8 @@ import { rules } from "./project-graph.mjs"
 const OWN_SQL = "src/modules/domain/purchase/persistence/purchase.sql.ts"
 const FOREIGN_SQL = "src/modules/domain/purchase/persistence/foreign.sql.ts"
 const UNBOUNDED_SQL = "src/modules/domain/purchase/persistence/unbounded.sql.ts"
+const PREFIXED_SQL = "src/modules/domain/purchase/persistence/lines.sql.ts"
+const LOOKALIKE_SQL = "src/modules/domain/purchase/persistence/lookalike.sql.ts"
 const FILES = {
     "src/modules/platform/database/index.ts": "export { sql } from './sql';\n",
     "src/modules/platform/database/sql.ts": 'export const sql = (strings: TemplateStringsArray, ...values: unknown[]): string => strings.join("?") + values.length;\n',
@@ -17,10 +19,14 @@ const FILES = {
     "src/modules/domain/identity/persistence/identity.rows.ts": "export type IdentityRow = { readonly id: string };\n",
     [OWN_SQL]: "import { sql } from '../../../platform/database';\nexport const READ = sql`SELECT id FROM purchase LIMIT 10`;\nexport const WRITE = sql`UPDATE purchase SET id = $1 WHERE id = $2`;\n",
     [FOREIGN_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE identity SET id = $1 WHERE id = $2`;\n",
+    [PREFIXED_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchase_lines SET id = $1 WHERE id = $2`;\n",
+    [LOOKALIKE_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchases SET id = $1 WHERE id = $2`;\n",
     [UNBOUNDED_SQL]: "import { sql } from '../../../platform/database';\nexport const READ = sql`SELECT id FROM purchase`;\n",
 }
 const ENTITIES = {
     "src/modules/domain/purchase/persistence/entities/purchase.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("purchase") export class PurchaseEntity { @PrimaryColumn({ type: "uuid" }) id!: string }\n',
+    "src/modules/domain/purchase/persistence/entities/purchase-line.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("purchase_lines") export class PurchaseLineEntity { @PrimaryColumn({ type: "uuid" }) id!: string }',
+    "src/modules/domain/purchase/persistence/entities/purchases.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("purchases") export class PurchasesEntity { @PrimaryColumn({ type: "uuid" }) id!: string }',
     "src/modules/domain/identity/persistence/entities/identity.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("identity") export class IdentityEntity { @PrimaryColumn({ type: "uuid" }) id!: string }\n',
 }
 const DATABASE_TYPES = `export type Database = {
@@ -28,6 +34,8 @@ const DATABASE_TYPES = `export type Database = {
         Tables: {
             purchase: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
             identity: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
+            purchase_lines: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
+            purchases: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
         }
     }
 }
@@ -44,9 +52,15 @@ for (const edition of ["lite", "full"]) {
         })
         t.after(fixture.cleanup)
         fixture.tester.run("sql-owner", rules["sql-owner"], {
-            valid: [{ filename: fixture.at(OWN_SQL), code: FILES[OWN_SQL] }],
+            valid: [
+                { filename: fixture.at(OWN_SQL), code: FILES[OWN_SQL] },
+                // a table named for the capability and an underscore (realtime_events of platform/realtime)
+                { filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL] },
+            ],
             invalid: [
                 { filename: fixture.at(FOREIGN_SQL), code: FILES[FOREIGN_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
+                // a table that merely starts with the capability name is not its own
+                { filename: fixture.at(LOOKALIKE_SQL), code: FILES[LOOKALIKE_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
                 { filename: fixture.at(UNBOUNDED_SQL), code: FILES[UNBOUNDED_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
             ],
         })
