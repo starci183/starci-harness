@@ -124,3 +124,35 @@ test("R285: append-only plugin registration preserves every new enforcer and own
     assert.equal(plugin.ruleDeclarations.filter((entry) => entry.name === name).length, 1)
   }
 })
+
+test("R285: values generated from the contract's input bounds are data, not operations", (t) => {
+  const temporaryRoot = resolve(tmpdir())
+  const root = mkdtempSync(join(temporaryRoot, "starci-bounds-api-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const api = join(root, "apps", "web", "src", "modules", "api")
+  mkdirSync(join(api, "graphql", "__generated__"), { recursive: true })
+  mkdirSync(join(api, "graphql", "queries"), { recursive: true })
+  writeFileSync(join(api, "index.ts"), 'export { INPUT_BOUNDS, inputBoundsIssues, queryOrders } from "./graphql"\nexport type { GraphQLResponse } from "./graphql"\n')
+  writeFileSync(join(api, "graphql", "index.ts"), 'export { INPUT_BOUNDS, inputBoundsIssues } from "./__generated__/input-bounds"\nexport { queryOrders } from "./queries/query-orders"\n')
+  writeFileSync(join(api, "graphql", "__generated__", "input-bounds.ts"), "export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\n")
+  writeFileSync(join(api, "graphql", "queries", "query-orders.ts"), "export const queryOrders = {}\n")
+  const hfs = hfsFromDeclaration(appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] }), root)
+  const tester = new RuleTester({
+    languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
+    settings: { starci: { hfs } },
+  })
+  const form = join(root, "apps/web/src/hooks/rhf/useOrderForm.ts")
+  tester.run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
+    valid: [
+      { filename: form, code: 'import { INPUT_BOUNDS, inputBoundsIssues } from "@/modules/api"; export const bounds = [INPUT_BOUNDS, inputBoundsIssues]' },
+      { filename: form, code: 'import { INPUT_BOUNDS, inputBoundsIssues } from "@/modules/api/graphql"; export const bounds = [INPUT_BOUNDS, inputBoundsIssues]' },
+      { filename: form, code: 'import { INPUT_BOUNDS as bounds } from "@/modules/api"; export const own = bounds' },
+    ],
+    invalid: [
+      { filename: form, code: 'import { INPUT_BOUNDS, queryOrders } from "@/modules/api"; export const both = [INPUT_BOUNDS, queryOrders]', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import { queryOrders } from "@/modules/api"; export const op = queryOrders', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import * as api from "@/modules/api"; export const all = api', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import api, { INPUT_BOUNDS } from "@/modules/api"; export const all = [api, INPUT_BOUNDS]', errors: [{ messageId: "outside" }] },
+    ],
+  })
+})
