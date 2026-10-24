@@ -25,14 +25,21 @@ export interface OperationContract<Input, Output, RefusalCode extends string, Ki
  *
  * @returns The contract entry of the app's operation table.
  */
-export const query = <Input, Output, RefusalCode extends string = never>(): OperationContract<Input, Output, RefusalCode, "query"> => ({ kind: "query" })
+export function query<Input, Output, RefusalCode extends string = never>(): OperationContract<Input, Output, RefusalCode, "query">
+export function query<Input extends OperationSchema, Output extends OperationSchema, const Codes extends readonly string[] = readonly never[]>(options: { readonly input: Input; readonly output: Output; readonly refusal?: Codes }): OperationContract<Input["_output"], Output["_output"], Codes[number], "query">
+export function query(_options?: { readonly input: OperationSchema; readonly output: OperationSchema; readonly refusal?: readonly string[] }): OperationContract<unknown, unknown, string, "query"> { return { kind: "query" } }
+
+/** The structural part of zod used by this type-only fixture. */
+interface OperationSchema { readonly _input: unknown; readonly _output: unknown; safeParse(value: unknown): unknown }
 
 /**
  * Declares a mutation: an operation that changes state.
  *
  * @returns The contract entry of the app's operation table.
  */
-export const mutation = <Input, Output, RefusalCode extends string = never>(): OperationContract<Input, Output, RefusalCode, "mutation"> => ({ kind: "mutation" })
+export function mutation<Input, Output, RefusalCode extends string = never>(): OperationContract<Input, Output, RefusalCode, "mutation">
+export function mutation<Input extends OperationSchema, Output extends OperationSchema, const Codes extends readonly string[] = readonly never[]>(options: { readonly input: Input; readonly output: Output; readonly refusal?: Codes }): OperationContract<Input["_output"], Output["_output"], Codes[number], "mutation">
+export function mutation(_options?: { readonly input: OperationSchema; readonly output: OperationSchema; readonly refusal?: readonly string[] }): OperationContract<unknown, unknown, string, "mutation"> { return { kind: "mutation" } }
 
 /** The key of an operation: `<name>@<version>`, for example `sales.policy@1`. */
 export type OperationId = `${string}@${number}`

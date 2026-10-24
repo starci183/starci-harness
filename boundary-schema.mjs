@@ -26,7 +26,9 @@ const SCHEMA_FILE = /\.schema(?:\.spec)?\.ts$/
 const SCHEMA_TIERS = new Set(["domain", "platform", "integrations"])
 
 /** Constructors that build a string-valued schema and owe a `.max(n)` or `.length(n)`. */
-const STRINGY = new Set(["string", "email", "url", "httpUrl", "hostname", "base64", "base64url", "jwt", "emoji", "hex"])
+const STRINGY = new Set(["string", "email", "url", "httpUrl", "hostname", "base64", "base64url", "jwt", "emoji", "hex", "iso.datetime", "iso.date", "iso.time", "iso.duration"])
+/** The ISO namespace constructs strings; `z.date()` instead constructs a Date-valued schema. */
+const ISO_STRINGY = new Set(["datetime", "date", "time", "duration"])
 /** Constructors that build a counted container: bounded by `.max(n)`, `.length(n)` or `.size(n)`. */
 const COUNTED = new Set(["array", "set"])
 /** Constructors whose entry count only a refinement can bound. */
@@ -66,11 +68,16 @@ const chainOf = (node) => {
     return calls
 }
 
-/** Resolves a callee to the zod constructor it names, or null: `z.string`, `z.coerce.string`, or a named import `string`. */
+/** Resolves a zod constructor, including `z.iso.datetime()` and a renamed named import of `iso`. */
 const constructorOf = (callee, namespaces, named) => {
     if (callee.type === "Identifier") return named.get(callee.name) ?? null
     if (callee.type !== "MemberExpression" || callee.computed || callee.property.type !== "Identifier") return null
     let object = callee.object
+    if (ISO_STRINGY.has(callee.property.name)) {
+        const importedIso = object.type === "Identifier" && named.get(object.name) === "iso"
+        const namespaceIso = object.type === "MemberExpression" && !object.computed && object.property.type === "Identifier" && object.property.name === "iso" && object.object.type === "Identifier" && namespaces.has(object.object.name)
+        if (importedIso || namespaceIso) return `iso.${callee.property.name}`
+    }
     while (object.type === "MemberExpression" && !object.computed && object.property.type === "Identifier" && PASS_THROUGH.has(object.property.name)) object = object.object
     return object.type === "Identifier" && namespaces.has(object.name) ? callee.property.name : null
 }

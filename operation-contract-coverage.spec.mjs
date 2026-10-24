@@ -10,7 +10,7 @@ import { operationContractDecidable, operationRouteDrivenByTable } from "./opera
 
 const TABLE = at("src/features/api/plan/plan.operations.ts")
 const CONTROLLER = at("src/features/api/plan/transport/http/plan-operations.controller.ts")
-const OPERATIONS = 'import { defineOperations, query } from "@modules/platform/operations";\n'
+const OPERATIONS = 'import { defineOperations, query, OperationValidationPolicy } from "@modules/platform/operations";\n'
 const ROUTE = `import { Body, Controller, Post } from "@nestjs/common"
 import type { OperationReply, OperationRequest } from "@modules/platform/operations"
 ${OPERATIONS}
@@ -40,12 +40,12 @@ for (const edition of ["lite", "full"]) {
         assert.equal(hfs.edition, edition)
         ruleTester({ root: TYPED_ROOT, hfs }).run("operation-route-driven-by-table", operationRouteDrivenByTable, {
             valid: [
-                { filename: CONTROLLER, code: `${ROUTE}import { OperationValidationService } from "@modules/platform/http-security"\nclass AskRequest { id!: string }\n@Controller("api/v1") export class C { @Post("operations") async handle(@Body(new OperationValidationService(AskRequest)) request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }` },
+                { filename: CONTROLLER, code: `${ROUTE}@Controller("api/v1") export class C { @Post("operations") async handle(@Body(new OperationValidationPolicy(OPERATIONS)) request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }` },
             ],
             invalid: [
                 { filename: CONTROLLER, code: `${ROUTE}@Controller("api/v1") export class C { @Post("operations") async handle(@Body() request: OperationRequest<Table>): Promise<{ readonly ok: boolean }> { return { ok: true } } }`, errors: [{ messageId: "half" }] },
                 { filename: CONTROLLER, code: `${ROUTE}@Controller("api/v1") export class C { @Post("operations") async handle(@Body() request: OperationRequest<Table>): Promise<OperationReply<typeof OTHER>> { return null as never } }`, errors: [{ messageId: "table" }] },
-                { filename: CONTROLLER, code: `${ROUTE}@Controller("api/v1") export class C { @Post("operations") async handle(@Body() request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`, errors: [{ messageId: "unvalidated" }] },
+                { filename: CONTROLLER, code: `${ROUTE}@Controller("api/v1") export class C { @Post("operations") async handle(@Body() request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`, errors: [{ messageId: "validation" }] },
             ],
         })
     })
