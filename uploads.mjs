@@ -60,7 +60,7 @@ export const noBufferedUpload = {
         docs: { description: "Browser file uploads use presigned storage grants, without Nest/Multer or GraphQL multipart buffering in the API." },
         schema: [],
         messages: {
-            buffered: "[BE_UPLOAD_BUFFERED] `{{name}}` accepts multipart files in the API. Return an authenticated, short-lived storage grant scoped to the principal and exact object key, with provider-enforced content type and byte bounds; send the file directly to storage. An actual streaming REST route needs its own BE-TRANSPORT-1 evidence.",
+            buffered: "[BE_UPLOAD_BUFFERED] `{{name}}` accepts multipart files in the API. Return an authenticated, short-lived presigned PUT scoped to the principal and exact object key, signed for the exact content type and length, verify the stored object with a head call after the upload, and send the file directly to storage. An actual streaming REST route needs its own BE-TRANSPORT-1 evidence.",
         },
     },
     create(context) {
