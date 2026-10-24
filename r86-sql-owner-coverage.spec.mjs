@@ -59,9 +59,11 @@ for (const edition of ["lite", "full"]) {
             ],
             invalid: [
                 { filename: fixture.at(FOREIGN_SQL), code: FILES[FOREIGN_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
-                // a table that merely starts with the capability name is not its own
-                { filename: fixture.at(LOOKALIKE_SQL), code: FILES[LOOKALIKE_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
                 { filename: fixture.at(UNBOUNDED_SQL), code: FILES[UNBOUNDED_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
+                // under Supabase schema authority a table that merely starts with the capability name is not its own (a full entity makes it so)
+                ...(edition === "lite"
+                    ? [{ filename: fixture.at(LOOKALIKE_SQL), code: FILES[LOOKALIKE_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] }]
+                    : []),
             ],
         })
     })
