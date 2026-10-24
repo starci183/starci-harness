@@ -6,7 +6,6 @@
     "strict": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "skipLibCheck": true,
     "noEmit": true,
     "types": [],
     "paths": {
