@@ -5,7 +5,11 @@
  */
 // proves: HFS_FEATURE_LOGIC_ROLE@lite HFS_FEATURE_LOGIC_ROLE@full
 import assert from "node:assert/strict"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
 import test from "node:test"
+import ts from "typescript"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester, typedTester } from "./fixtures/typed/tester.mjs"
 import { appDeclaration } from "./fixtures/app.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
@@ -233,13 +237,13 @@ export class Door {
             {
                 filename: RESOLVER,
                 code: `import { CommandBus } from "@nestjs/cqrs"
-import { toOrder } from "./place-order.mapper"
+import { doubled as toOrder } from "@modules/domain/order/function-subject.mapper"
 class GetOrder { constructor(readonly id: string) {} }
 export class Door {
     constructor(private readonly bus: CommandBus) {}
 
-    resolve(orderId: string): Promise<unknown> {
-        return toOrder(this.bus.execute(new GetOrder(orderId)))
+    async resolve(orderId: string): Promise<number> {
+        return toOrder(await this.bus.execute<number>(new GetOrder(orderId)))
     }
 }`,
             },
@@ -262,8 +266,8 @@ export class Door {
             // a mapper maps properties and calls another mapper
             {
                 filename: MAPPER,
-                code: `import { toMoney } from "./money.mapper"
-export const toOrder = (input: { id: string }) => ({ id: input.id, total: toMoney(input.id) })`,
+                code: `import { doubled as toMoney } from "@modules/domain/order/function-subject.mapper"
+export const toOrder = (input: { id: string; amount: number }) => ({ id: input.id, total: toMoney(input.amount) })`,
             },
             // a webhook proves the signature (verify is free) and hands the delivery to one intake method
             { filename: WEBHOOK, code: WEBHOOK_DOOR(`this.signature.verify({ rawBody: body, signature })
@@ -464,3 +468,66 @@ export const toOrder = (orders: OrderService, input: { id: string }) => orders.o
         ],
     })
 })
+
+for (const edition of ["lite", "full"]) {
+    test(`feature-thin resolves a mapper's declaration through public facades in ${edition}`, (t) => {
+        const root = mkdtempSync(join(tmpdir(), "starci-feature-thin-facade-"))
+        t.after(() => rmSync(root, { recursive: true, force: true }))
+        const fixture = (file, code) => {
+            const filename = join(root, file)
+            mkdirSync(dirname(filename), { recursive: true })
+            writeFileSync(filename, code)
+            return filename
+        }
+        const config = {
+            compilerOptions: {
+                target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true,
+                noEmit: true, types: [], paths: { "@modules/*": ["./src/modules/*"] },
+            },
+            include: ["src/**/*.ts"],
+        }
+        fixture("tsconfig.json", JSON.stringify(config))
+        fixture("src/modules/domain/status/status.mapper.ts", "export const mapState = (value: string) => ({ state: value })")
+        fixture("src/modules/domain/status/status.service.ts", "export const loadState = (value: string) => value")
+        fixture("src/modules/domain/status/index.ts", `export { mapState } from "./status.mapper"
+export { loadState } from "./status.service"`)
+        fixture("src/modules/domain/status/nested/exports.ts", 'export { mapState as nestedState } from "../status.mapper"')
+        fixture("src/modules/domain/status/nested/index.ts", 'export * from "./exports"')
+        fixture("src/modules/domain/status/chain.ts", 'export * from "./nested"')
+        fixture("src/modules/domain/status/deceptive.mapper.ts", 'export { loadState as mapState } from "./status.service"')
+        const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, root)
+        const mapping = (name, source, imported = "mapState") => {
+            const code = `import { ${imported} as toState } from "${source}"
+export const toTransport = (value: string) => toState(value)`
+            return { filename: fixture(`src/features/api/checkout/transport/graphql/${name}.mapper.ts`, code), code }
+        }
+        const cases = {
+            valid: [
+                // The public domain facade preserves the declaring mapper's role.
+                mapping("facade", "@modules/domain/status"),
+                // Aliases and nested export-star barrels still lead to the same mapper declaration.
+                mapping("nested", "@modules/domain/status/chain", "nestedState"),
+                // A direct literal mapper import remains accepted.
+                mapping("direct", "@modules/domain/status/status.mapper"),
+            ],
+            invalid: [
+                // A facade's service export is not a mapper, even when its body is pure.
+                { ...mapping("service", "@modules/domain/status", "loadState"), errors: [{ messageId: "call" }] },
+                // Naming a barrel as a mapper cannot hide the service declaration behind it.
+                { ...mapping("deceptive", "@modules/domain/status/deceptive.mapper"), errors: [{ messageId: "call" }] },
+                // An unresolved mapper-looking import proves no mapper declaration.
+                { ...mapping("unresolved", "@modules/domain/status/missing.mapper"), errors: [{ messageId: "call" }] },
+            ],
+        }
+        const parsed = ts.parseJsonConfigFileContent(config, ts.sys, root)
+        const program = ts.createProgram(parsed.fileNames, parsed.options)
+        const withProgram = (candidate) => ({
+            ...candidate,
+            languageOptions: { parserOptions: { projectService: false, programs: [program] } },
+        })
+        ruleTester({ root, hfs }).run("feature-thin", featureThin, {
+            valid: cases.valid.map(withProgram),
+            invalid: cases.invalid.map(withProgram),
+        })
+    })
+}

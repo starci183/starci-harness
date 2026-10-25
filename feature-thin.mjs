@@ -154,11 +154,11 @@ export const featureThin = {
             return injectedNamesOf(classNode).has(member) ? member : null
         }
 
-        /** True for a call `f(...)` where `f` is imported from a `*.mapper.ts` (the pure mapping functions). */
+        /** True for an imported pure `*.mapper.ts` function, resolved through any facade re-exports to its declaration. */
         const isMapperCall = (callee) => {
-            if (callee.type !== "Identifier") return false
-            const found = importOf(context, callee)
-            return found !== null && /(?:^|\/)[^/]+\.mapper(?:\.[cm]?[jt]s)?$/.test(found.source.replace(/\\/g, "/"))
+            if (callee.type !== "Identifier" || importOf(context, callee) === null) return false
+            const declarations = aliasTarget(context, callee)?.getDeclarations() ?? []
+            return declarations.length > 0 && declarations.every((declaration) => roleOf(declaration.getSourceFile().fileName) === "mapper")
         }
 
         /** True for a call `f(...)` where `f` is imported and its declaration lives outside the feature tier (a function of the modules). */
