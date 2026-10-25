@@ -10,8 +10,11 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { at, fixtureHfs, typedTester } from "./fixtures/typed/tester.mjs"
+import { appDeclaration } from "./fixtures/app.mjs"
+import { projectFixture } from "./fixtures/project/tester.mjs"
+import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "./fixtures/typed/tester.mjs"
 import { httpClientOnlyInIntegrations, infraImportOwner, rules } from "./infra-owner.mjs"
+import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { thirdPartyImportOwner } from "./third-party-owner.mjs"
 
 const tester = new RuleTester({
@@ -82,6 +85,8 @@ export { axios }` },
             { filename: DOMAIN, code: `const setTimeout = (fn: () => void) => fn()\nexport const g = () => setTimeout(() => 1)` },
             // a property called fetch is not the global
             { filename: DOMAIN, code: `export const h = (client: { fetch(): number }) => client.fetch()` },
+            // platform/realtime owns the socket.io engines of the scale pattern: the adapters, the pg LISTEN connection and ioredis
+            { filename: REALTIME, code: `import { createAdapter } from "@socket.io/postgres-adapter"\nimport { createShardedAdapter } from "@socket.io/redis-adapter"\nimport { Client, Pool } from "pg"\nimport Redis from "ioredis"\nexport { createAdapter, createShardedAdapter, Client, Pool, Redis }` },
             // libraries that are not in the table
             { filename: DOMAIN, code: `import { Module } from "@nestjs/common"\nimport { Cron } from "node-cron-lookalike"\nexport { Module, Cron }` },
         ],
@@ -108,6 +113,11 @@ export { axios }` },
             { filename: INTEGRATION, code: `import dayjs from "dayjs/plugin/utc"\nexport { dayjs }`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import winston from "winston"\nexport { winston }`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
+            // only platform/realtime imports the realtime engines and their adapters
+            { filename: DOMAIN, code: `import { createAdapter } from "@socket.io/postgres-adapter"\nexport { createAdapter }`, errors: [{ messageId: "foreign" }] },
+            { filename: FEATURE, code: `import { createShardedAdapter } from "@socket.io/redis-adapter"\nexport { createShardedAdapter }`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import { Client } from "pg"\nexport { Client }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             // another owner's library is not yours: http may not open a cache, cache may not queue
             { filename: HTTP, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             { filename: CACHE, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
@@ -147,6 +157,60 @@ export { Kafka }`, errors: [{ messageId: "foreign" }] },
 export { Worker }`, errors: [{ messageId: "foreign" }] },
         ],
     })
+})
+
+test("infra-import-owner under lite: the queue and Redis libraries keep full's owners, Kafka and Qdrant are owned nowhere", () => {
+    const liteHfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT)
+    assert.deepEqual(liteHfs.ruleParams.infraOwners.bullmq, fixtureHfs().ruleParams.infraOwners.bullmq)
+    assert.deepEqual(liteHfs.ruleParams.infraOwners.kafkajs, [])
+    const lite = new RuleTester({
+        languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
+        settings: { starci: { hfs: liteHfs } },
+    })
+    lite.run("infra-import-owner", infraImportOwner, {
+        valid: [
+            { filename: QUEUE, code: `import { Queue, Worker } from "bullmq"\nexport { Queue, Worker }` },
+            { filename: REDIS, code: `import Redis from "ioredis"\nexport { Redis }` },
+            { filename: CACHE, code: `import { createClient } from "redis"\nexport { createClient }` },
+            { filename: CACHE, code: `import KeyvRedis from "@keyv/redis"\nimport { redisStore } from "cache-manager-redis-yet"\nimport { redisInsStore } from "cache-manager-ioredis-yet"\nexport { KeyvRedis, redisStore, redisInsStore }` },
+            { filename: QUEUE, code: `import Bull from "bull"\nimport { BullModule } from "@nestjs/bull"\nexport { Bull, BullModule }` },
+        ],
+        invalid: [
+            { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
+            // the legacy queue and the Redis cache stores keep to their owners like bullmq and ioredis
+            { filename: DOMAIN, code: `import Bull from "bull"\nexport { Bull }`, errors: [{ messageId: "foreign" }] },
+            { filename: FEATURE, code: `import { BullModule } from "@nestjs/bull"\nexport { BullModule }`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import KeyvRedis from "@keyv/redis"\nexport { KeyvRedis }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import { redisStore } from "cache-manager-redis-yet"\nexport { redisStore }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
+            { filename: EVENT_BUS, code: `import { Kafka } from "kafkajs"\nexport { Kafka }`, errors: [{ messageId: "nowhere" }] },
+            { filename: at("src/modules/integrations/qdrant/qdrant.client.ts"), code: `import { QdrantClient } from "@qdrant/js-client-rest"\nexport { QdrantClient }`, errors: [{ messageId: "nowhere" }] },
+            { filename: INTEGRATION, code: `const sdk = require("@qdrant/qdrant-js")\nexport { sdk }`, errors: [{ messageId: "nowhere" }] },
+            { filename: DOMAIN, code: `export const load = () => import("@qdrant/js-client-rest/client")`, errors: [{ messageId: "nowhere" }] },
+            { filename: at("src/modules/integrations/qdrant/qdrant.client.spec.ts"), code: `export * from "@qdrant/qdrant-js/client"`, errors: [{ messageId: "nowhere" }] },
+        ],
+    })
+})
+
+test("full: declared Qdrant clients retain their ordinary third-party integration owner", () => {
+    const filename = "src/modules/integrations/qdrant/qdrant.client.ts"
+    const code = 'import { QdrantClient } from "@qdrant/js-client-rest"; import sdk from "@qdrant/qdrant-js"; export { QdrantClient, sdk }'
+    const fixture = projectFixture({
+        edition: "full",
+        declaration: { backing: ["qdrant"] },
+        rootFiles: { "package.json": JSON.stringify({ name: "qdrant-owner-fixture", private: true, dependencies: { "@qdrant/js-client-rest": "1.12.0", "@qdrant/qdrant-js": "1.12.0" } }) },
+        files: { [filename]: code },
+    })
+    try {
+        fixture.tester.run("infra-import-owner", infraImportOwner, {
+            valid: [{ filename: fixture.at(filename), code }],
+            invalid: [],
+        })
+        fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+            valid: [{ filename: fixture.at(filename), code }],
+            invalid: [{ filename: fixture.at("src/modules/domain/order/order.service.ts"), code, errors: [{ messageId: "foreign" }, { messageId: "foreign" }] }],
+        })
+    } finally { fixture.cleanup() }
 })
 
 const typedRules = typedTester()

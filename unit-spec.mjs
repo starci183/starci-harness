@@ -5,7 +5,9 @@
  * and takes every double from the one shared kit, `@starci/jest-preset`:
  *
  *   - `spec-builds-with-testing-module`: the spec calls `Test.createTestingModule(...)` from `@nestjs/testing`, awaits
- *     `.compile()` and reads the subject with `.get(...)` on the resulting `TestingModule`.
+ *     `.compile()` and reads the subject with `.get(...)` on the resulting `TestingModule`. A spec of a value role
+ *     (`ruleParams.be.valueRoles`) is exempt only while its sibling is a real boundary schema (an owner tier, zod values and types
+ *     only, `schema-file-values-only`): its subject is a declared value, parsed directly.
  *   - `spec-no-new-subject`: the subject (the class of the sibling `<name>.<role>.ts`) is never built with `new`.
  *   - `spec-module-definition-only-providers`: the module definition has a `providers` list and nothing else: no `imports` key
  *     and no `override*` call (`overrideProvider`, `overrideGuard`, `overrideModule`, `overrideFilter`, `overridePipe`,
@@ -28,9 +30,13 @@
 import { hfsOf } from "./lib/hfs.mjs"
 import { keyName, walk } from "./lib/ast.mjs"
 import { importOf, isImportedFrom } from "./lib/import-source.mjs"
-import { isPackageType, typeOrigins } from "./lib/types.mjs"
-import { baseOf, isServiceSpecFile, isUnitSpecFile, unitRoleOfSpec } from "./lib/unit-spec.mjs"
+import ts from "typescript"
+import { normalizePath } from "./lib/path.mjs"
+import { isPackageType, typeOrigins, typed } from "./lib/types.mjs"
+import { baseOf, isServiceSpecFile, isUnitSpecFile, isValueRoleSpec, unitRoleOfSpec } from "./lib/unit-spec.mjs"
 import { isRealSubjectValue, valueObjectsOfSibling } from "./lib/subject-values.mjs"
+import { ownerNameOf } from "./lib/ports.mjs"
+import { siblingIsValueSchema } from "./lib/schema-values.mjs"
 
 const TESTING_PACKAGE = "@nestjs/testing"
 
@@ -77,7 +83,12 @@ export const specBuildsWithTestingModule = {
         },
     },
     create(context) {
-        if (!isFormSpecFile(hfsOf(context), context.filename || context.getFilename())) return {}
+        const filename = context.filename || context.getFilename()
+        // a value role (a zod schema) declares a value Nest never constructs: its spec parses it and builds no module, but only when the
+        // sibling really is one (a boundary schema of an owner tier holding zod values and types, nothing else); any other file keeps the rule
+        const hfs = hfsOf(context)
+        if (!isFormSpecFile(hfs, filename)) return {}
+        if (isValueRoleSpec(hfs, filename) && siblingIsValueSchema(hfs, filename)) return {}
         // a value-object subject (undecorated, no constructor injection token) is built with `new`: Nest never constructs it
         const valueObjectSpec = valueObjectsOfSibling(context).length > 0
         let created = null
@@ -385,10 +396,34 @@ const COMPILED = new WeakMap()
 const tableOf = (specDoubles) => {
     let compiled = COMPILED.get(specDoubles)
     if (!compiled) {
-        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token) })), fallback: specDoubles.fallback }
+        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token), from: entry.from === undefined ? undefined : new RegExp(entry.from) })), fallback: specDoubles.fallback }
         COMPILED.set(specDoubles, compiled)
     }
     return compiled
+}
+
+/** The file and exported name a token identifier is declared in, after following every import and re-export, or null when it cannot be resolved. */
+const declarationOf = (context, token) => {
+    const { checker, toTs } = typed(context)
+    const symbol = checker.getSymbolAtLocation(toTs(token))
+    const target = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+    const declaration = target?.getDeclarations?.()?.[0]
+    return declaration === undefined ? null : { file: normalizePath(declaration.getSourceFile().fileName), name: target.getName() }
+}
+
+/**
+ * Whether a table entry applies to a provider token. The spelling picks the entry; when the entry names where its port is declared
+ * (`from`, a pattern over the declaring file), the declaration decides, never the import written in the spec: a token declared in
+ * another module that merely ends alike (`CORRELATION_IDS` of logging against `IDS` of ids) is a different port, a token the
+ * owner declares stays that port however it is re-exported or renamed (`IDS as SYSTEM_SOURCE`, a fixture re-export). A token
+ * that cannot be resolved, or is declared in the spec itself, is judged by its spelling alone.
+ */
+const entryApplies = (context, entry, spelled, token) => {
+    if (entry.from === undefined || token?.type !== "Identifier") return entry.pattern.test(spelled)
+    const declared = declarationOf(context, token)
+    if (declared === null || declared.file === normalizePath(context.filename || context.getFilename())) return entry.pattern.test(spelled)
+    if (!entry.from.test(declared.file)) return !declared.file.includes("/src/modules/") && entry.pattern.test(spelled)
+    return entry.pattern.test(spelled) || entry.pattern.test(screamingSnake(declared.name))
 }
 
 /** A const identifier's initializer, or null when its value cannot be followed. */
@@ -401,6 +436,31 @@ const constantInitializer = (context, value) => {
         return null
     }
     return null
+}
+
+/** An imported token retains its declared identity through const aliases and assertion wrappers. */
+const originsOfToken = (context, token) => {
+    let value = peel(token)
+    const seen = new Set()
+    while (value?.type === "Identifier" && !seen.has(value)) {
+        seen.add(value)
+        const initial = peel(constantInitializer(context, value))
+        if (!initial || !["Identifier", "MemberExpression"].includes(initial.type)) break
+        value = initial
+    }
+    return typeOrigins(context, value)
+}
+
+/** Inbox is the platform port; a service or producer whose name contains Inbox remains an ordinary collaborator. */
+const providerDoubleEntry = (context, hfs, table, token, normalised) => {
+    const named = (name, from) => table.entries.find((entry) => entryApplies(context, entry, screamingSnake(name), from)) ?? table.fallback
+    const lexical = named(normalised, token)
+    const inbox = named("INBOX")
+    const origins = originsOfToken(context, token)
+    const platform = origins.filter((origin) => origin.module === null && hfs.tierOf(origin.file) === "platform")
+    if (platform.some((origin) => origin.name === "INBOX" && ownerNameOf(hfs, origin.file) === "inbox")) return inbox
+    if (lexical !== inbox || origins.length === 0) return lexical
+    return platform.map((origin) => named(origin.name)).find((entry) => entry !== inbox) ?? table.fallback
 }
 
 /** A value's form and the double it names: `{ form, name }`, or null when it is not a form the table knows. */
@@ -489,7 +549,7 @@ export const specInfraDoubleFromKit = {
                 const spelled = tokenName(provide?.value)
                 if (spelled === null) return
                 const normalised = screamingSnake(spelled)
-                const entry = table.entries.find((candidate) => candidate.pattern.test(normalised)) ?? table.fallback
+                const entry = providerDoubleEntry(context, hfs, table, provide.value, normalised)
                 const found = formOf(context, node.value)
                 const want = describe(entry)
                 const data = { token: spelled, want, kit: table.kit }

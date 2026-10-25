@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.4.43 - 2026-10-26
+- Changed: `inbox-dedupe-required` (R80 `BE_INBOX_DEDUPE_MISSING`) accepts a delivery whose one write transaction hands its work to a typed helper: the sole `.transaction(...)` runs on typeorm's `EntityManager` or on a port the `platform/database` owner declares, its arrow callback returns `this.<method>(..., tx, ...)` of the same class (resolved by the checker), and that async helper claims first with the never-reassigned manager parameter and returns on `false`. The database port also runs the inline claim callback. A helper that never claims, claims after other work or under a condition, claims with another manager, a lookalike runner, a callback that hands work to another object or detaches it, and an ignored claim answer stay refused; every form refused before stays refused.
+
+## 3.4.42 - 2026-10-26
+- Changed: `operation-table-schemas` and `operation-contract-decidable` leave alone a stub table a spec keeps to itself, but judge one a spec exports (`export const`, `export { }`, `export default`); `rest-route-declared` never counts a table made in a spec as the app's declared table. The same stub table in a production file stays refused.
+- Changed: R95 requires named zod input/output schema exports for every `defineOperations` entry (`operation-table-schemas`) and a canon `OperationValidationPolicy` constructed with the same table on the route body (`operation-route-driven-by-table`). Schema provenance and route binding are proved in both editions, including strict empty inputs, aliases, mismatched tables and local imitations.
+
+## 3.4.41 - 2026-10-25
+- Changed: the bundled canon pins select @starci/stylelint-canon 2.0.11, @starci/hfs 4.7.33 and @starci/cli 1.7.33.
+
 ## 3.4.40 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
 

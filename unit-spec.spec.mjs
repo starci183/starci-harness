@@ -176,6 +176,12 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("CHALLENGE_GRADING_HOLD", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("IDS", "fakeIds()") },
+            // the ids port is the token that platform/ids declares, however it is imported; another module's token that ends alike is another port
+            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "@modules/platform/ids"') },
+            { filename: SPEC, code: provide("SYSTEM_SOURCE", "fakeIds()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"') },
+            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "./reexported-ids"') },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "mock<CorrelationIds>()", 'import { CORRELATION_IDS } from "@modules/platform/logging"'+"\ninterface CorrelationIds { create(): string }") },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "correlationIds", 'import { CORRELATION_IDS } from "@modules/platform/logging"'+"\ninterface CorrelationIds { create(): string }\nconst correlationIds = mock<CorrelationIds>()") },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "builder({ retries: 3 })({ retries: 1 })") },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "{ retries: 3, region: 'eu' }") },
             { filename: SPEC, code: provide("KEYCLOAK_ADMIN", "mock<KeycloakAdmin>()", "interface KeycloakAdmin { users(): void }") },
@@ -206,6 +212,15 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("CACHE", "mock<Cache>()", "interface Cache { get(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "mock<Fence>()", "interface Fence { take(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("IDS", "{ next: () => 'a' }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "@modules/platform/ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("SYSTEM_SOURCE", "mock<Ids>()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            // a re-export or a rename of the ids token is still the ids port
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("SYSTEM_IDS", "mock<Ids>()", 'import { SYSTEM_IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { SYSTEM_IDS as IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            // a token declared in the spec itself is judged by its spelling
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'const IDS: unique symbol = Symbol("local")'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "fakeIds()", 'import { CORRELATION_IDS } from "@modules/platform/logging"'), errors: [{ messageId: "wrong" }] },
             // options tokens are REAL values, never a mock
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "mock<PaymentOptions>()", "interface PaymentOptions { retries: number }"), errors: [{ messageId: "wrong" }] },
             // anything else is mock<T>()
@@ -287,6 +302,31 @@ test("a value-object subject is built with new, a decorated or token-injected su
     tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [{ filename: valueObject, code: 'import { Window } from "./value-object.mapper"\nconst provider = { provide: SPAN, useValue: new Window(1, 2) }' }],
         invalid: [{ filename: injected, code: 'import { Gate } from "./injected-subject.mapper"\nconst provider = { provide: GATE, useValue: new Gate(1) }', errors: [{ messageId: "wrong" }] }],
+    })
+})
+
+test("a value-role spec parses a real boundary schema without a testing module; a misnamed logic file keeps the rule", () => {
+    const parse = (name) => [`import { subject } from "./${name}.schema"`, 'it("rejects an empty input", () => expect(subject.safeParse({}).success).toBe(false))'].join("\n")
+    const noModule = { messageId: "noModule" }
+    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+        // the sibling is a zod schema file of the domain tier holding values and types only
+        valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
+        invalid: [
+            // the same spec beside a policy
+            { filename: at("src/modules/domain/order/order.policy.spec.ts"), code: parse("order"), errors: [noModule] },
+            // a function and an injectable class renamed to *.schema.ts, with no zod at all
+            { filename: at("src/modules/domain/order/pricing.schema.spec.ts"), code: parse("pricing"), errors: [noModule] },
+            // zod imported, but a function with logic beside the schema
+            { filename: at("src/modules/domain/order/zod-logic.schema.spec.ts"), code: parse("zod-logic"), errors: [noModule] },
+            // a pure zod file in a slot that is not an owner tier of R304 (a projection)
+            { filename: at("src/modules/projections/userxp/xp-row.schema.spec.ts"), code: parse("xp-row"), errors: [noModule] },
+            // no sibling file at all
+            { filename: at("src/modules/domain/order/missing.schema.spec.ts"), code: parse("missing"), errors: [noModule] },
+        ],
+    })
+    tester.run("spec-no-new-subject", specNoNewSubject, {
+        valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
+        invalid: [],
     })
 })
 

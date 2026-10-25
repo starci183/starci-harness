@@ -153,3 +153,41 @@ test("delivery claims first with the actual EntityManager callback and cannot es
         ],
     })
 })
+
+const CLAIM_FIRST = "const key = keyOf(m.eventId); if (!(await this.inbox.claim('billing', key, manager))) return this.read(manager); return this.work(manager)"
+const delegatedService = (delivery, helper = CLAIM_FIRST, { runner = "EntityManager", asynchronous = false, helperAccess = "private", declarations = "" } = {}) =>
+    PRELUDE + '\nimport type { EntityManager } from "typeorm"\nimport type { WriteTransaction } from "@modules/platform/database/transaction.port"\n'
+    + "declare function keyOf(eventId: string): string\n" + declarations
+    + "\nclass C {\n    constructor(private readonly em: " + runner + ", private readonly other: EntityManager, private readonly inbox: Inbox) {}"
+    + "\n    " + (asynchronous ? "async " : "") + "handle(m: Delivery) { " + delivery + " }"
+    + "\n    " + helperAccess + " async handleInTransaction(m: Delivery, manager: EntityManager) { " + helper + " }"
+    + "\n    private async read(manager: EntityManager): Promise<void> {}\n    private async work(manager: EntityManager): Promise<void> {}\n}"
+const DELEGATE = "return this.em.transaction((tx) => this.handleInTransaction(m, tx))"
+
+test("delivery delegates its claim to a typed helper inside the one write transaction a typed runner runs", () => {
+    tester.run("inbox-dedupe-required/delegated", inboxDedupeRequired, {
+        valid: [
+            { name: "own EntityManager transaction hands the delivery and its manager to a public claiming helper", filename: SERVICE, code: delegatedService(DELEGATE, CLAIM_FIRST, { helperAccess: "public" }) },
+            { name: "owned platform database port runs the delegated claim", filename: SERVICE, code: delegatedService(DELEGATE, CLAIM_FIRST, { runner: "WriteTransaction" }) },
+            { name: "owned platform database port runs an inline claim", filename: SERVICE, code: delegatedService("return this.em.transaction(async (tx) => { if (!(await this.inbox.claim('billing', m.eventId, tx))) return; await this.work(tx) })", CLAIM_FIRST, { runner: "WriteTransaction" }) },
+            { name: "awaited transaction with a block callback returning the awaited helper that stores its claim", filename: SERVICE, code: delegatedService("await this.em.transaction(async (tx) => { return await this.handleInTransaction(m, tx) })", "const fresh = await this.inbox.claim('billing', m.eventId, manager); if (!fresh) return; await this.work(manager)", { asynchronous: true }) },
+        ],
+        invalid: [
+            { name: "helper never claims", filename: SERVICE, code: delegatedService(DELEGATE, "await this.work(manager)"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper awaits work before the claim", filename: SERVICE, code: delegatedService(DELEGATE, "await this.work(manager); if (!(await this.inbox.claim('billing', m.eventId, manager))) return"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper runs a statement before the claim", filename: SERVICE, code: delegatedService(DELEGATE, "void this.work(manager); if (!(await this.inbox.claim('billing', m.eventId, manager))) return"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper claims under a conditional path", filename: SERVICE, code: delegatedService(DELEGATE, "if (m.amount > 0) { if (!(await this.inbox.claim('billing', m.eventId, manager))) return } await this.work(manager)"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper claims with the shared manager", filename: SERVICE, code: delegatedService(DELEGATE, "if (!(await this.inbox.claim('billing', m.eventId, this.other))) return; await this.work(manager)"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper claims without a manager", filename: SERVICE, code: delegatedService(DELEGATE, "if (!(await this.inbox.claim('billing', m.eventId))) return; await this.work(manager)"), errors: [{ messageId: "noClaim" }] },
+            { name: "helper reassigns its manager before the claim", filename: SERVICE, code: delegatedService(DELEGATE, "const swap = (manager = this.other); if (!(await this.inbox.claim('billing', swap ? m.eventId : '', manager))) return"), errors: [{ messageId: "noClaim" }] },
+            { name: "callback hands the helper another manager", filename: SERVICE, code: delegatedService("return this.em.transaction((tx) => this.handleInTransaction(m, this.other))"), errors: [{ messageId: "noClaim" }] },
+            { name: "lookalike runner declared by no package or database owner", filename: SERVICE, code: delegatedService(DELEGATE, CLAIM_FIRST, { runner: "PretendRunner", declarations: "declare class PretendRunner { transaction<T>(work: (tx: EntityManager) => Promise<T>): Promise<T> }" }), errors: [{ messageId: "noClaim" }] },
+            { name: "callback hands the work to another object", filename: SERVICE, code: delegatedService("return this.em.transaction((tx) => peer.handleInTransaction(m, tx))", CLAIM_FIRST, { declarations: "declare const peer: { handleInTransaction(m: Delivery, manager: EntityManager): Promise<void> }" }), errors: [{ messageId: "noClaim" }] },
+            { name: "callback detaches the helper promise", filename: SERVICE, code: delegatedService("return this.em.transaction(async (tx) => { void this.handleInTransaction(m, tx) })"), errors: [{ messageId: "noClaim" }] },
+            { name: "function callback rebinds this", filename: SERVICE, code: delegatedService("return this.em.transaction(function (tx) { return this.handleInTransaction(m, tx) })"), errors: [{ messageId: "noClaim" }] },
+            { name: "outer work after the delegated transaction", filename: SERVICE, code: delegatedService("await this.em.transaction((tx) => this.handleInTransaction(m, tx)); await this.work(this.other)", CLAIM_FIRST, { asynchronous: true }), errors: [{ messageId: "noClaim" }] },
+            { name: "helper ignores the claim answer", filename: SERVICE, code: delegatedService(DELEGATE, "await this.inbox.claim('billing', m.eventId, manager); await this.work(manager)"), errors: [{ messageId: "noEarlyReturn" }] },
+            { name: "helper runs work before testing its stored claim", filename: SERVICE, code: delegatedService(DELEGATE, "const fresh = await this.inbox.claim('billing', m.eventId, manager); await this.work(manager); if (!fresh) return"), errors: [{ messageId: "noEarlyReturn" }] },
+        ],
+    })
+})
