@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.4.44 - 2026-10-26
 - Fixed: R80 delegated claims map arguments over runtime parameters and reject spreads, effects hidden in `const` preparation, protected or replaced helpers, and runner or manager unions containing lookalikes. Private helpers (including `#private`) and independently judged public delivery helpers retain the transaction proof; public overrides preserve the claim's manager binding and prelude restrictions, including widened parameters and arrow properties. Every declared runner and manager origin must match its owner.
 
 ## 3.4.43 - 2026-10-26
