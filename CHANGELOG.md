@@ -3,6 +3,15 @@
 ## 9.0.0 - Unreleased
 - Changed: concrete Grammar component, variant, token and vendor rules move to `@starci/eslint-grammar-starci` under the `starci-grammar` namespace. Consumers compose both flat-config factories for their selected family.
 - Added: explicit shared infrastructure exports under `@starci/eslint-canon-fe/lib/*`; family packages reuse these readers without copying them.
+- Kept universal: the R318 surface composition law (`nested-control-variant`, `no-list-panel-padding`, `no-app-surface-paint`) and the R65 `no-app-relative-clock`, now in `size-and-state-budget.mjs`.
+
+### Migrating from 8.x
+- What moved: twenty rules leave this package with their IDs, finding codes and severity unchanged; only the namespace changes from `starci-fe/` to `starci-grammar/`. They are `app-shell-frame`, `no-shell-bottom-tabs`, `navbar-control-size`, `navbar-cluster`, `no-navbar-create`, `no-raw-structural-element`, `no-heading-tag-outside-heading-component`, `status-text-uses-soft-foreground`, `vendor-primitive-has-named-owner`, `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`, `no-off-scale-glyph-size`, `no-icon-size-class`, `destructive-menu-entry-needs-danger-tone`, `no-decorative-icon-in-metric-cell`, `no-inline-svg-outside-brand-mark-leaf`, `no-fractional-step`, `no-hand-rolled-heading`, `no-unresolved-token-class` and `slot-status-through-slotview`. StarCi apps get them from `@starci/eslint-grammar-starci`; Offset Pop apps get the same implementations from `@starci/eslint-grammar-offset-pop`.
+- Select the family explicitly: set `sides.fe.grammar` to `starci` or `offset-pop` in `hfs.json`. No family is inferred.
+- Install the family package at its canon-pins version beside this one (app root `devDependencies`). `starci app check` refuses an app that selects a family and declares canon-fe 9 without that package (`FE_STACK_FAMILY_LINT_MISSING`, R288), so the twenty rules cannot be lost silently.
+- Flat config order: the universal factory first, then the family factory, both with the same HFS view: `export default [...starciFeConfig({ hfs }), ...starciGrammarConfig({ hfs })]` (Offset Pop: `offsetPopGrammarConfig`). `starci app sync` renders this managed `fe/eslint.config.mjs`.
+- Rename any reference to a moved rule from `starci-fe/<rule>` to `starci-grammar/<rule>`; the removed-vocabulary check refuses the old spelling.
+- NIVO moves in v0.3.7.
 
 ## 8.4.43 - 2026-10-26
 - Changed: the bundled canon pins follow back-end canon 3.4.43, hfs 4.7.34 and cli 1.7.34.
