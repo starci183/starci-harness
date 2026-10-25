@@ -96,8 +96,32 @@ const propertyValue = (checker, expression, name) => {
     return null
 }
 
-/** A spec registers tables to test the platform capability; R95 judges the operations an app serves, never a spec. */
+/** A spec registers tables to test the platform capability; such a table is local to the spec and serves no operation. */
 const isSpecFile = (filename) => /\.(?:spec|e2e-spec|integration-spec|contract-spec)\.ts$/.test(filename.replaceAll("\\", "/"))
+
+const TS_WRAPPERS = new Set(["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion"])
+
+/**
+ * Whether the table a `defineOperations` call makes leaves its file: `export const X = ...`, `export { X }` or `export default X`.
+ * A spec may keep a stub table to itself; one it exports can be imported by production code, so it is judged like any table.
+ *
+ * @param {object} node - The CallExpression (ESTree).
+ * @returns {boolean} True when the registered table is exported.
+ */
+const tableLeavesFile = (node) => {
+    let value = node
+    while (TS_WRAPPERS.has(value.parent?.type)) value = value.parent
+    const parent = value.parent
+    if (parent?.type === "ExportDefaultDeclaration") return true
+    if (parent?.type !== "VariableDeclarator" || parent.init !== value || parent.id.type !== "Identifier") return false
+    if (parent.parent?.parent?.type === "ExportNamedDeclaration") return true
+    let program = parent
+    while (program.parent) program = program.parent
+    return program.body.some((statement) => {
+        if (statement.type === "ExportDefaultDeclaration") return statement.declaration?.type === "Identifier" && statement.declaration.name === parent.id.name
+        return statement.type === "ExportNamedDeclaration" && statement.specifiers.some((specifier) => specifier.local.name === parent.id.name)
+    })
+}
 
 /** The operation table must supply the runtime schemas that a generic request type cannot validate. */
 export const operationTableSchemas = {
@@ -111,13 +135,14 @@ export const operationTableSchemas = {
         },
     },
     create(context) {
-        if (isSpecFile(context.filename)) return {}
+        const inSpec = isSpecFile(context.filename)
         const hfs = hfsOf(context)
         const { checker, toTs } = typed(context)
         return {
             CallExpression(node) {
                 const call = toTs(node)
                 if (!isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), "defineOperations")) return
+                if (inSpec && !tableLeavesFile(node)) return
                 const argument = expressionOf(checker, call.arguments[0])
                 const entries = argument ? checker.getPropertiesOfType(checker.getTypeAtLocation(argument)) : []
                 if (entries.length === 0) {
@@ -204,7 +229,7 @@ export const operationContractDecidable = {
         },
     },
     create(context) {
-        if (isSpecFile(context.filename)) return {}
+        const inSpec = isSpecFile(context.filename)
         const hfs = hfsOf(context)
         const { checker, toTs } = typed(context)
         const inOwner = declaredByOperations(hfs, context.filename.replace(/\\/g, "/"))
@@ -227,14 +252,15 @@ export const operationContractDecidable = {
             TSTypeReference(node) {
                 // The capability declares generic OperationContract/OperationTable bounds here; concrete registrations below
                 // still owe the same closed parsed types as operations declared anywhere else.
-                if (inOwner) return
+                if (inOwner || inSpec) return
                 const tsNode = toTs(node)
                 const type = checker.getTypeFromTypeNode(tsNode)
                 if (type.getSymbol() || type.aliasSymbol) judge(node, type)
             },
             CallExpression(node) {
                 const call = toTs(node)
-                if (inOwner && isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), "defineOperations")) {
+                if ((inOwner || inSpec) && isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), "defineOperations")) {
+                    if (inSpec && !tableLeavesFile(node)) return
                     const argument = call.arguments[0]
                     const source = expressionOf(checker, argument)
                     const entries = argument ? checker.getPropertiesOfType(checker.getTypeAtLocation(argument)) : []
@@ -245,11 +271,12 @@ export const operationContractDecidable = {
                         // Plain helper calls are judged once by their own CallExpression. A declaration annotation can widen
                         // that result before registration, so its served type also needs a check.
                         const helper = value && ts.isCallExpression(value) && ["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(value.expression), name)) ? value : null
-                        if (!helper || contract !== checker.getTypeAtLocation(helper)) judge(node, contract, helper)
+                        if (inSpec || !helper || contract !== checker.getTypeAtLocation(helper)) judge(node, contract, helper)
                     }
                     return
                 }
-                if (inOwner && !["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), name))) return
+                if (inSpec) return
+                if (inOwner &&!["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), name))) return
                 const type = checker.getTypeAtLocation(call)
                 if (type.getSymbol()) judge(node, type)
             },
@@ -322,7 +349,8 @@ export const operationRouteEvidence = (context) => {
             ts.forEachChild(node, visit)
         }
         for (const source of program.getSourceFiles()) {
-            if (!source.isDeclarationFile && hfs.slotOf(source.fileName)) visit(source)
+            // A table made in a spec is never an app's declared table, even when the spec exports it.
+            if (!source.isDeclarationFile && !isSpecFile(source.fileName) && hfs.slotOf(source.fileName)) visit(source)
         }
         return tables
     }

@@ -8,6 +8,7 @@ import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { operationContractDecidable, operationRouteDrivenByTable, operationTableSchemas } from "./operations.mjs"
 
 const TABLE = at("apps/api/src/operations.ts")
+const SPEC = at("src/modules/platform/operations/operations.policy.spec.ts")
 const CONTROLLER = at("src/features/api/plan/transport/http/plan-operations.controller.ts")
 const HEAD = `import { defineOperations, query, mutation, OperationValidationPolicy } from "@modules/platform/operations"
 import { AnyParsedSchema, CoercedInputSchema, DateParsedSchema, DefaultedParsedSchema, EmptyInputSchema, FakeInputSchema, MaybeUndefinedParsedSchema, MaybeVoidParsedSchema, NestedOptionalSchema, NeverParsedSchema, OptionalParsedSchema, PlanInputSchema, PlanOutputSchema, UndefinedParsedSchema, UnknownParsedSchema, VoidParsedSchema } from "@modules/platform/operations/plan.schema"
@@ -33,8 +34,8 @@ for (const edition of ["lite", "full"]) {
                 { filename: TABLE, code: `${HEAD}import * as schemas from "@modules/platform/operations/plan.schema"; const entries = { "plan.read@1": query({ input: schemas.PlanInputSchema, output: schemas.PlanOutputSchema }) }; export const OPERATIONS = defineOperations({ ...entries })` },
                 { filename: TABLE, code: `${HEAD}import { defineOperations as register, query as read } from "@modules/platform/operations"; export const OPERATIONS = register({ "plan.read@1": read({ input: PlanInputSchema, output: PlanOutputSchema }) })` },
                 { filename: TABLE, code: `${HEAD}import { PlanInputSchema as Input, PlanOutputSchema as Output } from "@modules/platform/operations"; export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: Input, output: Output }) })` },
-                // A spec registers stub tables to test the capability; it serves no operation, so R95 does not judge it.
-                { filename: at("src/modules/platform/operations/operations.policy.spec.ts"), code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) })` },
+                // A spec keeps a stub table to itself and serves no operation, so R95 does not judge it.
+                { filename: SPEC, code: `${HEAD}const STUB = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) })` },
                 // Contract type declarations are also checked separately for decidability.
                 { filename: TABLE, code: `${HEAD}const contract = query<{ readonly id: string }, { readonly ok: boolean }>()` },
             ],
@@ -46,6 +47,11 @@ for (const edition of ["lite", "full"]) {
                 { filename: TABLE, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) })`, errors: [{ messageId: "schemas" }] },
                 { filename: at("src/features/api/plan/plan.schema.ts"), code: `${HEAD}declare const Input: typeof PlanInputSchema; export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: Input, output: PlanOutputSchema }) })`, errors: [{ messageId: "schemas" }] },
                 { filename: at("src/modules/platform/operations/private.schema.ts"), code: `${HEAD}declare const Input: typeof PlanInputSchema; export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: Input, output: PlanOutputSchema }) })`, errors: [{ messageId: "schemas" }] },
+                // a table a spec exports can be imported by production code, so it is judged like any table
+                { filename: SPEC, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) })`, errors: [{ messageId: "schemas" }] },
+                { filename: SPEC, code: `${HEAD}const STUB = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) }); export { STUB }`, errors: [{ messageId: "schemas" }] },
+                { filename: SPEC, code: `${HEAD}const STUB = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) }); export default STUB`, errors: [{ messageId: "schemas" }] },
+                { filename: SPEC, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) }) as const`, errors: [{ messageId: "schemas" }] },
                 // the same stub table in a production file of the capability is judged
                 { filename: at("src/modules/platform/operations/operations.contracts.ts"), code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: FakeInputSchema, output: PlanOutputSchema }) })`, errors: [{ messageId: "schemas" }] },
                 { filename: TABLE, code: `${HEAD}export const OPERATIONS = defineOperations({})`, errors: [{ messageId: "table" }] },
@@ -62,11 +68,12 @@ for (const edition of ["lite", "full"]) {
                 { filename: TABLE, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: CoercedInputSchema, output: PlanOutputSchema }) })` },
                 { filename: TABLE, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: PlanInputSchema, output: PlanOutputSchema, refusal: ["DENIED", "INVALID"] }) })` },
                 // a spec stub with an undecidable type serves no operation
-                { filename: at("src/modules/platform/operations/operations.policy.spec.ts"), code: `${HEAD}const contract = query<{}, { readonly ok: boolean }>()` },
+                { filename: SPEC, code: `${HEAD}const contract = query<{}, { readonly ok: boolean }>()` },
             ],
             invalid: [
                 { filename: TABLE, code: `${HEAD}const contract = query<{}, { readonly ok: boolean }>()`, errors: [{ messageId: "type", data: { label: "input", why: "an object type with no members" } }] },
                 { filename: TABLE, code: `${HEAD}const contract = query<Record<string, never>, { readonly ok: boolean }>()`, errors: [{ messageId: "type", data: { label: "input", why: "a record of never" } }] },
+                { filename: SPEC, code: `${HEAD}export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: UnknownParsedSchema, output: PlanOutputSchema }) })`, errors: [{ messageId: "type", data: { label: "input", why: "unknown" } }] },
                 { filename: at("src/modules/platform/operations/operations.contracts.ts"), code: `${HEAD}const contract = query<{}, { readonly ok: boolean }>()`, errors: [{ messageId: "type", data: { label: "input", why: "an object type with no members" } }] },
                 { filename: TABLE, code: `${HEAD}const codes: string[] = ["DENIED"]; export const OPERATIONS = defineOperations({ "plan.read@1": query({ input: PlanInputSchema, output: PlanOutputSchema, refusal: codes }) })`, errors: [{ messageId: "refusal", data: { found: "string" } }] },
             ],
