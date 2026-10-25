@@ -1,5 +1,8 @@
 # Changelog
 
+## 8.4.42 - 2026-10-26
+- Changed: the bundled canon pins follow back-end canon 3.4.42.
+
 ## 8.4.41 - 2026-10-26
 
 - Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
