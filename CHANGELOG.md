@@ -6,6 +6,12 @@
 - Added: `useSWRSubscription` (`swr/subscription`) is an SWR request hook of the family (FE_SWR_OUTSIDE_FAMILY, FE_OP_OUTSIDE_SWR_HOOK, FE_HOOKS_ARE_HOOKS): a stream operation is consumed only by `hooks/swr/api/sse/subscriptions/useSubscribe<X>Swr.ts`.
 - Added: `nested-control-variant` (`FE_NESTED_VARIANT`) refuses explicit primary fields in Grammar surface subtrees and app-authored `bg-surface` paint. `no-list-panel-padding` (`FE_LIST_PANEL_PADDING`) refuses stacked horizontal wrapper padding around Grammar lists and section captions.
 
+## 8.4.40 - 2026-10-25
+- Changed: the bundled canon pins select @starci/stylelint-canon 2.0.11, @starci/hfs 4.7.33 and @starci/cli 1.7.33.
+
+## 8.4.39 - 2026-10-25
+- Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
+
 ## 8.4.38 - 2026-10-24
 - Changed: the bundled runtime copies and canon pins carry the alpha.30 canon (the `zod` pin is `side: both`) and select @starci/hfs 4.7.31 and @starci/cli 1.7.31.
 
