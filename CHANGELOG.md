@@ -1,5 +1,8 @@
 # Changelog
 
+## 8.4.40 - 2026-10-25
+- Changed: the bundled canon pins select @starci/stylelint-canon 2.0.11, @starci/hfs 4.7.33 and @starci/cli 1.7.33.
+
 ## 8.4.39 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
 
