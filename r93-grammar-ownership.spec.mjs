@@ -18,7 +18,7 @@ const entry = 'apps/web/src/app/page.tsx';
 const source = 'import { Button } from "@starci/grammar/common"; export default function Route() { return <Button /> }';
 const bypassEntry = 'apps/web/src/app/bypass.tsx';
 const bypassSource = 'import { Button } from "@starci/grammar/private"; export const Bypass = () => <Button />;';
-const peers = { react: '>=18', '@heroui/react': '>=2', '@xyflow/react': '>=12' };
+const peers = { react: '>=18', '@heroui/react': '>=2', '@xyflow/react': '>=12', 'react-aria-components': '>=1' };
 
 function fixture(t, edition, invalid = false, bypass = false) {
   const exports = { './common': { types: './dist/common/index.d.ts', import: './dist/common/index.js' } };
@@ -27,7 +27,7 @@ function fixture(t, edition, invalid = false, bypass = false) {
     profile: 'fe', edition,
     rootFiles: {
       'package.json': JSON.stringify({ name: 'fixture', private: true, dependencies: {
-        '@starci/grammar': '0.4.11', react: '19.0.0', '@heroui/react': '2.0.0', '@xyflow/react': '12.11.6',
+        '@starci/grammar': '0.4.11', react: '19.0.0', '@heroui/react': '2.0.0', '@xyflow/react': '12.11.6', 'react-aria-components': '1.21.1',
       } }),
       'node_modules/@starci/grammar/package.json': JSON.stringify({ name: '@starci/grammar', version: '0.4.11', peerDependencies: peers, exports }),
       'node_modules/@starci/grammar/dist/common/index.js': 'export const Button = () => null;',
