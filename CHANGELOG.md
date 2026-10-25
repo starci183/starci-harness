@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
+
 ## 8.4.39 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
 

@@ -32,6 +32,10 @@ exported; `why[rule]` is `{ code, vi, fixVi }`, the finding code and the Vietnam
 
 ## Rules
 
+The [app-shell](docs/app-shell.md) law holds the fixed `WorkspaceShell` frame, mobile drawer navigation,
+navbar action kinds and order, shared bar control size, and page ownership of create actions. Its
+rules are gathered into the normal FE lint and application gate.
+
 Each law has a page under [`docs/`](docs) with, for every rule, an invalid and a valid example and
 its Vietnamese why. New in 5.0: [env-owner](docs/env-owner.md), [transport](docs/transport.md),
 [client-boundary](docs/client-boundary.md), [hooks-folder](docs/hooks-folder.md),

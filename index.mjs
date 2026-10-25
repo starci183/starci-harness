@@ -13,6 +13,7 @@
  * would leave two names for one rule and no way to tell which a message came from.
  */
 import { createRequire } from "node:module"
+import { recommended as appShellRecommended, rules as appShellRules } from "./app-shell.mjs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { recommended as brandValuesRecommended, rules as brandValuesRules } from "./brand-values.mjs"
@@ -54,6 +55,7 @@ import { why } from "./lib/why.mjs"
 
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
 const CONTRIBUTIONS = [
+  { law: "app-shell", rules: appShellRules, recommended: appShellRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
   { law: "client-boundary", rules: clientBoundaryRules, recommended: clientBoundaryRecommended },
