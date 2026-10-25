@@ -1,5 +1,8 @@
 # Changelog
 
+## 8.4.43 - 2026-10-26
+- Changed: the bundled canon pins follow back-end canon 3.4.43, hfs 4.7.34 and cli 1.7.34.
+
 ## 8.4.42 - 2026-10-26
 - Changed: the bundled canon pins follow back-end canon 3.4.42.
 
