@@ -67,7 +67,7 @@ test("the generated grammar values equal what the grammar CSS declares on its th
   assert.ok(GRAMMAR_VALUES.dark.common["--background"])
 })
 
-test("eslint-fe reads the status tones from one generated copy of this list", async () => {
-  const copy = await import("../eslint/fe/lib/status-tones.generated.mjs")
+test("eslint-grammar-starci reads the status tones from one generated copy of this list", async () => {
+  const copy = await import("../eslint/grammar-starci/lib/status-tones.generated.mjs")
   assert.deepEqual(copy.STATUS_TONES, STATUS_TONES)
 })
