@@ -9,7 +9,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
 import { at, slotTester } from "./fixtures/typed/tester.mjs"
-import { GRAMMAR_OWNERS, noRawStructuralElement, recommended, rules } from "./grammar-boundary.mjs"
+import { GRAMMAR_OWNERS, noAppRelativeClock, noRawStructuralElement, recommended, rules } from "./grammar-boundary.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const GRAMMAR_SRC = join(HERE, "..", "..", "grammar", "src")
@@ -22,9 +22,9 @@ const sources = (dir) =>
     return /\.(?:ts|tsx)$/.test(entry.name) && !/\.(?:spec|test|stories)\./.test(entry.name) ? [path] : []
   })
 
-test("the law publishes one rule and it is an error", () => {
-  assert.deepEqual(Object.keys(rules), ["no-raw-structural-element"])
-  assert.deepEqual(recommended, { "starci-fe/no-raw-structural-element": "error" })
+test("the law publishes its rules at error", () => {
+  assert.deepEqual(Object.keys(rules), ["no-raw-structural-element", "no-app-relative-clock"])
+  assert.deepEqual(recommended, { "starci-fe/no-raw-structural-element": "error", "starci-fe/no-app-relative-clock": "error" })
 })
 
 test("every tag the rule refuses is rendered by a component the grammar package exports", () => {
@@ -37,7 +37,7 @@ test("every tag the rule refuses is rendered by a component the grammar package 
 })
 
 test("a tag the grammar has no component for is not refused", () => {
-  for (const tag of ["div", "br", "aside", "article"]) assert.equal(Object.hasOwn(GRAMMAR_OWNERS, tag), false, tag)
+  for (const tag of ["div", "br", "aside", "article", "time"]) assert.equal(Object.hasOwn(GRAMMAR_OWNERS, tag), false, tag)
 })
 
 test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags", () => {
@@ -56,6 +56,8 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       { filename: FEATURE, code: "export const A = () => <div className={classNames.root}>x<br /></div>" },
       { filename: FEATURE, code: raw("aside") },
       { filename: FEATURE, code: raw("article") },
+      // Absolute timestamps remain semantic native times; RelativeTime owns live relative/countdown labels.
+      { filename: FEATURE, code: 'export const A = () => <time dateTime="2026-10-25T12:00:00Z">12:00 UTC</time>' },
       // the document shell and native controls belong to other rules
       { filename: at("apps/web/src/app/[locale]/layout.tsx"), code: "export default () => <html lang={locale}><body>{children}</body></html>" },
       // a member component is not an intrinsic element
@@ -97,6 +99,45 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       // a package that is not the ui package composes the grammar too
       { filename: at("packages/other/src/Widget.tsx"), code: raw("p"), errors: [{ messageId: "raw" }] },
       { filename: at("packages/nivo-i18n/src/Provider.tsx"), code: raw("span"), errors: [{ messageId: "raw" }] },
+    ],
+  })
+})
+
+test("live time and countdowns use the Grammar clock while non-clock timers remain available", () => {
+  const FEATURE = at("apps/web/src/features/pages/home/component.tsx")
+  const LEAF = at("apps/web/src/components/leaves/UpdatedAt/index.tsx")
+  const HOOK = at("apps/web/src/hooks/time/useNow.ts")
+  const MODULE = at("apps/web/src/modules/time/index.ts")
+  const clock = [{ messageId: "clock" }]
+  slotTester().run("no-app-relative-clock", noAppRelativeClock, {
+    valid: [
+      { filename: FEATURE, code: 'import { DropdownMenu, RelativeTime, WorkspaceShell } from "@starci/grammar/core"; const entries = [{ id: "workspace", label: "Workspace", mark: <Logo /> }]; export const A = () => <WorkspaceShell navigation={<Nav />} navigationLabel="Navigation" primaryLabel="Workspace" navigationDrawer={{ defaultOpen: false, title: "Navigation", openLabel: "Open navigation", closeLabel: "Close navigation", source: MenuGlyph, content: <Nav /> }} primary={<><DropdownMenu entries={entries} trigger={<Trigger />} /><RelativeTime dateTime="2026-10-25T12:00:00Z" locale="en" mode="relative" /><RelativeTime dateTime="2026-10-25T13:00:00Z" locale="en" mode="countdown" fallback="Pending" size="sm" tone="muted" /></>} />' },
+      { filename: LEAF, code: 'import { RelativeTime } from "@starci/grammar/core"; export const UpdatedAt = () => <RelativeTime dateTime="2026-10-25T12:00:00Z" locale="en" />' },
+      { filename: LEAF, code: 'import * as Grammar from "@starci/grammar/core"; export const UpdatedAt = () => <Grammar.RelativeTime dateTime="2026-10-25T12:00:00Z" locale="en" mode="countdown" />' },
+      { filename: HOOK, code: "const timer = setInterval(() => step(), 16); const stop = () => clearInterval(timer)" },
+      { filename: FEATURE, code: "const later = setTimeout(() => show(Date.now()), 1000)" },
+      { filename: MODULE, code: "const parse = () => new Date('2026-10-25T12:00:00Z'); setInterval(() => show(parse()), 1000)" },
+      { filename: HOOK, code: "const setInterval = (callback: () => void) => callback(); setInterval(() => show(Date.now()))" },
+      { filename: HOOK, code: "const window = { setInterval: (callback: () => void) => callback() }; window.setInterval(() => show(Date.now()))" },
+      { filename: HOOK, code: "const Date = { now: () => 5 }; setInterval(() => show(Date.now()), 1000)" },
+      { filename: at("scripts/render.tsx"), code: "setInterval(() => show(Date.now()), 1000)" },
+    ],
+    invalid: [
+      { filename: LEAF, code: "setInterval(() => show(Date.now()), 1000)", errors: clock },
+      { filename: HOOK, code: "const tick = () => show(Date.now()); window.setInterval(tick, 1000)", errors: clock },
+      { filename: MODULE, code: "globalThis.setInterval(() => show(new Date()), 1000)", errors: clock },
+      { filename: HOOK, code: "self.setInterval(() => show(Date()), 1000)", errors: clock },
+      { filename: HOOK, code: "setInterval(() => show(performance.now()), 1000)", errors: clock },
+      { filename: HOOK, code: "const repeat = window.setInterval; const now = Date.now; repeat(() => show(now()), 1000)", errors: clock },
+      { filename: HOOK, code: "const { setInterval: repeat } = globalThis; const { now } = Date; repeat(() => show(now()), 1000)", errors: clock },
+      { filename: HOOK, code: "const { now: instant } = window.performance; const repeat = self['setInterval']; repeat(() => show(instant()), 1000)", errors: clock },
+      { filename: HOOK, code: "const Clock = Date; setInterval(() => show(new Clock()), 1000)", errors: clock },
+      { filename: HOOK, code: "const instant = () => Date.now(); const tick = () => show(instant()); setInterval(tick, 1000)", errors: clock },
+      { filename: HOOK, code: "function tick() { show(Date.now()); setTimeout(tick, 1000) }", errors: clock },
+      { filename: HOOK, code: "const tick = () => { setTimeout(() => { show(Date.now()); tick() }, 1000) }", errors: clock },
+      { filename: HOOK, code: "function tick() { show(Date.now()); window.setTimeout(() => tick(), 1000) }", errors: clock },
+      { filename: at("packages/other/src/time.ts"), code: "setInterval(() => show(Date.now()), 1000)", errors: clock },
+      { filename: at("packages/nivo-ui/src/leaves/RelativeTime/index.tsx"), code: "const timer = setInterval(() => show(Date.now()), 1000)", errors: clock },
     ],
   })
 })

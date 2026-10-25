@@ -34,7 +34,7 @@ test("the catalog is read from the runtime copy: concerns with their canonical p
   assert.ok(forbidden.size > 0, "the catalog forbids nothing")
   // no package is both a concern's canonical library and another concern's forbidden alternative
   const canonical = new Set(concerns.flatMap((concern) => concern.packages))
-  assert.deepEqual([...forbidden.keys()].filter((name) => canonical.has(name)), [])
+  assert.deepEqual([...canonical].filter((name) => forbiddingConcern(name)), [])
 })
 
 test("a module specifier names its package: scope and name, subpath dropped; a relative or aliased path names none", () => {
@@ -50,10 +50,34 @@ test("a module specifier names its package: scope and name, subpath dropped; a r
 })
 
 test("FE-STACK-1: every forbidden package of the catalog is refused, by every import form", () => {
-  const forbidden = [...feStack().forbidden.keys()]
+  const forbidden = [...feStack().forbidden.keys()].map((name) => name.replace("/*", "/core"))
   tester.run("fe-stack-import", feStackImport, {
     valid: [],
     invalid: forbidden.map((name) => ({ filename: BLOCK, code: `import x from "${name}"`, errors: [{ messageId: "forbidden" }] })),
+  })
+})
+
+test("Grammar owns avatar generation: every DiceBear import form names Avatar seed", () => {
+  assert.equal(forbiddingConcern("@dicebear/core/subpath")?.id, "avatar-illustration")
+  assert.equal(forbiddingConcern("@dicebear/micah")?.id, "avatar-illustration")
+  assert.equal(forbiddingConcern("@dicebearish/core"), null)
+  tester.run("fe-stack-import", feStackImport, {
+    valid: [
+      { filename: BLOCK, code: "import { Avatar, AvatarButton, AvatarGroup } from '@starci/grammar/common'; const face = <Avatar seed='user-id' name='Ada' />" },
+      { filename: BLOCK, code: "import helper from '@dicebearish/core'" },
+      { filename: BLOCK, code: "function local(require: (name: string) => unknown) { return require('@dicebear/core') }" },
+    ],
+    invalid: [
+      "import { createAvatar } from '@dicebear/core'",
+      "import type { Options } from '@dicebear/styles'",
+      "import style from '@dicebear/styles/subpath'",
+      "import micah from '@dicebear/micah'",
+      "export { createAvatar } from '@dicebear/core'",
+      "export * from '@dicebear/styles'",
+      "const avatar = await import('@dicebear/core')",
+      "const avatar = require('@dicebear/core')",
+      "import avatar = require('@dicebear/core')",
+    ].map((code) => ({ filename: BLOCK, code, errors: [{ message: /Avatar.*seed|seed.*Avatar/ }] })),
   })
 })
 
@@ -94,7 +118,7 @@ test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () =>
       { filename: HOOK, code: "import type { Moment } from \"moment\"", errors: [{ messageId: "forbidden" }] },
       // the forbidden alternatives of the transport, realtime and icon concerns too
       { filename: API, code: "import { request } from \"graphql-request\"", errors: [{ messageId: "forbidden" }] },
-      { filename: HOOK, code: "import { createClient } from \"graphql-ws\"", errors: [{ messageId: "forbidden" }] },
+      { filename: HOOK, code: "import PusherJs from \"pusher-js\"", errors: [{ messageId: "forbidden" }] },
       { filename: BLOCK, code: "import { Star } from \"lucide-react\"", errors: [{ messageId: "forbidden" }] },
       // forbidden in modules/auth as everywhere: Supabase Realtime is not the front end's push channel
       { filename: AUTH, code: "import { RealtimeClient } from \"@supabase/realtime-js\"", errors: [{ messageId: "forbidden" }] },

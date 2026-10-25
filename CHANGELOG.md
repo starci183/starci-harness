@@ -3,6 +3,13 @@
 ## Unreleased
 
 - Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
+- Fixed: `operations-only-in-swr-hooks` (FE_OP_OUTSIDE_SWR_HOOK) no longer reports named imports that all resolve, through relative re-exports, to a generated `__generated__/input-bounds` module (`INPUT_BOUNDS`, `inputBoundsIssues`): they are contract data, not API operations. Mixed, default and namespace imports of the barrel still report.
+- Added: the stream reader of server-sent events (`fe.transport.stream`, `modules/api/sse/clients/`) is part of the API layer, so it may call `fetch` (FE_TRANSPORT_OWNER); a stream operation (`sse/<area>/stream-<channel>.ts`) must import it.
+- Added: `useSWRSubscription` (`swr/subscription`) is an SWR request hook of the family (FE_SWR_OUTSIDE_FAMILY, FE_OP_OUTSIDE_SWR_HOOK, FE_HOOKS_ARE_HOOKS): a stream operation is consumed only by `hooks/swr/api/sse/subscriptions/useSubscribe<X>Swr.ts`.
+- Added: `nested-control-variant` (`FE_NESTED_VARIANT`) refuses explicit primary fields in Grammar surface subtrees and app-authored `bg-surface` paint. `no-list-panel-padding` (`FE_LIST_PANEL_PADDING`) refuses stacked horizontal wrapper padding around Grammar lists and section captions.
+
+## 8.4.40 - 2026-10-25
+- Changed: the bundled canon pins select @starci/stylelint-canon 2.0.11, @starci/hfs 4.7.33 and @starci/cli 1.7.33.
 
 ## 8.4.39 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.

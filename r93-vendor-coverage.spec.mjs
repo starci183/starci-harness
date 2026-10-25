@@ -4,7 +4,8 @@ import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import { at, fixtureHfs } from './fixtures/typed/tester.mjs';
-import { noVendorIconOutsideIconLeaf, heroiconsIsTheGlyphVendor, noOffScaleGlyphSize, noDecorativeIconInMetricCell } from './icon.mjs';
+import { noVendorIconOutsideIconLeaf, heroiconsIsTheGlyphVendor, noOffScaleGlyphSize, noIconSizeClass, noDecorativeIconInMetricCell } from './icon.mjs';
+import { destructiveMenuEntryNeedsDangerTone } from './menu-entries.mjs';
 import { vendorPrimitiveHasNamedOwner } from './vendor-boundary.mjs';
 
 for (const edition of ['lite', 'full']) {
@@ -24,6 +25,14 @@ for (const edition of ['lite', 'full']) {
     tester.run('no-off-scale-glyph-size', noOffScaleGlyphSize, {
       valid: [{ filename: at('apps/web/src/components/leaves/Icon/index.tsx'), code: 'const C = "size-4 shrink-0";' }],
       invalid: [{ filename: at('apps/web/src/components/leaves/Icon/index.tsx'), code: 'const C = "size-3.5 shrink-0";', errors: [{ messageId: 'offScale' }] }],
+    });
+    tester.run('no-icon-size-class', noIconSizeClass, {
+      valid: [{ filename: at('apps/web/src/components/blocks/Feed/component.tsx'), code: 'const E = () => <FireIcon />;' }],
+      invalid: [{ filename: at('apps/web/src/components/blocks/Feed/component.tsx'), code: 'const E = () => <FireIcon className="size-5" />;', errors: [{ messageId: 'size' }] }],
+    });
+    tester.run('destructive-menu-entry-needs-danger-tone', destructiveMenuEntryNeedsDangerTone, {
+      valid: [{ filename: at('apps/web/src/components/blocks/Feed/component.tsx'), code: "const M = () => <DropdownMenu entries={[{ id: 'sign-out', label: 'Sign out', tone: 'danger' }]} />;" }],
+      invalid: [{ filename: at('apps/web/src/components/blocks/Feed/component.tsx'), code: "const M = () => <DropdownMenu entries={[{ id: 'sign-out', label: 'Sign out' }]} />;", errors: [{ messageId: 'tone' }] }],
     });
     tester.run('no-decorative-icon-in-metric-cell', noDecorativeIconInMetricCell, {
       valid: [{ filename: at('apps/web/src/components/composites/LabelledProgressRow/index.tsx'), code: 'const Row = () => <Text />;' }],
