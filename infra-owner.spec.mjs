@@ -164,9 +164,16 @@ test("infra-import-owner under lite: the queue and Redis libraries keep full's o
             { filename: QUEUE, code: `import { Queue, Worker } from "bullmq"\nexport { Queue, Worker }` },
             { filename: REDIS, code: `import Redis from "ioredis"\nexport { Redis }` },
             { filename: CACHE, code: `import { createClient } from "redis"\nexport { createClient }` },
+            { filename: CACHE, code: `import KeyvRedis from "@keyv/redis"\nimport { redisStore } from "cache-manager-redis-yet"\nimport { redisInsStore } from "cache-manager-ioredis-yet"\nexport { KeyvRedis, redisStore, redisInsStore }` },
+            { filename: QUEUE, code: `import Bull from "bull"\nimport { BullModule } from "@nestjs/bull"\nexport { Bull, BullModule }` },
         ],
         invalid: [
             { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
+            // the legacy queue and the Redis cache stores keep to their owners like bullmq and ioredis
+            { filename: DOMAIN, code: `import Bull from "bull"\nexport { Bull }`, errors: [{ messageId: "foreign" }] },
+            { filename: FEATURE, code: `import { BullModule } from "@nestjs/bull"\nexport { BullModule }`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import KeyvRedis from "@keyv/redis"\nexport { KeyvRedis }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import { redisStore } from "cache-manager-redis-yet"\nexport { redisStore }`, errors: [{ messageId: "foreign" }] },
             { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             { filename: EVENT_BUS, code: `import { Kafka } from "kafkajs"\nexport { Kafka }`, errors: [{ messageId: "nowhere" }] },
         ],
