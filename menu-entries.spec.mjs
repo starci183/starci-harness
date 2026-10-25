@@ -58,7 +58,7 @@ test("MENU-1: a destructive entry without tone danger is red, wherever the entri
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'more', label: 'More', submenu: [{ id: 'revoke', label: 'Revoke' }] }]} />", errors: [{ messageId: "tone" }] },
       // a declaration typed as the Grammar entry type, array or single
       { filename: BLOCK, code: "const entries: readonly DropdownMenuEntry[] = [{ id: 'remove', label: 'Remove' }]", errors: [{ messageId: "tone" }] },
-      { filename: BLOCK, code: "const entries: ReadonlyArray<DropdownMenuItem> = [{ id: 'x', label: 'Xóa' }]", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "const entries: ReadonlyArray<DropdownMenuItem> = [{ id: 'x', label: 'X\u00f3a' }]", errors: [{ messageId: "tone" }] },
       { filename: BLOCK, code: "const item: DropdownMenuItem = { id: 'logout', label: 'Out' }", errors: [{ messageId: "tone" }] },
     ],
   })
