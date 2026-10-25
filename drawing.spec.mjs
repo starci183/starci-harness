@@ -15,7 +15,6 @@ import {
   basePropsAtom,
   noDataStatusShape,
   rules,
-  slotStatusThroughSlotView,
 } from "./drawing.mjs"
 
 const tester = slotTester()
@@ -221,24 +220,6 @@ test("a shape union never lists a data status or open/closed", () => {
       { filename: BLOCK, code: "export type ExampleBlockState = \"pending\" | \"ready\" | \"failed\"", errors: [{ messageId: "status" }, { messageId: "status" }] },
       { filename: OVERLAY, code: "export type DrawerState = \"closed\" | \"ready\"", errors: [{ messageId: "status" }] },
       { filename: FEATURE_PAGE, code: "export type OperatePageState = \"view\" | \"loading\"", errors: [{ messageId: "status" }] },
-    ],
-  })
-})
-
-test("a block's pure half renders data status only through SlotView", () => {
-  tester.run("slot-status-through-slotview", slotStatusThroughSlotView, {
-    valid: [
-      { filename: BLOCK, code: "export const X = (props: P) => <SlotView slot={props.props.order}>{(o) => <p>{o.code}</p>}</SlotView>" },
-      { filename: BLOCK, code: "export const X = (props: P) => (props.state === \"sent\" ? <p /> : null)" },
-      { filename: COMPOSITE, code: "export const SlotView = (props: P) => (props.slot.isLoading ? <p /> : null)" },
-      // a shared-package drawing half is not a block's pure half
-      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "export const X = (props: P) => (props.props.isLoading ? <Spinner /> : <p />)" },
-      { filename: BLOCK_INDEX, code: "const state = query.isLoading ? \"a\" : \"b\"" },
-    ],
-    invalid: [
-      { filename: BLOCK, code: "export const X = (props: P) => (props.props.isLoading ? <Spinner /> : <p />)", errors: [{ messageId: "branch" }] },
-      { filename: BLOCK, code: "export const X = (props: P) => <div>{props.props.order.isError && <p />}</div>", errors: [{ messageId: "branch" }] },
-      { filename: BLOCK, code: "const f = (s) => { if (s.isForbidden) return null; return 1 }", errors: [{ messageId: "branch" }] },
     ],
   })
 })

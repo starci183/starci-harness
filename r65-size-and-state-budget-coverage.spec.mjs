@@ -18,9 +18,8 @@ import {
   typedTester,
 } from "./fixtures/typed/tester.mjs"
 import { effectSubscriptionNeedsCleanup, noConsole, noEmptyCatch } from "./hygiene.mjs"
-import { noAppRelativeClock } from "./grammar-boundary.mjs"
 import { listItemHasKey, noIndexKey, noInlineLiteralPropInList } from "./lists.mjs"
-import { componentLineBudget, noHandRolledPolling, unitHookBudget } from "./size-and-state-budget.mjs"
+import { componentLineBudget, noAppRelativeClock, noHandRolledPolling, unitHookBudget } from "./size-and-state-budget.mjs"
 
 const BLOCK = at("apps/web/src/components/blocks/Feed/index.tsx")
 const TIME_LEAF = at("apps/web/src/components/leaves/UpdatedAt/index.tsx")

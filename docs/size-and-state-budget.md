@@ -71,3 +71,25 @@ const d = useQueryFeedSwr({ refreshInterval: 5000 })
 **Why:** `<unit>` writes its own poll loop (`setInterval` or a self-calling `setTimeout`).
 
 **Fix:** Refresh through a data hook (`refreshInterval`) or a socket, exactly one mechanism per resource.
+
+## `starci-fe/no-app-relative-clock`
+
+Grammar owns the shared clock for live relative time and countdowns. App components, hooks, modules and shared packages, including a product UI package, pass `dateTime`, `locale` and `mode` to `RelativeTime`.
+
+The rule rejects a recurring `setInterval` or self-scheduling `setTimeout` whose callback or same-file helper reads `Date.now()`, `Date()`, zero-argument `new Date()` or `performance.now()`. It follows local aliases and destructured platform methods. Static reads, one-shot delays and timers that do not read the clock remain available. Indirect external clock helpers and counters that only decrement state need semantic review.
+
+**Invalid** (`src/hooks/time/useNow.ts`)
+
+```ts
+const timer = setInterval(() => update(Date.now()), 1000)
+```
+
+**Valid** (`src/components/leaves/UpdatedAt/index.tsx`)
+
+```tsx
+const UpdatedAt = () => <RelativeTime dateTime={instant} locale={locale} mode="relative" />
+```
+
+**Finding code:** `FE_SIZE_AND_STATE_BUDGET`
+
+**Fix:** Render the Grammar primitive and pass the instant; its single shared ticker owns updates and its deterministic fallback owns the server render.

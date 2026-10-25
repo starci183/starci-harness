@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, FE_DECLARATION, slotTester } from "./fixtures/typed/tester.mjs"
+import { at, FE_DECLARATION, fixtureHfs, slotTester } from "./fixtures/typed/tester.mjs"
 import {
   htmlLangFromLocale,
   i18nStackInOneModule,
@@ -144,15 +144,15 @@ test("FE-NEXT-6: a Suspense boundary has a fallback that renders something", () 
   })
 })
 
-test("FE-NEXT-7: navigation helpers come from modules/i18n/navigation", () => {
+test("FE-NEXT-7: navigation helpers come from the locale-aware public owner", () => {
   tester.run("navigation-from-intl", navigationFromIntl, {
     valid: [
-      { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import { Link, useRouter, usePathname } from '@/modules/i18n/navigation'" },
+      { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import { Link, useRouter, usePathname } from '@/modules/routes'" },
       { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import { notFound, useSearchParams, useParams } from 'next/navigation'" },
       { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import type { Route } from 'next/navigation'" },
       // the boundary outside the locale provider and the navigation module itself
       { filename: at("apps/web/src/app/global-error.tsx"), code: "import { usePathname } from 'next/navigation'" },
-      { filename: at("apps/web/src/modules/i18n/navigation.ts"), code: "import { redirect } from 'next/navigation'" },
+      { filename: at("packages/shop-i18n/src/navigation.ts"), code: "import { redirect } from 'next/navigation'" },
       { filename: at("apps/web/src/proxy.ts"), code: "import { redirect } from 'next/navigation'" },
     ],
     invalid: [
@@ -270,16 +270,51 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
       // a repository with exactly one app writes the stack in that app's modules/i18n
       { filename: APP_REQUEST, code: REQUEST },
       { filename: at("apps/web/src/modules/i18n/routing.ts"), code: ROUTING },
-      { filename: at("apps/web/src/modules/i18n/navigation.ts"), code: NAVIGATION },
+      { filename: at("apps/web/src/modules/routes/index.ts"), code: NAVIGATION },
       { filename: PACKAGE, code: REQUEST },
       // the proxy mounts the locale middleware built from the one routing (apps/web/src/proxy.ts)
       { filename: at("apps/web/src/proxy.ts"), code: MIDDLEWARE },
     ],
     invalid: [
-      // still one place: not a hook or a feature; and the proxy builds only the middleware, never the routing
+      // Navigation belongs to routes; the proxy builds only middleware, never routing or navigation.
+      { filename: at("apps/web/src/modules/i18n/navigation.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
       { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
       { filename: at("apps/web/src/features/pages/home/component.tsx"), code: REQUEST, errors: [{ messageId: "stack" }] },
       { filename: at("apps/web/src/proxy.ts"), code: ROUTING, errors: [{ messageId: "stack" }] },
     ],
   })
 })
+
+for (const edition of ["lite", "full"]) {
+  test(`R59 ${edition} separates navigation ownership from the middleware-safe routing entry`, () => {
+    const one = fixtureHfs({ ...FE_DECLARATION, apps: [{ name: "web", kind: "next" }] }, { lite: edition === "lite" })
+    const many = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })
+    const entry = (file, code, hfs = one) => ({ filename: at(file), code, settings: { starci: { hfs } } })
+    const rejected = (file, code, messageId, hfs = one) => ({ ...entry(file, code, hfs), errors: [{ messageId }] })
+    const routes = "apps/web/src/modules/routes/index.ts"
+    const i18n = "apps/web/src/modules/i18n/index.ts"
+    const proxy = "apps/web/src/proxy.ts"
+    const navigation = 'import { createNavigation as navigate } from "next-intl/navigation"; export const nav = navigate(routing)'
+    tester.run("i18n-stack-in-one-module", i18nStackInOneModule, {
+      valid: [
+        entry(routes, navigation),
+        entry(routes, 'import * as intl from "next-intl/navigation"; export const nav = intl.createNavigation(routing)'),
+        entry(i18n, 'import { defineRouting } from "next-intl/routing"; export const routing = defineRouting({ locales: ["vi"], defaultLocale: "vi" })'),
+        entry(proxy, 'import createMiddleware from "next-intl/middleware"; import { routing } from "@/modules/i18n"; export const proxy = createMiddleware(routing)'),
+        entry(proxy, 'export { proxy } from "@shop/i18n/proxy"', many),
+        entry(proxy, 'import type { Navigation } from "@/modules/routes"; export type { Navigation }'),
+        entry("packages/shop-i18n/src/navigation.ts", navigation, many),
+      ],
+      invalid: [
+        rejected(i18n, navigation, "stack"),
+        rejected(routes, navigation, "stack", many),
+        rejected(routes, 'import { defineRouting } from "next-intl/routing"; export const routing = defineRouting(config)', "stack"),
+        rejected(routes, 'import { getRequestConfig } from "next-intl/server"; export default getRequestConfig(load)', "stack"),
+        rejected(proxy, 'import { createNavigation } from "next-intl/navigation"', "proxyNavigation"),
+        rejected(proxy, 'import { routing } from "@/modules/routes"', "proxyNavigation"),
+        rejected(proxy, 'export { useRouter } from "@/modules/routes"', "proxyNavigation"),
+        rejected("apps/web/src/components/blocks/Nav/index.tsx", navigation, "stack"),
+      ],
+    })
+  })
+}

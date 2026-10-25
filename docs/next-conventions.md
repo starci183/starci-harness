@@ -141,7 +141,7 @@ export default function Page() { return <CoursesPage /> }
 
 ## `starci-fe/navigation-from-intl`
 
-`Link`, `useRouter`, `usePathname` and `redirect` come from `modules/i18n/navigation`, not from Next (catalogue R59, sub-check `FE_I18N_NAVIGATION`).
+`Link`, `useRouter`, `usePathname` and `redirect` come from `modules/routes`, not from Next (catalogue R59, sub-check `FE_I18N_NAVIGATION`).
 
 **Invalid** (`src/components/blocks/Feed/component.tsx`)
 
@@ -152,18 +152,18 @@ import { useRouter } from "next/navigation"
 **Valid** (`src/components/blocks/Feed/component.tsx`)
 
 ```tsx
-import { useRouter } from "@/modules/i18n/navigation"
+import { useRouter } from "@/modules/routes"
 ```
 
 **Finding code:** `FE_I18N_NAVIGATION`
 
 **Why:** `<file>` imports `Link`, `useRouter`, `usePathname` or `redirect` from Next, which is unaware of the locale: paths lose the `[locale]` prefix.
 
-**Fix:** Import from `modules/i18n/navigation`, which next-intl builds from `routing.ts`.
+**Fix:** Import from `modules/routes`, which next-intl builds from `routing.ts`.
 
 ## `starci-fe/no-native-anchor`
 
-An internal link is `Link` from `modules/i18n/navigation`; an external `_blank` link carries `rel` (catalogue R59, sub-check `FE_I18N_NAVIGATION`).
+An internal link is `Link` from `modules/routes`; an external `_blank` link carries `rel` (catalogue R59, sub-check `FE_I18N_NAVIGATION`).
 
 **Invalid** (`src/components/blocks/Feed/component.tsx`)
 
@@ -181,7 +181,7 @@ An internal link is `Link` from `modules/i18n/navigation`; an external `_blank` 
 
 **Why:** `<a>` in `<file>` points at an internal route (reloads the whole page, loses the locale, loses prefetch) or opens a new tab without `rel`.
 
-**Fix:** Use `Link` from `modules/i18n/navigation` with an href built by `modules/routes`; for `_blank` links add `rel="noopener noreferrer"`.
+**Fix:** Use `Link` from `modules/routes` with an href built by `modules/routes`; for `_blank` links add `rel="noopener noreferrer"`.
 
 ## `starci-fe/no-hardcoded-route`
 
@@ -207,9 +207,9 @@ router.push(routes.newWorkspace())
 
 ## `starci-fe/i18n-stack-in-one-module`
 
-next-intl's routing, navigation, request config and middleware factories are called only in the i18n package (or the only app's `modules/i18n`).
+The shared i18n package owns a multi-app stack. A single app keeps routing/request config in `modules/i18n` and navigation in the `modules/routes` public entry.
 
-`defineRouting` (`next-intl/routing`), `createNavigation` (`next-intl/navigation`), `getRequestConfig` (`next-intl/server`) and `createMiddleware` (`next-intl/middleware`), resolved by the import that binds the called name (a renamed import or a namespace member counts), are called only in a file of slot `fe.package.i18n` (`packages/<family>-i18n`, exporting `createAppI18n`), or in a `fe.modules.i18n` file of a repository that declares exactly one app. In a multi-app repository each app's `modules/i18n` calls the package factory. It sits beside `no-second-i18n-stack`, which refuses another i18n library at its import; this rule refuses a second copy of next-intl's own stack.
+`defineRouting` and `getRequestConfig` remain in the i18n owner. `createNavigation` belongs to a shared `fe.package.i18n` owner or the single app's `fe.modules.routes` owner. A single app's proxy mounts locale middleware using the routing-only public i18n entry. A shared package exposes its routing-only proxy entry as a declared package export. The proxy does not import `next-intl/navigation` or the app's routes/navigation barrel. Named import aliases and namespace imports keep their factory identity.
 
 **Invalid** (`apps/web/src/modules/i18n/request.ts`, a repository with two apps)
 
@@ -229,4 +229,4 @@ export const i18n = createAppI18n({ locales: ["vi"] })
 
 **Why:** `<file>` builds a layer of the next-intl stack itself (`defineRouting`, `createNavigation`, `getRequestConfig`, `createMiddleware`). The stack may be written only once per repo.
 
-**Fix:** Call the `createAppI18n` factory of the shared i18n package in `modules/i18n/index.ts` and import the result; in a single-app repo, write the stack only in that app's `modules/i18n`.
+**Fix:** Use the shared i18n factory, or keep routing/request configuration in the single app's i18n module and navigation in its public routes entry. Keep navigation imports out of the proxy.

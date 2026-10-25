@@ -53,10 +53,6 @@ for (const edition of ["lite", "full"]) {
       valid: [{filename: BLOCK, code: 'export type HandoffBlockState = "sent" | "returned"'}],
       invalid: [{filename: BLOCK, code: 'export type HandoffBlockState = "pending"', errors: [{messageId: "status"}]}],
     })
-    tester.run("slot-status-through-slotview", drawing["slot-status-through-slotview"], {
-      valid: [{filename: BLOCK, code: 'export const X = (props: P) => <SlotView slot={props.props.order}>{(o) => <p>{o.code}</p>}</SlotView>'}],
-      invalid: [{filename: BLOCK, code: 'export const X = (props: P) => (props.props.isLoading ? <Spinner /> : <p />)', errors: [{messageId: "branch"}]}],
-    })
     tester.run("presentational-purity", split["presentational-purity"], {
       valid: [{filename: BLOCK, code: 'export const X = (props: P) => <div>{props.label}</div>'}],
       invalid: [{filename: BLOCK, code: 'const value = useTranslations("quest")', errors: [{messageId: "reaches"}]}],

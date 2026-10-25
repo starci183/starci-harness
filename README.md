@@ -1,88 +1,43 @@
 # @starci/eslint-canon-fe
 
-The StarCi front-end lint canon for Next.js and TypeScript applications. It keeps
-component ownership, accessibility, loading behavior, vendor boundaries, translations, naming,
-and colocated class-name composition consistent without prescribing a custom rendering protocol.
-
-```bash
-npm i -D @starci/eslint-canon-fe eslint-plugin-react-hooks typescript
-```
-
-A repository's `eslint.config.mjs` is the managed one-liner `starci app sync` renders (and `starci app check` compares, R05/R17):
+Universal front-end laws for TypeScript and Next.js applications, classified by
+[FE-RULE-OWNERSHIP](../../../knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP).
+The canon owns composition, data and effect boundaries, translations, accessibility, source
+structure, typed contracts, token discipline and check integrity across Grammar families.
 
 ```js
 import { loadHfs, starciFeConfig } from "@starci/eslint-canon-fe"
-export default starciFeConfig({ hfs: loadHfs(import.meta.url) })
+import { starciGrammarConfig } from "@starci/eslint-grammar-starci"
+
+const hfs = loadHfs(import.meta.url)
+export default [...starciFeConfig({ hfs }), ...starciGrammarConfig({ hfs })]
 ```
 
-`loadHfs` reads the repository's `hfs.json` and the slot manifest shipped in `runtime/`. The factory returns two
-flat-config blocks and owns everything about the law: which files are linted (from the HFS profile), which rules are on
-(every one, at `error` - nothing is off and nothing is a warning), the React Hooks rules (`eslint-plugin-react-hooks` 7, its
-recommended set lifted to `error`), typed linting, and the inline-directive fence (`noInlineConfig` plus
-`reportUnusedDisableDirectives`). The repository states nothing.
+`starci app sync` renders the selected family's managed flat config. Both factories cover every
+app and workspace package's source. Universal rules, React Hooks rules, type-aware rules and
+Sonar rules run at error; the factory sets typed parsing and refuses inline lint directives.
+Generated wire types, dependencies and build outputs follow the shared source-scope contract.
 
-- The **Sonar parity** law (R235): the smells SonarCloud measures that a lint rule can decide, `no-await-in-loop`, `prefer-code-point`, `prefer-string-raw`, `no-nested-conditional`, `no-void-operator`, `no-unused-import`, `prefer-export-from` and `no-unused-prop-types`, plus the typescript-eslint rules `no-deprecated`, `no-base-to-string` and `require-await` the factory turns on (they read types, so the source block is typed). A Next `matcher` string keeps its escapes (the segment config is read statically); `*.spec.ts` and `*.e2e-spec.ts` are outside the scan, so outside these rules.
-- The **fe-stack** law: `fe-stack-import` refuses an import of a library the front-end stack catalog forbids (one canonical library per concern, read from `runtime/knowledge/hfs/fe-stack.yaml`) and `@supabase/*` outside `modules/auth`.
-- The **ignore** block: `node_modules`, `.next`, `dist`, `coverage`, `__generated__` and `.starci/`.
-- The **source** block governs `apps/*/src/**` and `packages/*/src/**` with types (`parserOptions.projectService`) and
-  `settings.starci.hfs`, the slot view path-scoped rules ask (`lib/hfs.mjs` `hfsOf`), never a path pattern.
+Concrete Grammar component names, props, variants, scales and vendor recipes belong to
+`@starci/eslint-grammar-starci` or the selected family's package. The family rules keep their
+bare IDs under the `starci-grammar` namespace. This package exports shared AST, binding, type,
+slot and configuration infrastructure through `@starci/eslint-canon-fe/lib/*`; family packages
+import those readers without copying them.
 
-`recommended`, `why`, `loadHfs`, `linterOptions` and the plugin itself are also
-exported; `why[rule]` is `{ code, vi, fixVi }`, the finding code and the Vietnamese why the harness quotes.
+Every universal law remains gathered by `index.mjs`; its recommendation enables every rule.
+The `docs/` directory carries the detailed behavior of the documented laws. `why` supplies
+failure codes and English guidance for the catalogued rules.
 
-## Rules
+`starciPlainSourceConfig({ root })` applies slot-free universal rules to a TypeScript `src/`
+tree. `starciTypedSourceConfig({ root })` provides the shared typed, React Hooks and Sonar
+configuration for source that has not adopted the product composition laws.
 
-The [app-shell](docs/app-shell.md) law holds the fixed `WorkspaceShell` frame, mobile drawer navigation,
-navbar action kinds and order, shared bar control size, and page ownership of create actions. Its
-rules are gathered into the normal FE lint and application gate.
+The [surface composition law](docs/surface-rules.md) (R318) holds ANATOMY-2 and PADDING-0 for every
+family that publishes the shared HeroUI surface and field API: `nested-control-variant` refuses static
+variants on layer-aware fields and primary Tabs inside painted Grammar surfaces (`FE_NESTED_VARIANT`),
+`no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
+`no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
+within the nearest painted surface (`FE_LIST_PANEL_PADDING`). The R65 budget law's
+`no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
 
-Each law has a page under [`docs/`](docs) with, for every rule, an invalid and a valid example and
-its Vietnamese why. New in 5.0: [env-owner](docs/env-owner.md), [transport](docs/transport.md),
-[client-boundary](docs/client-boundary.md), [hooks-folder](docs/hooks-folder.md),
-[next-conventions](docs/next-conventions.md), [translation](docs/translation.md) (no literal copy at any
-tier), [brand-values](docs/brand-values.md), [native-controls](docs/native-controls.md),
-[size-and-state-budget](docs/size-and-state-budget.md) and [lint-escape-hatch](docs/lint-escape-hatch.md). New in 5.1: [lists](docs/lists.md), [hygiene](docs/hygiene.md), [formatting](docs/formatting.md) and [type-safety](docs/type-safety.md), plus rules added to next-conventions, client-boundary, native-controls and transport. New in 6.1: `no-vietnamese-in-source` (English-only identifiers, strings, comments and test titles; the i18n fixtures slot `e2e/fixtures/i18n/` is the one exemption). New in 6.0: `effect-subscription-needs-cleanup` (timers, frames, listeners, observers, sockets and subscriptions are released against the same handle), `server-module-marks-server-only` ([client-boundary](docs/client-boundary.md)), `no-data-fetch-in-effect` sees indirect loads, `no-hardcoded-copy` reads templates and sentence values, `no-inline-lint-config` refuses `NOSONAR` and the coverage/formatter switches. Also new in 6.0: [grammar-boundary](docs/grammar-boundary.md) (`no-raw-structural-element`), `one-outcome-union` ([transport](docs/transport.md)), `i18n-stack-in-one-module` ([next-conventions](docs/next-conventions.md)), [size-growth](docs/size-growth.md) (`file-size-growth`: a file over the manifest's line budget is not born large and does not grow; the budget is `ruleParams.fe.fileLines`, read from the manifest copy in `runtime/`).
-
-Older laws cover comments, file layout, icons and vendor ownership, landmarks, loading states,
-naming, props, served locales, component splits, design tokens, type safety, typography, and
-class-name ownership. Reusable class names belong in a colocated `classNames.ts` module and should
-be composed with HeroUI `cn` using one utility token per argument.
-
-The `drawing` law holds the split surfaces (blocks, pages, layouts, overlays under `components/`
-or `features/`): the pure `XBase` takes `{ state, props, on }` of atoms, with named `render`/`renderX`
-callbacks in feature `props` for block composition (`base-props-atom`), only its
-sibling `index.tsx` imports it and never re-exports it (`base-import-pair`), `XState` names drawn
-shapes and never a data status (`no-data-status-shape`), and a block renders each slot's
-loading/forbidden/error/empty through `SlotView` (`slot-status-through-slotview`). The law's name is
-the `drawing` slot role of `component.tsx`; a split-surface reference tree lives under
-`.claude/examples/`.
-
-Page and layout owners in `features/{pages,layouts}/<Name>/index.tsx` may compose overlay and block public entries. A server
-page may import and render a client overlay entry while remaining a server component: `FE_CLIENT_BOUNDARY` accepts the
-overlay entry, and `FE_CLIENT_SERVER_IMPORT` / `FE_CLIENT_REACHES_SERVER` reject server-only imports from its client closure.
-The only feature-to-feature edge is pages or layouts to overlays; layouts never import pages, overlays never import other
-overlays, components never import overlays, and blocks never import another block. For a client list, a server page mounts an overlay whose connected entry reads list
-identities and supplies a block renderer to its pure Base. A pure component or branch may render that keyed list by
-calling the supplied render prop; it imports no block and fetches no data. The supplied renderer composes blocks only,
-with no intrinsic markup or hook calls, and each connected item block still renders its exact sibling `XBase`.
-
-A layout-level overlay host passes rendered overlay candidates into a client `features/overlays/OverlayRouteHost` entry.
-Its hook under `hooks/overlays` reads `usePathname()` and `useSearchParams()` and supplies scalar selection to the pure
-`components/branches/OverlayHost` branch. The layout imports the candidate overlay entries; the host and branch only
-receive rendered nodes. No callback crosses the server-to-client boundary, and pages stay server components. This
-composition-only host renders an existing public pure branch without a forwarding private Base; connected blocks still
-require their exact sibling Base. The worked tree is in
-[`knowledge/patterns/fe/boundaries.yaml`](../../../knowledge/patterns/fe/boundaries.yaml), `FE-BOUNDARY-5`.
-
-The one locale pattern everywhere is `next-intl`, a `[locale]` segment, default `vi`,
-`localePrefix: "as-needed"`, and `proxy.ts` instead of `middleware.ts`.
-
-Grammar is a business-neutral HeroUI-backed component package. Its components accept ordinary
-typed React props and children.
-
-The [surface composition law](docs/surface-rules.md) holds ANATOMY-2 and PADDING-0:
-`nested-control-variant` refuses static variants on layer-aware fields and primary Tabs inside painted Grammar surfaces (`FE_NESTED_VARIANT`). `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`). `no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions within the nearest painted surface (`FE_LIST_PANEL_PADDING`). Grammar supplies context defaults and owns the list's panel inset.
-
-## Requirements
-
-ESLint 9+ (flat config), `eslint-plugin-react-hooks` 7+, and Node.js 20.9+.
+Regression specs belong to this package. Application front ends and Grammar libraries have no specs.

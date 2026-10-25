@@ -3,7 +3,7 @@
  *
  * TWO AXES, AND ONLY ONE IS DRAWN. A surface's `state` is its SHAPE: a layout the owner approves as
  * one drawing. A slot's data status (loading, forbidden, error, empty) is not a shape; it is a
- * recipe applied per api through `SlotView`, and it is never drawn. Mixing the two is what made
+ * status recipe applied per resource, and it is never a drawn shape. Mixing the two is what made
  * every block ship four hand-drawn variants that disagreed with each other.
  *
  * THE PURE HALF TAKES ATOMS. `component.tsx` receives `{ state, props, on }`: `props` is data
@@ -19,21 +19,9 @@
  * never wrong, beyond it.
  */
 
-import { hfsOf } from "./lib/hfs.mjs"
-import { classifyImport, fileOf, inSlot, kindOfFile, roleOfFile } from "./lib/scope.mjs"
+import { classifyImport, roleOfFile } from "./lib/scope.mjs"
 
-/** The layers and feature kinds that split into a connected `index.tsx` and a pure `component.tsx`; a shared package's layers never split. */
-const SPLIT_KINDS = new Set(["blocks", "pages", "layouts", "overlays"])
-
-/** The folder name of the linted file: the surface a `component.tsx` or `index.tsx` belongs to. */
-const surfaceName = (context) => hfsOf(context).relative(fileOf(context)).split("/").slice(-2)[0]
-
-/** Whether the linted file sits in a component or feature owner of a split kind. */
-const inSplitTier = (context) => inSlot(context, "fe.components", "fe.feature") && SPLIT_KINDS.has(kindOfFile(context))
-
-/** The pure half of a split tier (the drawing role of a surface folder), and which tier it is. */
-const pureHalf = (context) =>
-  inSplitTier(context) && roleOfFile(context) === "drawing" && /^[A-Z][A-Za-z0-9]*$/.test(surfaceName(context)) ? kindOfFile(context) : null
+import { inSplitTier, pureHalf } from "./lib/drawing-scope.mjs"
 
 /** Type names that carry a rendered tree rather than data. */
 const NON_ATOM_TYPE = /^(?:ReactNode|ReactElement|ReactPortal|JSX\.Element|Element|ComponentType|FC|FunctionComponent|ElementType|ComponentProps|RenderFunction)$/
@@ -294,7 +282,7 @@ export const noDataStatusShape = {
     schema: [],
     messages: {
       status:
-        "`{{name}}` lists \"{{value}}\" as a shape. Loading, forbidden, error and empty are a slot's data status: pass them as `Slot<T>` in `props` and render them through `SlotView`. Open/closed is an atom (`isOpen`). A shape is a layout the owner approves as one drawing.",
+        "`{{name}}` lists \"{{value}}\" as a shape. Loading, forbidden, error and empty describe resource status: pass them as data to the owned status renderer. Open/closed is a boolean atom. A shape is a layout the owner approves as one drawing.",
     },
   },
   create(context) {
@@ -316,61 +304,11 @@ export const noDataStatusShape = {
   },
 }
 
-// -- DRAWING-4 ----------------------------------------------------------------------------------
-
-/** Flags that are a slot's data status. */
-const STATUS_FLAG = /^(?:isLoading|isError|isForbidden|isPending|isValidating|isEmpty)$/
-
-/** The name a test expression reads, if it is a status flag. */
-const statusFlagOf = (node) => {
-  if (!node) return null
-  if (node.type === "UnaryExpression") return statusFlagOf(node.argument)
-  if (node.type === "ChainExpression") return statusFlagOf(node.expression)
-  if (node.type === "Identifier" && STATUS_FLAG.test(node.name)) return node.name
-  if (node.type === "MemberExpression" && node.property?.type === "Identifier" && STATUS_FLAG.test(node.property.name)) {
-    return node.property.name
-  }
-  if (node.type === "LogicalExpression" || node.type === "BinaryExpression") return statusFlagOf(node.left) ?? statusFlagOf(node.right)
-  return null
-}
-
-/** A block's pure half never branches on a data status itself. */
-export const slotStatusThroughSlotView = {
-  meta: {
-    type: "problem",
-    docs: { description: "A block's pure half renders data status through `SlotView`, never its own branch." },
-    schema: [],
-    messages: {
-      branch:
-        "This branches on `{{flag}}` by hand. Every slot renders its status through `SlotView`, the one recipe: a second branch drifts from it and becomes one more variant somebody draws.",
-    },
-  },
-  create(context) {
-    if (pureHalf(context) !== "blocks") return {}
-    const check = (node, test) => {
-      const flag = statusFlagOf(test)
-      if (flag) context.report({ node, messageId: "branch", data: { flag } })
-    }
-    return {
-      ConditionalExpression(node) {
-        check(node, node.test)
-      },
-      IfStatement(node) {
-        check(node, node.test)
-      },
-      LogicalExpression(node) {
-        if (node.operator === "&&" && node.parent?.type === "JSXExpressionContainer") check(node, node.left)
-      },
-    }
-  },
-}
-
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "base-props-atom": basePropsAtom,
   "base-import-pair": baseImportPair,
   "no-data-status-shape": noDataStatusShape,
-  "slot-status-through-slotview": slotStatusThroughSlotView,
 }
 
 /** Every FE canon rule is an error; existing debt is fixed before adoption. */

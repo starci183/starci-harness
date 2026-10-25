@@ -16,11 +16,7 @@ Use the grammar's renderers; never a bare select, input, textarea or button.
 <button onClick={go} />
 ```
 
-**Valid** (`src/components/blocks/Feed/index.tsx`)
-
-```ts
-<Button onPress={go}>{t("go")}</Button>
-```
+**Valid:** Compose the selected grammar's published control with its supported event props and a translated label.
 
 **Finding code:** `FE_NATIVE_FORM_CONTROL`
 

@@ -32,7 +32,7 @@ for (const edition of ['lite', 'full']) {
       invalid: [{ filename: at('apps/web/src/hooks/lesson/useLesson.ts'), code: routing, errors: [{ messageId: 'stack' }] }],
     });
     tester.run('navigation-from-intl', navigationFromIntl, {
-      valid: [{ filename: block, code: 'import { Link } from "@/modules/i18n/navigation";' }],
+      valid: [{ filename: block, code: 'import { Link } from "@/modules/routes";' }],
       invalid: [{ filename: block, code: 'import Link from "next/link";', errors: [{ messageId: 'link' }] }],
     });
     tester.run('no-native-anchor', noNativeAnchor, {
