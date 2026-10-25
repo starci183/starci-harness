@@ -17,6 +17,10 @@ const service = (body) => HEAD
     + "\nclass BillingService { constructor(private readonly inbox: Inbox, private readonly manager: EntityManager) {}"
     + "\nasync handle(delivery: Delivery) { " + body + " }"
     + "\nprivate async work(): Promise<void> {} }"
+const delegated = (helper) => HEAD
+    + "\nclass BillingService { constructor(private readonly inbox: Inbox, private readonly manager: EntityManager) {}"
+    + "\nhandle(delivery: Delivery) { return this.manager.transaction((tx) => this.handleInTransaction(delivery, tx)) }"
+    + "\nprivate async handleInTransaction(delivery: Delivery, manager: EntityManager) { " + helper + " } }"
 
 for (const edition of ["lite", "full"]) {
     test(`R80 valid inbox refusal and invalid unclaimed deliveries in ${edition}`, () => {
@@ -26,12 +30,14 @@ for (const edition of ["lite", "full"]) {
             valid: [
                 { filename: SERVICE, code: service("if (!(await this.inbox.claim('billing', delivery.eventId))) return; await this.work()") },
                 { filename: SERVICE, code: service("return this.manager.transaction(async (tx) => { if (!(await this.inbox.claim('billing', delivery.eventId, tx))) return; await tx.save({ amount: delivery.amount }) })") },
+                { filename: SERVICE, code: delegated("if (!(await this.inbox.claim('billing', delivery.eventId, manager))) return; await manager.save({ amount: delivery.amount })") },
             ],
             invalid: [
                 { filename: SERVICE, code: service("await this.work()"), errors: [{ messageId: "noClaim" }] },
                 { filename: SERVICE, code: service("await this.work(); if (!(await this.inbox.claim('billing', delivery.eventId))) return"), errors: [{ messageId: "noClaim" }] },
                 { filename: SERVICE, code: service("await this.inbox.claim('billing', delivery.eventId); await this.work()"), errors: [{ messageId: "noEarlyReturn" }] },
                 { filename: SERVICE, code: service("return this.manager.transaction(async (tx) => { await this.inbox.claim('billing', delivery.eventId, tx); await tx.save({ amount: delivery.amount }) })"), errors: [{ messageId: "noEarlyReturn" }] },
+                { filename: SERVICE, code: delegated("await manager.save({ amount: delivery.amount })"), errors: [{ messageId: "noClaim" }] },
             ],
         })
     })
