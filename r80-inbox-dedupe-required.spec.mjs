@@ -38,6 +38,7 @@ for (const edition of ["lite", "full"]) {
                 { filename: SERVICE, code: service("await this.inbox.claim('billing', delivery.eventId); await this.work()"), errors: [{ messageId: "noEarlyReturn" }] },
                 { filename: SERVICE, code: service("return this.manager.transaction(async (tx) => { await this.inbox.claim('billing', delivery.eventId, tx); await tx.save({ amount: delivery.amount }) })"), errors: [{ messageId: "noEarlyReturn" }] },
                 { filename: SERVICE, code: delegated("await manager.save({ amount: delivery.amount })"), errors: [{ messageId: "noClaim" }] },
+                { filename: SERVICE, code: delegated("const pending = manager.save({ amount: delivery.amount }); if (!(await this.inbox.claim('billing', delivery.eventId, manager))) return; await pending"), errors: [{ messageId: "noClaim" }] },
             ],
         })
     })

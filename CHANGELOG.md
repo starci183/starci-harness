@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Fixed: R80 delegated claims map arguments over runtime parameters and reject spreads, effects hidden in `const` preparation, protected or replaced helpers, and runner or manager unions containing lookalikes. Private helpers (including `#private`) and independently judged public delivery helpers retain the transaction proof; public overrides preserve the claim's manager binding and prelude restrictions, including widened parameters and arrow properties. Every declared runner and manager origin must match its owner.
+
 ## 3.4.43 - 2026-10-26
 - Changed: `inbox-dedupe-required` (R80 `BE_INBOX_DEDUPE_MISSING`) accepts a delivery whose one write transaction hands its work to a typed helper: the sole `.transaction(...)` runs on typeorm's `EntityManager` or on a port the `platform/database` owner declares, its arrow callback returns `this.<method>(..., tx, ...)` of the same class (resolved by the checker), and that async helper claims first with the never-reassigned manager parameter and returns on `false`. The database port also runs the inline claim callback. A helper that never claims, claims after other work or under a condition, claims with another manager, a lookalike runner, a callback that hands work to another object or detaches it, and an ignored claim answer stay refused; every form refused before stays refused.
 

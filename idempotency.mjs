@@ -24,23 +24,26 @@
  * `EntityManager` or as a port the `platform/database` owner declares; the callback's one parameter is typed `EntityManager`.
  * Either the actual selected inline async callback claims with that manager in its first statement, then returns on false,
  * or an arrow callback hands its whole work to one `this.<method>(..., tx, ...)` of the same class, resolved by the checker:
- * that async helper receives the manager in a never-reassigned `EntityManager` parameter, prepares only `const` arguments,
- * and its first await is the claim with that parameter at its top level, followed by the return on false:
+ * that async helper is private or a public delivery method judged in its own right, receives the manager in a never-reassigned
+ * `EntityManager` runtime parameter, and prepares only `const` arguments without this/manager access, writes, construction,
+ * awaits or calls other than free functions. Its first await is the claim with that parameter at its top level, followed by
+ * the return on false:
  *   return this.manager.transaction((tx) => this.recordInTransaction(delivery, tx))
  *   async recordInTransaction(delivery: Delivery, manager: EntityManager) {
  *       const key = keyOf(delivery)
  *       if (!(await this.inbox.claim(source, key, manager))) return this.readRepeat(delivery, manager)
  *       return this.write(delivery, manager)
  *   }
- * No outer work runs after a duplicate. A lookalike runner (a `transaction` method on a type no package or database owner
- * declares), a callback that hands work to another object and a helper reached through a further call are refused.
- * Synchronous effects before a claim, getters and helpers called past the first one stay review questions.
+ * No outer work runs after a duplicate. Every runner and manager type origin must match its declared owner; unions with
+ * lookalikes, spread handoffs, protected or replaced helpers, and callbacks handing work to another object are refused.
+ * Effects hidden inside free functions or getters and helpers called past the first one stay review questions.
  */
+import ts from "typescript"
 import { hfsOf } from "./lib/hfs.mjs"
-import { walk } from "./lib/ast.mjs"
+import { keyName, walk } from "./lib/ast.mjs"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.mjs"
 import { resolveVariable } from "./lib/transactions.mjs"
-import { isPackageType, typeOrigins, typed } from "./lib/types.mjs"
+import { typeOrigins, typed } from "./lib/types.mjs"
 import { mutationIdempotent } from "./lib/client-idempotency.mjs"
 
 /** The `Inbox` port of `platform/inbox`. */
@@ -102,9 +105,19 @@ const hasPriorEffect = (expression, call) => {
 /** A transaction port the `platform/database` owner declares: a receiver typed by that owner, never by its name. */
 const isDatabasePort = (context, node) => {
     const hfs = hfsOf(context)
-    return typeOrigins(context, node).some((origin) =>
+    const origins = typeOrigins(context, node)
+    return origins.length > 0 && origins.every((origin) =>
         origin.module === null && hfs.tierOf(origin.file) === "platform" && ownerNameOf(hfs, origin.file) === "database")
 }
+
+/** Every declared alternative must be TypeORM's manager: one genuine union member cannot vouch for a lookalike. */
+const isEntityManager = (context, node) => {
+    const origins = typeOrigins(context, node)
+    return origins.length > 0 && origins.every((origin) => origin.name === "EntityManager" && origin.module === "typeorm")
+}
+
+/** TypeScript erases a `this` parameter, so only these parameters receive call arguments at runtime. */
+const runtimeParams = (method) => method.value.params.filter((param) => !(param.type === "Identifier" && param.name === "this"))
 
 /** The callback a sole, returned or awaited `.transaction(...)` runs on an EntityManager or the database port, and its manager parameter. */
 const soleTransactionCallback = (context, body) => {
@@ -117,7 +130,7 @@ const soleTransactionCallback = (context, body) => {
     if (call?.type !== "CallExpression" || callee.type !== "MemberExpression" || callee.computed
         || callee.property.type !== "Identifier" || callee.property.name !== "transaction" || hasPriorEffect(call, call)) return null
     let callback = null
-    if (isPackageType(context, callee.object, "EntityManager", "typeorm")) {
+    if (isEntityManager(context, callee.object)) {
         // TypeORM runs arg0 when it is a function, otherwise arg1. Never accept a later, ignored callback.
         const isolation = call.arguments[0]
         callback = call.arguments.length === 1 ? isolation
@@ -127,7 +140,7 @@ const soleTransactionCallback = (context, body) => {
     } else if (isDatabasePort(context, callee.object) && call.arguments.length === 1) callback = call.arguments[0]
     if (!callback || !["ArrowFunctionExpression", "FunctionExpression"].includes(callback.type) || callback.params.length !== 1) return null
     const manager = callback.params[0]
-    if (manager.type !== "Identifier" || !isPackageType(context, manager, "EntityManager", "typeorm")) return null
+    if (manager.type !== "Identifier" || !isEntityManager(context, manager)) return null
     return { callback, manager }
 }
 
@@ -173,7 +186,48 @@ const handedCall = (callback) => {
     const call = expression?.type === "AwaitExpression" ? expression.argument : expression
     const callee = call?.callee
     return call?.type === "CallExpression" && callee.type === "MemberExpression" && !callee.computed
-        && callee.object.type === "ThisExpression" && callee.property.type === "Identifier" ? call : null
+        && callee.object.type === "ThisExpression" && ["Identifier", "PrivateIdentifier"].includes(callee.property.type) ? call : null
+}
+
+/** Argument preparation cannot start instance or transactional work before the inbox claim. */
+const preparesArguments = (context, statement, manager) => {
+    if (statement.type !== "VariableDeclaration" || statement.kind !== "const") return false
+    let safe = true
+    walk(statement, (node) => {
+        if (node.type === "ThisExpression" || (node.type === "Identifier" && isParameter(context, node, manager))
+            || ["AwaitExpression", "NewExpression", "AssignmentExpression", "UpdateExpression"].includes(node.type)
+            || (node.type === "CallExpression" && node.callee.type !== "Identifier")) safe = false
+    }, { intoFunctions: false })
+    return safe
+}
+
+/** An assignment anywhere in the class can replace the method that the checker resolved for the handoff. */
+const replacesHelper = (classBody, helper) => {
+    let replaced = false
+    walk(classBody, (node) => {
+        if (node.type !== "AssignmentExpression") return
+        const target = node.left
+        if (target.type === "MemberExpression" && target.object.type === "ThisExpression"
+            && (!target.computed || target.property.type === "Literal")
+            && (target.property.type === "PrivateIdentifier") === (helper.key.type === "PrivateIdentifier")
+            && keyName(target.property) === keyName(helper.key)) replaced = true
+    })
+    return replaced
+}
+
+/** The helper body must claim first with its unchanged runtime manager, after only argument preparation. */
+const helperClaim = (context, helper, param) => {
+    if (!helper.value?.async || helper.value.body?.type !== "BlockStatement"
+        || param?.type !== "Identifier" || !isEntityManager(context, param)) return null
+    const body = helper.value.body
+    const found = claimStatement(body)
+    if (!found) return null
+    const before = body.body.slice(0, body.body.indexOf(found.statement))
+    if (before.some((statement) => !preparesArguments(context, statement, param))) return null
+    const claim = found.awaited.argument
+    if (claim?.type !== "CallExpression" || !isParameter(context, claim.arguments[2], param, { unwritten: true })
+        || hasPriorEffect(found.statement, claim)) return null
+    return found.awaited
 }
 
 /**
@@ -183,7 +237,7 @@ const handedCall = (callback) => {
  */
 const delegatedClaim = (context, delivery, { callback, manager }) => {
     const call = handedCall(callback)
-    if (!call || hasPriorEffect(call, call)) return null
+    if (!call || call.arguments.some((argument) => argument.type === "SpreadElement") || hasPriorEffect(call, call)) return null
     const position = call.arguments.findIndex((argument) => argument.type === "Identifier" && argument.name === manager.name)
     if (position < 0 || !isParameter(context, call.arguments[position], manager)) return null
     const { checker, toTs } = typed(context)
@@ -191,17 +245,11 @@ const delegatedClaim = (context, delivery, { callback, manager }) => {
     const helper = declarations.length === 1
         ? delivery.parent.body.find((member) => member.type === "MethodDefinition" && toTs(member) === declarations[0]) : undefined
     if (!helper || helper === delivery || helper.kind !== "method" || helper.static || !helper.value.async || !helper.value.body) return null
-    const param = helper.value.params[position]
-    if (param?.type !== "Identifier" || !isPackageType(context, param, "EntityManager", "typeorm")) return null
-    const body = helper.value.body
-    const found = claimStatement(body)
-    if (!found) return null
-    const before = body.body.slice(0, body.body.indexOf(found.statement))
-    if (before.some((statement) => statement.type !== "VariableDeclaration" || statement.kind !== "const")) return null
-    const claim = found.awaited.argument
-    if (claim?.type !== "CallExpression" || !isParameter(context, claim.arguments[2], param, { unwritten: true })
-        || hasPriorEffect(found.statement, claim)) return null
-    return found.awaited
+    const params = runtimeParams(helper)
+    // A public delivery contract carries its claim and manager obligations into every override.
+    if (helper.accessibility === "protected" || (helper.accessibility !== "private" && helper.key.type !== "PrivateIdentifier"
+        && (!params[0] || !isDeliveryParam(context, params[0]))) || replacesHelper(delivery.parent, helper)) return null
+    return helperClaim(context, helper, params[position])
 }
 
 /** The first awaited claim of a delivery that runs as one transaction: inline in its callback, or in the typed helper that callback delegates to. */
@@ -210,14 +258,61 @@ const transactionClaim = (context, delivery) => {
     if (!transaction) return null
     return inlineClaim(context, transaction) ?? delegatedClaim(context, delivery, transaction)
 }
+
+/** A delivery's type, including a union alternative, exposes the sender's `eventId`. */
+const hasEventId = (checker, type) =>
+    (type.isUnion() ? type.types : [type]).some((part) => checker.getPropertyOfType(part, "eventId") !== undefined)
+
 /** Whether a parameter's type has an `eventId` property: the shape of a delivery. */
 const isDeliveryParam = (context, param) => {
     const target = param.type === "TSParameterProperty" ? param.parameter : param.type === "AssignmentPattern" ? param.left : param
     const { checker, toTs } = typed(context)
     const tsNode = toTs(target)
     if (!tsNode) return false
-    const type = checker.getTypeAtLocation(tsNode)
-    return (type.isUnion() ? type.types : [type]).some((part) => checker.getPropertyOfType(part, "eventId") !== undefined)
+    return hasEventId(checker, checker.getTypeAtLocation(tsNode))
+}
+
+/** The runtime parameter the declared signature's first awaited claim uses, including declarations in another source file. */
+const claimedManagerPosition = (checker, signature) => {
+    let awaited = null
+    const visit = (node) => {
+        if (ts.isAwaitExpression(node) && (!awaited || node.end < awaited.end)) awaited = node
+        ts.forEachChild(node, (child) => { if (!ts.isFunctionLike(child)) visit(child) })
+    }
+    const body = signature.getDeclaration()?.body
+    if (body) visit(body)
+    const claim = awaited?.expression
+    if (!claim || !ts.isCallExpression(claim) || !ts.isPropertyAccessExpression(claim.expression)
+        || claim.expression.name.text !== "claim" || !claim.arguments[2]) return -1
+    const manager = checker.getSymbolAtLocation(claim.arguments[2])
+    return manager ? signature.parameters.indexOf(manager) : -1
+}
+
+/** An override preserves inherited delivery and transaction-manager obligations even when it widens its own parameter. */
+const inheritedDelivery = (context, method) => {
+    const name = keyName(method.key)
+    const result = { delivery: false, managers: new Set() }
+    if (name === null) return result
+    const { checker, toTs } = typed(context)
+    const location = toTs(method)
+    const seen = new Set()
+    const visit = (type) => {
+        if (seen.has(type)) return
+        seen.add(type)
+        const member = checker.getPropertyOfType(type, name)
+        const signatures = member ? checker.getTypeOfSymbolAtLocation(member, location).getCallSignatures() : []
+        for (const signature of signatures) {
+            const param = signature.parameters[0]
+            if (!param || !hasEventId(checker, checker.getTypeOfSymbolAtLocation(param, location))) continue
+            result.delivery = true
+            const manager = claimedManagerPosition(checker, signature)
+            if (manager >= 0) result.managers.add(manager)
+        }
+        for (const base of checker.getBaseTypes(type) ?? []) visit(base)
+    }
+    const owner = checker.getTypeAtLocation(toTs(method.parent.parent))
+    for (const base of checker.getBaseTypes(owner) ?? []) visit(base)
+    return result
 }
 
 /** A service method that takes a delivery claims the event through the shared inbox before it acts. */
@@ -238,23 +333,37 @@ export const inboxDedupeRequired = {
         if (!baseName(filename).endsWith(".service.ts") || !slot || slot.startsWith("be.tests.")) return {}
         // The event bus publishes events (their shape carries an `eventId`) and its runtime claims the inbox before a consumer runs: no delivery method here.
         if (slot.startsWith("be.platform") && ownerNameOf(hfs, filename) === "event-bus") return {}
+        const judgeClaim = (node, inherited) => {
+            const body = node.value?.body
+            let awaited = body?.type === "BlockStatement" ? transactionClaim(context, node) ?? firstAwait(body) : null
+            if (inherited.managers.size > 0) {
+                const params = node.value?.params ? runtimeParams(node) : []
+                if (![...inherited.managers].every((position) => helperClaim(context, node, params[position]) === awaited)) awaited = null
+            }
+            const call = awaited?.argument
+            const claims = call?.type === "CallExpression"
+                && call.callee.type === "MemberExpression"
+                && !call.callee.computed
+                && call.callee.property.type === "Identifier"
+                && call.callee.property.name === "claim"
+                && call.arguments.length >= 2
+                && isInboxType(context, call.callee.object)
+            if (!claims) context.report({ node: node.key, messageId: "noClaim" })
+            else if (!returnsOnFalse(awaited)) context.report({ node: node.key, messageId: "noEarlyReturn" })
+        }
         return {
             MethodDefinition(node) {
                 if (node.kind !== "method" || node.static || node.key.type === "PrivateIdentifier" || !node.value.body) return
                 if (node.accessibility === "private" || node.accessibility === "protected") return
-                const first = node.value.params[0]
-                if (!first || !isDeliveryParam(context, first)) return
-                const awaited = transactionClaim(context, node) ?? firstAwait(node.value.body)
-                const call = awaited?.argument
-                const claims = call?.type === "CallExpression"
-                    && call.callee.type === "MemberExpression"
-                    && !call.callee.computed
-                    && call.callee.property.type === "Identifier"
-                    && call.callee.property.name === "claim"
-                    && call.arguments.length >= 2
-                    && isInboxType(context, call.callee.object)
-                if (!claims) context.report({ node: node.key, messageId: "noClaim" })
-                else if (!returnsOnFalse(awaited)) context.report({ node: node.key, messageId: "noEarlyReturn" })
+                const first = runtimeParams(node)[0]
+                const inherited = inheritedDelivery(context, node)
+                if (!(first && isDeliveryParam(context, first)) && !inherited.delivery) return
+                judgeClaim(node, inherited)
+            },
+            PropertyDefinition(node) {
+                if (node.static || node.key.type === "PrivateIdentifier" || node.accessibility === "private" || node.accessibility === "protected") return
+                const inherited = inheritedDelivery(context, node)
+                if (inherited.delivery) judgeClaim(node, inherited)
             },
         }
     },
