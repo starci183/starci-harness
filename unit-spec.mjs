@@ -28,7 +28,9 @@
 import { hfsOf } from "./lib/hfs.mjs"
 import { keyName, walk } from "./lib/ast.mjs"
 import { importOf, isImportedFrom } from "./lib/import-source.mjs"
-import { isPackageType, typeOrigins } from "./lib/types.mjs"
+import ts from "typescript"
+import { normalizePath } from "./lib/path.mjs"
+import { isPackageType, typeOrigins, typed } from "./lib/types.mjs"
 import { baseOf, isServiceSpecFile, isUnitSpecFile, unitRoleOfSpec } from "./lib/unit-spec.mjs"
 import { isRealSubjectValue, valueObjectsOfSibling } from "./lib/subject-values.mjs"
 import { ownerNameOf } from "./lib/ports.mjs"
@@ -386,10 +388,34 @@ const COMPILED = new WeakMap()
 const tableOf = (specDoubles) => {
     let compiled = COMPILED.get(specDoubles)
     if (!compiled) {
-        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token) })), fallback: specDoubles.fallback }
+        compiled = { kit: specDoubles.kit, entries: specDoubles.doubles.map((entry) => ({ ...entry, pattern: new RegExp(entry.token), from: entry.from === undefined ? undefined : new RegExp(entry.from) })), fallback: specDoubles.fallback }
         COMPILED.set(specDoubles, compiled)
     }
     return compiled
+}
+
+/** The file and exported name a token identifier is declared in, after following every import and re-export, or null when it cannot be resolved. */
+const declarationOf = (context, token) => {
+    const { checker, toTs } = typed(context)
+    const symbol = checker.getSymbolAtLocation(toTs(token))
+    const target = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+    const declaration = target?.getDeclarations?.()?.[0]
+    return declaration === undefined ? null : { file: normalizePath(declaration.getSourceFile().fileName), name: target.getName() }
+}
+
+/**
+ * Whether a table entry applies to a provider token. The spelling picks the entry; when the entry names where its port is declared
+ * (`from`, a pattern over the declaring file), the declaration decides, never the import written in the spec: a token declared in
+ * another module that merely ends alike (`CORRELATION_IDS` of logging against `IDS` of ids) is a different port, a token the
+ * owner declares stays that port however it is re-exported or renamed (`IDS as SYSTEM_SOURCE`, a fixture re-export). A token
+ * that cannot be resolved, or is declared in the spec itself, is judged by its spelling alone.
+ */
+const entryApplies = (context, entry, spelled, token) => {
+    if (entry.from === undefined || token?.type !== "Identifier") return entry.pattern.test(spelled)
+    const declared = declarationOf(context, token)
+    if (declared === null || declared.file === normalizePath(context.filename || context.getFilename())) return entry.pattern.test(spelled)
+    if (!entry.from.test(declared.file)) return !declared.file.includes("/src/modules/") && entry.pattern.test(spelled)
+    return entry.pattern.test(spelled) || entry.pattern.test(screamingSnake(declared.name))
 }
 
 /** A const identifier's initializer, or null when its value cannot be followed. */
@@ -419,8 +445,8 @@ const originsOfToken = (context, token) => {
 
 /** Inbox is the platform port; a service or producer whose name contains Inbox remains an ordinary collaborator. */
 const providerDoubleEntry = (context, hfs, table, token, normalised) => {
-    const named = (name) => table.entries.find((entry) => entry.pattern.test(screamingSnake(name))) ?? table.fallback
-    const lexical = named(normalised)
+    const named = (name, from) => table.entries.find((entry) => entryApplies(context, entry, screamingSnake(name), from)) ?? table.fallback
+    const lexical = named(normalised, token)
     const inbox = named("INBOX")
     const origins = originsOfToken(context, token)
     const platform = origins.filter((origin) => origin.module === null && hfs.tierOf(origin.file) === "platform")
