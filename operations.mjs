@@ -1,9 +1,9 @@
 /**
  * The rules that hold BE-OPERATIONS-1 (R95 `BE_OPERATION_CONTRACT`).
  *
- * A versioned operation is declared once, in the app's typed operation table (`platform/operations`: `query<Input, Output,
- * RefusalCode>()` and `mutation<...>()` registered by `defineOperations`), and the contract emit derives `contracts/<app>/openapi.json`
- * from that table with the type checker. An operation whose input or output the checker cannot express (`any`, `unknown`,
+ * A versioned operation is declared once, in the app's typed operation table (`platform/operations`: `query({ input, output })`
+ * and `mutation({ input, output })` registered by `defineOperations`), and the contract emit derives `contracts/<app>/openapi.json`
+ * from its bounded zod schemas. An operation whose input or output the checker cannot express (`any`, `unknown`,
  * `Record<string, unknown>`, an unbound generic) says nothing to a client, and a route that takes or answers those types by another
  * road than the table's own `OperationRequest` and `OperationReply` is a second, untyped contract.
  *
@@ -38,6 +38,129 @@ const isCanonType = (hfs, checker, symbol, name) => declarationsOfSymbol(checker
 
 const F = ts.TypeFlags
 
+/** Optional object fields can be absent; an operation's root input/value must itself be a JSON value. */
+const rootMayBeAbsent = (type) => Boolean(type.flags & (F.Undefined | F.Void)) || (type.isUnion() && type.types.some(rootMayBeAbsent))
+
+/** Follow constant aliases and declaration wrappers without trusting an asserted type. */
+const expressionOf = (checker, node, seen = new Set()) => {
+    if (!node || seen.has(node)) return node
+    seen.add(node)
+    if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node) || ts.isNonNullExpression(node)) return expressionOf(checker, node.expression, seen)
+    if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
+        for (const declaration of declarationsOfSymbol(checker, checker.getSymbolAtLocation(node))) {
+            if (ts.isShorthandPropertyAssignment(declaration)) {
+                const value = checker.getShorthandAssignmentValueSymbol(declaration)
+                const home = declarationsOfSymbol(checker, value).find((candidate) => ts.isVariableDeclaration(candidate) && candidate.initializer)
+                if (home) return expressionOf(checker, home.initializer, seen)
+            }
+            if ((ts.isVariableDeclaration(declaration) || ts.isPropertyAssignment(declaration)) && declaration.initializer) return expressionOf(checker, declaration.initializer, seen)
+        }
+    }
+    return node
+}
+
+/** A schema is a named declaration of its boundary owner, including re-exports and local aliases. */
+const ownerSchema = (hfs, checker, node, seen = new Set()) => {
+    if (!node || seen.has(node)) return false
+    seen.add(node)
+    if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node) || ts.isNonNullExpression(node)) return ownerSchema(hfs, checker, node.expression, seen)
+    if (!ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node)) return false
+    const type = checker.getTypeAtLocation(node)
+    const parser = type.getProperty("safeParse")
+    if (!(parser?.getDeclarations() ?? []).some((declaration) => /\/node_modules\/zod\//.test(declaration.getSourceFile().fileName.replace(/\\/g, "/")))) return false
+    for (const declaration of declarationsOfSymbol(checker, checker.getSymbolAtLocation(node))) {
+        const source = declaration.getSourceFile()
+        const file = source.fileName
+        const module = checker.getSymbolAtLocation(source)
+        const exported = module && checker.getExportsOfModule(module).some((symbol) => declarationsOfSymbol(checker, symbol).includes(declaration))
+        if (/\.schema\.ts$/.test(file) && ["domain", "platform", "integrations"].includes(hfs.tierOf(file)) && exported) return true
+        if (ts.isVariableDeclaration(declaration) && declaration.initializer && ownerSchema(hfs, checker, declaration.initializer, seen)) return true
+        if (ts.isShorthandPropertyAssignment(declaration)) {
+            for (const home of declarationsOfSymbol(checker, checker.getShorthandAssignmentValueSymbol(declaration))) {
+                if (ts.isVariableDeclaration(home) && home.initializer && ownerSchema(hfs, checker, home.initializer, seen)) return true
+            }
+        }
+    }
+    return false
+}
+
+/** Read a property initializer from a closed declaration object, following an alias of that object. */
+const propertyValue = (checker, expression, name) => {
+    const object = expressionOf(checker, expression)
+    if (!object) return null
+    const property = checker.getTypeAtLocation(object).getProperty(name)
+    for (const declaration of property?.getDeclarations() ?? []) {
+        if (ts.isPropertyAssignment(declaration)) return declaration.initializer
+        if (ts.isShorthandPropertyAssignment(declaration)) return declaration.name
+    }
+    return null
+}
+
+/** A spec registers tables to test the platform capability; such a table is local to the spec and serves no operation. */
+const isSpecFile = (filename) => /\.(?:spec|e2e-spec|integration-spec|contract-spec)\.ts$/.test(filename.replaceAll("\\", "/"))
+
+const TS_WRAPPERS = new Set(["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion"])
+
+/**
+ * Whether the table a `defineOperations` call makes leaves its file: `export const X = ...`, `export { X }` or `export default X`.
+ * A spec may keep a stub table to itself; one it exports can be imported by production code, so it is judged like any table.
+ *
+ * @param {object} node - The CallExpression (ESTree).
+ * @returns {boolean} True when the registered table is exported.
+ */
+const tableLeavesFile = (node) => {
+    let value = node
+    while (TS_WRAPPERS.has(value.parent?.type)) value = value.parent
+    const parent = value.parent
+    if (parent?.type === "ExportDefaultDeclaration") return true
+    if (parent?.type !== "VariableDeclarator" || parent.init !== value || parent.id.type !== "Identifier") return false
+    if (parent.parent?.parent?.type === "ExportNamedDeclaration") return true
+    let program = parent
+    while (program.parent) program = program.parent
+    return program.body.some((statement) => {
+        if (statement.type === "ExportDefaultDeclaration") return statement.declaration?.type === "Identifier" && statement.declaration.name === parent.id.name
+        return statement.type === "ExportNamedDeclaration" && statement.specifiers.some((specifier) => specifier.local.name === parent.id.name)
+    })
+}
+
+/** The operation table must supply the runtime schemas that a generic request type cannot validate. */
+export const operationTableSchemas = {
+    meta: {
+        type: "problem",
+        docs: { description: "Every defineOperations entry declares bounded input and output schemas from an owner's *.schema.ts file." },
+        schema: [],
+        messages: {
+            schemas: "Operation {{operation}} has no boundary schemas. Declare query({ input: InputSchema, output: OutputSchema }) or mutation(...), using named bounded zod schema exports from an owner's `*.schema.ts` file (R304/R305).",
+            table: "The operation table must be a nonempty closed declaration whose entries supply runtime input and output schemas.",
+        },
+    },
+    create(context) {
+        const inSpec = isSpecFile(context.filename)
+        const hfs = hfsOf(context)
+        const { checker, toTs } = typed(context)
+        return {
+            CallExpression(node) {
+                const call = toTs(node)
+                if (!isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), "defineOperations")) return
+                if (inSpec && !tableLeavesFile(node)) return
+                const argument = expressionOf(checker, call.arguments[0])
+                const entries = argument ? checker.getPropertiesOfType(checker.getTypeAtLocation(argument)) : []
+                if (entries.length === 0) {
+                    context.report({ node, messageId: "table" })
+                    return
+                }
+                for (const entry of entries) {
+                    const declaration = entry.getDeclarations()?.find((candidate) => ts.isPropertyAssignment(candidate) || ts.isShorthandPropertyAssignment(candidate))
+                    const value = declaration && expressionOf(checker, ts.isShorthandPropertyAssignment(declaration) ? declaration.name : declaration.initializer)
+                    const helper = value && ts.isCallExpression(value) && ["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(value.expression), name))
+                    const options = helper ? value.arguments[0] : null
+                    if (!["input", "output"].every((name) => ownerSchema(hfs, checker, propertyValue(checker, options, name)))) context.report({ node, messageId: "schemas", data: { operation: entry.getName() } })
+                }
+            },
+        }
+    },
+}
+
 /**
  * Why a type says nothing on the wire, or null when the checker can express it.
  *
@@ -46,7 +169,7 @@ const F = ts.TypeFlags
  * @param {Set<object>} seen - The types already judged (recursive types).
  * @returns {string | null} The reason, or null.
  */
-const whyUndecidable = (checker, type, seen = new Set()) => {
+const whyUndecidable = (checker, type, seen = new Set(), schemaBacked = false) => {
     if (seen.has(type)) return null
     seen.add(type)
     const flags = type.flags
@@ -59,7 +182,7 @@ const whyUndecidable = (checker, type, seen = new Set()) => {
     if (type.isUnion() || type.isIntersection()) {
         for (const member of type.types) {
             if (member.flags & (F.Undefined | F.Void)) continue
-            const why = whyUndecidable(checker, member, seen)
+            const why = whyUndecidable(checker, member, seen, schemaBacked)
             if (why) return why
         }
         return null
@@ -68,7 +191,7 @@ const whyUndecidable = (checker, type, seen = new Set()) => {
         if (type.getCallSignatures().length || type.getConstructSignatures().length) return "a function"
         if (checker.isArrayType(type) || checker.isTupleType(type)) {
             for (const item of checker.getTypeArguments(type)) {
-                const why = whyUndecidable(checker, item, seen)
+                const why = whyUndecidable(checker, item, seen, schemaBacked)
                 if (why) return why
             }
             return null
@@ -77,13 +200,15 @@ const whyUndecidable = (checker, type, seen = new Set()) => {
         if (own && !own.getName().startsWith("__") && (own.getDeclarations() ?? []).some((declaration) => /[\\/]typescript[\\/]lib[\\/]lib\./.test(declaration.getSourceFile().fileName))) return `${own.getName()}, which is not a JSON value`
         const props = checker.getPropertiesOfType(type)
         const index = checker.getIndexInfosOfType(type)
-        if (props.length === 0 && index.length === 0) return "an object type with no members"
+        if (props.length === 0 && index.length === 0 && !schemaBacked) return "an object type with no members"
         for (const info of index) {
-            const why = whyUndecidable(checker, info.type, seen)
+            // Zod's strict empty object infers Record<string, never>: no key is permitted, rather than an unknown value.
+            if (schemaBacked && (info.type.flags & F.Never)) continue
+            const why = whyUndecidable(checker, info.type, seen, schemaBacked)
             if (why) return `a record of ${why}`
         }
         for (const prop of props) {
-            const why = whyUndecidable(checker, checker.getTypeOfSymbol(prop), seen)
+            const why = whyUndecidable(checker, checker.getTypeOfSymbol(prop), seen, schemaBacked)
             if (why) return `${prop.getName()}: ${why}`
         }
     }
@@ -104,15 +229,18 @@ export const operationContractDecidable = {
         },
     },
     create(context) {
+        const inSpec = isSpecFile(context.filename)
         const hfs = hfsOf(context)
         const { checker, toTs } = typed(context)
-        if (declaredByOperations(hfs, context.filename.replace(/\\/g, "/"))) return {}
-        const judge = (node, contract) => {
+        const inOwner = declaredByOperations(hfs, context.filename.replace(/\\/g, "/"))
+        const judge = (node, contract, schemaCall = null) => {
             const symbol = contract.aliasSymbol ?? contract.getSymbol()
             if (!isCanonType(hfs, checker, symbol, "OperationContract")) return
+            const call = schemaCall ?? (node.type === "CallExpression" ? toTs(node) : null)
+            const schemaBacked = call && ["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), name)) && ["input", "output"].every((name) => ownerSchema(hfs, checker, propertyValue(checker, call.arguments[0], name)))
             const [input, output, refusal] = (contract.objectFlags & ts.ObjectFlags.Reference) !== 0 ? checker.getTypeArguments(contract) : (contract.aliasTypeArguments ?? [])
             for (const [label, type] of [["input", input], ["output", output]]) {
-                const why = type ? whyUndecidable(checker, type) : null
+                const why = type ? rootMayBeAbsent(type) ? "undefined or void at the root" : whyUndecidable(checker, type, new Set(), schemaBacked) : null
                 if (why) context.report({ node, messageId: "type", data: { label, why } })
             }
             if (refusal && !(refusal.flags & F.Never)) {
@@ -122,12 +250,34 @@ export const operationContractDecidable = {
         }
         return {
             TSTypeReference(node) {
+                // The capability declares generic OperationContract/OperationTable bounds here; concrete registrations below
+                // still owe the same closed parsed types as operations declared anywhere else.
+                if (inOwner || inSpec) return
                 const tsNode = toTs(node)
                 const type = checker.getTypeFromTypeNode(tsNode)
                 if (type.getSymbol() || type.aliasSymbol) judge(node, type)
             },
             CallExpression(node) {
-                const type = checker.getTypeAtLocation(toTs(node))
+                const call = toTs(node)
+                if ((inOwner || inSpec) && isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), "defineOperations")) {
+                    if (inSpec && !tableLeavesFile(node)) return
+                    const argument = call.arguments[0]
+                    const source = expressionOf(checker, argument)
+                    const entries = argument ? checker.getPropertiesOfType(checker.getTypeAtLocation(argument)) : []
+                    for (const entry of entries) {
+                        const contract = checker.getTypeOfSymbol(entry)
+                        const actual = source ? propertyValue(checker, source, entry.getName()) : null
+                        const value = expressionOf(checker, actual)
+                        // Plain helper calls are judged once by their own CallExpression. A declaration annotation can widen
+                        // that result before registration, so its served type also needs a check.
+                        const helper = value && ts.isCallExpression(value) && ["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(value.expression), name)) ? value : null
+                        if (inSpec || !helper || contract !== checker.getTypeAtLocation(helper)) judge(node, contract, helper)
+                    }
+                    return
+                }
+                if (inSpec) return
+                if (inOwner &&!["query", "mutation"].some((name) => isCanonType(hfs, checker, checker.getSymbolAtLocation(call.expression), name))) return
+                const type = checker.getTypeAtLocation(call)
                 if (type.getSymbol()) judge(node, type)
             },
         }
@@ -135,6 +285,19 @@ export const operationContractDecidable = {
 }
 
 // -- operation-route-driven-by-table -----------------------------------------------------------------------------
+
+/** The runtime table named by a `typeof OPERATIONS` type argument, including named aliases of that type. */
+const tableExpressionOf = (checker, type, seen = new Set()) => {
+    if (!type || seen.has(type)) return null
+    seen.add(type)
+    if (ts.isTypeQueryNode(type)) return expressionOf(checker, type.exprName)
+    if (ts.isParenthesizedTypeNode(type)) return tableExpressionOf(checker, type.type, seen)
+    if (!ts.isTypeReferenceNode(type)) return null
+    for (const declaration of declarationsOfSymbol(checker, checker.getSymbolAtLocation(type.typeName))) {
+        if (ts.isTypeAliasDeclaration(declaration)) return tableExpressionOf(checker, declaration.type, seen)
+    }
+    return null
+}
 
 /** The canon alias a type annotation node names (`OperationRequest`, `OperationReply`), with its table type argument. */
 const canonReference = (hfs, checker, toTs, annotation) => {
@@ -146,7 +309,7 @@ const canonReference = (hfs, checker, toTs, annotation) => {
     for (const name of ["OperationRequest", "OperationReply"]) {
         if (isCanonType(hfs, checker, symbol, name)) {
             const argument = tsNode.typeArguments?.[0]
-            return { name, table: argument ? checker.getTypeFromTypeNode(argument) : null }
+            return { name, table: argument ? checker.getTypeFromTypeNode(argument) : null, expression: tableExpressionOf(checker, argument) }
         }
     }
     return null
@@ -186,7 +349,8 @@ export const operationRouteEvidence = (context) => {
             ts.forEachChild(node, visit)
         }
         for (const source of program.getSourceFiles()) {
-            if (!source.isDeclarationFile && hfs.slotOf(source.fileName)) visit(source)
+            // A table made in a spec is never an app's declared table, even when the spec exports it.
+            if (!source.isDeclarationFile && !isSpecFile(source.fileName) && hfs.slotOf(source.fileName)) visit(source)
         }
         return tables
     }
@@ -328,28 +492,16 @@ export const restRouteDeclared = {
     },
 }
 
-/** True when a pipe argument is `new OperationValidationService(...)`, the class declared by the platform capability `http-security` (resolved by symbol). */
-const isOperationPipe = (hfs, checker, toTs, argument) => {
-    if (argument?.type !== "NewExpression") return false
-    const target = toTs(argument.callee)
-    if (!target) return false
-    return declarationsOfSymbol(checker, checker.getSymbolAtLocation(target)).some((declaration) => {
-        const file = String(declaration.getSourceFile().fileName).replace(/\\/g, "/")
-        return declaration.name?.text === "OperationValidationService" && hfs.slotOf(file) === "be.platform" && hfs.ownerOf(file)?.split("/").pop() === "http-security"
-    })
-}
-
 /** An operation route takes the table's `OperationRequest` and answers its `OperationReply`, of one table, and validates the body it takes. */
 export const operationRouteDrivenByTable = {
     meta: {
         type: "problem",
-        docs: { description: "A route that takes or answers the operation table's types takes OperationRequest<Table> and answers Promise<OperationReply<Table>> of the same table." },
+        docs: { description: "An operation route takes OperationRequest<Table>, validates it with OperationValidationPolicy(Table), and answers Promise<OperationReply<Table>>." },
         schema: [],
         messages: {
             half: "This route takes or answers `{{one}}` but not `{{other}}`. An operation route is driven by the table on both sides: `@Body() request: OperationRequest<Table>` and `Promise<OperationReply<Table>>`.",
             table: "The request and the reply of this route name different operation tables. One route serves one table.",
-            unvalidated:
-                "The body of this operation route is typed by an alias, which leaves no class at run time, so the global pipe validates nothing. Bind it to the request class with `@Body(new OperationValidationService(RequestClass))` of `platform/http-security`.",
+            validation: "A generic OperationRequest is not checked by ValidationPipe. Use `@Body(new OperationValidationPolicy(OPERATIONS))` from platform/operations with the same table as OperationRequest<Table>.",
         },
     },
     create(context) {
@@ -373,9 +525,20 @@ export const operationRouteDrivenByTable = {
                     context.report({ node: node.key, messageId: "table" })
                     return
                 }
-                const body = params[references.indexOf(request)]
-                const pipes = (body.decorators ?? []).filter((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Body")).flatMap(decoratorArguments)
-                if (!pipes.some((pipe) => isOperationPipe(hfs, checker, toTs, pipe))) context.report({ node: body, messageId: "unvalidated" })
+                const validated = params.some((param) => {
+                    const reference = canonReference(hfs, checker, toTs, param.typeAnnotation ?? param.parameter?.typeAnnotation)
+                    if (reference?.name !== "OperationRequest") return false
+                    return (param.decorators ?? []).some((decorator) => {
+                        if (!isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Body")) return false
+                        const args = decoratorArguments(decorator)
+                        if (args.length !== 1) return false
+                        const pipe = expressionOf(checker, toTs(args[0]))
+                        if (!pipe || !ts.isNewExpression(pipe) || !isCanonType(hfs, checker, checker.getSymbolAtLocation(pipe.expression), "OperationValidationPolicy")) return false
+                        const table = expressionOf(checker, pipe.arguments?.[0])
+                        return pipe.arguments?.length === 1 && table && request.expression && table === request.expression
+                    })
+                })
+                if (!validated) context.report({ node: node.key, messageId: "validation" })
             },
         }
     },
@@ -384,6 +547,7 @@ export const operationRouteDrivenByTable = {
 /** Every rule of this law. */
 export const rules = {
     "operation-contract-decidable": operationContractDecidable,
+    "operation-table-schemas": operationTableSchemas,
     "operation-route-driven-by-table": operationRouteDrivenByTable,
     "rest-route-declared": restRouteDeclared,
 }
@@ -391,6 +555,7 @@ export const rules = {
 /** Every rule of this law at `error`. */
 export const recommended = {
     "starci-be/operation-contract-decidable": "error",
+    "starci-be/operation-table-schemas": "error",
     "starci-be/operation-route-driven-by-table": "error",
     "starci-be/rest-route-declared": "error",
 }
