@@ -81,10 +81,7 @@ Grammar is a business-neutral HeroUI-backed component package. Its components ac
 typed React props and children.
 
 The [surface composition law](docs/surface-rules.md) holds ANATOMY-2 and PADDING-0:
-`nested-control-variant` refuses explicit primary fields inside Grammar surfaces and raw app
-`bg-surface` paint (`FE_NESTED_VARIANT`); `no-list-panel-padding` refuses horizontal padding
-wrappers around Grammar lists and section captions (`FE_LIST_PANEL_PADDING`). Grammar supplies
-the nested secondary default and owns the list's panel inset.
+`nested-control-variant` refuses static variants on layer-aware fields and primary Tabs inside painted Grammar surfaces (`FE_NESTED_VARIANT`). `no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`). `no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions within the nearest painted surface (`FE_LIST_PANEL_PADDING`). Grammar supplies context defaults and owns the list's panel inset.
 
 ## Requirements
 

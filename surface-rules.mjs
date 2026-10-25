@@ -6,8 +6,9 @@ import { reactHookOf } from "./lib/react.mjs"
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|heritage|offset-pop))?$/
 const SURFACES = new Set([
-  "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Rail", "Sidebar",
+  "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",
+  "WorkspaceShell", "TopBar", "NavigationFeatureNav",
 ])
 const FIELDS = new Set([
   "Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField",
@@ -83,16 +84,27 @@ function* surfaceAncestors(context, node) {
 const isSurface = (context, node, descendant) => {
   const name = grammarName(context, node.name)
   if (name?.length !== 1) return false
-  if (SURFACES.has(name[0])) return true
-  if (name[0] !== "ChatWorkspace") return false
-  for (let current = descendant; current && current !== node.parent; current = current.parent) {
-    if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "rail") return true
+  if (name[0] === "SurfaceAccordionCard") return node.attributes.some((entry) => propStrings(context, entry, "depth", "variant").some((value) => ["top", "nested"].includes(value.text)))
+  if (name[0] === "WorkspaceShell") {
+    for (let current = descendant; current && current !== node.parent; current = current.parent) {
+      if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "header") return true
+    }
+    return false
   }
-  return false
+  return SURFACES.has(name[0])
 }
-const classTokens = (text) => text.split(/\s+/).map((token) => token.split(":").at(-1).replace(/^!|!$/g, ""))
+const classTokens = (text) => text.split(/\s+/).map((token) => {
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < token.length; index++) {
+    if (token[index] === "[") depth++
+    else if (token[index] === "]") depth--
+    else if (token[index] === ":" && depth === 0) start = index + 1
+  }
+  return token.slice(start).replace(/^!|!$/g, "")
+})
 const rawSurface = (token) => /^bg-surface(?:-[a-z0-9-]+)?(?:\/[^\s]+)?$/.test(token)
-const horizontalPadding = (token) => /^(?:px|ps|pe)-.+$/.test(token)
+const horizontalPadding = (token) => /^(?:p|px|ps|pe|pl|pr)-.+$/.test(token) || /^\[padding-inline(?:-start|-end)?:.+\]$/.test(token)
 
 /** Computed keys select their evaluated static name, rather than the identifier's spelling. */
 const propertyName = (context, property) => {
@@ -141,6 +153,7 @@ const propStrings = (context, entry, name, mode = "classes") => {
 /** An explicit section caption excludes the row's own content subtree. */
 const inSectionCaption = (context, node) => {
   for (const ancestor of surfaceAncestors(context, node.parent)) {
+    if (isSurface(context, ancestor, node)) return false
     const owner = grammarName(context, ancestor.name)
     if (owner?.[0] !== "ListBox") continue
     if (owner[1] === "Item") return false
@@ -149,16 +162,41 @@ const inSectionCaption = (context, node) => {
   return false
 }
 
-/** ANATOMY-2: Grammar provides the secondary default; apps cannot force primary or paint a raw surface. */
+/** ANATOMY-2: field variants belong to Grammar's context, including across app component boundaries. */
 export const nestedControlVariant = {
   meta: {
     type: "problem",
-    docs: { description: "ANATOMY-2: nested fields use Grammar's secondary default and surfaces belong to Grammar." },
+    docs: { description: "ANATOMY-2: Grammar context supplies field variants; nested Tabs cannot force primary." },
     schema: [],
     messages: {
-      primary: "FE_NESTED_VARIANT: a field inside a Grammar surface cannot force variant=\"primary\". Omit variant so Grammar supplies secondary through its nesting context.",
-      surface: "FE_NESTED_VARIANT: bg-surface paints a surface in app CSS. Compose SurfaceCard, Rail, Sidebar or another Grammar surface instead.",
+      variant: "FE_NESTED_VARIANT: app fields cannot set a static variant. Omit variant so Grammar's surface context supplies the appropriate default.",
+      tabs: "FE_NESTED_VARIANT: Tabs inside a Grammar surface cannot force variant=\"primary\". Omit variant so Grammar supplies secondary.",
     },
+  },
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const name = grammarName(context, node.name)
+        if (name?.length !== 1) return
+        if (FIELDS.has(name[0])) {
+          const variant = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").length > 0)
+          if (variant) context.report({ node: variant, messageId: "variant" })
+        } else if (name[0] === "Tabs") {
+          const primary = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").some((value) => value.text === "primary"))
+          if (primary && [...surfaceAncestors(context, node.parent)].some((ancestor) => isSurface(context, ancestor, node))) context.report({ node: primary, messageId: "tabs" })
+        }
+      },
+    }
+  },
+}
+
+/** App classes carry layout; Grammar owns surface paint. */
+export const noAppSurfacePaint = {
+  meta: {
+    type: "problem",
+    docs: { description: "App composition CSS is layout-only; Grammar paints surfaces." },
+    schema: [],
+    messages: { surface: "FE_GRAMMAR_LAYOUT_ONLY: bg-surface paints a surface in app CSS. Compose SurfaceCard or another painted Grammar surface instead." },
   },
   create(context) {
     const reported = new Set()
@@ -170,12 +208,6 @@ export const nestedControlVariant = {
       }
     }
     return {
-      JSXOpeningElement(node) {
-        const name = grammarName(context, node.name)
-        const variant = node.attributes.find((entry) => propStrings(context, entry, "variant", "variant").some((value) => value.text === "primary"))
-        if (name?.length !== 1 || !FIELDS.has(name[0]) || !variant) return
-        if ([...surfaceAncestors(context, node.parent)].some((ancestor) => isSurface(context, ancestor, node))) context.report({ node: variant, messageId: "primary" })
-      },
       JSXAttribute(node) {
         if (["className", "class", "classNames"].includes(node.name.name)) checkClasses(node.value)
       },
@@ -210,13 +242,13 @@ export const noListPanelPadding = {
     }
     return {
       JSXOpeningElement(node) {
+        const ancestors = [...surfaceAncestors(context, node.parent)]
+        const surfaceIndex = ancestors.findIndex((ancestor) => isSurface(context, ancestor, node))
+        if (surfaceIndex < 0) return
         const name = grammarName(context, node.name)
         if (name?.[0] === "ListBox" && (name.length === 1 || ["Section", "Header", "SectionHeader"].includes(name[1]))) {
           check(node)
-          for (const ancestor of surfaceAncestors(context, node.parent)) {
-            check(ancestor)
-            if (isSurface(context, ancestor, node)) break
-          }
+          for (const ancestor of ancestors.slice(0, surfaceIndex + 1)) check(ancestor)
         } else if (inSectionCaption(context, node)) check(node)
       },
     }
@@ -224,7 +256,7 @@ export const noListPanelPadding = {
 }
 
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding }
+export const rules = { "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint }
 
 /** No app can lower or omit a surface law. */
 export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))

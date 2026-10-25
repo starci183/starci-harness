@@ -171,7 +171,7 @@ export const noAppRelativeClock = {
     docs: { description: "Live relative time and countdowns use Grammar's shared clock rather than a product-owned ticker." },
     schema: [],
     messages: {
-      clock: "This recurring timer reads the clock. Render RelativeTime with dateTime, locale and mode; Grammar owns its single shared ticker and its server-safe first render. Product components and hooks pass the target instant and never start another clock for time labels.",
+      clock: "This recurring timer reads the clock. Render RelativeTime with dateTime, locale and mode; digital countdowns support format=\"digital\", expiredLabel and a serializable template containing {time}. Grammar owns its single shared ticker and server-safe first render. Product components and hooks pass the target instant and never start another clock for time labels.",
     },
   },
   create(context) {
