@@ -40,4 +40,9 @@ variants on layer-aware fields and primary Tabs inside painted Grammar surfaces 
 within the nearest painted surface (`FE_LIST_PANEL_PADDING`). The R65 budget law's
 `no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
 
+The [button intent law](docs/button-intent.md) (CTA-6) requires every app Button and IconButton to
+declare intent and leave variants to Grammar. It contains destructive confirms in their same-file
+dialog, counts mutually exclusive render paths separately and reserves commit for the view's
+decision rather than repeated collection items.
+
 Regression specs belong to this package. Application front ends and Grammar libraries have no specs.

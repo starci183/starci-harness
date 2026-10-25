@@ -1,6 +1,7 @@
 # Changelog
 
 ## 9.0.0 - Unreleased
+- Added: universal CTA-6 button intent laws require `intent`, refuse app `variant`, contain destructive confirms in confirmation dialogs, keep one commit per render path and reserve commit for the view rather than collection items. Run `starci app codemod button-intent` to prepare migration and review its flagged cases.
 - Changed: concrete Grammar component, variant, token and vendor rules move to `@starci/eslint-grammar-starci` under the `starci-grammar` namespace. Consumers compose both flat-config factories for their selected family.
 - Added: explicit shared infrastructure exports under `@starci/eslint-canon-fe/lib/*`; family packages reuse these readers without copying them.
 - Kept universal: the R318 surface composition law (`nested-control-variant`, `no-list-panel-padding`, `no-app-surface-paint`) and the R65 `no-app-relative-clock`, now in `size-and-state-budget.mjs`.

@@ -230,6 +230,7 @@ test("the plain-source config refuses a floating promise and a bare button in a 
 
 /** Laws whose every rule carries a catalogue code, and so a why. */
 const CATALOGUED_LAWS = [
+  "button-intent",
   "env-owner",
   "fe-stack",
   "transport",
