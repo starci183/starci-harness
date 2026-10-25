@@ -28,7 +28,9 @@
 import { hfsOf } from "./lib/hfs.mjs"
 import { keyName, walk } from "./lib/ast.mjs"
 import { importOf, isImportedFrom } from "./lib/import-source.mjs"
-import { isPackageType, typeOrigins } from "./lib/types.mjs"
+import ts from "typescript"
+import { normalizePath } from "./lib/path.mjs"
+import { isPackageType, typeOrigins, typed } from "./lib/types.mjs"
 import { baseOf, isServiceSpecFile, isUnitSpecFile, unitRoleOfSpec } from "./lib/unit-spec.mjs"
 import { isRealSubjectValue, valueObjectsOfSibling } from "./lib/subject-values.mjs"
 
@@ -391,17 +393,28 @@ const tableOf = (specDoubles) => {
     return compiled
 }
 
+/** The file and exported name a token identifier is declared in, after following every import and re-export, or null when it cannot be resolved. */
+const declarationOf = (context, token) => {
+    const { checker, toTs } = typed(context)
+    const symbol = checker.getSymbolAtLocation(toTs(token))
+    const target = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+    const declaration = target?.getDeclarations?.()?.[0]
+    return declaration === undefined ? null : { file: normalizePath(declaration.getSourceFile().fileName), name: target.getName() }
+}
+
 /**
- * Whether a table entry applies to a provider token. The spelling picks the entry; when the entry names the module its port lives
- * in (`from`), an imported token is judged by that import too: a token of another module that merely ends alike
- * (`CORRELATION_IDS` of logging against `IDS` of ids) is a different port, and a renamed import of the owner's token
- * (`IDS as SYSTEM_SOURCE`) is still that port. A token that is not an import binding, or is imported by a relative path (it cannot be placed in a module from the file alone), is judged by its spelling alone.
+ * Whether a table entry applies to a provider token. The spelling picks the entry; when the entry names where its port is declared
+ * (`from`, a pattern over the declaring file), the declaration decides, never the import written in the spec: a token declared in
+ * another module that merely ends alike (`CORRELATION_IDS` of logging against `IDS` of ids) is a different port, a token the
+ * owner declares stays that port however it is re-exported or renamed (`IDS as SYSTEM_SOURCE`, a fixture re-export). A token
+ * that cannot be resolved, or is declared in the spec itself, is judged by its spelling alone.
  */
 const entryApplies = (context, entry, spelled, token) => {
-    const bound = token?.type === "Identifier" ? importOf(context, token) : null
-    if (entry.from === undefined || bound === null || bound.source.startsWith(".")) return entry.pattern.test(spelled)
-    if (!entry.from.test(bound.source)) return false
-    return entry.pattern.test(spelled) || (bound.imported !== "*" && bound.imported !== "default" && entry.pattern.test(screamingSnake(bound.imported)))
+    if (entry.from === undefined || token?.type !== "Identifier") return entry.pattern.test(spelled)
+    const declared = declarationOf(context, token)
+    if (declared === null || declared.file === normalizePath(context.filename || context.getFilename())) return entry.pattern.test(spelled)
+    if (!entry.from.test(declared.file)) return !declared.file.includes("/src/modules/") && entry.pattern.test(spelled)
+    return entry.pattern.test(spelled) || entry.pattern.test(screamingSnake(declared.name))
 }
 
 /** A const identifier's initializer, or null when its value cannot be followed. */

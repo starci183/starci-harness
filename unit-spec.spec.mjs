@@ -176,12 +176,12 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("CHALLENGE_GRADING_HOLD", "fakeLock(new FakeClock(0))") },
             { filename: SPEC, code: provide("IDS", "fakeIds()") },
-            // the ids port is the token of platform/ids: by import, never by a shared suffix, and a renamed import is still that port
+            // the ids port is the token that platform/ids declares, however it is imported; another module's token that ends alike is another port
             { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "@modules/platform/ids"') },
             { filename: SPEC, code: provide("SYSTEM_SOURCE", "fakeIds()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"') },
-            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "./ids.decorators"') },
-            { filename: SPEC, code: provide("CORRELATION_IDS", "mock<CorrelationIds>()", 'import { CORRELATION_IDS } from "@modules/platform/logging"\ninterface CorrelationIds { create(): string }') },
-            { filename: SPEC, code: provide("CORRELATION_IDS", "correlationIds", 'import { CORRELATION_IDS } from "@modules/platform/logging"\ninterface CorrelationIds { create(): string }\nconst correlationIds = mock<CorrelationIds>()') },
+            { filename: SPEC, code: provide("IDS", "fakeIds()", 'import { IDS } from "./reexported-ids"') },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "mock<CorrelationIds>()", 'import { CORRELATION_IDS } from "@modules/platform/logging"'+"\ninterface CorrelationIds { create(): string }") },
+            { filename: SPEC, code: provide("CORRELATION_IDS", "correlationIds", 'import { CORRELATION_IDS } from "@modules/platform/logging"'+"\ninterface CorrelationIds { create(): string }\nconst correlationIds = mock<CorrelationIds>()") },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "builder({ retries: 3 })({ retries: 1 })") },
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "{ retries: 3, region: 'eu' }") },
             { filename: SPEC, code: provide("KEYCLOAK_ADMIN", "mock<KeycloakAdmin>()", "interface KeycloakAdmin { users(): void }") },
@@ -212,8 +212,14 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             { filename: SPEC, code: provide("CACHE", "mock<Cache>()", "interface Cache { get(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("INSTANCE_WRITER_FENCE", "mock<Fence>()", "interface Fence { take(): void }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("IDS", "{ next: () => 'a' }"), errors: [{ messageId: "wrong" }] },
-            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "@modules/platform/ids"\ninterface Ids { next(): string }'), errors: [{ messageId: "wrong" }] },
-            { filename: SPEC, code: provide("SYSTEM_SOURCE", "mock<Ids>()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"\ninterface Ids { next(): string }'), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "@modules/platform/ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("SYSTEM_SOURCE", "mock<Ids>()", 'import { IDS as SYSTEM_SOURCE } from "@modules/platform/ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            // a re-export or a rename of the ids token is still the ids port
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("SYSTEM_IDS", "mock<Ids>()", 'import { SYSTEM_IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'import { SYSTEM_IDS as IDS } from "./reexported-ids"'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
+            // a token declared in the spec itself is judged by its spelling
+            { filename: SPEC, code: provide("IDS", "mock<Ids>()", 'const IDS: unique symbol = Symbol("local")'+"\ninterface Ids { next(): string }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, code: provide("CORRELATION_IDS", "fakeIds()", 'import { CORRELATION_IDS } from "@modules/platform/logging"'), errors: [{ messageId: "wrong" }] },
             // options tokens are REAL values, never a mock
             { filename: SPEC, code: provide("PAYMENT_OPTIONS", "mock<PaymentOptions>()", "interface PaymentOptions { retries: number }"), errors: [{ messageId: "wrong" }] },
