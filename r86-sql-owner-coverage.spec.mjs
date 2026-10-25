@@ -9,6 +9,8 @@ const OWN_SQL = "src/modules/domain/purchase/persistence/purchase.sql.ts"
 const FOREIGN_SQL = "src/modules/domain/purchase/persistence/foreign.sql.ts"
 const UNBOUNDED_SQL = "src/modules/domain/purchase/persistence/unbounded.sql.ts"
 const PREFIXED_SQL = "src/modules/domain/purchase/persistence/lines.sql.ts"
+const LINES_ROWS = "src/modules/domain/purchase-lines/persistence/purchase-lines.rows.ts"
+const NOTES_SQL = "src/modules/domain/purchase/persistence/notes.sql.ts"
 const LOOKALIKE_SQL = "src/modules/domain/purchase/persistence/lookalike.sql.ts"
 const FILES = {
     "src/modules/platform/database/index.ts": "export { sql } from './sql';\n",
@@ -20,8 +22,14 @@ const FILES = {
     [OWN_SQL]: "import { sql } from '../../../platform/database';\nexport const READ = sql`SELECT id FROM purchase LIMIT 10`;\nexport const WRITE = sql`UPDATE purchase SET id = $1 WHERE id = $2`;\n",
     [FOREIGN_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE identity SET id = $1 WHERE id = $2`;\n",
     [PREFIXED_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchase_lines SET id = $1 WHERE id = $2`;\n",
+    [NOTES_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchase_notes SET id = $1 WHERE id = $2`;\n",
     [LOOKALIKE_SQL]: "import { sql } from '../../../platform/database';\nexport const WRITE = sql`UPDATE purchases SET id = $1 WHERE id = $2`;\n",
     [UNBOUNDED_SQL]: "import { sql } from '../../../platform/database';\nexport const READ = sql`SELECT id FROM purchase`;\n",
+}
+/** A capability that owns purchase_lines itself under Supabase schema authority (its persistence folder names the table). */
+const LINES_CAPABILITY = {
+    "src/modules/domain/purchase-lines/index.ts": "export const purchaseLines = 1;\n",
+    [LINES_ROWS]: "export type PurchaseLineRow = { readonly id: string };\n",
 }
 const ENTITIES = {
     "src/modules/domain/purchase/persistence/entities/purchase.entity.ts": 'import { Entity, PrimaryColumn } from "typeorm"; @Entity("purchase") export class PurchaseEntity { @PrimaryColumn({ type: "uuid" }) id!: string }\n',
@@ -35,6 +43,7 @@ const DATABASE_TYPES = `export type Database = {
             purchase: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
             identity: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
             purchase_lines: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
+            purchase_notes: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
             purchases: { Row: { id: string }; Insert: { id: string }; Update: { id?: string }; Relationships: [] }
         }
     }
@@ -45,6 +54,7 @@ for (const edition of ["lite", "full"]) {
     test(`R86 accepts bounded own-table SQL and rejects foreign writes and unbounded reads in ${edition}`, (t) => {
         const files = { ...FILES }
         if (edition === "full") Object.assign(files, ENTITIES)
+        else Object.assign(files, LINES_CAPABILITY)
         const fixture = projectFixture({
             edition,
             files,
@@ -55,11 +65,17 @@ for (const edition of ["lite", "full"]) {
             valid: [
                 { filename: fixture.at(OWN_SQL), code: FILES[OWN_SQL] },
                 // a table named for the capability and an underscore (realtime_events of platform/realtime)
-                { filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL] },
+                ...(edition === "full"
+                    ? [{ filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL] }]
+                    : [{ filename: fixture.at(NOTES_SQL), code: FILES[NOTES_SQL] }]),
             ],
             invalid: [
                 { filename: fixture.at(FOREIGN_SQL), code: FILES[FOREIGN_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
                 { filename: fixture.at(UNBOUNDED_SQL), code: FILES[UNBOUNDED_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] },
+                // a table named for another capability is that capability's even when it starts with this one's name
+                ...(edition === "lite"
+                    ? [{ filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] }]
+                    : []),
                 // under Supabase schema authority a table that merely starts with the capability name is not its own (a full entity makes it so)
                 ...(edition === "lite"
                     ? [{ filename: fixture.at(LOOKALIKE_SQL), code: FILES[LOOKALIKE_SQL], errors: [{ message: /BE_SQL_TABLE_OWNER/ }] }]
