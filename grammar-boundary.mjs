@@ -17,7 +17,10 @@
  * rule refuses to guess a scope.
  */
 
+import { walk } from "./lib/ast.mjs"
+import { functionOf, isFn, unwrap, variableOf } from "./lib/bindings.mjs"
 import { hfsOf } from "./lib/hfs.mjs"
+import { isProductSource } from "./lib/scope.mjs"
 
 /**
  * The intrinsic elements of page structure and text, each with the grammar components that render it.
@@ -82,9 +85,118 @@ export const noRawStructuralElement = {
   },
 }
 
+/** The static property name of an access or destructured property. */
+const propertyName = (node) => {
+  const key = node.property ?? node.key
+  if (!node.computed && key?.type === "Identifier") return key.name
+  return key?.type === "Literal" && typeof key.value === "string" ? key.value : null
+}
+
+/** The platform member a local destructured binding selects. */
+const destructuredPath = (context, declarator, local, seen) => {
+  if (declarator.id.type !== "ObjectPattern") return null
+  const property = declarator.id.properties.find((entry) => entry.type === "Property" && entry.value.type === "Identifier" && entry.value.name === local)
+  const name = property && propertyName(property)
+  const object = platformPath(context, declarator.init, seen)
+  return object && name ? [...object, name] : null
+}
+
+/** A platform path, following local aliases and destructuring while refusing shadowed globals. */
+const platformPath = (context, node, seen = new Set()) => {
+  const inner = unwrap(node)
+  if (!inner || seen.has(inner)) return null
+  seen.add(inner)
+  if (inner.type === "MemberExpression") {
+    const object = platformPath(context, inner.object, seen)
+    const name = propertyName(inner)
+    return object && name ? [...object, name] : null
+  }
+  if (inner.type !== "Identifier") return null
+  const variable = variableOf(context, inner)
+  if (!variable || variable.defs.length === 0) return [inner.name]
+  for (const definition of variable.defs) {
+    if (definition.type !== "Variable" || !definition.node.init) continue
+    const declarator = definition.node
+    if (declarator.id.type === "Identifier") return platformPath(context, declarator.init, seen)
+    return destructuredPath(context, declarator, inner.name, seen)
+  }
+  return null
+}
+
+/** A platform API spelling with the optional global-object prefix removed. */
+const platformName = (context, node) => {
+  const parts = platformPath(context, node)
+  if (!parts) return null
+  if (["window", "globalThis", "self"].includes(parts[0])) parts.shift()
+  return parts.join(".")
+}
+
+/** A wall-clock read: Date.now(), Date(), zero-argument new Date(), or performance.now(). */
+const readsClock = (context, root, seen = new Set()) => {
+  if (!root || seen.has(root)) return false
+  seen.add(root)
+  let found = false
+  walk(context.sourceCode, root, (node) => {
+    if (found) return false
+    if (node.type === "NewExpression" && node.arguments.length === 0 && platformName(context, node.callee) === "Date") found = true
+    if (node.type !== "CallExpression") return undefined
+    if (["Date", "Date.now", "performance.now"].includes(platformName(context, node.callee))) found = true
+    const helper = functionOf(context, node.callee)
+    if (helper && readsClock(context, helper.body, seen)) found = true
+    return undefined
+  })
+  return found
+}
+
+/** Whether a timer callback runs its enclosing function again, directly or through a same-file helper. */
+const callsFunction = (context, root, target, seen = new Set()) => {
+  if (!root || seen.has(root)) return false
+  if (root === target) return true
+  seen.add(root)
+  let found = false
+  walk(context.sourceCode, root.body ?? root, (node) => {
+    if (found) return false
+    if (node.type !== "CallExpression") return undefined
+    const called = functionOf(context, node.callee)
+    if (called === target || called && callsFunction(context, called, target, seen)) found = true
+    return undefined
+  })
+  return found
+}
+
+/** Grammar owns the shared clock for live time labels; product components and hooks only pass instants. */
+export const noAppRelativeClock = {
+  meta: {
+    type: "problem",
+    docs: { description: "Live relative time and countdowns use Grammar's shared clock rather than a product-owned ticker." },
+    schema: [],
+    messages: {
+      clock: "This recurring timer reads the clock. Render RelativeTime with dateTime, locale and mode; Grammar owns its single shared ticker and its server-safe first render. Product components and hooks pass the target instant and never start another clock for time labels.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    return {
+      CallExpression(node) {
+        const timer = platformName(context, node.callee)
+        if (timer !== "setInterval" && timer !== "setTimeout") return
+        const callback = functionOf(context, node.arguments[0])
+        if (!callback) return
+        let owner = node.parent
+        while (owner && !isFn(owner)) owner = owner.parent
+        const repeats = timer === "setInterval" || owner && callsFunction(context, callback, owner)
+        if (repeats && (readsClock(context, callback.body) || timer === "setTimeout" && readsClock(context, owner.body))) {
+          context.report({ node, messageId: "clock" })
+        }
+      },
+    }
+  },
+}
+
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-raw-structural-element": noRawStructuralElement,
+  "no-app-relative-clock": noAppRelativeClock,
 }
 
 /** Every rule is an error. */

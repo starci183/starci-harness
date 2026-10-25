@@ -205,9 +205,9 @@ const readsData = (context, fn, seen = new Set()) => {
  * No hand-written polling loop in a component or hook.
  *
  * A timer is polling when what it runs READS DATA (see `readsData`, decided by the type of each call, not by a name): a
- * `setInterval`, or a `setTimeout` whose callback schedules the enclosing function again. The FE convention names no shared clock
- * owner (knowledge/hfs/README.md section 6: "one refresh mechanism per resource, poll or socket"), so a timer that only ticks time
- * or state - a `useNow`-style one-minute clock behind `useSyncExternalStore` - is not a second refresh mechanism.
+ * `setInterval`, or a `setTimeout` whose callback schedules the enclosing function again. A timer that only ticks time or state
+ * is not a data-refresh mechanism. Grammar's live-time ownership is independently enforced by `no-app-relative-clock` in
+ * `grammar-boundary.mjs`.
  */
 export const noHandRolledPolling = {
   meta: {
