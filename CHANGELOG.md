@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Added: `nested-control-variant` (`FE_NESTED_VARIANT`) refuses explicit primary fields in Grammar surface subtrees and app-authored `bg-surface` paint. `no-list-panel-padding` (`FE_LIST_PANEL_PADDING`) refuses stacked horizontal wrapper padding around Grammar lists and section captions.
+
 ## 8.4.38 - 2026-10-24
 - Changed: the bundled runtime copies and canon pins carry the alpha.30 canon (the `zod` pin is `side: both`) and select @starci/hfs 4.7.31 and @starci/cli 1.7.31.
 
