@@ -5,7 +5,7 @@ import { appBarOpenings, isAppBar, isAppShell, isNavigationDrawer, ownsAppFrame 
 import { visitVisible } from "./lib/app-shell-visible.mjs"
 import { clusterAlternatives } from "./lib/app-shell-cluster.mjs"
 import { isCreateAction, menuHasCreate } from "./lib/app-shell-create.mjs"
-import { provesImportedBar } from "./lib/app-shell-owner.mjs"
+import { provesImportedBar, provesNavigationOpener } from "./lib/app-shell-owner.mjs"
 import { variableOf } from "./lib/bindings.mjs"
 
 const CANON = "knowledge/ui/composition/app-shell.yaml"
@@ -28,17 +28,36 @@ const slotPresence = (context, opening, name) => {
   return !(value.type === "Identifier" && value.name === "undefined" && !variableOf(context, value)?.defs.length)
 }
 
+/** Resolve constants and require every possible conditional value to prove the slot contract. */
+const everyValue = (context, expression, proves, seen = new Set()) => {
+  const node = resolveLocal(context, expression)
+  if (!node || seen.has(node)) return false
+  if (node.type !== "ConditionalExpression") return proves(node)
+  const visited = new Set(seen).add(node)
+  return [node.consequent, node.alternate].every((branch) => everyValue(context, branch, proves, visited))
+}
+
+const hasMobileNavigation = (context, opening) => {
+  const drawerProp = propOf(context, opening, "navigationDrawer")
+  const drawer = drawerProp.known && everyValue(context, drawerProp.value, (value) => value.type === "ObjectExpression")
+  const opener = drawer || provesNavigationOpener(context, propOf(context, opening, "compactHeader").value)
+  const visibility = propOf(context, opening, "navigationVisibility")
+  const defaultsWide = opener && visibility.known && slotPresence(context, opening, "navigationVisibility") === false
+  if (!defaultsWide && (!visibility.known || !everyValue(context, visibility.value, (value) => value.type === "Literal" && value.value === "wide"))) return false
+  return opener
+}
+
 /** The app frame is the fixed-viewport Grammar shell; hand-written frame landmarks are rejected. */
 export const appShellFrame = {
   meta: meta("FE_APP_SHELL_FRAME", "FE-APP-SHELL-1 uses WorkspaceShell viewport=fixed.", {
-    frame: "FE_APP_SHELL_FRAME: compose the app frame with WorkspaceShell viewport=\"fixed\"; navigation needs navigationDrawer or an explicit navigationVisibility. Grammar owns its header, navigation and independent scroll regions.",
+    frame: "FE_APP_SHELL_FRAME: compose the app frame with WorkspaceShell viewport=\"fixed\"; navigation must resolve to navigationVisibility=\"wide\" and have navigationDrawer or a compactHeader with a left Drawer containing Sidebar presentation=\"drawer\". Grammar owns its header, navigation and independent scroll regions.",
   }),
   create(context) {
     if (!isProductSource(context)) return {}
     return { JSXOpeningElement(node) {
       const shell = isAppShell(context, node)
       const wrongViewport = shell && textProp(context, node, "viewport") !== "fixed"
-      const missingVisibility = shell && slotPresence(context, node, "navigation") !== false && slotPresence(context, node, "navigationDrawer") !== true && slotPresence(context, node, "navigationVisibility") !== true
+      const missingVisibility = shell && slotPresence(context, node, "navigation") !== false && !hasMobileNavigation(context, node)
       const handFrame = ownsAppFrame(context, node) && (node.name.type === "JSXIdentifier" && ["header", "nav", "main"].includes(node.name.name) || isAppBar(context, node) && !appBarOpenings(context).has(node))
       if (wrongViewport || missingVisibility || handFrame) {
         context.report({ node, messageId: "frame" })
