@@ -305,6 +305,31 @@ test("a value-object subject is built with new, a decorated or token-injected su
     })
 })
 
+test("a value-role spec parses a real boundary schema without a testing module; a misnamed logic file keeps the rule", () => {
+    const parse = (name) => [`import { subject } from "./${name}.schema"`, 'it("rejects an empty input", () => expect(subject.safeParse({}).success).toBe(false))'].join("\n")
+    const noModule = { messageId: "noModule" }
+    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+        // the sibling is a zod schema file of the domain tier holding values and types only
+        valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
+        invalid: [
+            // the same spec beside a policy
+            { filename: at("src/modules/domain/order/order.policy.spec.ts"), code: parse("order"), errors: [noModule] },
+            // a function and an injectable class renamed to *.schema.ts, with no zod at all
+            { filename: at("src/modules/domain/order/pricing.schema.spec.ts"), code: parse("pricing"), errors: [noModule] },
+            // zod imported, but a function with logic beside the schema
+            { filename: at("src/modules/domain/order/zod-logic.schema.spec.ts"), code: parse("zod-logic"), errors: [noModule] },
+            // a pure zod file in a slot that is not an owner tier of R304 (a projection)
+            { filename: at("src/modules/projections/userxp/xp-row.schema.spec.ts"), code: parse("xp-row"), errors: [noModule] },
+            // no sibling file at all
+            { filename: at("src/modules/domain/order/missing.schema.spec.ts"), code: parse("missing"), errors: [noModule] },
+        ],
+    })
+    tester.run("spec-no-new-subject", specNoNewSubject, {
+        valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
+        invalid: [],
+    })
+})
+
 test("spec-infra-double-from-kit: a member of a kit mock object is a kit double (A3)", () => {
     const base = 'import { mock, mockEntityManager } from "@starci/jest-preset"\ntype Open = (url: string) => void\n'
     const provide = (token, value) => `${base}const provider = { provide: ${token}, useValue: ${value} }`

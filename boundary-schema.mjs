@@ -17,13 +17,12 @@
 import { hfsOf } from "./lib/hfs.mjs"
 import { normalizePath } from "./lib/path.mjs"
 import { isTransportSlot } from "./lib/transport-slots.mjs"
+import { SCHEMA_TIERS, schemaFileProblems } from "./lib/schema-values.mjs"
 
 const ZOD = /^zod(?:\/|$)/
 /** The imports of the other validation layer, which never share a file with a schema. */
 const MIXED = new Set(["class-validator", "class-transformer", "@nestjs/graphql"])
 const SCHEMA_FILE = /\.schema(?:\.spec)?\.ts$/
-/** Tiers a schema file may live in: the owners of boundary data. */
-const SCHEMA_TIERS = new Set(["domain", "platform", "integrations"])
 
 /** Constructors that build a string-valued schema and owe a `.max(n)` or `.length(n)`. */
 const STRINGY = new Set(["string", "email", "url", "httpUrl", "hostname", "base64", "base64url", "jwt", "emoji", "hex", "iso.datetime", "iso.date", "iso.time", "iso.duration"])
@@ -191,14 +190,36 @@ export const schemaPlace = {
     },
 }
 
+/** What a schema file holds: zod values and types, nothing that runs. */
+export const schemaFileValuesOnly = {
+    meta: {
+        type: "problem",
+        docs: { description: "A schema file imports zod and declares only zod schemas and their types: no class, provider, function or other logic." },
+        schema: [],
+        messages: {
+            logic: "[BE_SCHEMA_PLACE] This schema file is not a boundary schema: {{problem}}. A schema file imports zod and declares only zod values and their inferred types; logic belongs in a service, policy or mapper under its own role suffix.",
+        },
+    },
+    create(context) {
+        if (!SCHEMA_FILE.test(normalizePath(context.filename)) || context.filename.endsWith(".spec.ts")) return {}
+        return {
+            "Program:exit"(node) {
+                for (const problem of schemaFileProblems(context.sourceCode.text)) context.report({ node, messageId: "logic", data: { problem } })
+            },
+        }
+    },
+}
+
 /** The rules this law contributes to the plugin. */
 export const rules = {
     "schema-bounded": schemaBounded,
     "schema-place": schemaPlace,
+    "schema-file-values-only": schemaFileValuesOnly,
 }
 
 /** Both start at error: no baseline exists. */
 export const recommended = {
     "starci-be/schema-bounded": "error",
     "starci-be/schema-place": "error",
+    "starci-be/schema-file-values-only": "error",
 }
