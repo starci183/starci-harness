@@ -15,7 +15,7 @@ import test from "node:test"
 import { appDeclaration } from "./fixtures/app.mjs"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
-import { recommended, rules, schemaBounded, schemaPlace } from "./boundary-schema.mjs"
+import { recommended, rules, schemaBounded, schemaFileValuesOnly, schemaPlace } from "./boundary-schema.mjs"
 
 const SCHEMA = at("src/modules/integrations/sepay/sepay-transactions.schema.ts")
 const SCHEMA_SPEC = at("src/modules/integrations/sepay/sepay-transactions.schema.spec.ts")
@@ -37,12 +37,14 @@ test("every rule this law declares is exported under its published name, at erro
         assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
         assert.equal(recommended[`starci-be/${name}`], "error")
     }
-    assert.deepEqual(Object.keys(rules).sort(), ["schema-bounded", "schema-place"])
+    assert.deepEqual(Object.keys(rules).sort(), ["schema-bounded", "schema-file-values-only", "schema-place"])
 })
 
 for (const edition of ["lite", "full"]) {
-    const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) })
-    test(`${edition} R305: every string, array, set, map and record is bounded`, () => {
+    const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
+    const tester = ruleTester({ root: TYPED_ROOT, hfs })
+
+    test(`R305 ${edition}: accepts bounded strings and collections and rejects unbounded schemas`, () => {
         tester.run("schema-bounded", schemaBounded, {
             valid: [
                 { filename: SCHEMA, code: `${Z}export const A = z.object({ id: z.string().max(64) })` },
@@ -58,7 +60,7 @@ for (const edition of ["lite", "full"]) {
                 { filename: SCHEMA, code: `${Z}export const A = z.map(z.string().max(8), z.number()).check(z.maxSize(5))` },
                 { filename: SCHEMA, code: `${Z}export const A = z.record(z.enum(["a", "b"]), z.number()).refine((entries) => Object.keys(entries).length <= 2)` },
                 // enums, literals, numbers, booleans, dates and a fixed-format uuid owe no length
-                { filename: SCHEMA, code: `${Z}export const A = z.object({ k: z.enum(["a", "b"]), n: z.literal("x"), c: z.number().int(), b: z.boolean(), u: z.uuid(), d: z.iso.datetime() })` },
+                { filename: SCHEMA, code: `${Z}export const A = z.object({ k: z.enum(["a", "b"]), n: z.literal("x"), c: z.number().int(), b: z.boolean(), u: z.uuid(), d: z.date() })` },
                 { filename: SCHEMA, code: `${Z}export const A = z.tuple([z.string().max(4), z.number()])` },
                 // an alias of the namespace and a named import both count as zod
                 { filename: SCHEMA, code: "import { z as zod } from 'zod'\nexport const A = zod.string().max(5)" },
@@ -105,7 +107,26 @@ for (const edition of ["lite", "full"]) {
         })
     })
 
-    test(`${edition} R304: zod lives in a schema file of a domain, platform or integrations owner`, () => {
+    test(`R305 ${edition}: accepts bounded ISO strings and rejects unbounded ISO strings without treating Dates as strings`, () => {
+        tester.run("schema-bounded", schemaBounded, {
+            valid: [
+                ...["datetime", "date", "time", "duration"].map((name) => ({ filename: SCHEMA, code: `${Z}export const A = z.iso.${name}().max(64)` })),
+                { filename: SCHEMA, code: "import { iso as format } from 'zod'\nexport const A = format.datetime().max(32)" },
+                { filename: SCHEMA, code: "import * as schema from 'zod/v4'\nexport const A = schema.iso.duration().length(20)" },
+                { filename: SCHEMA, code: `${Z}export const A = z.date()` },
+                { filename: SCHEMA, code: "import { date } from 'zod'\nexport const A = date()" },
+                { filename: SCHEMA, code: "import { iso } from 'another-library'\nexport const A = iso.datetime()" },
+            ],
+            invalid: [
+                ...["datetime", "date", "time", "duration"].map((name) => ({ filename: SCHEMA, code: `${Z}export const A = z.iso.${name}()`, errors: [{ messageId: "string", data: { name: `iso.${name}` } }] })),
+                { filename: SCHEMA, code: "import { iso as format } from 'zod'\nexport const A = format.datetime()", errors: [{ messageId: "string", data: { name: "iso.datetime" } }] },
+                { filename: SCHEMA, code: "import * as schema from 'zod/v4'\nexport const A = schema.iso.duration()", errors: [{ messageId: "string", data: { name: "iso.duration" } }] },
+                { filename: SCHEMA, code: `${Z}export const A = z.iso.datetime().max(Infinity)`, errors: [{ messageId: "bound" }] },
+            ],
+        })
+    })
+
+    test(`R304 ${edition}: accepts owner schema files and rejects misplaced or mixed validation layers`, () => {
         tester.run("schema-place", schemaPlace, {
             valid: [
                 { filename: SCHEMA, code: `${Z}export const A = z.string().max(5)` },
@@ -140,4 +161,30 @@ for (const edition of ["lite", "full"]) {
             ],
         })
     })
+}
+
+for (const edition of ["lite", "full"]) {
+  test(`${edition} R304: a schema file holds zod values and types, nothing that runs`, () => {
+    const code = (...rows) => rows.join(String.fromCharCode(10))
+    const bad = (source, problem) => ({ filename: SCHEMA, code: source, errors: [{ messageId: "logic", data: { problem } }] })
+    const notZod = (name) => `${name} is not a zod schema (a schema file declares only zod chains and types)`
+    ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) }).run("schema-file-values-only", schemaFileValuesOnly, {
+        valid: [
+            { filename: SCHEMA, code: code(Z, "export const a = z.object({ id: z.string().max(5) })", "export type A = z.infer<typeof a>") },
+            { filename: SCHEMA, code: code(Z, "export const PAGE_MAX = 100", "export const a = z.array(z.string().max(5)).max(PAGE_MAX)") },
+            { filename: SCHEMA, code: code("import * as z from 'zod'", "export const a = z.string().max(5)", "export const b = z.array(a).max(3)") },
+            { filename: SCHEMA, code: code(Z, "import { other } from './other.schema'", "export const a = other.extend({ id: z.string().max(5) })") },
+            // not a schema file: the rule does not look
+            { filename: SERVICE, code: "export class S { run() { return 1 } }" },
+        ],
+        invalid: [
+            bad("export const priceOf = (cents: number): number => cents * 2", "it imports no zod, so it is not a boundary schema"),
+            bad(code(Z, "export function normalise(id: string): string { return id }"), "a FunctionDeclaration is logic, not a schema value"),
+            bad(code(Z, "export class Rules { static apply() { return 1 } }"), "a ClassDeclaration is logic, not a schema value"),
+            bad(code(Z, "export const a = z.string().max(5)", "export const run = (v: string) => a.parse(v)"), notZod("run")),
+            bad(code(Z, "export const LIMIT = compute()"), notZod("LIMIT")),
+            bad(code(Z, "if (process.env.X) { console.log(1) }"), "a IfStatement is logic, not a schema value"),
+        ],
+    })
+})
 }

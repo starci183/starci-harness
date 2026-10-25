@@ -8,7 +8,7 @@
  *     `eslint-env`, and a `/* global x *\/` declaration;
  *   - TypeScript: `@ts-ignore`, `@ts-expect-error` and `@ts-nocheck`, wherever they sit in a comment;
  *   - coverage: `istanbul ignore`, `c8 ignore`, `v8 ignore`;
- *   - Sonar: `NOSONAR` and `sonar-disable`;
+ *   - Sonar: its no-sonar comment and `sonar-disable`;
  *   - Prettier: `prettier-ignore`.
  *
  * The factory also sets `noInlineConfig: true`, so ESLint itself ignores such a comment; this rule is what turns the

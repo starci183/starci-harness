@@ -26,12 +26,13 @@ for (const edition of ['lite', 'full']) {
       valid: [
         sourceCase(fixture, files, 'apps/core/src/main.ts'),
         sourceCase(fixture, files, 'apps/core/src/boot.ts'),
-        sourceCase(fixture, files, 'apps/core/src/operations.ts'),
         sourceCase(fixture, files, 'src/modules/domain/live/index.ts'),
       ],
       invalid: [
         { ...sourceCase(fixture, files, 'src/modules/domain/liveness/index.ts'), errors: [{ message: /HFS_UNUSED_EXPORT/u, line: 2 }] },
         { ...sourceCase(fixture, files, 'apps/core/src/stray.ts'), errors: [{ message: /HFS_UNUSED_FILE/u, line: 1 }] },
+        // an operations.ts that registers no table through defineOperations is no emitter entry
+        { ...sourceCase(fixture, files, 'apps/core/src/operations.ts'), errors: [{ message: /HFS_UNUSED_FILE/u, line: 1 }] },
       ],
     });
   });

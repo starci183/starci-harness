@@ -238,8 +238,8 @@ test("sql-owner: a cross-context JOIN or read is refused, an own-table and a sam
     const files = {
         [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([
             ["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"],
-            ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1"],
-            ["CROSS_JOIN", "SELECT o.id FROM orders o JOIN invoices i ON i.id = o.id WHERE o.id = $1"],
+            ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1 LIMIT 1"],
+            ["CROSS_JOIN", "SELECT o.id FROM orders o JOIN invoices i ON i.id = o.id WHERE o.id = $1 LIMIT 1"],
             ["CROSS_READ", "SELECT u.id FROM users u WHERE u.id = $1"],
         ]),
     }
@@ -251,7 +251,7 @@ test("sql-owner: a cross-context JOIN or read is refused, an own-table and a sam
             ["CROSS_READ", /reads table users, owned by src\/modules\/domain\/identity \(context identity\)/],
         ]])],
     })
-    const clean = { [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"], ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1"]]) }
+    const clean = { [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"], ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1 LIMIT 1"]]) }
     const g = repo(t, clean)
     g.tester.run("sql-owner", rules["sql-owner"], { valid: ok(g, clean, [`${DOMAIN}/order/persistence/order.sql.ts`]), invalid: [] })
 })
