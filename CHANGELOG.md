@@ -1,5 +1,8 @@
 # Changelog
 
+## 9.1.1 - 2026-10-26
+- Changed: the bundled runtime copies (canon pins) follow the stylelint 2.0.13, hfs 4.7.38 and cli 1.7.38 pins. No rule changes.
+
 ## 9.1.0 - 2026-10-26
 - Added: universal CTA-6 button intent laws require `intent`, refuse app `variant`, contain destructive confirms in confirmation dialogs, keep one commit per render path and reserve commit for the view rather than collection items. Run `starci app codemod button-intent` to prepare migration and review its flagged cases.
 
