@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.1.0 - 2026-10-26
 - Added: universal CTA-6 button intent laws require `intent`, refuse app `variant`, contain destructive confirms in confirmation dialogs, keep one commit per render path and reserve commit for the view rather than collection items. Run `starci app codemod button-intent` to prepare migration and review its flagged cases.
 
 ## 9.0.0 - 2026-10-26
