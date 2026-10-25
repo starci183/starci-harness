@@ -38,8 +38,10 @@ test("MENU-1: a destructive entry without tone danger is red, wherever the entri
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'sign-out', label: 'Sign out', tone: 'danger' }]} />" },
       // an ordinary command needs no tone
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'settings', label: 'Settings' }]} />" },
-      // a computed tone is the author's decision
-      { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'delete', label: 'Delete', tone: pick() }]} />" },
+      // constants, aliases and every conditional branch still prove danger
+      { filename: BLOCK, code: "const dangerTone = 'danger' as const; const tone = dangerTone; export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'delete', label: 'Delete', tone }]} />" },
+      { filename: BLOCK, code: "const dangerTone = 'danger'; export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'sign-out', tone: cond ? dangerTone : 'danger' }]} />" },
+      { filename: BLOCK, code: "const tone = cond ? 'danger' : (other ? 'danger' : 'danger'); const item: DropdownMenuItem = { id: 'logout', tone }" },
       // entries the rule cannot see through are left alone
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={build(items)} />" },
       // another component's `entries` is not a menu
@@ -53,6 +55,12 @@ test("MENU-1: a destructive entry without tone danger is red, wherever the entri
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'sign-out', label: 'Sign out' }]} />", errors: [{ messageId: "tone" }] },
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'out', label: '\u0110\u0103ng xu\u1ea5t' }]} />", errors: [{ messageId: "tone" }] },
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'delete', label: t('x'), tone: 'neutral' }]} />", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "const neutralTone = 'neutral'; export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'sign-out', tone: neutralTone }]} />", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'sign-out', tone: cond ? 'danger' : 'neutral' }]} />", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "const tone = cond ? 'danger' : unknownTone; const item: DropdownMenuItem = { id: 'logout', tone }", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'delete', label: 'Delete', tone: pick() }]} />", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "let tone = 'danger'; const item: DropdownMenuItem = { id: 'logout', tone }", errors: [{ messageId: "tone" }] },
+      { filename: BLOCK, code: "const tone = cond ? 'danger' : tone; const item: DropdownMenuItem = { id: 'logout', tone }", errors: [{ messageId: "tone" }] },
       // inside a section and a submenu
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ kind: 'section', id: 's', items: [{ id: 'leave-workspace', label: 'Leave' }] }]} />", errors: [{ messageId: "tone" }] },
       { filename: BLOCK, code: "export const A = () => <DropdownMenu trigger={t} entries={[{ id: 'more', label: 'More', submenu: [{ id: 'revoke', label: 'Revoke' }] }]} />", errors: [{ messageId: "tone" }] },

@@ -16,6 +16,7 @@
  */
 
 import { stringOf } from "./lib/ast.mjs"
+import { resolveLocal } from "./lib/app-shell.mjs"
 import { isProductSource } from "./lib/scope.mjs"
 
 /** The English terms of a destructive entry. */
@@ -72,28 +73,37 @@ const isMenuType = (annotation) => {
   return element.type === "TSTypeReference" && element.typeName.type === "Identifier" && MENU_TYPES.has(element.typeName.name)
 }
 
+/** Every possible value must prove danger; an unresolved value cannot mark a destructive action. */
+const provesDangerTone = (context, expression, seen = new Set()) => {
+  const node = resolveLocal(context, expression)
+  if (!node || seen.has(node)) return false
+  if (node.type !== "ConditionalExpression") return stringOf(node) === "danger"
+  const visited = new Set(seen).add(node)
+  return [node.consequent, node.alternate].every((branch) => provesDangerTone(context, branch, visited))
+}
+
 /** Report an entry (an object literal), then walk the `items` of a section and the `submenu` of an item. */
-function visitEntries(node, report) {
+function visitEntries(context, node, report) {
   if (!node) return
   if (node.type === "ArrayExpression") {
-    for (const element of node.elements) visitEntries(element, report)
+    for (const element of node.elements) visitEntries(context, element, report)
     return
   }
   if (node.type === "TSAsExpression" || node.type === "TSSatisfiesExpression") {
-    visitEntries(node.expression, report)
+    visitEntries(context, node.expression, report)
     return
   }
   if (node.type !== "ObjectExpression") return
   const kind = stringOf(propertyValue(node, "kind"))
   if (kind === "section") {
-    visitEntries(propertyValue(node, "items"), report)
+    visitEntries(context, propertyValue(node, "items"), report)
     return
   }
   const text = [stringOf(propertyValue(node, "id")), stringOf(propertyValue(node, "label"))].filter((value) => value !== null)
   const tone = propertyValue(node, "tone")
-  const toned = tone !== null && (stringOf(tone) === "danger" || stringOf(tone) === null)
+  const toned = provesDangerTone(context, tone)
   if (!toned && text.some(isDestructiveText)) report(node, text.find(isDestructiveText))
-  visitEntries(propertyValue(node, "submenu"), report)
+  visitEntries(context, propertyValue(node, "submenu"), report)
 }
 
 /** A destructive menu entry carries `tone: "danger"`. */
@@ -115,10 +125,10 @@ export const destructiveMenuEntryNeedsDangerTone = {
         if (node.name.type !== "JSXIdentifier" || node.name.name !== "entries") return
         const element = node.parent?.name
         if (element?.type !== "JSXIdentifier" || element.name !== "DropdownMenu") return
-        visitEntries(node.value?.type === "JSXExpressionContainer" ? node.value.expression : null, report)
+        visitEntries(context, node.value?.type === "JSXExpressionContainer" ? node.value.expression : null, report)
       },
       VariableDeclarator(node) {
-        if (isMenuType(node.id.typeAnnotation)) visitEntries(node.init, report)
+        if (isMenuType(node.id.typeAnnotation)) visitEntries(context, node.init, report)
       },
     }
   },
