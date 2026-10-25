@@ -13,7 +13,7 @@
  * breakpoint. Spacing and sizing come from the grammar's utility tokens.
  *
  * WHAT IT DELIBERATELY LEAVES ALONE: a fragment identifier (`href="#top"`, `id`, `htmlFor`), a
- * `data:` URI, a component's `color="primary"` prop (that is a variant name, not a colour), and
+ * `data:` URI, a component's semantic appearance prop (a named role rather than a raw colour), and
  * Tailwind arbitrary values (`w-[12px]`), which `no-arbitrary-value` already reports - two rules
  * for one span would be two findings for one fix.
  */

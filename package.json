@@ -1,12 +1,13 @@
 {
   "name": "@starci/eslint-canon-fe",
-  "version": "8.4.39",
-  "description": "The StarCi front-end lint canon: every rule its laws publish, gathered as one flat-config plugin and attached by one factory.",
+  "version": "9.0.0",
+  "description": "Universal front-end lint laws for TypeScript and Next.js, independent of the selected Grammar family.",
   "type": "module",
   "license": "MIT",
   "private": false,
   "exports": {
-    ".": "./index.mjs"
+    ".": "./index.mjs",
+    "./lib/*": "./lib/*"
   },
   "main": "./index.mjs",
   "files": [

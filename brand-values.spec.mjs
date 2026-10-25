@@ -6,9 +6,10 @@
  * The cases that earn their place are the near misses: a fragment link that reads like a hex colour,
  * a component's `color="primary"` prop that reads like a paint, and a `data:` URI full of `#` and `px`.
  */
+// proves: FE_STYLE_TOKEN_ONLY@lite FE_STYLE_TOKEN_ONLY@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, slotTester } from "./fixtures/typed/tester.mjs"
+import { at, fixtureHfs, slotTester } from "./fixtures/typed/tester.mjs"
 import { noRawBrandValue, rules } from "./brand-values.mjs"
 
 const tester = slotTester()
@@ -62,3 +63,20 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
     ],
   })
 })
+
+for (const edition of ["lite", "full"]) {
+  test(`FE_STYLE_TOKEN_ONLY ${edition}: accepts token references and refuses raw brand values`, () => {
+    const hfs = fixtureHfs(undefined, { lite: edition === "lite" })
+    assert.equal(hfs.edition, edition)
+    const settings = { starci: { hfs } }
+    tester.run("no-raw-brand-value", noRawBrandValue, {
+      valid: [
+        { filename: BLOCK, settings, code: 'const Feed = () => <div className="p-4" style={{ color: "var(--foreground)" }} />' },
+      ],
+      invalid: [
+        { filename: BLOCK, settings, code: 'const Feed = () => <div style={{ color: "#fff" }} />', errors: [{ messageId: "color" }] },
+        { filename: BLOCK, settings, code: 'const Feed = () => <div style={{ padding: 12 }} />', errors: [{ messageId: "length" }] },
+      ],
+    })
+  })
+}

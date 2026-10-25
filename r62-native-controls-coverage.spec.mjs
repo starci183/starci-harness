@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
 import { appDeclaration } from "../be/fixtures/app.mjs"
-import { noRawStructuralElement } from "./grammar-boundary.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { why } from "./lib/why.mjs"
 import { imageHasSize, noNativeFormControl, noNativeImg } from "./native-controls.mjs"
@@ -39,13 +38,6 @@ for (const edition of ["lite", "full"]) {
         { filename: BLOCK, code: "export const Feed = () => <textarea />", errors: [{ messageId: "native" }] },
       ],
     })
-    tester.run("no-raw-structural-element", noRawStructuralElement, {
-      valid: [{ filename: BLOCK, code: "export const Feed = () => <Region><Text>{message}</Text></Region>" }],
-      invalid: [
-        { filename: BLOCK, code: "export const Feed = () => <section />", errors: [{ messageId: "raw" }] },
-        { filename: BLOCK, code: "export const Feed = () => <p>{message}</p>", errors: [{ messageId: "raw" }] },
-      ],
-    })
     tester.run("no-native-img", noNativeImg, {
       valid: [{ filename: BLOCK, code: "export const Feed = () => <Image src={photo} width={80} height={80} alt={label} />" }],
       invalid: [{ filename: BLOCK, code: "export const Feed = () => <img src={photo} alt={label} />", errors: [{ messageId: "img" }] }],
@@ -61,7 +53,6 @@ for (const edition of ["lite", "full"]) {
       ],
     })
     assert.equal(why["no-native-form-control"].code, "FE_NATIVE_FORM_CONTROL")
-    assert.equal(why["no-raw-structural-element"].code, "FE_NATIVE_FORM_CONTROL")
     assert.equal(why["no-native-img"].code, "FE_NATIVE_IMAGE")
     assert.equal(why["image-has-size"].code, "FE_NATIVE_IMAGE")
   })

@@ -15,7 +15,7 @@ import { attribute, attributeValue, calleeName, leadingTextOf, stringOf } from "
 import { variableOf } from "./lib/bindings.mjs"
 import { forbiddingConcern } from "./lib/fe-stack.mjs"
 import { hfsOf } from "./lib/hfs.mjs"
-import { baseName, classOf, fileOf, inSlot, roleOfFile, slotOfFile } from "./lib/scope.mjs"
+import { baseName, classOf, classifyImport, fileOf, inSlot, roleOfFile, slotOfFile } from "./lib/scope.mjs"
 
 /** Another i18n stack: a second place that decides which language a reader sees (one the fe-stack catalog forbids by name is fe-stack-import's finding). */
 const OTHER_I18N = /^(?:react-i18next|i18next|next-i18next|react-intl|next-translate|typesafe-i18n|rosetta)(?:\/.*)?$|^@lingui\/.+$/
@@ -214,26 +214,27 @@ export const noNullSuspenseFallback = {
 
 // -- FE-NEXT-7 -------------------------------------------------------------------------------------
 
-/** Files that legitimately sit outside the locale provider or own the navigation module: the i18n module, the root error boundary (role `global-error`), the proxy (role `proxy`; `instrumentation` files are not exempt). */
+/** The locale-aware navigation owner and framework boundaries outside its provider. */
 const isNavigationOwner = (context) =>
-  inSlot(context, "fe.modules.i18n") ||
+  inSlot(context, "fe.package.i18n") ||
+  (inSlot(context, "fe.modules.routes") && hfsOf(context).apps.length === 1) ||
   (inSlot(context, "fe.source-root-pinned") && roleOfFile(context) === "proxy") ||
   (inSlot(context, "fe.route") && roleOfFile(context) === "global-error")
 
 /** The router helpers that are locale-blind in `next/navigation`. */
 const LOCALE_BLIND = new Set(["useRouter", "usePathname", "redirect", "permanentRedirect"])
 
-/** Navigation helpers come from `modules/i18n/navigation`, which knows the locale. */
+/** Navigation helpers come from the locale-aware public routes or shared i18n entry. */
 export const navigationFromIntl = {
   meta: {
     type: "problem",
-    docs: { description: "`Link`, `useRouter`, `usePathname` and `redirect` come from `modules/i18n/navigation`, not from Next." },
+    docs: { description: "`Link`, `useRouter`, `usePathname` and `redirect` come from the locale-aware routes or shared i18n public entry, not from Next." },
     schema: [],
     messages: {
       link:
-        "`next/link` does not know the locale: a link built with it drops the `[locale]` prefix, so a Vietnamese reader lands on the default language of the next page (or on a 404 under `localePrefix: \"as-needed\"`). Import `Link` from `modules/i18n/navigation`, which `next-intl` builds from `routing.ts`.",
+        "`next/link` does not know the locale: a link built with it drops the `[locale]` prefix. Import Link from the locale-aware public routes entry or shared i18n package, built from the one routing configuration.",
       helper:
-        "`{{name}}` from `next/navigation` does not know the locale: it navigates to a path without the `[locale]` prefix. Import it from `modules/i18n/navigation`, which `next-intl` builds from `routing.ts`.",
+        "`{{name}}` from `next/navigation` does not know the locale. Import it from the locale-aware public routes entry or shared i18n package, built from the one routing configuration.",
     },
   },
   create(context) {
@@ -263,11 +264,11 @@ const isExternalHref = (text) => /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(text)
 export const noNativeAnchor = {
   meta: {
     type: "problem",
-    docs: { description: "An internal link is `Link` from `modules/i18n/navigation`; an external `_blank` link carries `rel`." },
+    docs: { description: "An internal link uses the locale-aware public navigation entry; an external `_blank` link carries `rel`." },
     schema: [],
     messages: {
       internal:
-        "`<a href=\"{{href}}\">` for a route of this app: it reloads the whole page, skips prefetch and drops the locale prefix. Use `Link` from `modules/i18n/navigation` with an href built by `modules/routes`.",
+        "`<a href=\"{{href}}\">` for a route of this app reloads the page, skips prefetch and drops the locale prefix. Use the locale-aware Link with an href built by modules/routes.",
       rel:
         "`target=\"_blank\"` with no `rel`. The opened page can reach back through `window.opener`. Add `rel=\"noopener noreferrer\"`.",
     },
@@ -376,9 +377,9 @@ const stackFactoryOf = (context, callee) => {
  *
  * `defineRouting` (`next-intl/routing`), `createNavigation` (`next-intl/navigation`), `getRequestConfig` (`next-intl/server`) and
  * `createMiddleware` (`next-intl/middleware`), resolved by the import that binds the called name (a renamed import or a namespace
- * member counts), are called only in a file of the i18n package (slot `fe.package.i18n`, `createAppI18n`), or in the `fe.modules.i18n`
- * slot of a repository that declares exactly one app. In a multi-app repository an app's `modules/i18n` imports the package
- * factory; three byte-identical `request.ts` files, one per app, are three stacks that drift.
+ * member counts), have one owner. A shared i18n package owns its stack. In a one-app repository, routing and request
+ * config belong to modules/i18n while createNavigation belongs to modules/routes. The proxy imports routing without
+ * evaluating navigation: next-intl's navigation module selects React runtime exports unavailable in the proxy.
  *
  * It does not replace `no-second-i18n-stack`: that rule refuses another i18n LIBRARY at its import, this one refuses a second copy of
  * next-intl's own stack. Different evidence, different remedy.
@@ -386,26 +387,42 @@ const stackFactoryOf = (context, callee) => {
 export const i18nStackInOneModule = {
   meta: {
     type: "problem",
-    docs: { description: "next-intl's routing, navigation, request config and middleware factories are called only in the i18n package (or the only app's `modules/i18n`)." },
+    docs: { description: "A shared i18n package owns the stack; one app keeps routing/request config in i18n and navigation in routes, with a routing-only proxy entry." },
     schema: [],
     messages: {
       stack:
-        "`{{name}}` builds a layer of the next-intl stack here. The stack is written once per repository, {{where}}; a copy in an app is a second stack that drifts from the first (three apps once carried byte-identical `request.ts` files). Import what the shared factory returns instead of calling `{{name}}`.",
+        "`{{name}}` builds the next-intl stack outside its owner. Keep {{where}} and import the owned result through its public entry.",
+      proxyNavigation:
+        "The proxy imports navigation runtime through {{source}}. Import routing from the i18n public entry, or use the shared package's routing-only proxy export; the proxy must not evaluate the routes/navigation barrel.",
     },
   },
   create(context) {
     const hfs = hfsOf(context)
     const slot = slotOfFile(context)
     const single = hfs.apps.length === 1
-    if (slot === "fe.package.i18n" || (slot === "fe.modules.i18n" && single)) return {}
     const proxy = single && slot === "fe.source-root-pinned" && roleOfFile(context) === "proxy"
-    const where = single ? "in the app's `modules/i18n`" : "in the i18n package (`packages/<family>-i18n`, exported as `createAppI18n`) that every app's `modules/i18n` calls"
+    const proxyFile = slot === "fe.source-root-pinned" && roleOfFile(context) === "proxy"
+    const where = single ? "routing/request config in modules/i18n and navigation in modules/routes" : "the stack in the shared i18n package that every app calls"
+    const safeProxyImport = (node) => {
+      if (!proxyFile || !node.source || node.importKind === "type" || node.exportKind === "type") return
+      if (node.specifiers?.length && node.specifiers.every((entry) => entry.importKind === "type" || entry.exportKind === "type")) return
+      const source = String(node.source.value)
+      if (source === "next-intl/navigation" || classifyImport(context, source)?.slot === "fe.modules.routes") {
+        context.report({ node, messageId: "proxyNavigation", data: { source } })
+      }
+    }
     return {
+      ImportDeclaration: safeProxyImport,
+      ExportNamedDeclaration: safeProxyImport,
+      ExportAllDeclaration: safeProxyImport,
       CallExpression(node) {
         const factory = stackFactoryOf(context, node.callee)
         // In a one-app repository the proxy (role `proxy`) mounts the locale middleware built from the one routing; a shared repository
         // builds it in the i18n package and the proxy re-exports it.
         if (factory?.name === "createMiddleware" && proxy) return
+        if (slot === "fe.package.i18n") return
+        if (single && factory?.name === "createNavigation" && slot === "fe.modules.routes") return
+        if (single && factory?.name !== "createNavigation" && slot === "fe.modules.i18n") return
         if (factory) context.report({ node, messageId: "stack", data: { name: factory.name, where } })
       },
     }

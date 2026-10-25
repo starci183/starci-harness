@@ -15,6 +15,38 @@ const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
 const SHARED = at("apps/web/src/hooks/course/course.shared.ts")
 const react = (code) => `import { useState } from "react"\n${code}`
 
+for (const edition of ["lite", "full"]) {
+  test(`R56: canonical theme hooks preserve import identity (${edition})`, () => {
+    const filename = at("apps/web/src/hooks/theme/useGrammarTheme.ts")
+    const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
+    const entry = (code) => ({ filename, code, settings })
+    const refused = (code) => ({ ...entry(code), errors: [{ messageId: "fake" }] })
+    tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
+      valid: [
+        entry('import { useTheme } from "next-themes"; export const useGrammarTheme = () => useTheme()'),
+        entry('import { useTheme as theme } from "next-themes"; export const useGrammarTheme = () => theme()'),
+        entry('import * as Themes from "next-themes"; export const useGrammarTheme = () => Themes.useTheme()'),
+        entry('import * as Themes from "next-themes"; const { useTheme: theme } = Themes; export const useGrammarTheme = () => theme()'),
+        entry('import { useTheme } from "next-themes"; const theme = useTheme; export const useGrammarTheme = () => theme()'),
+        entry('import * as Themes from "next-themes"; export const useGrammarTheme = () => Themes["useTheme"]()'),
+      ],
+      invalid: [
+        refused('const useTheme = () => "dark"; export const useGrammarTheme = () => useTheme()'),
+        refused('import { useTheme } from "another-theme"; export const useGrammarTheme = () => useTheme()'),
+        refused('import { useTheme } from "next-themes/private"; export const useGrammarTheme = () => useTheme()'),
+        refused('import { useFake } from "next-themes"; export const useGrammarTheme = () => useFake()'),
+        refused('import type { useTheme } from "next-themes"; export const useGrammarTheme = () => useTheme()'),
+        refused('import { useTheme } from "next-themes"; export const useGrammarTheme = (useTheme) => useTheme()'),
+        refused('import * as Themes from "next-themes"; export const useGrammarTheme = (Themes) => Themes.useTheme()'),
+        refused('import { useTheme } from "next-themes"; let theme = useTheme; theme = () => "dark"; export const useGrammarTheme = () => theme()'),
+        refused('import Themes from "next-themes"; export const useGrammarTheme = () => Themes.useTheme()'),
+        refused('const Themes = { useTheme: () => "dark" }; export const useGrammarTheme = () => Themes.useTheme()'),
+        refused('import { useTheme } from "next-themes"; export const useGrammarTheme = () => { const unused = () => useTheme(); return "dark" }'),
+      ],
+    })
+  })
+}
+
 test("every rule this law declares is a rule", () => {
   for (const [name, rule] of Object.entries(rules)) assert.ok(rule?.meta && rule.create, `${name} is not a rule`)
 })

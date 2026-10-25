@@ -88,12 +88,13 @@ const SWR_HOOKS = new Map([
 ])
 const SWR_DEFAULTS = new Map([["swr", "useSWR"], ["swr/immutable", "useSWRImmutable"], ["swr/infinite", "useSWRInfinite"], ["swr/mutation", "useSWRMutation"]])
 /**
- * The library hooks a composite hook may stand on (an explicit list, owner ruling 2026-10-16): next-intl, next/navigation,
- * react-hook-form and zustand's React entry points. A name outside the list is not a hook by its spelling.
+ * The canonical library hooks a composite hook may call (R56, FE-THEME): next-intl, next/navigation,
+ * next-themes, react-hook-form and zustand's React entry points. A name outside the list is not a hook by its spelling.
  */
 const LIBRARY_HOOKS = new Map([
   ["next-intl", new Set(["useTranslations", "useLocale", "useFormatter", "useNow", "useTimeZone", "useMessages"])],
   ["next/navigation", new Set(["useRouter", "usePathname", "useSearchParams", "useParams", "useSelectedLayoutSegment", "useSelectedLayoutSegments"])],
+  ["next-themes", new Set(["useTheme"])],
   ["react-hook-form", new Set(["useForm", "useFormContext", "useWatch", "useController", "useFieldArray", "useFormState"])],
   ["zustand", new Set(["useStore"])],
   ["zustand/react/shallow", new Set(["useShallow"])],
@@ -119,6 +120,7 @@ const importOrigin = (definition) => {
   const source = String(definition.parent.source.value)
   if (definition.parent.importKind === "type" || specifier.importKind === "type") return null
   if (source !== "react" && !SWR_HOOKS.has(source) && !LIBRARY_HOOKS.has(source)) return null
+  if (source === "next-themes" && specifier.type === "ImportDefaultSpecifier") return null
   if (specifier.type === "ImportSpecifier") return namedOrigin(source, specifier.imported.name ?? specifier.imported.value)
   if (specifier.type === "ImportDefaultSpecifier" && SWR_DEFAULTS.has(source)) return { source, name: SWR_DEFAULTS.get(source) }
   return { source, name: null }
@@ -241,7 +243,7 @@ export const hooksFolderHoldsHooksOnly = {
       defaultExport:
         "FE_HOOKS_ARE_HOOKS: export the hook as a named use* function. A default export does not identify the hook this file owns.",
       fake:
-        "FE_HOOKS_ARE_HOOKS: `{{name}}` must be a function that calls a real hook: a React, Redux or SWR hook, a listed library hook (next-intl, next/navigation, react-hook-form, zustand) or a hook of the app's own `hooks/` folders. A use* name alone does not make a reader or helper a hook.",
+        "FE_HOOKS_ARE_HOOKS: `{{name}}` must be a function that calls a real hook: a React, Redux or SWR hook, a listed library hook (next-intl, next/navigation, next-themes useTheme, react-hook-form, zustand) or a hook of the app's own `hooks/` folders. A use* name alone does not make a reader or helper a hook.",
       sharedHook:
         "`{{name}}` is a hook exported from the shared helper file. That file holds non-hook helpers; a hook there is a hook nobody will find. Give it its own `use<Name>.ts`.",
       server:

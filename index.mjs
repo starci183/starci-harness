@@ -1,19 +1,14 @@
 /**
- * The front-end plugin: every law's rules, gathered once.
+ * The universal frontend plugin: every applicable law's rules, gathered once.
  *
- * A consuming repository imports THIS and nothing below it. Registering rules one by one in the
- * target's own plugin file is how the two lists drift: a law gains a rule here, nobody adds it
- * there, and the rule ships as a document. `starciFeConfig` therefore owns BOTH questions - what
- * exists and what is switched on - and every rule is an error: the repository's `eslint.config.mjs`
- * names its layout and nothing else about the law.
+ * The public factory gathers every universal rule at error. A managed repository config composes
+ * it with the selected Grammar-family factory instead of registering individual rules. Family
+ * packages consume the public generic infrastructure exports; each rule implementation has one owner.
  *
- * WHAT THIS FILE REFUSES TO DO. It does not rename anything. A rule's published name is part of the
- * law that declares it, because that name is what appears in a build log, in a disable comment and
- * in every conversation about the failure. Aliasing one here to match a target's older spelling
- * would leave two names for one rule and no way to tell which a message came from.
+ * Published IDs identify their owning law. Namespace migrations are explicit in the removed-vocabulary
+ * catalog; compatibility aliases cannot create a second owner for a rule.
  */
 import { createRequire } from "node:module"
-import { recommended as appShellRecommended, rules as appShellRules } from "./app-shell.mjs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { recommended as brandValuesRecommended, rules as brandValuesRules } from "./brand-values.mjs"
@@ -23,11 +18,9 @@ import { recommended as classNamesRecommended, rules as classNamesRules } from "
 import { recommended as envOwnerRecommended, rules as envOwnerRules } from "./env-owner.mjs"
 import { recommended as feStackRecommended, rules as feStackRules } from "./fe-stack.mjs"
 import { recommended as fileLayoutRecommended, rules as fileLayoutRules } from "./file-layout.mjs"
-import { recommended as grammarBoundaryRecommended, rules as grammarBoundaryRules } from "./grammar-boundary.mjs"
 import { recommended as formattingRecommended, rules as formattingRules } from "./formatting.mjs"
 import { recommended as hooksFolderRecommended, rules as hooksFolderRules } from "./hooks-folder.mjs"
 import { recommended as hygieneRecommended, rules as hygieneRules } from "./hygiene.mjs"
-import { recommended as iconRecommended, rules as iconRules } from "./icon.mjs"
 import { recommended as landmarkRecommended, rules as landmarkRules } from "./landmark.mjs"
 import { recommended as listsRecommended, rules as listsRules } from "./lists.mjs"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.mjs"
@@ -40,15 +33,11 @@ import { recommended as servedLocaleRecommended, rules as servedLocaleRules } fr
 import { recommended as drawingRecommended, rules as drawingRules } from "./drawing.mjs"
 import { recommended as sizeBudgetRecommended, rules as sizeBudgetRules } from "./size-and-state-budget.mjs"
 import { recommended as sizeGrowthRecommended, rules as sizeGrowthRules } from "./size-growth.mjs"
-import { recommended as statusColorsRecommended, rules as statusColorsRules } from "./status-colors.mjs"
-import { recommended as surfaceRulesRecommended, rules as surfaceRules } from "./surface-rules.mjs"
 import { recommended as splitRecommended, rules as splitRules } from "./the-split.mjs"
 import { recommended as tokensRecommended, rules as tokensRules } from "./tokens.mjs"
 import { recommended as transportRecommended, rules as transportRules } from "./transport.mjs"
 import { recommended as translationRecommended, rules as translationRules } from "./translation.mjs"
 import { recommended as typeSafetyRecommended, rules as typeSafetyRules } from "./type-safety.mjs"
-import { recommended as typographyRecommended, rules as typographyRules } from "./typography.mjs"
-import { recommended as vendorRecommended, rules as vendorRules } from "./vendor-boundary.mjs"
 import { recommended as projectGraphRecommended, rules as projectGraphRules } from "./project-graph.mjs"
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.mjs"
 import { buildFeConfig, buildPlainSourceConfig } from "./lib/config.mjs"
@@ -56,7 +45,6 @@ import { why } from "./lib/why.mjs"
 
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
 const CONTRIBUTIONS = [
-  { law: "app-shell", rules: appShellRules, recommended: appShellRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
   { law: "client-boundary", rules: clientBoundaryRules, recommended: clientBoundaryRecommended },
@@ -69,11 +57,9 @@ const CONTRIBUTIONS = [
   { law: "env-owner", rules: envOwnerRules, recommended: envOwnerRecommended },
   { law: "fe-stack", rules: feStackRules, recommended: feStackRecommended },
   { law: "file-layout", rules: fileLayoutRules, recommended: fileLayoutRecommended },
-  { law: "grammar-boundary", rules: grammarBoundaryRules, recommended: grammarBoundaryRecommended },
   { law: "formatting", rules: formattingRules, recommended: formattingRecommended },
   { law: "hooks-folder", rules: hooksFolderRules, recommended: hooksFolderRecommended },
   { law: "hygiene", rules: hygieneRules, recommended: hygieneRecommended },
-  { law: "icon", rules: iconRules, recommended: iconRecommended },
   { law: "landmark", rules: landmarkRules, recommended: landmarkRecommended },
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
@@ -86,15 +72,11 @@ const CONTRIBUTIONS = [
   { law: "drawing", rules: drawingRules, recommended: drawingRecommended },
   { law: "size-and-state-budget", rules: sizeBudgetRules, recommended: sizeBudgetRecommended },
   { law: "size-growth", rules: sizeGrowthRules, recommended: sizeGrowthRecommended },
-  { law: "status-colors", rules: statusColorsRules, recommended: statusColorsRecommended },
-  { law: "surface-rules", rules: surfaceRules, recommended: surfaceRulesRecommended },
   { law: "the-split", rules: splitRules, recommended: splitRecommended },
   { law: "tokens", rules: tokensRules, recommended: tokensRecommended },
   { law: "translation", rules: translationRules, recommended: translationRecommended },
   { law: "transport", rules: transportRules, recommended: transportRecommended },
   { law: "type-safety", rules: typeSafetyRules, recommended: typeSafetyRecommended },
-  { law: "typography", rules: typographyRules, recommended: typographyRecommended },
-  { law: "vendor-boundary", rules: vendorRules, recommended: vendorRecommended },
   { law: "sonar-parity", rules: sonarParityRules, recommended: sonarParityRecommended },
 ]
 
@@ -223,7 +205,7 @@ export const reactHooksRules = (reactHooks) => {
 }
 
 /**
- * The whole flat config of a front end: `export default starciFeConfig({ hfs: loadHfs(import.meta.url) })`.
+ * The universal portion of a frontend's flat config, composed with its selected Grammar-family factory.
  *
  * It owns nothing the repository could choose: which files are linted comes from the HFS profile (every app's and every
  * workspace package's `src/`), not which rules are on, not their level, not whether an inline comment may

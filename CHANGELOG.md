@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
-- Added: `nested-control-variant` (`FE_NESTED_VARIANT`) refuses explicit primary fields in Grammar surface subtrees and app-authored `bg-surface` paint. `no-list-panel-padding` (`FE_LIST_PANEL_PADDING`) refuses stacked horizontal wrapper padding around Grammar lists and section captions.
-- Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
+## 9.0.0 - Unreleased
+- Changed: concrete Grammar component, variant, token and vendor rules move to `@starci/eslint-grammar-starci` under the `starci-grammar` namespace. Consumers compose both flat-config factories for their selected family.
+- Added: explicit shared infrastructure exports under `@starci/eslint-canon-fe/lib/*`; family packages reuse these readers without copying them.
 
 ## 8.4.39 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
