@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.12 - 2026-10-26
+- Changed: the CSS vocabulary is regenerated from the Grammar 0.12 sources, and the generator and README describe the source resolution the package spec proves.
+
 ## 2.0.11 - 2026-10-25
 - Fixed: regenerate the Grammar 0.11.0 CSS vocabulary (the vendor property --trigger-width is no longer read, since the DropdownMenu renders the HeroUI anatomy); Stylelint rule implementations are unchanged.
 
