@@ -84,7 +84,15 @@ function* surfaceAncestors(context, node) {
 const isSurface = (context, node, descendant) => {
   const name = grammarName(context, node.name)
   if (name?.length !== 1) return false
-  if (name[0] === "SurfaceAccordionCard") return node.attributes.some((entry) => propStrings(context, entry, "depth", "variant").some((value) => ["top", "nested"].includes(value.text)))
+  if (name[0] === "SurfaceAccordionCard") {
+    let frame = "painted"
+    for (const entry of node.attributes) {
+      const value = entry.type === "JSXSpreadAttribute" ? frameEffect(context, entry.argument, frame)
+        : entry.name.name === "frame" ? unpaintedFrame(context, attributeValue(entry)) ? "unpainted" : "painted" : "absent"
+      if (value !== "absent") frame = value
+    }
+    return frame !== "unpainted"
+  }
   if (name[0] === "WorkspaceShell") {
     for (let current = descendant; current && current !== node.parent; current = current.parent) {
       if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "header") return true
@@ -103,7 +111,21 @@ const classTokens = (text) => text.split(/\s+/).map((token) => {
   }
   return token.slice(start).replace(/^!|!$/g, "")
 })
-const rawSurface = (token) => /^bg-surface(?:-[a-z0-9-]+)?(?:\/[^\s]+)?$/.test(token)
+/** Paint and typography belong to Grammar even when the app uses a token rather than a raw colour. */
+const paintProperty = (name) => {
+  const property = String(name).replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`).replace(/^-(?:webkit|moz|ms)-/, "")
+  if (/^text-(?:align|overflow|wrap)(?:-|$)/.test(property)) return false
+  return /^(?:background|border|outline|font|text|fill|stroke|mask|color|accent-color|caret-color)(?:-|$)/.test(property)
+    || /^(?:opacity|box-shadow|filter|backdrop-filter|mix-blend-mode|appearance|letter-spacing|line-height|clip-path)$/.test(property)
+}
+
+const rawSurface = (token) => {
+  const arbitrary = /^\[([^:]+):/.exec(token)
+  if (arbitrary) return paintProperty(arbitrary[1])
+  if (/^text-(?:left|right|center|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)$/.test(token)) return false
+  return /^-?(?:bg|from|via|to|shadow|inset-shadow|text-shadow|ring|inset-ring|outline|border|divide|rounded|text|font|leading|tracking|fill|stroke|mask|accent|caret|decoration|opacity|mix-blend|bg-blend|blur|brightness|contrast|drop-shadow|grayscale|hue-rotate|invert|saturate|sepia|backdrop|filter|appearance)(?:-|$)/.test(token)
+    || /^(?:underline|overline|line-through|no-underline|italic|not-italic|antialiased|subpixel-antialiased)$/.test(token)
+}
 const horizontalPadding = (token) => /^(?:p|px|ps|pe|pl|pr)-.+$/.test(token) || /^\[padding-inline(?:-start|-end)?:.+\]$/.test(token)
 
 /** Computed keys select their evaluated static name, rather than the identifier's spelling. */
@@ -148,6 +170,66 @@ const propStrings = (context, entry, name, mode = "classes") => {
     return values.length ? values.flatMap((value) => authoredStrings(context, value, new Set(), mode)) : typedPropertyStrings(context, entry.argument, name, mode)
   }
   return entry.name.name === name ? authoredStrings(context, attributeValue(entry), new Set(), mode) : []
+}
+
+/** Only a fully known unpainted frame removes the accordion's bounded surface context. */
+const unpaintedFrame = (context, input, seen = new Set()) => {
+  const node = unwrap(input)
+  if (!node || seen.has(node)) return false
+  seen.add(node)
+  const text = stringOf(node)
+  if (text !== null) return text === "unpainted"
+  if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].every((branch) => unpaintedFrame(context, branch, new Set(seen)))
+  const values = node.type === "Identifier" ? bindingValues(context, node)
+    : node.type === "MemberExpression" ? propertyValues(context, node.object, node.computed ? stringOf(node.property) : node.property.name) : []
+  return values.length > 0 && values.every((value) => unpaintedFrame(context, value, new Set(seen)))
+}
+
+/** A spread overrides preceding frame props; an unresolved spread may install a bounded frame. */
+const frameEffect = (context, input, prior, seen = new Set()) => {
+  const node = unwrap(input)
+  if (!node || seen.has(node)) return "painted"
+  seen.add(node)
+  if (node.type === "ObjectExpression") {
+    let effect = prior
+    for (const property of node.properties) {
+      const key = property.type === "Property" ? propertyName(context, property) : null
+      const value = property.type === "SpreadElement" ? frameEffect(context, property.argument, effect, new Set(seen))
+        : key === "frame" ? unpaintedFrame(context, property.value) ? "unpainted" : "painted" : key === null ? "painted" : "absent"
+      if (value !== "absent") effect = value
+    }
+    return effect
+  }
+  const values = node.type === "Identifier" ? bindingValues(context, node)
+    : node.type === "MemberExpression" ? propertyValues(context, node.object, node.computed ? stringOf(node.property) : node.property.name)
+      : node.type === "ConditionalExpression" ? [node.consequent, node.alternate] : []
+  const effects = values.map((value) => frameEffect(context, value, prior, new Set(seen)))
+  return effects.length > 0 && effects.every((effect) => effect === effects[0]) ? effects[0] : "painted"
+}
+
+/** Resolve authored style objects without treating unrelated object siblings or conditions as CSS. */
+const stylePaint = (context, input, seen = new Set()) => {
+  const node = unwrap(input?.type === "JSXExpressionContainer" ? input.expression : input)
+  if (!node || seen.has(node)) return []
+  seen.add(node)
+  if (node.type === "Identifier") {
+    const values = bindingValues(context, node)
+    return values.length ? values.flatMap((value) => stylePaint(context, value, seen))
+      : typedClassStrings(context, node, "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node)
+  }
+  if (node.type === "MemberExpression") {
+    const member = node.computed ? stringOf(node.property) : node.property.name
+    const values = propertyValues(context, node.object, member)
+    return values.length ? values.flatMap((value) => stylePaint(context, value, seen))
+      : typedClassStrings(context, node, "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node)
+  }
+  if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].flatMap((branch) => stylePaint(context, branch, seen))
+  if (node.type === "LogicalExpression") return (node.operator === "&&" ? [node.right] : [node.left, node.right]).flatMap((branch) => stylePaint(context, branch, seen))
+  if (node.type !== "ObjectExpression") return []
+  return node.properties.flatMap((property) => {
+    if (property.type === "SpreadElement") return stylePaint(context, property.argument, seen)
+    return paintProperty(propertyName(context, property)) ? [property] : []
+  })
 }
 
 /** An explicit section caption excludes the row's own content subtree. */
@@ -196,20 +278,38 @@ export const noAppSurfacePaint = {
     type: "problem",
     docs: { description: "App composition CSS is layout-only; Grammar paints surfaces." },
     schema: [],
-    messages: { surface: "FE_GRAMMAR_LAYOUT_ONLY: bg-surface paints a surface in app CSS. Compose SurfaceCard or another painted Grammar surface instead." },
+    messages: { surface: "FE_GRAMMAR_LAYOUT_ONLY: app CSS paints or styles Grammar content. Keep composition CSS layout-only and use Grammar's published surfaces, typography and tone props." },
   },
   create(context) {
     const reported = new Set()
-    const checkClasses = (value) => {
-      for (const entry of authoredStrings(context, value)) {
+    const checkClassEntries = (entries) => {
+      for (const entry of entries) {
         if (!classTokens(entry.text).some(rawSurface) || reported.has(entry.node)) continue
         reported.add(entry.node)
         context.report({ node: entry.node, messageId: "surface" })
       }
     }
+    const checkClasses = (value) => checkClassEntries(authoredStrings(context, value))
+    const reportStyle = (nodes) => {
+      for (const node of nodes) {
+        if (reported.has(node)) continue
+        reported.add(node)
+        context.report({ node, messageId: "surface" })
+      }
+    }
+    const checkStyle = (value) => {
+      reportStyle(stylePaint(context, value))
+    }
     return {
       JSXAttribute(node) {
         if (["className", "class", "classNames"].includes(node.name.name)) checkClasses(node.value)
+        if (node.name.name === "style") checkStyle(node.value)
+      },
+      JSXSpreadAttribute(node) {
+        for (const name of ["className", "class", "classNames"]) checkClassEntries(propStrings(context, node, name))
+        const values = propertyValues(context, node.argument, "style")
+        if (values.length) values.forEach(checkStyle)
+        else reportStyle(typedPropertyStrings(context, node.argument, "style", "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node))
       },
       CallExpression(node) {
         if (node.callee.type === "Identifier" && CLASS_BUILDERS.has(node.callee.name)) checkClasses(node)
@@ -219,6 +319,7 @@ export const noAppSurfacePaint = {
       },
       Property(node) {
         if (["className", "class", "classNames"].includes(propertyName(context, node))) checkClasses(node.value)
+        if (propertyName(context, node) === "style") checkStyle(node.value)
       },
     }
   },
