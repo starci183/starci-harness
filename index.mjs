@@ -31,6 +31,7 @@ import { recommended as landmarkRecommended, rules as landmarkRules } from "./la
 import { recommended as listsRecommended, rules as listsRules } from "./lists.mjs"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.mjs"
 import { recommended as lintEscapeRecommended, rules as lintEscapeRules } from "./lint-escape-hatch.mjs"
+import { recommended as menuEntriesRecommended, rules as menuEntriesRules } from "./menu-entries.mjs"
 import { recommended as namingRecommended, rules as namingRules } from "./naming.mjs"
 import { recommended as nativeControlsRecommended, rules as nativeControlsRules } from "./native-controls.mjs"
 import { recommended as nextConventionsRecommended, rules as nextConventionsRules } from "./next-conventions.mjs"
@@ -40,6 +41,7 @@ import { recommended as drawingRecommended, rules as drawingRules } from "./draw
 import { recommended as sizeBudgetRecommended, rules as sizeBudgetRules } from "./size-and-state-budget.mjs"
 import { recommended as sizeGrowthRecommended, rules as sizeGrowthRules } from "./size-growth.mjs"
 import { recommended as statusColorsRecommended, rules as statusColorsRules } from "./status-colors.mjs"
+import { recommended as surfaceRulesRecommended, rules as surfaceRules } from "./surface-rules.mjs"
 import { recommended as splitRecommended, rules as splitRules } from "./the-split.mjs"
 import { recommended as tokensRecommended, rules as tokensRules } from "./tokens.mjs"
 import { recommended as transportRecommended, rules as transportRules } from "./transport.mjs"
@@ -75,6 +77,7 @@ const CONTRIBUTIONS = [
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },
+  { law: "menu-entries", rules: menuEntriesRules, recommended: menuEntriesRecommended },
   { law: "naming", rules: namingRules, recommended: namingRecommended },
   { law: "native-controls", rules: nativeControlsRules, recommended: nativeControlsRecommended },
   { law: "next-conventions", rules: nextConventionsRules, recommended: nextConventionsRecommended },
@@ -84,6 +87,7 @@ const CONTRIBUTIONS = [
   { law: "size-and-state-budget", rules: sizeBudgetRules, recommended: sizeBudgetRecommended },
   { law: "size-growth", rules: sizeGrowthRules, recommended: sizeGrowthRecommended },
   { law: "status-colors", rules: statusColorsRules, recommended: statusColorsRecommended },
+  { law: "surface-rules", rules: surfaceRules, recommended: surfaceRulesRecommended },
   { law: "the-split", rules: splitRules, recommended: splitRecommended },
   { law: "tokens", rules: tokensRules, recommended: tokensRecommended },
   { law: "translation", rules: translationRules, recommended: translationRecommended },

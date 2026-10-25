@@ -94,7 +94,7 @@ test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () =>
       { filename: HOOK, code: "import type { Moment } from \"moment\"", errors: [{ messageId: "forbidden" }] },
       // the forbidden alternatives of the transport, realtime and icon concerns too
       { filename: API, code: "import { request } from \"graphql-request\"", errors: [{ messageId: "forbidden" }] },
-      { filename: HOOK, code: "import { createClient } from \"graphql-ws\"", errors: [{ messageId: "forbidden" }] },
+      { filename: HOOK, code: "import PusherJs from \"pusher-js\"", errors: [{ messageId: "forbidden" }] },
       { filename: BLOCK, code: "import { Star } from \"lucide-react\"", errors: [{ messageId: "forbidden" }] },
       // forbidden in modules/auth as everywhere: Supabase Realtime is not the front end's push channel
       { filename: AUTH, code: "import { RealtimeClient } from \"@supabase/realtime-js\"", errors: [{ messageId: "forbidden" }] },
