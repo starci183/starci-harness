@@ -16,6 +16,7 @@ import {
   heroiconsIsTheGlyphVendor,
   noDecorativeIconInMetricCell,
   noInlineSvgOutsideBrandMarkLeaf,
+  noIconSizeClass,
   noOffScaleGlyphSize,
   noVendorIconOutsideIconLeaf,
   rules,
@@ -148,6 +149,25 @@ test("ICON-1: a glyph size off both steps is a third step", () => {
         code: "const E = () => <Glyph className=\"size-[13px]\" />",
         errors: [{ messageId: "offScale" }],
       },
+    ],
+  })
+})
+
+test("ICON-1: the call site passes the glyph and never a size class", () => {
+  tester.run("no-icon-size-class", noIconSizeClass, {
+    valid: [
+      { filename: BLOCK, code: "const E = () => <FireIcon />" },
+      { filename: BLOCK, code: "const E = () => <FireIcon className=\"text-muted\" />" },
+      // the icon leaf owns the sizes of its usages
+      { filename: ICON_LEAF, code: "const E = () => <FireIcon className=\"size-5\" />" },
+      // an element that is not a glyph keeps its own layout classes
+      { filename: BLOCK, code: "const E = () => <Avatar className=\"size-5\" />" },
+      { filename: at("scripts/build.tsx"), code: "const E = () => <FireIcon className=\"size-5\" />" },
+    ],
+    invalid: [
+      { filename: BLOCK, code: "const E = () => <FireIcon className=\"size-5\" />", errors: [{ messageId: "size" }] },
+      { filename: BLOCK, code: "const E = () => <Icon source={x} className=\"shrink-0 w-4 h-4\" />", errors: [{ messageId: "size" }] },
+      { filename: OTHER_LEAF, code: "const E = () => <TrashIcon className={`min-w-4 text-danger`} />", errors: [{ messageId: "size" }] },
     ],
   })
 })

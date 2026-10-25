@@ -12,7 +12,7 @@
  * generalises on its own, and the gap between them is exactly where a third step gets invented.
  */
 
-import { isClassAttribute, staticText } from "./lib/ast.mjs"
+import { attribute, isClassAttribute, staticText, tagName } from "./lib/ast.mjs"
 import { canonicalPackages } from "./lib/fe-stack.mjs"
 import { hfsOf } from "./lib/hfs.mjs"
 import { fileOf, inSlot, isComponentFile, isProductSource, kindOfFile, roleOfFile } from "./lib/scope.mjs"
@@ -171,6 +171,35 @@ export const noOffScaleGlyphSize = {
   },
 }
 
+// -- ICON-1 (call site) ----------------------------------------------------------------------------
+
+/** A size utility on the class of a glyph: `size-5`, `w-4`, `h-6`, `min-w-4`. */
+const SIZE_UTILITY = /(?:^|\s)(?:size|w|h|min-w|min-h|max-w|max-h)-\S+/
+
+/** The icon's size is its usage's: the call site passes the glyph and never a size class. */
+export const noIconSizeClass = {
+  meta: {
+    type: "problem",
+    docs: { description: "A glyph component takes its size from its usage (the 20px leading step is size-5), never from a size class at the call site." },
+    schema: [],
+    messages: {
+      size:
+        "`{{cls}}` sizes a glyph at the call site. The size of a glyph is its usage's (`Icon` and the Grammar components that draw one: 24px heading, 20px leading = size-5, 16px chip), so the app passes the glyph and no size class; a size written here is a third step nobody applies the same way twice.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context) || isIconLeafFile(context)) return {}
+    return {
+      JSXOpeningElement(node) {
+        const name = tagName(node)
+        if (name === null || !/Icon$/.test(name)) return
+        const hit = SIZE_UTILITY.exec(staticText(attribute(node, "className")?.value) ?? "")
+        if (hit) context.report({ node, messageId: "size", data: { cls: hit[0].trim() } })
+      },
+    }
+  },
+}
+
 // -- ICON-10 ---------------------------------------------------------------------------------------
 
 /** A repeated metric cell does not invent a feature glyph absent from the reference. */
@@ -266,6 +295,7 @@ export const rules = {
   "no-vendor-icon-outside-icon-leaf": noVendorIconOutsideIconLeaf,
   "heroicons-is-the-glyph-vendor": heroiconsIsTheGlyphVendor,
   "no-off-scale-glyph-size": noOffScaleGlyphSize,
+  "no-icon-size-class": noIconSizeClass,
   "no-decorative-icon-in-metric-cell": noDecorativeIconInMetricCell,
   "no-inline-svg-outside-brand-mark-leaf": noInlineSvgOutsideBrandMarkLeaf,
 }
