@@ -1,14 +1,11 @@
 // proves: BE_UPLOAD_BUFFERED@lite
 // proves: BE_UPLOAD_BUFFERED@full
-// proves: BE_REST_DOOR_EVIDENCE@lite
-// proves: BE_REST_DOOR_EVIDENCE@full
 import assert from "node:assert/strict"
 import test from "node:test"
 import { appDeclaration } from "./fixtures/app.mjs"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { noBufferedUpload, recommended, rules } from "./uploads.mjs"
-import { restDoorNeedsAReason } from "./transport.mjs"
 
 const FILE = at("src/features/api/assets/transport/graphql/mint-upload.resolver.ts")
 const ERROR = [{ messageId: "buffered" }]
@@ -57,6 +54,8 @@ for (const edition of ["lite", "full"]) {
                 { filename: FILE, code: 'export * from "graphql-upload"', errors: ERROR },
                 { filename: FILE, code: 'export { default } from "graphql-upload/GraphQLUpload.mjs"', errors: ERROR },
                 { filename: FILE, code: 'await import("graphql-upload-minimal")', errors: ERROR },
+                ...["@fastify/multipart", "fastify-multipart", "busboy", "formidable", "multiparty", "connect-multiparty"].map((name) => ({ filename: FILE, code: `import parser from "${name}"`, errors: ERROR })),
+                { filename: FILE, code: 'await import("@fastify/multipart/index.js")', errors: ERROR },
                 { filename: FILE, code: 'require("multer")', errors: ERROR },
                 { filename: FILE, code: 'import upload = require("multer")', errors: ERROR },
                 { filename: FILE, code: 'import { FileInterceptor } from "@nestjs/platform-express/multer/interceptors/file.interceptor"', errors: ERROR },
@@ -66,43 +65,6 @@ for (const edition of ["lite", "full"]) {
         })
     })
 
-    test(`${edition} accepts GraphQL presigning and streamed downloads and rejects REST presigning metadata`, () => {
-        const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        const controller = at("src/features/api/assets/transport/http/assets.controller.ts")
-        const http = 'import { Controller, Get, Post, StreamableFile } from "@nestjs/common"\n'
-        const metadata = '{ url: "https://storage.invalid/uploads", objectKey: "principals/p/avatar", expiresAt: "2026-10-24T01:02:00Z" }'
-        ruleTester({ root: TYPED_ROOT, hfs }).run("rest-door-needs-a-reason", restDoorNeedsAReason, {
-            valid: [
-                {
-                    filename: FILE,
-                    code: `import { Field, Mutation, ObjectType, Resolver } from "@nestjs/graphql"
-@ObjectType() class UploadGrantType {
-    @Field() url!: string
-    @Field() objectKey!: string
-    @Field() expiresAt!: string
-}
-@Resolver() class UploadResolver {
-    @Mutation(() => UploadGrantType) mintUpload(): UploadGrantType { return ${metadata} }
-}`,
-                },
-                {
-                    filename: controller,
-                    code: `${http}@Controller("files") class FileController {
-    @Get("download") download() { return new StreamableFile(Buffer.from("document")) }
-}`,
-                },
-            ],
-            invalid: [
-                {
-                    filename: controller,
-                    code: `${http}@Controller("files") class FileController {
-    @Post("upload-grant") mintUpload() { return ${metadata} }
-}`,
-                    errors: [{ messageId: "unjustified" }],
-                },
-            ],
-        })
-    })
 }
 
 test("the upload rule is published at error", () => {

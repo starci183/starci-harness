@@ -8,7 +8,18 @@ import { importOf, moduleReferences } from "./lib/import-source.mjs"
 import { resolveVariable } from "./lib/transactions.mjs"
 
 /** Libraries that implement API-side multipart uploads instead of a storage grant. */
-const UPLOAD_PACKAGES = ["multer", "express-fileupload", "graphql-upload", "graphql-upload-minimal"]
+const UPLOAD_PACKAGES = [
+    "multer",
+    "express-fileupload",
+    "graphql-upload",
+    "graphql-upload-minimal",
+    "@fastify/multipart",
+    "fastify-multipart",
+    "busboy",
+    "formidable",
+    "multiparty",
+    "connect-multiparty",
+]
 
 /** Selected Nest exports consume multipart files; other exports of these packages remain usable. */
 const NEST_UPLOADS = {
