@@ -207,47 +207,47 @@ const canCoexist = (left, right) => {
 }
 
 /** No explicit visual prop: any authored variant, including a known props spread, is an app bypass. */
-export const buttonNoVariant = {
+const buttonNoVariant = {
   meta: { type: "problem", docs: { description: "CTA-6: app buttons never choose a variant." }, schema: [], messages: {
-    variant: "FE_BUTTON_NO_VARIANT: declare Button intent instead of variant; Grammar resolves the variant from intent and placement.",
+    FE_BUTTON_NO_VARIANT: "FE_BUTTON_NO_VARIANT: declare Button intent instead of variant; Grammar resolves the variant from intent and placement.",
   } },
   create(context) {
     return { JSXOpeningElement(opening) {
       if (!isButton(context, opening)) return
-      for (const node of new Set(propsOf(context, opening, "variant").map((prop) => prop.node))) context.report({ node, messageId: "variant" })
+      for (const node of new Set(propsOf(context, opening, "variant").map((prop) => prop.node))) context.report({ node, messageId: "FE_BUTTON_NO_VARIANT" })
     } }
   },
 }
 
 /** Every app button states its command's intent explicitly. */
-export const buttonIntentRequired = {
+const buttonIntentRequired = {
   meta: { type: "problem", docs: { description: "CTA-6: every app Button and IconButton declares intent." }, schema: [], messages: {
-    missing: "FE_BUTTON_INTENT_REQUIRED: Button and IconButton require intent (commit, alternative, dismiss, neutral or destructive). Choose it from the command's consequence and rank.",
+    FE_BUTTON_INTENT_REQUIRED: "FE_BUTTON_INTENT_REQUIRED: Button and IconButton require intent (commit, alternative, dismiss, neutral or destructive). Choose it from the command's consequence and rank.",
   } },
   create(context) {
     return { JSXOpeningElement(opening) {
-      if (isButton(context, opening) && !hasIntent(context, opening)) context.report({ node: opening, messageId: "missing" })
+      if (isButton(context, opening) && !hasIntent(context, opening)) context.report({ node: opening, messageId: "FE_BUTTON_INTENT_REQUIRED" })
     } }
   },
 }
 
 /** A destructive final press is contained by its same-file confirmation dialog. */
-export const destructiveConfirmInDialog = {
+const destructiveConfirmInDialog = {
   meta: { type: "problem", docs: { description: "CTA-6: destructive confirm buttons stay inside AlertDialog or ConfirmDialog." }, schema: [], messages: {
-    dialog: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG: a destructive confirm belongs inside the same-file AlertDialog or ConfirmDialog subtree. The trigger uses step=\"entry\".",
+    FE_DESTRUCTIVE_CONFIRM_IN_DIALOG: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG: a destructive confirm belongs inside the same-file AlertDialog or ConfirmDialog subtree. The trigger uses step=\"entry\".",
   } },
   create(context) {
     return { JSXOpeningElement(opening) {
       if (!isButton(context, opening) || !hasValue(context, opening, "intent", "destructive") || !hasValue(context, opening, "step", "confirm")) return
-      if (!insideDialog(context, opening)) context.report({ node: opening, messageId: "dialog" })
+      if (!insideDialog(context, opening)) context.report({ node: opening, messageId: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG" })
     } }
   },
 }
 
 /** A component render exposes one next action, with exclusive branches counted separately. */
-export const singleCommitPerRender = {
+const singleCommitPerRender = {
   meta: { type: "problem", docs: { description: "CTA-6: at most one commit is visible in a component render." }, schema: [], messages: {
-    multiple: "FE_SINGLE_COMMIT_PER_RENDER: this render contains another commit action. Keep the one next action as commit and classify its alternatives by consequence.",
+    FE_SINGLE_COMMIT_PER_RENDER: "FE_SINGLE_COMMIT_PER_RENDER: this render contains another commit action. Keep the one next action as commit and classify its alternatives by consequence.",
   } },
   create(context) {
     const owners = new Map()
@@ -258,7 +258,7 @@ export const singleCommitPerRender = {
       const paths = propsOf(context, opening, "intent").flatMap((prop) => prop.value ? valuePaths(context, prop.value) : prop.text === "commit" || prop.texts?.includes("commit") ? [{ guards: new Map(), choices: new Map() }] : [])
         .map((path) => ({ returned: base.returned, guards: new Map([...base.guards, ...path.guards]), choices: new Map([...base.choices, ...path.choices]) }))
       const prior = owners.get(owner) ?? []
-      if (paths.some((path) => prior.some((entry) => canCoexist(entry, path)))) context.report({ node: opening, messageId: "multiple" })
+      if (paths.some((path) => prior.some((entry) => canCoexist(entry, path)))) context.report({ node: opening, messageId: "FE_SINGLE_COMMIT_PER_RENDER" })
       prior.push(...paths)
       owners.set(owner, prior)
     } }
@@ -266,16 +266,16 @@ export const singleCommitPerRender = {
 }
 
 /** A repeated row's next action is alternative; the enclosing view keeps the commit. */
-export const noCommitInCollectionItem = {
+const noCommitInCollectionItem = {
   meta: { type: "problem", docs: { description: "CTA-6: collection item renders cannot expose commit actions." }, schema: [], messages: {
-    item: "FE_NO_COMMIT_IN_COLLECTION_ITEM: collection items cannot use commit. Use alternative for an item's next action and reserve commit for the view's decision.",
+    FE_NO_COMMIT_IN_COLLECTION_ITEM: "FE_NO_COMMIT_IN_COLLECTION_ITEM: collection items cannot use commit. Use alternative for an item's next action and reserve commit for the view's decision.",
   } },
   create(context) {
     const reported = new Set()
     const report = (opening) => {
       if (!reported.has(opening) && isButton(context, opening) && hasValue(context, opening, "intent", "commit")) {
         reported.add(opening)
-        context.report({ node: opening, messageId: "item" })
+        context.report({ node: opening, messageId: "FE_NO_COMMIT_IN_COLLECTION_ITEM" })
       }
     }
     const scanCallback = (callback) => {
