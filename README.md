@@ -76,6 +76,12 @@ The one locale pattern everywhere is `next-intl`, a `[locale]` segment, default 
 Grammar is a business-neutral HeroUI-backed component package. Its components accept ordinary
 typed React props and children.
 
+The [surface composition law](docs/surface-rules.md) holds ANATOMY-2 and PADDING-0:
+`nested-control-variant` refuses explicit primary fields inside Grammar surfaces and raw app
+`bg-surface` paint (`FE_NESTED_VARIANT`); `no-list-panel-padding` refuses horizontal padding
+wrappers around Grammar lists and section captions (`FE_LIST_PANEL_PADDING`). Grammar supplies
+the nested secondary default and owns the list's panel inset.
+
 ## Requirements
 
 ESLint 9+ (flat config), `eslint-plugin-react-hooks` 7+, and Node.js 20.9+.

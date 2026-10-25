@@ -41,6 +41,7 @@ import { recommended as drawingRecommended, rules as drawingRules } from "./draw
 import { recommended as sizeBudgetRecommended, rules as sizeBudgetRules } from "./size-and-state-budget.mjs"
 import { recommended as sizeGrowthRecommended, rules as sizeGrowthRules } from "./size-growth.mjs"
 import { recommended as statusColorsRecommended, rules as statusColorsRules } from "./status-colors.mjs"
+import { recommended as surfaceRulesRecommended, rules as surfaceRules } from "./surface-rules.mjs"
 import { recommended as splitRecommended, rules as splitRules } from "./the-split.mjs"
 import { recommended as tokensRecommended, rules as tokensRules } from "./tokens.mjs"
 import { recommended as transportRecommended, rules as transportRules } from "./transport.mjs"
@@ -86,6 +87,7 @@ const CONTRIBUTIONS = [
   { law: "size-and-state-budget", rules: sizeBudgetRules, recommended: sizeBudgetRecommended },
   { law: "size-growth", rules: sizeGrowthRules, recommended: sizeGrowthRecommended },
   { law: "status-colors", rules: statusColorsRules, recommended: statusColorsRecommended },
+  { law: "surface-rules", rules: surfaceRules, recommended: surfaceRulesRecommended },
   { law: "the-split", rules: splitRules, recommended: splitRecommended },
   { law: "tokens", rules: tokensRules, recommended: tokensRecommended },
   { law: "translation", rules: translationRules, recommended: translationRecommended },

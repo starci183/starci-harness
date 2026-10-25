@@ -7,6 +7,7 @@
  * This syntax check follows lexical bindings and local aliases rather than trusting a method's spelling.
  */
 import { stringOf, walk } from "./lib/ast.mjs"
+import { patternPath } from "./lib/bindings.mjs"
 import { normalizePath } from "./lib/path.mjs"
 import { ownerExportKind } from "./lib/pure-owner-helper.mjs"
 import { classifyImport, inSlot, resolveImport } from "./lib/scope.mjs"
@@ -31,19 +32,6 @@ const bindingOf = (sourceCode, node) => {
 
 /** Whether an identifier refers to the actual unshadowed platform global. */
 const isGlobal = (sourceCode, node, name) => node?.type === "Identifier" && node.name === name && !(bindingOf(sourceCode, node)?.defs.length)
-
-/** The property path that a destructured binding selects from its initializer. */
-const patternPath = (pattern, name) => {
-  if (pattern.type === "Identifier") return pattern.name === name ? [] : null
-  if (pattern.type === "AssignmentPattern") return patternPath(pattern.left, name)
-  if (pattern.type !== "ObjectPattern") return null
-  for (const property of pattern.properties) {
-    if (property.type !== "Property") continue
-    const nested = patternPath(property.value, name)
-    if (nested !== null) return [property.computed ? stringOf(property.key) : property.key.name ?? property.key.value, ...nested]
-  }
-  return null
-}
 
 /** Route configuration is inert; a second HTTP door or an exported helper is not. */
 const CONFIG_EXPORTS = new Set(["runtime", "dynamic", "revalidate", "fetchCache", "preferredRegion", "maxDuration"])
