@@ -7,6 +7,7 @@ import { clusterAlternatives } from "./lib/app-shell-cluster.mjs"
 import { isCreateAction, menuHasCreate } from "./lib/app-shell-create.mjs"
 import { provesImportedBar, provesNavigationOpener } from "./lib/app-shell-owner.mjs"
 import { variableOf } from "./lib/bindings.mjs"
+import { walk } from "./lib/ast.mjs"
 
 const CANON = "knowledge/ui/composition/app-shell.yaml"
 const BOTTOM_TABS = /^(?:BottomNav|BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar)$/
@@ -47,6 +48,18 @@ const hasMobileNavigation = (context, opening) => {
   return opener
 }
 
+/** App-owned tab names count only in a frame owner or a shell's rendered slots. */
+const visibleFromShell = (context, target) => {
+  let visible = false
+  walk(context.sourceCode, context.sourceCode.ast, (node) => {
+    if (node.type !== "JSXOpeningElement" || !isAppShell(context, node)) return
+    const inspect = (opening) => { if (opening === target) visible = true }
+    for (const slot of ["header", "compactHeader", "navigation", "primary", "floatingLayer", "compactNavigation"]) visitVisible(context, propOf(context, node, slot).value, inspect)
+    for (const child of node.parent.children) visitVisible(context, child, inspect)
+  })
+  return visible
+}
+
 /** The app frame is the fixed-viewport Grammar shell; hand-written frame landmarks are rejected. */
 export const appShellFrame = {
   meta: meta("FE_APP_SHELL_FRAME", "FE-APP-SHELL-1 uses WorkspaceShell viewport=fixed.", {
@@ -75,10 +88,11 @@ export const noShellBottomTabs = {
     if (!isProductSource(context)) return {}
     return { JSXOpeningElement(node) {
       const name = grammarName(context, node)
+      const appTab = name === null && node.name.type === "JSXIdentifier" && BOTTOM_TABS.test(node.name.name) && (ownsAppFrame(context, node) || visibleFromShell(context, node))
       const compact = name === "WorkspaceShell" && propOf(context, node, "compactNavigation")
       const value = compact && resolveLocal(context, compact.value)
       const absent = value?.type === "Identifier" && value.name === "undefined" && !variableOf(context, value)?.defs.length
-      if (BOTTOM_TABS.test(name ?? "") || compact && !absent && (!compact.known || compact.value !== null || compact.present)) context.report({ node, messageId: "bottom" })
+      if (BOTTOM_TABS.test(name ?? "") || appTab || compact && !absent && (!compact.known || compact.value !== null || compact.present)) context.report({ node, messageId: "bottom" })
     } }
   },
 }
