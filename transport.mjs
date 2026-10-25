@@ -28,12 +28,13 @@ import { typed } from "./lib/types.mjs"
 
 /**
  * The canonical transport libraries and the one place each may be imported (fe-stack graphql, rest and realtime): Apollo in
- * the API layer, axios in its REST calls, socket.io-client in `hooks/socketio`. Matched on the package a specifier names.
+ * the API layer, axios in its REST calls, graphql-ws in the Apollo clients folder, socket.io-client in `hooks/socketio`. Matched on the package a specifier names.
  */
 const PLACED_TRANSPORTS = new Map([
   ["@apollo/client", { where: "the API layer (`modules/api`)", allowed: (context) => isApiLayer(context) }],
   ["axios", { where: "the REST calls of the API layer (`modules/api/rest/`)", allowed: (context) => isApiRest(context) }],
   ["socket.io-client", { where: "`hooks/socketio/`", allowed: (context) => inSlot(context, "fe.hooks.socketio") }],
+  ["graphql-ws", { where: "the Apollo clients of the API layer (`modules/api/graphql/clients/`, or the shared api package's `graphql/clients/`)", allowed: (context) => isApiClient(context) }],
 ])
 
 /**

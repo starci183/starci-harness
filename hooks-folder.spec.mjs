@@ -68,6 +68,8 @@ test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per
       { filename: at("apps/web/src/hooks/auth/useAuthUser.ts"), code: react("export const AUTH_USER_SWR_KEY = \"AUTH_USER_SWR\"\nexport const useAuthUser = () => useState(1)") },
       { filename: at(`${SWR}/api/rest/queries/useGetUploadSwr.ts`), code: react("export const useGetUploadSwr = () => useState(1)") },
       { filename: at(`${SWR}/api/rest/mutations/usePostUploadSwr.ts`), code: react("export const usePostUploadSwr = () => useState(1)") },
+      { filename: at(`${SWR}/api/sse/subscriptions/useSubscribeOrderStatusSwr.ts`), code: "import useSWRSubscription from 'swr/subscription'; export const SUBSCRIBE_ORDER_STATUS_SWR_KEY = 'order'; export const useSubscribeOrderStatusSwr = () => useSWRSubscription(SUBSCRIBE_ORDER_STATUS_SWR_KEY, () => () => 1)" },
+      { filename: at(`${SWR}/api/sse/subscriptions/index.ts`), code: "export { useSubscribeOrderStatusSwr } from './useSubscribeOrderStatusSwr'" },
       // the family's barrels and its side-effect component (the one .tsx a family names) are not hook files
       { filename: at(`${SWR}/index.ts`), code: "export * from \"./api\"\nexport { SwrSideEffects } from \"./SwrSideEffects\"" },
       { filename: at(`${SWR}/api/graphql/queries/index.ts`), code: "export * from \"./useQueryCourseSwr\"" },
@@ -87,6 +89,8 @@ test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per
     invalid: [
       // a name the family does not give: the wrong prefix for the folder, a hook outside api/, a helper, a .tsx outside the named ones
       { filename: at(`${SWR}/api/graphql/queries/useGetCourseSwr.ts`), code: react("export const useGetCourseSwr = () => useState(1)"), errors: [{ messageId: "family" }] },
+      { filename: at(`${SWR}/api/sse/subscriptions/useOrderStatusSwr.ts`), code: react("export const useOrderStatusSwr = () => useState(1)"), errors: [{ messageId: "subscription" }] },
+      { filename: at(`${SWR}/api/sse/useSubscribeOrderStatusSwr.ts`), code: react("export const useSubscribeOrderStatusSwr = () => useState(1)"), errors: [{ messageId: "family" }] },
       { filename: at(`${SWR}/api/graphql/mutations/useQueryCourseSwr.ts`), code: react("export const useQueryCourseSwr = () => useState(1)"), errors: [{ messageId: "family" }] },
       { filename: at(`${SWR}/useCourse.ts`), code: react("export const useCourse = () => useState(1)"), errors: [{ messageId: "family" }] },
       { filename: at(`${SWR}/api/graphql/queries/keys.ts`), code: "export const QUERY_COURSE_SWR_KEY = \"course\"", errors: [{ messageId: "family" }] },
