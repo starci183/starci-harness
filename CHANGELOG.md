@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.4.41 - 2026-10-26
 
 - Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
 - Fixed: `operations-only-in-swr-hooks` (FE_OP_OUTSIDE_SWR_HOOK) no longer reports named imports that all resolve, through relative re-exports, to a generated `__generated__/input-bounds` module (`INPUT_BOUNDS`, `inputBoundsIssues`): they are contract data, not API operations. Mixed, default and namespace imports of the barrel still report.
