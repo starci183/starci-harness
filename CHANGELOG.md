@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.4.46 - 2026-10-26
+- Changed: the bundled runtime copies (canon pins) follow the stylelint 2.0.13, hfs 4.7.38 and cli 1.7.38 pins. No rule changes.
+
 ## 3.4.45 - 2026-10-26
 - Changed: the bundled runtime copies (canon pins, front-end stack, rules and the Grammar index) follow the alpha.31.1 sources. No rule changes.
 
