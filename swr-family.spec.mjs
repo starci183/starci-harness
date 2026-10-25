@@ -1,5 +1,6 @@
 // proves: FE_SWR_OUTSIDE_FAMILY@lite FE_SWR_OUTSIDE_FAMILY@full
 // proves: FE_OP_OUTSIDE_SWR_HOOK@lite FE_OP_OUTSIDE_SWR_HOOK@full
+// proves: FE_SUBSCRIPTION_NO_SNAPSHOT@lite FE_SUBSCRIPTION_NO_SNAPSHOT@full
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -10,12 +11,14 @@ import tsParser from "@typescript-eslint/parser"
 import { at, fixtureHfs, LITE_FE_DECLARATION } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { appDeclaration } from "../be/fixtures/app.mjs"
-import { operationsOnlyInSwrHooks, rules, swrOnlyInFamily } from "./swr-family.mjs"
+import { operationsOnlyInSwrHooks, rules, subscriptionRefetchesSnapshot, swrOnlyInFamily } from "./swr-family.mjs"
 
 const COMPONENT = at("apps/web/src/components/blocks/Orders/index.tsx")
 const HOOK = at("apps/web/src/hooks/orders/useOrders.ts")
 const WRAPPER = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryOrdersSwr.ts")
+const SUBSCRIPTION = at("apps/web/src/hooks/swr/api/sse/subscriptions/useSubscribeOrderStatusSwr.ts")
 const OP = "@/modules/api/graphql/queries/query-orders"
+const STREAM_OP = "@/modules/api/sse/order-status/stream-order-status"
 const testerFor = (lite) => new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
   settings: { starci: { hfs: fixtureHfs(lite ? LITE_FE_DECLARATION : undefined, { lite }) } },
@@ -28,6 +31,7 @@ for (const lite of [false, true]) {
       valid: [
         { filename: WRAPPER, code: 'import useSWR from "swr"; export const useQueryOrdersSwr = () => useSWR("orders", queryOrders)' },
         { filename: COMPONENT, code: 'import { SWRConfig, useSWRConfig, mutate } from "swr"; export const Orders = () => null' },
+        { filename: SUBSCRIPTION, code: 'import useSWRSubscription from "swr/subscription"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", () => () => 1)' },
         { filename: COMPONENT, code: 'import * as cache from "swr"; const Config = cache.SWRConfig' },
         { filename: HOOK, code: 'import { useQueryOrdersSwr } from "@/hooks/swr"; export const useOrders = () => useQueryOrdersSwr()' },
         { filename: HOOK, code: 'import type { SWRResponse } from "swr"; export const useOrders = () => 1' },
@@ -38,6 +42,8 @@ for (const lite of [false, true]) {
         { filename: COMPONENT, code: 'import useSWR from "swr"; export const Orders = () => useSWR("orders", load)', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import { default as query } from "swr"; export const useOrders = () => query("orders", load)', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import useMutation from "swr/mutation"; export const useOrders = () => useMutation("orders", save)', errors: [{ messageId: "outside" }] },
+        { filename: HOOK, code: 'import useSWRSubscription from "swr/subscription"; export const useOrders = () => useSWRSubscription("orders", () => () => 1)', errors: [{ messageId: "outside" }] },
+        { filename: COMPONENT, code: 'import { default as listen } from "swr/subscription"; export const Orders = () => listen("orders", () => () => 1)', errors: [{ messageId: "outside" }] },
         { filename: COMPONENT, code: 'import * as swr from "swr"; export const Orders = () => swr.default("orders", load)', errors: [{ messageId: "outside" }] },
         { filename: COMPONENT, code: 'import * as swr from "swr"; const { default: useRequest } = swr', errors: [{ messageId: "outside" }] },
         { filename: at("apps/web/src/hooks/swr/SwrSideEffects.tsx"), code: 'import useSWR from "swr"', errors: [{ messageId: "outside" }] },
@@ -57,6 +63,7 @@ for (const lite of [false, true]) {
         { filename: WRAPPER, code: `import useSWR from "swr"; import { queryOrders } from "${OP}"; const request = useSWR; export const useQueryOrdersSwr = () => request("orders", queryOrders)` },
         { filename: WRAPPER, code: `import useSWR from "swr"; import { queryOrders } from "${OP}"; const fetcher = () => queryOrders(); export const useQueryOrdersSwr = () => useSWR("orders", fetcher)` },
         { filename: at("apps/web/src/hooks/swr/api/graphql/mutations/useMutateOrderSwr.ts"), code: 'import useSWRMutation from "swr/mutation"; import { mutateOrder } from "@/modules/api/graphql/mutations/mutation-order"; export const useMutateOrderSwr = () => useSWRMutation("order", mutateOrder)' },
+        { filename: SUBSCRIPTION, code: `import useSWRSubscription from "swr/subscription"; import { streamOrderStatus } from "${STREAM_OP}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", (key, { next }) => { const controller = new AbortController(); void streamOrderStatus({ signal: controller.signal, onPush: (push) => next(null, push) }); return () => controller.abort() })` },
         { filename: HOOK, code: `import type { QueryOrdersData } from "${OP}"; export const useOrders = () => 1` },
         { filename: HOOK, code: `import { type QueryOrdersData } from "${OP}"; export const useOrders = () => 1` },
         { filename: COMPONENT, code: 'import { useQueryOrdersSwr } from "@/hooks/swr"; export const Orders = () => useQueryOrdersSwr()' },
@@ -70,6 +77,9 @@ for (const lite of [false, true]) {
         { filename: at("apps/web/src/features/pages/OrdersPage/index.tsx"), code: `import { queryOrders } from "${OP}"; export const OrdersPage = async () => await queryOrders()`, errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import { queryOrders } from "../../modules/api/graphql/queries/query-orders"', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import { getUpload } from "@/modules/api/rest/uploads/get-upload"', errors: [{ messageId: "outside" }] },
+        { filename: HOOK, code: `import { streamOrderStatus } from "${STREAM_OP}"; export const useOrders = () => streamOrderStatus()`, errors: [{ messageId: "outside" }] },
+        { filename: HOOK, code: 'import { followEventStream } from "@/modules/api/sse/clients/read-event-stream"; export const useOrders = () => followEventStream()', errors: [{ messageId: "outside" }] },
+        { filename: SUBSCRIPTION, code: `import { streamOrderStatus } from "${STREAM_OP}"; export const useSubscribeOrderStatusSwr = () => streamOrderStatus()`, errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import { queryOrders } from "@/modules/api"', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'import { client } from "@/modules/api/graphql/clients/client"; export const useOrders = () => client.query({})', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: `export { queryOrders } from "${OP}"`, errors: [{ messageId: "outside" }] },
@@ -114,6 +124,65 @@ test("R285: bare workspace API imports use declared package identity", (t) => {
     ],
   })
 })
+
+const GRAPHQL_STREAM_OP = "@/modules/api/graphql/subscriptions/subscription-order-status"
+const subscribeHook = (operation, name, call) =>
+  `import useSWRSubscription from "swr/subscription"; import { ${name} } from "${operation}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", (key, { next }) => { ${call}; return () => undefined })`
+
+for (const lite of [false, true]) {
+  test(`R285 FE_SUBSCRIPTION_NO_SNAPSHOT: a subscription hook revalidates its snapshot when the stream opens (${lite ? "lite" : "full"})`, () => {
+    testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
+      valid: [
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: () => void mutate(\"order\"), onPush: (push) => next(null, push) })") },
+        { filename: SUBSCRIPTION, code: subscribeHook(GRAPHQL_STREAM_OP, "subscribeOrderStatus", "void subscribeOrderStatus({ onOpen() { void mutate(\"order\") } })") },
+        // only the subscription hooks of the SWR family are judged
+        { filename: WRAPPER, code: `import { streamOrderStatus } from "${STREAM_OP}"; export const useQueryOrdersSwr = () => streamOrderStatus({})` },
+      ],
+      invalid: [
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onPush: (push) => next(null, push) })"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: subscribeHook(GRAPHQL_STREAM_OP, "subscribeOrderStatus", "void subscribeOrderStatus({ onOpen: () => {} })"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus(options)"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: undefined })"), errors: [{ messageId: "missing" }] },
+      ],
+    })
+  })
+}
+
+const ns = (call) =>
+  `import useSWRSubscription from "swr/subscription"; import * as ops from "${STREAM_OP}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", (key, { next }) => { ${call}; return () => undefined })`
+const READER = "@/modules/api/sse/clients/read-event-stream"
+
+for (const lite of [false, true]) {
+  test(`R285 FE_SUBSCRIPTION_NO_SNAPSHOT: namespaces, aliases, a mutate in onOpen and the stream reader (${lite ? "lite" : "full"})`, () => {
+    testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
+      valid: [
+        { filename: SUBSCRIPTION, code: ns('void ops.streamOrderStatus({ onOpen: () => void mutate("order") })') },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", 'const open = streamOrderStatus; void open({ onOpen: () => void mutate("order") })') },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", 'const refresh = () => void mutate("order"); void streamOrderStatus({ onOpen: refresh })') },
+      ],
+      invalid: [
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: () => undefined })"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: () => console.info(1) })"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: ns("void ops.streamOrderStatus({})"), errors: [{ messageId: "missing" }] },
+        { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "const open = streamOrderStatus; void open({})"), errors: [{ messageId: "missing" }] },
+        // a subscription hook that follows no stream operation is not one
+        { filename: SUBSCRIPTION, code: subscribeHook(OP, "queryOrders", "void queryOrders({ request: {} })"), errors: [{ messageId: "noStream" }] },
+        // the reader is not a stream operation: a hook that calls it directly has no operation to judge
+        { filename: SUBSCRIPTION, code: `import useSWRSubscription from "swr/subscription"; import { followEventStream } from "${READER}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", () => { void followEventStream({ onOpen: () => {} }); return () => undefined })`, errors: [{ messageId: "noStream" }] },
+      ],
+    })
+  })
+
+  test(`R285 FE_OP_OUTSIDE_SWR_HOOK: only a stream operation imports the stream reader, even inside a fetcher (${lite ? "lite" : "full"})`, () => {
+    testerFor(lite).run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
+      valid: [],
+      invalid: [
+        { filename: SUBSCRIPTION, code: `import useSWRSubscription from "swr/subscription"; import { followEventStream } from "${READER}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", () => { void followEventStream({}); return () => undefined })`, errors: [{ messageId: "outside" }] },
+        { filename: at("apps/web/src/hooks/swr/api/rest/queries/useGetOrdersSwr.ts"), code: `import useSWR from "swr"; import { followEventStream } from "${READER}"; export const useGetOrdersSwr = () => useSWR("orders", () => followEventStream({}))`, errors: [{ messageId: "outside" }] },
+      ],
+    })
+  })
+}
 
 test("R285: append-only plugin registration preserves every new enforcer and owner", async () => {
   const plugin = await import("./index.mjs")

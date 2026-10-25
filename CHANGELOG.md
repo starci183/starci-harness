@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Added: the stream reader of server-sent events (`fe.transport.stream`, `modules/api/sse/clients/`) is part of the API layer, so it may call `fetch` (FE_TRANSPORT_OWNER); a stream operation (`sse/<area>/stream-<channel>.ts`) must import it.
+- Added: `useSWRSubscription` (`swr/subscription`) is an SWR request hook of the family (FE_SWR_OUTSIDE_FAMILY, FE_OP_OUTSIDE_SWR_HOOK, FE_HOOKS_ARE_HOOKS): a stream operation is consumed only by `hooks/swr/api/sse/subscriptions/useSubscribe<X>Swr.ts`.
+
 ## 8.4.38 - 2026-10-24
 - Changed: the bundled runtime copies and canon pins carry the alpha.30 canon (the `zod` pin is `side: both`) and select @starci/hfs 4.7.31 and @starci/cli 1.7.31.
 

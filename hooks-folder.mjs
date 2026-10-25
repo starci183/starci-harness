@@ -7,6 +7,7 @@
  * saying where the non-hook code goes. It now does, per family of the front-end stack (each its own slot):
  *
  *   hooks/swr/api/{graphql,rest}/{queries,mutations}/use{Query,Mutate,Get,Post,Put,Patch,Delete}<X>Swr.ts
+ *   hooks/swr/api/sse/subscriptions/useSubscribe<X>Swr.ts
  *                                     one SWR hook per modules/api operation (fe.hooks.swr), plus SwrSideEffects.tsx
  *   hooks/rhf/use<X>Form.ts           one form (fe.hooks.rhf)
  *   hooks/zustand/<store>/store.ts    one local store and its use*.ts selectors (fe.hooks.zustand)
@@ -37,7 +38,7 @@ import { rules as swrFamilyRules } from "./swr-family.mjs"
 const isHookName = (name) => /^use[A-Z0-9]/.test(name)
 
 /**
- * The SWR key of a hook (`QUERY_<X>_SWR_KEY`, `MUTATE_<X>_SWR_KEY`, fe-stack data): the one constant a hook file exports beside its
+ * The SWR key of a hook (`QUERY_<X>_SWR_KEY`, `MUTATE_<X>_SWR_KEY`, `SUBSCRIBE_<X>_SWR_KEY`, fe-stack data): the one constant a hook file exports beside its
  * hook, so a mutation or a socket message revalidates exactly that cache entry.
  */
 const isSwrKeyName = (name) => /^[A-Z][A-Z0-9_]*_SWR_KEY$/.test(name)
@@ -85,8 +86,9 @@ const SWR_HOOKS = new Map([
   ["swr/immutable", new Set(["useSWRImmutable"])],
   ["swr/infinite", new Set(["useSWRInfinite"])],
   ["swr/mutation", new Set(["useSWRMutation"])],
+  ["swr/subscription", new Set(["useSWRSubscription"])],
 ])
-const SWR_DEFAULTS = new Map([["swr", "useSWR"], ["swr/immutable", "useSWRImmutable"], ["swr/infinite", "useSWRInfinite"], ["swr/mutation", "useSWRMutation"]])
+const SWR_DEFAULTS = new Map([["swr", "useSWR"], ["swr/immutable", "useSWRImmutable"], ["swr/infinite", "useSWRInfinite"], ["swr/mutation", "useSWRMutation"], ["swr/subscription", "useSWRSubscription"]])
 /**
  * The library hooks a composite hook may stand on (an explicit list, owner ruling 2026-10-16): next-intl, next/navigation,
  * react-hook-form and zustand's React entry points. A name outside the list is not a hook by its spelling.
@@ -205,7 +207,8 @@ const hookFileOf = (context) => {
     const stray = Boolean(verdict) && !verdict.allowed
     const allows = (verdict?.allows ?? hfs.slot(found.slot)?.allows ?? []).join("`, `")
     // A role the slot names (`entry`, `effects`, `store`) or a non-hook file it allows (sockets.ts, enums/, types/, barrels) is no hook file.
-    return { stray, directlyInHooks: false, hookFile: !stray && !found.role && isHookFileName(name), sharedFile: false, family: found.slot, allows }
+    const subscriptions = ["/api/sse/subscriptions/", "/api/graphql/subscriptions/"].some((folder) => file.split(String.fromCharCode(92)).join("/").includes(folder))
+    return { stray, directlyInHooks: false, hookFile: !stray && !found.role && isHookFileName(name), sharedFile: false, family: found.slot, allows, subscriptions }
   }
   if (!inSlot(context, "fe.hooks")) return null
   // A file directly in `hooks/` is its own root: the slot binds the file name as the `domain`.
@@ -232,6 +235,8 @@ export const hooksFolderHoldsHooksOnly = {
         "`{{name}}` is in `hooks/` but is not a React hook. Hooks are `use<Name>.ts`; the domain's non-hook helpers go in `<domain>.shared.ts`; a call to the back end is an operation of `modules/api`, wrapped by an SWR hook in `hooks/swr/`.",
       family:
         "`{{name}}` is not a file `{{family}}` names. This family holds `{{allows}}`: an SWR hook is `use{Query,Mutate}<X>Swr.ts` (GraphQL) or `use{Get,Post,Put,Patch,Delete}<X>Swr.ts` (REST) in its `api/<protocol>/<queries|mutations>/` folder, a form is `use<X>Form.ts`. A name outside the list is a hook nobody finds by its family, or code that is not a hook.",
+      subscription:
+        "`{{name}}` is not a file `{{family}}` names in a subscriptions folder. A stream or GraphQL subscription hook is `useSubscribe<X>Swr.ts` in `api/sse/subscriptions/` or `api/graphql/subscriptions/`, one hook per file, exporting at most its `SUBSCRIBE_<X>_SWR_KEY`.",
       export:
         "`{{name}}` is exported from a hook file but is not a hook. A hook file exports the hook (a function named `use...`) and at most its SWR key (`QUERY_<X>_SWR_KEY`, `MUTATE_<X>_SWR_KEY`); a helper belongs in `<domain>.shared.ts`.",
       many:
@@ -256,6 +261,7 @@ export const hooksFolderHoldsHooksOnly = {
       Program(program) {
         if (judged.directlyInHooks) return context.report({ node: program, messageId: "domain" })
         if (!judged.stray) return
+        if (judged.family && judged.subscriptions) return context.report({ node: program, messageId: "subscription", data: { name, family: judged.family } })
         if (judged.family) context.report({ node: program, messageId: "family", data: { name, family: judged.family, allows: judged.allows } })
         else context.report({ node: program, messageId: "notHook", data: { name } })
       },

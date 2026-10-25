@@ -41,6 +41,7 @@ const OPERATION = at("apps/web/src/modules/api/graphql/queries/query-course.ts")
 const REST = at("apps/web/src/modules/api/rest/upload/presign.ts")
 const PKG_REST = at("packages/shop-api/src/rest/upload/presign.ts")
 const PKG_TRANSPORT = at("packages/shop-api/src/transport.ts")
+const STREAM = at("apps/web/src/modules/api/sse/clients/read-event-stream.ts")
 const GENERATED = at("apps/web/src/modules/api/graphql/__generated__/types.ts")
 // Outside the API layer.
 const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
@@ -63,12 +64,17 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
       // every file of the API layer is the API layer, an operation and the package's other files included
       { filename: OPERATION, code: "const r = await fetch(url, { signal })" },
       { filename: PKG_TRANSPORT, code: "const r = await fetch(url, { signal })" },
+      // the stream reader of server-sent events is part of the transport client layer
+      { filename: STREAM, code: "const r = await fetch(url, { signal })" },
       { filename: at("apps/web/src/modules/api/transport.ts"), code: "const r = await fetch(url, { signal })" },
       // the canonical libraries in their homes: Apollo in the API layer, axios in its REST calls, socket.io-client in hooks/socketio
       { filename: CLIENT, code: "import { ApolloClient, HttpLink } from \"@apollo/client\"" },
       { filename: OPERATION, code: "import { gql } from \"@apollo/client\"" },
       { filename: PKG_CLIENT, code: "import { ApolloLink } from \"@apollo/client/core\"" },
       { filename: REST, code: "import axios from \"axios\"" },
+      // graphql-ws is the subscription transport of the Apollo clients folder, in an app and in the shared api package
+      { filename: CLIENT, code: "import { createClient } from \"graphql-ws\"" },
+      { filename: PKG_CLIENT, code: "import { createClient } from \"graphql-ws\"" },
       { filename: PKG_REST, code: "import axios from \"axios\"" },
       { filename: SOCKETS, code: "import { io } from \"socket.io-client\"" },
       { filename: HOOK, code: "const r = await client.get(url)" },
@@ -119,6 +125,8 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
       { filename: HOOK, code: "import { useQuery } from \"@apollo/client\"", errors: [{ messageId: "placed" }] },
       { filename: SWR_HOOK, code: "import { useQuery } from \"@apollo/client/react\"", errors: [{ messageId: "placed" }] },
       { filename: HOOK, code: "import { io } from \"socket.io-client\"", errors: [{ messageId: "placed" }] },
+      { filename: HOOK, code: "import { createClient } from \"graphql-ws\"", errors: [{ messageId: "placed" }] },
+      { filename: OPERATION, code: "import { createClient } from \"graphql-ws\"", errors: [{ messageId: "placed" }] },
       { filename: HOOK, code: "export * from \"axios\"", errors: [{ messageId: "placed" }] },
       { filename: HOOK, code: "const axios = await import(\"axios\")", errors: [{ messageId: "placed" }] },
       { filename: HOOK, code: "const axios = require(\"axios\")", errors: [{ messageId: "placed" }] },

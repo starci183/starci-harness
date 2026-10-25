@@ -3,6 +3,7 @@ import { hfsOf } from "./lib/hfs.mjs"
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { stringOf, walk } from "./lib/ast.mjs"
+import { functionOf } from "./lib/bindings.mjs"
 import { classOf, fileOf, globalReferences, isApiLayer, isProductSource, resolveImport } from "./lib/scope.mjs"
 import { why } from "./lib/why.mjs"
 
@@ -13,7 +14,7 @@ const isSwrHook = (context) => {
 }
 
 /** Cache providers and revalidation may be used by consumers; only request hooks own operations. */
-const isRequestHook = (name) => /^useSWR(?:Immutable|Infinite|Mutation)?$/.test(name) || name === "default"
+const isRequestHook = (name) => /^useSWR(?:Immutable|Infinite|Mutation|Subscription)?$/.test(name) || name === "default"
 const swrSource = (value) => value === "swr" || value.startsWith("swr/")
 const propertyName = (node) => node.computed ? node.property.value : node.property.name
 
@@ -68,8 +69,11 @@ export const swrOnlyInFamily = {
   },
 }
 
+/** The slot of the stream reader: only a stream operation of the API layer imports it, never an SWR hook, even inside a fetcher. */
+const STREAM_READER_SLOT = "fe.transport.stream"
+
 /** Type imports stay available; the API layer may compose its own operations and helpers. */
-const isOperationSource = (context, value) => {
+const isOperationSource = (context, value, only) => {
   if (typeof value !== "string") return false
   const hfs = hfsOf(context)
   let target = resolveImport(context, value)
@@ -93,7 +97,8 @@ const isOperationSource = (context, value) => {
   const candidates = /\.[cm]?[jt]sx?$/.test(target) ? [target] : [`${target}.ts`, `${target}.tsx`, `${target}/index.ts`, `${target}/index.tsx`, target]
   const found = candidates.map((file) => hfs.classify(file)).filter((entry) => entry.status === "owned")
   if (found.some((entry) => ["fe.transport.outcome", "fe.package.api.outcome"].includes(entry.slot))) return false
-  return found.some((entry) => ["fe.modules.api", "fe.package.api", "fe.transport.client", "fe.package.api.client"].includes(entry.slot))
+  if (only !== undefined) return found.some((entry) => entry.slot === only)
+  return found.some((entry) => ["fe.modules.api", "fe.package.api", "fe.transport.client", "fe.transport.stream", "fe.package.api.client"].includes(entry.slot))
 }
 
 const unwrap = (node) => {
@@ -162,7 +167,7 @@ export const operationsOnlyInSwrHooks = {
     if (!isProductSource(context) || isApiLayer(context)) return {}
     const imports = []
     const inspect = (node, value) => {
-      if (isOperationSource(context, value)) imports.push({ node, value })
+      if (isOperationSource(context, value)) imports.push({ node, value, reader: isOperationSource(context, value, STREAM_READER_SLOT) })
     }
     return {
       ImportDeclaration(node) {
@@ -180,7 +185,95 @@ export const operationsOnlyInSwrHooks = {
       "Program:exit"(program) {
         if (!imports.length) return
         const wrapped = isSwrHook(context) ? wrappedOperations(context, program, imports) : new Set()
-        for (const { node, value } of imports) if (!wrapped.has(node)) context.report({ node, messageId: "outside", data: { source: value } })
+        for (const { node, value, reader } of imports) if (reader || !wrapped.has(node)) context.report({ node, messageId: "outside", data: { source: value } })
+      },
+    }
+  },
+}
+
+/** A stream operation: `modules/api/sse/<area>/stream-<channel>` or `modules/api/graphql/subscriptions/subscription-<name>`. */
+const STREAM_OPERATION = /modules\/api\/(?:sse\/[^/]+\/stream-[^/]+|graphql\/subscriptions\/subscription-[^/]+)(?:\.tsx?)?$/
+
+/** A subscription hook file of the SWR family: `useSubscribe<X>Swr.ts`. */
+const isSubscriptionHook = (context) => isSwrHook(context) && /^useSubscribe[A-Z0-9]\w*Swr\.ts$/.test(fileOf(context).replaceAll("\\", "/").split("/").at(-1) ?? "")
+
+/** The `onOpen` property of an object literal, else undefined. */
+const onOpenOf = (options) =>
+  options?.type === "ObjectExpression"
+    ? options.properties.find((property) => property.type === "Property" && !property.computed && property.key.type === "Identifier" && property.key.name === "onOpen")
+    : undefined
+
+/** True when a function calls `mutate` (the bound mutate of a hook or the one of `useSWRConfig`): the revalidation of the snapshot query. */
+const callsMutate = (source, handler) => {
+  let found = false
+  walk(source, handler.body, (node) => {
+    if (found) return false
+    if (node.type !== "CallExpression") return undefined
+    const callee = unwrap(node.callee)
+    if ((callee?.type === "Identifier" && callee.name === "mutate") || (callee?.type === "MemberExpression" && propertyName(callee) === "mutate")) found = true
+    return undefined
+  })
+  return found
+}
+
+/** True when a callee is a stream operation: a named import, a member of a namespace import, or a const alias of either. */
+const isStreamCallee = (source, input, locals, seen = new Set()) => {
+  const node = unwrap(input)
+  if (node?.type === "MemberExpression") {
+    const object = unwrap(node.object)
+    return object?.type === "Identifier" && locals.get(object.name) === "namespace" && bindingOf(source, object)?.defs[0]?.type === "ImportBinding"
+  }
+  if (node?.type !== "Identifier") return false
+  const variable = bindingOf(source, node)
+  if (!variable || seen.has(variable) || variable.defs.length !== 1) return false
+  const definition = variable.defs[0]
+  if (definition.type === "ImportBinding") return locals.get(variable.name) === "named"
+  if (definition.node.type !== "VariableDeclarator" || definition.parent.kind !== "const") return false
+  return isStreamCallee(source, definition.node.init, locals, new Set([...seen, variable]))
+}
+
+/**
+ * A stream or subscription has no replay of what it missed (graphql-ws has none, an SSE reconnect replays a bounded buffer), so the
+ * subscription hook revalidates the snapshot query each time the stream opens: its call of the stream operation (named, through a
+ * namespace or an alias) passes an `onOpen` handler that calls `mutate`, and a subscription hook that calls no stream operation at
+ * all is not one (FE-REALTIME-2).
+ */
+export const subscriptionRefetchesSnapshot = {
+  meta: {
+    type: "problem",
+    docs: { description: "FE_SUBSCRIPTION_NO_SNAPSHOT: a subscription hook passes the stream operation an onOpen handler that revalidates the snapshot query." },
+    schema: [],
+    messages: {
+      missing:
+        "FE_SUBSCRIPTION_NO_SNAPSHOT: this call of a stream operation has no `onOpen` handler that calls `mutate`. A stream carries changes, not the state: pass `onOpen: () => void mutate(<snapshot query key>)` so the screen reads its snapshot with the query each time the stream (re)opens.",
+      noStream:
+        "FE_SUBSCRIPTION_NO_SNAPSHOT: a `useSubscribe<X>Swr` hook calls one stream operation (`modules/api/sse/<area>/stream-*.ts` or `modules/api/graphql/subscriptions/subscription-*.ts`) and revalidates its snapshot query in `onOpen`; this file calls none.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context) || !isSubscriptionHook(context)) return {}
+    const source = context.sourceCode ?? context.getSourceCode()
+    const locals = new Map()
+    let calls = 0
+    return {
+      ImportDeclaration(node) {
+        if (node.importKind === "type" || typeof node.source.value !== "string") return
+        const target = resolveImport(context, node.source.value)
+        if (target === null || !STREAM_OPERATION.test(target.replaceAll("\\", "/"))) return
+        for (const specifier of node.specifiers) {
+          if (specifier.importKind === "type") continue
+          if (specifier.type === "ImportSpecifier") locals.set(specifier.local.name, "named")
+          if (specifier.type === "ImportNamespaceSpecifier") locals.set(specifier.local.name, "namespace")
+        }
+      },
+      CallExpression(node) {
+        if (!isStreamCallee(source, node.callee, locals)) return
+        calls += 1
+        const handler = functionOf(context, onOpenOf(node.arguments[0])?.value)
+        if (!handler || !callsMutate(source, handler)) context.report({ node, messageId: "missing" })
+      },
+      "Program:exit"(program) {
+        if (calls === 0) context.report({ node: program, messageId: "noStream" })
       },
     }
   },
@@ -190,8 +283,9 @@ export const operationsOnlyInSwrHooks = {
 Object.assign(why, {
   "swr-only-in-family": { code: "FE_SWR_OUTSIDE_FAMILY", en: "A request hook is used outside the SWR family.", fix: "Call the operation's SWR wrapper hook." },
   "operations-only-in-swr-hooks": { code: "FE_OP_OUTSIDE_SWR_HOOK", en: "An API operation is consumed outside an SWR wrapper.", fix: "Wrap the operation in hooks/swr/." },
+  "subscription-refetches-snapshot": { code: "FE_SUBSCRIPTION_NO_SNAPSHOT", en: "A subscription hook does not revalidate its snapshot query when the stream opens.", fix: "Pass the stream operation an onOpen handler that revalidates the snapshot query key." },
 })
 
 /** R285's published lint enforcers. */
-export const rules = { "swr-only-in-family": swrOnlyInFamily, "operations-only-in-swr-hooks": operationsOnlyInSwrHooks }
+export const rules = { "swr-only-in-family": swrOnlyInFamily, "operations-only-in-swr-hooks": operationsOnlyInSwrHooks, "subscription-refetches-snapshot": subscriptionRefetchesSnapshot }
 export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))

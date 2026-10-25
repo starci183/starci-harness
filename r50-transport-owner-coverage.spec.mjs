@@ -72,4 +72,38 @@ for (const edition of ["lite", "full"]) {
       invalid: [{ filename: fixture.at(GRAPH_BAD), code: files[GRAPH_BAD], errors: [{ messageId: "finding" }] }],
     })
   })
+
+  test(`R50 ${edition} accepts the stream reader as part of the transport client layer and rejects a stream operation or a hook that opens its own connection`, (t) => {
+    const READER = "apps/web/src/modules/api/sse/clients/read-event-stream.ts"
+    const OPERATION = "apps/web/src/modules/api/sse/orders/stream-orders.ts"
+    const BARE = "apps/web/src/modules/api/sse/bare/stream-bare.ts"
+    const JSON_HELPER = "apps/web/src/modules/api/sse/clients/get-json.ts"
+    const REST_OP = "apps/web/src/modules/api/rest/orders/get-orders.ts"
+    const files = {
+      [GRAPH_CLIENT]: 'import { ApolloClient } from "@apollo/client"; export const authClient = new ApolloClient({ uri: "/graphql" });',
+      "apps/web/src/modules/api/graphql/types.ts": "export type GraphQLResponse<T> = { success: boolean; message: string; error?: string; data?: T };",
+      [READER]: 'export const follow = (url: string, signal: AbortSignal) => fetch(url, { signal, headers: { accept: "text/event-stream" } });',
+      [JSON_HELPER]: "export const getJson = (url: string, signal: AbortSignal) => fetch(url, { signal }).then((response) => response.json());",
+      [REST_OP]: 'import { getJson } from "../../sse/clients/get-json"; export const getOrders = (signal: AbortSignal) => getJson("/orders", signal);',
+      [OPERATION]: 'import { follow } from "../clients/read-event-stream"; export const streamOrders = (signal: AbortSignal) => follow("/orders/stream", signal);',
+      [BARE]: "export const streamBare = () => 1;",
+      [GRAPH_BAD]: 'export const useUnowned = () => fetch("/orders/stream");',
+    }
+    const fixture = projectFixture({ profile: "fe", edition, files })
+    t.after(() => fixture.cleanup())
+    fixture.tester.run("transport-owner", graphRules["transport-owner"], {
+      valid: [
+        { filename: fixture.at(READER), code: files[READER] },
+        { filename: fixture.at(OPERATION), code: files[OPERATION] },
+      ],
+      invalid: [
+        { filename: fixture.at(BARE), code: files[BARE], errors: [{ messageId: "finding" }] },
+        // a plain JSON fetch hides nowhere: the reader folder asks for text/event-stream only
+        { filename: fixture.at(JSON_HELPER), code: files[JSON_HELPER], errors: [{ messageId: "finding" }] },
+        // and only a stream operation imports the reader: a REST call does not
+        { filename: fixture.at(REST_OP), code: files[REST_OP], errors: [{ messageId: "finding" }] },
+        { filename: fixture.at(GRAPH_BAD), code: files[GRAPH_BAD], errors: [{ messageId: "finding" }] },
+      ],
+    })
+  })
 }
