@@ -31,6 +31,7 @@ import { recommended as landmarkRecommended, rules as landmarkRules } from "./la
 import { recommended as listsRecommended, rules as listsRules } from "./lists.mjs"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.mjs"
 import { recommended as lintEscapeRecommended, rules as lintEscapeRules } from "./lint-escape-hatch.mjs"
+import { recommended as menuEntriesRecommended, rules as menuEntriesRules } from "./menu-entries.mjs"
 import { recommended as namingRecommended, rules as namingRules } from "./naming.mjs"
 import { recommended as nativeControlsRecommended, rules as nativeControlsRules } from "./native-controls.mjs"
 import { recommended as nextConventionsRecommended, rules as nextConventionsRules } from "./next-conventions.mjs"
@@ -75,6 +76,7 @@ const CONTRIBUTIONS = [
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },
+  { law: "menu-entries", rules: menuEntriesRules, recommended: menuEntriesRecommended },
   { law: "naming", rules: namingRules, recommended: namingRecommended },
   { law: "native-controls", rules: nativeControlsRules, recommended: nativeControlsRecommended },
   { law: "next-conventions", rules: nextConventionsRules, recommended: nextConventionsRecommended },
