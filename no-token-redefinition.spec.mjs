@@ -12,7 +12,7 @@ test("refuses a CSS module that declares a semantic or family token", async () =
 
 test("refuses the same redefinition in globals.css and any other stylesheet", async () => {
   assert.equal((await rule(":root { --muted: var(--foreground); }", FILES.globals)).length, 1)
-  assert.equal((await rule(".a { --radius-md: var(--radius); }", FILES.css)).length, 1)
+  assert.equal((await rule(".a { --radius-lg: var(--radius); }", FILES.css)).length, 1)
 })
 
 test("refuses registering a grammar token with @property", async () => {
