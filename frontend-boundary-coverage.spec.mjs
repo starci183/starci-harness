@@ -39,8 +39,11 @@ for (const edition of ['lite', 'full']) {
       valid: [
         { filename, code: "import { useForm } from 'react-hook-form'; import { z } from 'zod';" },
         { filename, code: "import { format } from './date-fns';" },
+        { filename, code: "import { Avatar, AvatarButton, AvatarGroup } from '@starci/grammar';" },
       ],
       invalid: [
+        { filename, code: "import { createAvatar } from '@dicebear/core';", errors: [{ message: /Avatar.*seed|seed.*Avatar/ }] },
+        { filename, code: "import style from '@dicebear/micah';", errors: [{ message: /Avatar.*seed|seed.*Avatar/ }] },
         { filename, code: "import { format } from 'date-fns/format';", errors: [{ messageId: 'forbidden' }] },
         { filename, code: "export { toast } from 'sonner';", errors: [{ messageId: 'forbidden' }] },
         { filename, code: "const dates = await import('moment');", errors: [{ messageId: 'forbidden' }] },
