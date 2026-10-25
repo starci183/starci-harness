@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.13 - 2026-10-26
+- Changed: the CSS vocabulary is regenerated after the Grammar repaint reverts: `--radius-md` is no longer read by the Grammar sources and `--badge-border` is added.
+
 ## 2.0.12 - 2026-10-26
 - Changed: the CSS vocabulary is regenerated from the Grammar 0.12 sources, and the generator and README describe the source resolution the package spec proves.
 
