@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.4.40 - 2026-10-25
+- Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
+
 ## 3.4.39 - 2026-10-24
 - Changed: the operation-route rule refuses a body no `OperationValidationService` validates, and the bundled canon text matches the lint (array bounds, shared throttler storage, pagination home, the operation table shape).
 - New: the realtime lint recognises the SSE door (`be.feature.realtime.sse`, a hub-only `@Sse` controller under `transport/sse`); the bundled slot manifest and rules carry the amended R212.
