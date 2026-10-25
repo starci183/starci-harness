@@ -19,17 +19,28 @@ const meta = (code, description, messages) => ({
   messages,
 })
 
+/** Whether a slot is present; unknown spreads do not prove either presence or absence. */
+const slotPresence = (context, opening, name) => {
+  const prop = propOf(context, opening, name)
+  if (!prop.known) return null
+  const value = resolveLocal(context, prop.value)
+  if (value === null || value.type === "Literal" && (value.value == null || value.value === false)) return false
+  return !(value.type === "Identifier" && value.name === "undefined" && !variableOf(context, value)?.defs.length)
+}
+
 /** The app frame is the fixed-viewport Grammar shell; hand-written frame landmarks are rejected. */
 export const appShellFrame = {
   meta: meta("FE_APP_SHELL_FRAME", "FE-APP-SHELL-1 uses WorkspaceShell viewport=fixed.", {
-    frame: "FE_APP_SHELL_FRAME: compose the app frame with WorkspaceShell viewport=\"fixed\"; Grammar owns its header, navigation and independent scroll regions.",
+    frame: "FE_APP_SHELL_FRAME: compose the app frame with WorkspaceShell viewport=\"fixed\"; navigation needs navigationDrawer or an explicit navigationVisibility. Grammar owns its header, navigation and independent scroll regions.",
   }),
   create(context) {
     if (!isProductSource(context)) return {}
     return { JSXOpeningElement(node) {
-      const wrongViewport = isAppShell(context, node) && textProp(context, node, "viewport") !== "fixed"
+      const shell = isAppShell(context, node)
+      const wrongViewport = shell && textProp(context, node, "viewport") !== "fixed"
+      const missingVisibility = shell && slotPresence(context, node, "navigation") !== false && slotPresence(context, node, "navigationDrawer") !== true && slotPresence(context, node, "navigationVisibility") !== true
       const handFrame = ownsAppFrame(context, node) && (node.name.type === "JSXIdentifier" && ["header", "nav", "main"].includes(node.name.name) || isAppBar(context, node) && !appBarOpenings(context).has(node))
-      if (wrongViewport || handFrame) {
+      if (wrongViewport || missingVisibility || handFrame) {
         context.report({ node, messageId: "frame" })
       }
     } }
