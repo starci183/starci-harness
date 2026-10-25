@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.11 - 2026-10-25
+- Fixed: regenerate the Grammar 0.11.0 CSS vocabulary (the vendor property --trigger-width is no longer read, since the DropdownMenu renders the HeroUI anatomy); Stylelint rule implementations are unchanged.
+
 ## 2.0.10 - 2026-10-19
 - Fixed: regenerate the Grammar 0.10.0 CSS vocabulary to include the DragItem vendor property --starci-drag-item-leading; Stylelint rule implementations are unchanged.
 
