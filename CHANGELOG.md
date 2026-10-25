@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Fixed: `operations-only-in-swr-hooks` (FE_OP_OUTSIDE_SWR_HOOK) no longer reports named imports that all resolve, through relative re-exports, to a generated `__generated__/input-bounds` module (`INPUT_BOUNDS`, `inputBoundsIssues`): they are contract data, not API operations. Mixed, default and namespace imports of the barrel still report.
+
 ## 8.4.38 - 2026-10-24
 - Changed: the bundled runtime copies and canon pins carry the alpha.30 canon (the `zod` pin is `side: both`) and select @starci/hfs 4.7.31 and @starci/cli 1.7.31.
 
