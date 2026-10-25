@@ -41,8 +41,10 @@ test("every rule this law declares is exported under its published name, at erro
 })
 
 for (const edition of ["lite", "full"]) {
-    const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) })
-    test(`${edition} R305: every string, array, set, map and record is bounded`, () => {
+    const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
+    const tester = ruleTester({ root: TYPED_ROOT, hfs })
+
+    test(`R305 ${edition}: accepts bounded strings and collections and rejects unbounded schemas`, () => {
         tester.run("schema-bounded", schemaBounded, {
             valid: [
                 { filename: SCHEMA, code: `${Z}export const A = z.object({ id: z.string().max(64) })` },
@@ -58,7 +60,7 @@ for (const edition of ["lite", "full"]) {
                 { filename: SCHEMA, code: `${Z}export const A = z.map(z.string().max(8), z.number()).check(z.maxSize(5))` },
                 { filename: SCHEMA, code: `${Z}export const A = z.record(z.enum(["a", "b"]), z.number()).refine((entries) => Object.keys(entries).length <= 2)` },
                 // enums, literals, numbers, booleans, dates and a fixed-format uuid owe no length
-                { filename: SCHEMA, code: `${Z}export const A = z.object({ k: z.enum(["a", "b"]), n: z.literal("x"), c: z.number().int(), b: z.boolean(), u: z.uuid(), d: z.iso.datetime() })` },
+                { filename: SCHEMA, code: `${Z}export const A = z.object({ k: z.enum(["a", "b"]), n: z.literal("x"), c: z.number().int(), b: z.boolean(), u: z.uuid(), d: z.date() })` },
                 { filename: SCHEMA, code: `${Z}export const A = z.tuple([z.string().max(4), z.number()])` },
                 // an alias of the namespace and a named import both count as zod
                 { filename: SCHEMA, code: "import { z as zod } from 'zod'\nexport const A = zod.string().max(5)" },
@@ -105,7 +107,26 @@ for (const edition of ["lite", "full"]) {
         })
     })
 
-    test(`${edition} R304: zod lives in a schema file of a domain, platform or integrations owner`, () => {
+    test(`R305 ${edition}: accepts bounded ISO strings and rejects unbounded ISO strings without treating Dates as strings`, () => {
+        tester.run("schema-bounded", schemaBounded, {
+            valid: [
+                ...["datetime", "date", "time", "duration"].map((name) => ({ filename: SCHEMA, code: `${Z}export const A = z.iso.${name}().max(64)` })),
+                { filename: SCHEMA, code: "import { iso as format } from 'zod'\nexport const A = format.datetime().max(32)" },
+                { filename: SCHEMA, code: "import * as schema from 'zod/v4'\nexport const A = schema.iso.duration().length(20)" },
+                { filename: SCHEMA, code: `${Z}export const A = z.date()` },
+                { filename: SCHEMA, code: "import { date } from 'zod'\nexport const A = date()" },
+                { filename: SCHEMA, code: "import { iso } from 'another-library'\nexport const A = iso.datetime()" },
+            ],
+            invalid: [
+                ...["datetime", "date", "time", "duration"].map((name) => ({ filename: SCHEMA, code: `${Z}export const A = z.iso.${name}()`, errors: [{ messageId: "string", data: { name: `iso.${name}` } }] })),
+                { filename: SCHEMA, code: "import { iso as format } from 'zod'\nexport const A = format.datetime()", errors: [{ messageId: "string", data: { name: "iso.datetime" } }] },
+                { filename: SCHEMA, code: "import * as schema from 'zod/v4'\nexport const A = schema.iso.duration()", errors: [{ messageId: "string", data: { name: "iso.duration" } }] },
+                { filename: SCHEMA, code: `${Z}export const A = z.iso.datetime().max(Infinity)`, errors: [{ messageId: "bound" }] },
+            ],
+        })
+    })
+
+    test(`R304 ${edition}: accepts owner schema files and rejects misplaced or mixed validation layers`, () => {
         tester.run("schema-place", schemaPlace, {
             valid: [
                 { filename: SCHEMA, code: `${Z}export const A = z.string().max(5)` },
