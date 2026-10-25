@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.6 - 2026-10-25
+- Added: the fake inbox records client operations and sweeps (`clientEntries`, `sweeps`) and the entity-manager and index doubles follow the idempotent client inbox of the alpha.31 cohort; the lite and full example back ends spec against them.
+
 ## 2.3.5 - 2026-10-23
 - Changed: the preset sets no `testTimeout` (the jest default applies; a world spec sets its own), owner ruling 2026-10-22: no loosening.
 - Changed: the type probes assert their compiler diagnostics (file, line, code) from their own rejected fixtures instead of inline ts directives; the generated metadata anchor carries no coverage-exclusion comment; a spec refuses any inline suppression in the package.
