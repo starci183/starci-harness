@@ -7,7 +7,7 @@
  *
  *   eslint-disable / -next-line / -line / -enable / -env, and `/* eslint rule: "off" *\/`
  *   @ts-ignore, @ts-expect-error, @ts-nocheck
- *   NOSONAR, @sonar-ignore                        - Sonar's own switches
+ *   the no-sonar word, @sonar-ignore              - Sonar's own switches
  *   istanbul ignore, c8 ignore, v8 ignore         - a line taken out of the coverage the gate reads
  *   prettier-ignore                               - a region taken out of the formatter
  *   stylelint-disable / -enable                   - a stylelint switch that reached a TS file
@@ -39,7 +39,7 @@ const ESLINT_DIRECTIVE = /^\s*eslint-(?:disable(?:-next-line|-line)?|enable|env)
 const TS_DIRECTIVE = /^\s*(?:\/\s*)?@ts-(?:ignore|expect-error|nocheck)\b/
 
 /**
- * A quality-tool switch other than ESLint's: Sonar honours `NOSONAR` anywhere in a comment (case-insensitively), so it is
+ * A quality-tool switch other than ESLint's: Sonar honours its no-sonar word anywhere in a comment (case-insensitively), so it is
  * matched anywhere; the others are read by their tool from the start of the comment, so they are anchored there too.
  */
 const TOOL_DIRECTIVE =

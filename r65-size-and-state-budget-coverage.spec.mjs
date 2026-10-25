@@ -19,9 +19,11 @@ import {
 } from "./fixtures/typed/tester.mjs"
 import { effectSubscriptionNeedsCleanup, noConsole, noEmptyCatch } from "./hygiene.mjs"
 import { listItemHasKey, noIndexKey, noInlineLiteralPropInList } from "./lists.mjs"
-import { componentLineBudget, noHandRolledPolling, unitHookBudget } from "./size-and-state-budget.mjs"
+import { componentLineBudget, noAppRelativeClock, noHandRolledPolling, unitHookBudget } from "./size-and-state-budget.mjs"
 
 const BLOCK = at("apps/web/src/components/blocks/Feed/index.tsx")
+const TIME_LEAF = at("apps/web/src/components/leaves/UpdatedAt/index.tsx")
+const TIME_HOOK = at("apps/web/src/hooks/time/useNow.ts")
 const lines = (count) => Array.from({ length: count }, (_, index) => "const line" + index + " = " + index).join("\n")
 const unit = (states, data) => "export const Feed = () => {\n"
   + Array.from({ length: states }, (_, index) => "const [state" + index + "] = useState(0)").join("\n") + "\n"
@@ -72,6 +74,35 @@ for (const edition of ["lite", "full"]) {
           filename: BLOCK,
           code: "declare const load: () => Promise<void>\nfunction poll() { setTimeout(() => { void load(); poll() }, 3000) }",
           errors: [{ messageId: "timeout" }],
+        },
+      ],
+    })
+  })
+
+  test(edition + " R65 accepts Grammar live-time labels and rejects product-owned clocks", () => {
+    tester.run("no-app-relative-clock", noAppRelativeClock, {
+      valid: [
+        {
+          filename: TIME_LEAF,
+          code: 'import { RelativeTime } from "@starci/grammar/core"\nexport const UpdatedAt = () => <RelativeTime dateTime="2026-10-25T12:00:00Z" locale="en" mode="relative" />',
+        },
+        {
+          filename: TIME_LEAF,
+          code: 'import * as Grammar from "@starci/grammar/core"\nexport const Countdown = () => <Grammar.RelativeTime dateTime="2026-10-25T13:00:00Z" locale="en" mode="countdown" />',
+        },
+        { filename: TIME_HOOK, code: "setTimeout(() => show(Date.now()), 1000)" },
+      ],
+      invalid: [
+        { filename: TIME_LEAF, code: "setInterval(() => show(Date.now()), 1000)", errors: [{ messageId: "clock" }] },
+        {
+          filename: TIME_HOOK,
+          code: "const { setInterval: repeat } = window\nconst tick = () => show(Date.now())\nrepeat(tick, 1000)",
+          errors: [{ messageId: "clock" }],
+        },
+        {
+          filename: TIME_HOOK,
+          code: "function tick() { show(new Date()); setTimeout(tick, 1000) }",
+          errors: [{ messageId: "clock" }],
         },
       ],
     })

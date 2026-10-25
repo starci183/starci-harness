@@ -32,4 +32,12 @@ failure codes and English guidance for the catalogued rules.
 tree. `starciTypedSourceConfig({ root })` provides the shared typed, React Hooks and Sonar
 configuration for source that has not adopted the product composition laws.
 
+The [surface composition law](docs/surface-rules.md) (R318) holds ANATOMY-2 and PADDING-0 for every
+family that publishes the shared HeroUI surface and field API: `nested-control-variant` refuses static
+variants on layer-aware fields and primary Tabs inside painted Grammar surfaces (`FE_NESTED_VARIANT`),
+`no-app-surface-paint` keeps surface paint in Grammar (`FE_GRAMMAR_LAYOUT_ONLY`) and
+`no-list-panel-padding` refuses horizontal padding wrappers around Grammar lists and section captions
+within the nearest painted surface (`FE_LIST_PANEL_PADDING`). The R65 budget law's
+`no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
+
 Regression specs belong to this package. Application front ends and Grammar libraries have no specs.

@@ -4,6 +4,23 @@
 - Changed: concrete Grammar component, variant, token and vendor rules move to `@starci/eslint-grammar-starci` under the `starci-grammar` namespace. Consumers compose both flat-config factories for their selected family.
 - Added: explicit shared infrastructure exports under `@starci/eslint-canon-fe/lib/*`; family packages reuse these readers without copying them.
 
+## 8.4.43 - 2026-10-26
+- Changed: the bundled canon pins follow back-end canon 3.4.43, hfs 4.7.34 and cli 1.7.34.
+
+## 8.4.42 - 2026-10-26
+- Changed: the bundled canon pins follow back-end canon 3.4.42.
+
+## 8.4.41 - 2026-10-26
+
+- Enforce the app-shell canon through fixed WorkspaceShell frames, drawer navigation, ordered navbar controls, control sizing and page-owned creation, with full and lite regression coverage.
+- Fixed: `operations-only-in-swr-hooks` (FE_OP_OUTSIDE_SWR_HOOK) no longer reports named imports that all resolve, through relative re-exports, to a generated `__generated__/input-bounds` module (`INPUT_BOUNDS`, `inputBoundsIssues`): they are contract data, not API operations. Mixed, default and namespace imports of the barrel still report.
+- Added: the stream reader of server-sent events (`fe.transport.stream`, `modules/api/sse/clients/`) is part of the API layer, so it may call `fetch` (FE_TRANSPORT_OWNER); a stream operation (`sse/<area>/stream-<channel>.ts`) must import it.
+- Added: `useSWRSubscription` (`swr/subscription`) is an SWR request hook of the family (FE_SWR_OUTSIDE_FAMILY, FE_OP_OUTSIDE_SWR_HOOK, FE_HOOKS_ARE_HOOKS): a stream operation is consumed only by `hooks/swr/api/sse/subscriptions/useSubscribe<X>Swr.ts`.
+- Changed: `nested-control-variant` (`FE_NESTED_VARIANT`) refuses static variants on layer-aware fields throughout app code and primary Tabs inside painted Grammar surfaces. R318 owns Grammar composition; `no-app-surface-paint` uses the separate layout-only code `FE_GRAMMAR_LAYOUT_ONLY`. `no-list-panel-padding` (`FE_LIST_PANEL_PADDING`) checks all horizontal padding forms only within the nearest painted surface.
+
+## 8.4.40 - 2026-10-25
+- Changed: the bundled canon pins select @starci/stylelint-canon 2.0.11, @starci/hfs 4.7.33 and @starci/cli 1.7.33.
+
 ## 8.4.39 - 2026-10-25
 - Changed: the bundled canon pins select @starci/grammar 0.11.0, @starci/hfs 4.7.32 and @starci/cli 1.7.32.
 
