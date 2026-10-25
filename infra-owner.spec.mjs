@@ -82,6 +82,8 @@ export { axios }` },
             { filename: DOMAIN, code: `const setTimeout = (fn: () => void) => fn()\nexport const g = () => setTimeout(() => 1)` },
             // a property called fetch is not the global
             { filename: DOMAIN, code: `export const h = (client: { fetch(): number }) => client.fetch()` },
+            // platform/realtime owns the socket.io engines of the scale pattern: the adapters, the pg LISTEN connection and ioredis
+            { filename: REALTIME, code: `import { createAdapter } from "@socket.io/postgres-adapter"\nimport { createShardedAdapter } from "@socket.io/redis-adapter"\nimport { Client, Pool } from "pg"\nimport Redis from "ioredis"\nexport { createAdapter, createShardedAdapter, Client, Pool, Redis }` },
             // libraries that are not in the table
             { filename: DOMAIN, code: `import { Module } from "@nestjs/common"\nimport { Cron } from "node-cron-lookalike"\nexport { Module, Cron }` },
         ],
@@ -108,6 +110,11 @@ export { axios }` },
             { filename: INTEGRATION, code: `import dayjs from "dayjs/plugin/utc"\nexport { dayjs }`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import winston from "winston"\nexport { winston }`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
+            // only platform/realtime imports the realtime engines and their adapters
+            { filename: DOMAIN, code: `import { createAdapter } from "@socket.io/postgres-adapter"\nexport { createAdapter }`, errors: [{ messageId: "foreign" }] },
+            { filename: FEATURE, code: `import { createShardedAdapter } from "@socket.io/redis-adapter"\nexport { createShardedAdapter }`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import { Client } from "pg"\nexport { Client }`, errors: [{ messageId: "foreign" }] },
+            { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             // another owner's library is not yours: http may not open a cache, cache may not queue
             { filename: HTTP, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             { filename: CACHE, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },
