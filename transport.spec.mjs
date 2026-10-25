@@ -341,3 +341,44 @@ const Sse = (_path: string): MethodDecorator => () => undefined
         })
     })
 }
+
+for (const edition of ["lite", "full"]) {
+test(`${edition} accepts GraphQL presigning and streamed downloads and rejects REST presigning metadata`, () => {
+        const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
+        const FILE = at("src/features/api/assets/transport/graphql/mint-upload.resolver.ts")
+        const controller = at("src/features/api/assets/transport/http/assets.controller.ts")
+        const http = 'import { Controller, Get, Post, StreamableFile } from "@nestjs/common"\n'
+        const metadata = '{ url: "https://storage.invalid/uploads", objectKey: "principals/p/avatar", expiresAt: "2026-10-24T01:02:00Z" }'
+        ruleTester({ root: TYPED_ROOT, hfs }).run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+            valid: [
+                {
+                    filename: FILE,
+                    code: `import { Field, Mutation, ObjectType, Resolver } from "@nestjs/graphql"
+@ObjectType() class UploadGrantType {
+    @Field() url!: string
+    @Field() objectKey!: string
+    @Field() expiresAt!: string
+}
+@Resolver() class UploadResolver {
+    @Mutation(() => UploadGrantType) mintUpload(): UploadGrantType { return ${metadata} }
+}`,
+                },
+                {
+                    filename: controller,
+                    code: `${http}@Controller("files") class FileController {
+    @Get("download") download() { return new StreamableFile(Buffer.from("document")) }
+}`,
+                },
+            ],
+            invalid: [
+                {
+                    filename: controller,
+                    code: `${http}@Controller("files") class FileController {
+    @Post("upload-grant") mintUpload() { return ${metadata} }
+}`,
+                    errors: [{ messageId: "unjustified" }],
+                },
+            ],
+        })
+    })
+}
