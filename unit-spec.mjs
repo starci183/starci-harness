@@ -6,7 +6,8 @@
  *
  *   - `spec-builds-with-testing-module`: the spec calls `Test.createTestingModule(...)` from `@nestjs/testing`, awaits
  *     `.compile()` and reads the subject with `.get(...)` on the resulting `TestingModule`. A spec of a value role
- *     (`ruleParams.be.valueRoles`, a zod schema) is exempt: its subject is a declared value, parsed directly.
+ *     (`ruleParams.be.valueRoles`) is exempt only while its sibling is a real boundary schema (an owner tier, zod values and types
+ *     only, `schema-file-values-only`): its subject is a declared value, parsed directly.
  *   - `spec-no-new-subject`: the subject (the class of the sibling `<name>.<role>.ts`) is never built with `new`.
  *   - `spec-module-definition-only-providers`: the module definition has a `providers` list and nothing else: no `imports` key
  *     and no `override*` call (`overrideProvider`, `overrideGuard`, `overrideModule`, `overrideFilter`, `overridePipe`,
@@ -32,6 +33,7 @@ import { importOf, isImportedFrom } from "./lib/import-source.mjs"
 import { isPackageType, typeOrigins } from "./lib/types.mjs"
 import { baseOf, isServiceSpecFile, isUnitSpecFile, isValueRoleSpec, unitRoleOfSpec } from "./lib/unit-spec.mjs"
 import { isRealSubjectValue, valueObjectsOfSibling } from "./lib/subject-values.mjs"
+import { siblingIsValueSchema } from "./lib/schema-values.mjs"
 
 const TESTING_PACKAGE = "@nestjs/testing"
 
@@ -79,8 +81,11 @@ export const specBuildsWithTestingModule = {
     },
     create(context) {
         const filename = context.filename || context.getFilename()
-        // a value role (a zod schema) declares a value Nest never constructs: its spec parses it and builds no module
-        if (!isFormSpecFile(hfsOf(context), filename) || isValueRoleSpec(hfsOf(context), filename)) return {}
+        // a value role (a zod schema) declares a value Nest never constructs: its spec parses it and builds no module, but only when the
+        // sibling really is one (a boundary schema of an owner tier holding zod values and types, nothing else); any other file keeps the rule
+        const hfs = hfsOf(context)
+        if (!isFormSpecFile(hfs, filename)) return {}
+        if (isValueRoleSpec(hfs, filename) && siblingIsValueSchema(hfs, filename)) return {}
         // a value-object subject (undecorated, no constructor injection token) is built with `new`: Nest never constructs it
         const valueObjectSpec = valueObjectsOfSibling(context).length > 0
         let created = null

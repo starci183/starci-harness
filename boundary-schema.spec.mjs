@@ -15,7 +15,7 @@ import test from "node:test"
 import { appDeclaration } from "./fixtures/app.mjs"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
-import { recommended, rules, schemaBounded, schemaPlace } from "./boundary-schema.mjs"
+import { recommended, rules, schemaBounded, schemaFileValuesOnly, schemaPlace } from "./boundary-schema.mjs"
 
 const SCHEMA = at("src/modules/integrations/sepay/sepay-transactions.schema.ts")
 const SCHEMA_SPEC = at("src/modules/integrations/sepay/sepay-transactions.schema.spec.ts")
@@ -37,7 +37,7 @@ test("every rule this law declares is exported under its published name, at erro
         assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
         assert.equal(recommended[`starci-be/${name}`], "error")
     }
-    assert.deepEqual(Object.keys(rules).sort(), ["schema-bounded", "schema-place"])
+    assert.deepEqual(Object.keys(rules).sort(), ["schema-bounded", "schema-file-values-only", "schema-place"])
 })
 
 for (const edition of ["lite", "full"]) {
@@ -141,3 +141,27 @@ for (const edition of ["lite", "full"]) {
         })
     })
 }
+
+test("schema-file-values-only: a schema file holds zod values and types, nothing that runs", () => {
+    const code = (...rows) => rows.join(String.fromCharCode(10))
+    const bad = (source, problem) => ({ filename: SCHEMA, code: source, errors: [{ messageId: "logic", data: { problem } }] })
+    const notZod = (name) => `${name} is not a zod schema (a schema file declares only zod chains and types)`
+    ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "full" }, TYPED_ROOT) }).run("schema-file-values-only", schemaFileValuesOnly, {
+        valid: [
+            { filename: SCHEMA, code: code(Z, "export const a = z.object({ id: z.string().max(5) })", "export type A = z.infer<typeof a>") },
+            { filename: SCHEMA, code: code(Z, "export const PAGE_MAX = 100", "export const a = z.array(z.string().max(5)).max(PAGE_MAX)") },
+            { filename: SCHEMA, code: code("import * as z from 'zod'", "export const a = z.string().max(5)", "export const b = z.array(a).max(3)") },
+            { filename: SCHEMA, code: code(Z, "import { other } from './other.schema'", "export const a = other.extend({ id: z.string().max(5) })") },
+            // not a schema file: the rule does not look
+            { filename: SERVICE, code: "export class S { run() { return 1 } }" },
+        ],
+        invalid: [
+            bad("export const priceOf = (cents: number): number => cents * 2", "it imports no zod, so it is not a boundary schema"),
+            bad(code(Z, "export function normalise(id: string): string { return id }"), "a FunctionDeclaration is logic, not a schema value"),
+            bad(code(Z, "export class Rules { static apply() { return 1 } }"), "a ClassDeclaration is logic, not a schema value"),
+            bad(code(Z, "export const a = z.string().max(5)", "export const run = (v: string) => a.parse(v)"), notZod("run")),
+            bad(code(Z, "export const LIMIT = compute()"), notZod("LIMIT")),
+            bad(code(Z, "if (process.env.X) { console.log(1) }"), "a IfStatement is logic, not a schema value"),
+        ],
+    })
+})
