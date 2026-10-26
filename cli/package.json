@@ -1,0 +1,36 @@
+{
+  "name": "@starci/cli",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "description": "The starci command line: one TypeScript source, core verbs plus the lite and full edition verbs.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "bin": {
+    "starci": "dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "start": "node dist/main.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run build"
+  },
+  "dependencies": {
+    "commander": "15.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "jiti": "2.7.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
+  }
+}
