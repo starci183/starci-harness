@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
-import type { ToolRun } from "../../shared/exec.js"
+import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { changedFiles, refExists, repositoryRoot } from "../../shared/git.js"
 import { listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
@@ -26,7 +26,7 @@ export interface Scope {
 /** The result of one check step on one package. */
 export interface StepResult {
     readonly package: string
-    readonly step: "typecheck" | "lint" | "unit"
+    readonly step: "typecheck" | "lint" | "canon" | "secrets" | "loosening" | "unit"
     readonly command: string
     readonly status: "green" | "red" | "skipped"
     readonly reason: string
@@ -68,18 +68,18 @@ const tail = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) =>
 
 const skipped = (pkg: WorkspacePackage, step: StepResult["step"], reason: string): StepResult => ({ package: pkg.name, step, command: "-", status: "skipped", reason, output: "" })
 
-/** `tsc --noEmit` over the package's own tsconfig. */
-export const typecheckPackage = async (scope: Scope, target: ScopeTarget): Promise<StepResult> => {
+/** `tsc --noEmit` over the package's own tsconfig, within the runtime tier's deadline when one is given. */
+export const typecheckPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
     const { pkg } = target
     if (!pkg.hasTsconfig) return skipped(pkg, "typecheck", "no tsconfig.json")
     const tsc = localBin(scope, pkg, join("typescript", "bin", "tsc"))
     if (tsc === undefined) return skipped(pkg, "typecheck", "typescript is not installed (run npm ci)")
-    const run = await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], pkg.dir)
+    const run = await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], pkg.dir, options)
     return { package: pkg.name, step: "typecheck", command: "tsc -p tsconfig.json --noEmit", status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
 }
 
 /** ESLint over the changed source files of the package (every file with --all), warnings counted as errors. */
-export const lintPackage = async (scope: Scope, target: ScopeTarget): Promise<StepResult> => {
+export const lintPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
     const { pkg } = target
     if (!pkg.hasEslintConfig) return skipped(pkg, "lint", "no eslint.config.*")
     const eslint = localBin(scope, pkg, join("eslint", "bin", "eslint.js"))
@@ -88,7 +88,7 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget): Promise<St
     const files = target.files.filter((file) => LINTABLE.test(file) && existsSync(join(scope.root, file))).map((file) => file.slice(prefix.length))
     if (!scope.all && files.length === 0) return skipped(pkg, "lint", "no changed source file")
     const paths = scope.all ? ["."] : files
-    const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], pkg.dir)
+    const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], pkg.dir, options)
     return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 ${paths.join(" ")}`, status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
 }
 

@@ -4,6 +4,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import { git, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
+import { requireCiGreen } from "../check/ci.js"
 import { choosePackage } from "./package-choice.js"
 
 interface CutData {
@@ -14,6 +15,7 @@ interface CutData {
     readonly changelog: string
     readonly pushed: boolean
     readonly dryRun: boolean
+    readonly ci: string
 }
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -31,7 +33,7 @@ const changelogSection = (text: string, version: string): string | undefined => 
 /** `starci release cut`: tags a commit that is already on the remote main with the package version and its CHANGELOG notes; it runs no suite. */
 export const releaseCutVerb = defineVerb({
     path: ["release", "cut"],
-    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite",
+    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI when policy requires it",
     editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release"],
@@ -59,11 +61,12 @@ export const releaseCutVerb = defineVerb({
         if (changelogPath === undefined) throw new Refusal("CUT_NO_CHANGELOG", `add a CHANGELOG.md with a "## ${pkg.version}" section`)
         const notes = changelogSection(readFileSync(changelogPath, "utf8"), pkg.version)
         if (notes === undefined) throw new Refusal("CUT_NO_NOTES", `${changelogPath} has no "## ${pkg.version}" section`)
+        const ci = await requireCiGreen(context, root, "release.cut", commit)
         if (!dryRun) {
             await git(root, ["tag", "-a", tag, commit, "-m", notes])
             await git(root, ["push", remote, `refs/tags/${tag}`])
         }
-        const data: CutData = { package: pkg.name, version: pkg.version, tag, commit, changelog: changelogPath, pushed: !dryRun, dryRun }
+        const data: CutData = { package: pkg.name, version: pkg.version, tag, commit, changelog: changelogPath, pushed: !dryRun, dryRun, ci: ci?.verdict ?? "not required" }
         return { data, message: `${dryRun ? "would tag" : "tagged"} ${tag} on ${commit.slice(0, 9)} and ${dryRun ? "push" : "pushed"} the tag; CI judges it: starci release ci-status --sha ${commit}` }
     },
 })

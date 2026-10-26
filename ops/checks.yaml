@@ -9,6 +9,13 @@ presets:
     check:
       kind: starci
       args: [check, run]
+  # CI is the critic after the push; a contract waits for it only when its work is the release or the deploy itself.
+  ci-green:
+    summary: CI of the commit on the remote main is green (starci check ci); for deliver work that ships main
+    behavioural: true
+    check:
+      kind: starci
+      args: [check, ci, --ref, origin/main]
   paths-only:
     summary: the change touches only the contract's allowPaths
     behavioural: false

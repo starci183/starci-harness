@@ -3,6 +3,7 @@ import { captureNpm, captureTool } from "../../shared/exec.js"
 import { isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
+import { requireCiGreen } from "../check/ci.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 
@@ -66,6 +67,7 @@ export const releasePublishVerb = defineVerb({
             if (!(await refExists(root, "origin/main")) || !(await isAncestor(root, head, "origin/main"))) {
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")
             }
+            await requireCiGreen(context, root, "release.publish", head)
             for (const row of due) {
                 const pkg = packages.find((candidate) => candidate.name === row.package)
                 if (pkg === undefined) continue
