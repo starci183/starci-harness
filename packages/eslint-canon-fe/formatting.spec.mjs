@@ -17,6 +17,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FORMAT-1: numbers, money and dates go through the next-intl formatter", () => {
+  assert.doesNotThrow(() => {
   tester.run("use-intl-formatter", useIntlFormatter, {
     valid: [
       { filename: BLOCK, code: "const E = () => <p>{format.number(total, { style: 'currency', currency: 'VND' })}</p>" },
@@ -56,5 +57,7 @@ test("FORMAT-1: numbers, money and dates go through the next-intl formatter", ()
       // another module is not the dayjs home
       { filename: at("apps/web/src/modules/utils/date.ts"), code: "import dayjs from 'dayjs'", errors: [{ messageId: "library" }] },
     ],
+  })
+
   })
 })

@@ -30,6 +30,7 @@ test("R321 is registered universally at error with its finding code", () => {
 
 for (const edition of ["lite", "full"]) {
   test(`R321 ${edition}: a Grammar component is imported where it renders, never re-exported from an app path`, () => {
+  assert.doesNotThrow(() => {
     tester().run("no-grammar-shim", rules["no-grammar-shim"], {
       valid: [
         "import { SurfaceCard } from \"@starci/grammar/common\"; export const Panel = () => <SurfaceCard>body</SurfaceCard>",
@@ -55,5 +56,7 @@ for (const edition of ["lite", "full"]) {
         invalid("import { SurfaceCard } from \"@starci/grammar\"; export default SurfaceCard", shim("`SurfaceCard`", "@starci/grammar")),
       ],
     })
+  
   })
+})
 }

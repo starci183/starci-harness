@@ -33,6 +33,7 @@ const unreleased = [{ messageId: "unreleased" }]
 const orphan = [{ messageId: "orphan" }]
 
 test("HYGIENE-1: timers and frames", () => {
+  assert.doesNotThrow(() => {
   typed.run("effect-subscription-needs-cleanup", effectSubscriptionNeedsCleanup, {
     valid: [
       { filename: FILE, code: withReact("useEffect(() => { const id = setTimeout(() => set(false), 300); return () => clearTimeout(id) }, [])") },
@@ -93,9 +94,12 @@ test("HYGIENE-1: timers and frames", () => {
       { filename: FILE, code: "const subscribe = (cb: () => void) => { setTimeout(cb, 5); return () => clearTimeout(1) }", errors: orphan },
     ],
   })
+
+  })
 })
 
 test("HYGIENE-1b: listeners", () => {
+  assert.doesNotThrow(() => {
   typed.run("effect-subscription-needs-cleanup", effectSubscriptionNeedsCleanup, {
     valid: [
       { filename: FILE, code: withReact("useEffect(() => { const onResize = () => undefined; window.addEventListener(\"resize\", onResize); return () => window.removeEventListener(\"resize\", onResize) }, [])") },
@@ -131,9 +135,12 @@ test("HYGIENE-1b: listeners", () => {
       { filename: HOOK, code: withReact("export const usePersisted = () => useSyncExternalStore((cb) => { window.addEventListener(\"storage\", cb); return () => undefined }, () => 1)"), errors: unreleased },
     ],
   })
+
+  })
 })
 
 test("HYGIENE-1c: observers, sockets and subscriptions", () => {
+  assert.doesNotThrow(() => {
   typed.run("effect-subscription-needs-cleanup", effectSubscriptionNeedsCleanup, {
     valid: [
       { filename: FILE, code: withReact("declare const el: HTMLElement\nuseEffect(() => { const ro = new ResizeObserver(() => undefined); ro.observe(el); return () => ro.disconnect() }, [])") },
@@ -170,9 +177,12 @@ test("HYGIENE-1c: observers, sockets and subscriptions", () => {
       { filename: HOOK, code: withReact("declare const bus: { watch(cb: () => void): { off(): void } }\nuseEffect(() => { const w = bus.watch(() => undefined) }, [])"), errors: unreleased },
     ],
   })
+
+  })
 })
 
 test("HYGIENE-2: an effect does not start a load", () => {
+  assert.doesNotThrow(() => {
   typed.run("no-data-fetch-in-effect", noDataFetchInEffect, {
     valid: [
       { filename: FILE, code: withReact("declare const title: string\nuseEffect(() => { document.title = title }, [title])") },
@@ -217,9 +227,12 @@ test("HYGIENE-2: an effect does not start a load", () => {
       { filename: HOOK, code: withReact("import useSWR from \"swr\"\ndeclare const key: string\ndeclare const fetcher: () => Promise<number>\nexport const useX = () => { const { mutate } = useSWR(key, fetcher); const refresh = () => mutate(); useEffect(() => { refresh() }, [key]) }"), errors: [{ messageId: "fetch" }] },
     ],
   })
+
+  })
 })
 
 test("HYGIENE-3: a catch that does nothing hides the failure", () => {
+  assert.doesNotThrow(() => {
   syntaxTester.run("no-empty-catch", noEmptyCatch, {
     valid: [
       { filename: PLAIN_FILE, code: "try { run() } catch (error) { return { kind: 'unavailable', cause: error } }" },
@@ -234,9 +247,12 @@ test("HYGIENE-3: a catch that does nothing hides the failure", () => {
       { filename: PLAIN_FILE, code: "load().catch(() => undefined)", errors: [{ messageId: "promise" }] },
     ],
   })
+
+  })
 })
 
 test("HYGIENE-4: no console in product source", () => {
+  assert.doesNotThrow(() => {
   syntaxTester.run("no-console", noConsole, {
     valid: [
       { filename: PLAIN_FILE, code: "const consoleWidth = 80" },
@@ -252,5 +268,7 @@ test("HYGIENE-4: no console in product source", () => {
       { filename: at("apps/web/src/modules/api/client.ts"), code: "console.warn('slow')", errors: [{ messageId: "console" }] },
       { filename: at("packages/shop-ui/src/leaves/Chip/index.tsx"), code: "console.log('x')", errors: [{ messageId: "console" }] },
     ],
+  })
+
   })
 })

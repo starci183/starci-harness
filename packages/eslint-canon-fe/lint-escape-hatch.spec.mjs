@@ -24,6 +24,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("LINT-ESCAPE-1: product source cannot change its own lint policy", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-inline-lint-config", noInlineLintConfig, {
     valid: [
       { filename: SOURCE, code: "// the rule is fixed centrally\nconst value = 1" },
@@ -93,6 +94,8 @@ test("LINT-ESCAPE-1: product source cannot change its own lint policy", () => {
         errors: [{ message: /has no effect/ }, { messageId: "directive" }],
       },
     ],
+  })
+
   })
 })
 

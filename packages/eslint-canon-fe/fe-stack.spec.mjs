@@ -50,10 +50,13 @@ test("a module specifier names its package: scope and name, subpath dropped; a r
 })
 
 test("FE-STACK-1: every forbidden package of the catalog is refused, by every import form", () => {
+  assert.doesNotThrow(() => {
   const forbidden = [...feStack().forbidden.keys()].map((name) => name.replace("/*", "/core"))
   tester.run("fe-stack-import", feStackImport, {
     valid: [],
     invalid: forbidden.map((name) => ({ filename: BLOCK, code: `import x from "${name}"`, errors: [{ messageId: "forbidden" }] })),
+  })
+
   })
 })
 
@@ -82,6 +85,7 @@ test("Grammar owns avatar generation: every DiceBear import form names Avatar se
 })
 
 test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () => {
+  assert.doesNotThrow(() => {
   tester.run("fe-stack-import", feStackImport, {
     valid: [
       // the canonical library of each concern passes wherever its placement rule allows it
@@ -129,5 +133,7 @@ test("FE-STACK-2: one library per concern; Supabase only in modules/auth", () =>
       { filename: at("apps/web/src/app/auth/callback/route.ts"), code: "import { createServerClient } from \"@supabase/ssr\"", errors: [{ messageId: "supabase" }] },
       { filename: at("apps/web/src/modules/db/server.ts"), code: "import { createServerClient } from \"@supabase/ssr\"", errors: [{ messageId: "supabase" }] },
     ],
+  })
+
   })
 })

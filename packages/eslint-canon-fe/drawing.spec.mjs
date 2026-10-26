@@ -36,6 +36,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("a pure half takes state, atom props and on actions", () => {
+  assert.doesNotThrow(() => {
   tester.run("base-props-atom", basePropsAtom, {
     valid: [
       {
@@ -101,9 +102,12 @@ test("a pure half takes state, atom props and on actions", () => {
       },
     ],
   })
+
+  })
 })
 
 test("feature composition receives block render callbacks while ordinary props stay data", () => {
+  assert.doesNotThrow(() => {
   tester.run("base-props-atom-render", basePropsAtom, {
     valid: [
       {
@@ -186,9 +190,12 @@ test("feature composition receives block render callbacks while ordinary props s
       },
     ],
   })
+
+  })
 })
 
 test("only the sibling index reaches the pure half, and it never re-exports XBase", () => {
+  assert.doesNotThrow(() => {
   tester.run("base-import-pair", baseImportPair, {
     valid: [
       { filename: BLOCK_INDEX, code: "import { HandoffBlockBase } from \"./component\"" },
@@ -204,9 +211,12 @@ test("only the sibling index reaches the pure half, and it never re-exports XBas
       { filename: BLOCK_INDEX, code: "export { HandoffBlockBase } from \"./component\"", errors: [{ messageId: "reexport" }] },
     ],
   })
+
+  })
 })
 
 test("a shape union never lists a data status or open/closed", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-data-status-shape", noDataStatusShape, {
     valid: [
       { filename: BLOCK, code: "export type HandoffBlockState = \"prepared\" | \"sent\" | \"returned\"" },
@@ -221,5 +231,7 @@ test("a shape union never lists a data status or open/closed", () => {
       { filename: OVERLAY, code: "export type DrawerState = \"closed\" | \"ready\"", errors: [{ messageId: "status" }] },
       { filename: FEATURE_PAGE, code: "export type OperatePageState = \"view\" | \"loading\"", errors: [{ messageId: "status" }] },
     ],
+  })
+
   })
 })

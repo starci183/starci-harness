@@ -21,6 +21,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-raw-brand-value", noRawBrandValue, {
     valid: [
       { filename: BLOCK, code: "const E = () => <div className=\"bg-surface text-foreground p-4\" />" },
@@ -61,6 +62,8 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
       { filename: BLOCK, code: "const E = () => <svg><path fill=\"red\" /></svg>", errors: [{ messageId: "named" }] },
       { filename: BLOCK, code: "const E = () => <svg><path fill=\"#123456\" /></svg>", errors: [{ messageId: "color" }] },
     ],
+  })
+
   })
 })
 

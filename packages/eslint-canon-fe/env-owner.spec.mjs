@@ -19,6 +19,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FE-ENV-1: only modules/config reads the environment", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-env-outside-config", noEnvOutsideConfig, {
     valid: [
       { filename: CONFIG, code: "export const url = process.env.API_URL" },
@@ -39,10 +40,13 @@ test("FE-ENV-1: only modules/config reads the environment", () => {
       { filename: at("apps/web/src/hooks/session/useSession.ts"), code: "if (process.env.NODE_ENV === \"production\") {}", errors: [{ messageId: "env" }] },
     ],
   })
+
+  })
 })
 
 for (const edition of ["lite", "full"]) {
   test(`FE-ENV-1: computed, destructured and aliased environment reads in ${edition}`, () => {
+  assert.doesNotThrow(() => {
     const settings = { starci: { hfs: fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" }) } }
     const valid = [
       { filename: CONFIG, code: "const p = process; export const url = p[\"env\"].API_URL" },
@@ -98,10 +102,13 @@ for (const edition of ["lite", "full"]) {
       valid: [...valid.map((fixture) => ({ ...fixture, settings }))],
       invalid: [...invalid.map((fixture) => ({ ...fixture, settings }))],
     })
+  
   })
+})
 }
 
 test("FE-ENV-2: no URL literal or address/secret default as a fallback", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-hardcoded-endpoint-fallback", noHardcodedEndpointFallback, {
     valid: [
       { filename: CONFIG, code: "export const url = process.env.API_URL" },
@@ -118,5 +125,7 @@ test("FE-ENV-2: no URL literal or address/secret default as a fallback", () => {
       { filename: CONFIG, code: "export const key = process.env.SESSION_SECRET ?? \"dev-secret\"", errors: [{ messageId: "variable" }] },
       { filename: CONFIG, code: "export const host = process.env[\"DB_HOST\"] || \"db\"", errors: [{ messageId: "variable" }] },
     ],
+  })
+
   })
 })

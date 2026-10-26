@@ -64,12 +64,15 @@ for (const edition of ["lite", "full"]) {
   })
 
   test(`fe ${edition}: HFS_FUNCTION_BUDGET reads the common functionLines parameter`, () => {
+  assert.doesNotThrow(() => {
     const tester = new RuleTester({ languageOptions, settings: { starci: { hfs: fixtureHfs(edition, 3) } } })
     tester.run("function-line-budget", functionLineBudget, {
       valid: [{ code: `function work() ${body(3)}` }],
       invalid: [{ code: `function work() ${body(4)}`, errors: [error(4, 3)] }],
     })
+  
   })
+})
 
   test(`fe ${edition}: the append-only registration publishes and activates HFS_FUNCTION_BUDGET`, () => {
     assert.deepEqual(Object.keys(rules), ["function-line-budget"])
@@ -93,11 +96,14 @@ for (const edition of ["lite", "full"]) {
 }
 
 test("fe: the owner-decided cap remains active before C08 adds functionLines to the manifest", () => {
+  assert.doesNotThrow(() => {
   const hfs = fixtureHfs("full")
   delete hfs.ruleParams.functionLines
   const tester = new RuleTester({ languageOptions, settings: { starci: { hfs } } })
   tester.run("function-line-budget", functionLineBudget, {
     valid: [{ code: `function work() ${body(80)}` }],
     invalid: [{ code: `function work() ${body(81)}`, errors: [error(81)] }],
+  })
+
   })
 })

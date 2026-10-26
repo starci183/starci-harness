@@ -30,6 +30,7 @@ test("reads sourceCode from the ESLint 10 rule context", () => {
 })
 
 test("component JSX consumes imported class names", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-inline-class-name", noInlineClassName, {
     valid: [
       { filename: COMPONENT, code: "import { badgeClassName } from './classNames'; const C = () => <div className={badgeClassName} />" },
@@ -57,9 +58,12 @@ test("component JSX consumes imported class names", () => {
       { filename: COMPONENT, code: "import { badgeClassName } from './classNames'; const C = (props) => <div className={props.active ? badgeClassName : 'flex'} />", errors: [{ messageId: "inline" }] },
     ],
   })
+
+  })
 })
 
 test("cn declarations live in colocated classNames files", () => {
+  assert.doesNotThrow(() => {
   tester.run("class-names-in-colocated-file", classNamesInColocatedFile, {
     valid: [
       { filename: COMPONENT, code: "import { badgeClassName } from './classNames'; const C = () => <div className={badgeClassName} />" },
@@ -72,9 +76,12 @@ test("cn declarations live in colocated classNames files", () => {
       { filename: PACKAGE_LEAF, code: "const badgeClassName = cn(\"flex\")", errors: [{ messageId: "misplaced" }] },
     ],
   })
+
+  })
 })
 
 test("cn receives one utility token per variadic argument", () => {
+  assert.doesNotThrow(() => {
   tester.run("cn-arguments-are-single-tokens", cnArgumentsAreSingleTokens, {
     valid: [
       { filename: STYLES, code: "export const badgeClassName = cn(\"inline-flex\", active ? \"text-success\" : undefined)" },
@@ -91,5 +98,7 @@ test("cn receives one utility token per variadic argument", () => {
       { filename: PACKAGE_STYLES, code: "export const badgeClassName = cn(\"flex gap-2\")", errors: [{ messageId: "token" }] },
       { filename: STYLES, code: "const privateClassName = cn(\"flex\")", errors: [{ messageId: "unexported" }] },
     ],
+  })
+
   })
 })

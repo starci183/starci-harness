@@ -22,6 +22,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("COMMENTS-1: an export opens with a documentation block", () => {
+  assert.doesNotThrow(() => {
   tester.run("require-export-jsdoc", requireExportJsdoc, {
     valid: [
       "/** What this is for. */\nexport const X = 1",
@@ -38,9 +39,12 @@ test("COMMENTS-1: an export opens with a documentation block", () => {
       { code: "// what this is\nexport const X = 1", errors: [{ messageId: "jsdoc" }] },
     ],
   })
+
+  })
 })
 
 test("COMMENTS-4: no emoji in source", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-emoji-in-source", noEmojiInSource, {
     valid: [
       { filename: SRC, code: "// a plain comment\nconst x = 1" },
@@ -53,6 +57,8 @@ test("COMMENTS-4: no emoji in source", () => {
       // a flag is a regional-indicator PAIR, which a single pictograph test misses
       { filename: SRC, code: "const s = \"🇻🇳\"", errors: [{ messageId: "emoji" }] },
     ],
+  })
+
   })
 })
 
@@ -100,6 +106,7 @@ test("there is no copy-module exemption: a resources folder is authoring, and th
 })
 
 test("public documentation requires a final adjacent description, not tags, headers or punctuation", () => {
+  assert.doesNotThrow(() => {
   tester.run("require-export-jsdoc", requireExportJsdoc, {
     valid: [
       "/** Returns the rows visible to the authenticated caller.\n * @returns Authorized rows.\n */\nexport const readRows = () => []",
@@ -116,5 +123,7 @@ test("public documentation requires a final adjacent description, not tags, head
       { code: "const text = \u0060/** Returns caller-visible rows. */\u0060\nexport const readRows = () => text", errors: [{ messageId: "jsdoc" }] },
       { code: "/** @returns Account identifier. */\nexport interface Learner { id: string }", errors: [{ messageId: "jsdoc" }] },
     ],
+  })
+
   })
 })
