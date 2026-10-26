@@ -20,7 +20,7 @@ tiers:
   high:
     - {agent: claude, model: claude-sonnet-5-5}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
-  # Claude closes the medium chain: uat needs a browser, and only the claude pool has one.
+  # Claude closes the medium chain, so a uat task always has a member that drives a browser.
   medium:
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6.1-sol, effort: medium}
@@ -41,7 +41,7 @@ pools:
     provider: codex
     maxParallel: 10
     labels: [code, test, ui, verify, uat, docs, deliver]
-    tools: [git, node, docker]
+    tools: [git, node, browser, docker]
   devin:
     provider: devin
     maxParallel: 10
@@ -53,6 +53,8 @@ hostProbes:
   git: [git, --version]
   node: [node, --version]
   docker: [docker, --version]
+  # Playwright Chromium installed for the host user: uat runs it from the shell, whatever agent drives it.
+  browser: [node, -e, "const p=require('path'),o=require('os'),f=require('fs');const d=process.env.PLAYWRIGHT_BROWSERS_PATH||(process.platform==='win32'?p.join(process.env.LOCALAPPDATA||'','ms-playwright'):process.platform==='darwin'?p.join(o.homedir(),'Library','Caches','ms-playwright'):p.join(o.homedir(),'.cache','ms-playwright'));process.exit(f.existsSync(d)&&f.readdirSync(d).some(n=>n.startsWith('chromium'))?0:1)"]
 
 # A member picked maxStreak times in a row, or holding more than maxSharePercent of its tier's running seats, yields.
 balance: {maxStreak: 3, maxSharePercent: 70}

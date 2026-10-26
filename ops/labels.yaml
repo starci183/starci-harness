@@ -30,7 +30,7 @@ labels:
     defaultChecks: [result-json]
     requireBehavioural: true
   uat:
-    summary: walk the flows in a browser with evidence
+    summary: walk the flows in Playwright Chromium on this host, with a screenshot per step as evidence
     floor: medium
     hostTools: [browser]
     defaultChecks: [result-json]

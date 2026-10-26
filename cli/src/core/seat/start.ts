@@ -129,7 +129,8 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
-            taskTitle: clip(`[Worker] ${task.id} ${task.contract.label}: ${task.contract.input.summary}`),
+            // Seats read as a tree: [Supervisor], then [Kernel] <workflow>, then [Op] <workflow> › <task> under it.
+            taskTitle: clip(`[Op] ${task.workflowId ?? "inline"} › ${task.id} ${task.contract.label}: ${task.contract.input.summary}`),
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
             model: options.model,

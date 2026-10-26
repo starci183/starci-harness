@@ -114,7 +114,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
  */
 export const pointerSpec = (taskId: string, files: BriefFiles): string =>
     [
-        `[Worker] StarCi task ${taskId}. Your brief is too long for a terminal, so the harness wrote it to a file:`,
+        `[Op] StarCi task ${taskId}. Your brief is too long for a terminal, so the harness wrote it to a file:`,
         `  ${slashed(files.brief)}`,
         "Read that whole file now, to the end, before any other action. It is your task: the rules, the contract, the paths,",
         "the checks, the budget and the commands that return your result. Nothing in this message narrows it; never write to that file.",

@@ -183,7 +183,7 @@ const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags
 }
 
 /**
- * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Worker] <task>` instead of Orca's generated name.
+ * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Op] <task>` instead of Orca's generated name.
  * Best effort: the title is presentation, so a failure is returned as text and never fails the caller.
  */
 export const terminalRename = async (binary: OrcaBinary, handle: string, title: string, cwd: string): Promise<string | undefined> => {
