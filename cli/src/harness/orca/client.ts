@@ -1,9 +1,10 @@
+import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
-import { captureTool, probeTool } from "../../shared/exec.js"
-import type { ToolRun } from "../../shared/exec.js"
+import { probeTool } from "../../shared/exec.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -14,20 +15,63 @@ export interface OrcaBinary {
 /** The flags of one orca call by name; an undefined value is left out of argv. */
 export type OrcaFlags = Readonly<Record<string, string | undefined>>
 
+/**
+ * What an orca call left behind when it did not succeed: `none` when Orca answered a typed refusal (or never started), so
+ * nothing happened; `unknown` when the answer is missing, unreadable, timed out or says outcome_unknown. Unknown is never dead.
+ */
+export type OrcaEffect = "none" | "unknown"
+
 /** Orca answered and refused, or answered something this CLI cannot read; `result` keeps what it said (a failed start names its dispatch). */
 export class OrcaFailure extends Refusal {
     public readonly orcaCode: string | undefined
     public readonly result: unknown
+    public readonly effect: OrcaEffect
 
-    public constructor(message: string, orcaCode: string | undefined, result: unknown) {
-        super("ORCA_FAILED", message)
+    public constructor(message: string, orcaCode: string | undefined, result: unknown, effect: OrcaEffect) {
+        super(effect === "unknown" ? "ORCA_OUTCOME_UNKNOWN" : "ORCA_FAILED", message)
         this.name = "OrcaFailure"
         this.orcaCode = orcaCode
         this.result = result
+        this.effect = effect
     }
 }
 
 const TAIL_LINES = 10
+
+const MAX_BUFFER = 64 * 1024 * 1024
+
+/** The process deadline of an orca read or quick mutation. */
+export const ORCA_TIMEOUT_MS = 30_000
+
+/** The process deadline of worker-stop and worker-release, which wait for a terminal to settle. */
+const SETTLE_TIMEOUT_MS = 60_000
+
+/** How long worker-start may wait for a ready worker (its --timeout-ms) unless the caller names another. */
+export const LAUNCH_TIMEOUT_MS = 120_000
+
+/** How long past its own --timeout-ms a worker-start process is given to answer before it is killed. */
+const LAUNCH_GRACE_MS = 15_000
+
+/** Worker and request states in which Orca itself does not know what happened. */
+const UNKNOWN_STATES: readonly string[] = ["outcome_unknown", "unknown", "stop_unknown", "release_unknown", "unverifiable"]
+
+/**
+ * The namespace of every --retry-request id this CLI derives; fixed forever, so a restarted process derives the same id
+ * (the legacy runtime's ORCA_REQUEST_NAMESPACE, so both sides agree on one identity scheme).
+ */
+const REQUEST_NAMESPACE = "96fe63b0-5b42-4411-8490-6b5ae7b7dcb2"
+
+/**
+ * The --retry-request id of one mutation: an RFC 9562 UUIDv8 (SHA-256 of the namespace and `<verb>\0<identity>`), because
+ * Orca accepts only a UUID. It is derived from ledger identity only (an attempt id), never a clock, so a replay matches.
+ */
+export const requestIdOf = (verb: string, identity: string): string => {
+    const bytes = createHash("sha256").update(Buffer.from(REQUEST_NAMESPACE.replaceAll("-", ""), "hex")).update(`${verb}\0${identity}`, "utf8").digest().subarray(0, 16)
+    bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x80
+    bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+    const hex = bytes.toString("hex")
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
 
 const installPath = (): string | undefined => {
     const local = process.env.LOCALAPPDATA
@@ -63,10 +107,67 @@ export const orcaArgv = (command: string, flags: OrcaFlags): string[] => [
     "--json",
 ]
 
+/** One finished (or killed) orca process. */
+interface OrcaRun {
+    readonly exitCode: number
+    readonly stdout: string
+    readonly stderr: string
+    readonly timedOut: boolean
+}
+
+const field = (error: unknown, key: string): unknown => (typeof error === "object" && error !== null && key in error ? (error as Record<string, unknown>)[key] : undefined)
+
+const textField = (error: unknown, key: string): string => {
+    const value = field(error, key)
+    return typeof value === "string" ? value.trim() : ""
+}
+
+/**
+ * Runs orca without a shell under a process deadline (shared/exec's captureTool has no timeout yet, so the process is run
+ * here). A process that could not be spawned is a refusal naming the cause: ORCA_MISSING for ENOENT, ORCA_FAILED otherwise
+ * (EINVAL is what Windows answers for a .cmd or .bat, which cannot run without a shell).
+ */
+const spawnOrca = async (binary: OrcaBinary, args: readonly string[], cwd: string, timeoutMs: number): Promise<OrcaRun> =>
+    new Promise((resolve, reject) => {
+        const notStarted = (error: unknown): Refusal => {
+            const code = field(error, "code")
+            const name = typeof code === "string" ? code : error instanceof Error ? error.message : String(error)
+            const hint = code === "EINVAL" ? "; a .cmd or .bat cannot run without a shell, point STARCI_ORCA_BIN at orca.exe or node.exe" : ""
+            return new Refusal(code === "ENOENT" ? "ORCA_MISSING" : "ORCA_FAILED", `${binary.path} (${binary.source}) could not be started: ${name}${hint}`)
+        }
+        try {
+            execFile(binary.path, [...args], { cwd, windowsHide: true, maxBuffer: MAX_BUFFER, timeout: timeoutMs, killSignal: "SIGKILL" }, (error, stdout, stderr) => {
+                if (error === null) {
+                    resolve({ exitCode: 0, stdout: stdout.trim(), stderr: stderr.trim(), timedOut: false })
+                    return
+                }
+                const code = field(error, "code")
+                // A process that ran but overflowed its buffer left an unreadable answer (unknown), not a refusal to start.
+                if (typeof code === "string" && code !== "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+                    reject(notStarted(error))
+                    return
+                }
+                const killed = field(error, "killed") === true || field(error, "signal") !== null
+                resolve({ exitCode: typeof code === "number" ? code : 1, stdout: textField(error, "stdout") || stdout.trim(), stderr: textField(error, "stderr") || stderr.trim(), timedOut: killed })
+            })
+        } catch (error: unknown) {
+            // Windows refuses a .cmd synchronously (spawn EINVAL), before any process exists.
+            reject(notStarted(error))
+        }
+    })
+
 const errorSchema = z.union([z.string(), z.looseObject({ code: z.string().optional(), message: z.string().optional() })])
 
 /** Every orca --json reply: `{ok, result}` or `{ok: false, error: {code, message}}`, written to stdout even on a failure. */
 const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optional(), error: errorSchema.optional() })
+
+/** The parts of a failed receipt that decide whether the failure is certain. */
+const receiptSchema = z.looseObject({
+    state: z.string().nullish(),
+    stage: z.unknown().optional(),
+    failedStage: z.unknown().optional(),
+    worker: z.looseObject({ state: z.string().nullish() }).nullish(),
+})
 
 const tail = (text: string): string => text.split(/\r?\n/).slice(-TAIL_LINES).join("\n")
 
@@ -86,40 +187,46 @@ const errorParts = (error: z.infer<typeof errorSchema> | undefined): { readonly 
     return { code: error.code, text }
 }
 
-const stderrNote = (run: ToolRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
+/** A refused call is certain only when Orca named why (a typed error or the stage that failed) and no state says unknown. */
+const effectOfRefusal = (reply: z.infer<typeof replySchema>): OrcaEffect => {
+    const receipt = receiptSchema.safeParse(reply.result)
+    const states = receipt.success ? [receipt.data.state, receipt.data.worker?.state] : []
+    if (states.some((state) => typeof state === "string" && UNKNOWN_STATES.includes(state))) return "unknown"
+    const named = typeof reply.error === "object" ? reply.error.code !== undefined : reply.error !== undefined
+    const staged = receipt.success && (receipt.data.failedStage !== undefined || receipt.data.stage !== undefined)
+    return named || staged ? "none" : "unknown"
+}
 
-/** Runs one orca orchestration call without a shell and returns its validated result; any refusal or unreadable reply is ORCA_FAILED. */
-const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string): Promise<T> => {
-    let run: ToolRun
-    try {
-        run = await captureTool(binary.path, orcaArgv(command, flags), cwd)
-    } catch (error: unknown) {
-        if (error instanceof Refusal && error.code === "CLI_TOOL_MISSING") throw new Refusal("ORCA_MISSING", `${binary.path} could not be started (${binary.source})`)
-        throw error
-    }
+const stderrNote = (run: OrcaRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
+
+/** Runs one orca orchestration call without a shell under a deadline and returns its validated result; anything else is an OrcaFailure saying whether it had an effect. */
+const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<T> => {
+    const run = await spawnOrca(binary, orcaArgv(command, flags), cwd, timeoutMs)
     const label = `orca orchestration ${command}`
+    if (run.timedOut) throw new OrcaFailure(`${label} gave no answer within ${String(timeoutMs)} ms and was killed; its effect is unknown${stderrNote(run)}`, undefined, undefined, "unknown")
     const reply = parseReply(run.stdout)
     if (reply === undefined) {
         const output = run.stdout === "" ? "" : `\nstdout:\n${tail(run.stdout)}`
-        throw new OrcaFailure(`${label} gave no json reply (exit ${String(run.exitCode)})${output}${stderrNote(run)}`, undefined, undefined)
+        throw new OrcaFailure(`${label} gave no json reply (exit ${String(run.exitCode)}); its effect is unknown${output}${stderrNote(run)}`, undefined, undefined, "unknown")
     }
     if (!reply.ok || run.exitCode !== 0) {
         const { code, text } = errorParts(reply.error)
-        throw new OrcaFailure(`${label} failed (exit ${String(run.exitCode)}): ${text}${stderrNote(run)}`, code, reply.result)
+        throw new OrcaFailure(`${label} failed (exit ${String(run.exitCode)}): ${text}${stderrNote(run)}`, code, reply.result, effectOfRefusal(reply))
     }
     const parsed = schema.safeParse(reply.result)
-    if (!parsed.success) throw new OrcaFailure(`${label} answered a result this CLI does not understand: ${z.prettifyError(parsed.error)}`, undefined, reply.result)
+    if (!parsed.success) throw new OrcaFailure(`${label} answered a result this CLI does not understand: ${z.prettifyError(parsed.error)}`, undefined, reply.result, "unknown")
     return parsed.data
 }
 
-/** What run-create needs: the Run's objective and, inside an Orca terminal, the coordinator handle. */
+/** What run-create needs: the Run's objective, inside an Orca terminal the coordinator handle, and the replay id. */
 export interface RunCreateInput {
     readonly objective: string
     readonly from?: string | undefined
+    readonly retryRequest?: string | undefined
 }
 
 /** The flags of run-create, shared by the call and its dry run. */
-export const runCreateFlags = (input: RunCreateInput): OrcaFlags => ({ objective: input.objective, from: input.from })
+export const runCreateFlags = (input: RunCreateInput): OrcaFlags => ({ objective: input.objective, from: input.from, "retry-request": input.retryRequest })
 
 const runCreateSchema = z.looseObject({ run: z.looseObject({ id: z.string().min(1) }) })
 
@@ -127,7 +234,7 @@ const runCreateSchema = z.looseObject({ run: z.looseObject({ id: z.string().min(
 export const runCreate = async (binary: OrcaBinary, input: RunCreateInput, cwd: string): Promise<string> =>
     (await callOrca(binary, "run-create", runCreateFlags(input), runCreateSchema, cwd)).run.id
 
-/** What worker-start needs: the short spec, where, which agent and model, and in which Run. */
+/** What worker-start needs: the short spec, where, which agent and model, in which Run, how long to wait and the replay id. */
 export interface WorkerStartInput {
     readonly spec: string
     readonly taskTitle: string
@@ -137,6 +244,8 @@ export interface WorkerStartInput {
     readonly effort?: string | undefined
     readonly run?: string | undefined
     readonly from?: string | undefined
+    readonly timeoutMs: number
+    readonly retryRequest: string
 }
 
 /** The flags of worker-start, shared by the call and its dry run. --spec makes Orca create the worker's Task in the same call. */
@@ -147,8 +256,10 @@ export const workerStartFlags = (input: WorkerStartInput): OrcaFlags => ({
     agent: input.agent,
     model: input.model,
     effort: input.effort,
+    "timeout-ms": String(input.timeoutMs),
     run: input.run,
     from: input.from,
+    "retry-request": input.retryRequest,
 })
 
 const effectiveSchema = z.looseObject({ launch: z.looseObject({ effective: z.unknown() }).nullish() })
@@ -172,14 +283,19 @@ export interface WorkerStarted {
     readonly effective: unknown
 }
 
-/** `orca orchestration worker-start`: Orca exits 0 only for a ready worker; anything else is an OrcaFailure carrying the receipt. */
+/**
+ * `orca orchestration worker-start`: Orca exits 0 only for a ready worker. A refusal with a named cause is an OrcaFailure with
+ * effect `none`; outcome_unknown, a lost or unreadable receipt, a timeout or an exit 0 without `ready` is effect `unknown`.
+ */
 export const workerStart = async (binary: OrcaBinary, input: WorkerStartInput, cwd: string): Promise<WorkerStarted> => {
-    const result = await callOrca(binary, "worker-start", workerStartFlags(input), workerStartSchema, cwd)
+    const result = await callOrca(binary, "worker-start", workerStartFlags(input), workerStartSchema, cwd, input.timeoutMs + LAUNCH_GRACE_MS)
+    const state = result.state ?? result.worker?.state ?? null
+    if (state !== "ready") throw new OrcaFailure(`orca orchestration worker-start exited 0 with worker state ${state ?? "none"}, not ready; its effect is unknown`, undefined, result, "unknown")
     return {
         dispatchId: result.dispatchId,
         taskId: result.taskId ?? null,
         runId: result.runId ?? null,
-        state: result.state ?? result.worker?.state ?? "ready",
+        state,
         terminal: result.worker?.agentTerminalHandle ?? null,
         effective: result.launch?.effective ?? null,
     }
@@ -191,6 +307,30 @@ const failedStartSchema = z.looseObject({ dispatchId: z.string().min(1) })
 export const dispatchOfFailure = (failure: OrcaFailure): string | undefined => {
     const parsed = failedStartSchema.safeParse(failure.result)
     return parsed.success ? parsed.data.dispatchId : undefined
+}
+
+const launchSchema = z.looseObject({
+    agent: z.string().nullish(),
+    model: z.string().nullish(),
+    modelId: z.string().nullish(),
+    effort: z.string().nullish(),
+})
+
+/** The agent, model and effort an effective launch names; null where Orca named nothing (no attestation, not a mismatch). */
+export interface EffectiveLaunch {
+    readonly agent: string | null
+    readonly model: string | null
+    readonly effort: string | null
+}
+
+/**
+ * Reads Orca's `launch.effective` receipt, which spells the model as model or modelId. Only an `agent` field names the agent:
+ * a provider (anthropic, openai) is not an Orca agent id and attests nothing about it.
+ */
+export const effectiveLaunch = (effective: unknown): EffectiveLaunch => {
+    const parsed = launchSchema.safeParse(effective)
+    if (!parsed.success) return { agent: null, model: null, effort: null }
+    return { agent: parsed.data.agent ?? null, model: parsed.data.model ?? parsed.data.modelId ?? null, effort: parsed.data.effort ?? null }
 }
 
 const workerShowSchema = z.looseObject({
@@ -240,17 +380,21 @@ const stateSchema = z.looseObject({ state: z.string().min(1) })
 
 /** `orca orchestration worker-stop`: fences the dispatch and stops its agent terminal; returns the worker state after the stop. */
 export const workerStop = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<string> =>
-    (await callOrca(binary, "worker-stop", { dispatch: dispatchId }, stateSchema, cwd)).state
+    (await callOrca(binary, "worker-stop", { dispatch: dispatchId }, stateSchema, cwd, SETTLE_TIMEOUT_MS)).state
 
 /** `orca orchestration worker-release`: closes a settled worker's terminal (released, already_released, retained or release_pending). */
 export const workerRelease = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<string> =>
-    (await callOrca(binary, "worker-release", { dispatch: dispatchId }, stateSchema, cwd)).state
+    (await callOrca(binary, "worker-release", { dispatch: dispatchId }, stateSchema, cwd, SETTLE_TIMEOUT_MS)).state
 
-/** What closing a worker did: each step's state word, or `error: <why>`; settled only when Orca released the terminal. */
+/**
+ * What closing a worker did: each step's state word, or `error: <why>`. `stopped` when Orca fenced the worker (it can write no
+ * more), `settled` when it also released the terminal.
+ */
 export interface WorkerClosed {
     readonly dispatchId: string
     readonly stop: string
     readonly release: string
+    readonly stopped: boolean
     readonly settled: boolean
 }
 
@@ -262,5 +406,7 @@ const stateOrError = async (step: Promise<string>): Promise<string> => step.catc
 export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<WorkerClosed> => {
     const stop = await stateOrError(workerStop(binary, dispatchId, cwd))
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
-    return { dispatchId, stop, release, settled: RELEASED_STATES.includes(release) }
+    const settled = RELEASED_STATES.includes(release)
+    const stopped = settled || (!stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop))
+    return { dispatchId, stop, release, stopped, settled }
 }

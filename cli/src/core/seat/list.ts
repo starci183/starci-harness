@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
-import { locateOrca, workerShow } from "../../harness/orca/client.js"
+import { OrcaFailure, locateOrca, workerShow } from "../../harness/orca/client.js"
 import type { WorkerShown } from "../../harness/orca/client.js"
 import { CLOSED_SEAT_STATUSES, listSeats } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -31,7 +31,7 @@ export const seatListVerb = defineVerb({
     summary: "list the seats of this project's ledger; --live asks Orca for each open seat's worker state",
     editions: ["full"],
     effect: "read",
-    roles: [...EVERYONE, "kernel", "supervisor", "op", "debug"],
+    roles: EVERYONE,
     schema: "starci/seat-list@1",
     flags: {
         live: { kind: "boolean", summary: "ask Orca (worker-show) for the state of every open seat; nothing is recorded" },
@@ -56,7 +56,11 @@ export const seatListVerb = defineVerb({
                 seats.push(seat)
                 continue
             }
-            const live: LiveView = await workerShow(binary, seat.handle, context.cwd).catch((error: unknown) => ({ error: error instanceof Error ? error.message : String(error) }))
+            // Only Orca's own answer is per seat; an orca that cannot even be started is refused for the whole listing.
+            const live: LiveView = await workerShow(binary, seat.handle, context.cwd).catch((error: unknown) => {
+                if (error instanceof OrcaFailure) return { error: error.message }
+                throw error
+            })
             seats.push({ ...seat, live })
         }
         const data: SeatListData = { ledger, seats }
