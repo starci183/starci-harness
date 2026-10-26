@@ -107,7 +107,7 @@ concerns:
     tier: core
     packages: [next-intl]
     home: [fe.modules.i18n]
-    pattern: FE-I18N
+    pattern: FE-I18N-1
     forbids: [i18next, react-i18next, next-i18next, react-intl, '@lingui/react']
     why: one catalog, plural syntax and formatter per locale.
   - id: ui
