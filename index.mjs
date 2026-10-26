@@ -44,9 +44,11 @@ import { recommended as projectGraphRecommended, rules as projectGraphRules } fr
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.mjs"
 import { buildFeConfig, buildPlainSourceConfig } from "./lib/config.mjs"
 import { why } from "./lib/why.mjs"
+import { recommended as uiRulingsRecommended, rules as uiRulingsRules } from "./ui-rulings.mjs"
 
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
 const CONTRIBUTIONS = [
+  { law: "ui-rulings", rules: uiRulingsRules, recommended: uiRulingsRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
   { law: "button-intent", rules: buttonIntentRules, recommended: buttonIntentRecommended },
