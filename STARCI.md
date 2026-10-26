@@ -389,6 +389,23 @@ Status transitions are enforced in code with one state machine, not duplicated i
 | P4 | Supervisor: owner channel, land, `release push`, CI red becomes a fix task, Debug seats | host-wide operation |
 | P5 | parity run against the legacy on one real project, then cut over | alpha.40 |
 
+### 10. Self-critique and the amendments it forces
+
+| # | risk | severity | amendment to the plan |
+|---|---|---|---|
+| 1 | A worker games its own checks: it edits tests or relaxes lint so verify turns green | high | `task verify` replays on a clean checkout at the task's commit, never in the worker's environment. Tests and configs outside `allowPaths` are forbidden by default, and the loosening gate stays. |
+| 2 | Green but wrong: machine checks miss the intent (Goodhart) | high | `contract check` refuses a contract without at least one behavioural check (a test or a probe). What cannot be measured becomes a named owner review step. |
+| 3 | Shared worktree: task A's half-done edit turns task B's typecheck red | high | Keep the legacy side serialization (one be task and one fe task at a time per workflow). Verify on the clean base plus that task's commit only. |
+| 4 | Bad contracts burn workers, and the Kernel is a bottleneck | medium | A strict `contract check` with concrete `allowPaths` and a behavioural check. A `mismatch` costs no try. One Kernel per workflow. |
+| 5 | No escalation on retry, so a capability failure repeats | medium | A change from the legacy: a second `contract-red` raises the tier one step. Infrastructure failures keep the tier. |
+| 6 | The contract hash misses code dependencies: a done task is invalidated by another task's files | medium | The hash includes a digest of the paths in `context`. An amend that changes those paths turns the dependent task into a redo. |
+| 7 | Constant pushes to main, and a red CI breaks main for the other workflows | medium | A workflow lands in waves, not per task. A CI red still open after N minutes reverts the red commit automatically. |
+| 8 | Liveness depends on Orca: an Orca restart once declared every worker dead | medium | "Unknown" is never "dead". Death is concluded only from an explicit Orca answer; otherwise the seat is held, not retried. |
+| 9 | A big-bang rewrite and cut-over | high | Strangler cut-over: lite uses the new CLI first, then one full workflow runs beside the legacy, and verb groups move one at a time. |
+| 10 | An LLM Supervisor places features unpredictably | low | The path-ownership map is data. Placement is a machine rule, and the LLM handles only the cases the rule cannot place. |
+| 11 | Provider quota is not observable for every agent (Codex, Devin) | low | No reading means unknown, not blocked. Learn only from real quota errors through the circuit. |
+| 12 | A worker with full Bash writes outside `allowPaths` or leaks a secret | medium | Keep a PreToolUse guard for dangerous commands, a diff check of `allowPaths` at settle, and the secret scan at push. |
+
 ## Open questions
 
 1. Worktree model: keep the legacy shared workflow worktree with path leases (proposed), or a lane per task?
