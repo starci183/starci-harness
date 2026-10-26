@@ -16,7 +16,7 @@ differs from the procedure below. A body never restates the common procedure.
 | key | holds |
 |---|---|
 | `summary`, `floor`, `hostTools` | what the label is for, its difficulty floor and the host tools it needs; the router reads the last two ([../README.md](../README.md)) |
-| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (knowledge, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`) |
+| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`) |
 | `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |
 | `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary`. `behavioural: true` says the output is itself the evidence of behaviour (a suite or flow report) |
 | `checks.base` | the checks of every task of the label: presets of [../checks.yaml](../checks.yaml), bare or `{preset, args}`. `behavioural: true` makes a contract without a behavioural check unfit |
@@ -26,7 +26,7 @@ differs from the procedure below. A body never restates the common procedure.
 A contract (`starci/contract@2`, written by `starci contract new` or inline in a workflow file) carries the Kernel's part:
 
 - `context.extend`: more files to read (the Kernel picks the knowledge topics, the project's Work records and code the
-  task needs; it reads the full context, CONTEXT.md, knowledge, knowledge/project, the project's Work and these op files, to
+  task needs; it reads the whole `contexts/` tree in its load order, the project's Work and these op files, to
   write it). `context.revision` is the commit the task starts from.
 - `input.base`: the values of the op's base inputs; `input.extend`: named inputs of its own.
 - `output.extend`: more keys the output must carry.

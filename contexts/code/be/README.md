@@ -4,7 +4,7 @@ How back-end code is placed and shaped, one Markdown file per topic, true to the
 `@starci/eslint-canon-be`. Each rule has a stable id, a one-sentence law, its reason and its enforcer: an
 `eslint-canon-be` rule id (with the HFS rule of [hfs/rules.yaml](../../hfs/rules.yaml) it belongs to), an hfs check, or
 "review only". Values (budgets, role lists, owner tables, scenarios) live in [hfs/slots.yaml](../../hfs/slots.yaml)
-and are named, never restated. Rules both sides share are [patterns/shared](../shared/README.md) and are read first.
+and are named, never restated. Rules both sides share are [code/shared](../shared/README.md) and are read first.
 
 Readers: an authoring op reads the topics of the slots it codes; the anatomy generator reads each file's front matter
 `slots`.

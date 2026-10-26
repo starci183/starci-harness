@@ -6,8 +6,8 @@ never judges it.
 
 This repository is public: it tracks no secret, and CI reads its tokens from GitHub secrets only.
 
-Agents start at [CONTEXT.md](CONTEXT.md), which also holds the owner's decisions and the open questions; the rules for
-changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Agents start at [contexts/README.md](contexts/README.md), the load order; the owner's harness decisions and open questions are in
+[contexts/harness/](contexts/harness/decisions.md), and the rules for changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How it works
 
@@ -24,8 +24,8 @@ records it, never invents a task, and dispatches each task once its dependencies
 worker seats launched through Orca, routed to an agent and model by [ops/routing.yaml](ops/routing.yaml); under the
 `inline` runner to the chat agent, one task at a time. A running workflow is changed by an amend, which keeps the done
 work and redoes only what the change reaches. Everything is recorded in SQLite ledgers outside the product
-repositories, so a run survives a closed chat or a dead agent. [CONTEXT.md](CONTEXT.md) names the roles and the two
-axes (edition and runner); [cli/README.md](cli/README.md) says how the CLI implements the rest.
+repositories, so a run survives a closed chat or a dead agent. [contexts/harness/roles.md](contexts/harness/roles.md) names the roles and
+[axes.md](contexts/harness/axes.md) the two axes (edition and runner); [cli/README.md](cli/README.md) says how the CLI implements the rest.
 
 ## The parts
 
@@ -34,7 +34,7 @@ axes (edition and runner); [cli/README.md](cli/README.md) says how the CLI imple
 | [cli/](cli/README.md) | the `starci` command, one TypeScript source: core verbs, the harness verbs and the edition verbs |
 | [ops/](ops/) | the work as data: the worker brief, the seven worker labels, the check presets, routing and budgets, liveness, the uat image |
 | [policy/](policy/README.md) | the gates: tiers and profiles, canon packages, banned loosening markers, the secret scan |
-| [knowledge/](knowledge/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
+| [contexts/](contexts/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
 | [packages/](packages/README.md) | the canon packages apps install from npm: ESLint (fe, be), stylelint, tsconfig, prettier, jest |
 | `skills/` | the agent entry for operating the harness (`skills/starci/SKILL.md`) |
 

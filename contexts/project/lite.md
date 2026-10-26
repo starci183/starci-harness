@@ -10,7 +10,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - One stateless, horizontally scaled instance type on managed Supabase, plus one minimal instance of each declared
   backing service. Owner: ruling `R212/case-10` in [decisions/rulings.yaml](../decisions/rulings.yaml).
 - Every replica serves any request; shared state lives in Postgres or the declared Redis. Owner: ruling
-  `R212/case-9`, [patterns/be/realtime.md](../patterns/be/realtime.md).
+  `R212/case-9`, [code/be/realtime.md](../code/be/realtime.md).
 
 ## Backing services
 
@@ -28,14 +28,14 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 
 - Schema authority is Supabase migrations with generated row types, not TypeORM. Owners:
   `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R216, R254 to R259;
-  [patterns/be/persistence.md](../patterns/be/persistence.md).
+  [code/be/persistence.md](../code/be/persistence.md).
 - Identity is Supabase Auth: the back end verifies tokens against the project JWKS and the front end holds no
-  credential. Owners: R217, R219; [patterns/be/api-auth.md](../patterns/be/api-auth.md).
+  credential. Owners: R217, R219; [code/be/api-auth.md](../code/be/api-auth.md).
 - The event bus is the outbox on pgmq topics or in-process delivery, not Kafka. Owners: slot `be.platform.event-bus`;
-  [patterns/be/event-bus.md](../patterns/be/event-bus.md) BE-EVENT-BUS-3.
+  [code/be/event-bus.md](../code/be/event-bus.md) BE-EVENT-BUS-3.
 - Jobs and projections keep their tables in Supabase migrations. Owners: slots `be.platform.jobs`, `be.projections`.
-- Reactor, saga and projection: open. The pattern topics ([saga.md](../patterns/be/saga.md),
-  [projections.md](../patterns/be/projections.md), [event-bus.md](../patterns/be/event-bus.md)) describe each one
+- Reactor, saga and projection: open. The pattern topics ([saga.md](../code/be/saga.md),
+  [projections.md](../code/be/projections.md), [event-bus.md](../code/be/event-bus.md)) describe each one
   running in lite, while [README.md](../../README.md) (verb groups; `starci explain` lists what is built) gives `app add reactor|saga|projection` to full
   apps only. The owner's ruling decides which holds.
 
@@ -58,7 +58,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - No e2e world, no browser journeys and no e2e workflow. Owners: slots `app.ci-e2e`, `app.browser`,
   `app.browser-config`, `be.tests.e2e` (all forbidden under lite); ruling `lite-contract-specs`.
 - Boot is proved by compiling the real AppModule graph with doubles, and each async pattern by its lite proof lane.
-  Owners: R272, R284; [patterns/be/test.md](../patterns/be/test.md) BE-TEST-12.
+  Owners: R272, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12.
 - Integration specs run against the local Supabase stack without containers or toxiproxy; contract specs are
   optional. Owners: slots `be.tests.integration`, `be.tests.contract`.
 - CI checks the Supabase artifacts (migrations, generated types). Owner: slot `app.ci`.

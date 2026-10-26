@@ -1,6 +1,6 @@
 # StarCi harness bootstrap
 
-Before planning, reading source or running a verb, read [CONTEXT.md](CONTEXT.md) and follow its load order. It names
+Before planning, reading source or running a verb, read [contexts/README.md](contexts/README.md) and follow its load order. It names
 what to read for your task, where state lives, how a project is found and the hard rules.
 
 This checkout is the runtime root: the `starci` CLI is `node cli/dist/main.js` after `npm ci` in `cli/`, and harness

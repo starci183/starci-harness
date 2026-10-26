@@ -1,6 +1,6 @@
 # Grammar shims (R321)
 
-Law module: `grammar-shim.mjs`. HFS rule: R321. Knowledge: `knowledge/patterns/fe/ui.md` FE-UI-1 (the app makes no visual choice; the Grammar owns every visual element) and the Grammar follow-up C-7 in `knowledge/decisions/open-grammar.md`.
+Law module: `grammar-shim.mjs`. HFS rule: R321. Knowledge: `contexts/code/fe/ui.md` FE-UI-1 (the app makes no visual choice; the Grammar owns every visual element) and the Grammar follow-up C-7 in `contexts/decisions/open-grammar.md`.
 
 An app imports a Grammar component where it renders it. It never hands one on from an app path under its own name: such a shim makes one app green while the defect it works around (a missing `"use client"`, a wrong prop, a broken export) stays in the Grammar for every other app. The defect is reported to the Grammar instead; an op files `blocked` naming the package, the component and the error.
 

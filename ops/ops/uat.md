@@ -5,8 +5,8 @@ floor: medium
 hostTools: [browser]
 context:
   base:
-    - harness:knowledge/project/work.md
-    - harness:knowledge/project/stacks.md
+    - harness:contexts/project/work.md
+    - harness:contexts/project/stacks.md
 input:
   base: {}
 output:

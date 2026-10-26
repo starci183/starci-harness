@@ -12,18 +12,18 @@ capability the package lacks is a gap to record (`COMMON_CAPABILITY_MISSING`), n
 
 ## Read in this order
 
-1. `knowledge/README.md` at the runtime root, when it exists, for the map of the knowledge tree.
-2. [knowledge/ui/README.md](../../../knowledge/ui/README.md) and
-   [composition.md](../../../knowledge/ui/composition.md): hierarchy, actions, states, decided before any DOM.
-3. [knowledge/grammars/contract.md](../../../knowledge/grammars/contract.md): what each role is in every
-   grammar, then [common.md](../../../knowledge/grammars/common.md) and the app's grammar file
-   ([core.md](../../../knowledge/grammars/core.md) or [offset-pop.md](../../../knowledge/grammars/offset-pop.md)).
-4. [knowledge/ui/components/](../../../knowledge/ui/components/README.md)`<role>.md` for each role the page uses:
+1. `contexts/README.md` at the runtime root, when it exists, for the map of the knowledge tree.
+2. [contexts/ui/README.md](../../../contexts/ui/README.md) and
+   [composition.md](../../../contexts/ui/composition.md): hierarchy, actions, states, decided before any DOM.
+3. [contexts/grammars/contract.md](../../../contexts/grammars/contract.md): what each role is in every
+   grammar, then [common.md](../../../contexts/grammars/common.md) and the app's grammar file
+   ([core.md](../../../contexts/grammars/core.md) or [offset-pop.md](../../../contexts/grammars/offset-pop.md)).
+4. [contexts/ui/components/](../../../contexts/ui/components/README.md)`<role>.md` for each role the page uses:
    when to pick it against its neighbours, variants, sizes, states.
-5. [knowledge/ui/scale.md](../../../knowledge/ui/scale.md) for every size step, then
-   [presentation.md](../../../knowledge/ui/presentation.md) for gaps, type rank and room on app boundaries.
+5. [contexts/ui/scale.md](../../../contexts/ui/scale.md) for every size step, then
+   [presentation.md](../../../contexts/ui/presentation.md) for gaps, type rank and room on app boundaries.
 
-An auditor reads [proof.md](../../../knowledge/ui/proof.md) and its thresholds instead. Product records
+An auditor reads [proof.md](../../../contexts/ui/proof.md) and its thresholds instead. Product records
 (brand direction, accepted archetypes, acceptance assertions) live in the app's `.starciwork/`.
 
 ## The app writes layout only

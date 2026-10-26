@@ -2,8 +2,8 @@
 
 A `uat` task walks one flow of the project's Work in a real browser and lands one screenshot per step. The flow, its
 accounts and its expectations come from the flow's record (`work/uat-flow@1`), never retyped by hand;
-[knowledge/project/work.md](../../../knowledge/project/work.md) owns the record, its state vocabulary and where a run
-lands. The machine is the harness's ([CONTEXT.md](../../../CONTEXT.md) hard rule 7): your script runs through
+[contexts/project/work.md](../../../contexts/project/work.md) owns the record, its state vocabulary and where a run
+lands. The machine is the harness's ([contexts/harness/rules.md](../../../contexts/harness/rules.md) hard rule 7): your script runs through
 the harness's uat run verb (section 4) in the image pinned in [ops/uat.yaml](../../../ops/uat.yaml).
 
 ## 1. Send the task from the record

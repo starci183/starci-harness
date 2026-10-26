@@ -1,7 +1,7 @@
-# 3. UI thinking (knowledge/ui): analysis
+# 3. UI thinking (contexts/ui): analysis
 
 Scope: `D:\Repositories\starci-academy-backend\.claude\knowledge\ui\**` (composition, presentation, proof incl.
-calibration, examples, both `index.yaml`) plus the top-level `knowledge/index.yaml` branch that points at it. The
+calibration, examples, both `index.yaml`) plus the top-level `contexts/index.yaml` branch that points at it. The
 legacy tree was only read, never changed. Where the thinking depends on code (intent resolver, size props, gate
 scripts), the code was read to check what the prose claims. Paths are relative to `.claude/` unless absolute.
 
@@ -14,7 +14,7 @@ dated "Owner ruling/decision". Every rule file uses `schema: starci/knowledge-so
 
 | File | KB | Rules (cases) | Holds | Machine reader |
 |---|---|---|---|---|
-| `knowledge/index.yaml` | 5.8 | – | Load order and the branch list. The `ui` branch names DISCIPLINE-1..3, HIERARCHY-6, ACCENT-6 and the worked example | runtime loader |
+| `contexts/index.yaml` | 5.8 | – | Load order and the branch list. The `ui` branch names DISCIPLINE-1..3, HIERARCHY-6, ACCENT-6 and the worked example | runtime loader |
 | `ui/index.yaml` | 5.2 | – | The three topics and four guidance blocks: maturing-rules, image-first-direction, brand-direction, binding-criteria | loader |
 | composition/index.yaml | 5.1 | – | The `business -> composition -> presentation -> render` chain, the topic table, closed addresses and the rule shape | – |
 | composition/hierarchy.yaml | 8.3 | HIERARCHY-1..6 (26) | Rank from job; one anchor per region; reading order; fact vs measurement vs outcome; one focal point | prose only |
@@ -472,12 +472,12 @@ Take an "Add documents" drawer:
 
 ### 5.1 Principles applied
 - One owner per fact. A value lives in the grammar (DNA/tokens), a rule a machine checks lives in eslint or the proof
-  scripts, and knowledge/ui keeps the **why** and the **choice**, citing the owner by ID.
+  scripts, and contexts/ui keeps the **why** and the **choice**, citing the owner by ID.
 - Product-agnostic and family-agnostic. Knowledge/ui speaks of roles: surface, control, pill, inline-gap, region-gap,
   intent, placement. StarCi numbers and class names move to `grammars/starci`.
 - Present tense: rulings become the rule. Dates and "corrected the same day" go to git history or a ruling ledger.
 
-### 5.2 Keep (core of the new `knowledge/ui`)
+### 5.2 Keep (core of the new `contexts/ui`)
 - The three-layer chain and the owner vocabulary (App / component / gap).
 - Composition topics, rewritten as **decision guides** with the falsifiable case tables kept: hierarchy, collection,
   layout + responsive, action + CTA (merge), accent, state + feedback (merge), taste/discipline, coverage.
@@ -498,11 +498,11 @@ Take an "Add documents" drawer:
   rule cites it.
 
 ### 5.4 Add (the owner's priority)
-`knowledge/ui/components/` holds one short page per HeroUI component family, all with the same sections: *job*,
+`contexts/ui/components/` holds one short page per HeroUI component family, all with the same sections: *job*,
 *variants and why*, *sizes and which context*, *states*, *placement*, *never*. Start with button (+IconButton,
 ButtonGroup), tabs, segmented-control, tag-group/chip, input/field, badge, alert, card/surface, list-row/listbox,
 icon-tile. Plus:
-- `knowledge/ui/scales.md` gives the cross-component alignment table: one control-size ramp (sm/md/lg/control) mapped
+- `contexts/ui/scales.md` gives the cross-component alignment table: one control-size ramp (sm/md/lg/control) mapped
   to height, radius role, icon size, label font rank and gap step, with the contexts (dense toolbar / item row → sm,
   form and card → md, page hero / marketing → lg, bars → control). Values stay in each grammar's DNA; this file holds
   the roles and the reasoning. This needs owner decisions, because nothing in the legacy tree settles it.
@@ -520,7 +520,7 @@ icon-tile. Plus:
 
 ### 5.6 Drop or relocate
 - `examples/brand-direction.example.yaml` moves to the Nivo product `.starciwork` (it is a product record). If a shape
-  example is wanted, keep a product-free skeleton under `knowledge/ui/examples/` of about 60 lines, with no hex, no
+  example is wanted, keep a product-free skeleton under `contexts/ui/examples/` of about 60 lines, with no hex, no
   mascot and no locale.
 - StarCi tokens, `starci-core-*` classes, Tailwind class literals and px values in presentation go to
   `grammars/starci/playbook`.
@@ -532,7 +532,7 @@ icon-tile. Plus:
 ### 5.7 Target layout and readers
 
 ```text
-knowledge/ui/
+contexts/ui/
   index.md                 load order, owner vocabulary, layer chain           ← every UI agent (authoring + audit)
   composition/
     hierarchy.md  collection.md  layout.md (incl. responsive, app-shell roles)

@@ -55,5 +55,5 @@ commit runs no git hook, so the op leaves its files formatted (SHARED-FORMAT-1) 
 Why: the harness commit is the evidence that what landed is what was verified; a commit by the op would land code no
 clean verify judged.
 
-Enforced by: the `paths-only` check and the clean verify ([CONTEXT.md](../../../CONTEXT.md) "Roles"); `--no-verify`
+Enforced by: the `paths-only` check and the clean verify ([contexts/harness/roles.md](../../harness/roles.md)); `--no-verify`
 by the `loosening` gate.

@@ -1,8 +1,8 @@
 # 5. FE patterns (the app side of UI knowledge) and the whole-knowledge map
 
-Scope: how an app consumes a Grammar, what `knowledge/patterns/fe/*` says about UI versus what grammar/ui knowledge says,
-which facts `@starci/eslint-canon-fe` (`packages/eslint/fe`) enforces, the UI parts of `knowledge/hfs/*`, and a map of all of
-`knowledge/` with a proposed top-level layout for `D:\.claude\knowledge`.
+Scope: how an app consumes a Grammar, what `contexts/code/fe/*` says about UI versus what grammar/ui knowledge says,
+which facts `@starci/eslint-canon-fe` (`packages/eslint/fe`) enforces, the UI parts of `contexts/hfs/*`, and a map of all of
+`contexts/` with a proposed top-level layout for `D:\.claude\knowledge`.
 Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only). Paths are relative to it.
 
 ---
@@ -13,22 +13,22 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
 
 | File | Bytes | Holds | Machine data or prose |
 |---|---|---|---|
-| `knowledge/index.yaml` | 5.8k | Load order and branch list of the whole tree | Prose (agent); no script parses its branches |
-| `knowledge/patterns/enforcement.yaml` | 8.7k | ENF-MANDATORY-1..7 anti-bypass law, ENF-PROP-* proposals | Prose; **no script, skill or module references it** (grep: 0 readers) |
-| `patterns/fe/index.yaml` | 10.1k | FE-RULE-OWNERSHIP (the 4-question placement test) + topic table | Prose; topic `slots:` lists read by `scripts/gates/read-digest.mjs` |
-| `patterns/fe/ui.yaml` | 4.0k | FE-UI: compose the selected Grammar; avatar/group identity cases | Prose + `verification.automated` codes; copied into the `eslint-grammar-starci/runtime` bundle |
-| `patterns/fe/css.yaml` | 5.5k | FE-CSS-1..4: globals.css shape, colour only in brand.css, forbidden CSS, family tokens belong to Grammar | Prose + codes |
-| `patterns/fe/theme.yaml` | 1.7k | FE-THEME: next-themes in components/providers | Prose |
-| `patterns/fe/icon.yaml` | 4.2k | FE-ICON: one glyph vocabulary through its icon owner, 7 owner cases | Prose |
-| `patterns/fe/motion.yaml` | 1.4k | FE-MOTION: framer-motion | Prose (restates fe-stack) |
-| `patterns/fe/toast.yaml` | 3.0k | FE-TOAST: modules/toast + use*WithToast | Prose |
-| `patterns/fe/chart.yaml` | 1.4k | FE-CHART: recharts "styled by the dataviz grammar" | Prose (restates fe-stack) |
-| `patterns/fe/form.yaml` | 4.9k | FE-FORM: rhf + zod + INPUT_BOUNDS | Prose |
-| `patterns/fe/folder.yaml` | 21.6k | FE-FOLDER-1..6 tiers; `frameworkPinnedRootFiles` | Mixed: the pinned-file list is **machine data** read by `scripts/hfs/architecture/framework-pinned.mjs` |
-| `patterns/fe/boundaries.yaml` | 13.6k | FE-BOUNDARY-1..5 incl. the overlay host tree | Prose |
-| `patterns/fe/naming.yaml` | 12.8k | FE-NAMING-1..7 incl. class-name exports | Prose |
-| `patterns/fe/architecture-check.yaml` | 14.4k | FE-ARCHITECTURE-1..5 (route adapters, direction, world ownership) | Prose |
-| `patterns/fe/function.yaml`, `imports.yaml` (UI parts) | 21.8k / 14.4k | FE-FUNCTION-2 `{state, props, on}` drawing law; FE-IMPORTS-5 vendor boundaries | Prose |
+| `contexts/index.yaml` | 5.8k | Load order and branch list of the whole tree | Prose (agent); no script parses its branches |
+| `contexts/code/enforcement.yaml` | 8.7k | ENF-MANDATORY-1..7 anti-bypass law, ENF-PROP-* proposals | Prose; **no script, skill or module references it** (grep: 0 readers) |
+| `code/fe/index.yaml` | 10.1k | FE-RULE-OWNERSHIP (the 4-question placement test) + topic table | Prose; topic `slots:` lists read by `scripts/gates/read-digest.mjs` |
+| `code/fe/ui.yaml` | 4.0k | FE-UI: compose the selected Grammar; avatar/group identity cases | Prose + `verification.automated` codes; copied into the `eslint-grammar-starci/runtime` bundle |
+| `code/fe/css.yaml` | 5.5k | FE-CSS-1..4: globals.css shape, colour only in brand.css, forbidden CSS, family tokens belong to Grammar | Prose + codes |
+| `code/fe/theme.yaml` | 1.7k | FE-THEME: next-themes in components/providers | Prose |
+| `code/fe/icon.yaml` | 4.2k | FE-ICON: one glyph vocabulary through its icon owner, 7 owner cases | Prose |
+| `code/fe/motion.yaml` | 1.4k | FE-MOTION: framer-motion | Prose (restates fe-stack) |
+| `code/fe/toast.yaml` | 3.0k | FE-TOAST: modules/toast + use*WithToast | Prose |
+| `code/fe/chart.yaml` | 1.4k | FE-CHART: recharts "styled by the dataviz grammar" | Prose (restates fe-stack) |
+| `code/fe/form.yaml` | 4.9k | FE-FORM: rhf + zod + INPUT_BOUNDS | Prose |
+| `code/fe/folder.yaml` | 21.6k | FE-FOLDER-1..6 tiers; `frameworkPinnedRootFiles` | Mixed: the pinned-file list is **machine data** read by `scripts/hfs/architecture/framework-pinned.mjs` |
+| `code/fe/boundaries.yaml` | 13.6k | FE-BOUNDARY-1..5 incl. the overlay host tree | Prose |
+| `code/fe/naming.yaml` | 12.8k | FE-NAMING-1..7 incl. class-name exports | Prose |
+| `code/fe/architecture-check.yaml` | 14.4k | FE-ARCHITECTURE-1..5 (route adapters, direction, world ownership) | Prose |
+| `code/fe/function.yaml`, `imports.yaml` (UI parts) | 21.8k / 14.4k | FE-FUNCTION-2 `{state, props, on}` drawing law; FE-IMPORTS-5 vendor boundaries | Prose |
 | `hfs/fe-stack.yaml` | 12.9k | One library per FE concern with `forbids` | **Machine data** (eslint-fe `fe-stack-import`, `scripts/hfs/rules/fe-stack.mjs`) + `why` prose |
 | `hfs/slots.yaml` (fe part) | 150k total | `tiers.fe`, `fe.*` slots, budgets | **Machine data** (`scripts/hfs/slots.mjs`, 42 code readers) |
 | `hfs/rules.yaml` (UI rules) | 451k total, 294 rules | R61/62/63/92/93/97/244/286/313-320 with `law`, `enforcers`, `proves` | **Machine data** (50 code readers) with a prose `law` string |
@@ -49,10 +49,10 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
 |---|---|---|
 | `hfs/` | 1,198k | 14 |
 | `grammars/` | 580k | 13 |
-| `patterns/be/` | 524k | 31 |
+| `code/be/` | 524k | 31 |
 | `vendor/heroui/` | 421k | 65 |
 | `ui/` | 404k | 41 |
-| `patterns/fe/` | 242k | 41 |
+| `code/fe/` | 242k | 41 |
 | `patterns/repo/` | 89k | 10 |
 | top-level yaml (index, op-gate, sonar-gate, architecture-rules, design-patterns, application-stacks, enforcement, scan-coverage) | 75k | 8 |
 
@@ -61,12 +61,12 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
 ## 2. The model: how an app consumes a Grammar
 
 ```
- knowledge/ui  (universal meaning: CTA-6, STATE-*, FE-APP-SHELL-*, ANATOMY-*, PADDING-*)
+ contexts/ui  (universal meaning: CTA-6, STATE-*, FE-APP-SHELL-*, ANATOMY-*, PADDING-*)
       |  realised by
       v
  @starci/grammar  ── entries: common (anatomy, no colour) | starci | offset-pop | heritage (family = DNA + styles.css)
    src/core/{primitive, composite, branch, composition}/<Name>      peerDeps: @heroui/react, react only
-      |  wraps (vendor parity: knowledge/vendor/heroui/*.yaml, wrappers.yaml)
+      |  wraps (vendor parity: contexts/vendor/heroui/*.yaml, wrappers.yaml)
       v
  HeroUI v3 (react-aria)                                             
       ^
@@ -83,7 +83,7 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
 What the app may do, and who checks it:
 
 1. **Compose, never draw.** Components compose published Grammar components with published props
-   (`patterns/fe/ui.yaml:29-33`). A missing capability is added to the Grammar and released first (ui.yaml case-1). Raw
+   (`code/fe/ui.yaml:29-33`). A missing capability is added to the Grammar and released first (ui.yaml case-1). Raw
    `<input|select|textarea|button|img>` are refused (R62, eslint-fe `no-native-form-control`, `no-native-img`).
 2. **Layout CSS only.** Class strings live in a colocated `classNames.ts` (`naming.yaml:123-129`, eslint-fe `class-names-in-colocated-file`,
    `no-inline-class-name`), hold Grammar scale classes only, no arbitrary values (`no-arbitrary-value`), no paint
@@ -105,7 +105,7 @@ What the app may do, and who checks it:
 
 **On the vocabulary the brief asked about (Tree/slots, Surface* branches, Modal/Drawer shells):** the legacy knowledge tree
 does not contain it. `ModalShell`, `DrawerShell`, `CardShell`, `ContractComponent`, `LeafComponent` and `Tree` appear in no
-`knowledge/**` file; only two eslint specs mention them. The current code contradicts that model: `Dialog`
+`contexts/**` file; only two eslint specs mention them. The current code contradicts that model: `Dialog`
 (`packages/grammar/src/core/branch/Dialog/index.tsx:20`) and `Drawer` (`Drawer/index.tsx:18`) are **branches** that take `children`,
 and so does `SurfaceCard` (`SurfaceCard/index.tsx:73-74`, `readonly children: ReactNode`). The "only two shells take children"
 rule lives only in the owner's auto-memory (`fe-contract-wrapper-shell-model.md`, dated 2026-10-08) and is stale. What survives is:
@@ -117,8 +117,8 @@ The new tree has to pick one meaning per word (see 4.4).
 
 ## 3. The thinking the legacy encodes
 
-- **Placement test (FE-RULE-OWNERSHIP, `patterns/fe/index.yaml:29-52`).** Four questions in order: does it hold for any design
-  system → `knowledge/ui` or `hfs`; is it a family's visual choice → that Grammar's DNA and styles.css; is it about calling one
+- **Placement test (FE-RULE-OWNERSHIP, `code/fe/index.yaml:29-52`).** Four questions in order: does it hold for any design
+  system → `contexts/ui` or `hfs`; is it a family's visual choice → that Grammar's DNA and styles.css; is it about calling one
   Grammar's components → that Grammar's lint package; is it checkable regardless of Grammar → the universal FE canon, which
   "name[s] no family-specific component, prop, variant or size". Rationale: "One owner for meaning, visual choices and
   executable checks" (line 50). This is the best idea in the area and the new tree should be built on it.
@@ -137,7 +137,7 @@ The new tree has to pick one meaning per word (see 4.4).
   48px only for a landing hero CTA; one size per row. Reasoning lives **only in an eslint doc** (see 4.1).
 - **Component by job** (`CONTEXT.md:52-62`): Tabs vs SegmentedControl vs Select/ComboBox; Tabs `primary` for page areas,
   `secondary` inside drawer/card/dialog/rail; SurfaceListCard+ListRow for collections; two Buttons at `gap-2`, way out first.
-  This is real UI thinking, but it sits in the runtime bootstrap file, not in `knowledge/ui`.
+  This is real UI thinking, but it sits in the runtime bootstrap file, not in `contexts/ui`.
 
 ---
 
@@ -147,14 +147,14 @@ The new tree has to pick one meaning per word (see 4.4).
 
 | Fact | Places | Count |
 |---|---|---|
-| App CSS is layout only / Grammar tokens only | `patterns/fe/ui.yaml:29`, `css.yaml` (all 4 rules), `hfs/README.md:728-733`, `CONTEXT.md:52`, `ui/composition/app-shell.yaml`, R61 + R318 `law`, `patterns/fe/index.yaml:48`, eslint-fe `docs/surface-rules.md`, `grammars/offset-pop/playbook.yaml` | 9 |
+| App CSS is layout only / Grammar tokens only | `code/fe/ui.yaml:29`, `css.yaml` (all 4 rules), `hfs/README.md:728-733`, `CONTEXT.md:52`, `ui/composition/app-shell.yaml`, R61 + R318 `law`, `code/fe/index.yaml:48`, eslint-fe `docs/surface-rules.md`, `grammars/offset-pop/playbook.yaml` | 9 |
 | globals.css shape, brand.css only colour file, forbidden CSS list | `css.yaml:25-100`, `hfs/README.md:728-733` (near verbatim), `slots.yaml` `fe.modules.brand.why`, R61 `law` | 4 |
-| Heroicons is the one icon set; @starci/heroicons fills gaps | `fe-stack.yaml:118-127`, `patterns/fe/icon.yaml`, `imports.yaml:185-193`, `hfs/rulings.yaml:415-425`, `modules/kernel/owner-rulings.yaml`, `canon-pins.yaml:18-24` why, grammar-starci `icon.mjs` | 7 |
-| Avatar = Grammar DiceBear initials, apps never import @dicebear | `fe-stack.yaml:128-139`, `patterns/fe/ui.yaml:52-61`, `grammars/starci/playbook.yaml` (groupIdentity), `ui/composition/collection.yaml`, `ui/composition/app-shell.yaml`, `vendor/heroui/wrappers.yaml`, `hfs/README.md`, R-rule, `canon-pins.yaml` | 9 |
+| Heroicons is the one icon set; @starci/heroicons fills gaps | `fe-stack.yaml:118-127`, `code/fe/icon.yaml`, `imports.yaml:185-193`, `hfs/rulings.yaml:415-425`, `modules/kernel/owner-rulings.yaml`, `canon-pins.yaml:18-24` why, grammar-starci `icon.mjs` | 7 |
+| Avatar = Grammar DiceBear initials, apps never import @dicebear | `fe-stack.yaml:128-139`, `code/fe/ui.yaml:52-61`, `grammars/starci/playbook.yaml` (groupIdentity), `ui/composition/collection.yaml`, `ui/composition/app-shell.yaml`, `vendor/heroui/wrappers.yaml`, `hfs/README.md`, R-rule, `canon-pins.yaml` | 9 |
 | FE budgets (component 300, index 200, 6 data hooks, 6 useState) | `slots.yaml:2141-2172` (machine), `design-truths.yaml:63-74` (pinned copy), `hfs/README.md:739`, R65 `law` | 4 |
-| 40px control height | eslint-fe `docs/control-height.md`, R320 `law`, `grammars/starci/family.yaml:63,221`, `grammars/offset-pop/family.yaml:72`, `offset-pop/playbook.yaml:256` | 5, and **no `knowledge/ui` owner** |
+| 40px control height | eslint-fe `docs/control-height.md`, R320 `law`, `grammars/starci/family.yaml:63,221`, `grammars/offset-pop/family.yaml:72`, `offset-pop/playbook.yaml:256` | 5, and **no `contexts/ui` owner** |
 | Button intent→variant table | `ui/composition/cta.yaml` CTA-6, `CONTEXT.md:55`, eslint-fe `docs/button-intent.md`, R319 `law`, grammar DNA/playbook rows | 5 |
-| One-library-per-concern for theme/motion/chart/toast/form | `fe-stack.yaml` row `why` and `forbids`, plus the matching `patterns/fe/<topic>.yaml` restating the forbids list in prose (e.g. `motion.yaml:25-26`, `chart.yaml:25-26`, `toast.yaml:32-33`, `form.yaml:44`) | 2 each |
+| One-library-per-concern for theme/motion/chart/toast/form | `fe-stack.yaml` row `why` and `forbids`, plus the matching `code/fe/<topic>.yaml` restating the forbids list in prose (e.g. `motion.yaml:25-26`, `chart.yaml:25-26`, `toast.yaml:32-33`, `form.yaml:44`) | 2 each |
 | Overlay host tree | `boundaries.yaml:167-241`, `architecture-check.yaml:105-106`, `function.yaml:183-184,233-237`, `folder.yaml:178`, `hfs/README.md` §6.2 "Overlay hosts" | 5 |
 | Direction matrix for fe tiers | `slots.yaml:176-186` (machine), `hfs/README.md` §6.2 "Direction", `architecture-check.yaml:77-80`, `imports.yaml:134-142` | 4 |
 | Per-rule prose | Each eslint-fe law has a `docs/<law>.md` (60.8k total) **and** a pattern rule **and** a `rules.yaml` `law` string, three prose bodies for one check | 3 per rule |
@@ -190,11 +190,11 @@ The new tree has to pick one meaning per word (see 4.4).
 
 ### 4.3 Stale or removed vocabulary and dangling ids
 
-- "the dataviz grammar" (`patterns/fe/chart.yaml:5,25`, `fe-stack.yaml:188`, `patterns/fe/index.yaml:180`): no such grammar
-  exists in `knowledge/grammars` or `packages/grammar/src`.
+- "the dataviz grammar" (`code/fe/chart.yaml:5,25`, `fe-stack.yaml:188`, `code/fe/index.yaml:180`): no such grammar
+  exists in `contexts/grammars` or `packages/grammar/src`.
 - `CONTROL-HEIGHT-1` (R320, eslint-fe docs) and `ANATOMY-2`/`PADDING-0` (`surface-rules.mjs:1`) are cited as canon ids. CONTROL-HEIGHT-1
   is defined in no knowledge file; its only definition is the eslint doc.
-- `patterns/fe/ui.yaml` and `icon.yaml` `verification.automated` list codes whose enforcers moved to the family package
+- `code/fe/ui.yaml` and `icon.yaml` `verification.automated` list codes whose enforcers moved to the family package
   (`FE_APP_SHELL_FRAME`, `FE_NAVBAR_*`, `FE_ICON_INLINE_SVG`); the codes kept the `FE_` prefix after the rule namespace moved to
   `starci-grammar/` (`removed-vocabulary.yaml:16-20`). Harmless for the machine, confusing for a reader.
 - `icon.yaml` lists `FE_COPY_IN_CALL`, `FE_NO_ALERT`, `FE_NESTED_VARIANT`, `FE_LIST_PANEL_PADDING`, `FE_DIVIDER_FULL_BLEED` as the checks
@@ -204,17 +204,17 @@ The new tree has to pick one meaning per word (see 4.4).
 
 ### 4.4 Prose that restates code rules
 
-- `patterns/fe/{theme,motion,chart,toast(forbids part),form(forbids part),markdown,code,diagram,upload,pdf,observe,utils,storage,date,number}.yaml`
+- `code/fe/{theme,motion,chart,toast(forbids part),form(forbids part),markdown,code,diagram,upload,pdf,observe,utils,storage,date,number}.yaml`
   are each ~1.4-3k files whose rule is "use library X, refuse Y". `fe-stack.yaml` is the machine owner and eslint-fe `fe-stack-import`
   enforces it; the topic adds one example case at most.
-- `hfs/README.md` §6.2 is a prose copy of slots.yaml tiers, budgets and patterns/fe css/boundaries.
+- `hfs/README.md` §6.2 is a prose copy of slots.yaml tiers, budgets and code/fe css/boundaries.
 - `rules.yaml` `law` strings, eslint `docs/*.md` and pattern `requirement` texts describe the same check three times.
 - `patterns/enforcement.yaml` ENF-MANDATORY-2..7 restate gate behaviour that `starci gate run`, `HFS_RULE_OFF_WITHOUT_REPLACEMENT`
   and the loosening-state check implement; nothing reads the file.
 
 ### 4.5 Gaps
 
-- No `knowledge/ui` rule owns control height, the size scale or how size/radius/gap relate for controls; the reasoning is in an eslint doc.
+- No `contexts/ui` rule owns control height, the size scale or how size/radius/gap relate for controls; the reasoning is in an eslint doc.
 - The "component by job" table (`CONTEXT.md:52-62`) has no knowledge owner; each line cites a ui case, but the selection table itself
   exists only in the bootstrap.
 - Nothing in knowledge states the content model of a Grammar component (what may be `children`, what is a named prop, which
@@ -243,7 +243,7 @@ Published as `starci-fe/<rule>`, all at error, one factory (`index.mjs:48-80`). 
 | `control-height.mjs` | `control-height` | R320 `FE_CONTROL_HEIGHT` | Default size, 40px, 48px only in a landing hero, one size per row | **eslint doc only** | Value (40px, `control`, `lg`) is family; the "one size per row, default unless hero" meaning is universal ui |
 | `surface-rules.mjs` | `nested-control-variant`, `no-list-panel-padding`, `no-app-surface-paint`, `divider-full-bleed` | R318 `FE_NESTED_VARIANT`, `FE_LIST_PANEL_PADDING`, `FE_GRAMMAR_LAYOUT_ONLY`, `FE_DIVIDER_FULL_BLEED` | Context owns nested variants and the list edge; apps never paint | ui/presentation surface/padding (ANATOMY-2, PADDING-0) | `no-app-surface-paint` is universal; the others hard-code a component inventory (`SURFACES`, `FIELDS` sets) and belong to the Grammar lint or a Grammar-exported manifest |
 | `ui-rulings.mjs` | `selection-fill-no-check`, `no-grammar-internal-selector` | R318 | Selection shows fill, not a check; apps never target Grammar internal selectors | ui/composition (selection), FE-UI | Second is universal; first names Grammar components |
-| `client-boundary`, `the-split`, `hooks-folder`, `file-layout`, `naming`, `transport`, `swr-family`, `translation`, `served-locale`, `env-owner`, `next-conventions`, `size-and-state-budget`, `size-growth`, `function-budget`, `comments`, `hygiene`, `formatting`, `type-safety`, `callback-shape`, `lint-escape-hatch`, `project-graph`, `sonar-parity` | (code shape) | R26-R65, R91, R243 ... | Code shape, not UI | patterns/fe | Correct |
+| `client-boundary`, `the-split`, `hooks-folder`, `file-layout`, `naming`, `transport`, `swr-family`, `translation`, `served-locale`, `env-owner`, `next-conventions`, `size-and-state-budget`, `size-growth`, `function-budget`, `comments`, `hygiene`, `formatting`, `type-safety`, `callback-shape`, `lint-escape-hatch`, `project-graph`, `sonar-parity` | (code shape) | R26-R65, R91, R243 ... | Code shape, not UI | code/fe | Correct |
 
 Family lint (`@starci/eslint-grammar-starci`, re-exported by offset-pop): `app-shell-frame`, `navbar-control-size`, `navbar-cluster`,
 `no-shell-bottom-tabs`, `no-navbar-create` (R313-R317), `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`,
@@ -268,7 +268,7 @@ Readers counted by grep over `engine/ scripts/ packages/hfs/src packages/eslint 
 | `hfs/slots.yaml` | App slot manifest, tiers, budgets | 42 scripts, eslint runtimes | via `starci app explain` | Core machine owner |
 | `hfs/rules.yaml` | 294-rule catalog with enforcers/proves | 50 scripts | via codes | Core machine owner; `law` is prose |
 | `hfs/runtime-slots.yaml` | Slots of the `.claude` runtime | 22 scripts | | Harness, not app knowledge |
-| `hfs/fe-stack.yaml` | One library per FE concern | 7 (eslint fe-stack, hfs check, draw-source) | patterns/fe | Machine owner |
+| `hfs/fe-stack.yaml` | One library per FE concern | 7 (eslint fe-stack, hfs check, draw-source) | code/fe | Machine owner |
 | `hfs/canon-pins.yaml` | Exact versions | 11 | | `why` holds changelog prose |
 | `hfs/design-truths.yaml` | Loosening exceptions, pinned | 7 | | Policy, digest-pinned |
 | `hfs/rulings.yaml` | Owner decisions (40) | 1 (coverage) | | Duplicates `modules/kernel/owner-rulings.yaml` |
@@ -276,8 +276,8 @@ Readers counted by grep over `engine/ scripts/ packages/hfs/src packages/eslint 
 | `hfs/facts.yaml` | Prose-contradiction facts | 1 | | Gate data |
 | `hfs/ci-standard.yaml`, `peer-integrations.yaml` | CI shape, peers | 1-2 each | | Machine data |
 | `hfs/docker.md` | Docker notes | none | none found | Orphan |
-| `patterns/fe/*` (41) | FE code patterns | `read-digest` (topic `slots:`), `framework-pinned.mjs` (folder list), eslint-grammar-starci runtime bundle (index, ui) | READ step of code ops | |
-| `patterns/be/*` (31) | BE code patterns | 9 scripts (`files:` trees for `starci app add`) | READ step | |
+| `code/fe/*` (41) | FE code patterns | `read-digest` (topic `slots:`), `framework-pinned.mjs` (folder list), eslint-grammar-starci runtime bundle (index, ui) | READ step of code ops | |
+| `code/be/*` (31) | BE code patterns | 9 scripts (`files:` trees for `starci app add`) | READ step | |
 | `patterns/repo/*` (10) | Repository law | none | 6 skills/modules | |
 | `patterns/enforcement.yaml` | Anti-bypass prose | **none** | **none** | Orphan |
 | `patterns/scan-coverage.yaml` | Check limits | 1 | | Coverage evidence |
@@ -306,7 +306,7 @@ Readers counted by grep over `engine/ scripts/ packages/hfs/src packages/eslint 
 ### 7.2 Target layout
 
 ```
-knowledge/
+contexts/
   index.yaml                         router: one line per folder, who reads it (no rule text)
   ui/                                universal design thinking, any design system           (agent: draw/implement/audit)
     composition/  presentation/  proof/      as today, plus:
@@ -348,10 +348,10 @@ packages/eslint/
 
 | Item | Action |
 |---|---|
-| FE-RULE-OWNERSHIP | **Keep**, promote to `knowledge/index.yaml` as the placement test for every folder |
-| `patterns/fe/ui.yaml` FE-UI | **Keep** one sentence ("compose the selected Grammar; layout CSS only; missing capability → Grammar first"); move avatar/group cases to `grammars/starci/playbook.yaml` and `ui/components/avatar.yaml` |
-| `patterns/fe/css.yaml` | **Keep** as the single owner of the app CSS shape; delete the copy in `hfs/README.md:728-733` and the prose in R61 `law` |
-| `patterns/fe/icon.yaml` | **Merge** into `ui/components/icon.yaml` (one vocabulary, one size per region: meaning) + `stack/fe.yaml` (library) + grammar playbook (cuts); drop `rulings.yaml` statement duplicate |
+| FE-RULE-OWNERSHIP | **Keep**, promote to `contexts/index.yaml` as the placement test for every folder |
+| `code/fe/ui.yaml` FE-UI | **Keep** one sentence ("compose the selected Grammar; layout CSS only; missing capability → Grammar first"); move avatar/group cases to `grammars/starci/playbook.yaml` and `ui/components/avatar.yaml` |
+| `code/fe/css.yaml` | **Keep** as the single owner of the app CSS shape; delete the copy in `hfs/README.md:728-733` and the prose in R61 `law` |
+| `code/fe/icon.yaml` | **Merge** into `ui/components/icon.yaml` (one vocabulary, one size per region: meaning) + `stack/fe.yaml` (library) + grammar playbook (cuts); drop `rulings.yaml` statement duplicate |
 | theme, motion, chart, markdown, code, diagram, upload, pdf, observe, utils, storage, number | **Drop**; fact lives in `stack/fe.yaml`, enforced by `fe-stack-import` |
 | "dataviz grammar" | **Drop** the phrase or create the grammar; today it is dangling |
 | `patterns/enforcement.yaml` | **Move** ENF-MANDATORY-2..7 to `policy/` (they are gate law already implemented); **drop** ENF-PROP-P0-1/P1-FE test clauses that contradict R97; drop proposals nobody reads |
@@ -371,7 +371,7 @@ packages/eslint/
 
 | File | Reader | When |
 |---|---|---|
-| `knowledge/index.yaml` | agent | first, every task |
+| `contexts/index.yaml` | agent | first, every task |
 | `ui/**` | agent (interface.draw/implement/audit), draw scripts | authoring and audit |
 | `ui/components/*.yaml` | agent choosing a component; eslint docs cite ids | authoring |
 | `grammars/<family>/DNA.yaml` | generator writes, gate drift-checks, agent reads | grammar release, audit |
@@ -380,6 +380,6 @@ packages/eslint/
 | `stack/fe.yaml`, `stack/pins.yaml` | eslint `fe-stack-import`, pin gate, scaffolder | lint, install, scaffold |
 | `hfs/slots.yaml`, `hfs/rules.yaml` | `@starci/hfs`, eslint runtimes, gates, `starci app explain` | every gate run |
 | `hfs/README.md` | agent | onboarding to the app shape |
-| `patterns/fe/*`, `patterns/be/*` | agent via READ digest (topic `slots:`), `starci app add` (`files:` trees) | before coding a slot |
+| `code/fe/*`, `code/be/*` | agent via READ digest (topic `slots:`), `starci app add` (`files:` trees) | before coding a slot |
 | `decisions/rulings.yaml` | coverage gate, agent | when a rule cites a ruling |
 | `policy/*` | gates only | every gate |

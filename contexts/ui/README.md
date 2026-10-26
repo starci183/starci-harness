@@ -26,7 +26,7 @@ product spec (.starciwork)
 
 | Owner | Owns | Never holds |
 | --- | --- | --- |
-| `knowledge/ui` | the choice and the reason: which component, which rank, which step of the ramp, which owner | a family's values, class names, the intent x placement map, lint logic |
+| `contexts/ui` | the choice and the reason: which component, which rank, which step of the ramp, which owner | a family's values, class names, the intent x placement map, lint logic |
 | the grammar contract ([../grammars/contract.md](../grammars/contract.md)) and the package that implements it (`@starci/grammar`, grammars `core` and `offset-pop`) | components, props, anatomy, token and role names, the size ramp values, the intent x placement map | product facts |
 | [../grammars/](../grammars/README.md) | why each family chooses its values, its departures | universal rules |
 | [../vendor/heroui.md](../vendor/heroui.md) | what HeroUI ships and what a grammar must keep | when to use a component |

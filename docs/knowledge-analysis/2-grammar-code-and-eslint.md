@@ -1,7 +1,7 @@
 # 2. Grammar as code and its machine rules
 
 Area: legacy `packages/grammar`, `packages/eslint/grammar-starci`, `packages/eslint/grammar-offset-pop`, and the
-knowledge they cite (`knowledge/grammars`, `knowledge/ui`, `knowledge/hfs`, `knowledge/patterns/fe`).
+knowledge they cite (`contexts/grammars`, `contexts/ui`, `contexts/hfs`, `contexts/code/fe`).
 Legacy root below is `L = D:\Repositories\starci-academy-backend\.claude`. All paths are relative to `L`.
 Read-only analysis; nothing in the legacy tree was changed.
 
@@ -17,9 +17,9 @@ Read-only analysis; nothing in the legacy tree was changed.
 | `src/common/renderers*.ts` | 19 KB | Re-exports of every renderer from `src/core/**` ("physical renderer paths are internal storage") | code |
 | `src/common/spacing.ts` | 0.6 KB | `COMMON_SPACING_SCALE` 0/1/2/3/4/6/8 and `--grammar-*-gap` token names | data |
 | `src/common/state.ts` | 0.7 KB | `PRESENTATION_STATES` (neutral, informative, affirmative, cautionary, negative, pending, unavailable) | data |
-| `src/common/conformance.ts` + `rule-catalog.generated.ts` | 1.8 + 5.5 KB | `COMMON_UI_RULE_IDS` (178 ids, 33 families) generated FROM `knowledge/ui/**` + `knowledge/grammars/starci`; `defineGrammarRuleConformance` makes each family account for every id (inherited or family evidence) | generated data, tracked |
+| `src/common/conformance.ts` + `rule-catalog.generated.ts` | 1.8 + 5.5 KB | `COMMON_UI_RULE_IDS` (178 ids, 33 families) generated FROM `contexts/ui/**` + `contexts/grammars/starci`; `defineGrammarRuleConformance` makes each family account for every id (inherited or family evidence) | generated data, tracked |
 | `src/common/*.css` | ~255 KB | Common anatomy, geometry, soft/solid status pairs (`styles.css:93-95`), 40px control floor | data (CSS) |
-| `src/core/**` (≈110 components in primitive/composite/branch/composition) | ~600 KB | The actual Common renderer implementations over HeroUI; stamp `data-contract="GAP-2 PADDING-4 …"` with knowledge/ui rule ids | code |
+| `src/core/**` (≈110 components in primitive/composite/branch/composition) | ~600 KB | The actual Common renderer implementations over HeroUI; stamp `data-contract="GAP-2 PADDING-4 …"` with contexts/ui rule ids | code |
 | `src/core/dna.ts` | 13.6 KB | `STARCI_CORE_DNA` (arrangement, intent map, colour light/dark, geometry, rhythm, elevation, motion), `STARCI_CORE_SPACING_SCALE`, token names/defaults, band tokens | data |
 | `src/core/buttonIntent.tsx` | 3.1 KB | intent x placement -> HeroUI variant resolver; picks a family DNA by string | code |
 | `src/offset-pop/{dna,conformance,index}.ts*` + 4 CSS | ~114 KB | Offset Pop DNA (+`offset`, `palette`, a WCAG table in the doc comment), family evidence per rule id | data + evidence prose in code |
@@ -35,7 +35,7 @@ it imports one entry (`@starci/grammar/core|offset-pop|heritage|common`) and one
 family's root, which is Common `GrammarRoot` plus `data-grammar-family="<id>"` (`src/core/index.ts:33-36`). Everything
 family-specific keys off that attribute: CSS scope `.grammar-common-root[data-grammar-family=…]` in its own cascade layer,
 overlay portals into the nearest root, and `ButtonIntentFamilyProvider` choosing the DNA intent map
-(`src/core/buttonIntent.tsx:33-37`). Lint selection: `knowledge/grammars/index.yaml` `families[].lint` names
+(`src/core/buttonIntent.tsx:33-37`). Lint selection: `contexts/grammars/index.yaml` `families[].lint` names
 package + factory; `starciGrammarConfig` refuses a family other than `starci|offset-pop` or one that differs from `hfs.grammar`
 (`packages/eslint/grammar-starci/index.mjs:46-53`); `scripts/hfs/rules/fe-stack.mjs:134-150` refuses canon-fe 9 without the family lint package.
 
@@ -43,20 +43,20 @@ package + factory; `starciGrammarConfig` refuses a family other than `starci|off
 
 | File | Lines/size | Rules (all `starci-grammar/*`, all `error`, no inline override) | Cited knowledge (`meta.docs.knowledge`) |
 | --- | --- | --- | --- |
-| `app-shell.mjs` + `lib/app-shell*.mjs` (6 files) | 11 KB + 28 KB | `app-shell-frame`, `no-shell-bottom-tabs`, `navbar-control-size`, `navbar-cluster`, `no-navbar-create` | `knowledge/ui/composition/app-shell.yaml` |
-| `drawing.mjs` | 2.5 KB | `slot-status-through-slotview` | `knowledge/grammars/starci/playbook.yaml#state-recipes` |
-| `grammar-boundary.mjs` | 5 KB | `no-raw-structural-element` | `knowledge/patterns/fe/ui.yaml#FE-UI` |
-| `icon.mjs` | 15 KB | `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`, `no-off-scale-glyph-size`, `no-icon-size-class`, `no-decorative-icon-in-metric-cell`, `no-inline-svg-outside-brand-mark-leaf` | `knowledge/hfs/rules.yaml#R93` (inline-svg: `#R286`) |
-| `menu-entries.mjs` | 7.6 KB | `destructive-menu-entry-needs-danger-tone` | `knowledge/hfs/rules.yaml#R93` |
-| `status-colors.mjs` + `lib/status-tones.generated.mjs` | 6.6 KB | `status-text-uses-soft-foreground` | `knowledge/hfs/rules.yaml#R61` |
-| `tokens.mjs` | 7.6 KB | `no-fractional-step`, `no-hand-rolled-heading`, `no-unresolved-token-class` | `knowledge/hfs/rules.yaml#R61` |
-| `typography.mjs` | 4 KB | `no-heading-tag-outside-heading-component` | `knowledge/ui/presentation/font.yaml` |
-| `vendor-boundary.mjs` | 1.5 KB | `vendor-primitive-has-named-owner` | `knowledge/hfs/rules.yaml#R93` |
+| `app-shell.mjs` + `lib/app-shell*.mjs` (6 files) | 11 KB + 28 KB | `app-shell-frame`, `no-shell-bottom-tabs`, `navbar-control-size`, `navbar-cluster`, `no-navbar-create` | `contexts/ui/composition/app-shell.yaml` |
+| `drawing.mjs` | 2.5 KB | `slot-status-through-slotview` | `contexts/grammars/starci/playbook.yaml#state-recipes` |
+| `grammar-boundary.mjs` | 5 KB | `no-raw-structural-element` | `contexts/code/fe/ui.yaml#FE-UI` |
+| `icon.mjs` | 15 KB | `no-vendor-icon-outside-icon-leaf`, `heroicons-is-the-glyph-vendor`, `no-off-scale-glyph-size`, `no-icon-size-class`, `no-decorative-icon-in-metric-cell`, `no-inline-svg-outside-brand-mark-leaf` | `contexts/hfs/rules.yaml#R93` (inline-svg: `#R286`) |
+| `menu-entries.mjs` | 7.6 KB | `destructive-menu-entry-needs-danger-tone` | `contexts/hfs/rules.yaml#R93` |
+| `status-colors.mjs` + `lib/status-tones.generated.mjs` | 6.6 KB | `status-text-uses-soft-foreground` | `contexts/hfs/rules.yaml#R61` |
+| `tokens.mjs` | 7.6 KB | `no-fractional-step`, `no-hand-rolled-heading`, `no-unresolved-token-class` | `contexts/hfs/rules.yaml#R61` |
+| `typography.mjs` | 4 KB | `no-heading-tag-outside-heading-component` | `contexts/ui/presentation/font.yaml` |
+| `vendor-boundary.mjs` | 1.5 KB | `vendor-primitive-has-named-owner` | `contexts/hfs/rules.yaml#R93` |
 | `lib/rule-contract.mjs` | 0.5 KB | `defineFamilyRules` stamps `docs.url/knowledge` and `ownership = FE-RULE-OWNERSHIP` | code |
 | `lib/why.mjs` | 2 KB | finding code / en / fix for 8 of the 20 rules | data in code |
 | `docs/{app-shell,grammar-boundary,status-colors}.md` | 3.8 + 2.6 + 2.3 KB | prose per law; only 3 of 9 laws have one | prose |
 | `*.spec.mjs` (11) | ~110 KB | RuleTester specs, `index.spec.mjs` asserts each citation resolves to a declared YAML id | test |
-| `runtime/**` (~1.2 MB) | generated, git-ignored (`.gitignore:53`) | byte copies of `knowledge/{grammars/index,grammars/starci/playbook,hfs/rules,hfs/slots,hfs/canon-pins,patterns/fe/index,patterns/fe/ui,ui/composition/app-shell,ui/presentation/font,ui/presentation/padding,ui/proof/anatomy-source}.yaml`, `modules/goal/source-phrases.yaml`, slot loader, architecture machine, `engine/yaml.mjs` (122 KB) | generated by `scripts/hfs/sync-runtime.mjs`; verified identical to source (cmp) |
+| `runtime/**` (~1.2 MB) | generated, git-ignored (`.gitignore:53`) | byte copies of `contexts/{grammars/index,grammars/starci/playbook,hfs/rules,hfs/slots,hfs/canon-pins,code/fe/index,code/fe/ui,ui/composition/app-shell,ui/presentation/font,ui/presentation/padding,ui/proof/anatomy-source}.yaml`, `modules/goal/source-phrases.yaml`, slot loader, architecture machine, `engine/yaml.mjs` (122 KB) | generated by `scripts/hfs/sync-runtime.mjs`; verified identical to source (cmp) |
 
 What the runtime copy is for: (a) `lib/app-shell-owner-source.mjs` runs the slot view and architecture machine to resolve imported
 headers; (b) `lib/app-shell-create.mjs:8` reads the Vietnamese create phrases `appShell.product` from `modules/goal/source-phrases.yaml`;
@@ -72,7 +72,7 @@ of its own code reads.
 
 ### 1.4 Knowledge read for the mapping
 
-`knowledge/patterns/fe/index.yaml` (FE-RULE-OWNERSHIP, lines 29-52), `patterns/fe/ui.yaml` (FE-UI), `patterns/fe/icon.yaml` (FE-ICON),
+`contexts/code/fe/index.yaml` (FE-RULE-OWNERSHIP, lines 29-52), `code/fe/ui.yaml` (FE-UI), `code/fe/icon.yaml` (FE-ICON),
 `hfs/rules.yaml` R61, R62, R92, R93, R286, R313-R320, `ui/composition/app-shell.yaml` (FE-APP-SHELL-1..7), `ui/presentation/{font,gap,tone}.yaml`,
 `ui/proof/contrast.yaml` (COLOR-5 case-1a), `ui/composition/cta.yaml` (CTA-6), `grammars/index.yaml`, `grammars/starci/{index,family,playbook}.yaml`.
 
@@ -81,17 +81,17 @@ of its own code reads.
 ## 2. The model
 
 ```
-                 knowledge/ui  (universal meaning, rule ids X-n, 178 ids)            knowledge/hfs/rules.yaml (R-n laws,
+                 contexts/ui  (universal meaning, rule ids X-n, 178 ids)            contexts/hfs/rules.yaml (R-n laws,
                      |  generate-rule-catalog.mjs                                     enforcers[], failure codes)
                      v                                                                     ^   (lists enforcer ids by hand)
   @starci/grammar  src/common  -- COMMON_UI_RULE_IDS, data-contract stamps,               |
   (Common contract: renderers, props, anatomy, states, scales)                            |
         |  defineGrammarFamily(id, styles, replacements, extensions)                      |
         +-- core (StarCi)  dna.ts + styles.css      --+                                   |
-        +-- offset-pop     dna.ts + 4 css           --+-- grammar-knowledge.mjs census --> knowledge/grammars/<fam>/DNA.yaml
+        +-- offset-pop     dna.ts + 4 css           --+-- grammar-knowledge.mjs census --> contexts/grammars/<fam>/DNA.yaml
         +-- heritage       dna.ts + styles.css      --+   (tracked, measured blocks + authored prose, drift-checked)
                                                                                            |
-  app code  --imports-->  @starci/grammar/<family>      knowledge/grammars/<fam>/{family,idioms,playbook}.yaml (authored)
+  app code  --imports-->  @starci/grammar/<family>      contexts/grammars/<fam>/{family,idioms,playbook}.yaml (authored)
      ^
      |  linted by
   @starci/eslint-canon-fe (universal; but also button-intent, control-height, R318 surface rules)
@@ -100,8 +100,8 @@ of its own code reads.
   @starci/eslint-grammar-offset-pop (no own rules)        heritage: no lint package at all
 ```
 
-The governing boundary rule is FE-RULE-OWNERSHIP (`knowledge/patterns/fe/index.yaml:29-52`), four ordered questions:
-1. holds for any design system -> universal knowledge (`knowledge/ui`, `knowledge/hfs`);
+The governing boundary rule is FE-RULE-OWNERSHIP (`contexts/code/fe/index.yaml:29-52`), four ordered questions:
+1. holds for any design system -> universal knowledge (`contexts/ui`, `contexts/hfs`);
 2. one family's visual value -> that Grammar's DNA and `styles.css`;
 3. how to call one Grammar's components (names, props, variants, sizes) -> that Grammar's lint package;
 4. checkable regardless of Grammar -> universal canon-fe, which "names no family-specific component, prop, variant or size".
@@ -120,8 +120,8 @@ enforcers, the lint docs' "Catalogue:" line, the sync list) and the three layers
 | `navbar-control-size` | app-shell.yaml | R314 | FE-APP-SHELL-2 case-1 one bar-control height; value 40px in R320/family.yaml | Q3, overlaps canon-fe `control-height` |
 | `navbar-cluster` | app-shell.yaml | R315 | FE-APP-SHELL-3 case-1 order language/theme/notifications/account | Q3 (but the order itself is product composition) |
 | `no-navbar-create` | app-shell.yaml | R317 | FE-APP-SHELL-5 | actually Q4-ish (semantic placement), kept here because it reads Grammar bar names |
-| `slot-status-through-slotview` | starci/playbook.yaml#state-recipes | R92 | product `SlotView` recipe; also `patterns/fe/function.yaml:81`, `error.yaml:33` | none: app architecture, not a Grammar API; belongs to canon-fe |
-| `no-raw-structural-element` | patterns/fe/ui.yaml#FE-UI | R62 | R62 law; tag->component map `GRAMMAR_OWNERS` (`grammar-boundary.mjs:27-43`) verified against grammar source by spec | Q3, correct |
+| `slot-status-through-slotview` | starci/playbook.yaml#state-recipes | R92 | product `SlotView` recipe; also `code/fe/function.yaml:81`, `error.yaml:33` | none: app architecture, not a Grammar API; belongs to canon-fe |
+| `no-raw-structural-element` | code/fe/ui.yaml#FE-UI | R62 | R62 law; tag->component map `GRAMMAR_OWNERS` (`grammar-boundary.mjs:27-43`) verified against grammar source by spec | Q3, correct |
 | `no-heading-tag-outside-heading-component` | ui/presentation/font.yaml | R61 | FONT-1..4 (level owns tag+size), `HeadingLevel = 1..4` (`Heading/index.tsx:4`) | Q3; duplicates `no-raw-structural-element` for h1-h6 |
 | `no-hand-rolled-heading` | rules.yaml#R61 | R61 | FONT-6 "display emphasis preserves structure" (heuristic: `text-xl+` with `font-bold+`) | Q3 (Tailwind/HeroUI vocabulary) |
 | `no-fractional-step` | rules.yaml#R61 | R61 | `gap.yaml` "COMMON_SPACING_SCALE is closed" | Q3; contradicts family scales (4.2) |
@@ -143,7 +143,7 @@ enforcers, the lint docs' "Catalogue:" line, the sync list) and the three layers
 - Closed spacing scale (`gap.yaml:58`): only fractions (`tokens.mjs:15`) and arbitrary values (canon-fe) are refused; a whole but off-scale step (`gap-5`, `p-7`, `gap-10`) passes.
 - FE-ICON / R93 "one icon size per region": only per-call-site size classes are refused; mixing 16 and 20 px glyphs in one region passes.
 - Heritage: `grammars/index.yaml` lists it, but it has no `lint` entry and `fe-stack.mjs:143` returns no finding when `lint.package === null` — an app selecting Heritage silently gets zero family rules.
-- Of the 178 knowledge/ui rule ids, 24 knowledge/ui topics declare no `automated` verification at all; app-side enforcement exists for a handful (R61/R62/R93/R313-R320). The family side is held only by `defineGrammarRuleConformance` (each id must be "inherited" or carry evidence text), which proves accounting, not behaviour.
+- Of the 178 contexts/ui rule ids, 24 contexts/ui topics declare no `automated` verification at all; app-side enforcement exists for a handful (R61/R62/R93/R313-R320). The family side is held only by `defineGrammarRuleConformance` (each id must be "inherited" or carry evidence text), which proves accounting, not behaviour.
 
 ---
 
@@ -196,7 +196,7 @@ nothing to compose instead, and refusing it would demand a workaround" (`grammar
 **Static proof refuses to guess.** Unknown spreads, calls and unresolved values neither prove nor refute (`app-shell.mjs:24-31`,
 `menu-entries.mjs` "Anything it cannot see through … it leaves alone"). Navbar rules follow local constants, aliases and namespace imports.
 
-**Conformance as accounting.** Every family must classify every knowledge/ui rule id as inherited or family-owned with evidence that
+**Conformance as accounting.** Every family must classify every contexts/ui rule id as inherited or family-owned with evidence that
 "names the mechanism" (`offset-pop/conformance.ts:3-22`); the catalogue is generated because "a conformance check against a wrong catalog
 keeps passing" (`common/conformance.ts:4-8`).
 
@@ -219,7 +219,7 @@ keeps passing" (`common/conformance.ts:4-8`).
 | Family registry | `grammars/index.yaml` families, `GRAMMAR_FAMILIES` (`scripts/work/ui/grammar-knowledge.mjs:43`, maps knowledge `starci` to source `core`), `buttonIntent.tsx:34` ternary, `index.mjs:49` allow-list, `fe-stack.yaml:252-254`, `canon-pins.yaml:53-66` | 6 |
 | Rule -> knowledge binding | `defineFamilyRules(...)` per file, `rules.yaml` `enforcers[]`, lint `docs/*.md` "Catalogue:" line, `sync-runtime.mjs:152-161` file list | 4, and they disagree (4.2) |
 | Grammar component names inside the lint | `lib/app-shell.mjs:7-8` `BAR_CONTROLS`/`BAR_WRAPPERS`, `lib/app-shell-owner.mjs:8` `OVERLAYS`, `GRAMMAR_OWNERS` | typed by hand; only `GRAMMAR_OWNERS` is verified against source by spec |
-| DNA values | `src/<family>/dna.ts` and tracked `knowledge/grammars/<family>/DNA.yaml` (measured blocks + authored prose in one file, drift-checked by `grammar-knowledge --check`) | 2; CONTRIBUTING principle 2 says generated output is untracked |
+| DNA values | `src/<family>/dna.ts` and tracked `contexts/grammars/<family>/DNA.yaml` (measured blocks + authored prose in one file, drift-checked by `grammar-knowledge --check`) | 2; CONTRIBUTING principle 2 says generated output is untracked |
 
 ### 4.2 Contradictions
 
@@ -279,8 +279,8 @@ FE-APP-SHELL recipes; `starci/family.yaml` `lint.contract` restates FE-RULE-OWNE
 
 | Layer | Owns | Never contains |
 | --- | --- | --- |
-| `knowledge/ui/**` | universal meaning and the rule ids (`GAP-n`, `FONT-n`, `FE-APP-SHELL-n`, …), with the reasoning | Grammar component, prop, token or class names; values; enforcer lists |
-| `knowledge/grammars/<family>/` | the family's design reasoning: why its DNA chooses what it chooses, idioms, product-agnostic playbook | values (they are in `dna.ts`/CSS), lint recipes, product page types |
+| `contexts/ui/**` | universal meaning and the rule ids (`GAP-n`, `FONT-n`, `FE-APP-SHELL-n`, …), with the reasoning | Grammar component, prop, token or class names; values; enforcer lists |
+| `contexts/grammars/<family>/` | the family's design reasoning: why its DNA chooses what it chooses, idioms, product-agnostic playbook | values (they are in `dna.ts`/CSS), lint recipes, product page types |
 | `packages/grammar` | values (DNA, scales, tokens), Common API, renderers, conformance evidence, `data-contract` stamps | prose rules |
 | `packages/eslint/grammar-*` | executable checks on app code calling the Grammar API; each rule's `meta.docs.knowledge` is THE binding to a fact | a second copy of values: they import generated vocabulary from the grammar |
 
@@ -324,7 +324,7 @@ all reasoning quoted in section 3, moved into knowledge where it is design think
 ### 5.4 Target layout (this area)
 
 ```
-knowledge/
+contexts/
   ui/                         # universal meaning (shared with area 3); no Grammar API names
   grammars/
     index.yaml                # GENERATED from packages/grammar/src/families.ts (agent reads: which families exist)
@@ -332,7 +332,7 @@ knowledge/
       family.yaml             # authored: identity, design reasoning per DNA group, gaps (agent at authoring)
       idioms.yaml             # authored, product-agnostic
       playbook.yaml           # authored: concrete API recipes per FE-APP-SHELL / state / forms (agent at authoring)
-  patterns/fe/index.yaml      # FE-RULE-OWNERSHIP, rewritten: universal canon / Common-API lint / family lint
+  code/fe/index.yaml      # FE-RULE-OWNERSHIP, rewritten: universal canon / Common-API lint / family lint
 packages/
   grammar/src/
     families.ts               # the one family registry (generators, buttonIntent, lint factory)
@@ -347,6 +347,6 @@ generated (untracked):
   per-law docs, DNA snapshot, package runtime/ copies
 ```
 
-Who reads what: an authoring agent reads `knowledge/ui` + the selected family's `family/idioms/playbook` + the generated rule index;
+Who reads what: an authoring agent reads `contexts/ui` + the selected family's `family/idioms/playbook` + the generated rule index;
 the gate runs the eslint packages (and canon-fe), which read only code-generated vocabulary; generators (`grammar-knowledge`,
 rule-catalog, vocabulary, docs) read `packages/grammar` and knowledge rule ids and write only untracked or clearly generated files.

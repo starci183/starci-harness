@@ -1,6 +1,6 @@
 # Open decisions: patterns, hfs, stack and the rulings log
 
-Choices made while writing [patterns](../patterns/README.md), [hfs](../hfs/README.md), [stack](../stack/README.md)
+Choices made while writing [patterns](../code/README.md), [hfs](../hfs/README.md), [stack](../stack/README.md)
 and [rulings.yaml](rulings.yaml), each with the alternative and the reason, so the owner can overturn one in one place.
 A confirmed row moves to `rulings.yaml` and is deleted here. The follow-up column names the code that must change for
 the knowledge to be true.
@@ -11,16 +11,16 @@ the knowledge to be true.
 |---|---|---|---|---|
 | C-1 | Patterns are Markdown with YAML front matter (`slots`, and `files` for scaffolded trees; fe/folder.md also carries `frameworkPinnedRootFiles`) | keep YAML topics | an agent reads reasoning; the only machine reads were the slot→topic map and the `files` trees, which the front matter keeps | repoint the slot→topic reader and `app add` (`ruleParams.be.addKinds.*.topic` now names `<topic>.md`) |
 | C-2 | Library-only fe topics are dropped (theme, motion, chart, flow, markdown, code, diagram, pdf, observe, utils, lint); their fact is one `why` line in `stack/fe.yaml`; `pattern` is omitted for those concerns | keep a topic per library | the topic restated `forbids` in prose; `fe-stack-import` already reads the data | none (`pattern` is optional in the lint) |
-| C-3 | "App CSS is layout only" is stated once, in [patterns/fe/ui.md](../patterns/fe/ui.md) FE-CSS-1; FE-UI, FE-CSS, FE-ICON merged into that file | keep css.yaml, ui.yaml, icon.yaml | nine places held the fact | none |
+| C-3 | "App CSS is layout only" is stated once, in [code/fe/ui.md](../code/fe/ui.md) FE-CSS-1; FE-UI, FE-CSS, FE-ICON merged into that file | keep css.yaml, ui.yaml, icon.yaml | nine places held the fact | none |
 | C-4 | An app imports no vendor UI component; `@heroui/react` and `react-aria-components` are grammar peers only (FE-IMPORTS-5) | the legacy allowance for app leaves and blocks | owner guidance: no visual choice is left to the app; a vendor import is a second visual owner | grammar lint `vendor-primitive-has-named-owner` must refuse every app import of a vendor UI package (R93) |
 | C-5 | No product UI package: slot `fe.package.ui` is removed; a shared front-end package holds no visual component (FE-PACKAGES-2) | define it as a grammar family entry | every visual element lives in the grammar package | slot removed from hfs/slots.yaml; R63 lint must refuse visuals in `fe/packages/*` |
-| C-6 | The data-status recipe is stated once, in [patterns/fe/README.md](../patterns/fe/README.md#data-status-of-a-region) (FE-ERROR-1) | keep it in function.yaml and error.yaml | the grammar contract links to one place | none |
+| C-6 | The data-status recipe is stated once, in [code/fe/README.md](../code/fe/README.md#data-status-of-a-region) (FE-ERROR-1) | keep it in function.yaml and error.yaml | the grammar contract links to one place | none |
 | C-7 | "slot" means an HFS slot; a component's named part is an "anatomy slot"; `Slot<T>`/`SlotView` stay code identifiers and prose calls the value a "resource" | rename the code type | renaming code is out of scope; prose can be exact now | optional code rename of `Slot<T>` to `Resource<T>` |
 | C-8 | App tiers keep `blocks/composites/branches/leaves`; grammar tiers keep `primitive/composite/branch/composition`; a grammar component is never called a "leaf" | one shared vocabulary | they are different layers with different rules | none |
 | C-9 | `FE-STATE-REDUX` and `FE-STATE-ZUSTAND` merge into FE-STATE-1 (one owner per kind of state, a table); FE-DATE and FE-NUMBER become FE-I18N-5 (formatting owners) | keep them as library topics | the decision is which store owns which state, not the library | none |
 | C-10 | FE-FOLDER-5 (grammar package layout) and FE-ERROR-5 (grammar TypeErrors) are dropped from app patterns | keep them | they describe the grammar package's own code, owned by its source | none |
 | C-11 | `hfs/rules.yaml` keeps 242 product rules with one-sentence laws, failure codes and enforcers (kind and id); 52 rules whose only enforcers are the runtime's own checks are not knowledge (list below); per-rule `gates`, `docs`, `templateNa`, `exemplifiedBy`, `witness`, `proves` and enforcer `at` paths are dropped | port them | gates are policy (quality.yaml); evidence ledgers are coverage policy; `at` named legacy script paths that the new harness does not have | the new CLI implements the `hfs`/`machine` enforcers or the catalog marks them planned |
-| C-12 | `hfs/slots.yaml` is ported as data (156 slots), with `since`, `exemplifiedBy`, `templateNa`, `consumers`, `versioning` history and ruling citations removed; field and parameter meanings moved to hfs/README.md | keep the comment documentation in the YAML | the comments mixed history with field docs; a parse-and-write port cannot keep comments | the vendored canon runtimes still read their copy of the legacy manifest; repoint them to `knowledge/hfs/slots.yaml` |
+| C-12 | `hfs/slots.yaml` is ported as data (156 slots), with `since`, `exemplifiedBy`, `templateNa`, `consumers`, `versioning` history and ruling citations removed; field and parameter meanings moved to hfs/README.md | keep the comment documentation in the YAML | the comments mixed history with field docs; a parse-and-write port cannot keep comments | the vendored canon runtimes still read their copy of the legacy manifest; repoint them to `contexts/hfs/slots.yaml` |
 | C-13 | `ruleParams` (infraOwners, specDoubles, suffixes, ...) stay in `hfs/slots.yaml` | move each into the lint package that reads it | one owner either way; moving needs package releases | revisit when the canon packages are rebuilt in this repository |
 | C-14 | `stack/pins.yaml` keeps `@starci/eslint-grammar-starci` (the published name) and lists the rename as pending removed vocabulary | pin the future `eslint-grammar-common`/`-core` | write what is true now; the renamed packages are not published | publish `@starci/eslint-grammar-common` and `-core` (open-grammar D-7), then repin and drop the pending entry |
 | C-15 | The node base image tag is a pin in `stack/pins.yaml` `images` (R190) | keep it as a constant in the docker rule | a law named a script constant as its owner | the docker rule reads the pin |
@@ -34,7 +34,7 @@ the knowledge to be true.
 |---|---|---|
 | R32, R47 vs R212, R272 | R32 and R47 require the e2e world, but lite has none | open: R32 and R47 should be scoped to full |
 | R102 vs R47, R281 | unit specs allowed only for `unitRoles` vs required or optional for every logic role | open: the be test pattern follows R281 (a logic role owes coverage, a spec is optional) |
-| R43 vs R248 | capability config helpers placed in `main.ts`/`<app>.env.ts` vs read from `*.config.ts` | open: patterns/be/config.md follows R248 |
+| R43 vs R248 | capability config helpers placed in `main.ts`/`<app>.env.ts` vs read from `*.config.ts` | open: code/be/config.md follows R248 |
 | R164 vs R10, R266 | own images pinned by version tag vs by digest | open: digest, as R10/R266 |
 | R06, R220, R277 | three rules for sealed secrets; R220 is the lite-only copy | open: merge into R06 |
 | R18 vs R303, R22 vs R72 | pairs restating one law | open: merge each pair |
@@ -59,7 +59,7 @@ the knowledge to be true.
 - **CI standard** (legacy `hfs/ci-standard.yaml`, ruling `ci-standard`): the app CI shape is template and policy data.
 - **Runtime-only rules** (52, enforced by the runtime's own checks): R07, R09, R114-R119, R121, R122, R124-R127,
   R192-R196, R198-R202, R205, R206, R208-R211, R221-R225, R227-R234, R236-R242, R247, R274. They govern the harness
-  repository; the new harness states its own in `policy/` and `CONTEXT.md` "Decisions".
+  repository; the new harness states its own in `policy/` and `contexts/harness/decisions.md`.
 - **Harness rulings** not logged here: supervisor-mission, supervisor-self-learning, supervisor-machine-log,
   ram-aware-concurrency, autopilot-run-to-finish, settle-runtime-service, evidence-in-db-and-blobs,
   providers-claude-codex-devin, one-pattern-no-legacy, no-runtime-specs, speed-flow, release-waves,
@@ -70,7 +70,7 @@ the knowledge to be true.
   draw-rationale-evidence, draw-devin-brand-claude, one-version-owner-review, drawing-owner-parts, drawing-light-device-matrix).
 - **Product records** not logged: `nivo-main-colour-ink` belongs to that product's `.starciwork`.
 
-## Shared coding standard (patterns/shared)
+## Shared coding standard (code/shared)
 
 | Id | Decision | Alternative | Reason | Follow-up |
 |---|---|---|---|---|
@@ -82,11 +82,11 @@ the knowledge to be true.
 | S-6 | Nothing checks format before CI, so the op runs Prettier on its changed files (SHARED-FORMAT-1); the harness commit (`commit-tree`) runs no hook (SHARED-SCRIPTS-4) | rely on the app's pre-commit hook | the hook never runs on a harness commit | a `format` gate in the runtime tier of the app profiles |
 | S-7 | Source language: English and no emoji on both sides, ASCII only on the back end (SHARED-COMMENT-3) | ASCII on both | the front-end lint judges a second language structurally (`no-vietnamese-in-source`) and admits typographic punctuation; the lint wins for what it enforces | none |
 
-## Front-end coding standard (patterns/fe)
+## Front-end coding standard (code/fe)
 
 | Id | Decision | Alternative | Reason | Follow-up |
 |---|---|---|---|---|
-| F-1 | The status recipe (FE-ERROR-1) is `DataSlot<T>` with `items`/`isLoading`/`isError`/`isForbidden`, `slotOfSwr`/`mapSlot`, `SlotView` with a same-shape `placeholder` value; no unauthorized status and no `xDefaultState` | the former `Slot<T>`/`toSlot` with `isUnauthorized` and an exported `xDefaultState` | the reference app has no `toSlot`, no `isUnauthorized` and no `xDefaultState`; a signed-out viewer is sent to sign-in by the proxy and the session gate before any region renders; the lint holds the "rest as itself" model (`no-placeholder-prop`, `slot-status-through-slotview`) | `knowledge/grammars/common.md` "Data status of a region" still lists "unauthorized"; C-6 and C-7 name the old identifiers |
+| F-1 | The status recipe (FE-ERROR-1) is `DataSlot<T>` with `items`/`isLoading`/`isError`/`isForbidden`, `slotOfSwr`/`mapSlot`, `SlotView` with a same-shape `placeholder` value; no unauthorized status and no `xDefaultState` | the former `Slot<T>`/`toSlot` with `isUnauthorized` and an exported `xDefaultState` | the reference app has no `toSlot`, no `isUnauthorized` and no `xDefaultState`; a signed-out viewer is sent to sign-in by the proxy and the session gate before any region renders; the lint holds the "rest as itself" model (`no-placeholder-prop`, `slot-status-through-slotview`) | `contexts/grammars/common.md` "Data status of a region" still lists "unauthorized"; C-6 and C-7 name the old identifiers |
 | F-2 | `XBaseProps` is `{ state?, props, on? }`: `state` only when a unit has more than one drawn shape (FE-FUNCTION-2) | `state` always, with `xDefaultState` | 17 of 343 reference pure halves take `state`; `base-props-atom` accepts its absence | none |
 | F-3 | Class-name exports are UPPER_SNAKE `<ROLE>_CLASS_NAME` built with `cn` from `@heroui/react` (FE-NAMING-3, FE-IMPORTS-3) | `xClassName` / `xClassNames` / `getXClassName` | 1037 of 1073 reference exports are UPPER_SNAKE; the grammar lint lets a `classNames.ts` import `@heroui/react` | an export-name check in `class-names.mjs`; C-4's follow-up ("refuse every app import of a vendor UI package") must keep `cn` in `classNames.ts` and the providers file |
 | F-4 | Object contracts are `interface`, unions and aliases `type` (FE-TYPING-1) | props as `export type` | 325 of 332 reference `XBaseProps` are interfaces; no lint judges it | none |
@@ -102,9 +102,9 @@ the knowledge to be true.
 | F-14 | Glyph sets are imported only by `components/leaves/Icon` (FE-ICON) | allow `modules/toast` | the reference toast imports `@heroicons/react` directly; the toast should take its glyphs from the Icon map | move the toast glyphs |
 | F-15 | Socket.io and GraphQL subscription doors stay in FE-REALTIME-2 | drop them | the reference uses SSE only, but the back-end realtime pattern keeps the doors and the lint names their homes | none |
 
-## Back-end coding standard (patterns/be)
+## Back-end coding standard (code/be)
 
-Decisions taken while making [patterns/be](../patterns/be/README.md) match the lite reference app and
+Decisions taken while making [code/be](../code/be/README.md) match the lite reference app and
 `@starci/eslint-canon-be`; the lint wins for what it enforces, the reference app for the rest.
 
 | Id | Decision | Alternative | Reason | Follow-up |

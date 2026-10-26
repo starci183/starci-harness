@@ -2,7 +2,7 @@
 
 HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may
 import which, and which rules judge it. It is data a machine reads; the reasons live in the patterns
-([be](../patterns/be/README.md), [fe](../patterns/fe/README.md)).
+([be](../code/be/README.md), [fe](../code/fe/README.md)).
 
 | File | Holds | Read by |
 |---|---|---|
@@ -18,7 +18,7 @@ backing services and its grammar). No product content lives here; product record
 - **anatomy slot**: a named part of a vendor or grammar component (`data-slot`), in [vendor](../vendor/README.md) and
   the [grammar contract](../grammars/contract.md).
 - `Slot<T>` and `SlotView`: code identifiers of the front-end status recipe; prose calls the value a **resource**
-  ([patterns/fe](../patterns/fe/README.md#data-status-of-a-region)).
+  ([code/fe](../code/fe/README.md#data-status-of-a-region)).
 
 ## Slot fields
 

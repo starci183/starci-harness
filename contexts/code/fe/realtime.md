@@ -4,7 +4,7 @@ slots: [fe.hooks.socketio, fe.hooks.swr, fe.components.providers, fe.modules.api
 # Realtime
 
 How the front end receives pushes. The back end decides which door serves a channel
-([patterns/be/realtime.md](../be/realtime.md)); the front end reads that door, in both editions.
+([code/be/realtime.md](../be/realtime.md)); the front end reads that door, in both editions.
 
 ## FE-REALTIME-2 The door follows what is pushed and which way
 

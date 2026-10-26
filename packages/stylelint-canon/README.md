@@ -3,7 +3,7 @@
 The CSS half of the StarCi lint canon (HFS R61 `FE_STYLE_TOKEN_ONLY`). The TypeScript half is
 `starci-fe/no-raw-brand-value` in `@starci/eslint-canon-fe`; both use one definition of a *raw brand value*
 (`lib/brand-value.mjs`: a hex colour, a colour function such as `rgb`/`hsl`/`oklch`/`color-mix`, or a `px` length).
-Rule ownership follows `FE-RULE-OWNERSHIP` in `knowledge/patterns/fe/index.yaml`; the selected Grammar's lint package owns its component and token API checks.
+Rule ownership follows `FE-RULE-OWNERSHIP` in `contexts/code/fe/index.yaml`; the selected Grammar's lint package owns its component and token API checks.
 
 A repository's `stylelint.config.mjs` is the managed one-liner `starci app sync` renders (and `starci app check` compares, R05/R17):
 

@@ -70,7 +70,7 @@ const service = moduleRef.get(CommissionService)
 ```
 
 No `new` of the service, no `imports`, no `overrideProvider`, no `jest.mock`, no casts, no `Date.now()` and no `process.env`. The
-full rules and the dependency-to-double-to-cases table are `knowledge/patterns/be/test.md` (the BE-TEST rules). Every
+full rules and the dependency-to-double-to-cases table are `contexts/code/be/test.md` (the BE-TEST rules). Every
 export below is on the package root (`@starci/jest-preset`); the sub-paths `./mock`, `./clock`, `./entity-manager`, `./ids`,
 `./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox` and `./builders` exist as well.
 

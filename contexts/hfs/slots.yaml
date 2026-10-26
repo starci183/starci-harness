@@ -2106,7 +2106,7 @@ slots:
         socket.io gateway and the restricted GraphQL subscription; all run inside the be api
         process, which scales horizontally and stateless on the hub of its declared infrastructure;
         the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or
-        hooks/socketio (knowledge/patterns/be/realtime.yaml, liteAdapter)"
+        hooks/socketio (contexts/code/be/realtime.yaml, liteAdapter)"
     coverage: none
     rules:
       - BE_KIND_ISOLATION
@@ -2456,7 +2456,7 @@ slots:
         sends each committed row to the pgmq queue of every consumer group of its topic through the
         shared EntityManager, a consumer reads with a visibility timeout, retries by letting it
         lapse and archives the message on dead letter (read_ct over the budget); a single api may
-        deliver in process. No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)"
+        deliver in process. No Kafka (contexts/code/be/event-bus.yaml liteAdapter)"
     requires:
       - index.ts
       - event-bus.module.ts
@@ -2490,7 +2490,7 @@ slots:
         job id, workers retry with exponential backoff and keep a job that exhausts its attempts as
         failed (the dead letter); the outbox table comes from a supabase migration, and a schedule
         is a BullMQ job scheduler or a pg_cron tick that inserts one outbox row
-        (knowledge/patterns/be/queues.yaml liteAdapter)"
+        (contexts/code/be/queues.yaml liteAdapter)"
     requires:
       - index.ts
       - queue.module.ts

@@ -42,16 +42,16 @@ app's (both sides), `lib` and `runtime` carry no canon. An npm workspace root is
 These standard facts live only in knowledge; a reviewer (the Kernel judging a result, the owner on taste) holds them.
 Each leaves this list the day a machine checks it.
 
-- **Front-end pattern rules without an enforcer.** A rule in [patterns/fe](../patterns/fe/README.md) whose section
+- **Front-end pattern rules without an enforcer.** A rule in [code/fe](../code/fe/README.md) whose section
   says review only: FE-NAMING-3, FE-NAMING-4, FE-NAMING-5 (partly), FE-COMMENT-1, FE-TYPING-2,
   FE-ERROR-4, FE-UPLOAD, FE-STATE-1 (partly), FE-BOUNDARY-3, the FE-FORM bounds and the FE-DATA-KEY helpers. Every
   back-end pattern rule names its enforcer.
-- **Shared pattern rules held by review.** A rule of [patterns/shared](../patterns/shared/README.md) whose "Enforced
+- **Shared pattern rules held by review.** A rule of [code/shared](../code/shared/README.md) whose "Enforced
   by" line says review only, on both sides or on one: SHARED-IMPORTS-2 on both sides; SHARED-COMMENT-2,
   SHARED-NAMING-1 and SHARED-TYPING-3 on the front end; SHARED-NAMING-3 on the back end; SHARED-TYPING-1 for a
   restated tsconfig flag.
 - **Interface decisions.** Which component, rank, ramp step, state coverage and composition a screen uses
-  ([knowledge/ui](../ui/README.md)); [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) holds the numbers a
+  ([contexts/ui](../ui/README.md)); [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) holds the numbers a
   proof gate would read, and no gate of this repository runs it.
 - **Work record shape.** Every fact of [work.md](work.md) for the families other than `work/uat-flow@1`: schemas and
   fields per family, id form, leaf-only state, proof that cannot outrun its target. The harness validates a uat flow
@@ -70,7 +70,7 @@ Each leaves this list the day a machine checks it.
 ## Moving a fact to a machine
 
 A fact a machine can decide is checked by a machine and kept once: the rule moves into the package or gate that owns
-its kind (the placement test of [patterns/fe](../patterns/fe/README.md#the-placement-test-fe-rule-ownership) decides
+its kind (the placement test of [code/fe](../code/fe/README.md#the-placement-test-fe-rule-ownership) decides
 which), its law is added to [hfs/rules.yaml](../hfs/rules.yaml) with the enforcer, the pattern section cites the rule
 id in its "Enforced by" line, and the fact leaves the list above in the same change. Knowledge then states the reason
 only; it never keeps a second wording of what the rule flags, and a gate never carries a fact knowledge still argues.

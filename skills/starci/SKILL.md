@@ -18,7 +18,7 @@ workflow, task or debug does not enroll into StarCi.
 ## Resolve once, carry everywhere
 
 - **Runtime root**: the harness checkout that holds this skill, two folders up from this file (it holds
-  `cli/`, `ops/`, `policy/`, `knowledge/`). The harness keeps its state under `<runtime root>/.runtime/`
+  `cli/`, `ops/`, `policy/`, `contexts/`). The harness keeps its state under `<runtime root>/.runtime/`
   (git-ignored): `machine.sqlite` and `projects/<ledger_id>/` with `runtime.sqlite`, `contracts/`,
   `briefs/`, `outputs/`, `preserved/`.
 - **CLI**: `starci` in these files means `node <runtime root>/cli/dist/main.js`. If `cli/dist` is missing,
@@ -75,4 +75,4 @@ Kernel's own call; report it. Never decide for the owner, enter a credential or 
 | Push, cut, publish, read CI | [references/release.md](references/release.md) |
 | A workflow or task is stuck | [references/debug.md](references/debug.md) |
 
-Decisions, roles and open questions: [CONTEXT.md](../../CONTEXT.md). Gates and profiles: [policy/](../../policy/quality.yaml).
+Load order: [contexts/README.md](../../contexts/README.md); decisions, roles and open questions: [contexts/harness/](../../contexts/harness/decisions.md). Gates and profiles: [policy/](../../policy/quality.yaml).

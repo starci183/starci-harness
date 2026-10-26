@@ -113,7 +113,7 @@ const stepSchema = z.object({
     checks: z.array(z.object({ id: z.string().min(1), expected: valueSchema })).optional(),
 })
 
-// knowledge/project/work.md owns this vocabulary; `blocked` is the activity a red walk leaves until the Kernel acts.
+// contexts/project/work.md owns this vocabulary; `blocked` is the activity a red walk leaves until the Kernel acts.
 const WORK_STATES = ["todo", "done"] as const
 
 const WORK_ACTIVITIES = ["idle", "investigating", "implementing", "verifying", "blocked"] as const

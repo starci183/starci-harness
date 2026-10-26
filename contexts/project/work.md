@@ -2,7 +2,7 @@
 
 `.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built
 and how it is accepted. It is product content, committed with the app; harness state never lives there
-([CONTEXT.md](../../CONTEXT.md) "Where state lives"). Which paths the tree may hold is slot `app.starciwork` of
+([contexts/harness/state.md](../harness/state.md)). Which paths the tree may hold is slot `app.starciwork` of
 [hfs/slots.yaml](../hfs/slots.yaml); the edition decides how much of it exists ([lite.md](lite.md), [full.md](full.md)).
 This file owns the record families, their lifecycle vocabulary and who writes what.
 

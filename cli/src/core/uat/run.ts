@@ -66,7 +66,7 @@ const mountable = (path: string, what: string): string => {
     return path
 }
 
-// A folder outside git is a project of its own (CONTEXT.md), so its evidence root is the working directory.
+// A folder outside git is a project of its own (contexts/harness/state.md), so its evidence root is the working directory.
 const repositoryOrCwd = async (cwd: string): Promise<string> => {
     try {
         return resolve(await repositoryRoot(cwd))

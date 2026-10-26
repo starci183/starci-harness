@@ -2,7 +2,7 @@
 
 What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read
 for each kind of task. It is product-agnostic: a product's own requirements, brand and screens are its `.starciwork`
-records, never this folder. How the harness finds a project and where its state lives is [CONTEXT.md](../../CONTEXT.md)
+records, never this folder. How the harness finds a project and where its state lives is [contexts/harness/state.md](../harness/state.md)
 ("How a project is found", "Where state lives"); this folder never restates it.
 
 ## What a project is
@@ -53,7 +53,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
   and before the checks, so a green never depends on a file only the worker's checkout had.
 - **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed
   by the label's op file; checks cover only what the task
-  changed, and the full suite is CI's after the push ([CONTEXT.md](../../CONTEXT.md) "Decisions").
+  changed, and the full suite is CI's after the push ([contexts/harness/decisions.md](../harness/decisions.md)).
 - **Settle and state.** Who writes a record's state and what counts as evidence is [work.md](work.md) "Who writes
   what".
 
@@ -61,8 +61,8 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | [patterns/README.md "Read for a coding task"](../patterns/README.md#read-for-a-coding-task), which starts with this file, [anatomy.md](anatomy.md) and [lint.md](lint.md) → the records the contract names |
-| change UI | [knowledge/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [patterns/fe](../patterns/fe/README.md) → [lint.md](lint.md) |
+| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with this file, [anatomy.md](anatomy.md) and [lint.md](lint.md) → the records the contract names |
+| change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
 | run UAT | the flow record (`features/<f>/uat/<flow>/index.yaml`) and [work.md](work.md) "UAT flows" → [stacks.md](stacks.md) for the environment it names → `starci explain --term uat` |

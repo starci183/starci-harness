@@ -31,26 +31,26 @@ const firstDifference = (actual: string, expected: string): number | null => {
 }
 
 /**
- * `starci knowledge anatomy`: renders knowledge/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
+ * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
  * pattern front matter. `--check` exits 1 when the file differs from the generator; `--write` rewrites the block. Runtime only
  * (no edition): an app tree never sees it.
  */
-export const knowledgeAnatomyVerb = defineVerb({
-    path: ["knowledge", "anatomy"],
+export const contextsAnatomyVerb = defineVerb({
+    path: ["contexts", "anatomy"],
     summary: "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml; --check fails on drift, --write regenerates",
     editions: [],
     effect: "local-write",
     roles: WRITERS,
-    schema: "starci/knowledge-anatomy@1",
+    schema: "starci/contexts-anatomy@1",
     flags: {
-        check: { kind: "boolean", summary: "exit 1 when knowledge/project/anatomy.md differs from what the generator writes" },
-        write: { kind: "boolean", summary: "rewrite the generated block of knowledge/project/anatomy.md" },
+        check: { kind: "boolean", summary: "exit 1 when contexts/project/anatomy.md differs from what the generator writes" },
+        write: { kind: "boolean", summary: "rewrite the generated block of contexts/project/anatomy.md" },
     },
     run: (_context, flags) => {
         if (flags.check && flags.write) throw new Refusal("FLAGS_EXCLUSIVE", "pass --check or --write, not both")
-        const knowledge = join(runtimeRoot(), "knowledge")
+        const knowledge = join(runtimeRoot(), "contexts")
         const file = join(knowledge, "project", "anatomy.md")
-        if (!existsSync(join(knowledge, "hfs", "slots.yaml"))) throw new Refusal("KNOWLEDGE_NOT_FOUND", `no knowledge/hfs/slots.yaml under ${runtimeRoot()}`)
+        if (!existsSync(join(knowledge, "hfs", "slots.yaml"))) throw new Refusal("CONTEXTS_NOT_FOUND", `no contexts/hfs/slots.yaml under ${runtimeRoot()}`)
         const { block, dangling } = renderAnatomy(knowledge)
         const note = dangling.length === 0 ? "" : `\nslot rule codes with no rule in hfs/rules.yaml: ${dangling.join(", ")}`
         if (!flags.check && !flags.write) {
@@ -68,7 +68,7 @@ export const knowledgeAnatomyVerb = defineVerb({
         const message =
             difference === null
                 ? `green: ${file} matches hfs/slots.yaml${note}`
-                : `drift: ${file} differs from the generator at line ${String(difference)} of the generated block; run \`starci knowledge anatomy --write\`${note}`
+                : `drift: ${file} differs from the generator at line ${String(difference)} of the generated block; run \`starci contexts anatomy --write\`${note}`
         return Promise.resolve({ data, message, exitCode: difference === null ? 0 : 1 })
     },
 })

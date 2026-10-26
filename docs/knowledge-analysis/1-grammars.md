@@ -1,4 +1,4 @@
-# 1. Grammars: analysis of legacy `knowledge/grammars`
+# 1. Grammars: analysis of legacy `contexts/grammars`
 
 Area: the grammar model (DNA, family, idioms, playbook; inheritance from Common/Heritage; StarCi vs Offset Pop; what an
 agent reads to author UI on a grammar). Legacy root: `D:\Repositories\starci-academy-backend\.claude` (read only).
@@ -10,7 +10,7 @@ Paths below are relative to that root unless absolute.
 
 | File | Lines / bytes | Kind | Holds |
 | --- | --- | --- | --- |
-| `knowledge/grammars/index.yaml` | 111 / 5.4 KB | authored catalog, **machine-read** (`scripts/lib/grammar-lint.mjs`, `packages/hfs/src/*spec*`, `brand.decide`) | family list with `contractRef`, `lint {package, factory, prefix}`, `authority`, `packageSnapshot`, `reusableStyle`, `productComposition`; guidance `catalog-not-default`, `verify-before-use`, `ui-owns-universal` |
+| `contexts/grammars/index.yaml` | 111 / 5.4 KB | authored catalog, **machine-read** (`scripts/lib/grammar-lint.mjs`, `packages/hfs/src/*spec*`, `brand.decide`) | family list with `contractRef`, `lint {package, factory, prefix}`, `authority`, `packageSnapshot`, `reusableStyle`, `productComposition`; guidance `catalog-not-default`, `verify-before-use`, `ui-owns-universal` |
 | `common/DNA.yaml` | 3008 / 117 KB | **generated** by `scripts/work/ui/grammar-knowledge.mjs --write`, drift-checked; plus authored `observations`, `guidance`, `gaps` | identity (root, scope, CSS layers, dependency direction, presentation states, `--grammar-*` rhythm), 183 token rows, 110 renderer rows (classes, claims), 10 gaps |
 | `heritage/DNA.yaml` | 2362 / 80 KB | generated | `HERITAGE_DNA` (vendor parity, arrangement, intent, collectionItem only; no colour/geometry), 40 tokens, 110 renderer rows, `gaps: []` |
 | `starci/DNA.yaml` | 3101 / 115 KB | generated + authored `censusChange` changelog + `gaps` | `STARCI_CORE_DNA` (vendor, arrangement, intent, collectionItem, avatar, color light/dark, geometry, rhythm, elevation, motion), spacing scale, token names/defaults, 116 tokens, 110 renderers with `closedValues`, 13 gaps |
@@ -29,12 +29,12 @@ Total 14 613 lines / 580 KB. About 80% is generated measurement (four DNA files)
 lines; starci vs heritage: 2 lines). 110 renderer rows each.
 
 Consumers (grep over the legacy tree): ops `interface.draw`, `interface.implement`, `interface.audit`
-(`knowledge/grammars/<family>/{DNA,family,idioms,playbook}.yaml`), `interface.scaffold`, `brand.decide`
+(`contexts/grammars/<family>/{DNA,family,idioms,playbook}.yaml`), `interface.scaffold`, `brand.decide`
 (`<family>/DNA.yaml`), `grammar.update` ("read the WHOLE installed canon ... every grammar family file");
-`knowledge/patterns/fe/{index,function,error}.yaml`; `knowledge/ui/presentation/padding.yaml` ("its playbook supplies
+`contexts/code/fe/{index,function,error}.yaml`; `contexts/ui/presentation/padding.yaml` ("its playbook supplies
 the concrete values"); `modules/kernel/owner-rulings.yaml`; scripts `grammar-knowledge*.mjs`, `grammar-presentation.mjs`,
 `draw-dna.mjs`, `brand.mjs`, `prose-restates.mjs`, `check-version-pin-once.mjs`. `CONTEXT.md` never names
-`knowledge/grammars`; it carries its own frontend-standard block (lines 48-70) and `knowledge/index.yaml:91-94` points at
+`contexts/grammars`; it carries its own frontend-standard block (lines 48-70) and `contexts/index.yaml:91-94` points at
 `grammars/index.yaml` ("Family-specific package observations, not a guarantee of current exports").
 
 ---
@@ -42,7 +42,7 @@ the concrete values"); `modules/kernel/owner-rulings.yaml`; scripts `grammar-kno
 ## 2. The model
 
 ```
-                knowledge/ui (universal law: semantics, anatomy, state, a11y; rule ids TONE-*, PADDING-*, CTA-* ...)
+                contexts/ui (universal law: semantics, anatomy, state, a11y; rule ids TONE-*, PADDING-*, CTA-* ...)
                         │ rule ids (150 COMMON_UI_RULE_IDS generated from it)
                         ▼
    HeroUI v3 ──► Common  (@starci/grammar/common: 95-110 renderers, props, anatomy CSS, --grammar-* rhythm,
@@ -110,9 +110,9 @@ catalog lists it with `contractRef: common` only (`index.yaml:70-73`). It is use
 
 ### 3.1 Layering and ownership
 - Universal vs family vs product: "Common semantics, renderer anatomy, state and accessibility remain owned by
-  knowledge/ui. A family owns its scoped visual realization and promoted idioms; the product owns its facts, content,
+  contexts/ui. A family owns its scoped visual realization and promoted idioms; the product owns its facts, content,
   routes and approved composition" (`index.yaml:34-41`). The four-question test is FE-RULE-OWNERSHIP
-  (`knowledge/patterns/fe/index.yaml:29-49`): universal law → knowledge/ui or hfs; one family's number/token/shape →
+  (`contexts/code/fe/index.yaml:29-49`): universal law → contexts/ui or hfs; one family's number/token/shape →
   its DNA and styles.css; how to call one Grammar's components → its lint package; checkable on code regardless of
   Grammar → universal canon lint.
 - Common supplies anatomy, never colour: "None is a colour literal ... this is owned direction, not an oversight"
@@ -182,7 +182,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 1. Resolve the family from the app (`hfs.json sides.fe.grammar`, design spec); never default (`index.yaml:22-27`).
 2. Verify the installed package (manifest/lockfile, `dist/**/*.d.ts`, CSS) against the snapshot; record the version
    in `.starciwork` (every `provenance.limitations`).
-3. knowledge/ui rules for semantics; FE-RULE-OWNERSHIP for placement.
+3. contexts/ui rules for semantics; FE-RULE-OWNERSHIP for placement.
 4. `<family>/family.yaml` for what the family owns, departures and gaps; `DNA.yaml` for renderers, closed values and
    tokens.
 5. Playbook reading steps: business shape first → reference (region order and dominant decision only, never layout,
@@ -213,7 +213,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 7. **"verify installed source, do not invent APIs"** limitation paragraph is repeated in every one of the 13 files.
 8. **Offset Pop signature** is stated in family `authority`, `sourceBackedBehavior`, idioms (`sticker-surface`,
    `selected-row`, `sheet-from-an-edge` repeat `rowStates`, `sheets-throw-shadow-away...`) and DNA observations.
-9. **Padding/font recipes** in `starci/playbook.yaml#presentation` overlap `knowledge/ui/presentation/padding.yaml`
+9. **Padding/font recipes** in `starci/playbook.yaml#presentation` overlap `contexts/ui/presentation/padding.yaml`
    (same `side-contact`, `composite-insets`, `axis-variants` guidance ids, universal vs concrete wording).
 
 ### Contradictions
@@ -242,7 +242,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 - History blocks violate CONTRIBUTING "present tense, no ghosts": `censusChange` (common, starci), "The 0.4.13 absence
   is closed" (`starci/family.yaml:218`), `since: "0.5.0"` shape markers, "the 53 renderers added in 0.5.0" (8 mentions
   in the starci playbook alone), "(@starci/grammar 0.9.1)" row annotations.
-- `knowledge/ui/presentation/radius.yaml:71` says "`@grammar/core`" (no such package).
+- `contexts/ui/presentation/radius.yaml:71` says "`@grammar/core`" (no such package).
 - Product names in a product-agnostic layer: `starci/idioms.yaml` provenance and evidence name StarCi blocks and
   `nivo apps/app/...AuthenticationPanel`; `starci/playbook.yaml` names `modules/i18n/messages/app-shell.yaml`,
   `modules/goal/source-phrases.yaml`, `examples/shape-slot`, "Learner dashboard", "StarCi Academy render"
@@ -300,7 +300,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 | `family.yaml` | Keep, slimmed to: identity delta, what it owns over Common, bound/unbound variables, **departures with reason and owner status**, theme/forced-colours mapping. Drop prose values and duplicated gaps. |
 | `idioms.yaml` | Keep the concept and the promotion bar; strip product names (evidence as role descriptions, e.g. "dashboard section with several content kinds"). Offset Pop's CSS-treatment "idioms" move into its family signature; its idioms file stays empty until product evidence exists. |
 | `playbook.yaml` shapes, readingSteps, authoritySplit | Keep shapes per family; move readingSteps and authoritySplit (identical in both) to one grammar-level authoring guide. |
-| `starci/playbook.yaml#presentation.padding/font` owner tables | Move to Common as generated/declared data (`common/presentation.yaml`), read by `grammar-presentation`; remove the `inherits: starci` hop. Universal recipes stay in `knowledge/ui/presentation`. |
+| `starci/playbook.yaml#presentation.padding/font` owner tables | Move to Common as generated/declared data (`common/presentation.yaml`), read by `grammar-presentation`; remove the `inherits: starci` hop. Universal recipes stay in `contexts/ui/presentation`. |
 | `#state-recipes`, forms, overlays, Toaster | Move to Common playbook (they apply to every family). |
 | app-shell `recipes`, nested-controls prose | Move into the lint package docs; knowledge keeps the universal law (`ui/composition/app-shell`) and a one-line pointer. |
 | `anatomyObservations` (draw prompt craft, scale drift) | Move to the draw op's knowledge, not grammar. |
@@ -311,7 +311,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 ### Target layout
 
 ```
-knowledge/grammars/
+contexts/grammars/
   README.md            concepts: DNA, family, idiom, playbook; layering; inheritance; how to read     (agent)
   authoring.md         the one reading order + authority split + reference rules (from both playbooks) (agent)
   index.yaml           catalog: id, root, entries, styles, lint package, files, status               (gate, generator, agent)
@@ -335,7 +335,7 @@ knowledge/grammars/
 ### What an agent reads to author UI on a grammar (new)
 1. `grammars/README.md` once (concepts) and `authoring.md` (reading order).
 2. `index.yaml` → the app's bound family (from `hfs.json`), root, style entry, lint package; verify installed version.
-3. `knowledge/ui` rules for the job (semantics, presentation), then `common/reasoning.md`.
+3. `contexts/ui` rules for the job (semantics, presentation), then `common/reasoning.md`.
 4. `<family>/family.md` (signature, departures) and `<family>/DNA.yaml` tokens only when choosing tokens (brand).
 5. `common/DNA.yaml` renderer census for props and closed values; `common/presentation.yaml` for who owns an inset.
 6. Shapes: `common/playbook.yaml`, then `<family>/playbook.yaml` and `<family>/idioms.yaml`.

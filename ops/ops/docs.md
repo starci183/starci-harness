@@ -5,7 +5,7 @@ floor: easy
 hostTools: [git]
 context:
   base:
-    - harness:knowledge/project/work.md
+    - harness:contexts/project/work.md
 input:
   base: {}
 output:

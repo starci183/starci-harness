@@ -5,7 +5,7 @@ floor: medium
 hostTools: [git, node, docker]
 context:
   base:
-    - harness:knowledge/project/lint.md
+    - harness:contexts/project/lint.md
 input:
   base: {}
 output:

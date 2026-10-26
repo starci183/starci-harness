@@ -63,7 +63,7 @@ presets:
       file: "@result"
       requiredKeys: [verdict]
       expect: {verdict: passed}
-  # The run folder is git-ignored Work (knowledge/project/work.md), so it is read in the work tree the candidate came from.
+  # The run folder is git-ignored Work (contexts/project/work.md), so it is read in the work tree the candidate came from.
   uat-flow:
     summary: the worker's filed result walks every step of the Work record, each check at its expected value, with the report and one screenshot per step in the run folder
     behavioural: true

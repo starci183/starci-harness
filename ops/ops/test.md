@@ -5,22 +5,22 @@ floor: medium
 hostTools: [git, node]
 context:
   base:
-    - harness:knowledge/project/README.md
-    - harness:knowledge/project/anatomy.md
-    - harness:knowledge/project/lint.md
-    - harness:knowledge/project/{edition}.md
-    - harness:knowledge/patterns/README.md
-    - harness:knowledge/patterns/shared/README.md
-    - harness:knowledge/patterns/shared/typing.md
-    - harness:knowledge/patterns/shared/format.md
-    - harness:knowledge/patterns/shared/loosening.md
-    - harness:knowledge/patterns/shared/comment.md
-    - harness:knowledge/patterns/shared/naming.md
-    - harness:knowledge/patterns/shared/imports.md
-    - harness:knowledge/patterns/shared/test.md
-    - harness:knowledge/patterns/shared/scripts.md
-    - harness:knowledge/patterns/be/README.md
-    - harness:knowledge/patterns/be/test.md
+    - harness:contexts/project/README.md
+    - harness:contexts/project/anatomy.md
+    - harness:contexts/project/lint.md
+    - harness:contexts/project/{edition}.md
+    - harness:contexts/code/README.md
+    - harness:contexts/code/shared/README.md
+    - harness:contexts/code/shared/typing.md
+    - harness:contexts/code/shared/format.md
+    - harness:contexts/code/shared/loosening.md
+    - harness:contexts/code/shared/comment.md
+    - harness:contexts/code/shared/naming.md
+    - harness:contexts/code/shared/imports.md
+    - harness:contexts/code/shared/test.md
+    - harness:contexts/code/shared/scripts.md
+    - harness:contexts/code/be/README.md
+    - harness:contexts/code/be/test.md
     - harness:packages/jest-preset/README.md
 input:
   base:

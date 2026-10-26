@@ -1,5 +1,5 @@
 /**
- * The rules that hold `knowledge/patterns/be/test.yaml` (catalog R47 `BE_TEST_TOPOLOGY` and R48 `BE_SPEC_QUALITY`).
+ * The rules that hold `contexts/code/be/test.yaml` (catalog R47 `BE_TEST_TOPOLOGY` and R48 `BE_SPEC_QUALITY`).
  *
  * MOST OF THAT LAW IS NOT MACHINE-CHECKABLE, and pretending otherwise would be worse than checking nothing. No rule
  * can tell whether a file represents a business flow, whether the unhappy path it covers drags a critical flow

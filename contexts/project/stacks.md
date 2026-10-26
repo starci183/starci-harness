@@ -42,10 +42,10 @@ Two kinds, named by the project:
   from the environment's compose files; application processes may run natively against them. Non-secret
   configuration lives under `<env>/runtime/{config,env}/`, seed data under `<env>/seeds/`.
 - **vps** (conventionally `vps`): the app and its dependencies run on a Docker Swarm stack rendered from
-  `<env>/infra/swarm/`. Images are immutable and pinned (BE-SERVICES-2 in [patterns/be/services.md](../patterns/be/services.md);
+  `<env>/infra/swarm/`. Images are immutable and pinned (BE-SERVICES-2 in [code/be/services.md](../code/be/services.md);
   base images in [stack/pins.yaml](../stack/pins.yaml) `images`), secrets are versioned external Swarm secrets, and
   every service declares healthcheck, placement and rollout (R266, R267, R294). Recurring work is app-owned, never a
-  host crontab (R268, [patterns/be/background.md](../patterns/be/background.md)).
+  host crontab (R268, [code/be/background.md](../code/be/background.md)).
 
 Each environment has its own `README.md`, the runbook: the operations table below with the project's real commands,
 the components it binds, its secret custody and its data custody (which volumes are authoritative, which are
@@ -58,13 +58,13 @@ service sits on internal networks.
 
 - dev: the ingress publishes on loopback only, `127.0.0.1:<port>:<port>`, never `0.0.0.0` and never a bare port.
 - vps: the ingress publishes 80 and 443 only; DNS and certificates are owner-run prerequisites with their evidence.
-- The application origin the back end trusts (BE-AUTH-3 in [patterns/be/api-auth.md](../patterns/be/api-auth.md))
+- The application origin the back end trusts (BE-AUTH-3 in [code/be/api-auth.md](../code/be/api-auth.md))
   is the ingress origin of that environment; open the app there, not at a process port.
 
 ## Secret custody
 
 - **Sealed only.** A secret exists in the tree only as a SOPS envelope `<env>/secrets/<slug>.enc` (R06, R277,
-  BE-CONFIG-4 in [patterns/be/config.md](../patterns/be/config.md)). Nothing else under `.starcistacks/` is
+  BE-CONFIG-4 in [code/be/config.md](../code/be/config.md)). Nothing else under `.starcistacks/` is
   ciphertext.
 - **One recipient.** Every envelope is encrypted with age to the one shared master recipient; the root `.sops.yaml`
   names only that public recipient. The matching private identity is the shared master identity, kept by the owner at
@@ -75,7 +75,7 @@ service sits on internal networks.
   environment's `.gitignore` still ignores everything under `secrets/` except `*.enc`, so a mistaken decrypt cannot be
   committed.
 - **Never printed.** No agent opens, decrypts, echoes or logs a secret; a member is judged by its name
-  ([CONTEXT.md](../../CONTEXT.md) hard rule 1, `neverRead` in [policy/security.yaml](../../policy/security.yaml)).
+  ([contexts/harness/rules.md](../harness/rules.md) hard rule 1, `neverRead` in [policy/security.yaml](../../policy/security.yaml)).
   Logs keep tokens, prompts and decrypted values out.
 - **Refuse, never regenerate.** Missing ciphertext or a missing or wrong identity refuses `prepare`; a failed decrypt
   is never answered by minting a replacement. Rotation mints a new value, re-encrypts, updates the grant, waits for
@@ -87,7 +87,7 @@ service sits on internal networks.
 
 Every environment's runbook declares the same seven operations, one row each, with the project's command and its
 acceptance gate. They are run by the owner or a `deliver` worker; deploying needs the owner's approval
-([CONTEXT.md](../../CONTEXT.md) hard rule 5) and `deploy.prod` waits for green CI (`requireCi` in
+([contexts/harness/rules.md](../harness/rules.md) hard rule 5) and `deploy.prod` waits for green CI (`requireCi` in
 [policy/quality.yaml](../../policy/quality.yaml)). The harness verbs that will run them are listed in
 [README.md](../../README.md) (verb groups; `starci explain` lists what is built) and are not built yet, so today the runbook is the operation and these
 rules are held by review.

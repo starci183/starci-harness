@@ -1,7 +1,7 @@
 # Contributing to the harness
 
-These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `knowledge/`, `packages/`, `skills/`
-and the root documents. Read [CONTEXT.md](CONTEXT.md) first. Each rule is a heading with a stable id (`CONTRIB-<n>`), so
+These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `contexts/`, `packages/`, `skills/`
+and the root documents. Read [contexts/README.md](contexts/README.md) first. Each rule is a heading with a stable id (`CONTRIB-<n>`), so
 a task on the harness itself cites the ids it applied in its `rulesApplied`.
 
 ## Setup and the checks you run
@@ -58,10 +58,11 @@ A second copy is a defect even while both agree.
 | every state path | `cli/src/harness/ledger.ts` |
 | task states and their transitions | `TRANSITIONS` in `cli/src/harness/tasks.ts`, changed only through `setStatus` |
 | how the CLI is built, the verb standard, how the harness inside it works (ledgers, settling, graph, seat launch) | [cli/README.md](cli/README.md), naming the code that implements each |
-| load order, binding, roles, hard rules, the owner's harness decisions, open questions | [CONTEXT.md](CONTEXT.md) |
+| load order | [contexts/README.md](contexts/README.md) |
+| axes, roles, where state lives and how a project is found, hard rules, the owner's harness decisions, open questions | one file each in [contexts/harness/](contexts/README.md#harness) |
 | what the harness is, how it works, the verb groups, CI | [README.md](README.md) |
-| how app code is written | [knowledge/](knowledge/README.md) |
-| a knowledge ruling | [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml) |
+| how app code is written | [contexts/](contexts/README.md) |
+| a knowledge ruling | [contexts/decisions/rulings.yaml](contexts/decisions/rulings.yaml) |
 
 When you find a copy, keep the owner, make the other site read or cite it, and delete the copy in the same commit. If
 no owner exists yet, create it first. Never answer a duplicate with an allowlist, a baseline or a suppression.
@@ -79,8 +80,8 @@ An edit rewrites the sentence that holds the rule. One concept has one paragraph
 ### CONTRIB-7 Feedback hardens
 
 Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never becomes a case note
-beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in [CONTEXT.md](CONTEXT.md)
-"Decisions", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml). No design
+beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
+[contexts/harness/decisions.md](contexts/harness/decisions.md), a knowledge ruling in [contexts/decisions/rulings.yaml](contexts/decisions/rulings.yaml). No design
 document sits beside the owners: plans, phases and history live in git, not in a file.
 
 ### CONTRIB-8 Claims execute
@@ -140,7 +141,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | `runtime verify`, `gate run`, `release clean-test`, `scaffold-e2e` | `check run` before a push; CI runs the suites |
 | the edition decides who codes (lite by chat, full by ops) | the runner (`orca` or `inline`) is chosen per workflow or task |
 | the qualification and probation store, admission reason codes | the router of `ops/routing.yaml` |
-| `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in CONTEXT.md "Decisions" |
+| `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in contexts/harness/decisions.md |
 
 ## Commit and push
 

@@ -1,6 +1,6 @@
 # Button intent (CTA-6)
 
-Owner: knowledge/ui/composition/cta.yaml
+Owner: contexts/ui/composition/cta.yaml
 
 App `Button` and `IconButton` commands declare `intent`. Grammar derives their variant from that intent and its placement context. These laws apply to every Grammar family in both app editions; aliases and namespace imports retain the same obligations.
 

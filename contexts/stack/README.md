@@ -10,5 +10,5 @@ pattern its concern names.
 
 A back end's libraries are decided inside its patterns (raw-library owners are `ruleParams.be.infraOwners` in
 [hfs/slots.yaml](../hfs/slots.yaml)); there is no `be.yaml` yet. A version is raised here first, then each app moves
-in its own upgrade. A new front-end concern adds one row to `fe.yaml`; a topic in `patterns/fe` exists only when
+in its own upgrade. A new front-end concern adds one row to `fe.yaml`; a topic in `code/fe` exists only when
 using the library still leaves a decision.

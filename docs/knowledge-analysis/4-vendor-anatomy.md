@@ -1,13 +1,13 @@
 # 4. Vendor anatomy (HeroUI parity) — analysis
 
-Area: `knowledge/vendor/heroui/` (65 files) of the legacy runtime and how the Grammar package and the Grammar DNAs map onto it.
+Area: `contexts/vendor/heroui/` (65 files) of the legacy runtime and how the Grammar package and the Grammar DNAs map onto it.
 Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only). HeroUI version measured: `@heroui/react` + `@heroui/styles` 3.2.6.
 
 ---
 
 ## 1. Inventory
 
-### 1.1 `knowledge/vendor/heroui/` (585 KB, 3 633 lines, 65 files)
+### 1.1 `contexts/vendor/heroui/` (585 KB, 3 633 lines, 65 files)
 
 | File(s) | Lines | Kind | Author | Holds |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only)
 | `roles.yaml` | 56 | machine data (`starci/vendor-heroui-roles@1`) | **generated** (same script + `aria-query` 5.3.0) | ARIA role → HeroUI parts that carry it (e.g. `button` → 43 contracts), public API per role |
 | `wrappers.yaml` | 76 | machine data with a prose header (`starci/vendor-heroui-wrappers@1`) | **hand-written StarCi decisions**, sha256-pinned in `modules/kernel/owner-rulings.yaml:691` | one row per Grammar file importing HeroUI: `wraps`, `delegates`, `overrides` (kind slot/style/default/role + target + reason) — 63 rows, 16 rows carry overrides (29 overrides total) |
 
-No prose file exists in the folder. Nothing in `knowledge/index.yaml` describes vendor; the folder is reached only by code:
+No prose file exists in the folder. Nothing in `contexts/index.yaml` describes vendor; the folder is reached only by code:
 `scripts/lib/grammar-vendor-parity.mjs` (the judge, 330 l), `scripts/checks/check-grammar-vendor-parity.mjs` (the gate),
 `scripts/work/ui/grammar-vendor-dna.mjs` (input loader), `scripts/work/ui/grammar-knowledge.mjs:368` (writes references),
 `scripts/work/ui/export-repaints.mjs`. `packages/hfs/runtime/scripts/lib/grammar-vendor-parity.mjs` is a byte-identical copy (`diff -q` clean).
@@ -24,12 +24,12 @@ No prose file exists in the folder. Nothing in `knowledge/index.yaml` describes 
 
 | Place | Kind | Vendor relevance |
 |---|---|---|
-| `knowledge/grammars/{starci,offset-pop,heritage}/DNA.yaml` (`vendor`, `arrangement`, `intent` blocks; e.g. starci 160–200) | generated snapshot of `packages/grammar/src/*/dna.ts` | `vendor: {name: heroui, parity: strict|custom}`, arrangement (indicator side, separators, icon size, density), button intent → vendor variant map |
-| `knowledge/grammars/common/DNA.yaml:818` | generated token census | `--starci-core-control-min-size`, `assignedBy: family`, fallback 2.5rem, 53 uses |
-| `knowledge/grammars/starci/playbook.yaml:185–192`, `family.yaml:147–204` | prose | restates vendor slots (Label/Description), control sizes |
-| `knowledge/ui/composition/state.yaml:190–197` (STATE-6 case-6/7) | prose (owner decisions) | tab variant meaning and the "HeroUI's own pill tabs" paint |
-| `knowledge/ui/examples/brand-direction.example.yaml` (852 l) | prose example | ~15 restatements of HeroUI values ("Meter h-2 (8px)", "the real HeroUI Alert … bg-surface … shadow-surface") |
-| `knowledge/patterns/fe/toast.yaml:27–31` | prose rule FE-TOAST | "toast.tsx (the HeroUI toast wrapper)", "HeroUI toast region" |
+| `contexts/grammars/{starci,offset-pop,heritage}/DNA.yaml` (`vendor`, `arrangement`, `intent` blocks; e.g. starci 160–200) | generated snapshot of `packages/grammar/src/*/dna.ts` | `vendor: {name: heroui, parity: strict|custom}`, arrangement (indicator side, separators, icon size, density), button intent → vendor variant map |
+| `contexts/grammars/common/DNA.yaml:818` | generated token census | `--starci-core-control-min-size`, `assignedBy: family`, fallback 2.5rem, 53 uses |
+| `contexts/grammars/starci/playbook.yaml:185–192`, `family.yaml:147–204` | prose | restates vendor slots (Label/Description), control sizes |
+| `contexts/ui/composition/state.yaml:190–197` (STATE-6 case-6/7) | prose (owner decisions) | tab variant meaning and the "HeroUI's own pill tabs" paint |
+| `contexts/ui/examples/brand-direction.example.yaml` (852 l) | prose example | ~15 restatements of HeroUI values ("Meter h-2 (8px)", "the real HeroUI Alert … bg-surface … shadow-surface") |
+| `contexts/code/fe/toast.yaml:27–31` | prose rule FE-TOAST | "toast.tsx (the HeroUI toast wrapper)", "HeroUI toast region" |
 | `modules/kernel/owner-rulings.yaml:656–712, 895` | rulings | `grammar-vendor-parity`, four successive wrapper pins, `repaint-default-heroui-unless-ruled`, `control-height-40` |
 | `packages/grammar/src/core/**` (Button, IconButton, Tabs, Input, Select, SegmentedControl, Toast, `buttonIntent.tsx`, `dna.ts`) | code | the wrappers themselves |
 | `packages/grammar/src/common/{styles.css (3 700 l), components-forms.css (593 l)}` | code | the Grammar CSS judged against the reference (control heights, field heights) |
@@ -264,7 +264,7 @@ glyph" — lines 13, 160, 485, 632), `ui/composition/state.yaml:197` (pill paint
 ("HeroUI lg group"), `ui/presentation/radius.yaml:66` (rounded-field). Each could cite `vendor.heroui.<c>` instead.
 
 ### 4.6 Stale or wrong vendor claims
-- `patterns/fe/toast.yaml:27,31`: "toast.tsx (the HeroUI toast wrapper)", "The HeroUI toast region is mounted once": the Grammar
+- `code/fe/toast.yaml:27,31`: "toast.tsx (the HeroUI toast wrapper)", "The HeroUI toast region is mounted once": the Grammar
   Toast is StarCi's own queue over HeroUI Alert; HeroUI Toast has no reference file and no wrapper.
 - `wrappers.yaml` reasons cite ruling ids of three shapes (`ruling:R318/case-1`, `owner ruling control-height-40`,
   `owner 2026-10-25`, `listed for the owner ruling that pins it` ×11). Eleven overrides have no ruling of their own, only "listed
@@ -285,7 +285,7 @@ glyph" — lines 13, 160, 485, 632), `ui/composition/state.yaml:197` (pill paint
 
 | Item | Decision | Reason |
 |---|---|---|
-| 63 generated `<component>.yaml` | **Keep as generated, but out of `knowledge/`**: emit to a build cache (`.cache/vendor/heroui@3.2.6/`) on demand, keyed by installed version; not committed knowledge | pure HeroUI facts, regenerable, 585 KB; committing them adds nothing an agent authors |
+| 63 generated `<component>.yaml` | **Keep as generated, but out of `contexts/`**: emit to a build cache (`.cache/vendor/heroui@3.2.6/`) on demand, keyed by installed version; not committed knowledge | pure HeroUI facts, regenerable, 585 KB; committing them adds nothing an agent authors |
 | shared CSS duplicated per component | **Generate once per CSS file** (`css/<file>.yaml`) and reference it from the component | removes the 239 duplicate rule keys |
 | generator class discovery | **Fix in code**: resolve `tailwind-variants` slot tables (`buttonVariants`, `toggleButtonVariants`, …) so Root paints are measured | closes 4.1; expect new red findings on Button/IconButton/SegmentedControl, to be ruled or reverted |
 | `roles.yaml` | keep, generated, same cache | consumed only by the judge |
@@ -295,13 +295,13 @@ glyph" — lines 13, 160, 485, 632), `ui/composition/state.yaml:197` (pill paint
 | control-height facts | **One token** `--grammar-control-height` assigned in the Common sheet (sm/md/lg = 2/2.5/3 rem); delete fallbacks; SegmentedControl → 2.5 rem or a ruled exception; touch floor its own token (2.75 rem) | 4.2 |
 | Tabs variant names | **Owner decision needed**: either adopt vendor names (pill = primary) and keep STATE-6 semantics as *placement* (`page` / `region`), or record the inversion as a `default`-kind override | 4.3 |
 | prose restating vendor values | replace values with `see vendor.heroui.<c>` references | 4.5 |
-| `patterns/fe/toast.yaml` wording | fix to "Grammar Toast (Alert-based)" | 4.6 |
+| `code/fe/toast.yaml` wording | fix to "Grammar Toast (Alert-based)" | 4.6 |
 | `packages/hfs/runtime/scripts/lib/grammar-vendor-parity.mjs` copy | single source, imported | 4.4 |
 
-### 5.2 Target layout (vendor area of the new `knowledge/`)
+### 5.2 Target layout (vendor area of the new `contexts/`)
 
 ```
-knowledge/vendor/
+contexts/vendor/
   heroui.md                 # prose, ~200 lines, hand-written: the vendor's design thinking per family —
                             #   emphasis ladder (Button), tone × emphasis (Chip/Badge), surface ladder (Card/surface.css),
                             #   backdrop variant (Modal/Drawer), "secondary = inside a surface" (fields, Table, Tabs),
@@ -313,7 +313,7 @@ knowledge/vendor/
 (generated, not committed)  .cache/vendor/heroui@<ver>/{components/*.yaml, css/*.yaml, roles.yaml}
 ```
 
-Component-level UI *thinking* (when to use underline vs pill tabs, when a chip vs a button) belongs to `knowledge/ui/<component>`
+Component-level UI *thinking* (when to use underline vs pill tabs, when a chip vs a button) belongs to `contexts/ui/<component>`
 (analysis 3); `heroui.md` states only what the vendor ships and why, so the ui layer can cite it rather than restate it.
 
 ### 5.3 Readers

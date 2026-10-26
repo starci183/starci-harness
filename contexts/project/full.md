@@ -9,18 +9,18 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - Several services, each its own Nest app at `be/apps/<service>` with its own image and a `role: service` component
   in the application stacks, running on the app's own infrastructure. Owners: ruling `R212/case-10` in
   [decisions/rulings.yaml](../decisions/rulings.yaml); BE-SERVICES-1 to 4 in
-  [patterns/be/services.md](../patterns/be/services.md); R163 to R165.
+  [code/be/services.md](../code/be/services.md); R163 to R165.
 
 ## Backing services
 
 - The project runs its own Postgres; TypeORM migrations are the schema authority. Owners: slot `be.persistence` in
-  [hfs/slots.yaml](../hfs/slots.yaml); [patterns/be/persistence.md](../patterns/be/persistence.md) BE-PERSISTENCE-1.
+  [hfs/slots.yaml](../hfs/slots.yaml); [code/be/persistence.md](../code/be/persistence.md) BE-PERSISTENCE-1.
 - Redis and Qdrant are declarable backing services. Owner: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
   ruling `lite-vector-is-pgvector`.
 - The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`; ruling
-  `be-bounded-contexts`; [patterns/be/event-bus.md](../patterns/be/event-bus.md).
+  `be-bounded-contexts`; [code/be/event-bus.md](../code/be/event-bus.md).
 - Identity is the project's own identity provider (Keycloak in the full stack verbs). Owners:
-  [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [patterns/be/api-auth.md](../patterns/be/api-auth.md) BE-AUTH-2.
+  [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2.
 - Supabase is used only through a declared connection. Owners: slots `app.supabase*`, `be.integrations.supabase`.
 
 ## Patterns
@@ -29,8 +29,8 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
   each needs are `ruleParams.be.kindPatterns` and `addKinds` in [hfs/slots.yaml](../hfs/slots.yaml). Whether lite may
   also declare them is open ([lite.md](lite.md)).
 - Contexts meet only through events, projections replace cross-context joins and reactors keep local copies.
-  Owner: ruling `be-bounded-contexts`; [patterns/be/reactors.md](../patterns/be/reactors.md),
-  [patterns/be/projections.md](../patterns/be/projections.md), [patterns/be/saga.md](../patterns/be/saga.md).
+  Owner: ruling `be-bounded-contexts`; [code/be/reactors.md](../code/be/reactors.md),
+  [code/be/projections.md](../code/be/projections.md), [code/be/saga.md](../code/be/saga.md).
 - Every component image of a multi-service stack is pinned. Owner: R164, BE-SERVICES-2.
 
 ## Infrastructure the project runs
@@ -49,7 +49,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 
 - The e2e world boots the app's own stack from `.starcistacks/<env>` behind toxiproxy, with real migrations; every
   consumed event and saga has its e2e spec. Owners: slots `be.tests.world`, `be.tests.e2e`;
-  [patterns/be/test.md](../patterns/be/test.md) BE-TEST-12; BE-SERVICES-4; R173; the `@starci/test-world` pin in
+  [code/be/test.md](../code/be/test.md) BE-TEST-12; BE-SERVICES-4; R173; the `@starci/test-world` pin in
   [stack/pins.yaml](../stack/pins.yaml).
 - The e2e workflow and browser journeys run. Owners: slots `app.ci-e2e`, `app.browser`, `app.browser-config`;
   the `e2e` gate of the CI tier in [policy/quality.yaml](../../policy/quality.yaml).

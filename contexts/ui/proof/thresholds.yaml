@@ -1,4 +1,4 @@
-# Every numeric threshold of knowledge/ui, as data. Prose cites a key; gates and briefs read the value here.
+# Every numeric threshold of contexts/ui, as data. Prose cites a key; gates and briefs read the value here.
 # One key per number: a composition rule and the proof criterion that measures it share the key.
 # Units: count, pct (of the named area), px (CSS px at the observed root size), ratio (contrast x:1), ms, chars, steps.
 schema: starci/ui-thresholds@1

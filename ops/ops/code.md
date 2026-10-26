@@ -5,25 +5,25 @@ floor: medium
 hostTools: [git, node]
 context:
   base:
-    - file: "harness:knowledge/project/README.md"
+    - file: "harness:contexts/project/README.md"
       when: {side: [be, fe]}
-    - file: "harness:knowledge/project/anatomy.md"
+    - file: "harness:contexts/project/anatomy.md"
       when: {side: [be, fe]}
-    - file: "harness:knowledge/project/lint.md"
+    - file: "harness:contexts/project/lint.md"
       when: {side: [be, fe]}
-    - file: "harness:knowledge/project/{edition}.md"
+    - file: "harness:contexts/project/{edition}.md"
       when: {side: [be, fe]}
-    - harness:knowledge/patterns/README.md
-    - harness:knowledge/patterns/shared/README.md
-    - harness:knowledge/patterns/shared/typing.md
-    - harness:knowledge/patterns/shared/format.md
-    - harness:knowledge/patterns/shared/loosening.md
-    - harness:knowledge/patterns/shared/comment.md
-    - harness:knowledge/patterns/shared/naming.md
-    - harness:knowledge/patterns/shared/imports.md
-    - harness:knowledge/patterns/shared/test.md
-    - harness:knowledge/patterns/shared/scripts.md
-    - file: "harness:knowledge/patterns/{side}/README.md"
+    - harness:contexts/code/README.md
+    - harness:contexts/code/shared/README.md
+    - harness:contexts/code/shared/typing.md
+    - harness:contexts/code/shared/format.md
+    - harness:contexts/code/shared/loosening.md
+    - harness:contexts/code/shared/comment.md
+    - harness:contexts/code/shared/naming.md
+    - harness:contexts/code/shared/imports.md
+    - harness:contexts/code/shared/test.md
+    - harness:contexts/code/shared/scripts.md
+    - file: "harness:contexts/code/{side}/README.md"
       when: {side: [be, fe]}
     - file: "harness:CONTRIBUTING.md"
       when: {side: harness}

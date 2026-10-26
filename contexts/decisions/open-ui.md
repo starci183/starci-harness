@@ -1,6 +1,6 @@
 # Open UI decisions
 
-Choices made while writing `knowledge/ui`, each awaiting the owner's feedback. Each records the question, the
+Choices made while writing `contexts/ui`, each awaiting the owner's feedback. Each records the question, the
 choice the rules now state, the alternative, the reason, and what must change elsewhere for no app to be able to
 decide it two ways. When the owner confirms one, its ruling id goes to [rulings.yaml](rulings.yaml) and the entry
 leaves this file.
@@ -21,6 +21,6 @@ leaves this file.
 | UI-12 | Radius vocabulary | the app names a corner role (tiny, compact, control, surface, hero, pill); the grammar sets values from one base radius | literal utility classes with rem values (legacy radius file) | a literal freezes one grammar's value into every grammar | contract (K1): publish the corner roles as tokens |
 | UI-13 | Where thresholds live | one key per number in `ui/proof/thresholds.yaml`, shared by the composition rule and the proof criterion | numbers inside prose, parsed by regex (legacy `ui-proof-brief`) | rewording a sentence silently disabled a gate; the empty padding scale silently degraded TASTE-4 | the proof brief reads thresholds by key and the spacing steps from the contract |
 | UI-14 | Grammar names | grammars `core` (the legacy core, kept faithfully) and `offset-pop`; `heritage` and a separate `starci` family dropped; the legacy catalog id `starci` means `core` | keep `starci`, `heritage` | owner ruling relayed by the coordinator | removed-vocabulary entry for `starci` as a family id (K1/K3) |
-| UI-15 | The worked brand-direction example | dropped from knowledge; it belongs to the Nivo product's `.starciwork` | a product-free skeleton example here | it is a product record (mascot, palette, locale, page archetypes) | move the legacy `knowledge/ui/examples/brand-direction.example.yaml` to that product |
+| UI-15 | The worked brand-direction example | dropped from knowledge; it belongs to the Nivo product's `.starciwork` | a product-free skeleton example here | it is a product record (mascot, palette, locale, page archetypes) | move the legacy `contexts/ui/examples/brand-direction.example.yaml` to that product |
 | UI-16 | Rule ids after merges | surviving ids keep their address; folded ids are closed and never reused: `ACTION-2`, `STATE-2` into CTA-3; `ACTION-3` into CTA-2; `ACCENT-1` into CTA-1; the `PADDING`/`MARGIN` steps keep their ids in one table; `componentOwnership` tables dropped | renumber freely | grammar `data-contract` stamps and the generated rule catalog cite ids | the rule-catalog generator reads the Markdown headings (`### ID title`) and table ids instead of YAML |
 | UI-17 | Lint that names grammar components in the universal canon | knowledge cites `starci-fe/*` and `starci-grammar/*` rule ids as they are today | — | the package split (grammar-common lint) is K1/K3's | update the cited ids when the lint packages are renamed |

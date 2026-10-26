@@ -1,7 +1,7 @@
 # What every grammar implements. Read by the grammar contract gate and by generators; reasoning is contract.md.
 # Values never appear here: each grammar's package path owns them. Vendor part names come from ../vendor/parity.yaml.
 schema: starci/grammar-contract@1
-grammars: [core, offset-pop]          # the implementations; each has knowledge/grammars/<id>.md
+grammars: [core, offset-pop]          # the implementations; each has contexts/grammars/<id>.md
 base: common                          # shared renderers, anatomy, spacing and mechanics under every grammar
 
 package:
@@ -99,7 +99,7 @@ lint:
   factory: "<id>GrammarConfig"
   extends: "@starci/eslint-grammar-common"        # Common API checks every grammar inherits
 
-doc: knowledge/grammars/<id>.md                   # how the grammar fills each role below
+doc: contexts/grammars/<id>.md                   # how the grammar fills each role below
 
 roles:
   - id: card

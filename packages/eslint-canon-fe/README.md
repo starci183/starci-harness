@@ -1,7 +1,7 @@
 # @starci/eslint-canon-fe
 
 Universal front-end laws for TypeScript and Next.js applications, classified by
-FE-RULE-OWNERSHIP (the StarCi runtime's `knowledge/patterns/fe/index.yaml`).
+FE-RULE-OWNERSHIP (the StarCi runtime's `contexts/code/fe/index.yaml`).
 The canon owns composition, data and effect boundaries, translations, accessibility, source
 structure, typed contracts, token discipline and check integrity across Grammar families.
 
