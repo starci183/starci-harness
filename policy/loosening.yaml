@@ -21,6 +21,9 @@ scan:
   maxFileBytes: 1048576
 # The canon packages test the very markers they ban: their rule specs feed them as code samples.
 exceptions:
+  - path: sonar-project.properties
+    marker: gate-widening
+    reason: "owner ruling 2026-10-27: the CLI has no tests, so cli/src is excluded from coverage only; issues and duplication still analyse it"
   - path: packages/eslint-canon-be/spec-no-skip.mjs
     marker: skipped-test
     reason: "the rule source documents the forms it bans in its own doc comment"
