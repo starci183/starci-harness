@@ -62,13 +62,17 @@ test("R262 exports the two rules", () => {
 for (const edition of ["lite", "full"]) {
     test(`BE_READY_REAL@${edition}: a registered query handler consumes the typed timer and actual required probe`, () => {
         const passing = queryReadinessFixture()
-        testerOf(passing.root, edition).run("ready-real", readyReal, { valid: [{ filename: passing.filename, code: passing.code }], invalid: [] })
+        assert.doesNotThrow(() => {
+            testerOf(passing.root, edition).run("ready-real", readyReal, { valid: [{ filename: passing.filename, code: passing.code }], invalid: [] })
+        })
         for (const timer of [
             "type ScheduledWork = () => void; type CancelWork = () => void; export interface Timer { schedule(callback: ScheduledWork, delayMs: number): CancelWork }",
             'import type { Run, Stop } from "./callbacks"; export interface Timer { schedule(callback: Run, delayMs: number): Stop }',
         ]) {
             const aliased = queryReadinessFixture({ "src/modules/platform/retry/timer.ts": () => timer })
-            testerOf(aliased.root, edition).run("ready-real", readyReal, { valid: [{ filename: aliased.filename, code: aliased.code }], invalid: [] })
+            assert.doesNotThrow(() => {
+                testerOf(aliased.root, edition).run("ready-real", readyReal, { valid: [{ filename: aliased.filename, code: aliased.code }], invalid: [] })
+            })
         }
         const mutations = [
             ["src/features/api/system-health/system-health.module.ts", (code) => code.replace("providers:[RequiredHandler]", "providers:[]")],
@@ -93,36 +97,40 @@ for (const edition of ["lite", "full"]) {
         ]
         for (const [filename, mutate] of mutations) {
             const failing = queryReadinessFixture({ [filename]: mutate })
-            testerOf(failing.root, edition).run("ready-real", readyReal, { valid: [], invalid: [{ filename: failing.filename, code: failing.code, errors: [{ messageId: "real" }] }] })
+            assert.doesNotThrow(() => {
+                testerOf(failing.root, edition).run("ready-real", readyReal, { valid: [], invalid: [{ filename: failing.filename, code: failing.code, errors: [{ messageId: "real" }] }] })
+            })
         }
     })
 
     test(`BE_READY_REAL@${edition}: dependency probes are bounded and liveness aliases fail`, () => {
         const root = fixture()
         const filename = path.join(root, "src/features/api/system-health/transport/http/ready.controller.ts")
-        testerOf(root, edition).run("ready-real", readyReal, {
-            valid: [
-                { filename, code: ready(bounded) },
-                { filename, code: ready("return this.required.check({ signal: AbortSignal.timeout(1500) })") },
-                { filename, code: `const TIMEOUT=1000; ${ready("const failure = new Promise((resolve, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT)); return Promise.race([this.required.check(), failure])")}` },
-                { filename, code: ready(bounded, undefined, "readyz") },
-                { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}", "live") },
-            ],
-            invalid: [
-                { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}"), errors: [{ messageId: "real" }] },
-                { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}", "readyz"), errors: [{ messageId: "real" }] },
-                { filename, code: ready("return { ok: true }", ""), errors: [{ messageId: "real" }] },
-                { filename, code: ready("return this.required.check()"), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("reject(new Error('unavailable'))", "resolve(true)")), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("1000", "0")), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("1000", "-1000")), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("1000", "unbounded")), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("this.required.check()", "this.liveness.check()"), "constructor(private readonly liveness: LivenessService) {}"), errors: [{ messageId: "real" }] },
-                { filename, code: ready(`try { await ${bounded.replace("return ", "")} } catch {} return {ok:true}`), errors: [{ messageId: "real" }] },
-                { filename, code: ready(`${bounded.replace("return ", "")} ; return {ok:true}`), errors: [{ messageId: "real" }] },
-                { filename, code: ready(`${bounded}.catch(() => ({ok:true}))`), errors: [{ messageId: "real" }] },
-                { filename, code: ready(bounded.replace("reject(new Error('unavailable'))", "{ throw new Error('unavailable') }")), errors: [{ messageId: "real" }] },
-            ],
+        assert.doesNotThrow(() => {
+            testerOf(root, edition).run("ready-real", readyReal, {
+                valid: [
+                    { filename, code: ready(bounded) },
+                    { filename, code: ready("return this.required.check({ signal: AbortSignal.timeout(1500) })") },
+                    { filename, code: `const TIMEOUT=1000; ${ready("const failure = new Promise((resolve, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT)); return Promise.race([this.required.check(), failure])")}` },
+                    { filename, code: ready(bounded, undefined, "readyz") },
+                    { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}", "live") },
+                ],
+                invalid: [
+                    { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}"), errors: [{ messageId: "real" }] },
+                    { filename, code: ready("return this.queryBus.execute(new CheckLivenessQuery())", "constructor(private readonly queryBus: QueryBus) {}", "readyz"), errors: [{ messageId: "real" }] },
+                    { filename, code: ready("return { ok: true }", ""), errors: [{ messageId: "real" }] },
+                    { filename, code: ready("return this.required.check()"), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("reject(new Error('unavailable'))", "resolve(true)")), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("1000", "0")), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("1000", "-1000")), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("1000", "unbounded")), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("this.required.check()", "this.liveness.check()"), "constructor(private readonly liveness: LivenessService) {}"), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(`try { await ${bounded.replace("return ", "")} } catch {} return {ok:true}`), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(`${bounded.replace("return ", "")} ; return {ok:true}`), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(`${bounded}.catch(() => ({ok:true}))`), errors: [{ messageId: "real" }] },
+                    { filename, code: ready(bounded.replace("reject(new Error('unavailable'))", "{ throw new Error('unavailable') }")), errors: [{ messageId: "real" }] },
+                ],
+            })
         })
     })
 
@@ -133,12 +141,14 @@ for (const edition of ["lite", "full"]) {
         put(root, "src/modules/platform/http-security/readiness.service.ts", service)
         put(root, "src/modules/platform/http-security/index.ts", 'export { ReadinessService } from "./readiness.service"')
         const code = 'import { ReadinessService } from "@modules/platform/http-security"; ' + ready("return this.readiness.probeRequired()", "constructor(private readonly readiness: ReadinessService) {}")
-        testerOf(root, edition).run("ready-real", readyReal, {
-            valid: [{ filename, code }],
-            invalid: [
-                { filename, code: code.replace("probeRequired()", "liveness()"), errors: [{ messageId: "real" }] },
-                { filename, code: code.replace("return this.readiness.probeRequired()", "this.readiness.probeRequired(); return {ok:true}"), errors: [{ messageId: "real" }] },
-            ],
+        assert.doesNotThrow(() => {
+            testerOf(root, edition).run("ready-real", readyReal, {
+                valid: [{ filename, code }],
+                invalid: [
+                    { filename, code: code.replace("probeRequired()", "liveness()"), errors: [{ messageId: "real" }] },
+                    { filename, code: code.replace("return this.readiness.probeRequired()", "this.readiness.probeRequired(); return {ok:true}"), errors: [{ messageId: "real" }] },
+                ],
+            })
         })
     })
 
@@ -152,9 +162,11 @@ for (const edition of ["lite", "full"]) {
         }
         put(complete, "src/features/api/system-health/transport/http/health.module.ts", 'import {LiveController} from "./live.controller"; import {ReadyController} from "./ready.controller"; @Module({ controllers:[LiveController,ReadyController] }) export class HealthModule {}')
         put(missing, "src/features/api/system-health/transport/http/health.module.ts", 'import {LiveController} from "./live.controller"; import {ReadyController} from "./ready.controller"; void ReadyController; const unused=[ReadyController]; @Module({ controllers:[LiveController] }) export class HealthModule {}')
-        testerOf(complete, edition).run("health-signals", healthSignals, {
-            valid: [{ filename: path.join(complete, "apps/api/src/main.ts"), code: "bootstrap()" }, { filename: path.join(complete, "apps/worker/src/main.ts"), code: "bootstrap()" }],
-            invalid: [{ filename: path.join(missing, "apps/api/src/main.ts"), code: "bootstrap()", settings: { starci: { hfs: hfsFromDeclaration(declaration(edition), missing) } }, errors: [{ messageId: "signals", data: { app: "api", missing: "/health/ready" } }] }],
+        assert.doesNotThrow(() => {
+            testerOf(complete, edition).run("health-signals", healthSignals, {
+                valid: [{ filename: path.join(complete, "apps/api/src/main.ts"), code: "bootstrap()" }, { filename: path.join(complete, "apps/worker/src/main.ts"), code: "bootstrap()" }],
+                invalid: [{ filename: path.join(missing, "apps/api/src/main.ts"), code: "bootstrap()", settings: { starci: { hfs: hfsFromDeclaration(declaration(edition), missing) } }, errors: [{ messageId: "signals", data: { app: "api", missing: "/health/ready" } }] }],
+            })
         })
     })
 }
