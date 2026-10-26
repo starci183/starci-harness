@@ -532,6 +532,27 @@ Status transitions are enforced in code with one state machine (`TRANSITIONS` in
 | 11 | Provider quota is not observable for every agent (Codex, Devin) | low | No reading means unknown, not blocked. Learn only from real quota errors through the circuit. |
 | 12 | A worker with full Bash writes outside `allowPaths` or leaks a secret | medium | Keep a PreToolUse guard for dangerous commands, a diff check of `allowPaths` at settle, and the secret scan at push. |
 
+## Knowledge
+
+`knowledge/` beside `ops/` and `policy/` holds what an agent needs to decide how an app is built, and the data gates
+and generators read to hold it. [knowledge/README.md](knowledge/README.md) is the map and the reading order per task.
+
+- **Layout:** `ui/` (universal interface decisions), `grammars/` (the grammar contract and why each grammar looks as
+  it does), `vendor/` (what HeroUI ships and what a grammar keeps), `patterns/{fe,be}/` (code patterns),
+  `hfs/` (the app shape: `slots.yaml`, `rules.yaml`), `stack/` (`fe.yaml` libraries, `pins.yaml` versions),
+  `decisions/` (`rulings.yaml`, the one owner-ruling log, and `open-*.md`, the owner's review queue).
+- **Who reads it:** an authoring agent reads the Markdown reasoning; gates, lint and generators read only the YAML data
+  (each with a `schema`) and pattern front matter.
+- **Boundary model:** the grammar package (a package implementing the grammar contract: components, values, variants,
+  the intent x placement map) owns what things look like; knowledge owns when and why; lint and gates enforce; the
+  app writes product data and layout CSS only. Every app built from the same grammar and knowledge comes out the same.
+- **One owner per fact:** a value code owns is named, never copied; a fact lives in one file; rules carry no dates or
+  ruling citations, which live in `decisions/rulings.yaml`.
+- **Feedback hardens:** a feedback becomes a grammar API that removes the choice, a lint, gate or threshold, or the
+  rule rewritten in its one place, never a case note or a duplicate rule; each hardening records its ruling.
+- **Product content is not knowledge:** requirements, brand direction, screen records and examples go to the
+  product's `.starciwork`; gate selection, loosening, secrets and coverage are `policy/`.
+
 ## Open questions
 
 1. Worktree model: keep the legacy shared workflow worktree with path leases (proposed), or a lane per task?
