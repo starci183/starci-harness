@@ -116,6 +116,17 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
    - **Result:** `status` is one of `done`, `blocked` (with the reason), `mismatch` (the receiver shows that `expectedOutput` itself is wrong or contradictory) or `failed`, plus the output and evidence such as commit, files and json.
    - The sender runs `starci task verify`, which replays every check of `expectedOutput` against the result. Only a green verify settles the task.
 
+### Roles and their rights
+
+| role | job | lives | reads | writes | effects | never | escalates to |
+|---|---|---|---|---|---|---|---|
+| op | one task, until its output meets `expectedOutput` | one task | the task's `context` only | its lane worktree, inside `allowPaths` | read, local-write | push, merge into main, change its contract, ask the owner | Kernel: `blocked` or `mismatch` |
+| kernel | split the goal into tasks, send, wait, verify | one workflow | its goal and its workflow's ledger | tasks and messages of its workflow; merges lanes into the workflow branch | read, local-write, host (its own seats) | write code itself, read an op's terminal, push main | Supervisor: a task beyond an op |
+| supervisor | run the host, take tasks beyond an op, carry the owner channel | always, one per host | every workflow, seat and ruling | land on main, the light push, seats, budgets, rulings the owner decides | + remote (push); publish only with the owner's approval | write product code (it sends a task to an op), bend a gate | Owner: decisions, publish, rulings |
+| debug | diagnose a harness or environment failure, never task content | one incident | everything, read-only (ledgers, logs, transcripts) | a diagnosis and a repair task only | read | edit code, change rules, run any writing verb | Supervisor: the diagnosis plus the repair task |
+
+The rights are enforced from each verb's `effect` and `roles`. The seat runner tells the CLI its role, and a verb refuses a role it does not list.
+
 ### Storage: one SQLite file per project
 There are four tables, instead of about 50 runtime tables and 90 machine tables:
 - `seats`: who runs where, plus the last pong;
