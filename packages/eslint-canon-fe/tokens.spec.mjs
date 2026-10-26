@@ -16,7 +16,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("TOKEN-4: an arbitrary value escapes the vocabulary even when it matches it", () => {
-  tester.run("no-arbitrary-value", noArbitraryValue, {
+  assert.doesNotThrow(() => tester.run("no-arbitrary-value", noArbitraryValue, {
     valid: [
       { filename: LEAF, code: "const C = \"gap-4 p-6 text-muted\"" },
       // a variant selector is not a measurement
@@ -32,7 +32,7 @@ test("TOKEN-4: an arbitrary value escapes the vocabulary even when it matches it
         errors: [{ messageId: "length" }],
       },
     ],
-  })
+  }))
 })
 
 for (const edition of ["lite", "full"]) {

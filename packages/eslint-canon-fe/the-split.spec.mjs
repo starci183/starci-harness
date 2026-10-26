@@ -27,7 +27,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("SPLIT-1: the drawing half receives everything and asks for nothing", () => {
-  tester.run("presentational-purity", presentationalPurity, {
+  assert.doesNotThrow(() => tester.run("presentational-purity", presentationalPurity, {
     valid: [
       { filename: DRAWING, code: "const E = (input) => input.props.label" },
       // deciding how a settled situation LOOKS is exactly this file's job
@@ -64,11 +64,11 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       { filename: at("apps/web/src/features/pages/Home/component.tsx"), code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
       { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
     ],
-  })
+  }))
 })
 
 test("SPLIT-5: a connected block renders only its exact pure twin", () => {
-  tester.run("connected-block-has-presentational-twin", connectedBlockHasPresentationalTwin, {
+  assert.doesNotThrow(() => tester.run("connected-block-has-presentational-twin", connectedBlockHasPresentationalTwin, {
     valid: [
       {
         filename: CONNECTED,
@@ -136,5 +136,5 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         errors: [{ messageId: "called" }],
       },
     ],
-  })
+  }))
 })

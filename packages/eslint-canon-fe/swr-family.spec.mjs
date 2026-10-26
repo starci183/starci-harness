@@ -27,7 +27,7 @@ const testerFor = (lite) => new RuleTester({
 for (const lite of [false, true]) {
   const edition = lite ? "lite" : "full"
   test(`R285 FE_SWR_OUTSIDE_FAMILY: consumers call wrappers (${edition})`, () => {
-    testerFor(lite).run("swr-only-in-family", swrOnlyInFamily, {
+    assert.doesNotThrow(() => testerFor(lite).run("swr-only-in-family", swrOnlyInFamily, {
       valid: [
         { filename: WRAPPER, code: 'import useSWR from "swr"; export const useQueryOrdersSwr = () => useSWR("orders", queryOrders)' },
         { filename: COMPONENT, code: 'import { SWRConfig, useSWRConfig, mutate } from "swr"; export const Orders = () => null' },
@@ -52,11 +52,11 @@ for (const lite of [false, true]) {
         { filename: HOOK, code: 'const request = import("swr/mutation")', errors: [{ messageId: "outside" }] },
         { filename: HOOK, code: 'const request = require("swr/infinite")', errors: [{ messageId: "outside" }] },
       ],
-    })
+    }))
   })
 
   test(`R285 FE_OP_OUTSIDE_SWR_HOOK: only wrappers consume operations (${edition})`, () => {
-    testerFor(lite).run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
+    assert.doesNotThrow(() => testerFor(lite).run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
       valid: [
         { filename: WRAPPER, code: `import useSWR from "swr"; import { queryOrders } from "${OP}"; export const useQueryOrdersSwr = () => useSWR("orders", queryOrders)` },
         { filename: WRAPPER, code: `import * as requests from "swr"; import { queryOrders } from "${OP}"; export const useQueryOrdersSwr = () => requests.default("orders", queryOrders)` },
@@ -93,7 +93,7 @@ for (const lite of [false, true]) {
         { filename: WRAPPER, code: `import useSWR from "swr"; import { queryOrders } from "${OP}"; queryOrders(); export const useQueryOrdersSwr = () => useSWR("orders", queryOrders)`, errors: [{ messageId: "outside" }] },
         { filename: at("apps/web/src/hooks/swr/SwrSideEffects.tsx"), code: `import { queryOrders } from "${OP}"`, errors: [{ messageId: "outside" }] },
       ],
-    })
+    }))
   })
 }
 
@@ -131,7 +131,7 @@ const subscribeHook = (operation, name, call) =>
 
 for (const lite of [false, true]) {
   test(`R285 FE_SUBSCRIPTION_NO_SNAPSHOT: a subscription hook revalidates its snapshot when the stream opens (${lite ? "lite" : "full"})`, () => {
-    testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
+    assert.doesNotThrow(() => testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
       valid: [
         { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: () => void mutate(\"order\"), onPush: (push) => next(null, push) })") },
         { filename: SUBSCRIPTION, code: subscribeHook(GRAPHQL_STREAM_OP, "subscribeOrderStatus", "void subscribeOrderStatus({ onOpen() { void mutate(\"order\") } })") },
@@ -144,7 +144,7 @@ for (const lite of [false, true]) {
         { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus(options)"), errors: [{ messageId: "missing" }] },
         { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", "void streamOrderStatus({ onOpen: undefined })"), errors: [{ messageId: "missing" }] },
       ],
-    })
+    }))
   })
 }
 
@@ -154,7 +154,7 @@ const READER = "@/modules/api/sse/clients/read-event-stream"
 
 for (const lite of [false, true]) {
   test(`R285 FE_SUBSCRIPTION_NO_SNAPSHOT: namespaces, aliases, a mutate in onOpen and the stream reader (${lite ? "lite" : "full"})`, () => {
-    testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
+    assert.doesNotThrow(() => testerFor(lite).run("subscription-refetches-snapshot", subscriptionRefetchesSnapshot, {
       valid: [
         { filename: SUBSCRIPTION, code: ns('void ops.streamOrderStatus({ onOpen: () => void mutate("order") })') },
         { filename: SUBSCRIPTION, code: subscribeHook(STREAM_OP, "streamOrderStatus", 'const open = streamOrderStatus; void open({ onOpen: () => void mutate("order") })') },
@@ -170,17 +170,17 @@ for (const lite of [false, true]) {
         // the reader is not a stream operation: a hook that calls it directly has no operation to judge
         { filename: SUBSCRIPTION, code: `import useSWRSubscription from "swr/subscription"; import { followEventStream } from "${READER}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", () => { void followEventStream({ onOpen: () => {} }); return () => undefined })`, errors: [{ messageId: "noStream" }] },
       ],
-    })
+    }))
   })
 
   test(`R285 FE_OP_OUTSIDE_SWR_HOOK: only a stream operation imports the stream reader, even inside a fetcher (${lite ? "lite" : "full"})`, () => {
-    testerFor(lite).run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
+    assert.doesNotThrow(() => testerFor(lite).run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
       valid: [],
       invalid: [
         { filename: SUBSCRIPTION, code: `import useSWRSubscription from "swr/subscription"; import { followEventStream } from "${READER}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", () => { void followEventStream({}); return () => undefined })`, errors: [{ messageId: "outside" }] },
         { filename: at("apps/web/src/hooks/swr/api/rest/queries/useGetOrdersSwr.ts"), code: `import useSWR from "swr"; import { followEventStream } from "${READER}"; export const useGetOrdersSwr = () => useSWR("orders", () => followEventStream({}))`, errors: [{ messageId: "outside" }] },
       ],
-    })
+    }))
   })
 }
 
@@ -211,7 +211,7 @@ test("R285: values generated from the contract's input bounds are data, not oper
     settings: { starci: { hfs } },
   })
   const form = join(root, "apps/web/src/hooks/rhf/useOrderForm.ts")
-  tester.run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
+  assert.doesNotThrow(() => tester.run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
     valid: [
       { filename: form, code: 'import { INPUT_BOUNDS, inputBoundsIssues } from "@/modules/api"; export const bounds = [INPUT_BOUNDS, inputBoundsIssues]' },
       { filename: form, code: 'import { INPUT_BOUNDS, inputBoundsIssues } from "@/modules/api/graphql"; export const bounds = [INPUT_BOUNDS, inputBoundsIssues]' },
@@ -223,5 +223,5 @@ test("R285: values generated from the contract's input bounds are data, not oper
       { filename: form, code: 'import * as api from "@/modules/api"; export const all = api', errors: [{ messageId: "outside" }] },
       { filename: form, code: 'import api, { INPUT_BOUNDS } from "@/modules/api"; export const all = [api, INPUT_BOUNDS]', errors: [{ messageId: "outside" }] },
     ],
-  })
+  }))
 })

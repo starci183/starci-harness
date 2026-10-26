@@ -34,7 +34,7 @@ test("UI rulings are registered universally at error", () => {
 
 for (const edition of ["lite", "full"])
   test(`COLLECTION-1 ${edition}: fill replaces checks in navigation-like single-select lists`, () => {
-    slotTester().run("selection-fill-no-check", selectionFillNoCheck, {
+    assert.doesNotThrow(() => slotTester().run("selection-fill-no-check", selectionFillNoCheck, {
       valid: [
         grammar +
           'const C=()=> <nav><ListBox selectionIndicator="none" /></nav>',
@@ -83,12 +83,12 @@ for (const edition of ["lite", "full"])
           errors: [{ messageId: "indicator" }],
         },
       ],
-    });
+    }));
   });
 
 for (const edition of ["lite", "full"])
   test(`ACTION-3 ${edition}: application selectors cannot restyle Grammar internals`, () => {
-    slotTester().run(
+    assert.doesNotThrow(() => slotTester().run(
       "no-grammar-internal-selector",
       noGrammarInternalSelector,
       {
@@ -135,11 +135,11 @@ for (const edition of ["lite", "full"])
           },
         ],
       },
-    );
+    ));
   });
 
 test("CTA-6 repeated commands declare neutral and never commit or a filled variant", () => {
-  slotTester().run(
+  assert.doesNotThrow(() => slotTester().run(
     "no-commit-in-collection-item",
     buttonRules["no-commit-in-collection-item"],
     {
@@ -154,8 +154,8 @@ test("CTA-6 repeated commands declare neutral and never commit or a filled varia
         ),
       ],
     },
-  );
-  slotTester().run("button-no-variant", buttonRules["button-no-variant"], {
+  ));
+  assert.doesNotThrow(() => slotTester().run("button-no-variant", buttonRules["button-no-variant"], {
     valid: [
       grammar +
         'const C=()=> rows.map(row=> <Button key={row.id} intent="neutral" />)',
@@ -166,5 +166,5 @@ test("CTA-6 repeated commands declare neutral and never commit or a filled varia
         "FE_BUTTON_NO_VARIANT",
       ),
     ],
-  });
+  }));
 });

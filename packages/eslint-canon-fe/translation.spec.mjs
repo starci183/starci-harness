@@ -30,7 +30,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("COPY-1: a tier that receives its words never resolves one", () => {
-  tester.run("no-copy-resolution-below-block", noCopyResolutionBelowBlock, {
+  assert.doesNotThrow(() => tester.run("no-copy-resolution-below-block", noCopyResolutionBelowBlock, {
     valid: [
       // a block resolves copy; a folder named leaves inside a module is not a vocabulary layer
       { filename: at("apps/web/src/modules/leaves/index.ts"), code: "const t = useTranslations(\"input\")" },
@@ -43,11 +43,11 @@ test("COPY-1: a tier that receives its words never resolves one", () => {
       { filename: at("packages/nivo-ui/src/leaves/Input/index.tsx"), code: "const t = useTranslations(\"input\")", errors: [{ messageId: "resolves" }] },
       { filename: COMPOSITE, code: "const l = useLocale()", errors: [{ messageId: "resolves" }] },
     ],
-  })
+  }))
 })
 
 test("COPY-2: no literal copy at any tier, in any language, and no pragma", () => {
-  tester.run("no-hardcoded-copy", noHardcodedCopy, {
+  assert.doesNotThrow(() => tester.run("no-hardcoded-copy", noHardcodedCopy, {
     valid: [
       // tokens, not sentences: a name, a size, a variant
       { filename: LEAF, code: "const E = () => <Icon props={{ name: \"search\", size: \"sm\" }} />" },
@@ -124,7 +124,7 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
       { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "export const useLesson = () => ({ status: \"Loading your lesson\", error: \"Something went wrong.\" })", errors: [{ messageId: "property" }, { messageId: "property" }] },
       { filename: at("apps/web/src/modules/notify/messages.ts"), code: "export const M = { saved: `Saved ${n} items`, kind: \"Search courses\" }", errors: [{ messageId: "property" }, { messageId: "property" }] },
     ],
-  })
+  }))
 })
 
 for (const edition of ["lite", "full"]) {
@@ -132,7 +132,7 @@ for (const edition of ["lite", "full"]) {
   const form = (code) => ({ filename: at("apps/web/src/hooks/rhf/useProfileForm.ts"), settings, code })
 
   test(`R286 FE_COPY_IN_CALL: ${edition} validation and toast messages use catalogue copy`, () => {
-    tester.run("no-copy-in-call", noCopyInCall, {
+    assert.doesNotThrow(() => tester.run("no-copy-in-call", noCopyInCall, {
       valid: [
         form('z.string().email(t("profile.emailInvalid"))'),
         form('toast.success(t("profile.saved"))'),
@@ -157,11 +157,11 @@ for (const edition of ["lite", "full"]) {
         { ...form('import { toast as notify } from "@/modules/toast"; notify.success("Profile saved")'), errors: [{ messageId: "copy" }] },
         { ...form('import * as schema from "zod"; schema.z.string().email(`Email is invalid`)'), errors: [{ messageId: "copy" }] },
       ],
-    })
+    }))
   })
 
   test(`R286 FE_NO_ALERT: ${edition} feedback uses the toast surface`, () => {
-    tester.run("no-alert", noAlert, {
+    assert.doesNotThrow(() => tester.run("no-alert", noAlert, {
       valid: [
         form('toast.success(t("profile.saved"))'),
         form('function feedback(alert) { alert(t("profile.saved")) }'),
@@ -176,6 +176,6 @@ for (const edition of ["lite", "full"]) {
         { ...form('globalThis["alert"]()'), errors: [{ messageId: "alert" }] },
         { ...form('self.alert?.()'), errors: [{ messageId: "alert" }] },
       ],
-    })
+    }))
   })
 }

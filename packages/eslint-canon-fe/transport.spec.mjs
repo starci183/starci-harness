@@ -53,7 +53,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo, axios and socket.io-client only in their homes", () => {
-  slots.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
+  assert.doesNotThrow(() => slots.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
     valid: [
       { filename: CLIENT, code: "const r = await fetch(url, { signal })" },
       // a shared client in the api package is the legitimate shape of a multi-app repository
@@ -144,7 +144,7 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
       { filename: CLIENT, code: "import got from \"got\"", errors: [{ messageId: "library" }] },
       { filename: REST, code: "import { ofetch } from \"ofetch\"", errors: [{ messageId: "library" }] },
     ],
-  })
+  }))
 })
 
 // proves: FE_TRANSPORT_OWNER@lite, FE_TRANSPORT_OWNER@full
@@ -153,7 +153,7 @@ test("FE_TRANSPORT_OWNER: native WebSocket is refused and socket.io-client belon
     const declaration = edition === "lite" ? LITE_FE_DECLARATION : undefined
     const settings = { starci: { hfs: fixtureHfs(declaration, { lite: edition === "lite" }) } }
     const run = new RuleTester({ languageOptions: testerConfig(), settings })
-    run.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
+    assert.doesNotThrow(() => run.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
       valid: [
         { filename: SOCKETS, code: 'import { io } from "socket.io-client"; const socket = io(url)' },
         { filename: SOCKETS, code: 'const { io } = await import("socket.io-client")' },
@@ -181,7 +181,7 @@ test("FE_TRANSPORT_OWNER: native WebSocket is refused and socket.io-client belon
         { filename: CLIENT, code: 'const { io } = await import("socket.io-client")', errors: [{ messageId: "placed" }] },
         { filename: SWR_HOOK, code: 'export * from "socket.io-client"', errors: [{ messageId: "placed" }] },
       ],
-    })
+    }))
   }
 })
 
@@ -190,7 +190,7 @@ function testerConfig() {
 }
 
 test("FE-TRANSPORT-2: every fetch of the API layer carries an abort signal", () => {
-  slots.run("client-fetch-has-signal", clientFetchHasSignal, {
+  assert.doesNotThrow(() => slots.run("client-fetch-has-signal", clientFetchHasSignal, {
     valid: [
       { filename: CLIENT, code: "fetch(url, { method: \"GET\", signal: AbortSignal.timeout(8000) })" },
       { filename: PKG_CLIENT, code: "fetch(url, { method: \"GET\", signal: AbortSignal.timeout(8000) })" },
@@ -214,11 +214,11 @@ test("FE-TRANSPORT-2: every fetch of the API layer carries an abort signal", () 
       { filename: REST, code: "fetch(url, { method: \"PUT\", body })", errors: [{ messageId: "signal" }] },
       { filename: PKG_TRANSPORT, code: "fetch(url)", errors: [{ messageId: "signal" }] },
     ],
-  })
+  }))
 })
 
 test("FE-TRANSPORT-3: no module-level mutable state in the API layer", () => {
-  slots.run("no-shared-transport-state", noSharedTransportState, {
+  assert.doesNotThrow(() => slots.run("no-shared-transport-state", noSharedTransportState, {
     valid: [
       { filename: CLIENT, code: "const TIMEOUT = 8000\nexport const t = TIMEOUT" },
       { filename: CLIENT, code: "export const f = () => { let n = 0; return n }" },
@@ -242,13 +242,13 @@ test("FE-TRANSPORT-3: no module-level mutable state in the API layer", () => {
       { filename: PKG_TRANSPORT, code: "let token = null", errors: [{ messageId: "shared" }] },
       { filename: at("packages/shop-api/src/graphql/types.ts"), code: "export let last = null", errors: [{ messageId: "shared" }] },
     ],
-  })
+  }))
 })
 
 const REFUSED_BRANCH = (test) => `export const get = async (u: string) => {\n  const res = await fetch(u, { signal })\n  if (${test}) return { ok: false, kind: "refused" }\n  return { ok: true }\n}`
 
 test("FE-TRANSPORT-4: the client maps a 401 and a 403 status to refused", () => {
-  typed.run("client-maps-auth-to-refused", clientMapsAuthToRefused, {
+  assert.doesNotThrow(() => typed.run("client-maps-auth-to-refused", clientMapsAuthToRefused, {
     valid: [
       { filename: CLIENT, code: REFUSED_BRANCH("res.status === 401 || res.status === 403") },
       { filename: CLIENT, code: REFUSED_BRANCH("res.status == 403 || res.status == 401") },
@@ -318,11 +318,11 @@ test("FE-TRANSPORT-4: the client maps a 401 and a 403 status to refused", () => 
         errors: [{ messageId: "refused" }],
       },
     ],
-  })
+  }))
 })
 
 test("FE-STATUS-1: a failure (HTTP response or Outcome) is not one branch and not null", () => {
-  tester.run("no-failure-collapse", noFailureCollapse, {
+  assert.doesNotThrow(() => tester.run("no-failure-collapse", noFailureCollapse, {
     valid: [
       { filename: CLIENT, code: "if (!res.ok) return toOutcome(res)" },
       { filename: CLIENT, code: "if (!res.ok) { return { kind: mapStatus(res.status) } }" },
@@ -349,11 +349,11 @@ test("FE-STATUS-1: a failure (HTTP response or Outcome) is not one branch and no
       // UI code consuming an Outcome: the failure collapses into null and the reason is lost
       { filename: HOOK, code: "if (!result.ok) return null", errors: [{ messageId: "empty" }] },
     ],
-  })
+  }))
 })
 
 test("FE-WIRE-1: a response body is narrowed from unknown or typed by a generated type, and a GraphQL document lives in the API layer", () => {
-  slots.run("no-hand-typed-wire", noHandTypedWire, {
+  assert.doesNotThrow(() => slots.run("no-hand-typed-wire", noHandTypedWire, {
     valid: [
       { filename: OPERATION, code: "import type { CourseQuery } from \"../__generated__/graphql\"\nconst x: CourseQuery = y" },
       { filename: OPERATION, code: "const q = loadDocument(\"course.graphql\")" },
@@ -396,11 +396,11 @@ test("FE-WIRE-1: a response body is narrowed from unknown or typed by a generate
       { filename: at("apps/web/src/components/blocks/course/CourseCard/index.tsx"), code: "const q = \"mutation Save { save { id } }\"", errors: [{ messageId: "document" }] },
       { filename: at("apps/web/src/modules/auth/index.ts"), code: "const q = graphql`mutation SignIn { signIn { token } }`", errors: [{ messageId: "document" }] },
     ],
-  })
+  }))
 })
 
 test("TRANSPORT-7: a switch over an Outcome names every kind", () => {
-  tester.run("outcome-kinds-exhaustive", outcomeKindsExhaustive, {
+  assert.doesNotThrow(() => tester.run("outcome-kinds-exhaustive", outcomeKindsExhaustive, {
     valid: [
       {
         filename: HOOK,
@@ -427,14 +427,14 @@ test("TRANSPORT-7: a switch over an Outcome names every kind", () => {
         errors: [{ messageId: "missing" }],
       },
     ],
-  })
+  }))
 })
 
 test("FE-OUTCOME-1: a result union is declared once, in the outcome slot", () => {
   const API_OUTCOME = at("apps/web/src/modules/api/graphql/types.ts")
   const PKG_OUTCOME = at("packages/shop-api/src/graphql/types.ts")
   const UNION = "export type Result<T> = { success: true; data: T } | { success: false; error: string }"
-  typed.run("one-outcome-union", oneOutcomeUnion, {
+  assert.doesNotThrow(() => typed.run("one-outcome-union", oneOutcomeUnion, {
     valid: [
       // the one vocabulary, in its slot (one-app repository and shared package)
       { filename: API_OUTCOME, code: UNION },
@@ -484,13 +484,13 @@ test("FE-OUTCOME-1: a result union is declared once, in the outcome slot", () =>
       { filename: OPERATION, code: UNION, errors: [{ messageId: "second" }] },
       { filename: at("apps/web/src/modules/api/types.ts"), code: UNION, errors: [{ messageId: "second" }] },
     ],
-  })
+  }))
 })
 
 test("FE-OUTCOME-2: lite = full: modules/api/graphql/types.ts is the one home, and modules/db holds no union in either edition", () => {
   const UNION = "export type Result<T> = { success: true; data: T } | { success: false; error: string }"
   for (const run of [typedLite, typed]) {
-    run.run("one-outcome-union", oneOutcomeUnion, {
+    assert.doesNotThrow(() => run.run("one-outcome-union", oneOutcomeUnion, {
       valid: [
         { filename: at("apps/web/src/modules/api/graphql/types.ts"), code: UNION },
         { filename: HOOK, code: "import type { GraphQLResponse } from \"../../modules/api/graphql/types\"\nexport type OrdersRead = GraphQLResponse<{ id: string }>" },
@@ -504,6 +504,6 @@ test("FE-OUTCOME-2: lite = full: modules/api/graphql/types.ts is the one home, a
         // a second union beside the home, in another module of the app
         { filename: at("apps/web/src/modules/config/index.ts"), code: UNION, errors: [{ messageId: "second" }] },
       ],
-    })
+    }))
   }
 })

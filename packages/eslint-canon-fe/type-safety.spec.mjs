@@ -25,7 +25,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("TYPE-SAFETY-1: a cast through unknown erases what the compiler knew", () => {
-  tester.run("no-double-cast", noDoubleCast, {
+  assert.doesNotThrow(() => tester.run("no-double-cast", noDoubleCast, {
     valid: [
       // a single cast is not this rule's business: `no-type-assertion` judges it
       { filename: SOURCE, code: "const row = payload as ResumeRow" },
@@ -47,11 +47,11 @@ test("TYPE-SAFETY-1: a cast through unknown erases what the compiler knew", () =
         errors: [{ messageId: "double" }],
       },
     ],
-  })
+  }))
 })
 
 test("TYPE-SAFETY-2: an assertion is a claim the compiler cannot check", () => {
-  tester.run("no-type-assertion", noTypeAssertion, {
+  assert.doesNotThrow(() => tester.run("no-type-assertion", noTypeAssertion, {
     valid: [
       { filename: SOURCE, code: "const tones = ['a', 'b'] as const" },
       { filename: SOURCE, code: "const n = value as unknown" },
@@ -74,11 +74,11 @@ test("TYPE-SAFETY-2: an assertion is a claim the compiler cannot check", () => {
         errors: [{ messageId: "assertion" }, { messageId: "assertion" }],
       },
     ],
-  })
+  }))
 })
 
 test("TYPE-SAFETY-3: a non-null assertion proves nothing", () => {
-  tester.run("no-non-null-assertion", noNonNullAssertion, {
+  assert.doesNotThrow(() => tester.run("no-non-null-assertion", noNonNullAssertion, {
     valid: [
       { filename: SOURCE, code: "const first = rows[0] ?? fallback" },
       { filename: SOURCE, code: "if (row) use(row.id)" },
@@ -88,11 +88,11 @@ test("TYPE-SAFETY-3: a non-null assertion proves nothing", () => {
       { filename: SOURCE, code: "use(message.providerOutboxId!)", errors: [{ messageId: "bang" }] },
       { filename: SOURCE, code: "const n = a!.b!.c", errors: [{ messageId: "bang" }, { messageId: "bang" }] },
     ],
-  })
+  }))
 })
 
 test("TYPE-SAFETY-4: any turns checking off", () => {
-  tester.run("no-explicit-any", noExplicitAny, {
+  assert.doesNotThrow(() => tester.run("no-explicit-any", noExplicitAny, {
     valid: [
       { filename: SOURCE, code: "const x: unknown = 1" },
       { filename: SOURCE, code: "const anything = 1" },
@@ -102,5 +102,5 @@ test("TYPE-SAFETY-4: any turns checking off", () => {
       { filename: SOURCE, code: "function f(a: Array<any>): void {}", errors: [{ messageId: "any" }] },
       { filename: SOURCE, code: "const x = y as any", errors: [{ messageId: "any" }] },
     ],
-  })
+  }))
 })
