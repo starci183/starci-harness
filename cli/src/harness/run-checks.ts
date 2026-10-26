@@ -146,7 +146,10 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     if ("problem" in document) return outcome(check, [document.problem], "")
     const record = typeof document.value === "object" && document.value !== null ? (document.value as Record<string, unknown>) : {}
     const missing = check.check.requiredKeys.filter((key) => !(key in record))
-    return outcome(check, missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`], `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)`)
+    const expected = Object.entries(check.check.expect ?? {})
+    const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
+    const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...wrong.map((line) => `${document.from}: ${line}`)]
+    return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${expected.length === 0 ? "" : ` and ${String(expected.length)} expected value(s)`}`)
 }
 
 const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "probe" } }): Promise<CheckOutcome> => {

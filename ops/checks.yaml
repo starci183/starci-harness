@@ -54,6 +54,15 @@ presets:
       kind: json
       file: "@result"
       requiredKeys: "{keys}"
+  result-passed:
+    summary: the worker's filed result says its verdict is passed (a uat that saw the product fail is red)
+    behavioural: true
+    args: []
+    check:
+      kind: json
+      file: "@result"
+      requiredKeys: [verdict]
+      expect: {verdict: passed}
   probe:
     summary: an http endpoint answers with the expected status
     behavioural: true

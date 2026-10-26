@@ -13,7 +13,8 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("starci"), args: z.array(z.string()).min(1) }),
     z.object({ kind: z.literal("command"), run: z.union([z.string().min(1), z.array(z.string()).min(1)]) }),
     z.object({ kind: z.literal("files"), onlyAllowPaths: z.boolean().optional(), mustExist: namesSchema.optional() }),
-    z.object({ kind: z.literal("json"), file: z.string().min(1), requiredKeys: namesSchema }),
+    // `expect` pins values a key must hold, so a report that names its own failure can never pass by carrying the key.
+    z.object({ kind: z.literal("json"), file: z.string().min(1), requiredKeys: namesSchema, expect: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional() }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
 ])
 

@@ -33,7 +33,7 @@ labels:
     summary: walk the flows in Playwright Chromium on this host, with a screenshot per step as evidence
     floor: medium
     hostTools: [browser]
-    defaultChecks: [result-json]
+    defaultChecks: [result-passed]
     requireBehavioural: true
   docs:
     summary: documentation and product content
