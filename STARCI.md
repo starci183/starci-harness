@@ -226,6 +226,26 @@ Owner: the Kernel writes each op's contract itself, so an op is only a worker. T
   - Everything else (implement, fix, refactor, test, scaffold, draw, verify suites, UAT, docs, deliver) is a contract the Kernel writes for a worker.
 - **Lite:** the chat agent is the worker. It can write its own contract with the same presets and prove its work with `task verify`.
 
+### Who does what now (owner, 2026-10-27)
+
+| party | work | from the old ops |
+|---|---|---|
+| Kernel (its own reasoning) | plan: analyze the request, bound the scope, revise the goal, write the records and the graph | request.analyze, task.execute, scope.define, goal.revise, work.author, workspace.manage |
+| Kernel (its own reasoning) | decide: business behaviour, architecture, brand, provisional decisions | business.decide, architecture.decide, brand.decide, decision.prepare |
+| Kernel | finish: assemble the handover and ask the Supervisor for owner acceptance | handover.review |
+| Supervisor | owner asks (credentials, accounts), host and runtime operation, scope amends | provision.ask, runtime.operate |
+| Owner | taste and UX acceptance | review.verify (its non-machine part) |
+| Worker (op) | **code**: scaffold, implement, fix, refactor, remove a feature | backend/interface/package.scaffold, backend/interface.implement, code.fix, code.refactor, scope.finish, knowledge.repair |
+| Worker (op) | **test**: write tests inside test paths | test.author |
+| Worker (op) | **ui**: draw screens, generate assets, grow the Grammar | interface.draw, interface.asset, interface.audit, grammar.update |
+| Worker (op) | **verify**: run a heavy suite on a real stack and report it as json | unit/integration/e2e/perf/security.verify |
+| Worker (op) | **uat**: walk the flows in a browser with evidence | uat.verify, uat.assisted.prepare, uat.assisted.verify |
+| Worker (op) | **docs**: documentation and product content | docs.author, content.generate |
+| Worker (op) | **deliver**: publish, deploy or migrate one target and probe it live | release.deliver |
+
+- The worker labels (code, test, ui, verify, uat, docs, deliver) are not manifests. They are a routing hint the Kernel puts on a contract so it can pick the agent and model.
+- When a plan or a decision is too large for the Kernel's own turn, the Kernel may still send it to a worker as a contract whose `expectedOutput` is a json record. It then judges that record itself.
+
 ## Open questions
 
 1. Is the kernel slim list above right, or should the full kernel be audited verb by verb?
