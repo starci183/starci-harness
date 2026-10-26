@@ -25,14 +25,14 @@ test("every exported rule has the ESLint rule shape", () => {
 })
 
 test("parameters use named object types", () => {
-  tester.run("no-inline-parameter-type", noInlineParameterType, {
+  assert.doesNotThrow(() => tester.run("no-inline-parameter-type", noInlineParameterType, {
     valid: ["const read = (props: RowProps) => props", "const read = (value: string) => value"],
     invalid: [{ code: "const Row = (props: { label: string }) => props.label", errors: [{ messageId: "inline" }] }],
-  })
+  }))
 })
 
 test("exported React components use one props parameter with the matching type", () => {
-  tester.run("public-component-signature", publicComponentSignature, {
+  assert.doesNotThrow(() => tester.run("public-component-signature", publicComponentSignature, {
     valid: [
       { filename: COMPONENT, code: "export const SurfaceCard = (props: SurfaceCardProps) => <div>{props.children}</div>" },
       { filename: COMPONENT, code: "export const SurfaceCardBase = (props: SurfaceCardProps) => <div>{props.children}</div>" },
@@ -54,22 +54,22 @@ test("exported React components use one props parameter with the matching type",
       { filename: PACKAGE_BRANCH, code: "export const SurfaceCard = (props: SurfaceCardProps, extra: number) => <div />", errors: [{ messageId: "parameter" }] },
       { filename: COMPONENT, code: "export function SurfaceCard(props: SurfaceCardProps) { return <div>{props.children}</div> }", errors: [{ messageId: "parameter" }] },
     ],
-  })
+  }))
 })
 
 test("ordinary children are allowed in component props", () => {
-  tester.run("public-component-signature", publicComponentSignature, {
+  assert.doesNotThrow(() => tester.run("public-component-signature", publicComponentSignature, {
     valid: [{ filename: COMPONENT, code: "export const ModalBranch = (props: ModalBranchProps) => <section>{props.children}</section>" }],
     invalid: [],
-  })
+  }))
 })
 
 test("styling ownership rules keep internal CSS doors closed", () => {
-  tester.run("no-per-part-classname-prop", noPerPartClassNameProp, {
+  assert.doesNotThrow(() => tester.run("no-per-part-classname-prop", noPerPartClassNameProp, {
     valid: [{ filename: COMPONENT, code: "type Props = { tone: 'quiet' | 'loud' }" }, { filename: NOT_A_COMPONENT, code: "type Props = { titleClassName?: string }" }],
     invalid: [{ filename: PACKAGE_BRANCH, code: "type Props = { titleClassName?: string }", errors: [{ messageId: "perPart" }] }, { filename: COMPONENT, code: "type Props = { titleClassName?: string }", errors: [{ messageId: "perPart" }] }],
-  })
-  typed.run("no-public-classname-prop", noPublicClassNameProp, {
+  }))
+  assert.doesNotThrow(() => typed.run("no-public-classname-prop", noPublicClassNameProp, {
     valid: [
       { filename: COMPONENT, code: "type Props = { tone: 'quiet' | 'loud' }" },
       { filename: NOT_A_COMPONENT, code: "type Props = { className?: string }" },
@@ -82,25 +82,25 @@ test("styling ownership rules keep internal CSS doors closed", () => {
       { filename: PACKAGE_BRANCH, code: "type Props = { classNames?: string }", errors: [{ messageId: "declaration" }] },
       { filename: FEED, code: "import { Badge } from \"../../leaves/Badge\"\nexport const C = () => <Badge className=\"x\" />", errors: [{ messageId: "usage" }] },
     ],
-  })
-  tester.run("no-public-frame-css-props", noPublicFrameCssProps, {
+  }))
+  assert.doesNotThrow(() => tester.run("no-public-frame-css-props", noPublicFrameCssProps, {
     valid: [
       { filename: at("apps/web/src/components/leaves/Stack/index.tsx"), code: "type Props = { gap?: string }" },
       { filename: at("packages/nivo-ui/src/leaves/Stack/index.tsx"), code: "type Props = { gap?: string }" },
       { filename: NOT_A_COMPONENT, code: "type Props = { gap?: string }" },
     ],
     invalid: [{ filename: PACKAGE_BRANCH, code: "type Props = { gap?: string }", errors: [{ messageId: "css" }] }, { filename: COMPONENT, code: "type Props = { gap?: string }", errors: [{ messageId: "css" }] }],
-  })
-  tester.run("no-css-door-type-laundering", noCssDoorTypeLaundering, {
+  }))
+  assert.doesNotThrow(() => tester.run("no-css-door-type-laundering", noCssDoorTypeLaundering, {
     valid: [
       { filename: COMPONENT, code: "type Props = Pick<Base, 'tone'>" },
     ],
     invalid: [{ filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "type Props = Omit<Base, 'style'>", errors: [{ messageId: "utility" }] }, { filename: COMPONENT, code: "type Props = Omit<Base, 'className'>", errors: [{ messageId: "utility" }] }],
-  })
+  }))
 })
 
 test("props are readonly all the way down: fields, index signatures, nested objects and collections (R110, FE-TYPING-2)", () => {
-  tester.run("props-fields-readonly", propsFieldsReadonly, {
+  assert.doesNotThrow(() => tester.run("props-fields-readonly", propsFieldsReadonly, {
     valid: [
       { filename: COMPONENT, code: "interface SurfaceCardProps { readonly title: string; readonly tags: readonly string[]; readonly pair: readonly [string, number]; readonly rows: ReadonlyArray<{ readonly id: string }>; readonly onSelect: () => void; readonly [key: string]: unknown }\nexport const SurfaceCard = (props: SurfaceCardProps) => <div>{props.title}</div>" },
       // an inherited local shape is judged too, and passes when readonly
@@ -123,5 +123,5 @@ test("props are readonly all the way down: fields, index signatures, nested obje
       { filename: COMPONENT, code: "interface Base { id: string }\ninterface Item { name: string }\ninterface SurfaceCardProps extends Base { readonly items: readonly Item[] }\nexport function SurfaceCard(props: SurfaceCardProps) { return <div>{props.id}</div> }", errors: [{ messageId: "field" }, { messageId: "field" }] },
       { filename: COMPONENT, code: "type SurfaceCardProps = { readonly title: string } & { open: boolean }\nexport default function SurfaceCard(props: SurfaceCardProps) { return <div>{props.title}</div> }", errors: [{ messageId: "field" }] },
     ],
-  })
+  }))
 })

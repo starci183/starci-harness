@@ -42,24 +42,24 @@ for (const edition of ["lite", "full"]) {
   })
 
   test(edition + " R65 accepts valid and rejects invalid component line budgets", () => {
-    tester.run("component-line-budget", componentLineBudget, {
+    assert.doesNotThrow(() => tester.run("component-line-budget", componentLineBudget, {
       valid: [{ filename: BLOCK, code: lines(200) }],
       invalid: [{ filename: BLOCK, code: lines(201), errors: [{ messageId: "lines", data: { count: 201, max: 200 } }] }],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid and rejects invalid state and data hook budgets", () => {
-    tester.run("unit-hook-budget", unitHookBudget, {
+    assert.doesNotThrow(() => tester.run("unit-hook-budget", unitHookBudget, {
       valid: [{ filename: BLOCK, code: unit(6, 6) }],
       invalid: [
         { filename: BLOCK, code: unit(7, 0), errors: [{ messageId: "state" }] },
         { filename: BLOCK, code: unit(0, 7), errors: [{ messageId: "data" }] },
       ],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid refresh hooks and rejects invalid polling loops", () => {
-    tester.run("no-hand-rolled-polling", noHandRolledPolling, {
+    assert.doesNotThrow(() => tester.run("no-hand-rolled-polling", noHandRolledPolling, {
       valid: [{
         filename: BLOCK,
         code: "declare const useQueryFeedSwr: (options: object) => unknown\nconst Feed = () => useQueryFeedSwr({ refreshInterval: 5000 })",
@@ -76,11 +76,11 @@ for (const edition of ["lite", "full"]) {
           errors: [{ messageId: "timeout" }],
         },
       ],
-    })
+    }))
   })
 
   test(edition + " R65 accepts Grammar live-time labels and rejects product-owned clocks", () => {
-    tester.run("no-app-relative-clock", noAppRelativeClock, {
+    assert.doesNotThrow(() => tester.run("no-app-relative-clock", noAppRelativeClock, {
       valid: [
         {
           filename: TIME_LEAF,
@@ -105,32 +105,32 @@ for (const edition of ["lite", "full"]) {
           errors: [{ messageId: "clock" }],
         },
       ],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid keyed lists and rejects invalid unkeyed lists", () => {
-    tester.run("list-item-has-key", listItemHasKey, {
+    assert.doesNotThrow(() => tester.run("list-item-has-key", listItemHasKey, {
       valid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row) => <Row key={row.id} row={row} />)" }],
       invalid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row) => <Row row={row} />)", errors: [{ messageId: "missing" }] }],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid stable keys and rejects invalid index keys", () => {
-    tester.run("no-index-key", noIndexKey, {
+    assert.doesNotThrow(() => tester.run("no-index-key", noIndexKey, {
       valid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row, index) => <Row key={row.id} row={row} position={index} />)" }],
       invalid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row, index) => <Row key={index} row={row} />)", errors: [{ messageId: "index" }] }],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid stable props and rejects invalid list literal props", () => {
-    tester.run("no-inline-literal-prop-in-list", noInlineLiteralPropInList, {
+    assert.doesNotThrow(() => tester.run("no-inline-literal-prop-in-list", noInlineLiteralPropInList, {
       valid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row) => <Row key={row.id} row={row} options={options} />)" }],
       invalid: [{ filename: BLOCK, code: "const Feed = () => rows.map((row) => <Row key={row.id} options={{ dense: true }} />)", errors: [{ messageId: "literal" }] }],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid released effects and rejects invalid unreleased effects", () => {
-    tester.run("effect-subscription-needs-cleanup", effectSubscriptionNeedsCleanup, {
+    assert.doesNotThrow(() => tester.run("effect-subscription-needs-cleanup", effectSubscriptionNeedsCleanup, {
       valid: [{
         filename: BLOCK,
         code: "import { useEffect } from 'react'\nuseEffect(() => { const timer = setTimeout(() => undefined, 300); return () => clearTimeout(timer) }, [])",
@@ -140,23 +140,23 @@ for (const edition of ["lite", "full"]) {
         code: "import { useEffect } from 'react'\nuseEffect(() => { setTimeout(() => undefined, 300) }, [])",
         errors: [{ messageId: "unreleased" }],
       }],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid propagated errors and rejects invalid swallowed errors", () => {
-    tester.run("no-empty-catch", noEmptyCatch, {
+    assert.doesNotThrow(() => tester.run("no-empty-catch", noEmptyCatch, {
       valid: [{ filename: BLOCK, code: "try { run() } catch (error) { throw error }" }],
       invalid: [
         { filename: BLOCK, code: "try { run() } catch {}", errors: [{ messageId: "empty" }] },
         { filename: BLOCK, code: "load().catch(() => undefined)", errors: [{ messageId: "promise" }] },
       ],
-    })
+    }))
   })
 
   test(edition + " R65 accepts valid product logging and rejects invalid console calls", () => {
-    tester.run("no-console", noConsole, {
+    assert.doesNotThrow(() => tester.run("no-console", noConsole, {
       valid: [{ filename: BLOCK, code: "logger.error('unavailable')" }],
       invalid: [{ filename: BLOCK, code: "console.error('unavailable')", errors: [{ messageId: "console" }] }],
-    })
+    }))
   })
 }

@@ -47,7 +47,7 @@ test("fe: a new file over the manifest budget is refused, in a component and a h
   git("init", "-q", "-b", "main")
   git("commit", "-q", "--allow-empty", "-m", "seed")
   process.chdir(probeRoot)
-  tester.run("file-size-growth", fileSizeGrowth, {
+  assert.doesNotThrow(() => tester.run("file-size-growth", fileSizeGrowth, {
     valid: [
       { filename: "repo/src/components/Card/index.tsx", code: lines(BUDGET) },
       // a declaration file carries no behaviour
@@ -57,7 +57,7 @@ test("fe: a new file over the manifest budget is refused, in a component and a h
       { filename: "repo/src/components/Card/index.tsx", code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
       { filename: "repo/src/hooks/useFeed.ts", code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
     ],
-  })
+  }))
 })
 
 sizeGrowthSharedSpec({ side: "fe", tester, fileSizeGrowth, budget: BUDGET, fileName: "Big.tsx" })

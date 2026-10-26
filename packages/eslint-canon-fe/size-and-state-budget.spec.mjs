@@ -125,7 +125,7 @@ test("BUDGET-1: malformed export syntax is a parser failure", () => {
 })
 
 test("BUDGET-2: a unit holds at most six state hooks and six data hooks", () => {
-  tester.run("unit-hook-budget", unitHookBudget, {
+  assert.doesNotThrow(() => tester.run("unit-hook-budget", unitHookBudget, {
     valid: [
       { filename: BLOCK, code: unit("Feed", 6, 6) },
       { filename: BLOCK, code: unit("Feed", 0, 0) },
@@ -152,11 +152,11 @@ test("BUDGET-2: a unit holds at most six state hooks and six data hooks", () => 
         errors: [{ messageId: "state" }],
       },
     ],
-  })
+  }))
 })
 
 test("BUDGET-3: no hand-rolled polling loop", () => {
-  typedTester().run("no-hand-rolled-polling", noHandRolledPolling, {
+  assert.doesNotThrow(() => typedTester().run("no-hand-rolled-polling", noHandRolledPolling, {
     valid: [
       { filename: BLOCK, code: "declare const useQueryFeedSwr: (o: object) => unknown\nconst E = () => { const d = useQueryFeedSwr({ refreshInterval: 5000 }); return d }" },
       // a one-shot delay is not a loop
@@ -180,7 +180,7 @@ test("BUDGET-3: no hand-rolled polling loop", () => {
       { filename: HOOK, code: "declare const load: () => Promise<void>\nfunction poll() { setTimeout(() => { void load(); poll() }, 3000) }", errors: [{ messageId: "timeout" }] },
       { filename: HOOK, code: "const poll = async () => { await fetch(\"/x\"); setTimeout(function () { poll() }, 3000) }", errors: [{ messageId: "timeout" }] },
     ],
-  })
+  }))
 })
 
 test("live time and countdowns use the Grammar clock while non-clock timers remain available", () => {
@@ -189,7 +189,7 @@ test("live time and countdowns use the Grammar clock while non-clock timers rema
   const HOOK = at("apps/web/src/hooks/time/useNow.ts")
   const MODULE = at("apps/web/src/modules/time/index.ts")
   const clock = [{ messageId: "clock" }]
-  slotTester().run("no-app-relative-clock", noAppRelativeClock, {
+  assert.doesNotThrow(() => slotTester().run("no-app-relative-clock", noAppRelativeClock, {
     valid: [
       { filename: FEATURE, code: 'import { RelativeTime } from "@starci/grammar/common"; export const A = () => <RelativeTime dateTime="2026-10-25T13:00:00Z" locale="en" mode="countdown" format="digital" template="Offer ends in {time}" expiredLabel="Offer expired" fallback="Loading" />' },
       { filename: FEATURE, code: 'import { DropdownMenu, RelativeTime, WorkspaceShell } from "@starci/grammar/core"; const entries = [{ id: "workspace", label: "Workspace", mark: <Logo /> }]; export const A = () => <WorkspaceShell navigation={<Nav />} navigationLabel="Navigation" primaryLabel="Workspace" navigationDrawer={{ defaultOpen: false, title: "Navigation", openLabel: "Open navigation", closeLabel: "Close navigation", source: MenuGlyph, content: <Nav /> }} primary={<><DropdownMenu entries={entries} trigger={<Trigger />} /><RelativeTime dateTime="2026-10-25T12:00:00Z" locale="en" mode="relative" /><RelativeTime dateTime="2026-10-25T13:00:00Z" locale="en" mode="countdown" fallback="Pending" size="sm" tone="muted" /></>} />' },
@@ -220,5 +220,5 @@ test("live time and countdowns use the Grammar clock while non-clock timers rema
       { filename: at("packages/other/src/time.ts"), code: "setInterval(() => show(Date.now()), 1000)", errors: clock },
       { filename: at("packages/nivo-ui/src/leaves/RelativeTime/index.tsx"), code: "const timer = setInterval(() => show(Date.now()), 1000)", errors: clock },
     ],
-  })
+  }))
 })

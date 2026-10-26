@@ -31,7 +31,7 @@ test("surface rules are published at error with their canon finding codes", () =
 
 for (const edition of ["lite", "full"]) {
   test(`ANATOMY-2 ${edition}: valid context defaults pass and invalid app field variants are rejected across component boundaries`, () => {
-    tester().run("nested-control-variant", nestedControlVariant, {
+    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
       valid: [
         grammar + 'const Page = () => <SearchField />',
         grammar + 'const Page = () => <SurfaceCard><SearchField /></SurfaceCard>',
@@ -58,34 +58,34 @@ for (const edition of ["lite", "full"]) {
         { code: grammar + 'import {memo} from "react"; const Page=()=> <SurfaceCard><Host component={memo(function Child(){return <SearchField variant="primary" />})} /></SurfaceCard>', errors: [variant] },
         { code: grammar + 'import * as React from "react"; const Page=()=> <SurfaceCard><Host component={React.forwardRef(function Child(){return <SearchField variant="primary" />})} /></SurfaceCard>', errors: [variant] },
       ],
-    })
+    }))
   })
 }
 
 for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField", "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput"]) {
   test(`ANATOMY-2: ${Field} cannot force a static variant on either layer`, () => {
-    tester().run("nested-control-variant", nestedControlVariant, {
+    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
       valid: [`import { ${Field} } from "@starci/grammar/core"; const Page = () => <${Field} />`],
       invalid: [
         { code: `import { SurfaceCard, ${Field} } from "@starci/grammar/core"; const Page = () => <SurfaceCard><${Field} variant="primary" /></SurfaceCard>`, errors: [variant] },
         { code: `import { ${Field} as Field } from "@starci/grammar/core"; const Page = () => <Field variant="secondary" />`, errors: [variant] },
       ],
-    })
+    }))
   })
 }
 
 for (const Surface of ["SurfaceCard", "SurfaceListCard", "Sidebar", "Drawer", "Dialog", "AlertDialog", "Popover", "TopBar", "NavigationFeatureNav"]) {
   test(`ANATOMY-2: Tabs uses the ${Surface} surface context`, () => {
-    tester().run("nested-control-variant", nestedControlVariant, {
+    assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
       valid: [`import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs /></${Surface}>`],
       invalid: [{ code: `import { ${Surface}, Tabs } from "@starci/grammar/core"; const Page = () => <${Surface}><Tabs variant="primary" /></${Surface}>`, errors: [tabs] }],
-    })
+    }))
   })
 }
 
 test("ANATOMY-2: Tabs distinguishes painted slots, transparent containers and overlay triggers", () => {
   const imports = 'import { WorkspaceShell, TopBar, NavigationFeatureNav, Rail, ChatWorkspace, SurfaceAccordionCard, Dialog, Tabs } from "@starci/grammar/core"; '
-  tester().run("nested-control-variant", nestedControlVariant, {
+  assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
     valid: [
       imports + 'const Page=()=> <Tabs variant="primary" />',
       imports + 'const Page=()=> <Rail><Tabs variant="primary" /></Rail>',
@@ -112,12 +112,12 @@ test("ANATOMY-2: Tabs distinguishes painted slots, transparent containers and ov
       { code: imports + 'const Page=()=> <SurfaceAccordionCard frame="unpainted" {...props}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
       { code: imports + 'const Page=()=> <SurfaceAccordionCard {...{frame:"unpainted",...props}}><Tabs variant="primary" /></SurfaceAccordionCard>', errors: [tabs] },
     ],
-  })
+  }))
 })
 
 for (const edition of ["lite", "full"]) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
-  tester().run("no-app-surface-paint", noAppSurfacePaint, {
+  assert.doesNotThrow(() => tester().run("no-app-surface-paint", noAppSurfacePaint, {
     valid: [
       'const Page = () => <div className="flex gap-2 w-full" />',
       'const label = "bg-surface"',
@@ -162,13 +162,13 @@ for (const edition of ["lite", "full"]) {
       { code: 'const props={style:{backgroundColor:"var(--surface)"}}; const Page=()=> <div {...props} />', errors: [surface] },
       { code: 'const Page=()=> <div {...{style:{boxShadow:shadow}}} />', errors: [surface] },
     ],
-  })
+  }))
 })
 }
 
 for (const edition of ["lite", "full"]) {
   test(`PADDING-0 ${edition}: valid page gutters pass and invalid padding within the nearest painted surface is rejected`, () => {
-    tester().run("no-list-panel-padding", noListPanelPadding, {
+    assert.doesNotThrow(() => tester().run("no-list-panel-padding", noListPanelPadding, {
       valid: [
         grammar + 'const Page = () => <SurfaceCard><ListBox inset="panel" /></SurfaceCard>',
         grammar + 'const Page = () => <SurfaceCard><div className="py-2 gap-2"><ListBox /></div></SurfaceCard>',
@@ -197,7 +197,7 @@ for (const edition of ["lite", "full"]) {
         { code: grammar + 'const styles={clean:"py-2",dirty:"px-2"}; const {dirty:alias}=styles; const Page=()=> <SurfaceCard><div className={alias}><ListBox /></div></SurfaceCard>', errors: [padding] },
         { code: grammar + 'const Page=()=> <SurfaceCard><div className="px-2">{rows.map(function RenderRow() { return <ListBox /> })}</div></SurfaceCard>', errors: [padding] },
       ],
-    })
+    }))
   })
 }
 

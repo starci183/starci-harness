@@ -27,7 +27,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FE-NEXT-1: the interceptor is proxy.ts and exports proxy", () => {
-  tester.run("no-middleware-file", noMiddlewareFile, {
+  assert.doesNotThrow(() => tester.run("no-middleware-file", noMiddlewareFile, {
     valid: [
       { filename: at("apps/web/src/proxy.ts"), code: "export function proxy(request) { return request }" },
       { filename: at("apps/web/src/proxy.ts"), code: "export const proxy = (request) => request\nexport const config = { matcher: [] }" },
@@ -47,11 +47,11 @@ test("FE-NEXT-1: the interceptor is proxy.ts and exports proxy", () => {
       { filename: at("apps/web/src/proxy.ts"), code: "const middleware = () => 1\nexport { middleware }", errors: [{ messageId: "export" }] },
       { filename: at("apps/web/src/proxy.ts"), code: "export const middleware = () => 1", errors: [{ messageId: "export" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-2: the locale segment is [locale]", () => {
-  tester.run("locale-segment-is-locale", localeSegmentIsLocale, {
+  assert.doesNotThrow(() => tester.run("locale-segment-is-locale", localeSegmentIsLocale, {
     valid: [
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export default function P() {}" },
       { filename: at("apps/web/src/app/[locale]/courses/[slug]/page.tsx"), code: "export default function P() {}" },
@@ -65,11 +65,11 @@ test("FE-NEXT-2: the locale segment is [locale]", () => {
       { filename: at("apps/web/src/app/[lang]/layout.tsx"), code: "export default function L() {}", errors: [{ messageId: "segment" }] },
       { filename: at("apps/admin/src/app/[locale]/[i18n]/x/page.tsx"), code: "export const metadata = 1", errors: [{ messageId: "segment" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-3: next-intl is the only i18n stack", () => {
-  tester.run("no-second-i18n-stack", noSecondI18nStack, {
+  assert.doesNotThrow(() => tester.run("no-second-i18n-stack", noSecondI18nStack, {
     valid: [
       { code: "import { useTranslations } from \"next-intl\"" },
       { code: "import { getTranslations } from \"next-intl/server\"" },
@@ -84,11 +84,11 @@ test("FE-NEXT-3: next-intl is the only i18n stack", () => {
       { code: "import useTranslation from \"next-translate/useTranslation\"", errors: [{ messageId: "stack" }] },
       { code: "import { createI18n } from \"typesafe-i18n\"", errors: [{ messageId: "stack" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-4: html lang comes from the locale", () => {
-  tester.run("html-lang-from-locale", htmlLangFromLocale, {
+  assert.doesNotThrow(() => tester.run("html-lang-from-locale", htmlLangFromLocale, {
     valid: [
       { code: "const L = ({ locale }) => <html lang={locale}><body /></html>" },
       { code: "const L = () => <html><body /></html>" },
@@ -100,11 +100,11 @@ test("FE-NEXT-4: html lang comes from the locale", () => {
       { code: "const L = () => <html lang={\"vi\"}><body /></html>", errors: [{ messageId: "lang" }] },
       { code: "const L = () => <html lang={`vi`}><body /></html>", errors: [{ messageId: "lang" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-5: every page exports metadata", () => {
-  tester.run("page-exports-metadata", pageExportsMetadata, {
+  assert.doesNotThrow(() => tester.run("page-exports-metadata", pageExportsMetadata, {
     valid: [
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export const metadata = { title: 'Home' }\nexport default function P() {}" },
       { filename: at("apps/web/src/app/[locale]/courses/page.tsx"), code: "export async function generateMetadata() { return {} }\nexport default function P() {}" },
@@ -125,11 +125,11 @@ test("FE-NEXT-5: every page exports metadata", () => {
         errors: [{ messageId: "metadata" }],
       },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-6: a Suspense boundary has a fallback that renders something", () => {
-  tester.run("no-null-suspense-fallback", noNullSuspenseFallback, {
+  assert.doesNotThrow(() => tester.run("no-null-suspense-fallback", noNullSuspenseFallback, {
     valid: [
       { code: "const A = () => <Suspense fallback={<Skeleton />}><B /></Suspense>" },
       { code: "const A = () => <React.Suspense fallback={<Skeleton />}><B /></React.Suspense>" },
@@ -141,11 +141,11 @@ test("FE-NEXT-6: a Suspense boundary has a fallback that renders something", () 
       { code: "const A = () => <Suspense fallback={undefined}><B /></Suspense>", errors: [{ messageId: "nullFallback" }] },
       { code: "const A = () => <React.Suspense fallback={null}><B /></React.Suspense>", errors: [{ messageId: "nullFallback" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-7: navigation helpers come from the locale-aware public owner", () => {
-  tester.run("navigation-from-intl", navigationFromIntl, {
+  assert.doesNotThrow(() => tester.run("navigation-from-intl", navigationFromIntl, {
     valid: [
       { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import { Link, useRouter, usePathname } from '@/modules/routes'" },
       { filename: at("apps/web/src/components/blocks/Nav/index.tsx"), code: "import { notFound, useSearchParams, useParams } from 'next/navigation'" },
@@ -169,11 +169,11 @@ test("FE-NEXT-7: navigation helpers come from the locale-aware public owner", ()
         errors: [{ messageId: "helper" }, { messageId: "helper" }],
       },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-8: no hand-drawn anchor for an internal route", () => {
-  tester.run("no-native-anchor", noNativeAnchor, {
+  assert.doesNotThrow(() => tester.run("no-native-anchor", noNativeAnchor, {
     valid: [
       { code: 'const A = () => <a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>' },
       { code: 'const A = () => <a href="mailto:help@example.com">x</a>' },
@@ -188,12 +188,12 @@ test("FE-NEXT-8: no hand-drawn anchor for an internal route", () => {
       { code: 'const A = () => <a href="https://example.com" target="_blank">x</a>', errors: [{ messageId: "rel" }] },
       { code: 'const A = () => <a href="/x" target="_blank">x</a>', errors: [{ messageId: "internal" }, { messageId: "rel" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-9: a route is built by modules/routes, not written at the call", () => {
   const NAV = at("apps/web/src/components/blocks/Nav/index.tsx")
-  tester.run("no-hardcoded-route", noHardcodedRoute, {
+  assert.doesNotThrow(() => tester.run("no-hardcoded-route", noHardcodedRoute, {
     valid: [
       { filename: NAV, code: "const A = () => <Link href={routes.course(slug)}>x</Link>" },
       { filename: NAV, code: "router.push(routes.home())" },
@@ -216,7 +216,7 @@ test("FE-NEXT-9: a route is built by modules/routes, not written at the call", (
       // a folder named routes that the routes slot does not own gets no exemption
       { filename: at("apps/web/src/components/blocks/routes/index.tsx"), code: 'redirect("/sign-in")', errors: [{ messageId: "route" }] },
     ],
-  })
+  }))
 })
 
 test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
@@ -229,7 +229,7 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
   const PACKAGE = at("packages/shop-i18n/src/app.ts")
   const APP_INDEX = at("apps/web/src/modules/i18n/index.ts")
   const APP_REQUEST = at("apps/web/src/modules/i18n/request.ts")
-  multi.run("i18n-stack-in-one-module", i18nStackInOneModule, {
+  assert.doesNotThrow(() => multi.run("i18n-stack-in-one-module", i18nStackInOneModule, {
     valid: [
       // the package factory is where the stack is written, all four layers
       { filename: PACKAGE, code: ROUTING },
@@ -264,8 +264,8 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
       { filename: at("packages/shop-ui/src/leaves/Menu/component.tsx"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
       { filename: at("packages/shop-api/src/client.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
     ],
-  })
-  single.run("i18n-stack-in-one-module", i18nStackInOneModule, {
+  }))
+  assert.doesNotThrow(() => single.run("i18n-stack-in-one-module", i18nStackInOneModule, {
     valid: [
       // a repository with exactly one app writes the stack in that app's modules/i18n
       { filename: APP_REQUEST, code: REQUEST },
@@ -282,7 +282,7 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
       { filename: at("apps/web/src/features/pages/home/component.tsx"), code: REQUEST, errors: [{ messageId: "stack" }] },
       { filename: at("apps/web/src/proxy.ts"), code: ROUTING, errors: [{ messageId: "stack" }] },
     ],
-  })
+  }))
 })
 
 for (const edition of ["lite", "full"]) {
@@ -295,7 +295,7 @@ for (const edition of ["lite", "full"]) {
     const i18n = "apps/web/src/modules/i18n/index.ts"
     const proxy = "apps/web/src/proxy.ts"
     const navigation = 'import { createNavigation as navigate } from "next-intl/navigation"; export const nav = navigate(routing)'
-    tester.run("i18n-stack-in-one-module", i18nStackInOneModule, {
+    assert.doesNotThrow(() => tester.run("i18n-stack-in-one-module", i18nStackInOneModule, {
       valid: [
         entry(routes, navigation),
         entry(routes, 'import * as intl from "next-intl/navigation"; export const nav = intl.createNavigation(routing)'),
@@ -315,6 +315,6 @@ for (const edition of ["lite", "full"]) {
         rejected(proxy, 'export { useRouter } from "@/modules/routes"', "proxyNavigation"),
         rejected("apps/web/src/components/blocks/Nav/index.tsx", navigation, "stack"),
       ],
-    })
+    }))
   })
 }

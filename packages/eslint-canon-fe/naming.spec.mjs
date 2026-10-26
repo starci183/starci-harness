@@ -22,7 +22,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("NAMING-1: a module-level function declaration goes back to an arrow const", () => {
-  tester.run("prefer-arrow-export", preferArrowExport, {
+  assert.doesNotThrow(() => tester.run("prefer-arrow-export", preferArrowExport, {
     valid: [
       "export const E = () => null",
       "const format = (v) => `${v}`",
@@ -34,11 +34,11 @@ test("NAMING-1: a module-level function declaration goes back to an arrow const"
       { code: "function format(v) { return v }", errors: [{ messageId: "fn" }] },
       { code: "export default function Route() { return null }", errors: [{ messageId: "fn" }] },
     ],
-  })
+  }))
 })
 
 test("NAMING-2: a handler is named for the slot it will be passed into", () => {
-  tester.run("handler-on-prefix", handlerOnPrefix, {
+  assert.doesNotThrow(() => tester.run("handler-on-prefix", handlerOnPrefix, {
     valid: [
       "const onClaim = () => claim()",
       "const E = () => <Button on={{ press: onClaim }} />",
@@ -56,11 +56,11 @@ test("NAMING-2: a handler is named for the slot it will be passed into", () => {
         errors: [{ messageId: "handle" }],
       },
     ],
-  })
+  }))
 })
 
 test("NAMING-3: a path names its file in the one language every reader shares", () => {
-  tester.run("no-second-language-in-path", rules["no-second-language-in-path"], {
+  assert.doesNotThrow(() => tester.run("no-second-language-in-path", rules["no-second-language-in-path"], {
     valid: [
       // The ordinary case: an English route, whatever the copy inside it turns out to be.
       { filename: at("apps/web/src/app/provisioning/page.tsx"), code: "export const x = 1" },
@@ -94,7 +94,7 @@ test("NAMING-3: a path names its file in the one language every reader shares", 
         errors: [{ messageId: "path" }],
       },
     ],
-  })
+  }))
 })
 
 test("machine-only: a const introduces a value instead of renaming one identifier", () => {
@@ -102,7 +102,7 @@ test("machine-only: a const introduces a value instead of renaming one identifie
   const LAYOUT = at("apps/web/src/app/[locale]/layout.tsx")
   const ROUTE_HELPER = at("apps/web/src/app/[locale]/(app)/helper.ts")
   const COMPONENT = at("apps/web/src/components/leaves/Thing/index.tsx")
-  slotTester().run("no-direct-const-alias", noDirectConstAlias, {
+  assert.doesNotThrow(() => slotTester().run("no-direct-const-alias", noDirectConstAlias, {
     valid: [
       "const Apollo = createApolloClient()",
       "const Apollo = clients.ApolloClient",
@@ -139,5 +139,5 @@ test("machine-only: a const introduces a value instead of renaming one identifie
       // a file named like a segment file outside slot fe.route is an ordinary file
       { filename: at("apps/web/src/modules/routes/page.ts"), code: "export const metadata = shared", errors: [{ messageId: "alias" }] },
     ],
-  })
+  }))
 })

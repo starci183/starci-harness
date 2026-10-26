@@ -73,7 +73,7 @@ for (const edition of ['lite', 'full']) {
     const tester = new RuleTester({
       languageOptions: { parser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
     });
-    tester.run('no-null-suspense-fallback', noNullSuspenseFallback, {
+    assert.doesNotThrow(() => tester.run('no-null-suspense-fallback', noNullSuspenseFallback, {
       valid: [
         { code: 'const Pending = () => <Suspense fallback={<Skeleton />}><Content /></Suspense>' },
         { code: 'const Pending = () => <React.Suspense fallback={<Skeleton />}><Content /></React.Suspense>' },
@@ -83,6 +83,6 @@ for (const edition of ['lite', 'full']) {
         { code: 'const Pending = () => <Suspense><Content /></Suspense>', errors: [{ messageId: 'nullFallback' }] },
         { code: 'const Pending = () => <Suspense fallback={undefined}><Content /></Suspense>', errors: [{ messageId: 'nullFallback' }] },
       ],
-    });
+    }));
   });
 }
