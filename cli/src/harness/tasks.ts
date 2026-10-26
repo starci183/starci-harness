@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import type { Contract } from "./contract.js"
-import { contractHash } from "./contract.js"
+import { contractHash, parseContract } from "./contract.js"
 import { now } from "./ledger.js"
 
 /** The states of a task. Transitions are allowed only along TRANSITIONS; the ledger keeps facts, this module keeps the rules. */
@@ -16,13 +16,17 @@ export const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = 
     queued: ["running", "cancelled"],
     running: ["reported", "failed", "cancelled", "effect_unknown"],
     reported: ["verifying", "cancelled"],
-    verifying: ["done", "failed", "awaiting_owner"],
+    // verifying -> reported: the verify reached no verdict (HEAD moved, the verifier died or broke); no try is spent.
+    verifying: ["done", "failed", "awaiting_owner", "reported"],
     effect_unknown: ["running", "failed"],
     done: [],
     failed: [],
     awaiting_owner: [],
     cancelled: [],
 }
+
+/** Statuses with no way out of TRANSITIONS: a task in one of them holds nothing. */
+export const TERMINAL_STATUSES: readonly TaskStatus[] = (Object.keys(TRANSITIONS) as TaskStatus[]).filter((status) => TRANSITIONS[status].length === 0)
 
 /** A task as the ledger stores it, with its contract parsed. */
 export interface TaskRow {
@@ -73,7 +77,8 @@ const toTask = (row: Record<string, unknown>): TaskRow => ({
     id: str(row, "id"),
     workflowId: optStr(row, "workflow_id"),
     label: str(row, "label"),
-    contract: JSON.parse(str(row, "contract_json")) as Contract,
+    // Through the schema, so a contract stored before path normalisation is read in today's spelling.
+    contract: parseContract(JSON.parse(str(row, "contract_json"))),
     contractHash: str(row, "contract_hash"),
     tryNo: Number(row.try_no),
     retryOf: optStr(row, "retry_of"),
@@ -97,6 +102,19 @@ const toAttempt = (row: Record<string, unknown>): AttemptRow => ({
 /** Appends one event to the ledger. */
 export const recordEvent = (db: DatabaseSync, kind: string, subject: string | null, data: unknown): void => {
     db.prepare("INSERT INTO events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), kind, subject, JSON.stringify(data))
+}
+
+/** The data of the newest event of one kind about one subject, if any. */
+export const lastEvent = (db: DatabaseSync, kind: string, subject: string): unknown => {
+    const row = db.prepare("SELECT data_json FROM events WHERE kind = ? AND subject = ? ORDER BY id DESC LIMIT 1").get(kind, subject)
+    return row === undefined ? undefined : JSON.parse(str(row, "data_json"))
+}
+
+/** Frees every path lease of a task that ended; returns how many it held. Path leases themselves are leases.ts's. */
+export const releaseTaskLeases = (db: DatabaseSync, taskId: string): number => {
+    const released = Number(db.prepare("DELETE FROM leases WHERE task_id = ?").run(taskId).changes)
+    if (released > 0) recordEvent(db, "leases-released", taskId, { count: released })
+    return released
 }
 
 /** Registers a queued task for a fit contract; a retry names the task it retries and gets the next try number. */
