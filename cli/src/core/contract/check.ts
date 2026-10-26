@@ -38,9 +38,10 @@ export const contractCheckVerb = defineVerb({
         const files = (resolved?.context ?? []).map((item) => ({ entry: item.entry, source: item.source }))
         const output = (resolved?.output ?? []).map((item) => ({ key: item.key, type: item.spec.type, source: item.source }))
         const data: ContractCheckData = { file, hash: contractHash(contract), label: contract.label, fit: problems.length === 0, problems, checks, context: files, output }
+        const problemLines = problems.map((problem) => `- ${problem}`).join("\n")
         const message = data.fit
             ? `fit: ${String(files.length)} context file(s), ${String(output.length)} output key(s), ${String(checks.length)} check(s), ${String(checks.filter((check) => check.behavioural).length)} behavioural; hash ${data.hash.slice(0, 12)}`
-            : `unfit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`
+            : `unfit:\n${problemLines}`
         return Promise.resolve({ data, message, exitCode: data.fit ? 0 : 1 })
     },
 })

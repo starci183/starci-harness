@@ -67,10 +67,16 @@ export const lineFindings = (file: string, text: string): string[] =>
         return !rule.placeholder?.test(hit[1] ?? "")
     }).map((rule) => rule.name)
 
+const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+
+const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => file.endsWith(".enc") && isSopsEnvelope(readFile(file) ?? "")
+
+const forbiddenPathFindings = (files: readonly string[]): SecretFinding[] =>
+    files.flatMap((file) => FORBIDDEN_PATHS.filter((rule) => rule.test(file)).map((rule): SecretFinding => ({ file, line: null, pattern: rule.name })))
+
 /** Scans the added lines of a unified diff (git diff -U0) and its changed file list; returns findings without values. */
 export const scanDiff = (diff: string, files: readonly string[], readFile: (file: string) => string | undefined): SecretFinding[] => {
-    const findings: SecretFinding[] = []
-    for (const file of files) for (const rule of FORBIDDEN_PATHS) if (rule.test(file)) findings.push({ file, line: null, pattern: rule.name })
+    const findings: SecretFinding[] = forbiddenPathFindings(files)
     let file = ""
     let line = 0
     for (const raw of diff.split(/\r?\n/)) {
@@ -78,14 +84,13 @@ export const scanDiff = (diff: string, files: readonly string[], readFile: (file
             file = raw.slice(4).replace(/^b\//, "")
             continue
         }
-        const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw)
+        const hunk = HUNK_HEADER.exec(raw)
         if (hunk !== null) {
             line = Number(hunk[1])
             continue
         }
         if (!raw.startsWith("+")) continue
-        const encrypted = file.endsWith(".enc") && isSopsEnvelope(readFile(file) ?? "")
-        if (!encrypted) for (const pattern of lineFindings(file, raw.slice(1))) findings.push({ file, line, pattern })
+        if (!isEncryptedFile(file, readFile)) for (const pattern of lineFindings(file, raw.slice(1))) findings.push({ file, line, pattern })
         line += 1
     }
     return findings

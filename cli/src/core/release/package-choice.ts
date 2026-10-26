@@ -6,7 +6,7 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 export const choosePackage = (root: string, named: string | undefined): WorkspacePackage => {
     const packages = listPackages(root)
     if (named !== undefined) {
-        const wanted = named.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/$/, "") || "."
+        const wanted = named.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "") || "."
         const found = packages.find((pkg) => pkg.relativeDir === wanted || pkg.name === named)
         if (found === undefined) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package ${named}; packages: ${packages.map((pkg) => pkg.relativeDir).join(", ")}`)
         return found

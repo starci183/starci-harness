@@ -32,10 +32,33 @@ const onRegistry = async (pkg: WorkspacePackage, cwd: string): Promise<boolean> 
     return view.exitCode === 0 && view.stdout.trim() === pkg.version
 }
 
+const actionOf = async (pkg: WorkspacePackage, cwd: string): Promise<Action> => {
+    if (pkg.private) return "private"
+    return (await onRegistry(pkg, cwd)) ? "published" : "publish"
+}
+
+const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], root: string): Promise<string | undefined> => {
+    const pkg = packages.find((candidate) => candidate.name === row.package)
+    if (pkg === undefined) return undefined
+    const run = await captureNpm(["publish", "--tag", row.distTag], pkg.dir)
+    if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
+    if (!(await onRegistry(pkg, root))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry after publishing`)
+    return `${row.package}@${row.version}`
+}
+
+/** Publishes the due rows one after the other (npm publishes stay ordered); stops at the first refusal. */
+const publishDue = async (due: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, published: string[]): Promise<void> => {
+    await due.reduce(async (previous, row) => {
+        await previous
+        const done = await publishRow(row, packages, root)
+        if (done !== undefined) published.push(done)
+    }, Promise.resolve())
+}
+
 const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promise<PlanRow[]> =>
     Promise.all(
         packages.map(async (pkg): Promise<PlanRow> => {
-            const action: Action = pkg.private ? "private" : (await onRegistry(pkg, cwd)) ? "published" : "publish"
+            const action = await actionOf(pkg, cwd)
             return { package: pkg.name, version: pkg.version, dir: pkg.relativeDir, distTag: distTagOf(pkg.version), action }
         }),
     )
@@ -68,14 +91,7 @@ export const releasePublishVerb = defineVerb({
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")
             }
             await requireCiGreen(context, root, "release.publish", head)
-            for (const row of due) {
-                const pkg = packages.find((candidate) => candidate.name === row.package)
-                if (pkg === undefined) continue
-                const run = await captureNpm(["publish", "--tag", row.distTag], pkg.dir)
-                if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
-                if (!(await onRegistry(pkg, root))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry after publishing`)
-                published.push(`${row.package}@${row.version}`)
-            }
+            await publishDue(due, packages, root, published)
         }
         const data: PublishData = { mode: flags.publish ? "publish" : "plan", rows, published }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])

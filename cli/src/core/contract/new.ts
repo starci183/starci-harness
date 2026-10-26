@@ -15,13 +15,16 @@ type ArgValue = string | number | string[]
 const list = (value: string | undefined): string[] => (value ?? "").split(",").map((path) => path.trim()).filter((path) => path !== "")
 
 /** A file name from the task summary, so contracts of one project sit side by side in contracts/ of its state folder. */
-const slugOf = (summary: string): string =>
-    summary
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, SLUG_CHARS)
-        .replace(/-+$/, "") || "contract"
+/** Drops the dashes at both ends of a slug. */
+const trimDashes = (text: string): string => {
+    let start = 0
+    let end = text.length
+    while (start < end && text[start] === "-") start += 1
+    while (end > start && text[end - 1] === "-") end -= 1
+    return text.slice(start, end)
+}
+
+const slugOf = (summary: string): string => trimDashes(trimDashes(summary.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")).slice(0, SLUG_CHARS)) || "contract"
 
 /**
  * One `--check` entry: `preset` or `preset:arg=value,arg=value`, where a value with `|` is a list (`keys=summary|files`);
@@ -116,12 +119,15 @@ export const contractNewVerb = defineVerb({
         }
         // Through the schema, so the file holds the same normalised paths every reader will see.
         const contract = parseContract(raw)
-        const out = flags.out === undefined ? join(projectDir(root), "contracts", `${slugOf(flags.summary)}.json`) : resolve(context.cwd, flags.out)
+        const slugFile = `${slugOf(flags.summary)}.json`
+        const out = flags.out === undefined ? join(projectDir(root), "contracts", slugFile) : resolve(context.cwd, flags.out)
         if (existsSync(out) && !flags.force) throw new Refusal("CONTRACT_EXISTS", `${out} exists; pass --force to overwrite, or --out <file>`)
         mkdirSync(dirname(out), { recursive: true })
         writeFileSync(out, `${JSON.stringify(contract, null, 2)}\n`)
         const problems = contractProblems(contract, ops)
-        const verdict = problems.length === 0 ? "fit to send" : `not fit yet:\n${problems.map((problem) => `- ${problem}`).join("\n")}`
-        return { data: { file: out, contract, fit: problems.length === 0, problems }, message: `wrote ${out}${problems.length === 0 ? ` with ${String(resolveChecks(contract, ops).length)} check(s), base and extend` : ""}; ${verdict}` }
+        const problemLines = problems.map((problem) => `- ${problem}`).join("\n")
+        const verdict = problems.length === 0 ? "fit to send" : `not fit yet:\n${problemLines}`
+        const checkCount = problems.length === 0 ? ` with ${String(resolveChecks(contract, ops).length)} check(s), base and extend` : ""
+        return { data: { file: out, contract, fit: problems.length === 0, problems }, message: `wrote ${out}${checkCount}; ${verdict}` }
     },
 })

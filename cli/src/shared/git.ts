@@ -41,5 +41,5 @@ export const changedFiles = async (cwd: string, base: string): Promise<string[]>
     const committed = await git(cwd, ["diff", "--name-only", base])
     const untracked = await git(cwd, ["ls-files", "--others", "--exclude-standard"])
     const files = [...committed.split("\n"), ...untracked.split("\n")].map((file) => file.trim()).filter((file) => file !== "")
-    return [...new Set(files)].sort()
+    return [...new Set(files)].sort((left, right) => left.localeCompare(right))
 }
