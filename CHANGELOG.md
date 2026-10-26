@@ -1,5 +1,8 @@
 # Changelog
 
+## 9.1.6 - 2026-10-26
+- Changed: the bundled runtime copies follow the hfs 4.7.44 and cli 1.7.44 pins and the lint family versions (the runtime install file carries the wave version). No rule changes.
+
 ## 9.1.5 - 2026-10-26
 - Changed: R280 reads one assignment-target index per run (bundled hfs copy); the bundled runtime copies follow the hfs 4.7.43 and cli 1.7.43 pins and the lint family versions. No rule changes.
 
