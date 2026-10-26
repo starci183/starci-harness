@@ -8,6 +8,7 @@ import { RESULT_FILE, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { TERMINAL_STATUSES } from "./tasks.js"
+import { judgeUatResult, parseUatRecord, runFiles } from "./work.js"
 
 /** The verdict of one check. */
 export interface CheckOutcome {
@@ -24,7 +25,8 @@ export type ResultSource = { readonly output: unknown; readonly from: string } |
 /**
  * Where the checks of one contract run and what they compare against: `diffBase` is the base a `starci check` verb diffs
  * (the candidate's parent in a clean verify), `timeoutMs` bounds every process a check starts, `result` feeds `@result`
- * json checks, and `taskId` and `since` scope the files check of the work tree.
+ * json checks, and `taskId` and `since` scope the files check of the work tree. `source` is the work tree a clean checkout
+ * was built from (default `root`): a uat run folder is git-ignored, so it is read there and never from the candidate.
  */
 export interface CheckPlace {
     readonly root: string
@@ -34,6 +36,7 @@ export interface CheckPlace {
     readonly result?: ResultSource
     readonly taskId?: string
     readonly since?: string
+    readonly source?: string
 }
 
 const DETAIL_LINES = 30
@@ -162,6 +165,26 @@ const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly
     }
 }
 
+/**
+ * A uat walk: the filed result judged against the Work record of the candidate and the files of the run folder in the source
+ * work tree (harness/work.ts judgeUatResult); red names every mismatch, the first failing step first.
+ */
+const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "uat-flow" } }, place: CheckPlace): CheckOutcome => {
+    const { record: recordPath, run } = check.check
+    const file = join(place.root, recordPath)
+    if (!existsSync(file)) return outcome(check, [`missing: ${recordPath}`], "")
+    const document = readJsonDocument(RESULT_FILE, place)
+    if ("problem" in document) return outcome(check, [document.problem], "")
+    let judged
+    try {
+        judged = judgeUatResult(parseUatRecord(readFileSync(file, "utf8"), recordPath), document.value, new Set(runFiles(join(place.source ?? place.root, run))))
+    } catch (error: unknown) {
+        return outcome(check, [error instanceof Error ? error.message : String(error)], "")
+    }
+    const problems = judged.problems.map((problem) => problem.text)
+    return outcome(check, judged.failingStep === undefined ? problems : [`first failing step: ${String(judged.failingStep)}`, ...problems], `${document.from} walks every step of ${recordPath} with its screenshots in ${run}`)
+}
+
 interface ScopeStep {
     readonly package: string
     readonly step: string
@@ -231,5 +254,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return runJsonCheck({ ...check, check: primitive }, place)
         case "probe":
             return runProbeCheck({ ...check, check: primitive })
+        case "uat-flow":
+            return runUatFlowCheck({ ...check, check: primitive }, place)
     }
 }

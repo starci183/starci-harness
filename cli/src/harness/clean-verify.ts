@@ -220,6 +220,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         // Scoped starci checks diff the candidate against its parent: in the detached checkout HEAD is the candidate itself.
         const place: CheckPlace = {
             root: dir,
+            source: root,
             cwd: join(dir, contract.context.cwd ?? "."),
             diffBase: built.facts.parent,
             ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),

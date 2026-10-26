@@ -16,6 +16,8 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     // `expect` pins values a key must hold, so a report that names its own failure can never pass by carrying the key.
     z.object({ kind: z.literal("json"), file: z.string().min(1), requiredKeys: namesSchema, expect: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional() }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
+    // A uat walk: the worker's filed result judged against a Work record and the files of its run folder (harness/work.ts).
+    z.object({ kind: z.literal("uat-flow"), record: z.string().min(1), run: z.string().min(1) }),
 ])
 
 /** One primitive check after preset expansion. */
