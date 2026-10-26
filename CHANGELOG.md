@@ -2,7 +2,8 @@
 
 ## 9.1.8 - 2026-10-26
 
-- Changed: the bundled canon pins follow the final package versions (Grammar 0.12.11 with the lint families). No rule changes.
+- Added: the `divider-full-bleed` rule (a Grammar `Divider` between full-bleed regions is itself full bleed), the SegmentedControl `size="control"` carve-out and the `@starci/event-stream` registration in the fe-stack concern.
+- Changed: the bundled canon pins follow the final package versions (Grammar 0.12.12 with the lint families).
 
 ## 9.1.7 - 2026-10-26
 
