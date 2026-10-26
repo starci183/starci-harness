@@ -112,7 +112,7 @@ for (const edition of ["lite", "full"]) {
     t.after(fixture.cleanup)
     assert.doesNotThrow(() => fixture.tester.run("frontend-source-layout", graphRules["frontend-source-layout"], {
       valid: [{ filename: fixture.at(validPath), code: validCode }],
-      invalid: [{ filename: fixture.at(invalidPath), code: invalidCode, errors: [{ messageId: "finding", data: { message: "[FE_SOURCE_LAYOUT_INVALID] Production source under a Next application root must belong to app, features, components, hooks or modules, or be a framework-pinned root file Next.js loads from the source root (contexts/code/fe/folder.yaml FE-FOLDER-1 frameworkPinnedRootFiles); configuration cannot hide an unclassified owner." } }] }],
+      invalid: [{ filename: fixture.at(invalidPath), code: invalidCode, errors: [{ messageId: "finding", data: { message: "[FE_SOURCE_LAYOUT_INVALID] Production source under a Next application root must belong to app, features, components, hooks or modules, or be a framework-pinned root file Next.js loads from the source root (knowledge/patterns/fe/folder.yaml FE-FOLDER-1 frameworkPinnedRootFiles); configuration cannot hide an unclassified owner." } }] }],
     }))
   })
 }

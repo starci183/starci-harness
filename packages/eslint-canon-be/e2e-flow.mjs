@@ -1,5 +1,5 @@
 /**
- * The rules that hold the e2e half of `contexts/code/be/test.yaml` (catalog R48 `BE_SPEC_QUALITY`).
+ * The rules that hold the e2e half of `knowledge/patterns/be/test.yaml` (catalog R48 `BE_SPEC_QUALITY`).
  *
  * A rule earns its place by being exact: it fires on a syntactic or typed shape, never on a judgement, or it becomes
  * something authors learn to work around. What these four rules enforce is transport bypass (a bus or an actor called
