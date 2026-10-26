@@ -6,7 +6,7 @@ import { asRefusal, EXIT_USAGE, UsageError } from "./shared/errors.js"
 import { printRefusal, printResult } from "./shared/output.js"
 import type { OutputMode } from "./shared/output.js"
 import { locateTree } from "./shared/tree.js"
-import type { AnyVerb, VerbContext } from "./shared/verb.js"
+import type { AnyVerb, FlagSpec, VerbContext } from "./shared/verb.js"
 
 interface GlobalOptions {
     readonly json?: boolean
@@ -29,9 +29,14 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true)
         const given = command.processedArgs as unknown[]
         const positionalValues = Object.fromEntries(positionals.map((name, index) => [name, typeof given[index] === "string" ? given[index] : undefined]))
-        const values = Object.fromEntries(
-            Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true ? positionalValues[name] : spec.kind === "boolean" ? flags[name] === true : flags[name]]),
-        )
+        // commander stores `--dry-run` as `dryRun` and `--no-commit` as a negated `commit`, so read each flag through its own option.
+        const optionValue = (name: string, spec: FlagSpec): string | boolean | undefined => {
+            const option = command.options.find((candidate) => candidate.long === `--${name}`)
+            const value = option === undefined ? undefined : flags[option.attributeName()]
+            if (spec.kind !== "boolean") return value
+            return option?.negate === true ? value === false : value === true
+        }
+        const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true ? positionalValues[name] : optionValue(name, spec)]))
         const result = await verb.run(context, values)
         printResult(mode, verb.schema, result)
         if (result.exitCode !== undefined) process.exitCode = result.exitCode

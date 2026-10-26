@@ -55,8 +55,9 @@ export const ledgerPath = (root: string): string => join(root, WORK_DIR, "runtim
 /** Opens (and creates or migrates) the ledger of a project, with WAL and a busy timeout for concurrent seats. */
 export const openLedger = (root: string): DatabaseSync => {
     mkdirSync(join(root, WORK_DIR), { recursive: true })
-    const db = new DatabaseSync(ledgerPath(root))
-    db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;")
+    // The busy timeout must hold before the WAL switch, or a concurrent open fails with "database is locked".
+    const db = new DatabaseSync(ledgerPath(root), { timeout: 5000 })
+    db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")
     db.exec(SCHEMA)
     db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
     return db
