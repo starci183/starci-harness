@@ -20,7 +20,7 @@
 - Changed: the bundled runtime copies (canon pins) follow the stylelint 2.0.13, hfs 4.7.38 and cli 1.7.38 pins. No rule changes.
 
 ## 3.4.45 - 2026-10-26
-- Changed: the bundled runtime copies (canon pins, front-end stack, rules and the Grammar index) follow the alpha.31.1 sources. No rule changes.
+- Changed: the bundled runtime copies (canon pins, front-end stack, rules and the Grammar index) follow the alpha.31 sources. No rule changes.
 
 ## 3.4.44 - 2026-10-26
 - Fixed: R80 delegated claims map arguments over runtime parameters and reject spreads, effects hidden in `const` preparation, protected or replaced helpers, and runner or manager unions containing lookalikes. Private helpers (including `#private`) and independently judged public delivery helpers retain the transaction proof; public overrides preserve the claim's manager binding and prelude restrictions, including widened parameters and arrow properties. Every declared runner and manager origin must match its owner.
