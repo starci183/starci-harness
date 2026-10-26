@@ -44,6 +44,11 @@ export const why = {
     en: "`<file>` picks a larger control size or mixes control sizes in one row.",
     fix: "Omit size so Grammar draws the one 40px control height; use sm only for every control of an item or dense toolbar row, and lg only for a landing hero call to action.",
   },
+  "no-grammar-shim": {
+    code: "FE_GRAMMAR_SHIM",
+    en: "`<file>` re-exports a Grammar component under the app's own name.",
+    fix: "Delete the shim and import the component from the Grammar where it is rendered; report the Grammar defect the shim worked around (the op files blocked) so the Grammar fixes it.",
+  },
   "button-no-variant": {
     code: "FE_BUTTON_NO_VARIANT",
     en: "`<file>` chooses a Button or IconButton variant directly.",

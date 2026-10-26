@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.1.10 - 2026-10-27
+
+- Added: starci-fe/no-grammar-shim (R321 FE_GRAMMAR_SHIM): an app never re-exports a Grammar export under its own name (`export { X } from`, `export * from`, or an imported binding exported again); the Grammar defect a shim would hide is reported to the Grammar.
+
 ## 9.1.9 - 2026-10-26
 
 - Added: starci-fe/control-height (R320 FE_CONTROL_HEIGHT), selection-fill-no-check and no-grammar-internal-selector.
