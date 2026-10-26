@@ -16,7 +16,7 @@ import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
 /** A dry replay of a contract file in the working tree. */
@@ -196,7 +196,7 @@ export const taskVerifyVerb = defineVerb({
     summary: "verify a task on a clean checkout of HEAD plus its allowPaths and commit it on green; --contract dry-replays a contract file",
     editions: BOTH_EDITIONS,
     effect: "local-write",
-    roles: EVERYONE,
+    roles: WRITERS,
     schema: "starci/task-verify@1",
     flags: {
         task: { kind: "string", summary: "the ledger task to verify and settle", positional: true },
