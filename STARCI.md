@@ -105,7 +105,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `task` | `send`, `result`, `status`, `verify`, `cancel` (a lite agent sends its own task, files the result inline and verifies it) |
 | `app` | `scaffold`, `sync`, `check`, `info`, `emit`, `db`, `secret` |
 | `pattern` | `list`, `show`, `add` |
-| `uat` | `run` (a `uat` worker's Playwright script in the pinned image of `ops/uat.yaml`, host ports forwarded on 127.0.0.1, screenshots into the evidence folder) |
+| `uat` | `run` (a `uat` worker's Playwright script in the pinned image of `ops/uat.yaml`, host ports forwarded on 127.0.0.1, `--env` variables of the caller's shell handed in by name only, the script's own arguments after `--`, screenshots into the evidence folder) |
 
 **Lite apps (agent in chat) (10)**
 

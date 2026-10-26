@@ -1,12 +1,12 @@
 import { existsSync, mkdirSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path"
-import { containerName, dockerServer, fileStamps, loadUat, prepareImage, runContainer, tailOf } from "../../harness/uat.js"
+import { containerName, dockerServer, fileStamps, loadUat, prepareImage, RESERVED_ENV_PREFIX, runContainer, tailOf } from "../../harness/uat.js"
 import type { Prepared } from "../../harness/uat.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
-/** What one uat run did: the image, the forwards, the evidence it wrote and the script's verdict. */
+/** What one uat run did: the image, the forwards, the variables handed in (names only), the script's arguments, the evidence it wrote and the script's verdict. */
 interface UatRunData {
     readonly image: string
     readonly prepared: Prepared
@@ -14,6 +14,8 @@ interface UatRunData {
     readonly container: string
     readonly script: string
     readonly forwards: readonly number[]
+    readonly env: readonly string[]
+    readonly args: readonly string[]
     readonly out: string
     readonly files: readonly string[]
     readonly exitCode: number
@@ -32,6 +34,23 @@ const portsOf = (value: string | undefined): number[] => {
         return port
     })
     return [...new Set(ports)]
+}
+
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+/**
+ * The names of --env: each a variable name, none the harness's own, each set in this process's environment (else
+ * UAT_ENV_MISSING, naming only the names). The values are never read here: docker takes them from the environment it inherits.
+ */
+const envOf = (value: string | undefined): string[] => {
+    const names = [...new Set((value ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry !== ""))]
+    for (const name of names) {
+        if (!ENV_NAME.test(name)) throw new UsageError(`--env takes variable names as NAME,NAME,...; "${name}" is not one`)
+        if (name.startsWith(RESERVED_ENV_PREFIX)) throw new UsageError(`--env ${name}: ${RESERVED_ENV_PREFIX}* variables are the harness's own in the container`)
+    }
+    const missing = names.filter((name) => process.env[name] === undefined)
+    if (missing.length > 0) throw new Refusal("UAT_ENV_MISSING", `--env names ${missing.join(", ")}, which ${missing.length === 1 ? "is" : "are"} not set in this process's environment; set ${missing.length === 1 ? "it" : "them"} in the shell that runs starci`)
+    return names
 }
 
 const timeoutOf = (value: string | undefined, fallback: number): number => {
@@ -60,7 +79,7 @@ const repositoryOrCwd = async (cwd: string): Promise<string> => {
 /** `starci uat run <script>`: runs a Playwright script in the pinned Playwright image, with host ports forwarded on 127.0.0.1 and an evidence folder. */
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
-    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml): host ports forwarded on 127.0.0.1, its evidence folder at /evidence; exit 0 is green",
+    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["op", "worker", "agent", "kernel", "supervisor", "owner"],
@@ -71,10 +90,13 @@ export const uatRunVerb = defineVerb({
         out: { kind: "string", summary: "the evidence folder, relative to the repository root, created (default uat-evidence/<container>)" },
         "timeout-ms": { kind: "string", summary: "the deadline of the run; the container is killed and removed at it (default ops/uat.yaml timeoutMs)" },
         image: { kind: "string", summary: "another official Playwright image (<repo>:v<x.y.z>-<distro>) instead of the pinned one" },
+        env: { kind: "string", summary: "variables of this process's environment handed to the script by name only (NAME,NAME,...); the values never reach argv or the output" },
+        args: { kind: "rest", summary: "after --: arguments handed to the script as process.argv" },
     },
     run: async (context, flags) => {
         const config = loadUat()
         const forwards = portsOf(flags.forward)
+        const env = envOf(flags.env)
         const timeoutMs = timeoutOf(flags["timeout-ms"], config.timeoutMs)
         const image = flags.image ?? config.image
         const script = resolve(context.cwd, flags.script)
@@ -92,7 +114,7 @@ export const uatRunVerb = defineVerb({
         mkdirSync(out, { recursive: true })
         const before = fileStamps(out)
         context.progress(`running ${basename(script)} as ${container} in ${prepared.runImage}${forwards.length === 0 ? "" : `, forwarding ${forwards.join(", ")} to the host`}`)
-        const run = await runContainer({ container, runImage: prepared.runImage, scriptDir, scriptName: basename(script), outDir: out, forwards, timeoutMs, shmSize: config.shmSize }, context.cwd)
+        const run = await runContainer({ container, runImage: prepared.runImage, scriptDir, scriptName: basename(script), outDir: out, forwards, timeoutMs, shmSize: config.shmSize, env, args: flags.args }, context.cwd)
         const files = [...fileStamps(out)].filter(([path, stamp]) => before.get(path) !== stamp).map(([path]) => path).sort()
         const outPath = fromRoot.split("\\").join("/")
         const data: UatRunData = {
@@ -102,6 +124,8 @@ export const uatRunVerb = defineVerb({
             container,
             script,
             forwards,
+            env,
+            args: flags.args,
             out: outPath,
             files,
             exitCode: run.exitCode,
@@ -115,6 +139,7 @@ export const uatRunVerb = defineVerb({
         const lines = [
             `image ${image} (${prepared.state === "cached" ? `cached as ${prepared.runImage}` : `built ${prepared.runImage}${prepared.pulledBase ? " after pulling the base" : ""} in ${(prepared.durationMs / 1000).toFixed(1)} s`})`,
             `forwards ${forwards.length === 0 ? "none" : forwards.map((port) => `127.0.0.1:${String(port)}`).join(", ")}`,
+            `env ${env.length === 0 ? "none" : `${env.join(", ")} (by name)`}; args ${flags.args.length === 0 ? "none" : JSON.stringify(flags.args)}`,
             `evidence ${outPath}: ${files.length === 0 ? "no files written" : files.join(", ")}`,
             verdict,
             `container ${container} ${run.removed ? "removed" : "STILL PRESENT (docker rm --force it)"}`,

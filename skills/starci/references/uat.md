@@ -50,9 +50,28 @@ starci uat run flows/sign-in.mjs --forward 3000,3001 --out uat-evidence/sign-in
 - `--json` reports the image, the forwards, the evidence folder and the files the run wrote, the exit code, the
   duration and the tail of stdout and stderr. Exit 0 is green, 1 is red or refused, 2 is bad usage.
 - A refusal names its cause: `UAT_DOCKER_UNREACHABLE` (no Docker engine; tell the Supervisor), `UAT_SCRIPT_MISSING`,
-  `UAT_OUT_OUTSIDE`, `UAT_PREPARE_FAILED`, `UAT_IMAGE_UNVERSIONED`.
+  `UAT_OUT_OUTSIDE`, `UAT_PREPARE_FAILED`, `UAT_IMAGE_UNVERSIONED`, `UAT_ENV_MISSING`.
 
-## 4. File the evidence
+## 4. Credentials and parameters
+
+A flow that signs in needs the test account, and the script must never hold it in a file. The harness passes
+named variables from your own shell into the container, by name only: the value never reaches a command line,
+the output or the `--json` report, which lists the names.
+
+1. Read the test account file the brief names, on the host, into variables of your own shell. Never echo them.
+2. Run the script with `--env` naming them, and the script's own parameters after `--`:
+
+```text
+starci uat run flows/sign-in.mjs --env UAT_USER,UAT_PASS --forward 3000 --out uat-evidence/sign-in
+```
+
+   Append `-- --role admin` (anything after `--`) to hand the script its own arguments: it reads them as
+   `process.argv.slice(2)`, as if run directly.
+3. In the script, read `process.env.UAT_USER` and `process.env.UAT_PASS`, and never log, screenshot or write them.
+
+A name that is not set refuses `UAT_ENV_MISSING` before anything runs; `STARCI_UAT_*` names are the harness's own.
+
+## 5. File the evidence
 
 Name the evidence folder and each screenshot in your result output, with the verdict of every flow, and file it the
 way your brief says. The contract's checks read that record and the files.
