@@ -73,7 +73,7 @@ const tryLock = (db: DatabaseSync, me: Verifier): Verifier | undefined => {
 
 /**
  * Runs `work` while this process holds the project's settle lock (a ledger row), so verifies that settle run one at a time
- * (STARCI §10 #3, side serialisation): each builds its candidate on the HEAD the previous one left. A holder whose process
+ * (side serialisation, cli/README.md "Settling"): each builds its candidate on the HEAD the previous one left. A holder whose process
  * died is taken over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing.
  */
 export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, work: () => Promise<T>): Promise<T> => {

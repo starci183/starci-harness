@@ -9,7 +9,7 @@
 # A new ruling replaces the entry it amends (replace, never append). Decisions taken by an agent and not yet
 # confirmed live in decisions/open-*.md; when the owner confirms one, it moves here and its row there is deleted.
 # Harness, release and process rulings (supervisor, release waves, push policy, loosening, draw loop) are not
-# knowledge; decisions/open-core.md lists them for policy/ and STARCI.md.
+# knowledge; decisions/open-core.md lists them for policy/ and CONTEXT.md "Decisions".
 schema: starci/rulings@1
 
 rulings:
