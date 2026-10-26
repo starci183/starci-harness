@@ -23,7 +23,7 @@ The step names `sm`, `md`, `lg`, `control` are the ones the contract's size sets
 | `md` | the one control height | every standalone control: buttons, icon buttons, fields, selects, segmented controls, tab bars, switches, bar avatars, composer send | default; the app omits `size` |
 | `sm` | the nested step, one increment below | a control nested in a collection item, or a dense toolbar whose every control is `sm` | the app, only in those two placements |
 | `lg` | the hero step, one increment above | the one conversion call to action of a landing hero | the app, only there |
-| `control` | the bar step: the `md` height, held for bar controls | every control in a navbar, top bar or site bar, so identity, search, switches and avatars align | the bar composition; the app passes nothing or `control` |
+| `control` | the bar step: the `md` height, held for bar controls | every control in a navbar, top bar or site bar, so identity, search, switches and avatars align | the bar composition only; the app passes nothing (grammar decision D-3) |
 
 Rules, each with one place to harden:
 
