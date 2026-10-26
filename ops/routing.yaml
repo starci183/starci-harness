@@ -1,5 +1,5 @@
 # Which agent and model takes a task, how a provider in trouble is set aside, and the workflow budgets.
-# The router reads this file and ops/labels.yaml (a label's difficulty floor and the host tools it needs); nothing here is
+# The router reads this file and ops/ops/<label>.md (a label's difficulty floor and the host tools it needs); nothing here is
 # restated in code. A tier is an ordered chain of members; the first member that survives every step is picked.
 schema: starci/routing@1
 

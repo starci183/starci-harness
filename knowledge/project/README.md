@@ -45,13 +45,14 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 
 - **Record first.** A change of behaviour starts by editing the record that owns it ([work.md](work.md)); code and
   tests trace to records and never redefine them. A record's `requiresProof` names the commands that prove it; the
-  Kernel carries them into the contract's `expectedOutput`.
+  Kernel carries them into the contract's `checks.extend`, beside the checks its op file holds as base.
 - **Contract.** Its shape, presets and refusals are `starci explain` (`contract new`, `contract check`) and
   [README.md](../../README.md) "How it works"; a docs task leases a scope inside `.starciwork`, never the
   whole tree. A project whose clean checkout lacks generated code (GraphQL types, Supabase row types, catalogs)
   declares the commands that produce it in the contract's `context.setup`; the clean verify runs them after install
   and before the checks, so a green never depends on a file only the worker's checkout had.
-- **Op and verify.** The worker brief is [ops/worker.md](../../ops/worker.md); checks cover only what the task
+- **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed
+  by the label's op file; checks cover only what the task
   changed, and the full suite is CI's after the push ([CONTEXT.md](../../CONTEXT.md) "Decisions").
 - **Settle and state.** Who writes a record's state and what counts as evidence is [work.md](work.md) "Who writes
   what".
@@ -60,7 +61,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | this file → [anatomy.md](anatomy.md) for where the code lives → [lint.md](lint.md) for what machines will judge → the [knowledge reading order](../README.md#reading-order-by-task) for the side → the records the contract names |
+| write code (be or fe) | [patterns/README.md "Read for a coding task"](../patterns/README.md#read-for-a-coding-task), which starts with this file, [anatomy.md](anatomy.md) and [lint.md](lint.md) → the records the contract names |
 | change UI | [knowledge/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [patterns/fe](../patterns/fe/README.md) → [lint.md](lint.md) |
 | write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |

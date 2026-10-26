@@ -49,7 +49,7 @@ reasoning for an agent.
 | Task | Order |
 |---|---|
 | FE screen on a grammar | [ui/README](ui/README.md) → [ui/composition](ui/composition.md) and the [components](ui/components/README.md) it uses → [ui/scale](ui/scale.md) → [grammars/contract](grammars/contract.md) and the app's grammar file → [patterns/fe/README](patterns/fe/README.md) (the app's limits, the status recipe) → [ui.md](patterns/fe/ui.md), [function.md](patterns/fe/function.md), the topics of the slots touched → lint |
-| BE feature | [patterns/be/README](patterns/be/README.md) → architecture → folder → the topic of its trigger kind → domain, persistence → error, typing, naming → test; resolve each `R<n>` in [hfs/rules.yaml](hfs/rules.yaml) and each path in [hfs/slots.yaml](hfs/slots.yaml) |
+| Code, back end or front end | [patterns/README "Read for a coding task"](patterns/README.md#read-for-a-coding-task) (each coding op's `context.base` follows it); a screen reads the row above first |
 | New dependency | [stack/fe.yaml](stack/fe.yaml) (or the be topic that owns the concern) → [stack/pins.yaml](stack/pins.yaml) |
 | New pattern or rule | this file's house rules → the topic that owns the concept (extend it, never add a sibling) → [hfs/rules.yaml](hfs/rules.yaml) if a machine can decide it → a ruling in [decisions/rulings.yaml](decisions/rulings.yaml) when the owner decided it |
 | New grammar | [grammars/contract](grammars/contract.md) → [vendor/parity.yaml](vendor/parity.yaml) → implement; nothing else changes |

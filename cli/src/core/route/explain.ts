@@ -32,7 +32,7 @@ export const routeExplainVerb = defineVerb({
     roles: EVERYONE,
     schema: "starci/route-explain@1",
     flags: {
-        label: { kind: "string", summary: "the worker label (ops/labels.yaml)", required: true },
+        label: { kind: "string", summary: "the worker label, one op file ops/ops/<label>.md", required: true },
         difficulty: { kind: "string", summary: "the measured difficulty: easy, medium, hard, insane or 1..4 (the label's floor raises it)" },
         attempt: { kind: "string", summary: "the attempt number in the task's lineage (default 1)" },
         red: { kind: "string", summary: "the contract-red attempts so far, as agent/model,... (the second escalates the tier)" },

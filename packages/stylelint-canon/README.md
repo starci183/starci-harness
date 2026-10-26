@@ -13,7 +13,7 @@ import { loadAppTokens, starciStylelintConfig } from "@starci/stylelint-canon"
 export default starciStylelintConfig({ appTokens: loadAppTokens(import.meta.url) })
 ```
 
-Peers: `stylelint` (17) and `postcss-value-parser`; exact versions are in `knowledge/hfs/canon-pins.yaml`.
+Peers: `stylelint` (17) and `postcss-value-parser`; exact versions are in `knowledge/stack/pins.yaml`.
 
 ## No rule is off
 

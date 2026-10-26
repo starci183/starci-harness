@@ -46,13 +46,18 @@ Each leaves this list the day a machine checks it.
   has no "Enforced by" line: FE-COMMENT-2, FE-COMMENT-3, FE-COMMENT-4, FE-STATE-1, FE-STORAGE, FE-ERROR-3, FE-APPS-2,
   FE-PACKAGES-3, FE-FUNCTION-3, FE-FUNCTION-6, FE-NAMING-3, FE-NAMING-5, FE-NAMING-6, FE-UPLOAD, FE-TYPING-3,
   FE-TYPING-4, FE-TYPING-5, FE-TYPING-7. Every back-end pattern rule names its enforcer.
+- **Shared pattern rules held by review.** A rule of [patterns/shared](../patterns/shared/README.md) whose "Enforced
+  by" line says review only, on both sides or on one: SHARED-IMPORTS-2 on both sides; SHARED-COMMENT-2,
+  SHARED-NAMING-1 and SHARED-TYPING-3 on the front end; SHARED-NAMING-3 on the back end; SHARED-TYPING-1 for a
+  restated tsconfig flag.
 - **Interface decisions.** Which component, rank, ramp step, state coverage and composition a screen uses
   ([knowledge/ui](../ui/README.md)); [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) holds the numbers a
   proof gate would read, and no gate of this repository runs it.
-- **Work record shape.** Every fact of [work.md](work.md): schemas and fields per family, id form, leaf-only state,
-  proof that cannot outrun its target, UAT accounts naming identities and never a password, evidence beside the
-  flow. No validator of the harness reads `.starciwork`.
-- **Who writes a record's state.** The harness's settle does not write Work yet ([work.md](work.md) "Who writes what").
+- **Work record shape.** Every fact of [work.md](work.md) for the families other than `work/uat-flow@1`: schemas and
+  fields per family, id form, leaf-only state, proof that cannot outrun its target. The harness validates a uat flow
+  record and its evidence file only when a uat task is sent, judged or settled (`cli/src/harness/work.ts`).
+- **Who writes a record's state.** Outside the uat records the settle writes, a record's state is a `docs` task's edit,
+  held by review ([work.md](work.md) "Who writes what").
 - **The `hfs.json` profile key.** The CLI reads `kind`, `edition` and `policy`; a profile under any other key is
   silently ignored and the default applies ([README.md](README.md)).
 - **Pins.** That an app's `@starci/*` and shared dependencies sit at the versions of [stack/pins.yaml](../stack/pins.yaml):
