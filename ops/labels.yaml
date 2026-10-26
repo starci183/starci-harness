@@ -1,7 +1,8 @@
 # The seven worker labels. A label is a routing hint plus the default checks of a new contract;
 # the Kernel writes every contract itself, and the label only helps it pick the agent and the presets.
 # requireBehavioural: contract check refuses a contract of this label without a behavioural check
-# (tests-pass, json-required, probe or a command), so green cannot mean only "it compiles".
+# (tests-pass, json-required, result-json, probe or a command), so green cannot mean only "it compiles".
+# A default check that takes arguments (result-json needs keys) leaves `contract new` output unfit until they are given.
 schema: starci/labels@1
 labels:
   code:
@@ -26,13 +27,13 @@ labels:
     summary: run one heavy suite the goal asks for and report it as json
     floor: medium
     hostTools: [git, node, docker]
-    defaultChecks: []
+    defaultChecks: [result-json]
     requireBehavioural: true
   uat:
     summary: walk the flows in a browser with evidence
     floor: medium
     hostTools: [browser]
-    defaultChecks: []
+    defaultChecks: [result-json]
     requireBehavioural: true
   docs:
     summary: documentation and product content
