@@ -44,6 +44,8 @@ cli/
 | `starci release publish [--publish]` | core | publish | the plan of package versions missing from npm; --publish publishes them from main and reads each back |
 | `starci release ci-status [--sha]` | core | read | the GitHub Actions verdict of a commit |
 | `starci app info` | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
+| `starci contract new\|check`, `task send\|result\|status\|verify\|cancel` | core | see "CLI of the harness" | the P1 task protocol, in both editions |
+| `starci seat start\|list\|stop` | full | see "CLI of the harness" | Orca worker seats |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
@@ -72,7 +74,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 
 ### CLI: 78 verbs in 4 sets, plus 5 hidden
 
-**Core: both editions, every role (28)**
+**Core: both editions (32)**
 
 | group | verbs |
 |---|---|
@@ -81,7 +83,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `git` | `commit`, `sync`, `backup` |
 | `release` | `push`, `cut`, `publish`, `ci-status`, `notes` |
 | `contract` | `new`, `check` |
-| `task` | `verify` |
+| `task` | `send`, `result`, `status`, `verify`, `cancel` (a lite agent sends its own task, files the result inline and verifies it) |
 | `app` | `scaffold`, `sync`, `check`, `info`, `emit`, `db`, `secret` |
 | `pattern` | `list`, `show`, `add` |
 
@@ -101,19 +103,19 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
 | `uat` | `record` (the browser recorder a `uat` worker uses) |
 
-**Harness: full edition, Orca workflows (34)**
+**Harness: full edition, Orca workflows (30)**
 
 | group | verbs | who |
 |---|---|---|
 | `workflow` | `define`, `start`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone) |
 | `plan` | `show`, `diff`, `apply` | Kernel |
-| `task` | `send`, `wait`, `result`, `status`, `cancel` | Kernel and Supervisor send; a worker runs `result` |
+| `task` | `wait` (later) | Kernel, Supervisor |
 | `msg` | `send` (hidden: `recv`, `reply`) | Kernel, Supervisor |
 | `seat` | `start`, `list`, `stop` (hidden: `run`) | Kernel, Supervisor |
 | `route` | `explain` | everyone |
 | `provider` | `status`, `recover` | Supervisor |
 | `budget` | `show`, `raise` | raise: owner or Supervisor |
-| `lease` | `list` | everyone |
+| `lease` | `list` (later; `task status <id>` shows a task's leases today) | everyone |
 | `daemon` | `start`, `stop`, `status` (hidden: `sweep`) | owner, Supervisor |
 | `supervisor` | `start`, `stop`, `status`, `tell`, `decide` | owner |
 | `debug` | `open`, `report` | Supervisor opens; Debug reports |
@@ -163,7 +165,7 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
 | supervisor | run the host, take tasks beyond an op, carry the owner channel | always, one per host | every workflow, seat and ruling | land on main, the light push, seats, budgets, rulings the owner decides | + remote (push); publish only with the owner's approval | write product code (it sends a task to an op), bend a gate | Owner: decisions, publish, rulings |
 | debug | diagnose a harness or environment failure, never task content | one incident | everything, read-only (ledgers, logs, transcripts) | a diagnosis and a repair task only | read | edit code, change rules, run any writing verb | Supervisor: the diagnosis plus the repair task |
 
-The rights are enforced from each verb's `effect` and `roles`. The seat runner tells the CLI its role, and a verb refuses a role it does not list.
+The rights come from each verb's `effect` and `roles`. Once the seat runner tells the CLI its role, a verb refuses a role it does not list; until then they are declared, not enforced.
 
 ### Changing a running workflow (amend)
 
@@ -194,15 +196,11 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
     - The billing workflow is untouched.
 
 ### Storage: one SQLite file per project (`.starciwork/runtime.sqlite`)
-There are four tables, instead of about 50 runtime tables and 90 machine tables:
-- `seats`: who runs where, plus the last pong;
-- `messages`: commands and their replies, with a correlation id and a deadline;
-- `tasks`: the contract, the sender, the receiver, the status and the attempts;
-- `results`: the output, the evidence and the verify verdict.
+One ledger per project, shared by its linked worktrees, instead of about 50 runtime tables and 90 machine tables. Its tables are listed in the harness plan, §6.
 
 ### CLI of the harness (full edition)
 
-Who runs each verb is enforced from its `roles`. `hidden` verbs are called by the seat runner, not typed by people or agents.
+Who runs each verb is declared in its `roles` (enforcement comes later, see "Verbs written so far"). `hidden` verbs are called by the seat runner, not typed by people or agents. A verb marked (later) is not built yet. A task verb serves both editions; a seat verb is full only.
 
 | verb | who runs it | effect | what it does |
 |---|---|---|---|
@@ -214,18 +212,18 @@ Who runs each verb is enforced from its `roles`. `hidden` verbs are called by th
 | `plan show <workflow>` | everyone | read | the current graph: tasks, edges, contract hashes and states |
 | `plan diff <workflow> --to <goal-version>` | kernel, supervisor | read | the keep, continue, redo, add and drop classification of a replan |
 | `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
-| `contract new [--check <preset>...]` | kernel, supervisor | local-write | write a contract, composing `expectedOutput` from named check presets |
-| `contract check <file>` | everyone | read | validate the contract: schema, machine-runnable checks, `allowPaths` |
-| `task send --to worker\|supervisor [--agent claude\|codex\|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |
-| `task wait <id> [--timeout]` | kernel, supervisor | read | block until the result arrives or the deadline passes |
-| `task result <id> --status <s> --output @<file>` | op, supervisor | local-write | the receiver returns done, blocked, mismatch or failed with its output |
-| `task verify <id>` | kernel, supervisor, op | read | replay every check of `expectedOutput` against the result; only green settles |
-| `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts and verdicts |
-| `task cancel <id>` | kernel, supervisor | host | send `cancel` to the task's seat |
-| `msg send <seat> ping\|status\|cancel\|pause\|resume` | kernel, supervisor | host | one command; the seat runner answers within the deadline |
+| `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `.starciwork/contracts/<summary>.json`), composing `expectedOutput` from the label's default checks and named presets |
+| `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository, never `.starciwork`, never named twice (`./src/a` is `src/a`) |
+| `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch --agent <a> --model <m> [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
+| `task wait <id> [--timeout]` (later) | kernel, supervisor | read | block until the result arrives or the deadline passes |
+| `task result <id> --status done\|blocked\|mismatch\|failed --output <json>\|@<file>` | worker, op, kernel, supervisor | local-write | file the one immutable result of the open attempt; a queued task is worked inline (lite); `failed` preserves and resets the task's dirty `allowPaths`, then releases its leases |
+| `task verify <id> [--no-commit]` / `task verify <id> --recover` / `task verify --contract <file> [<id>] [--record]` | every writing role, op included | local-write | verify a reported task on a clean checkout of HEAD plus its `allowPaths`, one settle at a time: green moves the branch to a harness commit of only those paths (never pushed) and closes the task's seats; red preserves and resets its paths, fails the task and releases its leases; no verdict (`HEAD_MOVED`, a broken verifier) returns it to reported with no try spent. `--no-commit` only checks; `--recover` frees a task whose verifier died; `--contract` dry-replays a contract in the working tree, its `@result` json checks reading the task's output file |
+| `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts, result, leases, check runs, seats and preserved work |
+| `task cancel <id> [--reason <r>]` | owner, kernel, supervisor | host | stop and release the task's seats through Orca, preserve and reset its dirty `allowPaths`, cancel it and release its leases; refused while a worker may still write |
+| `msg send <seat> ping\|status\|cancel\|pause\|resume` (later) | kernel, supervisor | host | one command; the seat runner answers within the deadline |
 | `msg recv` / `msg reply` | hidden (seat runner) | local-write | the runner's command loop |
-| `seat start --role <r> --agent <claude\|codex\|devin> [--task <id>]` | kernel, supervisor | host | launch an agent plus its runner in Orca or headless |
-| `seat list` / `seat stop <id>` | supervisor (list: everyone) | host | the seats and their last pong; stop one |
+| `seat start <task> --agent <a> --model <m> [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>] [--dry-run]` / `seat start <task> --resume` | owner, kernel, supervisor, coordinator | host | write the task's brief, claim the queued task and launch one Orca worker on it (see §7); other roles and headless seats come later |
+| `seat list [--live]` / `seat stop <seat>` | list: everyone; stop: owner, kernel, supervisor, coordinator | read / host | the seats with agent, model and status (`--live` asks Orca); stop and release one seat's worker |
 | `seat run` | hidden | host | the seat runner process itself |
 | `supervisor start\|stop\|status` | owner | host | the one host Supervisor seat |
 | `supervisor tell "<text>"` | owner | local-write | an owner message; the Supervisor turns it into a task or an amend |
@@ -233,11 +231,11 @@ Who runs each verb is enforced from its `roles`. `hidden` verbs are called by th
 | `debug open --incident <id>` | supervisor | host | start a Debug seat on a harness or environment failure |
 | `debug report --diagnosis <file> --repair <contract>` | debug | local-write | return the diagnosis and the repair contract to the Supervisor |
 
-Core verbs that every role uses: `check run|lint|typecheck`, `release push|cut|publish|ci-status`, `git commit|sync`, `explain` and `doctor`.
+Core verbs that every role uses: `check run|lint|typecheck`, `release ci-status`, `explain` and `doctor`. `release push|cut|publish` list the owner and release roles (push also coordinator and lead); see Open questions.
 
 That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today.
 
-Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task verify`, so a chat agent can state the contract of its own work and prove it with the same checks.
+Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task send|result|status|verify|cancel`: a chat agent states the contract of its own work, sends it, files the result inline and has it verified and committed with the same checks.
 
 ## Ops are plain workers (owner, 2026-10-27)
 
@@ -245,7 +243,7 @@ Owner: the Kernel writes each op's contract itself, so an op is only a worker. T
 - **One worker.** Every op runs the same brief:
   - read the contract;
   - do `input` inside `context`, writing only `allowPaths`;
-  - run `starci task verify` on its own work until it is green or the budget ends;
+  - dry-replay its contract with `starci task verify <task> --contract <copy>` until it is green or the budget ends;
   - return with `starci task result`.
   The intelligence that used to live in op manifests (what to read, what to prove) is now in the contract the Kernel writes.
 - **The Kernel picks the worker:** the agent (Claude, Codex or Devin), the model and the budget for each task. It decides from the task (size, kind of work) and the host's provider health and quotas.
@@ -256,7 +254,7 @@ Owner: the Kernel writes each op's contract itself, so an op is only a worker. T
   - `json-schema <file> <schema>`: the file is one the task lands, read from the clean checkout; `@result` names the worker's filed result output instead (preset `result-json`);
   - `renders <viewports>`;
   - `probe <url> <status>`.
-  `contract new` writes an empty contract, and `contract check` refuses a check that no machine can run.
+  `contract new --check` composes them, and `contract check` refuses a check that no machine can run.
 - **What the old ops did now lives elsewhere:**
   - Planning (request.analyze, scope.define, goal.revise, work.author) is the Kernel's own work.
   - Reviewing (review.verify) is gone: machine checks go in `expectedOutput`, and taste goes to the owner.
@@ -391,19 +389,22 @@ The ledger has ten tables:
 - `attempts` (one per dispatch: pick record, agent, model, outcome, verdict);
 - `results` (immutable, unique per attempt);
 - `check_runs` (raw exit codes; a worker's own runs are evidence only);
-- `leases` (path prefixes, mandatory TTL, fencing token);
-- `seats` (role, agent, Orca handle, last pong);
+- `leases` (path prefixes held until the task ends, a fencing token, and a due time that is information only and never frees a path);
+- `seats` (role, agent, model, attempt, Orca dispatch handle, worker-start request id, Run, the launch record a resume replays, status, last pong, end time);
 - `messages` (commands with a correlation id and a deadline);
 - `provider_health`;
 - `events` (append-only).
 
-Status transitions are enforced in code with one state machine, not duplicated in triggers. Task states are:
-`queued → ready → leased → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown`.
+Status transitions are enforced in code with one state machine (`TRANSITIONS` in `harness/tasks.ts`), not duplicated in triggers. Task states are:
+`queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a launch Orca could not confirm or deny). A launch that certainly failed returns `running` or `effect_unknown` to `queued`; a verify with no verdict returns `verifying` to `reported`. A new column comes by an additive migration that bumps the ledger version.
 
 ### 7. Seat launch (Orca)
-- An agent starts through `orca orchestration worker-start --spec <short spec> --worktree <wf tree> --agent claude|codex|devin [--model --effort]`.
-- A brief longer than the inline limit goes into a prompt file, and the spec points at it. This works around the Windows argv cap.
-- After the start, the effective agent and model are attested from `worker-show`. A failed start is cleaned up with stop and release, so nothing is left half-launched.
+- The claim comes first, in one transaction: the queued task goes to running, and an attempt and a `starting` seat carrying the launch record are opened. Only then is Orca called, so two starts never both launch.
+- An agent starts through `orca orchestration run-create` (unless `--run` names a Run) and `worker-start --spec <short spec> --worktree <path|selector> --agent <a> --model <m> [--effort]`, each under a `--retry-request` id derived from the attempt id.
+- The brief always goes to `<project>/.starciwork/briefs/<task>.md`, shared by every worktree, and the spec only points at it. This works around the Windows argv cap.
+- After the start, the effective agent and model are attested from `worker-show`. A model mismatch, or a task cancelled during the launch, closes the worker (stop and release); a mismatch rolls the task back to queued.
+- A certain failure closes what was left and rolls the task back to queued, with no try spent. An unknown outcome (outcome_unknown, an unreadable answer, a timeout) leaves the task `effect_unknown` with its leases and its seat open; `seat start <task> --resume` replays the same requests.
+- A cancel stops and releases the task's seats. A launch whose outcome is unknown and that named no dispatch refuses the cancel until a resume learns the dispatch.
 
 ### 8. Verbs added to the harness set
 
@@ -421,7 +422,7 @@ Status transitions are enforced in code with one state machine, not duplicated i
 | phase | delivers | usable by |
 |---|---|---|
 | P0 | ledger, `ops/` schemas, `contract new\|check`, `task verify` | lite agents prove their own work |
-| P1 | `task send\|result\|status`, the worker brief, Orca seat launch, harness commit per green task | the owner sends single tasks by hand |
+| P1 | `task send\|result\|status\|verify\|cancel`, `seat start\|list\|stop`, path leases, the worker brief, Orca seat launch, harness commit per green task | the owner sends single tasks by hand |
 | P2 | router, provider circuit, AIMD, budgets, failure routes, daemon liveness and sweep | unattended retries |
 | P3 | Kernel loop: `plan show\|diff\|apply`, `workflow define\|start\|status\|amend\|stop` | full workflows |
 | P4 | Supervisor: owner channel, land, `release push`, CI red becomes a fix task, Debug seats | host-wide operation |
@@ -450,3 +451,4 @@ Status transitions are enforced in code with one state machine, not duplicated i
 2. `ops/` data format: YAML validated by the CLI (proposed), or TypeScript objects?
 3. Does `pattern` become its own group, or stay inside `app`?
 4. Package naming: keep `@starci/cli` at 2.0.0, or a new name while both CLIs coexist?
+5. Roles: the roles table says an op never pushes, while `release push` is a core verb of both editions. Today its roles are owner, release, coordinator and lead, so an op is not listed, but nothing enforces roles yet. Does pushing stay a core verb a role may be granted, or move into the Supervisor's harness set (and then how does a lite chat agent, role `agent`, push)?
