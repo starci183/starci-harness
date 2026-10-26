@@ -75,7 +75,7 @@ export const outputSpecSchema = z.union([
 export type OutputSpec = z.output<typeof outputSpecSchema>
 
 /** An output key, an input name: what a result key or a named input may be called. */
-export const keyNameSchema = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/, "a key is letters, digits and '_', starting with a letter")
+export const keyNameSchema = z.string().regex(/^[A-Za-z]\w*$/, "a key is letters, digits and '_', starting with a letter")
 
 const presetSchema = z.object({
     summary: z.string(),
@@ -172,12 +172,12 @@ const readYaml = <T>(file: string, schema: z.ZodType<T>): T => {
 const FRONTMATTER = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
 
 /** The placeholders `{name}` a text names. */
-export const placeholdersOf = (text: string): string[] => [...text.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\}/g)].map((found) => found[1] ?? "")
+export const placeholdersOf = (text: string): string[] => [...text.matchAll(/\{([A-Za-z]\w*)\}/g)].map((found) => found[1] ?? "")
 
 /** The section of the README that opens every brief, without its heading. */
 export const workerProcedure = (ops: Ops): string => {
     const file = join(ops.dir, OP_FILES, OPS_README)
-    const lines = readFileSync(file, "utf8").replace(/\r\n/g, "\n").split("\n")
+    const lines = readFileSync(file, "utf8").replaceAll("\r\n", "\n").split("\n")
     const start = lines.findIndex((line) => line.trim() === WORKER_PROCEDURE)
     if (start < 0) throw invalid(file, `it has no "${WORKER_PROCEDURE}" section`)
     const end = lines.findIndex((line, index) => index > start && line.startsWith("## "))
@@ -185,7 +185,7 @@ export const workerProcedure = (ops: Ops): string => {
 }
 
 const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): Op => {
-    const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n")
+    const text = readFileSync(file, "utf8").replaceAll("\r\n", "\n")
     const match = FRONTMATTER.exec(text)
     if (match === null) throw invalid(file, "it has no yaml frontmatter between --- lines")
     const parsed = opFrontmatterSchema.safeParse(parse(match[1] ?? ""))
@@ -215,7 +215,7 @@ const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): O
 export const loadOps = (dir: string = locateOps()): Ops => {
     const presets = readYaml(join(dir, "checks.yaml"), presetsFileSchema).presets
     const opsDir = join(dir, OP_FILES)
-    const files = readdirSync(opsDir).filter((name) => name.endsWith(".md") && name !== OPS_README).sort()
+    const files = readdirSync(opsDir).filter((name) => name.endsWith(".md") && name !== OPS_README).sort((a, b) => (a < b ? -1 : Number(a > b)))
     const labels: Record<string, Op> = {}
     for (const name of files) {
         const op = readOp(join(opsDir, name), presets)

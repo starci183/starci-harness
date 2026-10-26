@@ -76,17 +76,21 @@ const problemsOf = (routing: Routing): string[] => {
     }
     const { reservePercent, biasPercent, exhaustedPercent } = routing.quota
     if (!(reservePercent <= biasPercent && biasPercent <= exhaustedPercent)) problems.push("quota needs reservePercent <= biasPercent <= exhaustedPercent")
-    for (const [kind, patterns] of Object.entries(routing.failureSignals)) {
-        for (const pattern of patterns) {
-            try {
-                new RegExp(pattern, "i").test("")
-            } catch {
-                problems.push(`failureSignals.${kind} has an invalid pattern: ${pattern}`)
-            }
-        }
-    }
+    problems.push(...signalProblems(routing))
     return problems
 }
+
+/** True when the pattern compiles as a case-insensitive regular expression. */
+const compiles = (pattern: string): boolean => {
+    try {
+        return new RegExp(pattern, "i").ignoreCase
+    } catch {
+        return false
+    }
+}
+
+const signalProblems = (routing: Routing): string[] =>
+    Object.entries(routing.failureSignals).flatMap(([kind, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `failureSignals.${kind} has an invalid pattern: ${pattern}`))
 
 const loaded = new Map<string, Routing>()
 

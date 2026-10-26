@@ -216,9 +216,120 @@ const quotaNote = (candidates: readonly Candidate[]): string | undefined => {
     return unknown.length === 0 ? undefined : `quota unknown (kept): ${unknown.join(", ")}`
 }
 
-const earliest = (times: readonly (string | null)[]): string | null => times.filter((time): time is string => time !== null).sort()[0] ?? null
+const earliest = (times: readonly (string | null)[]): string | null => times.filter((time): time is string => time !== null).sort((a, b) => (a < b ? -1 : Number(a > b)))[0] ?? null
 
 const redMembers = (previousRed: RouteInput["previousRed"]): readonly RouteMember[] => (typeof previousRed === "number" || previousRed === undefined ? [] : previousRed)
+
+/** What the steps of one decision share: the tier it routes in, the record it writes and how a step notes its kept and dropped members. */
+interface Stage {
+    readonly routing: Routing
+    readonly tier: string
+    readonly record: RouteRecord
+    readonly snapshot: (step: string, kept: readonly Candidate[], note?: string) => void
+    readonly drop: (candidate: Candidate, step: string, reason: string) => void
+}
+
+/** The dropped members of one step as `member reason` text. */
+const droppedText = (record: RouteRecord, step: string): string =>
+    record.dropped
+        .filter((row) => row.step === step)
+        .map((row) => row.member + " " + row.reason)
+        .join("; ")
+
+/** The refusal of a hard filter that kept nobody, named by why the members fell. */
+const hardRefusal = (stage: Stage, input: RouteInput, candidates: readonly Candidate[]): RouteRefusal => {
+    const { tier, record } = stage
+    const steps = record.dropped.map((row) => row.reason)
+    const circuitOnly = steps.every((reason) => reason.startsWith("provider "))
+    const fullOnly = steps.every((reason) => reason.startsWith("pool ") && reason.includes(" full: "))
+    const reasons = record.dropped.map((row) => `${row.member}: ${row.reason}`).join("; ")
+    if (circuitOnly) return new RouteRefusal("PROVIDERS_UNAVAILABLE", `every member of tier ${tier} has its provider circuit open: ${reasons}`, record, earliest(candidates.map((candidate) => candidate.circuit.openUntil)))
+    if (fullOnly) return new RouteRefusal("POOLS_FULL", `every pool of tier ${tier} is at its concurrency; the task waits in the queue: ${reasons}`, record)
+    return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${tier} can take ${input.label} work: ${reasons}`, record)
+}
+
+/** Owner bias: only keeps, avoid removes, prefer moves to the front. */
+const applyBias = (stage: Stage, lineage: readonly Candidate[], bias: RouteBias): Candidate[] => {
+    const only = (bias.only ?? []).length > 0 ? lineage.filter((candidate) => named(candidate, bias.only)) : lineage
+    for (const candidate of lineage) if (!only.includes(candidate)) stage.drop(candidate, "bias", "not named by only")
+    for (const candidate of only.filter((member) => named(member, bias.avoid))) stage.drop(candidate, "bias", "avoided")
+    const kept = only.filter((candidate) => !named(candidate, bias.avoid))
+    return [...kept.filter((candidate) => named(candidate, bias.prefer)), ...kept.filter((candidate) => !named(candidate, bias.prefer))]
+}
+
+/** Why the head of the chain should yield: picked too often in a row, or holding too much of the tier's running seats; null when it should not. */
+const balanceReason = (routing: Routing, head: Candidate, biased: readonly Candidate[], recent: readonly string[]): string | null => {
+    const streak = recent.findIndex((member) => member !== head.id)
+    const inRow = streak === -1 ? recent.length : streak
+    const total = biased.reduce((sum, candidate) => sum + candidate.runningMember, 0)
+    const share = total === 0 ? 0 : (head.runningMember / total) * 100
+    if (inRow >= routing.balance.maxStreak) return `${head.id} was picked ${String(inRow)} times in a row`
+    if (share > routing.balance.maxSharePercent) return `${head.id} holds ${String(Math.round(share))}% of the tier's running seats`
+    return null
+}
+
+interface Balance {
+    readonly balanced: readonly Candidate[]
+    readonly yielded: string | null
+    readonly note: string | undefined
+}
+
+/**
+ * Balance: a head picked maxStreak times in a row, or over maxSharePercent of the tier's running seats, yields to the next
+ * member with tokens. An active bias is the owner's choice and is not balanced away.
+ */
+const balanceStep = (stage: Stage, facts: Facts, biased: readonly Candidate[], biasActive: boolean, isBiased: (candidate: Candidate) => boolean): Balance => {
+    if (biasActive) return { balanced: biased, yielded: null, note: "bias active: not balanced" }
+    const head = biased[0]
+    if (head === undefined || biased.length <= 1) return { balanced: biased, yielded: null, note: undefined }
+    const reason = balanceReason(stage.routing, head, biased, facts.recent(stage.tier))
+    if (reason === null) return { balanced: biased, yielded: null, note: undefined }
+    const next = biased.slice(1).find((candidate) => tokenReason(candidate, stage.routing, isBiased(candidate)) === null)
+    if (next === undefined) return { balanced: biased, yielded: null, note: `${reason}, but no next member has quota; kept` }
+    const yielded = `${reason}; yields to ${next.id}`
+    return { balanced: [next, ...biased.filter((candidate) => candidate !== next)], yielded, note: yielded }
+}
+
+/** What the decision rests on after the hard filter, for the step that names why the chosen member won. */
+interface Basis {
+    readonly biasActive: boolean
+    readonly isBiased: (candidate: Candidate) => boolean
+    readonly yielded: string | null
+    readonly balanced: readonly Candidate[]
+    readonly demoted: readonly Candidate[]
+    readonly hard: readonly Candidate[]
+}
+
+/** Why the chosen member won: the first of bias, balance, quota and lineage that moved it, else the chain order. */
+const choiceReason = (record: RouteRecord, chosen: Candidate, basis: Basis): string => {
+    if (basis.biasActive && basis.isBiased(chosen)) return "bias"
+    if (basis.yielded !== null && chosen === basis.balanced[0]) return "balance"
+    if (record.dropped.some((row) => row.step === "quota")) return "quota"
+    if (basis.demoted.length > 0 && chosen !== basis.hard[0]) return "lineage"
+    return "chain-order"
+}
+
+/** Where the tier came from, for the record. */
+const tierSource = (input: RouteInput, labelTier: string | undefined, effective: string, difficulty: string | null, floor: string): string =>
+    labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
+
+/** The quota step: skip a member at the reserve (a biased one may go to biasPercent), never use an exhausted one; unknown is kept. */
+const quotaStep = (stage: Stage, balanced: readonly Candidate[], isBiased: (candidate: Candidate) => boolean): Candidate[] => {
+    const ordered = balanced.filter((candidate) => {
+        const reason = tokenReason(candidate, stage.routing, isBiased(candidate))
+        if (reason !== null) stage.drop(candidate, "quota", reason)
+        return reason === null
+    })
+    stage.snapshot("quota", ordered, quotaNote(balanced))
+    return ordered
+}
+
+/** The refusal of a quota step that kept nobody. */
+const tokensOut = (stage: Stage, balanced: readonly Candidate[]): RouteRefusal => {
+    const resetAt = earliest(balanced.map((candidate) => candidate.quota.resetsAt))
+    const reset = resetAt === null ? "" : "; the earliest reset is " + resetAt
+    return new RouteRefusal("TOKENS_OUT", `every member of tier ${stage.tier} is out of quota${reset}: ${droppedText(stage.record, "quota")}`, stage.record, resetAt)
+}
 
 /** Runs the decision over gathered facts; pure but for its facts. */
 const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteRefusal => {
@@ -240,7 +351,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
         difficulty,
         floor: facts.floor,
         reds,
-        tierFrom: labelTier === undefined ? `difficulty ${effective} (max of ${difficulty ?? "none"} and floor ${facts.floor})` : `labelTiers.${input.label}`,
+        tierFrom: tierSource(input, labelTier, effective, difficulty, facts.floor),
         baseTier,
         tier,
         escalated: raised !== undefined,
@@ -251,93 +362,50 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
         dropped: [],
         chosen: null,
     }
-    const snapshot = (step: string, kept: readonly Candidate[], note?: string): void => {
-        record.steps.push({ step, kept: kept.map((candidate) => candidate.id), ...(note === undefined ? {} : { note }) })
+    const stage: Stage = {
+        routing,
+        tier,
+        record,
+        snapshot: (step, kept, note) => {
+            record.steps.push({ step, kept: kept.map((candidate) => candidate.id), ...(note === undefined ? {} : { note }) })
+        },
+        drop: (candidate, step, reason) => {
+            record.dropped.push({ member: candidate.id, step, reason })
+        },
     }
-    const drop = (candidate: Candidate, step: string, reason: string): void => {
-        record.dropped.push({ member: candidate.id, step, reason })
-    }
-    if (reds >= routing.escalateAfterReds && raised === undefined) snapshot("tier", candidates, `already at the top tier ${tier}; ${String(reds)} contract-red attempts escalate no further`)
+    if (reds >= routing.escalateAfterReds && raised === undefined) stage.snapshot("tier", candidates, `already at the top tier ${tier}; ${String(reds)} contract-red attempts escalate no further`)
 
     // 1. Hard filter: nothing a bias can restore.
     const redsByPool = new Map<string, number>()
     for (const member of redMembers(input.previousRed)) redsByPool.set(member.agent, (redsByPool.get(member.agent) ?? 0) + 1)
     const hard = candidates.filter((candidate) => {
         const reason = hardReason(candidate, input, facts, redsByPool)
-        if (reason !== null) drop(candidate, "hard-filter", reason)
+        if (reason !== null) stage.drop(candidate, "hard-filter", reason)
         return reason === null
     })
-    snapshot("hard-filter", hard)
-    if (hard.length === 0) {
-        const steps = record.dropped.map((row) => row.reason)
-        const circuitOnly = steps.every((reason) => reason.startsWith("provider "))
-        const fullOnly = steps.every((reason) => reason.startsWith("pool ") && reason.includes(" full: "))
-        const reasons = record.dropped.map((row) => `${row.member}: ${row.reason}`).join("; ")
-        if (circuitOnly) return new RouteRefusal("PROVIDERS_UNAVAILABLE", `every member of tier ${tier} has its provider circuit open: ${reasons}`, record, earliest(candidates.map((candidate) => candidate.circuit.openUntil)))
-        if (fullOnly) return new RouteRefusal("POOLS_FULL", `every pool of tier ${tier} is at its concurrency; the task waits in the queue: ${reasons}`, record)
-        return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${tier} can take ${input.label} work: ${reasons}`, record)
-    }
+    stage.snapshot("hard-filter", hard)
+    if (hard.length === 0) return hardRefusal(stage, input, candidates)
 
     // 2. Lineage: a pool with one contract-red attempt of this task goes to the back, so the retry goes to another member.
     const demoted = hard.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1)
     const lineage = [...hard.filter((candidate) => !demoted.includes(candidate)), ...demoted]
-    snapshot("lineage", lineage, demoted.length === 0 ? undefined : `demoted after one contract-red: ${demoted.map((candidate) => candidate.id).join(", ")}`)
+    stage.snapshot("lineage", lineage, demoted.length === 0 ? undefined : `demoted after one contract-red: ${demoted.map((candidate) => candidate.id).join(", ")}`)
 
-    // 3. Owner bias: only keeps, avoid removes, prefer moves to the front; a bias that empties the chain refuses.
-    let biased = (bias.only ?? []).length > 0 ? lineage.filter((candidate) => named(candidate, bias.only)) : lineage
-    for (const candidate of lineage) if (!biased.includes(candidate)) drop(candidate, "bias", "not named by only")
-    for (const candidate of biased.filter((member) => named(member, bias.avoid))) drop(candidate, "bias", "avoided")
-    biased = biased.filter((candidate) => !named(candidate, bias.avoid))
-    biased = [...biased.filter((candidate) => named(candidate, bias.prefer)), ...biased.filter((candidate) => !named(candidate, bias.prefer))]
-    snapshot("bias", biased)
-    if (biased.length === 0) return new RouteRefusal("ROUTE_BIAS_EMPTY", `the bias leaves no member of tier ${tier}: ${record.dropped.filter((row) => row.step === "bias").map((row) => `${row.member} ${row.reason}`).join("; ")}`, record)
+    // 3. Owner bias: a bias that empties the chain refuses.
+    const biased = applyBias(stage, lineage, bias)
+    stage.snapshot("bias", biased)
+    if (biased.length === 0) return new RouteRefusal("ROUTE_BIAS_EMPTY", `the bias leaves no member of tier ${tier}: ${droppedText(record, "bias")}`, record)
     const biasActive = (bias.only ?? []).length > 0 || (bias.prefer ?? []).length > 0
     const isBiased = (candidate: Candidate): boolean => named(candidate, bias.prefer) || named(candidate, bias.only)
 
-    // 4. Balance: a head picked maxStreak times in a row, or over maxSharePercent of the tier's running seats, yields to the
-    //    next member with tokens. An active bias is the owner's choice and is not balanced away.
-    let balanced = biased
-    let yielded: string | null = null
-    let balanceNote: string | undefined = biasActive ? "bias active: not balanced" : undefined
-    const head = biased[0]
-    if (!biasActive && head !== undefined && biased.length > 1) {
-        const recent = facts.recent(tier)
-        const streak = recent.findIndex((member) => member !== head.id)
-        const inRow = streak === -1 ? recent.length : streak
-        const total = biased.reduce((sum, candidate) => sum + candidate.runningMember, 0)
-        const share = total === 0 ? 0 : (head.runningMember / total) * 100
-        let reason: string | null = null
-        if (inRow >= routing.balance.maxStreak) reason = `${head.id} was picked ${String(inRow)} times in a row`
-        else if (share > routing.balance.maxSharePercent) reason = `${head.id} holds ${String(Math.round(share))}% of the tier's running seats`
-        const next = reason === null ? undefined : biased.slice(1).find((candidate) => tokenReason(candidate, routing, isBiased(candidate)) === null)
-        if (reason !== null && next !== undefined) {
-            balanced = [next, ...biased.filter((candidate) => candidate !== next)]
-            yielded = `${reason}; yields to ${next.id}`
-            balanceNote = yielded
-        } else if (reason !== null) {
-            balanceNote = `${reason}, but no next member has quota; kept`
-        }
-    }
-    snapshot("balance", balanced, balanceNote)
+    // 4. Balance.
+    const { balanced, yielded, note } = balanceStep(stage, facts, biased, biasActive, isBiased)
+    stage.snapshot("balance", balanced, note)
 
-    // 5. Quota: skip a member at the reserve (a biased one may go to biasPercent), never use an exhausted one; unknown is kept.
-    const ordered = balanced.filter((candidate) => {
-        const reason = tokenReason(candidate, routing, isBiased(candidate))
-        if (reason !== null) drop(candidate, "quota", reason)
-        return reason === null
-    })
-    snapshot("quota", ordered, quotaNote(balanced))
-    const chosen = ordered[0]
-    if (chosen === undefined) {
-        const resetAt = earliest(balanced.map((candidate) => candidate.quota.resetsAt))
-        return new RouteRefusal("TOKENS_OUT", `every member of tier ${tier} is out of quota${resetAt === null ? "" : `; the earliest reset is ${resetAt}`}: ${record.dropped.filter((row) => row.step === "quota").map((row) => `${row.member} ${row.reason}`).join("; ")}`, record, resetAt)
-    }
-    let by = "chain-order"
-    if (biasActive && isBiased(chosen)) by = "bias"
-    else if (yielded !== null && chosen === balanced[0]) by = "balance"
-    else if (record.dropped.some((row) => row.step === "quota")) by = "quota"
-    else if (demoted.length > 0 && chosen !== hard[0]) by = "lineage"
-    record.chosen = { member: chosen.id, by }
+    // 5. Quota.
+    const chosen = quotaStep(stage, balanced, isBiased)[0]
+    if (chosen === undefined) return tokensOut(stage, balanced)
+    record.chosen = { member: chosen.id, by: choiceReason(record, chosen, { biasActive, isBiased, yielded, balanced, demoted, hard }) }
     return {
         agent: chosen.spec.agent,
         model: chosen.spec.model,
@@ -445,14 +513,19 @@ export const routeTask = (root: string, taskId: string, options: { readonly bias
 /** The decision path as text lines, for route explain and dry runs. */
 export const describeRoute = (answer: RoutePick | RouteRefusal): string[] => {
     const record = answer.record
+    const escalated = record.escalated ? " (escalated from " + record.baseTier + " after " + String(record.reds) + " contract-red)" : ""
+    const tools = Object.entries(record.hostTools)
+        .map(([tool, ok]) => tool + " " + (ok ? "ok" : "missing"))
+        .join(", ")
     const lines = [
         `label ${record.label}, attempt ${String(record.attempt)}, difficulty ${record.difficulty ?? "-"}, floor ${record.floor}, contract-red ${String(record.reds)}`,
-        `tier ${record.tier}${record.escalated ? ` (escalated from ${record.baseTier} after ${String(record.reds)} contract-red)` : ""} from ${record.tierFrom}`,
+        `tier ${record.tier}${escalated} from ${record.tierFrom}`,
         `chain: ${record.chain.join(" > ") || "-"}`,
-        ...(Object.keys(record.hostTools).length === 0 ? [] : [`host tools: ${Object.entries(record.hostTools).map(([tool, ok]) => `${tool} ${ok ? "ok" : "missing"}`).join(", ")}`]),
-        ...record.steps.map((step) => `  ${step.step}: ${step.kept.join(" > ") || "(none)"}${step.note === undefined ? "" : `  [${step.note}]`}`),
+        ...(Object.keys(record.hostTools).length === 0 ? [] : [`host tools: ${tools}`]),
+        ...record.steps.map((step) => `  ${step.step}: ${step.kept.join(" > ") || "(none)"}${step.note === undefined ? "" : "  [" + step.note + "]"}`),
         ...record.dropped.map((row) => `  dropped ${row.member} at ${row.step}: ${row.reason}`),
     ]
     if (answer instanceof RouteRefusal) return [...lines, `refused ${answer.code}: ${answer.message}`]
-    return [...lines, `chosen ${answer.agent} ${answer.model}${answer.effort === undefined ? "" : ` (effort ${answer.effort})`} by ${record.chosen?.by ?? "?"}; pool ${answer.pool}, provider ${answer.provider}`]
+    const effort = answer.effort === undefined ? "" : " (effort " + answer.effort + ")"
+    return [...lines, `chosen ${answer.agent} ${answer.model}${effort} by ${record.chosen?.by ?? "?"}; pool ${answer.pool}, provider ${answer.provider}`]
 }

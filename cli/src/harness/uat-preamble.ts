@@ -48,7 +48,7 @@ const listen = (port: number, host: string): Promise<Server> =>
 
 const errorCode = (error: unknown): unknown => (typeof error === "object" && error !== null && "code" in error ? error.code : undefined)
 
-for (const port of ports) {
+const listenOn = async (port: number): Promise<void> => {
     await listen(port, "127.0.0.1").catch((error: unknown) => fail(`cannot listen on 127.0.0.1:${String(port)}: ${String(error)}`))
     // ::1 lets a browser that resolves localhost to IPv6 first reach the same forward; a container without IPv6 skips it.
     await listen(port, "::1").catch((error: unknown) => {
@@ -56,6 +56,9 @@ for (const port of ports) {
         if (code !== "EADDRNOTAVAIL" && code !== "EAFNOSUPPORT") fail(`cannot listen on [::1]:${String(port)}: ${String(error)}`)
     })
 }
+
+// One port after the other, as a failing bind ends the process with the first port that cannot be taken.
+await ports.reduce<Promise<void>>((previous, port) => previous.then(() => listenOn(port)), Promise.resolve())
 
 process.argv[1] = script
 await import(pathToFileURL(script).href)

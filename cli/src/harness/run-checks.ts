@@ -45,7 +45,7 @@ const DETAIL_LINES = 30
 const PROBE_TIMEOUT_MS = 10_000
 
 /** The `starci check` verbs that take `--base` and answer with scope steps. */
-const SCOPED_CHECK_VERBS = ["run", "lint", "typecheck"]
+const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typecheck"])
 
 const tailOf = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
 
@@ -70,7 +70,10 @@ const outcome = (check: ResolvedCheck, problems: readonly string[], greenDetail:
 
 const LIST_SHOWN = 20
 
-const listed = (files: readonly string[]): string => `${files.slice(0, LIST_SHOWN).join(", ")}${files.length > LIST_SHOWN ? ` and ${String(files.length - LIST_SHOWN)} more` : ""}`
+const listed = (files: readonly string[]): string => {
+    const more = files.length > LIST_SHOWN ? " and " + String(files.length - LIST_SHOWN) + " more" : ""
+    return `${files.slice(0, LIST_SHOWN).join(", ")}${more}`
+}
 
 /** The paths leased by other live tasks (read straight from the ledger, which this never creates); their writers are someone else. */
 const otherLeasedPaths = (root: string, taskId: string | undefined): string[] => {
@@ -171,7 +174,8 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     const expected = Object.entries(check.check.expect ?? {})
     const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
     const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...[...mistyped, ...wrong].map((line) => `${document.from}: ${line}`)]
-    return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${expected.length === 0 ? "" : ` and ${String(expected.length)} expected value(s)`}`)
+    const andExpected = expected.length === 0 ? "" : " and " + String(expected.length) + " expected value(s)"
+    return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${andExpected}`)
 }
 
 /** The ids each context file names, read once per check; a file the checkout lacks names none. */
@@ -194,21 +198,34 @@ const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind:
     const problems: string[] = []
     const found: string[] = []
     for (const trace of check.check.trace ?? []) {
-        const value = record[trace.key] ?? []
-        if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
-            problems.push(`${trace.key} is not a list of ids`)
-            continue
-        }
-        if (value.length < trace.minItems) problems.push(`${trace.key} cites ${String(value.length)} id(s); the op requires at least ${String(trace.minItems)}`)
-        const files = idsOfFiles(trace.files, place)
-        for (const id of value) {
-            const owner = [...files].find(([, ids]) => ids.has(id))?.[0]
-            if (owner !== undefined) found.push(`${id} in ${owner}`)
-            else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
-            else problems.push(`${trace.key}: ${id} is named by none of the context files (${trace.files.length === 0 ? "none" : listed(trace.files)})`)
-        }
+        const traced = traceProblems(trace, record[trace.key] ?? [], place)
+        problems.push(...traced.problems)
+        found.push(...traced.found)
     }
     return outcome(check, problems, found.length === 0 ? "no id cited, none required" : `cited: ${listed(found)}`)
+}
+
+interface CitedTrace {
+    readonly key: string
+    readonly minItems: number
+    readonly files: readonly string[]
+}
+
+/** What one traced key cites: the ids found in a context file, and the problems of the ones that are not. */
+const traceProblems = (trace: CitedTrace, value: unknown, place: CheckPlace): { readonly problems: string[]; readonly found: string[] } => {
+    const problems: string[] = []
+    const found: string[] = []
+    if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return { problems: [`${trace.key} is not a list of ids`], found }
+    if (value.length < trace.minItems) problems.push(`${trace.key} cites ${String(value.length)} id(s); the op requires at least ${String(trace.minItems)}`)
+    const files = idsOfFiles(trace.files, place)
+    const context = trace.files.length === 0 ? "none" : listed(trace.files)
+    for (const id of value) {
+        const owner = [...files].find(([, ids]) => ids.has(id))?.[0]
+        if (owner !== undefined) found.push(`${id} in ${owner}`)
+        else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
+        else problems.push(`${trace.key}: ${id} is named by none of the context files (${context})`)
+    }
+    return { problems, found }
 }
 
 const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "probe" } }): Promise<CheckOutcome> => {
@@ -279,7 +296,7 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const ran = steps.filter((step) => step.status !== "skipped")
     const lines = [
         `scope vs ${String(scope.base)}: ${String(Array.isArray(scope.changed) ? scope.changed.length : 0)} changed file(s), ${String(Array.isArray(scope.targets) ? scope.targets.length : 0)} package(s)`,
-        ...steps.map((step) => `${step.status} ${step.step} ${step.package}${step.reason === "" ? "" : ` (${step.reason})`}`),
+        ...steps.map((step) => `${step.status} ${step.step} ${step.package}${step.reason === "" ? "" : " (" + step.reason + ")"}`),
         ...(ran.length === 0 ? ["no step ran: nothing was typechecked or linted, so this check proves nothing"] : []),
         ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),
     ]
@@ -293,7 +310,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
     switch (primitive.kind) {
         case "starci": {
             const [group, verb] = primitive.args
-            if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.includes(verb)) return runScopedCheck(check, primitive.args, place)
+            if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.has(verb)) return runScopedCheck(check, primitive.args, place)
             return fromRun(check, await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options))
         }
         case "command": {

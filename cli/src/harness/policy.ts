@@ -213,21 +213,27 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
         security = { ...security, exceptions: [] }
     }
     const overlay = overlayDir(dir, repositoryRoot)
-    if (overlay !== undefined) {
-        const refused = ["quality.yaml", "canon.yaml"].filter((file) => existsSync(join(overlay, file)))
-        if (refused.length > 0) throw new Refusal("POLICY_OVERLAY_REFUSED", `${overlay} carries ${refused.join(" and ")}; a project picks its profile in hfs.json ("policy": "<profile>") and never redefines tiers or canon`)
-        const looseningFile = join(overlay, "loosening.yaml")
-        if (existsSync(looseningFile)) {
-            const extra = readYaml(looseningFile, looseningOverlay)
-            loosening = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], exceptions: extra.exceptions ?? [] }
-        }
-        const securityFile = join(overlay, "security.yaml")
-        if (existsSync(securityFile)) {
-            const extra = readYaml(securityFile, securityOverlay)
-            security = { ...security, neverRead: [...new Set([...security.neverRead, ...(extra.neverRead ?? [])])], exceptions: extra.exceptions ?? [] }
-        }
-    }
+    if (overlay !== undefined) ({ loosening, security } = applyOverlay(overlay, loosening, security))
     return { dir, overlay, quality, canon, loosening, security }
+}
+
+/** Tightens the runtime's loosening and security policy with the project's own overlay files. */
+const applyOverlay = (overlay: string, loosening: LooseningPolicy, security: SecurityPolicy): { loosening: LooseningPolicy; security: SecurityPolicy } => {
+    const refused = ["quality.yaml", "canon.yaml"].filter((file) => existsSync(join(overlay, file)))
+    if (refused.length > 0) throw new Refusal("POLICY_OVERLAY_REFUSED", `${overlay} carries ${refused.join(" and ")}; a project picks its profile in hfs.json ("policy": "<profile>") and never redefines tiers or canon`)
+    let tightened = loosening
+    let guarded = security
+    const looseningFile = join(overlay, "loosening.yaml")
+    if (existsSync(looseningFile)) {
+        const extra = readYaml(looseningFile, looseningOverlay)
+        tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], exceptions: extra.exceptions ?? [] }
+    }
+    const securityFile = join(overlay, "security.yaml")
+    if (existsSync(securityFile)) {
+        const extra = readYaml(securityFile, securityOverlay)
+        guarded = { ...security, neverRead: [...new Set([...security.neverRead, ...(extra.neverRead ?? [])])], exceptions: extra.exceptions ?? [] }
+    }
+    return { loosening: tightened, security: guarded }
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
