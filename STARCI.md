@@ -12,9 +12,11 @@ Owner: the owner. This is the working design of the rewritten CLI in `D:\.claude
   - Exit codes: 0 done, 1 refused (nothing moved), 2 bad usage.
   - Host tools run without a shell (`runTool`, and `runNpm` goes through the running Node), so no quoting breaks on Windows.
   - `locateTree` reads the nearest `hfs.json`. A lite app sees core plus lite verbs, a full app sees core plus full verbs, and the runtime or a bare folder sees everything.
-- **Edition model:**
-  - The **full** edition runs its workflows in Orca: the Kernel, ops, workers and the Supervisor.
-  - The **lite** edition runs inside a Claude or Codex chat and puts the canonical patterns first. The agent codes directly, and the CLI gives it the patterns, checks and app operations.
+- **Two independent axes, edition and runner:**
+  - The **edition** (`lite` or `full`, fixed in `hfs.json` at scaffold) says what the app is: its stack, how it scales and its `app` verbs. Lite is stateless on Postgres and puts the canonical patterns first; full adds the reactor, saga and projection patterns and its own infra.
+  - The **runner** (`orca` or `inline`) says how the harness runs a task, and is chosen per workflow or per task, never by edition. `orca` launches a worker seat through Orca (`seat start`, `task send --launch`), so tasks run in parallel. `inline` means the Claude or Codex session that is open does the task itself: it sends the task, files the result inline and has it verified, one task at a time.
+  - Both editions get both runners. Contracts, leases, the clean verify and the harness commit are the same for either runner.
+  - Inline guards: the agent is both Kernel and worker, so its contract must be sent (and its hash fixed) before it edits code, and the harness verify on a clean checkout is what decides green. Liveness (ping and pong) applies only to the `orca` runner.
 
 ## Layout
 
@@ -26,7 +28,7 @@ cli/
     shared/                    verb, errors, output, tree, exec
     core/<group>/<verb>.ts     verbs of both editions
     lite/<group>/<verb>.ts     verbs of lite apps
-    full/<group>/<verb>.ts     verbs of full apps and their Orca workflows
+    full/<group>/<verb>.ts     verbs of full apps
   dist/                        build output, not committed
 ```
 
@@ -45,7 +47,7 @@ cli/
 | `starci release ci-status [--sha]` | core | read | the GitHub Actions verdict of a commit |
 | `starci app info` | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
 | `starci contract new\|check`, `task send\|result\|status\|verify\|cancel` | core | see "CLI of the harness" | the P1 task protocol, in both editions |
-| `starci seat start\|list\|stop` | full | see "CLI of the harness" | Orca worker seats |
+| `starci seat start\|list\|stop` | core | see "CLI of the harness" | Orca worker seats, the `orca` runner in either edition |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
@@ -103,7 +105,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
 | `uat` | `record` (the browser recorder a `uat` worker uses) |
 
-**Harness: full edition, Orca workflows (30)**
+**Harness: both editions (30).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
 
 | group | verbs | who |
 |---|---|---|
@@ -198,9 +200,9 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
 ### Storage: one SQLite file per project (`.starciwork/runtime.sqlite`)
 One ledger per project, shared by its linked worktrees, instead of about 50 runtime tables and 90 machine tables. Its tables are listed in the harness plan, §6.
 
-### CLI of the harness (full edition)
+### CLI of the harness (both editions)
 
-Who runs each verb is declared in its `roles` (enforcement comes later, see "Verbs written so far"). `hidden` verbs are called by the seat runner, not typed by people or agents. A verb marked (later) is not built yet. A task verb serves both editions; a seat verb is full only.
+Who runs each verb is declared in its `roles` (enforcement comes later, see "Verbs written so far"). `hidden` verbs are called by the seat runner, not typed by people or agents. A verb marked (later) is not built yet. Every verb here serves both editions; a seat verb needs the `orca` runner and refuses `ORCA_MISSING` on a host without Orca.
 
 | verb | who runs it | effect | what it does |
 |---|---|---|---|
@@ -235,7 +237,7 @@ Core verbs that every role uses: `check run|lint|typecheck`, `release ci-status`
 
 That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today.
 
-Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task send|result|status|verify|cancel`: a chat agent states the contract of its own work, sends it, files the result inline and has it verified and committed with the same checks.
+An `inline` run, in either edition, needs no Kernel seat, Supervisor or worker seats. It uses `contract new|check` and `task send|result|status|verify|cancel`: the chat agent states the contract of its own work, sends it, files the result inline and has it verified and committed with the same checks.
 
 ## Ops are plain workers (owner, 2026-10-27)
 
@@ -440,7 +442,7 @@ Status transitions are enforced in code with one state machine (`TRANSITIONS` in
 | 6 | The contract hash misses code dependencies: a done task is invalidated by another task's files | medium | The hash includes a digest of the paths in `context`. An amend that changes those paths turns the dependent task into a redo. |
 | 7 | Constant pushes to main, and a red CI breaks main for the other workflows | medium | A workflow lands in waves, not per task. A CI red still open after N minutes reverts the red commit automatically. |
 | 8 | Liveness depends on Orca: an Orca restart once declared every worker dead | medium | "Unknown" is never "dead". Death is concluded only from an explicit Orca answer; otherwise the seat is held, not retried. |
-| 9 | A big-bang rewrite and cut-over | high | Strangler cut-over: lite uses the new CLI first, then one full workflow runs beside the legacy, and verb groups move one at a time. |
+| 9 | A big-bang rewrite and cut-over | high | Strangler cut-over: inline runs use the new CLI first, then one orca workflow runs beside the legacy, and verb groups move one at a time. |
 | 10 | An LLM Supervisor places features unpredictably | low | The path-ownership map is data. Placement is a machine rule, and the LLM handles only the cases the rule cannot place. |
 | 11 | Provider quota is not observable for every agent (Codex, Devin) | low | No reading means unknown, not blocked. Learn only from real quota errors through the circuit. |
 | 12 | A worker with full Bash writes outside `allowPaths` or leaks a secret | medium | Keep a PreToolUse guard for dangerous commands, a diff check of `allowPaths` at settle, and the secret scan at push. |

@@ -28,7 +28,7 @@ import { getTask, latestAttempt, openAttempt, recordEvent, setStatus } from "../
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { defineVerb } from "../../shared/verb.js"
+import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
 /** What a seat start (or its dry run, or its resume) did. */
@@ -376,7 +376,7 @@ export const parseTimeout = (value: string | undefined): number | undefined => {
 export const seatStartVerb = defineVerb({
     path: ["seat", "start"],
     summary: "launch an Orca worker on a queued task with its rendered brief; --resume replays a launch whose outcome is unknown; --dry-run prints the orca argv",
-    editions: ["full"],
+    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "coordinator"],
     schema: "starci/seat-start@1",

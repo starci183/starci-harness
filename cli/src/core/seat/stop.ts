@@ -5,7 +5,7 @@ import { CLOSED_SEAT_STATUSES, SEAT_RELEASED, getSeat, recordSeat } from "../../
 import type { SeatRow } from "../../harness/seats.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { defineVerb } from "../../shared/verb.js"
+import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
 interface SeatStopData {
     readonly seat: SeatRow
@@ -16,7 +16,7 @@ interface SeatStopData {
 export const seatStopVerb = defineVerb({
     path: ["seat", "stop"],
     summary: "stop one seat's Orca worker and release its terminal; the seat's task keeps its state",
-    editions: ["full"],
+    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "coordinator"],
     schema: "starci/seat-stop@1",
