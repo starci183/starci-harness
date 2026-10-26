@@ -212,6 +212,19 @@ export const openMachine = (): DatabaseSync => {
     return db
 }
 
+/** How many project ledgers the host registry lists, read-only; undefined when there is no machine.sqlite (or no registry) yet. */
+export const ledgerCount = (): number | undefined => {
+    const file = machinePath()
+    if (!existsSync(file)) return undefined
+    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    try {
+        if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledgers'").get() === undefined) return undefined
+        return Number(db.prepare("SELECT COUNT(*) AS n FROM ledgers").get()?.n ?? 0)
+    } finally {
+        db.close()
+    }
+}
+
 /** The ledger id the host registry holds for a repository, without creating anything; undefined when it has none. */
 export const findLedgerId = (root: string): string | undefined => {
     const file = machinePath()
