@@ -14,11 +14,12 @@ export type ResultStatus = "done" | "blocked" | "mismatch" | "failed"
 /** Allowed transitions of a task. */
 export const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
     queued: ["running", "cancelled"],
-    running: ["reported", "failed", "cancelled", "effect_unknown"],
+    // running|effect_unknown -> queued: a launch that certainly failed (or launched the wrong model) is rolled back; no try is spent.
+    running: ["reported", "failed", "cancelled", "effect_unknown", "queued"],
     reported: ["verifying", "cancelled"],
     // verifying -> reported: the verify reached no verdict (HEAD moved, the verifier died or broke); no try is spent.
     verifying: ["done", "failed", "awaiting_owner", "reported"],
-    effect_unknown: ["running", "failed"],
+    effect_unknown: ["running", "failed", "queued", "cancelled"],
     done: [],
     failed: [],
     awaiting_owner: [],
@@ -108,13 +109,6 @@ export const recordEvent = (db: DatabaseSync, kind: string, subject: string | nu
 export const lastEvent = (db: DatabaseSync, kind: string, subject: string): unknown => {
     const row = db.prepare("SELECT data_json FROM events WHERE kind = ? AND subject = ? ORDER BY id DESC LIMIT 1").get(kind, subject)
     return row === undefined ? undefined : JSON.parse(str(row, "data_json"))
-}
-
-/** Frees every path lease of a task that ended; returns how many it held. Path leases themselves are leases.ts's. */
-export const releaseTaskLeases = (db: DatabaseSync, taskId: string): number => {
-    const released = Number(db.prepare("DELETE FROM leases WHERE task_id = ?").run(taskId).changes)
-    if (released > 0) recordEvent(db, "leases-released", taskId, { count: released })
-    return released
 }
 
 /** Registers a queued task for a fit contract; a retry names the task it retries and gets the next try number. */

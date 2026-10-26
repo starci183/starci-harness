@@ -6,14 +6,19 @@ import { cleanVerify, pruneVerifyWorktrees } from "../../harness/clean-verify.js
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
-import { now, openExistingLedger, openLedger, projectRoot } from "../../harness/ledger.js"
+import { now, openExistingLedger, openLedger } from "../../harness/ledger.js"
+import { assertLeasesHeld, releaseLeases } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import type { Ops } from "../../harness/ops.js"
+import { preserveTaskPaths } from "../../harness/preserve.js"
+import type { Preserved } from "../../harness/preserve.js"
 import { runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
+import { closeSeatsOfTask } from "../../harness/seats.js"
+import type { SeatClosing } from "../../harness/seats.js"
 import { asVerifier, settle, settleBranch, settleMessage, thisVerifier, verifierAlive, withSettleLock } from "../../harness/settle.js"
 import type { Settlement, Verifier } from "../../harness/settle.js"
-import { getTask, lastEvent, latestAttempt, recordEvent, releaseTaskLeases, resultOf, setStatus, setVerdict } from "../../harness/tasks.js"
+import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus, setVerdict } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
@@ -46,6 +51,9 @@ interface TaskVerifyData {
     readonly checks: readonly CheckOutcome[]
     readonly settlement: Settlement | null
     readonly status: TaskStatus
+    readonly preserved: Preserved | null
+    readonly leasesReleased: number
+    readonly seats: readonly SeatClosing[]
     readonly pruned: readonly string[]
 }
 
@@ -84,8 +92,8 @@ const resultSource = (db: DatabaseSync, root: string, task: TaskRow, attempt: At
     const filed = attempt === undefined ? undefined : resultOf(db, attempt.id)
     if (filed !== undefined) return { output: filed.output, from: `the result filed on ${filed.attemptId}` }
     if (fileFallback) {
-        const file = [projectRoot(root), root].map((dir) => briefFiles(dir, task.id).output).find((candidate) => existsSync(candidate))
-        if (file !== undefined) {
+        const file = briefFiles(root, task.id).output
+        if (existsSync(file)) {
             try {
                 return { output: JSON.parse(readFileSync(file, "utf8")), from: file }
             } catch (error: unknown) {
@@ -166,7 +174,23 @@ const noVerdict = (db: DatabaseSync, taskId: string, kind: string, error: unknow
     return new Refusal(refusal.code, `${refusal.message}\ntask ${taskId} is reported again (no verdict, no try spent); run starci task verify ${taskId} again`)
 }
 
-const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanVerify, settlement: Settlement | null, status: TaskStatus, commit: boolean, pruned: readonly string[]): VerbResult<VerifyData> => {
+/** How a settling verify ended the task: what it settled, preserved and released, and which seats it closed. */
+interface Ending {
+    readonly status: TaskStatus
+    readonly settlement: Settlement | null
+    readonly preserved: Preserved | null
+    readonly leasesReleased: number
+    readonly seats: readonly SeatClosing[]
+    readonly seatProblem?: string
+}
+
+const seatLine = (ending: Ending): string[] => [
+    ...(ending.seats.length === 0 ? [] : [`seats: ${ending.seats.map((seat) => `${seat.seat} ${seat.outcome}`).join(", ")}`]),
+    ...(ending.seatProblem === undefined ? [] : [`warning: the task's seats were not closed (${ending.seatProblem}); close them with starci seat stop <seat>`]),
+]
+
+const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanVerify, ending: Ending, commit: boolean, pruned: readonly string[]): VerbResult<VerifyData> => {
+    const { status, settlement, preserved, leasesReleased, seats } = ending
     const data: TaskVerifyData = {
         mode: "task",
         task: taskId,
@@ -181,18 +205,23 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
         checks: built.checks,
         settlement,
         status,
+        preserved,
+        leasesReleased,
+        seats,
         pruned,
     }
     const landed =
         settlement === null
             ? commit
-                ? "not settled: the work tree is untouched"
+                ? `not settled: ${preserved?.dir == null ? "nothing of the task was dirty" : `its work was preserved in ${preserved.dir} and its paths reset`}`
                 : "checked only (--no-commit): nothing settled"
             : settlement.committed
               ? `settled: ${settlement.branch} -> ${settlement.commit.slice(0, 12)}`
               : "settled: the task changed nothing, no commit"
+    const released = commit ? `; released ${String(leasesReleased)} lease(s)` : ""
     const extra = [
-        `task ${taskId}: ${status}; ${landed}`,
+        `task ${taskId}: ${status}; ${landed}${released}`,
+        ...seatLine(ending),
         ...(settlement?.warnings ?? []).map((warning) => `warning: ${warning}`),
         ...built.notes.map((note) => `note: ${note}`),
         ...(pruned.length === 0 ? [] : [`pruned ${String(pruned.length)} leftover verify checkout(s)`]),
@@ -203,6 +232,8 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
 /**
  * The ledger task path: clean verify, record, verdict, then settle on green or fail on red; --no-commit only checks. A settling
  * verify holds the project's settle lock from the candidate build to the settle, so parallel verifies land one after another.
+ * A red verdict preserves the task's dirty allowPaths and resets them while it still holds its leases, so an overlapping task
+ * can never commit them; only then does it fail the task and release the leases. Once the task ended its seats are closed.
  */
 const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise<VerbResult<VerifyData>> => {
     const root = await repositoryRoot(cwd)
@@ -224,17 +255,20 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             result: resultSource(db, root, task, attempt, false),
             timeoutMs: task.contract.budget.minutes * MINUTE_MS,
         }
+        const unsettled: Ending = { status: task.status, settlement: null, preserved: null, leasesReleased: 0, seats: [] }
         if (!commit) {
             const built = await cleanVerify(input)
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
             recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, settle: false })
-            return reply(taskId, attempt, task, built, null, getTask(db, taskId).status, false, pruned)
+            return reply(taskId, attempt, task, built, { ...unsettled, status: getTask(db, taskId).status }, false, pruned)
         }
         await settleBranch(root)
         const me = thisVerifier(taskId)
-        return await withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, async () => {
+        const settled = await withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, async (): Promise<{ readonly built: CleanVerify; readonly ending: Ending }> => {
             const fresh = getTask(db, taskId)
             if (fresh.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${taskId} is ${fresh.status} now; another verify took it while this one waited`)
+            // Fencing: a task that lost a lease cannot land (or reset) work on a path another task may own now.
+            assertLeasesHeld(db, fresh)
             setStatus(db, taskId, "verifying")
             recordEvent(db, "verify-started", taskId, me)
             let built: CleanVerify
@@ -245,11 +279,16 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             }
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
             recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, settle: true })
-            setVerdict(db, attempt.id, built.verdict)
             if (built.verdict === "red") {
+                let preserved: Preserved
+                try {
+                    preserved = await preserveTaskPaths(root, fresh, db)
+                } catch (error: unknown) {
+                    throw noVerdict(db, taskId, "preserve-failed", error)
+                }
+                setVerdict(db, attempt.id, "red")
                 setStatus(db, taskId, "failed")
-                releaseTaskLeases(db, taskId)
-                return reply(taskId, attempt, task, built, null, "failed", true, pruned)
+                return { built, ending: { ...unsettled, status: "failed", preserved, leasesReleased: releaseLeases(db, taskId) } }
             }
             let settlement: Settlement
             try {
@@ -258,11 +297,17 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
                 throw noVerdict(db, taskId, "settle-refused", error)
             }
             // The branch moved: from here the task is done whatever else happens.
+            setVerdict(db, attempt.id, "green")
             recordEvent(db, "task-settled", taskId, settlement)
             setStatus(db, taskId, "done")
-            releaseTaskLeases(db, taskId)
-            return reply(taskId, attempt, task, built, settlement, "done", true, pruned)
+            return { built, ending: { ...unsettled, status: "done", settlement, leasesReleased: releaseLeases(db, taskId) } }
         })
+        // The task ended; its worker has nothing left to do. Closing talks to Orca, so it runs outside the settle lock and any transaction.
+        const closing = await closeSeatsOfTask(root, taskId).then(
+            (seats): Pick<Ending, "seats" | "seatProblem"> => ({ seats }),
+            (error: unknown): Pick<Ending, "seats" | "seatProblem"> => ({ seats: [], seatProblem: asRefusal(error).message }),
+        )
+        return reply(taskId, attempt, task, settled.built, { ...settled.ending, ...closing }, true, pruned)
     } finally {
         db.close()
     }

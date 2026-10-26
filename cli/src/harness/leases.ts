@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
-import { posix } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
+import { normaliseRepoPath } from "./contract.js"
 import { now } from "./ledger.js"
 import type { TaskRow, TaskStatus } from "./tasks.js"
-import { recordEvent, TRANSITIONS } from "./tasks.js"
+import { recordEvent, TERMINAL_STATUSES } from "./tasks.js"
 
 /** Minutes past its task's budget a lease is due; the due time is information for the Kernel, never a reason to drop the lease. */
 export const LEASE_GRACE_MINUTES = 15
@@ -31,24 +31,16 @@ export interface LeaseGrant {
     readonly paths: readonly string[]
 }
 
-/** Statuses with no way out: a task in one of them holds nothing. */
-const TERMINAL: readonly TaskStatus[] = (Object.keys(TRANSITIONS) as TaskStatus[]).filter((status) => TRANSITIONS[status].length === 0)
-
-const TERMINAL_SQL = TERMINAL.map((status) => `'${status}'`).join(", ")
+const TERMINAL_SQL = TERMINAL_STATUSES.map((status) => `'${status}'`).join(", ")
 
 /** True for a status no transition leaves: the task has ended. */
-export const isTerminal = (status: TaskStatus): boolean => TERMINAL.includes(status)
+export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)
 
-/**
- * A repository path as leases compare it: posix separators, no `./` or `.` segments, no doubled or trailing slash.
- * Leases keep their own normaliser until contract.ts exports one for allowPaths; both must then be the same function.
- */
-export const normaliseLeasePath = (path: string): string => posix.normalize(path.replace(/\\/g, "/")).replace(/\/+$/, "")
-
-/** Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment. */
+/** Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment; `.` is the whole repository. */
 export const pathsOverlap = (left: string, right: string): boolean => {
-    const a = normaliseLeasePath(left).split("/")
-    const b = normaliseLeasePath(right).split("/")
+    const a = normaliseRepoPath(left).split("/")
+    const b = normaliseRepoPath(right).split("/")
+    if (a[0] === "." || b[0] === ".") return true
     const shorter = a.length <= b.length ? a : b
     const longer = shorter === a ? b : a
     return shorter.every((segment, index) => segment === longer[index])
@@ -98,7 +90,7 @@ export const listLeases = (db: DatabaseSync, taskId?: string): LeaseRow[] => {
 const dueAt = (task: TaskRow): string => new Date(Date.now() + (task.contract.budget.minutes + LEASE_GRACE_MINUTES) * 60_000).toISOString()
 
 /** The lease paths of a task: its allowPaths, normalised and without duplicates. */
-export const leasePaths = (task: TaskRow): string[] => [...new Set(task.contract.context.allowPaths.map(normaliseLeasePath))]
+export const leasePaths = (task: TaskRow): string[] => [...new Set(task.contract.context.allowPaths.map(normaliseRepoPath))]
 
 /**
  * Takes one lease per allowPath of the task, all or nothing: a path that overlaps a lease of another live task

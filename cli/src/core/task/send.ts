@@ -1,9 +1,9 @@
 import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { contractProblems, readContract } from "../../harness/contract.js"
+import { contractProblems, normaliseRepoPath, readContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
 import { openLedger } from "../../harness/ledger.js"
-import { acquireLeases, inTransaction, normaliseLeasePath } from "../../harness/leases.js"
+import { acquireLeases, inTransaction } from "../../harness/leases.js"
 import type { LeaseGrant } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { createTask, getTask } from "../../harness/tasks.js"
@@ -31,7 +31,7 @@ interface SendData {
 /** The flags only a launch uses; each one without --launch is a usage error, not silently ignored. */
 const LAUNCH_FLAGS = ["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const
 
-const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseLeasePath))].sort().join("\n")
+const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort().join("\n")
 
 /**
  * Refuses a retry that is not one: a retry is the same work (same label, same allowPaths) after a try that did not land, and
