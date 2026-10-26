@@ -18,7 +18,7 @@ Read the files of your task's row, in order, before planning or editing. A task 
 | operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md`, then `starci explain --term <group>` for the verbs you call |
 | work as a worker on one task | the brief the harness rendered for the task ([ops/worker.md](ops/worker.md) is its template), then the contract it names |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](CONTRIBUTING.md), then the sections of [STARCI.md](STARCI.md) that own your surface |
-| author app code or UI | `knowledge/README.md` and the knowledge files it routes you to; the app's own `hfs.json` and `.starciwork/` |
+| author app code or UI | [knowledge/README.md](knowledge/README.md) and the knowledge files it routes you to; the app's own `hfs.json` and `.starciwork/` |
 | change a gate, a profile, a banned marker or the secret scan | the file of [policy/](policy/) that owns it; the code of the gate is under `cli/src/core/check/` |
 | change a canon package (lint, tsconfig, prettier, stylelint, jest) | [packages/README.md](packages/README.md), then the package's own README |
 

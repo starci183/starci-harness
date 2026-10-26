@@ -25,7 +25,7 @@ closed chat or a dead agent.
 | `cli/` | the `starci` command, one TypeScript source: core verbs, the harness verbs and the edition verbs |
 | [ops/](ops/) | the work as data: the worker brief, the seven worker labels, the check presets, routing and budgets |
 | [policy/](policy/) | the gates: tiers and profiles, canon packages, banned loosening markers, the secret scan |
-| `knowledge/` | how StarCi app code and UI are written: grammars, UI rules, vendor parity |
+| [knowledge/](knowledge/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
 | [packages/](packages/README.md) | the canon packages apps install from npm: ESLint (fe, be), stylelint, tsconfig, prettier, jest |
 | `skills/` | the agent entry for operating the harness (`skills/starci/SKILL.md`) |
 

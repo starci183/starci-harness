@@ -49,7 +49,7 @@ A second copy is a defect even while both agree.
 | task states and their transitions | `TRANSITIONS` in `cli/src/harness/tasks.ts`, changed only through `setStatus` |
 | design, decisions and phases | [STARCI.md](STARCI.md) |
 | load order, binding and hard rules | [CONTEXT.md](CONTEXT.md) |
-| how app code is written | `knowledge/` |
+| how app code is written | [knowledge/](knowledge/README.md) |
 
 When you find a copy, keep the owner, make the other site read or cite it, and delete the copy in the same commit. If
 no owner exists yet, create it first. Never answer a duplicate with an allowlist, a baseline or a suppression.
@@ -62,7 +62,7 @@ no owner exists yet, create it first. Never answer a duplicate with an allowlist
    is the latest version.
 3. **Feedback hardens.** Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never
    becomes a case note beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
-   [STARCI.md](STARCI.md) "Decisions taken", a knowledge ruling in `knowledge/decisions/rulings.yaml`.
+   [STARCI.md](STARCI.md) "Decisions taken", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml).
 4. **Claims execute.** A sentence that says something refuses, validates or is enforced names code that does it. If the
    code does not, fix the code or remove the claim.
 5. **Data is data.** `ops/` and `policy/` hold declarative YAML the CLI validates; a key no code reads is deleted.
