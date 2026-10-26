@@ -12,7 +12,7 @@ import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
-import { parseTimeout, startSeat } from "../seat/start.js"
+import { chooseLaunch, parseTimeout, routeLines, startSeat } from "../seat/start.js"
 import type { SeatStartData } from "../seat/start.js"
 
 interface SendData {
@@ -64,9 +64,9 @@ export const taskSendVerb = defineVerb({
         contract: { kind: "string", summary: "the contract json file", required: true, positional: true },
         workflow: { kind: "string", summary: "the workflow the task belongs to" },
         "retry-of": { kind: "string", summary: "the task this one retries (same label and allowPaths); it gets the next try number" },
-        launch: { kind: "boolean", summary: "then start a worker seat on the task, as seat start does (needs --agent and --model)" },
-        agent: { kind: "string", summary: "with --launch, required: the Orca agent id (claude, codex, ...)" },
-        model: { kind: "string", summary: "with --launch, required: the provider model id" },
+        launch: { kind: "boolean", summary: "then start a worker seat on the task, as seat start does (the router picks agent and model unless both are given)" },
+        agent: { kind: "string", summary: "with --launch: the Orca agent id (claude, codex, ...), together with --model" },
+        model: { kind: "string", summary: "with --launch: the provider model id, together with --agent" },
         effort: { kind: "string", summary: "with --launch: the reasoning effort of the model" },
         worktree: { kind: "string", summary: "with --launch: where the worker runs, a path or an Orca worktree selector" },
         run: { kind: "string", summary: "with --launch: an existing Orca Run id (default: create one)" },
@@ -76,8 +76,8 @@ export const taskSendVerb = defineVerb({
         if (!flags.launch) {
             const given = LAUNCH_FLAGS.filter((name) => flags[name] !== undefined)
             if (given.length > 0) throw new Refusal("CLI_USAGE", `${given.map((name) => `--${name}`).join(", ")} only go with --launch`, EXIT_USAGE)
-        } else if (flags.agent === undefined || flags.model === undefined) {
-            throw new Refusal("CLI_USAGE", "task send --launch needs --agent and --model", EXIT_USAGE)
+        } else if ((flags.agent === undefined) !== (flags.model === undefined)) {
+            throw new Refusal("CLI_USAGE", "task send --launch takes both --agent and --model, or neither and the router picks them", EXIT_USAGE)
         }
         const timeoutMs = parseTimeout(flags["timeout-ms"])
         const file = resolve(context.cwd, flags.contract)
@@ -103,10 +103,11 @@ export const taskSendVerb = defineVerb({
         } finally {
             db.close()
         }
-        if (!flags.launch || flags.agent === undefined || flags.model === undefined) return { data: { ...sent, launch: null } satisfies SendData, message: sent.task }
+        if (!flags.launch) return { data: { ...sent, launch: null } satisfies SendData, message: sent.task }
         try {
-            const started = await startSeat({ root, cwd: context.cwd, task: sent.task, agent: flags.agent, model: flags.model, effort: flags.effort, worktree: flags.worktree, run: flags.run, timeoutMs })
-            return { data: { ...sent, status: "running", launch: started.data } satisfies SendData, message: `${sent.task}\n${started.message}` }
+            const choice = chooseLaunch(root, sent.task, flags, true)
+            const started = await startSeat({ root, cwd: context.cwd, task: sent.task, agent: choice.agent, model: choice.model, effort: choice.effort, pick: choice.pick, worktree: flags.worktree, run: flags.run, timeoutMs })
+            return { data: { ...sent, status: "running", launch: started.data } satisfies SendData, message: [sent.task, ...routeLines(choice), started.message].join("\n") }
         } catch (error: unknown) {
             if (!(error instanceof Refusal)) throw error
             throw new Refusal(error.code, `task ${sent.task} was sent, but its launch did not run a worker: ${error.message}`, error.exitCode)

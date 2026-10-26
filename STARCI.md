@@ -49,6 +49,7 @@ cli/
 | `starci app info` | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
 | `starci contract new\|check`, `task send\|result\|status\|verify\|cancel` | core | see "CLI of the harness" | the P1 task protocol, in both editions |
 | `starci seat start\|list\|stop` | core | see "CLI of the harness" | Orca worker seats, the `orca` runner in either edition |
+| `starci route explain`, `provider status\|recover\|report`, `budget show\|raise` | core | see "Verbs added to the harness set" | the P2 router, provider circuit, pool concurrency and workflow budgets |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
@@ -75,7 +76,7 @@ Every op is the same worker running `ops/worker.md`. A label is a routing hint p
 
 The Kernel's own work is plan, decide and finish. The Supervisor's is the owner channel, operations, land and push, and CI-red routing. The Owner's is taste and acceptance.
 
-### CLI: 78 verbs in 4 sets, plus 5 hidden
+### CLI: 79 verbs in 4 sets, plus 5 hidden
 
 **Core: both editions (32)**
 
@@ -106,7 +107,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
 | `uat` | `record` (the browser recorder a `uat` worker uses) |
 
-**Harness: both editions (30).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
+**Harness: both editions (31).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
 
 | group | verbs | who |
 |---|---|---|
@@ -116,7 +117,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `msg` | `send` (hidden: `recv`, `reply`) | Kernel, Supervisor |
 | `seat` | `start`, `list`, `stop` (hidden: `run`) | Kernel, Supervisor |
 | `route` | `explain` | everyone |
-| `provider` | `status`, `recover` | Supervisor |
+| `provider` | `status`, `recover`, `report` | status: everyone; recover: owner or Supervisor; report: Kernel or Supervisor |
 | `budget` | `show`, `raise` | raise: owner or Supervisor |
 | `lease` | `list` (later; `task status <id>` shows a task's leases today) | everyone |
 | `daemon` | `start`, `stop`, `status` (hidden: `sweep`) | owner, Supervisor |
@@ -228,7 +229,7 @@ Who runs each verb is declared in its `roles` (enforcement comes later, see "Ver
 | `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
 | `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `contracts/<summary>.json` in the project's state folder, see Storage), composing `expectedOutput` from the label's default checks and named presets |
 | `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository nor the whole `.starciwork` Work tree, never named twice (`./src/a` is `src/a`) |
-| `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch --agent <a> --model <m> [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
+| `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does, routed when `--agent` and `--model` are left out; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
 | `task wait <id> [--timeout]` (later) | kernel, supervisor | read | block until the result arrives or the deadline passes |
 | `task result <id> --status done\|blocked\|mismatch\|failed --output <json>\|@<file>` | worker, op, kernel, supervisor | local-write | file the one immutable result of the open attempt; a queued task is worked inline (lite); `failed` preserves and resets the task's dirty `allowPaths`, then releases its leases |
 | `task verify <id> [--no-commit]` / `task verify <id> --recover` / `task verify --contract <file> [<id>] [--record]` | every writing role, op included | local-write | verify a reported task on a clean checkout of HEAD plus its `allowPaths`, one settle at a time: green moves the branch to a harness commit of only those paths (never pushed) and closes the task's seats; red preserves and resets its paths, fails the task and releases its leases; no verdict (`HEAD_MOVED`, a broken verifier) returns it to reported with no try spent. `--no-commit` only checks; `--recover` frees a task whose verifier died; `--contract` dry-replays a contract in the working tree, its `@result` json checks reading the task's output file |
@@ -236,7 +237,7 @@ Who runs each verb is declared in its `roles` (enforcement comes later, see "Ver
 | `task cancel <id> [--reason <r>]` | owner, kernel, supervisor | host | stop and release the task's seats through Orca, preserve and reset its dirty `allowPaths`, cancel it and release its leases; refused while a worker may still write |
 | `msg send <seat> ping\|status\|cancel\|pause\|resume` (later) | kernel, supervisor | host | one command; the seat runner answers within the deadline |
 | `msg recv` / `msg reply` | hidden (seat runner) | local-write | the runner's command loop |
-| `seat start <task> --agent <a> --model <m> [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>] [--dry-run]` / `seat start <task> --resume` | owner, kernel, supervisor, coordinator | host | write the task's brief, claim the queued task and launch one Orca worker on it (see §7); other roles and headless seats come later |
+| `seat start <task> [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>] [--dry-run]` / `seat start <task> --resume` | owner, kernel, supervisor, coordinator | host | write the task's brief, claim the queued task and launch one Orca worker on it (see §7); without `--agent` and `--model` the router picks them (§3) and the pick is stored on the attempt; other roles and headless seats come later |
 | `seat list [--live]` / `seat stop <seat>` | list: everyone; stop: owner, kernel, supervisor, coordinator | read / host | the seats with agent, model and status (`--live` asks Orca); stop and release one seat's worker |
 | `seat run` | hidden | host | the seat runner process itself |
 | `supervisor start\|stop\|status` | owner | host | the one host Supervisor seat |
@@ -335,7 +336,8 @@ ops/                       everything that describes work, as data validated by 
   worker.md                the one worker brief (prompt template)
   labels.yaml              code, test, ui, verify, uat, docs, deliver: difficulty floor, host tools, default checks
   checks.yaml              the named check presets (check-run-green, paths-only, tests-pass, json-schema, renders, probe)
-  models.yaml              tiers, pools and agents (launch command, host tools, maxParallel)
+  routing.yaml             tiers and their chains, pools (provider, maxParallel, labels, tools), host probes, balance, quota bands,
+                           circuit cooldowns and strikes, failure signals, AIMD tuning, workflow budgets
   policy.yaml              failure routes, cooldowns, liveness thresholds, budgets
 ```
 `ops/` is data, not code. Every tunable number lives there once, and the CLI reads it. Nothing is restated in prose.
@@ -361,7 +363,7 @@ The legacy minimal core, kept as is:
 5. Balance: a member picked 3 times in a row, or holding more than 70% of the tier's running seats, yields to the next member.
 6. Quota: a member at 90% or more of its quota window is skipped. A biased member may go to 95%. At 100% it is never used. When every member is out, the result is `tokens-out` with the earliest reset.
 7. The first remaining member is chosen. The pick record (chain, dropped members with reasons, chosen member, chosen-by) is stored on the attempt, and dispatch reuses it.
-8. A retry re-picks with lineage penalties. There is no tier escalation. An exhausted chain is escalated to the Supervisor.
+8. A retry re-picks with lineage penalties, and the second contract-red of a lineage raises the tier one step (amendment 5); infrastructure failures keep the tier. An exhausted chain is escalated to the Supervisor.
 9. Estimate: `W = Σ weight·count` (file 4, assertion 3, component 12, record 2). The size class gives the worker count, clamped by the disjoint path prefixes.
 
 Dropped from the legacy router: the qualification and probation store (empty), 37 admission reason codes, fenced reservations with proofs, reviewer independence, prices in the decision, and the `route model` what-if.
@@ -423,7 +425,7 @@ A project ledger has nine tables:
 - `messages` (commands with a correlation id and a deadline);
 - `events` (append-only).
 
-`machine.sqlite` keeps only host-wide state: `ledgers` (the legacy registry columns plus `repo_common_dir`, the lookup key) and `provider_health` (a provider's rate limit or circuit is the same for every project, so it moved out of the project ledger; an older ledger keeps its unused table, since migrations never drop). P2 adds the provider circuit and quota, pool concurrency (AIMD), shared budgets and host locks there. Seats and leases stay in the project ledger. The legacy's other machine tables are not carried over.
+`machine.sqlite` keeps only host-wide state: `ledgers` (the legacy registry columns plus `repo_common_dir`, the lookup key) and `provider_health` (a provider's rate limit or circuit is the same for every project, so it moved out of the project ledger; an older ledger keeps its unused table, since migrations never drop). P2 adds, in `harness/machine.ts`: `provider_events` (every outcome, open, recover and quota reading; reopens are counted from it), `pool_quota` (the newest reading per pool window; none is unknown, never blocked), `pool_concurrency` (the AIMD cap below maxParallel), `route_picks` (recent picks per tier, for balance) and `budgets`/`budget_raises` (a workflow's raised ceilings, who and why). Running workers are counted from the open seats of every registered ledger, read-only. Host locks come later. Seats and leases stay in the project ledger. The legacy's other machine tables are not carried over.
 
 Status transitions are enforced in code with one state machine (`TRANSITIONS` in `harness/tasks.ts`), not duplicated in triggers. Task states are:
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a launch Orca could not confirm or deny). A launch that certainly failed returns `running` or `effect_unknown` to `queued`; a verify with no verdict returns `verifying` to `reported`. A new column comes by an additive migration that bumps the ledger version.
@@ -440,9 +442,10 @@ Status transitions are enforced in code with one state machine (`TRANSITIONS` in
 
 | verb | does |
 |---|---|
-| `route explain <task>` | dry-run the router: the chain, the dropped members and their reasons, the chosen member |
-| `provider status` / `provider recover <p>` | circuits, strikes and quota windows; close a circuit after a passing probe |
-| `budget show` / `budget raise <task\|workflow> --by --reason` | budgets; raising one is owner or Supervisor only |
+| `route explain --label <l> [--difficulty n] [--attempt n] [--red a/m,...] [--only\|--avoid\|--prefer a,...]` | dry-run the router and print the whole path: the tier and why, the chain after each step (hard filter, lineage, bias, balance, quota), every dropped member with its reason, the chosen member; records nothing |
+| `provider status` / `provider recover <p> --by --reason` | circuits, strikes, pool caps, running workers and quota windows; close a circuit after a passing probe |
+| `provider report <p> --outcome <kind>\|--quota <pct> [--pool] [--resets-at] [--detail]` | record what a worker's result or an account poll taught (`seat start` records its own launch outcomes; unknown is never a failure) |
+| `budget show [<workflow>]` / `budget raise <workflow> --minutes\|--tries --by --reason` | a workflow's minutes and tries used against its ceiling (a launch that never ran spends no try); raising is owner or Supervisor only. A task's tries stay its contract's `budget.tries` |
 | `lease list` | path leases and their holders |
 | `sweep` | the periodic re-route of failed tasks with no next step (the daemon runs it; hidden) |
 | `daemon start\|stop\|status` | the host process that runs seat liveness, pongs, SLA clocks and sweeps |

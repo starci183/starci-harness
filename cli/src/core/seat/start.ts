@@ -6,6 +6,10 @@ import type { BriefFiles } from "../../harness/brief.js"
 import { now, openLedger } from "../../harness/ledger.js"
 import { assertLeasesHeld, inTransaction, renewLeases } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
+import { classifyFailure, recordOutcome } from "../../harness/circuit.js"
+import { describeRoute, routeTask, RouteRefusal } from "../../harness/router.js"
+import type { RoutePick } from "../../harness/router.js"
+import { loadRouting, poolOfAgent, providerOfAgent } from "../../harness/routing.js"
 import {
     LAUNCH_TIMEOUT_MS,
     OrcaFailure,
@@ -61,6 +65,8 @@ export interface SeatStartOptions {
     readonly run?: string | undefined
     readonly timeoutMs?: number | undefined
     readonly dryRun?: boolean | undefined
+    /** The router's pick that chose agent and model, stored on the attempt (pick_json). */
+    readonly pick?: RoutePick | undefined
 }
 
 const TITLE_CHARS = 80
@@ -195,10 +201,31 @@ interface Launching {
     readonly resumed: boolean
 }
 
+/**
+ * Tells the provider circuit what a launch proved: a ready worker is a success, a certain worker-start failure is classified
+ * from Orca's typed error, an unknown outcome is only noted (unknown is never a failure). A failed run-create or a spawn error
+ * is the host's, not the provider's. Recording never changes the launch's own result; a failure to record is a ledger event.
+ */
+const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched: Launched): void => {
+    try {
+        const routing = loadRouting()
+        const provider = providerOfAgent(routing, agent)
+        const pool = poolOfAgent(routing, agent)
+        if (launched.kind === "ready") recordOutcome(provider, { kind: "success", pool })
+        else if (launched.kind === "unknown") recordOutcome(provider, { kind: "unknown", detail: launched.error.message })
+        else if (launched.runId !== null && launched.error instanceof OrcaFailure) {
+            recordOutcome(provider, { kind: classifyFailure(routing, `${launched.error.orcaCode ?? ""} ${launched.error.message}`), pool, detail: launched.error.message })
+        }
+    } catch (error: unknown) {
+        recordEvent(db, "provider-outcome-unrecorded", taskId, { agent, launch: launched.kind, error: messageOf(error) })
+    }
+}
+
 /** Records how a launch ended and moves the task: ready runs, a certain failure goes back to the queue, unknown waits for a resume. */
 const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
     const { db, binary, cwd, task, seat, record } = at
     const attemptId = record.attempt
+    reportLaunch(db, task.id, record.start.agent, launched)
     const base = { task: task.id, dryRun: false, resumed: at.resumed, brief: at.files.brief, contract: at.files.contract, orca: binary, argv: argvOf(binary, record, launched.runId), attempt: attemptId, runId: launched.runId, requestId: record.start.retryRequest }
 
     if (launched.kind === "failed") {
@@ -311,7 +338,7 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
             if (current.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${current.id} is ${current.status}; another seat start claimed it first`)
             assertLeasesHeld(db, current)
             const running = setStatus(db, current.id, "running")
-            const attempt = openAttempt(db, current.id, { agent: options.agent, model: options.model })
+            const attempt = openAttempt(db, current.id, { agent: options.agent, model: options.model, ...(options.pick === undefined ? {} : { pick: options.pick }) })
             renewLeases(db, current)
             const files = writeBrief(running, ops, root)
             const record = launchRecord(running, files, options, attempt.id)
@@ -372,6 +399,30 @@ export const parseTimeout = (value: string | undefined): number | undefined => {
     return parsed
 }
 
+/** What a launch runs: the agent, model and effort, and the router's pick when the router chose them. */
+export interface LaunchChoice {
+    readonly agent: string
+    readonly model: string
+    readonly effort?: string | undefined
+    readonly pick?: RoutePick | undefined
+}
+
+/**
+ * The agent, model and effort of a launch: as given, or, with neither --agent nor --model, the router's pick for the task
+ * (its label, attempt number and contract-red lineage). A pick is remembered for balance only when `record` is true.
+ */
+export const chooseLaunch = (root: string, task: string, given: { readonly agent?: string | undefined; readonly model?: string | undefined; readonly effort?: string | undefined }, record: boolean): LaunchChoice => {
+    if (given.agent !== undefined && given.model !== undefined) return { agent: given.agent, model: given.model, effort: given.effort }
+    if (given.agent !== undefined || given.model !== undefined) throw new Refusal("CLI_USAGE", "give both --agent and --model, or neither and the router picks them", EXIT_USAGE)
+    const pick = routeTask(root, task, { record })
+    if (pick instanceof RouteRefusal) throw new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("\n"))
+    if (pick instanceof Refusal) throw pick
+    return { agent: pick.agent, model: pick.model, effort: given.effort ?? pick.effort, pick }
+}
+
+/** The route lines a launch prints before its own message, when the router chose. */
+export const routeLines = (choice: LaunchChoice): string[] => (choice.pick === undefined ? [] : describeRoute(choice.pick))
+
 /** `starci seat start`: renders the worker brief of a queued task and launches one Orca worker on it; the task moves to running. */
 export const seatStartVerb = defineVerb({
     path: ["seat", "start"],
@@ -382,8 +433,8 @@ export const seatStartVerb = defineVerb({
     schema: "starci/seat-start@1",
     flags: {
         task: { kind: "string", summary: "the queued task id (or, with --resume, the effect_unknown one)", required: true, positional: true },
-        agent: { kind: "string", summary: "required: the Orca agent id (claude, codex, ...); --resume reuses the recorded one" },
-        model: { kind: "string", summary: "required: the provider model id; --resume reuses the recorded one" },
+        agent: { kind: "string", summary: "the Orca agent id (claude, codex, ...); with --model, or neither and the router picks; --resume reuses the recorded one" },
+        model: { kind: "string", summary: "the provider model id; with --agent, or neither and the router picks; --resume reuses the recorded one" },
         effort: { kind: "string", summary: "the reasoning effort of the model" },
         worktree: { kind: "string", summary: "where the worker runs: a path or an Orca worktree selector (default: this repository)" },
         run: { kind: "string", summary: "an existing Orca Run id (default: create a Run for this task)" },
@@ -396,9 +447,12 @@ export const seatStartVerb = defineVerb({
         if (flags.resume) {
             const given = (["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const).filter((name) => flags[name] !== undefined)
             if (given.length > 0 || flags["dry-run"]) throw new Refusal("CLI_USAGE", `--resume replays the recorded launch as it was; drop ${[...given.map((name) => `--${name}`), ...(flags["dry-run"] ? ["--dry-run"] : [])].join(", ")}`, EXIT_USAGE)
-            return resumeSeat({ root, cwd: context.cwd, task: flags.task })
+            const resumed = await resumeSeat({ root, cwd: context.cwd, task: flags.task })
+            return { ...resumed, data: { ...resumed.data, route: null } }
         }
-        if (flags.agent === undefined || flags.model === undefined) throw new Refusal("CLI_USAGE", "seat start needs --agent and --model (or --resume)", EXIT_USAGE)
-        return startSeat({ root, cwd: context.cwd, task: flags.task, agent: flags.agent, model: flags.model, effort: flags.effort, worktree: flags.worktree, run: flags.run, timeoutMs: parseTimeout(flags["timeout-ms"]), dryRun: flags["dry-run"] })
+        const timeoutMs = parseTimeout(flags["timeout-ms"])
+        const choice = chooseLaunch(root, flags.task, flags, !flags["dry-run"])
+        const started = await startSeat({ root, cwd: context.cwd, task: flags.task, agent: choice.agent, model: choice.model, effort: choice.effort, pick: choice.pick, worktree: flags.worktree, run: flags.run, timeoutMs, dryRun: flags["dry-run"] })
+        return { ...started, data: { ...started.data, route: choice.pick ?? null }, message: [...routeLines(choice), started.message].join("\n") }
     },
 })
