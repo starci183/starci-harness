@@ -73,6 +73,15 @@ Windows argv cap). The effective agent and model are attested from `worker-show`
 requeues the task. An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
 `seat start <task> --resume` replays the same requests.
 
+**Seats as a tree.** An orca workflow has one Orca Run, created at `workflow start` with a `[Kernel] <workflow>`
+coordinator terminal and a Kernel task; every op launches into that Run with `--parent <kernel task>` and `--from
+<kernel terminal>` (Orca accepts `--run` only from the Run's coordinator), titled `[Op] <workflow> › <task> …`.
+`ORCA_TERMINAL_HANDLE` adopts an existing terminal as the coordinator only when the Kernel is first set up; an adopted
+terminal is never closed by the harness. A missing Kernel terminal is recreated and takes the Run back (`run-use`). A
+repository Orca does not know is registered (`orca repo add`) and the call retried once. A seat's tab is closed after
+Orca reports its worker released; `workflow step` closes the seats of settled tasks, and `workflow stop` closes the
+Kernel terminal after its ops. Inline workflows touch nothing in Orca.
+
 **Routing and liveness** are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, provider
 circuit, AIMD concurrency, workflow budgets) and [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, and the Orca
 answers that prove a worker gone; anything else is unknown, never dead). `starci route explain` prints a pick step by

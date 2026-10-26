@@ -5,14 +5,16 @@ import { openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
+import { closeKernel, ensureKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
-import { seatsOfTask } from "../../harness/seats.js"
+import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
+import type { SeatRow } from "../../harness/seats.js"
 import { getTask } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
 import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
-import type { Snapshot, WorkflowRow, WorkflowStatus } from "../../harness/workflow.js"
+import type { Snapshot, WorkflowRow, WorkflowStatus, WorkflowTask } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
 import type { VerbContext } from "../../shared/verb.js"
@@ -20,11 +22,14 @@ import { startSeat } from "../seat/start.js"
 import { taskCancelVerb } from "../task/cancel.js"
 import { taskVerifyVerb } from "../task/verify.js"
 
-/** What one step did to one task: settled it, dispatched it, launched or cancelled it, or why it could not. */
+/**
+ * What one step did to one task: settled it, dispatched it, launched or cancelled it, closed its seats once its result was
+ * settled, or why it could not; `kernel` is what it did to the workflow's Kernel in Orca.
+ */
 export interface StepAction {
     readonly key: string | null
     readonly task: string | null
-    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "lost" | "wait" | "problem"
+    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "closed" | "kernel" | "lost" | "wait" | "problem"
     readonly detail: string
 }
 
@@ -153,6 +158,65 @@ const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise
     return actions
 }
 
+/** True for a task whose result is settled: it ended, or it came back to the Kernel (blocked or mismatch); its worker has nothing left to do. */
+const isSettled = (task: WorkflowTask): boolean =>
+    task.status === "done" || task.status === "failed" || task.status === "cancelled" || task.status === "awaiting_owner" || (task.status === "reported" && task.result !== null && task.result !== "done")
+
+// A stopped seat waits for `seat stop` and a lost one is gone by Orca's word: the sweep asks Orca about neither again.
+const isSweepable = (seat: SeatRow): boolean => isSeatOpen(seat) && seat.handle !== null && seat.status !== SEAT_STOPPED && seat.status !== SEAT_WORKER_LOST
+
+/**
+ * Closes the seats of every task whose result is settled and whose worker is still open: stopped, released and its tab closed,
+ * as soon as the step sees the result (a returned task keeps no live worker until a later cancel). A worker Orca does not stop
+ * is reported; the next step tries again.
+ */
+const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const settled = withLedger(root, (db) => snapshot.tasks.filter((task) => isSettled(task) && seatsOfTask(db, task.id).some(isSweepable)))
+    const actions: StepAction[] = []
+    for (const task of settled) {
+        try {
+            for (const closing of await closeSeatsOfTask(root, task.id)) {
+                const tab = closing.closed === null ? "" : `, tab ${closing.closed.tab}`
+                const detail = `seat ${closing.seat} ${closing.outcome} (task ${task.status}${task.result === null ? "" : `, result ${task.result}`})${tab}`
+                actions.push({ key: task.key, task: task.id, action: closing.outcome === "not-stopped" ? "problem" : "closed", detail })
+            }
+        } catch (error: unknown) {
+            const refusal = asRefusal(error)
+            actions.push({ key: task.key, task: task.id, action: "problem", detail: `seats not closed (${refusal.code}): ${refusal.message}` })
+        }
+    }
+    return actions
+}
+
+/**
+ * Makes sure an orca workflow has its Kernel in Orca (`[Kernel] <workflow>` terminal, Run and task) and reports what was made.
+ * Orca being unable to make it is a problem, not a stop: ops then launch flat.
+ */
+export const kernelActions = async (context: VerbContext, root: string, id: string): Promise<StepAction[]> => {
+    try {
+        const binary = await locateOrca(context.cwd)
+        const ensured = await ensureKernel(root, context.cwd, id, binary)
+        return ensured.notes.map((note) => ({ key: null, task: null, action: "kernel", detail: note }))
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return [{ key: null, task: null, action: "problem", detail: `the Kernel was not made in Orca (${refusal.code}): ${refusal.message}; ops launch flat` }]
+    }
+}
+
+/** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
+export const closeKernelActions = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const { workflow } = snapshot
+    if (workflow.status !== "stopped" || workflow.kernel.terminal === null || workflow.kernel.closedAt !== null) return []
+    try {
+        const outcome = await closeKernel(root, context.cwd, workflow.id, await locateOrca(context.cwd))
+        const failed = outcome.startsWith("error: ")
+        return [{ key: null, task: null, action: failed ? "problem" : "kernel", detail: `Kernel terminal ${workflow.kernel.terminal}: ${outcome}${failed ? "; the next stop or step closes it" : ""}` }]
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return [{ key: null, task: null, action: "problem", detail: `Kernel terminal ${workflow.kernel.terminal} not closed (${refusal.code}): ${refusal.message}` }]
+    }
+}
+
 /** A launch: a pinned agent and model (the task's pair, else the workflow file's), or the router's pick. */
 interface Launch {
     readonly agent: string
@@ -262,7 +326,8 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
 
 /**
  * One dispatch tick, idempotent: cancel live tasks no node carries any more, settle reported nodes through `task verify`,
- * dispatch the nodes that became ready (orca: launch their seats), then move the workflow to the status its nodes call for.
+ * close the seats of settled tasks, dispatch the nodes that became ready (orca: launch their seats under the Kernel), then move
+ * the workflow to the status its nodes call for; a stopped workflow's Kernel terminal is closed.
  * This is what a loop, the daemon or an inline chat agent calls.
  */
 export const stepWorkflow = async (context: VerbContext, root: string, id: string): Promise<WorkflowReport> => {
@@ -275,11 +340,13 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)))
         actions.push(...(await checkLiveness(context, root, readSnapshot(root, id))))
         actions.push(...(await settleReported(context, readSnapshot(root, id))))
+        actions.push(...(await closeSettledSeats(root, readSnapshot(root, id))))
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
         snapshot = reconcile(root, id)
     }
-    return reportOf(root, snapshot, actions)
+    actions.push(...(await closeKernelActions(context, root, snapshot)))
+    return reportOf(root, readSnapshot(root, id), actions)
 }
 
 /** The report of a workflow as it stands, with what was done to it. */

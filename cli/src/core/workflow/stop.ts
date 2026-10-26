@@ -3,17 +3,18 @@ import { getWorkflow, isLiveTask, setWorkflowStatus, workflowTasks } from "../..
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { cancelTasks, reconcile, reportMessage, reportOf } from "./engine.js"
+import { cancelTasks, closeKernelActions, readSnapshot, reconcile, reportMessage, reportOf } from "./engine.js"
 import type { StepAction } from "./engine.js"
 
 /**
  * `starci workflow stop <id> --graceful|--hard`: graceful dispatches nothing new and lets live tasks report and settle (each
  * step verifies them; the workflow is stopped once none is live); hard cancels every live task now through task cancel, which
- * stops and releases its seats. A task that cannot be cancelled yet (a verify in flight) keeps the workflow stopping.
+ * stops and releases its seats. A task that cannot be cancelled yet (a verify in flight) keeps the workflow stopping. Once the
+ * workflow is stopped, after its ops, its Kernel terminal is closed (a graceful stop: by the step that stops it).
  */
 export const workflowStopVerb = defineVerb({
     path: ["workflow", "stop"],
-    summary: "stop a workflow: --graceful dispatches nothing new and waits for live tasks, --hard cancels every live task and its seats now",
+    summary: "stop a workflow: --graceful dispatches nothing new and waits for live tasks, --hard cancels every live task and its seats now; once stopped, its Kernel terminal is closed",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor"],
@@ -39,7 +40,9 @@ export const workflowStopVerb = defineVerb({
             }
         })()
         const actions: StepAction[] = mode === "hard" ? await cancelTasks(context, live.map((task) => ({ key: task.key, task: task.id })), `workflow ${flags.workflow}: hard stop`) : []
-        const report = reportOf(root, reconcile(root, flags.workflow), actions)
+        const snapshot = reconcile(root, flags.workflow)
+        actions.push(...(await closeKernelActions(context, root, snapshot)))
+        const report = reportOf(root, readSnapshot(root, flags.workflow), actions)
         return { data: report, message: reportMessage(report) }
     },
 })

@@ -32,17 +32,21 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         }
         const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs, progress }
         const flags = command.opts<Record<string, string | boolean | undefined>>()
-        const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true)
+        const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true || verb.flags[name]?.kind === "rest")
         const given = command.processedArgs as unknown[]
-        const positionalValues = Object.fromEntries(positionals.map((name, index) => [name, typeof given[index] === "string" ? given[index] : undefined]))
+        const operand = (value: unknown, spec: FlagSpec | undefined): string | readonly string[] | undefined => {
+            if (spec?.kind === "rest") return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []
+            return typeof value === "string" ? value : undefined
+        }
+        const positionalValues = Object.fromEntries(positionals.map((name, index) => [name, operand(given[index], verb.flags[name])]))
         // commander stores `--dry-run` as `dryRun` and `--no-commit` as a negated `commit`, so read each flag through its own option.
         const optionValue = (name: string, spec: FlagSpec): string | boolean | undefined => {
             const option = command.options.find((candidate) => candidate.long === `--${name}`)
             const value = option === undefined ? undefined : flags[option.attributeName()]
-            if (spec.kind !== "boolean") return value
+            if (spec.kind === "string") return value
             return option?.negate === true ? value === false : value === true
         }
-        const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true ? positionalValues[name] : optionValue(name, spec)]))
+        const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true || spec.kind === "rest" ? positionalValues[name] : optionValue(name, spec)]))
         const result = await verb.run(context, values)
         printResult(mode, verb.schema, result)
         if (result.exitCode !== undefined) process.exitCode = result.exitCode
@@ -64,6 +68,10 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
     }
     const command = parent.command(name).description(verb.summary)
     for (const [flag, spec] of Object.entries(verb.flags)) {
+        if (spec.kind === "rest") {
+            command.argument(`[${flag}...]`, spec.summary)
+            continue
+        }
         if (spec.positional === true) {
             command.argument(spec.required === true ? `<${flag}>` : `[${flag}]`, spec.summary)
             continue
@@ -80,8 +88,10 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
 
 /** Builds the program for the tree of the working directory; `--cwd` is honoured before the verbs are chosen. */
 const buildProgram = (argv: readonly string[]): Command => {
-    const cwdIndex = argv.indexOf("--cwd")
-    const cwd = resolve(cwdIndex >= 0 ? argv[cwdIndex + 1] ?? process.cwd() : process.cwd())
+    // Operands after `--` belong to the verb (a uat script's arguments), never to the CLI.
+    const ours = argv.includes("--") ? argv.slice(0, argv.indexOf("--")) : argv
+    const cwdIndex = ours.indexOf("--cwd")
+    const cwd = resolve(cwdIndex >= 0 ? ours[cwdIndex + 1] ?? process.cwd() : process.cwd())
     const verbs = verbsFor(locateTree(cwd).tree)
     const program = new Command("starci")
         .description("the StarCi command line: core verbs plus the verbs of this tree's edition")

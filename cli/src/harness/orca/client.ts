@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
@@ -97,6 +97,18 @@ export const locateOrca = async (cwd: string): Promise<OrcaBinary> => {
     throw new Refusal("ORCA_MISSING", `no orca binary: set STARCI_ORCA_BIN, install the Orca app${installed === undefined ? "" : ` (${installed})`} or put ${name} on PATH`)
 }
 
+/** Orca's worktree selectors; anything else is a filesystem path and becomes `path:<absolute path>`. */
+const SELECTOR = /^(?:(?:identity|id|name|branch|issue|path):|(?:current|active|new-child|new-top-level)$)/
+
+/** The Orca worktree selector of a `--worktree` value: a selector as given, else `path:` and the absolute path (default: the repository root). */
+export const worktreeSelector = (value: string | undefined, cwd: string, root: string): string => {
+    if (value !== undefined && SELECTOR.test(value)) return value
+    return `path:${resolve(cwd, value ?? root).replace(/\\/g, "/")}`
+}
+
+/** The repository `orca repo add` registers for a selector: the folder a `path:` selector names, else the repository root. */
+export const repositoryOfSelector = (selector: string, root: string): string => (selector.startsWith("path:") ? selector.slice("path:".length) : root)
+
 /** The argv of `orca orchestration <command>` with its flags and --json, in the order given. */
 export const orcaArgv = (command: string, flags: OrcaFlags): string[] => [
     "orchestration",
@@ -163,10 +175,17 @@ const effectOfRefusal = (reply: z.infer<typeof replySchema>): OrcaEffect => {
 
 const stderrNote = (run: ToolRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
 
-/** Runs one orca orchestration call without a shell under a deadline and returns its validated result; anything else is an OrcaFailure saying whether it had an effect. */
-const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<T> => {
-    const run = await spawnOrca(binary, orcaArgv(command, flags), cwd, timeoutMs)
-    const label = `orca orchestration ${command}`
+/** The argv of any orca `<group> <command>` (terminal, repo) with its flags and --json; a flag whose value is true is given bare. */
+export const orcaToolArgv = (group: string, command: string, flags: Readonly<Record<string, string | true | undefined>>): string[] => [
+    group,
+    command,
+    ...Object.entries(flags).flatMap(([name, value]) => (value === undefined ? [] : value === true ? [`--${name}`] : [`--${name}`, value])),
+    "--json",
+]
+
+/** Runs one orca call given as argv (ending in --json) under a deadline and returns its validated result; anything else is an OrcaFailure saying whether it had an effect. */
+const callOrcaArgv = async <T>(binary: OrcaBinary, argv: readonly string[], label: string, schema: z.ZodType<T>, cwd: string, timeoutMs: number): Promise<T> => {
+    const run = await spawnOrca(binary, argv, cwd, timeoutMs)
     if (run.timedOut) throw new OrcaFailure(`${label} gave no answer within ${String(timeoutMs)} ms and was killed; its effect is unknown${stderrNote(run)}`, undefined, undefined, "unknown")
     const reply = parseReply(run.stdout)
     if (reply === undefined) {
@@ -182,6 +201,10 @@ const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags
     return parsed.data
 }
 
+/** Runs one orca orchestration call without a shell under a deadline; see callOrcaArgv. */
+const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<T> =>
+    callOrcaArgv(binary, orcaArgv(command, flags), `orca orchestration ${command}`, schema, cwd, timeoutMs)
+
 /**
  * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Op] <task>` instead of Orca's generated name.
  * Best effort: the title is presentation, so a failure is returned as text and never fails the caller.
@@ -195,6 +218,78 @@ export const terminalRename = async (binary: OrcaBinary, handle: string, title: 
     } catch (error: unknown) {
         return error instanceof Error ? error.message : String(error)
     }
+}
+
+const terminalCreateSchema = z.looseObject({ terminal: z.looseObject({ handle: z.string().min(1) }) })
+
+/** `orca terminal create --worktree <selector> --title <title>`: a plain terminal tab (a coordinator's); returns its handle. Orca takes no request id for it, so it is never replayed. */
+export const terminalCreate = async (binary: OrcaBinary, input: { readonly worktree: string; readonly title: string }, cwd: string): Promise<string> =>
+    (await callOrcaArgv(binary, orcaToolArgv("terminal", "create", { worktree: input.worktree, title: input.title }), "orca terminal create", terminalCreateSchema, cwd, ORCA_TIMEOUT_MS)).terminal.handle
+
+const terminalListSchema = z.looseObject({ terminals: z.array(z.looseObject({ handle: z.string() })), truncated: z.boolean().optional() })
+
+/** How many terminals one `terminal list` reads; a list Orca truncated proves no absence. */
+const TERMINAL_LIST_LIMIT = "1000"
+
+/** `orca terminal list`: the handles of the live Orca terminals, and whether Orca truncated the list (then absence proves nothing). */
+export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<{ readonly handles: ReadonlySet<string>; readonly truncated: boolean }> => {
+    const result = await callOrcaArgv(binary, orcaToolArgv("terminal", "list", { limit: TERMINAL_LIST_LIMIT }), "orca terminal list", terminalListSchema, cwd, ORCA_TIMEOUT_MS)
+    return { handles: new Set(result.terminals.map((terminal) => terminal.handle)), truncated: result.truncated === true }
+}
+
+/** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
+const TERMINAL_GONE_CODES: readonly string[] = ["terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"]
+
+/**
+ * `orca terminal close --terminal <handle> --tab`: closes the terminal's whole tab. `closed` when Orca closed it, `gone` when
+ * Orca says the handle names nothing any more; anything else is an OrcaFailure.
+ */
+export const terminalClose = async (binary: OrcaBinary, handle: string, cwd: string): Promise<"closed" | "gone"> => {
+    try {
+        await callOrcaArgv(binary, orcaToolArgv("terminal", "close", { terminal: handle, tab: true }), "orca terminal close", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
+        return "closed"
+    } catch (error: unknown) {
+        if (error instanceof OrcaFailure && error.orcaCode !== undefined && TERMINAL_GONE_CODES.includes(error.orcaCode)) return "gone"
+        throw error
+    }
+}
+
+/** `orca repo add --path <path>`: registers a repository with Orca, so a `path:` worktree selector inside it resolves. */
+export const repoAdd = async (binary: OrcaBinary, path: string, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("repo", "add", { path }), "orca repo add", z.unknown(), cwd, ORCA_TIMEOUT_MS)
+}
+
+/** True for an OrcaFailure saying a worktree selector resolved to nothing: Orca does not know the repository yet (`repo add` fixes it). */
+export const isSelectorNotFound = (error: unknown): boolean => error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found"
+
+/** What task-create needs: the task's spec and title, the Run it belongs to, the Run's coordinator terminal and the replay id. */
+export interface TaskCreateInput {
+    readonly spec: string
+    readonly taskTitle: string
+    readonly run: string
+    readonly from: string
+    readonly retryRequest: string
+}
+
+/** The flags of task-create. --display-name is what Orca's rows show, so it carries the title too. */
+export const taskCreateFlags = (input: TaskCreateInput): OrcaFlags => ({
+    spec: input.spec,
+    "task-title": input.taskTitle,
+    "display-name": input.taskTitle,
+    run: input.run,
+    from: input.from,
+    "retry-request": input.retryRequest,
+})
+
+const taskCreateSchema = z.looseObject({ task: z.looseObject({ id: z.string().min(1) }) })
+
+/** `orca orchestration task-create`: an orchestration task with no worker of its own (the parent workers nest under); returns its id. */
+export const taskCreate = async (binary: OrcaBinary, input: TaskCreateInput, cwd: string): Promise<string> =>
+    (await callOrca(binary, "task-create", taskCreateFlags(input), taskCreateSchema, cwd)).task.id
+
+/** `orca orchestration run-use`: binds a coordinator terminal to an existing Run, so a recreated coordinator takes its Run back. */
+export const runUse = async (binary: OrcaBinary, input: { readonly id: string; readonly from: string }, cwd: string): Promise<void> => {
+    await callOrca(binary, "run-use", { id: input.id, from: input.from }, z.unknown(), cwd)
 }
 
 /** What run-create needs: the Run's objective, inside an Orca terminal the coordinator handle, and the replay id. */
@@ -222,6 +317,7 @@ export interface WorkerStartInput {
     readonly model: string
     readonly effort?: string | undefined
     readonly run?: string | undefined
+    readonly parent?: string | undefined
     readonly from?: string | undefined
     readonly timeoutMs: number
     readonly retryRequest: string
@@ -237,6 +333,7 @@ export const workerStartFlags = (input: WorkerStartInput): OrcaFlags => ({
     effort: input.effort,
     "timeout-ms": String(input.timeoutMs),
     run: input.run,
+    parent: input.parent,
     from: input.from,
     "retry-request": input.retryRequest,
 })
@@ -286,6 +383,14 @@ const failedStartSchema = z.looseObject({ dispatchId: z.string().min(1) })
 export const dispatchOfFailure = (failure: OrcaFailure): string | undefined => {
     const parsed = failedStartSchema.safeParse(failure.result)
     return parsed.success ? parsed.data.dispatchId : undefined
+}
+
+const failedTerminalSchema = z.looseObject({ worker: z.looseObject({ agentTerminalHandle: z.string().min(1) }) })
+
+/** The agent terminal a failed worker-start still names, if any: the tab to close once its dispatch is released. */
+export const terminalOfFailure = (failure: OrcaFailure): string | undefined => {
+    const parsed = failedTerminalSchema.safeParse(failure.result)
+    return parsed.success ? parsed.data.worker.agentTerminalHandle : undefined
 }
 
 const launchSchema = z.looseObject({
@@ -383,7 +488,8 @@ export const workerRelease = async (binary: OrcaBinary, dispatchId: string, cwd:
 
 /**
  * What closing a worker did: each step's state word, or `error: <why>`. `stopped` when Orca fenced the worker (it can write no
- * more), `settled` when it also released the terminal.
+ * more), `settled` when it also released it. `tab` is what became of the worker's terminal tab: `closed`, `gone` (Orca had
+ * closed it already), `kept: <why>` (the worker is not released, or no terminal handle is known) or `error: <why>`.
  */
 export interface WorkerClosed {
     readonly dispatchId: string
@@ -391,17 +497,30 @@ export interface WorkerClosed {
     readonly release: string
     readonly stopped: boolean
     readonly settled: boolean
+    readonly terminal: string | null
+    readonly tab: string
 }
 
 const RELEASED_STATES: readonly string[] = ["released", "already_released"]
 
-const stateOrError = async (step: Promise<string>): Promise<string> => step.catch((error: unknown) => `error: ${error instanceof Error ? error.message : String(error)}`)
+const errorText = (error: unknown): string => `error: ${error instanceof Error ? error.message : String(error)}`
 
-/** Stops then releases one worker; both steps always run (release is idempotent), so a half-closed worker is finished on a repeat. */
-export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<WorkerClosed> => {
+const stateOrError = async (step: Promise<string>): Promise<string> => step.catch(errorText)
+
+/**
+ * Stops then releases one worker; both steps always run (release is idempotent), so a half-closed worker is finished on a repeat.
+ * Once Orca released the worker, its terminal tab is closed as well, since worker-release settles the dispatch and may leave
+ * the tab open. That close is best effort and never fails the caller. A worker Orca did not release keeps its tab: Orca's
+ * guide forbids `terminal close` in place of an uncertain release, and a retained terminal is not the harness's to close.
+ */
+export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string, terminal: string | null = null): Promise<WorkerClosed> => {
     const stop = await stateOrError(workerStop(binary, dispatchId, cwd))
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
     const settled = RELEASED_STATES.includes(release)
     const stopped = settled || (!stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop))
-    return { dispatchId, stop, release, stopped, settled }
+    const tab = !settled ? `kept: the worker is not released (${release})` : terminal === null ? "kept: no terminal handle is known" : await terminalClose(binary, terminal, cwd).catch(errorText)
+    return { dispatchId, stop, release, stopped, settled, terminal, tab }
 }
+
+/** True when a released worker's tab may still be open: closing it failed, or its handle was unknown (an event records it). */
+export const tabLeftOpen = (closed: WorkerClosed): boolean => closed.settled && closed.tab !== "closed" && closed.tab !== "gone"
