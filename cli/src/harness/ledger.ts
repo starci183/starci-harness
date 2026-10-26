@@ -164,7 +164,7 @@ const pathKey = (path: string): string => {
     } catch {
         // A path that does not resolve keeps its resolved spelling.
     }
-    const slashed = real.replace(/\\/g, "/")
+    const slashed = real.replaceAll("\\", "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 
@@ -199,7 +199,16 @@ const registered = (db: DatabaseSync, project: Project): string | undefined => {
 }
 
 // The main checkout's folder name, readable in listings; the id adds a hash of the common dir so it is stable and unique.
-const nameOf = (project: Project): string => basename(project.root).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|-+$/g, "") || "project"
+// Drops leading dashes and dots and trailing dashes by scanning, which a backtracking regex would do in super-linear time.
+const trimDashes = (text: string): string => {
+    let start = 0
+    let end = text.length
+    while (start < end && (text[start] === "-" || text[start] === ".")) start += 1
+    while (end > start && text[end - 1] === "-") end -= 1
+    return text.slice(start, end)
+}
+
+const nameOf = (project: Project): string => trimDashes(basename(project.root).replaceAll(/[^\w.-]+/g, "-")) || "project"
 
 const mintLedgerId = (project: Project): string => `${nameOf(project)}-${createHash("sha256").update(project.key).digest("hex").slice(0, 10)}`
 

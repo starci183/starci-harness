@@ -96,38 +96,9 @@ export const ensureKernel = async (root: string, cwd: string, workflowId: string
     const live = kernel.terminal === null ? undefined : await terminalList(binary, cwd)
     const alive = kernel.terminal !== null && live !== undefined && (live.truncated || live.handles.has(kernel.terminal))
     if (!alive) {
-        const lost = kernel.terminal
-        if (lost !== null) notes.push(`Kernel terminal ${lost} is gone (orca terminal list)`)
-        const caller = callerTerminal()
-        // The terminal this process runs in exists, unless the list just read says it is gone too.
-        const adopted = caller !== undefined && (live === undefined || live.truncated || live.handles.has(caller)) ? caller : undefined
-        const terminal = adopted ?? (await createTerminal(binary, workflow, root, cwd, notes))
-        const raced = withRecord(root, (db) =>
-            inTransaction(db, () => {
-                const current = getWorkflow(db, workflowId).kernel
-                // Another step recorded its own terminal meanwhile: that one is the Kernel's and ours is surplus.
-                if (current.terminal !== lost) return current
-                kernel = recordKernel(db, workflowId, { terminal, owned: adopted === undefined, closedAt: null }).kernel
-                return undefined
-            }),
-        )
-        if (raced !== undefined) {
-            if (adopted === undefined) await terminalClose(binary, terminal, cwd).catch(() => "error")
-            return { kernel: raced, notes: [...notes, `another step made the Kernel terminal ${raced.terminal ?? "-"} first; used it`] }
-        }
-        notes.push(adopted === undefined ? `created the Kernel terminal ${terminal}` : `adopted this process's terminal ${terminal} (ORCA_TERMINAL_HANDLE) as the Kernel terminal`)
-        if (kernel.runId !== null) {
-            const runId = kernel.runId
-            const taken = await runUse(binary, { id: runId, from: terminal }, cwd).then(
-                () => true,
-                (error: unknown) => {
-                    notes.push(`run-use of ${runId} refused (${error instanceof Error ? error.message.split("\n")[0] ?? "" : String(error)}); a new Run is made`)
-                    return false
-                },
-            )
-            if (taken) notes.push(`the Kernel terminal ${terminal} took Run ${runId} back (run-use)`)
-            else kernel = withRecord(root, (db) => recordKernel(db, workflowId, { runId: null, taskId: null }).kernel)
-        }
+        const replaced = await replaceTerminal(root, cwd, { workflow, live, binary }, notes)
+        if (replaced.raced) return { kernel: replaced.kernel, notes: replaced.notes }
+        kernel = replaced.kernel
     }
     const terminal = kernel.terminal
     if (terminal === null) throw new Refusal("KERNEL_UNRECORDED", `workflow ${workflowId} has no Kernel terminal recorded after it was made`)
@@ -144,6 +115,54 @@ export const ensureKernel = async (root: string, cwd: string, workflowId: string
         notes.push(`created the Kernel task ${taskId} in Run ${runId}`)
     }
     return { kernel, notes }
+}
+
+/** The first line of an error's message, for a note. */
+const firstLine = (error: unknown): string => (error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error))
+
+/** Gives the workflow a new Kernel terminal in place of a gone or missing one; `raced` is set when another step recorded one first. */
+const replaceTerminal = async (
+    root: string,
+    cwd: string,
+    from: { readonly workflow: WorkflowRow; readonly live: Awaited<ReturnType<typeof terminalList>> | undefined; readonly binary: OrcaBinary },
+    notes: string[],
+): Promise<KernelEnsured & { readonly raced: boolean }> => {
+    const { workflow, live, binary } = from
+    const workflowId = workflow.id
+    let kernel = workflow.kernel
+    const lost = kernel.terminal
+    if (lost !== null) notes.push(`Kernel terminal ${lost} is gone (orca terminal list)`)
+    const caller = callerTerminal()
+    // The terminal this process runs in exists, unless the list just read says it is gone too.
+    const adopted = caller !== undefined && (live === undefined || live.truncated || live.handles.has(caller)) ? caller : undefined
+    const terminal = adopted ?? (await createTerminal(binary, workflow, root, cwd, notes))
+    const raced = withRecord(root, (db) =>
+        inTransaction(db, () => {
+            const current = getWorkflow(db, workflowId).kernel
+            // Another step recorded its own terminal meanwhile: that one is the Kernel's and ours is surplus.
+            if (current.terminal !== lost) return current
+            kernel = recordKernel(db, workflowId, { terminal, owned: adopted === undefined, closedAt: null }).kernel
+            return undefined
+        }),
+    )
+    if (raced !== undefined) {
+        if (adopted === undefined) await terminalClose(binary, terminal, cwd).catch(() => "error")
+        return { kernel: raced, notes: [...notes, `another step made the Kernel terminal ${raced.terminal ?? "-"} first; used it`], raced: true }
+    }
+    notes.push(adopted === undefined ? `created the Kernel terminal ${terminal}` : `adopted this process's terminal ${terminal} (ORCA_TERMINAL_HANDLE) as the Kernel terminal`)
+    if (kernel.runId !== null) {
+        const runId = kernel.runId
+        const taken = await runUse(binary, { id: runId, from: terminal }, cwd).then(
+            () => true,
+            (error: unknown) => {
+                notes.push(`run-use of ${runId} refused (${firstLine(error)}); a new Run is made`)
+                return false
+            },
+        )
+        if (taken) notes.push(`the Kernel terminal ${terminal} took Run ${runId} back (run-use)`)
+        else kernel = withRecord(root, (db) => recordKernel(db, workflowId, { runId: null, taskId: null }).kernel)
+    }
+    return { kernel, notes, raced: false }
 }
 
 /** What stopping a workflow did to its Kernel terminal: closed, already gone, left open (adopted, not the harness's), nothing to close, or why the close failed. */

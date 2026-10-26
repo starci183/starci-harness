@@ -148,7 +148,7 @@ export const recordOutcome = (provider: string, outcome: ProviderOutcome, at: st
 }
 
 /** The providers ops/routing.yaml knows, from its pools. */
-export const knownProviders = (routing: Routing): string[] => [...new Set(Object.values(routing.pools).map((pool) => pool.provider))].sort()
+export const knownProviders = (routing: Routing): string[] => [...new Set(Object.values(routing.pools).map((pool) => pool.provider))].sort((a, b) => a.localeCompare(b))
 
 /** Closes a provider's circuit by hand (owner or Supervisor, after a passing probe); the reason is kept as an event. */
 export const recoverProvider = (provider: string, by: string, reason: string, at: string = now()): { readonly before: CircuitState; readonly after: CircuitState } => {

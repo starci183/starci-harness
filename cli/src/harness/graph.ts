@@ -5,7 +5,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { repositoryRoot } from "../shared/git.js"
-import { CONTRACT_SCHEMA, DEFAULT_BUDGET, contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
+import { CONTRACT_SCHEMA, DEFAULT_BUDGET, byCodeUnit, contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { pathsOverlap } from "./leases.js"
 import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
@@ -210,6 +210,16 @@ interface TaskAt {
     readonly place: PlanPlace
 }
 
+/** A one-key object holding `value`, or nothing when it is undefined, for spreading an optional field. */
+const optional = <K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> => (value === undefined ? {} : ({ [key]: value } as Partial<Record<K, V>>))
+
+/** The value when it holds something (a non-empty object or list), else undefined. */
+const filled = <T extends object>(value: T | undefined): T | undefined => (value !== undefined && Object.keys(value).length > 0 ? value : undefined)
+
+/** A contract section of a pinned base and an extend, or nothing when it has neither. */
+const part = <B, E>(base: B | undefined, extend: E | undefined): { base?: B; extend?: E } | undefined =>
+    base === undefined && extend === undefined ? undefined : { ...optional("base", base), ...optional("extend", extend) }
+
 /** Builds the contract of a task written inline, or merges inline fields onto a contract it already has. */
 const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: Contract): Contract => {
     const label = fields.label ?? previous?.label
@@ -220,33 +230,25 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
     }
     if (fields.context !== undefined && fields.readPaths !== undefined) throw new Refusal("WORKFLOW_INVALID", "a task names context or readPaths (its earlier spelling), not both")
     const read = fields.context ?? fields.readPaths ?? previous?.context.extend
-    const cwd = fields.cwd ?? previous?.context.cwd
-    const setup = fields.setup ?? previous?.context.setup
-    const details = fields.details ?? previous?.input.details
     // A named input the op declares is a base input; the rest extend.
     const declared = ops.labels[label]?.input.base ?? {}
     const named = fields.inputs === undefined ? undefined : Object.entries(fields.inputs)
     const inputBase = named === undefined ? previous?.input.base : Object.fromEntries(named.filter(([name]) => name in declared))
     const inputExtend = named === undefined ? previous?.input.extend : Object.fromEntries(named.filter(([name]) => !(name in declared)))
-    const outputExtend = fields.output ?? previous?.output?.extend
-    const checksExtend = fields.checks ?? previous?.checks?.extend
-    const nonEmpty = <T extends object>(value: T | undefined): value is T => value !== undefined && Object.keys(value).length > 0
     return parseContract({
         schema: CONTRACT_SCHEMA,
         label,
         context: {
             revision: previous?.context.revision ?? base,
             allowPaths,
-            ...(cwd === undefined ? {} : { cwd }),
-            ...(setup === undefined ? {} : { setup }),
-            ...(previous?.context.base === undefined ? {} : { base: previous.context.base }),
-            ...(read === undefined || read.length === 0 ? {} : { extend: read }),
+            ...optional("cwd", fields.cwd ?? previous?.context.cwd),
+            ...optional("setup", fields.setup ?? previous?.context.setup),
+            ...optional("base", previous?.context.base),
+            ...optional("extend", filled(read)),
         },
-        input: { summary, ...(details === undefined ? {} : { details }), ...(nonEmpty(inputBase) ? { base: inputBase } : {}), ...(nonEmpty(inputExtend) ? { extend: inputExtend } : {}) },
-        ...(previous?.output?.base === undefined && !nonEmpty(outputExtend) ? {} : { output: { ...(previous?.output?.base === undefined ? {} : { base: previous.output.base }), ...(nonEmpty(outputExtend) ? { extend: outputExtend } : {}) } }),
-        ...(previous?.checks?.base === undefined && (checksExtend === undefined || checksExtend.length === 0)
-            ? {}
-            : { checks: { ...(previous?.checks?.base === undefined ? {} : { base: previous.checks.base }), ...(checksExtend === undefined || checksExtend.length === 0 ? {} : { extend: checksExtend }) } }),
+        input: { summary, ...optional("details", fields.details ?? previous?.input.details), ...optional("base", filled(inputBase)), ...optional("extend", filled(inputExtend)) },
+        ...optional("output", part(previous?.output?.base, filled(fields.output ?? previous?.output?.extend))),
+        ...optional("checks", part(previous?.checks?.base, filled(fields.checks ?? previous?.checks?.extend))),
         budget: fields.budget ?? previous?.budget ?? { ...DEFAULT_BUDGET },
     })
 }
@@ -300,7 +302,10 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
 }
 
 /** The Work flow a change adds or sets on a task, if any. */
-const uatOfChange = (change: ChangeEntry): string | undefined => (change.op === "add" ? change.task.uat : change.op === "edit" ? change.set.uat : undefined)
+const uatOfChange = (change: ChangeEntry): string | undefined => {
+    if (change.op === "add") return change.task.uat
+    return change.op === "edit" ? change.set.uat : undefined
+}
 
 /**
  * The uat walks a plan source asks for (its uat-flow bindings), so a caller can check their run places (assertRunPlace) before
@@ -315,6 +320,45 @@ export const uatWalksOf = (source: PlanSource, ops: Ops): UatBinding[] => {
         const key = change.op === "add" ? change.task.id : change.id
         return [{ record: place.record, run: posix.join(place.runs, uatRunId(source.workflow, key)) }]
     })
+}
+
+/** Applies one change to the working task map (and the retry set); a change that cannot apply throws a Refusal. */
+const applyChange = (
+    change: ChangeEntry,
+    key: string,
+    state: { readonly tasks: Map<string, PlanTask>; readonly retries: Set<string> },
+    where: { readonly dir: string; readonly base: string; readonly ops: Ops; readonly at: TaskAt },
+): void => {
+    const { tasks, retries } = state
+    const { dir, base, ops, at } = where
+    const existing = tasks.get(key)
+    if (change.op === "add") {
+        if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
+        const { id, ...fields } = change.task
+        tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
+        return
+    }
+    if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
+    switch (change.op) {
+        case "edit": {
+            const touchesContract = change.set.contract !== undefined || change.set.uat !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
+            tasks.set(key, {
+                key,
+                contract: touchesContract ? resolveContract(change.set, dir, base, ops, at, existing.contract) : existing.contract,
+                dependsOn: change.set.dependsOn ?? existing.dependsOn,
+                route: routeOf(change.set, existing.route),
+                round: existing.round,
+            })
+            break
+        }
+        case "remove":
+            tasks.delete(key)
+            break
+        case "retry":
+            retries.add(key)
+            tasks.set(key, { ...existing, round: existing.round + 1 })
+            break
+    }
 }
 
 /** Applies a change file to the tasks of the current graph; returns the new task list, the keys to retry, and the problems. */
@@ -332,38 +376,8 @@ export const applyChanges = (
     const problems: string[] = []
     for (const change of changes) {
         const key = change.op === "add" ? change.task.id : change.id
-        const existing = tasks.get(key)
-        const at = { workflow: plan.workflow, key, place: plan.place }
         try {
-            switch (change.op) {
-                case "add": {
-                    if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
-                    const { id, ...fields } = change.task
-                    tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
-                    break
-                }
-                case "edit": {
-                    if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
-                    const touchesContract = change.set.contract !== undefined || change.set.uat !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
-                    tasks.set(key, {
-                        key,
-                        contract: touchesContract ? resolveContract(change.set, dir, base, ops, at, existing.contract) : existing.contract,
-                        dependsOn: change.set.dependsOn ?? existing.dependsOn,
-                        route: routeOf(change.set, existing.route),
-                        round: existing.round,
-                    })
-                    break
-                }
-                case "remove":
-                    if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
-                    tasks.delete(key)
-                    break
-                case "retry":
-                    if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
-                    retries.add(key)
-                    tasks.set(key, { ...existing, round: existing.round + 1 })
-                    break
-            }
+            applyChange(change, key, { tasks, retries }, { dir, base, ops, at: { workflow: plan.workflow, key, place: plan.place } })
         } catch (error: unknown) {
             problems.push(`${change.op} ${key}: ${messageOf(error)}`)
         }
@@ -390,7 +404,7 @@ const orderOf = (tasks: ReadonlyMap<string, PlanTask>): { readonly order: string
         state.set(key, "closed")
         order.push(key)
     }
-    for (const key of [...tasks.keys()].sort()) visit(key, [])
+    for (const key of [...tasks.keys()].sort(byCodeUnit)) visit(key, [])
     return { order, cycles }
 }
 
@@ -415,28 +429,46 @@ export const buildGraph = (tasks: readonly PlanTask[], ops: Ops): BuiltGraph => 
         if (byKey.has(task.key)) problems.push(`task ${task.key} is defined twice`)
         byKey.set(task.key, task)
         for (const problem of contractProblems(task.contract, ops)) problems.push(`task ${task.key}: ${problem}`)
-        const deps = new Set<string>()
-        for (const dep of task.dependsOn) {
-            if (dep === task.key) problems.push(`task ${task.key} depends on itself`)
-            else if (!tasks.some((other) => other.key === dep)) problems.push(`task ${task.key} depends on ${dep}, which is not in the graph`)
-            if (deps.has(dep)) problems.push(`task ${task.key} names dependency ${dep} twice`)
-            deps.add(dep)
-        }
+        problems.push(...dependencyProblems(task, tasks))
     }
     const { order, cycles } = orderOf(byKey)
     for (const cycle of cycles) problems.push(`dependency cycle: ${cycle}`)
     if (problems.length > 0) return { nodes: [], problems, notes: [] }
+    const nodes = hashNodes(order, byKey)
+    return { nodes, problems: [], notes: overlapNotes(nodes, byKey) }
+}
+
+/** The problems of one task's dependencies: itself, a task not in the graph, a name given twice. */
+const dependencyProblems = (task: PlanTask, tasks: readonly PlanTask[]): string[] => {
+    const problems: string[] = []
+    const deps = new Set<string>()
+    for (const dep of task.dependsOn) {
+        if (dep === task.key) problems.push(`task ${task.key} depends on itself`)
+        else if (!tasks.some((other) => other.key === dep)) problems.push(`task ${task.key} depends on ${dep}, which is not in the graph`)
+        if (deps.has(dep)) problems.push(`task ${task.key} names dependency ${dep} twice`)
+        deps.add(dep)
+    }
+    return problems
+}
+
+/** The nodes in dependency order, each hashed from its contract, its round and the hashes of what it depends on. */
+const hashNodes = (order: readonly string[], byKey: ReadonlyMap<string, PlanTask>): PlanNode[] => {
     const hashes = new Map<string, string>()
     const nodes: PlanNode[] = []
     for (const key of order) {
         const task = byKey.get(key)
         if (task === undefined) continue
         const own = contractHash(task.contract)
-        const dependsOn = [...task.dependsOn].sort()
+        const dependsOn = [...task.dependsOn].sort(byCodeUnit)
         const hash = sha({ contract: own, round: task.round, dependsOn: dependsOn.map((dep) => [dep, hashes.get(dep) ?? ""]) })
         hashes.set(key, hash)
         nodes.push({ ...task, dependsOn, contractHash: own, hash })
     }
+    return nodes
+}
+
+/** A note for each pair of unordered nodes whose allowPaths overlap. */
+const overlapNotes = (nodes: readonly PlanNode[], byKey: ReadonlyMap<string, PlanTask>): string[] => {
     const notes: string[] = []
     for (const [index, left] of nodes.entries()) {
         for (const right of nodes.slice(index + 1)) {
@@ -445,7 +477,7 @@ export const buildGraph = (tasks: readonly PlanTask[], ops: Ops): BuiltGraph => 
             if (shared.length > 0) notes.push(`tasks ${left.key} and ${right.key} have no order between them but share ${shared.join(", ")}: the path lease runs them one after the other`)
         }
     }
-    return { nodes, problems: [], notes }
+    return notes
 }
 
 /** The ledger task that currently carries a node: the newest task of its plan key whose plan hash is the node's hash. */
@@ -502,15 +534,26 @@ const taskState = (task: NodeTask): NodeState => {
     }
 }
 
+const failure = (task: NodeTask): string => {
+    if (task.redChecks !== null) return `its verify was red on ${task.redChecks}`
+    return task.result === "failed" ? "the worker filed failed" : "it failed"
+}
+
 const taskWhy = (task: NodeTask, state: NodeState): string => {
     if (state === "returned") return `task ${task.id} came back ${task.result ?? task.status}; the Kernel amends (edit, retry or remove)`
     if (state === "failed") {
-        const how = task.redChecks !== null ? `its verify was red on ${task.redChecks}` : task.result === "failed" ? "the worker filed failed" : "it failed"
-        return `task ${task.id} try ${String(task.tryNo)}: ${how}; its dependents are blocked until the Kernel amends`
+        return `task ${task.id} try ${String(task.tryNo)}: ${failure(task)}; its dependents are blocked until the Kernel amends`
     }
     if (state === "cancelled") return `task ${task.id} was cancelled; amend with retry or remove`
     if (state === "lost") return `task ${task.id}: Orca says its worker is gone and what it wrote is unknown; cancel it (starci task cancel ${task.id}), then amend with retry or remove`
     return `task ${task.id} is ${task.status}`
+}
+
+/** The view of a node with no task: blocked by a stuck dependency, waiting for open ones, or ready. */
+const waitingView = (key: string, stuck: NodeView | undefined, open: readonly string[]): NodeView => {
+    if (stuck !== undefined) return { key, state: "blocked", task: null, why: `${stuck.key} is ${stuck.state}` }
+    if (open.length > 0) return { key, state: "waiting", task: null, why: `waits for ${open.join(", ")}` }
+    return { key, state: "ready", task: null, why: "every dependency is done" }
 }
 
 /** The state of every node, in the graph's dependency order, from the node tasks the ledger holds. */
@@ -526,13 +569,7 @@ export const viewNodes = (nodes: readonly PlanNode[], tasks: ReadonlyMap<string,
         const deps = node.dependsOn.map((dep) => views.get(dep)).filter((view): view is NodeView => view !== undefined)
         const stuck = deps.find((view) => STUCK_STATES.includes(view.state))
         const open = deps.filter((view) => view.state !== "done").map((view) => view.key)
-        const view: NodeView =
-            stuck !== undefined
-                ? { key: node.key, state: "blocked", task: null, why: `${stuck.key} is ${stuck.state}` }
-                : open.length > 0
-                  ? { key: node.key, state: "waiting", task: null, why: `waits for ${open.join(", ")}` }
-                  : { key: node.key, state: "ready", task: null, why: "every dependency is done" }
-        views.set(node.key, view)
+        views.set(node.key, waitingView(node.key, stuck, open))
     }
     return nodes.map((node) => views.get(node.key)).filter((view): view is NodeView => view !== undefined)
 }
@@ -549,6 +586,22 @@ export interface Classified {
     readonly why: string
 }
 
+/** The id of the live task a node view carries, if any. */
+const liveTaskId = (view: NodeView | undefined): string | null => (view?.task != null && LIVE_STATES.includes(view.state) ? view.task.id : null)
+
+/** How a replan treats one node of the new graph, given the node it replaces, its view before and whether a retry was asked. */
+const classifyNode = (node: PlanNode, previous: PlanNode | undefined, view: NodeView | undefined, retry: boolean): Classified => {
+    const state = view?.state ?? null
+    if (previous === undefined) return { key: node.key, class: "add", state: null, cancel: null, why: "new in the goal" }
+    if (retry) return { key: node.key, class: "redo", state, cancel: liveTaskId(view), why: "retry asked" }
+    if (previous.hash !== node.hash) {
+        const why = previous.contractHash === node.contractHash ? "a dependency changed" : "its contract changed"
+        return { key: node.key, class: "redo", state, cancel: liveTaskId(view), why: view?.task == null ? `${why} (not sent yet)` : why }
+    }
+    if (liveTaskId(view) !== null) return { key: node.key, class: "continue", state, cancel: null, why: "unchanged and running" }
+    return { key: node.key, class: "keep", state, cancel: null, why: state === "done" ? "done and unchanged: its result is reused" : "unchanged" }
+}
+
 /**
  * Classifies a replan by node hash (contract plus the hashes of its dependencies): keep (unchanged and not running: a done
  * result is reused, a task not yet sent stays as it is, a failed one stays failed), continue (unchanged and live), redo (its
@@ -559,29 +612,15 @@ export const classify = (before: readonly NodeView[], beforeNodes: readonly Plan
     const old = new Map(beforeNodes.map((node) => [node.key, node]))
     const views = new Map(before.map((view) => [view.key, view]))
     const next = new Set(after.map((node) => node.key))
-    const live = (view: NodeView | undefined): string | null => (view?.task != null && LIVE_STATES.includes(view.state) ? view.task.id : null)
     const rows: Classified[] = []
     for (const node of after) {
         const previous = old.get(node.key)
-        const view = views.get(node.key)
-        const state = view?.state ?? null
-        if (previous === undefined) {
-            rows.push({ key: node.key, class: "add", state: null, cancel: null, why: "new in the goal" })
-        } else if (retries.has(node.key)) {
-            rows.push({ key: node.key, class: "redo", state, cancel: live(view), why: "retry asked" })
-        } else if (previous.hash !== node.hash) {
-            const why = previous.contractHash === node.contractHash ? "a dependency changed" : "its contract changed"
-            rows.push({ key: node.key, class: "redo", state, cancel: live(view), why: view?.task == null ? `${why} (not sent yet)` : why })
-        } else if (live(view) !== null) {
-            rows.push({ key: node.key, class: "continue", state, cancel: null, why: "unchanged and running" })
-        } else {
-            rows.push({ key: node.key, class: "keep", state, cancel: null, why: state === "done" ? "done and unchanged: its result is reused" : "unchanged" })
-        }
+        rows.push(classifyNode(node, previous, views.get(node.key), retries.has(node.key)))
     }
     for (const node of beforeNodes) {
         if (next.has(node.key)) continue
         const view = views.get(node.key)
-        rows.push({ key: node.key, class: "drop", state: view?.state ?? null, cancel: live(view), why: "no longer in the goal; its history is kept" })
+        rows.push({ key: node.key, class: "drop", state: view?.state ?? null, cancel: liveTaskId(view), why: "no longer in the goal; its history is kept" })
     }
     return rows
 }

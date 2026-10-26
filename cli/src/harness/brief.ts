@@ -31,7 +31,7 @@ export const briefFiles = (root: string, taskId: string): BriefFiles => {
 }
 
 // Paths go into the brief with forward slashes, so a command copied from it runs the same in every shell.
-const slashed = (path: string): string => path.replace(/\\/g, "/")
+const slashed = (path: string): string => path.replaceAll("\\", "/")
 
 const code = (text: string): string => `\`${text}\``
 
@@ -39,7 +39,7 @@ const code = (text: string): string => `\`${text}\``
 const describeCheck = (check: PrimitiveCheck): string => {
     switch (check.kind) {
         case "starci":
-            return `${code(`starci ${check.args.join(" ")}`)} exits 0`
+            return `${code("starci " + check.args.join(" "))} exits 0`
         case "command":
             return `${code(Array.isArray(check.run) ? check.run.join(" ") : check.run)} exits 0`
         case "files": {
@@ -104,7 +104,10 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const values = { taskId: task.id, contractFile: slashed(files.contract), outputFile: slashed(files.output) }
     const template = fillTemplate(workerProcedure(ops), join(ops.dir, OP_FILES, OPS_README), values)
     const procedure = fillTemplate(op.procedure, op.file, values)
-    const inputs = resolved.inputs.map((input) => `${input.name} (${input.source}${input.summary === undefined ? "" : `: ${input.summary}`}): ${input.value}`)
+    const inputs = resolved.inputs.map((input) => {
+        const summary = input.summary === undefined ? "" : `: ${input.summary}`
+        return `${input.name} (${input.source}${summary}): ${input.value}`
+    })
     const sections = [
         `# Worker brief\n\n${template}`,
         `## Task ${task.id}`,
