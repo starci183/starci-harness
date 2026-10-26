@@ -6,7 +6,7 @@ import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
 import { RESULT_FILE, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
-import { now, openExistingLedger, WORK_DIR } from "./ledger.js"
+import { now, openExistingLedger } from "./ledger.js"
 import { TERMINAL_STATUSES } from "./tasks.js"
 
 /** The verdict of one check. */
@@ -90,12 +90,12 @@ export interface StrayFiles {
 }
 
 /**
- * Dirty and untracked files of the work tree at `root` (against HEAD) that lie outside `allowPaths`, outside the harness work
- * folder and outside the paths other live tasks lease. With `since`, a file last written before it is not the task's.
+ * Dirty and untracked files of the work tree at `root` (against HEAD) that lie outside `allowPaths` and outside the paths
+ * other live tasks lease. With `since`, a file last written before it is not the task's.
  */
 export const strayFiles = async (root: string, allowPaths: readonly string[], scope: { readonly taskId?: string; readonly since?: string }): Promise<StrayFiles> => {
     const leased = otherLeasedPaths(root, scope.taskId)
-    const outside = (await changedFiles(root, "HEAD")).filter((file) => !underPaths(file, allowPaths) && !underPaths(file, [WORK_DIR]) && !underPaths(file, leased))
+    const outside = (await changedFiles(root, "HEAD")).filter((file) => !underPaths(file, allowPaths) && !underPaths(file, leased))
     const sinceMs = scope.since === undefined ? undefined : Date.parse(scope.since)
     const written: string[] = []
     const older: string[] = []

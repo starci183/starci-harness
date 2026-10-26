@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import type { DatabaseSync } from "node:sqlite"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
 import { listLeases } from "../../harness/leases.js"
@@ -150,7 +149,7 @@ export const taskStatusVerb = defineVerb({
     run: async (context, flags): Promise<{ data: TaskDetail | TaskList; message: string }> => {
         const root = await repositoryRoot(context.cwd)
         // A read never creates the ledger: no ledger means no task yet.
-        if (!existsSync(ledgerPath(root))) {
+        if (ledgerPath(root) === undefined) {
             if (flags.task !== undefined) throw new Refusal("TASK_UNKNOWN", `no task ${flags.task}: this project has no ledger yet`)
             return { data: { workflow: flags.workflow ?? null, tasks: [] }, message: "no tasks" }
         }

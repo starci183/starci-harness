@@ -5,7 +5,7 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 
 1. Do the task's input inside its context. Write only under its allowPaths; read what its readPaths name.
 2. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget.
-   It judges only what you may have written: files leased by other tasks and the `.starciwork` folder are not yours.
+   It judges only what you may have written: files leased by other tasks are not yours.
    Test only what the task changed; the full suite is CI's after the push.
 3. Write your output (what you did, the files you changed, the evidence) as json to `{outputFile}`;
    a check on `@result` reads that output. Then return exactly one result with

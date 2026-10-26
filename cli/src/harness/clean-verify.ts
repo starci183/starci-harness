@@ -8,7 +8,6 @@ import type { ToolRun } from "../shared/exec.js"
 import { changedFiles, git, resolveSha } from "../shared/git.js"
 import { underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
-import { WORK_DIR } from "./ledger.js"
 import { runCheck, strayFiles } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 
@@ -83,7 +82,6 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
     const trackedOnly: string[] = []
     const notes: string[] = []
     for (const path of allowPaths) {
-        if (underPaths(path, [WORK_DIR])) continue
         const tracked = (await gitIndexedOk(root, index, ["ls-files", "--", literal(path)])) !== ""
         if (!existsSync(join(root, path)) && !tracked) continue
         // --no-index: `git add` refuses a named path its ignore rules match even when files below it are tracked.
@@ -98,7 +96,7 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
 }
 
 /**
- * Commits HEAD plus the work tree's allowPaths (never .starciwork) through a temporary index; the user's index and work tree stay
+ * Commits HEAD plus the work tree's allowPaths through a temporary index; the user's index and work tree stay
  * as they are. The `lands` outcome is red when a dirty or untracked file under allowPaths is missing from the candidate, so a
  * task can never settle "done, nothing landed" while its work sits in the tree.
  */
@@ -111,12 +109,10 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
         const plan = await stagePlan(root, index, contract.context.allowPaths)
         if (plan.whole.length > 0) await gitIndexedOk(root, index, ["add", "-A", "--", ...plan.whole.map(literal)])
         if (plan.trackedOnly.length > 0) await gitIndexedOk(root, index, ["add", "-u", "--", ...plan.trackedOnly.map(literal)])
-        // An exclude pathspec in `add` fails when .starciwork is gitignored, so the work folder is put back to HEAD's afterwards instead.
-        await gitIndexedOk(root, index, ["reset", "-q", "HEAD", "--", literal(WORK_DIR)])
         const tree = await gitIndexedOk(root, index, ["write-tree"])
         const candidate = await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
         const changed = lines(await git(root, ["diff", "--name-only", parent, candidate]))
-        const dirty = (await changedFiles(root, "HEAD")).filter((file) => underPaths(file, contract.context.allowPaths) && !underPaths(file, [WORK_DIR]))
+        const dirty = (await changedFiles(root, "HEAD")).filter((file) => underPaths(file, contract.context.allowPaths))
         const missing = dirty.filter((file) => !changed.includes(file))
         const lands: CheckOutcome = {
             name: "lands",

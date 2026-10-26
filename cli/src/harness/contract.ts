@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs"
 import { posix } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { WORK_DIR } from "./ledger.js"
 import { primitiveCheckSchema } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 
@@ -127,6 +126,10 @@ export const contractHash = (contract: Contract): string => {
     return createHash("sha256").update(JSON.stringify(canonical(contract))).digest("hex")
 }
 
+// The product Work tree of a repository (Business/SRS, Architecture/SDS, features/...). A docs task writes a scope inside it, never
+// the whole tree, just as no task is handed the whole repository.
+const WORK_TREE = ".starciwork"
+
 // allowPaths are literal paths, matched as `:(literal)` pathspecs and lease prefixes; a glob there would match nothing.
 const GLOB = /[*?[\]{}!]/
 
@@ -145,8 +148,8 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     for (const path of contract.context.allowPaths) {
         // The schema already normalised the entry, so `./src/` and `src` are the same path here.
         if (path === ".") problems.push(`allowPaths entry "${path}" is the whole repository; name concrete folders or files`)
+        if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/features/<feature>)`)
         problems.push(...placeProblems("allowPaths entry", path))
-        if (underPaths(path, [WORK_DIR])) problems.push(`allowPaths entry "${path}" is the harness work folder ${WORK_DIR}, which never lands`)
         if (seen.has(path)) problems.push(`allowPaths entry "${path}" is named twice`)
         seen.add(path)
     }
