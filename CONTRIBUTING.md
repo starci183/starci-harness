@@ -60,8 +60,9 @@ no owner exists yet, create it first. Never answer a duplicate with an allowlist
    lives in git.
 2. **Replace, never append.** An edit rewrites the sentence that holds the rule. One concept has one paragraph, and it
    is the latest version.
-3. **Feedback hardens.** Owner feedback becomes a rule in its owning file, a check, or a code change. It never becomes a
-   case note, a dated ruling list or a "lessons" section.
+3. **Feedback hardens.** Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never
+   becomes a case note beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
+   [STARCI.md](STARCI.md) "Decisions taken", a knowledge ruling in `knowledge/decisions/rulings.yaml`.
 4. **Claims execute.** A sentence that says something refuses, validates or is enforced names code that does it. If the
    code does not, fix the code or remove the claim.
 5. **Data is data.** `ops/` and `policy/` hold declarative YAML the CLI validates; a key no code reads is deleted.
