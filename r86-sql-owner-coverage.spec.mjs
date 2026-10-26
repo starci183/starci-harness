@@ -170,6 +170,40 @@ test("R86 does not infer a result bound across row multiplication or unbounded s
     })
 })
 
+test("R86 bounds a SELECT without FROM and an aggregate-only SELECT by construction, and keeps every multi-row shape unbounded", (t) => {
+    checkSupabaseKeys(t, {
+        migrations: [COMPOSITE_TABLE],
+        invalid: [],
+        validSql: [
+            "SELECT public.workspace_owner_member($1) AS id",
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            "SELECT gen_random_uuid()::text AS id",
+            "SELECT EXISTS (SELECT 1 FROM public.purchase WHERE workspace_id = $1 LIMIT 1) OR EXISTS (SELECT 1 FROM public.purchase WHERE id = $2 LIMIT 1) AS taken",
+            "SELECT COALESCE(SUM(id), 0)::float8 AS total FROM public.purchase WHERE workspace_id = $1",
+            "SELECT count(*)::int AS total, COALESCE(sum(id), 0)::float8 AS amount FROM public.purchase WHERE workspace_id = $1",
+            "SELECT count(*) FILTER (WHERE id IN ('a', 'b'))::int AS a, count(*) FILTER (WHERE id = 'c')::int AS b FROM public.purchase WHERE workspace_id = $1",
+            "SELECT coalesce(sum(extract(epoch from (workspace_id - id)) / 60), 0)::int AS minutes FROM public.purchase WHERE workspace_id = $1",
+            "SELECT coalesce(jsonb_agg(jsonb_build_object('id', p.id) ORDER BY p.id), '[]'::jsonb) AS rows FROM public.purchase p WHERE p.workspace_id = $1",
+        ],
+        invalidSql: [
+            "SELECT unnest($1::text[]) AS id",
+            "SELECT generate_series(1, 3) AS n",
+            "SELECT public.workspace_owner_member($1), unnest($2::text[])",
+            "SELECT 1 UNION ALL SELECT 2",
+            "SELECT unnest(array_agg(id)) FROM public.purchase",
+            "SELECT id FROM public.purchase WHERE workspace_id = $1",
+            "SELECT id, count(*) FROM public.purchase WHERE workspace_id = $1",
+            "SELECT workspace_id, count(*) FROM public.purchase GROUP BY workspace_id",
+            "SELECT count(*) FROM public.purchase GROUP BY workspace_id",
+            "SELECT count(*) OVER () FROM public.purchase",
+            "SELECT count(*), public.rows_of(id) FROM public.purchase",
+            "SELECT COALESCE(sum(id), 0) FROM public.purchase UNION ALL SELECT id FROM public.purchase",
+            "SELECT count(*) FROM public.purchase p, public.purchase q GROUP BY p.id",
+            "SELECT unnest(ARRAY[sum(id)]) FROM public.purchase",
+        ],
+    })
+})
+
 test("R86 never applies public key metadata to another schema's table with the same name", (t) => {
     checkSupabaseKeys(t, {
         migrations: ['CREATE SCHEMA private; CREATE TABLE private.purchase (workspace_id uuid, id text); CREATE TABLE public."Purchase" (workspace_id uuid, id text);', COMPOSITE_TABLE],
