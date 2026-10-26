@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.53 - 2026-10-26
+
+- Changed: the bundled canon pins follow the final package versions (Grammar 0.12.11 with the lint families). No rule changes.
+
 ## 3.4.52 - 2026-10-26
 
 - Changed: the alpha.31.1 round folded into alpha.31; the bundled canon pins and runtime copies follow the final package versions. No rule changes.
