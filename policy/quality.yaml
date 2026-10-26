@@ -1,0 +1,53 @@
+# The gate tiers and the profiles a project picks from. Policy selects and configures; every gate is code in the CLI
+# (cli/src/core/check), and a gate name the CLI does not implement is refused when this file is read.
+# runtime: `starci check run` before a push and `starci task verify` on the clean checkout run these, scoped to what
+#   changed and bounded by stepTimeoutSeconds per process. secrets and canon judge the changed scope; loosening reads
+#   the whole tree as it is (state-based, cheap).
+# ci: CI runs these on main after the push; nobody waits for them unless an action is listed in requireCi.
+schema: starci/quality-policy@1
+runtime:
+  stepTimeoutSeconds: 300
+# Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
+requireCi: [release.cut, release.publish, deploy.prod]
+# The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
+defaults:
+  none: lib
+  app: app
+  runtime: runtime
+profiles:
+  be:
+    summary: a NestJS back end
+    canon: [be]
+    runtime: [secrets, loosening, canon, typecheck, lint]
+    ci: [unit, e2e, build, sonar-new-code]
+  fe:
+    summary: a Next.js front end
+    canon: [fe, css]
+    runtime: [secrets, loosening, canon, typecheck, lint]
+    ci: [unit, build, sonar-new-code]
+  app:
+    summary: an app with its be/ and fe/ sides in one repository
+    canon: [be, fe, css]
+    runtime: [secrets, loosening, canon, typecheck, lint]
+    ci: [unit, e2e, build, sonar-new-code]
+  lib:
+    summary: a TypeScript package outside a StarCi app; its own tsconfig and ESLint config, no canon pin
+    canon: []
+    runtime: [secrets, loosening, typecheck, lint]
+    ci: [unit, build]
+  runtime:
+    summary: the StarCi runtime (the harness and its CLI); public, so it tracks no secret envelope
+    canon: []
+    runtime: [secrets, loosening, typecheck, lint]
+    ci: [unit, build]
+# Configuration of the CI gates that take any; CI reads it from `starci check run --json` (data.policy.ci).
+ci:
+  sonar-new-code:
+    gate: starci-quality
+    newCodePeriodDays: 30
+    coverageMinPercent: 100
+    duplicationMaxPercent: 3
+    ignoreBelowChangedLines: 0
+    issuesMax: 0
+    blockingSeverities: [BLOCKER, CRITICAL, MAJOR, MINOR, INFO]
+    hotspotsReviewedMinPercent: 100

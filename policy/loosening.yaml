@@ -1,0 +1,22 @@
+# What makes a check pass without satisfying it. Every marker is detected by the CLI (cli/src/core/check/markers.ts);
+# this file selects the banned ones and lists the exceptions. The gate reads the tree as it stands (tracked plus
+# untracked, never ignored files), not a diff.
+# Exceptions live only in a repository's own policy/loosening.yaml, never inline: each names one file, one marker and
+# the reason. An exception that no longer matches a finding is itself a finding, so the list cannot accrete.
+# A project's policy/loosening.yaml may ban more markers and declare its exceptions; it can never unban.
+schema: starci/loosening-policy@1
+banned:
+  - eslint-disable
+  - stylelint-disable
+  - ts-ignore
+  - ts-nocheck
+  - ts-expect-error
+  - nosonar
+  - skipped-test
+  - focused-test
+  - or-true
+  - no-verify
+  - gate-widening
+scan:
+  maxFileBytes: 1048576
+exceptions: []

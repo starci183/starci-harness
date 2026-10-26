@@ -1,0 +1,17 @@
+# Which canon package each stack's tools extend, by npm name. The rules live in those packages, never here.
+# A profile (quality.yaml) names its stacks; the canon gate requires, for every tool whose config a changed package
+# carries, that the package (or the repository root) depends on that tool's canon package and that the config names it.
+schema: starci/canon-policy@1
+stacks:
+  be:
+    eslint: "@starci/eslint-canon-be"
+    tsconfig: "@starci/tsconfig"
+    prettier: "@starci/prettier-config"
+    jest: "@starci/jest-preset"
+  fe:
+    eslint: "@starci/eslint-canon-fe"
+    tsconfig: "@starci/tsconfig"
+    prettier: "@starci/prettier-config"
+    jest: "@starci/jest-preset"
+  css:
+    stylelint: "@starci/stylelint-canon"

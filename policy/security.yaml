@@ -1,0 +1,26 @@
+# Configuration of the secret scan (cli/src/shared/secrets.ts holds its rules): no secret in the repository.
+# The runtime gate `secrets` scans the changed files (the whole tree with --all); `release push` scans the pushed range.
+# A project's policy/security.yaml may add neverRead globs and declare exceptions (one file, one rule, the reason).
+schema: starci/security-policy@1
+# A sops envelope (a .enc file carrying sops metadata and ENC[...] values) is ciphertext, not a secret, unless the
+# profile refuses envelopes: the runtime is public and tracks none.
+sopsEnvelopes:
+  default: allowed
+  profiles:
+    runtime: refused
+# Files the CLI never opens, in any gate: their presence is judged by name only.
+neverRead:
+  - "**/.env"
+  - "**/.env.*"
+  - "**/secret.env"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/*.p12"
+  - "**/*.pfx"
+  - "**/id_rsa"
+  - "**/id_ed25519"
+  - "**/id_ecdsa"
+  - "**/.secrets/**"
+  - "**/keys.txt"
+  - "**/credentials.toml"
+exceptions: []
