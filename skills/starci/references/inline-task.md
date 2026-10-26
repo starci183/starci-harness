@@ -21,7 +21,7 @@ overlapping path: wait for it or narrow yours, never widen around it.
 
 ## 2. Do the work inside allowPaths
 
-Write only under `allowPaths`. Read what `readPaths` names and what the work needs. Never edit tests,
+Write only under `allowPaths`. Read exactly the files the contract resolves (`starci contract check <file>` lists them, base then extend). Never edit tests,
 lint or configs outside `allowPaths`, never add a suppression, never commit: the harness commits.
 
 ## 3. Self-check until green

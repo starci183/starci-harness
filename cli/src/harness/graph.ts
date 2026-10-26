@@ -1,14 +1,18 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { dirname, resolve } from "node:path"
+import { dirname, posix, resolve } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
+import { repositoryRoot } from "../shared/git.js"
+import { CONTRACT_SCHEMA, DEFAULT_BUDGET, contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { pathsOverlap } from "./leases.js"
+import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
 import type { Ops } from "./ops.js"
 import type { ResultStatus, TaskStatus } from "./tasks.js"
+import { locateWorkRoot, readUatRecord, samePath, uatBinding, uatContract, uatPlace } from "./work.js"
+import type { UatBinding, WorkRoot } from "./work.js"
 
 /** The schema tag of a workflow file: the Kernel's goal and its graph of contracts. */
 export const WORKFLOW_SCHEMA = "starci/workflow@1"
@@ -21,34 +25,33 @@ export type Runner = "orca" | "inline"
 
 const KEY = /^[a-z0-9][a-z0-9._-]{0,62}$/
 
-const DEFAULT_MINUTES = 60
-
-const DEFAULT_TRIES = 3
-
 const DEFAULT_PARALLEL = 2
 
 const MAX_PARALLEL = 16
 
 const keySchema = z.string().regex(KEY, "a key is lower-case letters, digits, '.', '_' or '-', at most 63, starting with a letter or digit")
 
-type CheckEntry = Contract["expectedOutput"]["checks"][number]
-
-// A bare preset name is the short form of `{preset: name}`.
-const checkEntrySchema = z.union([z.string().min(1).transform((preset): CheckEntry => ({ preset })), contractSchema.shape.expectedOutput.shape.checks.element])
-
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 
 /** How hard a task is, as the router reads it. */
 export type Difficulty = z.infer<typeof difficultySchema>
 
-/** The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and routing pins. */
+/**
+ * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and routing pins.
+ * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base. `readPaths`
+ * is the earlier spelling of `context`. `uat: <flow id>` is a third form: the contract built from that Work record (uatContract).
+ */
 const taskFieldsShape = {
     contract: z.string().min(1).optional(),
+    uat: z.string().min(1).optional(),
     label: z.string().min(1).optional(),
     summary: z.string().min(1).optional(),
     details: z.string().optional(),
     allowPaths: z.array(z.string().min(1)).min(1).optional(),
+    context: z.array(z.string().min(1)).optional(),
     readPaths: z.array(z.string().min(1)).optional(),
+    inputs: z.record(keyNameSchema, z.string().min(1)).optional(),
+    output: z.record(keyNameSchema, outputSpecSchema).optional(),
     cwd: z.string().min(1).optional(),
     setup: contractSchema.shape.context.shape.setup,
     checks: z.array(checkEntrySchema).min(1).optional(),
@@ -158,7 +161,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "readPaths", "cwd", "setup", "checks", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "checks", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -168,11 +171,43 @@ const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...(fields.effort === undefined ? {} : { effort: fields.effort }),
 })
 
-// The label's default checks the entries do not name, then the entries: the composition `contract new` uses.
-const composeChecks = (label: string, given: readonly CheckEntry[], ops: Ops): CheckEntry[] => {
-    const named = new Set(given.map((entry) => ("preset" in entry ? entry.preset : "")))
-    const defaults = (ops.labels[label]?.defaultChecks ?? []).filter((preset) => !named.has(preset)).map((preset): CheckEntry => ({ preset }))
-    return [...defaults, ...given]
+/** Where the tasks of a workflow resolve: its repository, and the project's Work root or the refusal that says why it has none. */
+export interface PlanPlace {
+    readonly repo: string
+    readonly work: WorkRoot | Refusal
+}
+
+/** The place of a workflow file used from `cwd`; a missing Work root refuses only a task that walks a Work flow. */
+export const planPlace = async (cwd: string): Promise<PlanPlace> => {
+    const repo = await repositoryRoot(cwd)
+    try {
+        return { repo, work: await locateWorkRoot(cwd) }
+    } catch (error: unknown) {
+        if (error instanceof Refusal) return { repo, work: error }
+        throw error
+    }
+}
+
+/**
+ * The Work root a workflow's uat task reads its record from: the workflow's own repository. A walk is settled where its Work
+ * is, so a workflow defined in another repository than the project's Work root is refused, never split across two ledgers.
+ */
+const workRootOf = (place: PlanPlace): string => {
+    if (place.work instanceof Refusal) throw place.work
+    if (!samePath(place.work.root, place.repo)) {
+        throw new Refusal("WORK_ROOT_ELSEWHERE", `a uat task walks a Work flow of ${place.work.root} (from ${place.work.from}), but this workflow is defined in ${place.repo}; define it in the Work root`)
+    }
+    return place.work.root
+}
+
+/** The run id of a workflow's uat task: stable per workflow and task key, so a replan builds the same contract. */
+const uatRunId = (workflow: string, key: string): string => `${workflow}-${key}`
+
+/** Who a task is, for the contract of a uat task: its workflow and key, and where the workflow resolves. */
+interface TaskAt {
+    readonly workflow: string
+    readonly key: string
+    readonly place: PlanPlace
 }
 
 /** Builds the contract of a task written inline, or merges inline fields onto a contract it already has. */
@@ -183,33 +218,51 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
     if (label === undefined || summary === undefined || allowPaths === undefined) {
         throw new Refusal("WORKFLOW_INVALID", "a task needs a contract file, or label, summary and allowPaths written inline")
     }
-    const readPaths = fields.readPaths ?? previous?.context.readPaths
+    if (fields.context !== undefined && fields.readPaths !== undefined) throw new Refusal("WORKFLOW_INVALID", "a task names context or readPaths (its earlier spelling), not both")
+    const read = fields.context ?? fields.readPaths ?? previous?.context.extend
     const cwd = fields.cwd ?? previous?.context.cwd
     const setup = fields.setup ?? previous?.context.setup
     const details = fields.details ?? previous?.input.details
-    const checks = fields.checks === undefined ? (previous?.expectedOutput.checks ?? composeChecks(label, [], ops)) : composeChecks(label, fields.checks, ops)
+    // A named input the op declares is a base input; the rest extend.
+    const declared = ops.labels[label]?.input.base ?? {}
+    const named = fields.inputs === undefined ? undefined : Object.entries(fields.inputs)
+    const inputBase = named === undefined ? previous?.input.base : Object.fromEntries(named.filter(([name]) => name in declared))
+    const inputExtend = named === undefined ? previous?.input.extend : Object.fromEntries(named.filter(([name]) => !(name in declared)))
+    const outputExtend = fields.output ?? previous?.output?.extend
+    const checksExtend = fields.checks ?? previous?.checks?.extend
+    const nonEmpty = <T extends object>(value: T | undefined): value is T => value !== undefined && Object.keys(value).length > 0
     return parseContract({
-        schema: "starci/contract@1",
+        schema: CONTRACT_SCHEMA,
         label,
         context: {
-            base: previous?.context.base ?? base,
+            revision: previous?.context.revision ?? base,
             allowPaths,
-            ...(readPaths === undefined ? {} : { readPaths }),
             ...(cwd === undefined ? {} : { cwd }),
             ...(setup === undefined ? {} : { setup }),
+            ...(previous?.context.base === undefined ? {} : { base: previous.context.base }),
+            ...(read === undefined || read.length === 0 ? {} : { extend: read }),
         },
-        input: { summary, ...(details === undefined ? {} : { details }) },
-        expectedOutput: { checks },
-        budget: fields.budget ?? previous?.budget ?? { minutes: DEFAULT_MINUTES, tries: DEFAULT_TRIES },
+        input: { summary, ...(details === undefined ? {} : { details }), ...(nonEmpty(inputBase) ? { base: inputBase } : {}), ...(nonEmpty(inputExtend) ? { extend: inputExtend } : {}) },
+        ...(previous?.output?.base === undefined && !nonEmpty(outputExtend) ? {} : { output: { ...(previous?.output?.base === undefined ? {} : { base: previous.output.base }), ...(nonEmpty(outputExtend) ? { extend: outputExtend } : {}) } }),
+        ...(previous?.checks?.base === undefined && (checksExtend === undefined || checksExtend.length === 0)
+            ? {}
+            : { checks: { ...(previous?.checks?.base === undefined ? {} : { base: previous.checks.base }), ...(checksExtend === undefined || checksExtend.length === 0 ? {} : { extend: checksExtend }) } }),
+        budget: fields.budget ?? previous?.budget ?? { ...DEFAULT_BUDGET },
     })
 }
 
 /**
- * Resolves one task's fields to its contract: a contract file (relative to `dir`, the folder of the file naming it), or the
- * fields written inline (on top of `previous` when an edit changes a task that has one). The two forms never mix.
+ * Resolves one task's fields to its contract: a contract file (relative to `dir`, the folder of the file naming it), a Work
+ * flow (`uat`, built from its record in the Work root), or the fields written inline (on top of `previous` when an edit
+ * changes a task that has one). The forms never mix.
  */
-const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops, previous?: Contract): Contract => {
+const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops, at: TaskAt, previous?: Contract): Contract => {
     const inline = INLINE_FIELDS.filter((name) => fields[name] !== undefined)
+    if (fields.uat !== undefined) {
+        const others = [...(fields.contract === undefined ? [] : ["contract"]), ...inline]
+        if (others.length > 0) throw new Refusal("WORKFLOW_INVALID", `a uat task names its Work flow only; its contract is built from the record (drop: ${others.join(", ")})`)
+        return parseContract(uatContract(readUatRecord(workRootOf(at.place), fields.uat), { revision: base, runId: uatRunId(at.workflow, at.key) }))
+    }
     if (fields.contract !== undefined) {
         if (inline.length > 0) throw new Refusal("WORKFLOW_INVALID", `a task names a contract file or writes its contract inline, not both (inline: ${inline.join(", ")})`)
         return readContract(resolve(dir, fields.contract))
@@ -220,7 +273,7 @@ const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops
 const prettify = (error: z.ZodError): string => z.prettifyError(error)
 
 /** Reads a workflow file or a change file (yaml or json), validating its schema; the contracts of a workflow file are resolved too. */
-export const readPlanSource = (file: string, ops: Ops): PlanSource => {
+export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSource => {
     const raw = readDocument(file)
     const dir = dirname(file)
     const tag = typeof raw === "object" && raw !== null && "schema" in raw ? raw.schema : undefined
@@ -232,16 +285,36 @@ export const readPlanSource = (file: string, ops: Ops): PlanSource => {
     const parsed = workflowFileSchema.safeParse(raw)
     if (!parsed.success) throw new Refusal("WORKFLOW_INVALID", `${file} is not a valid ${WORKFLOW_SCHEMA} file (or ${CHANGE_SCHEMA}):\n${prettify(parsed.error)}`)
     const { tasks: written, ...header } = parsed.data
+    if (written.some((task) => task.uat !== undefined)) workRootOf(place)
     const problems: string[] = []
     const tasks: PlanTask[] = []
     for (const { id, ...fields } of written) {
         try {
-            tasks.push({ key: id, contract: resolveContract(fields, dir, header.base, ops), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
+            const at = { workflow: header.id, key: id, place }
+            tasks.push({ key: id, contract: resolveContract(fields, dir, header.base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
         } catch (error: unknown) {
             problems.push(`task ${id}: ${messageOf(error)}`)
         }
     }
     return { kind: "workflow", header, tasks, problems }
+}
+
+/** The Work flow a change adds or sets on a task, if any. */
+const uatOfChange = (change: ChangeEntry): string | undefined => (change.op === "add" ? change.task.uat : change.op === "edit" ? change.set.uat : undefined)
+
+/**
+ * The uat walks a plan source asks for (its uat-flow bindings), so a caller can check their run places (assertRunPlace) before
+ * it records the graph: every uat task of a workflow file, and the tasks a change file adds or edits to walk a Work flow.
+ */
+export const uatWalksOf = (source: PlanSource, ops: Ops): UatBinding[] => {
+    if (source.kind === "workflow") return source.tasks.flatMap((task) => uatBinding(task.contract, ops) ?? [])
+    return source.changes.flatMap((change) => {
+        const flow = uatOfChange(change)
+        if (flow === undefined) return []
+        const place = uatPlace(flow)
+        const key = change.op === "add" ? change.task.id : change.id
+        return [{ record: place.record, run: posix.join(place.runs, uatRunId(source.workflow, key)) }]
+    })
 }
 
 /** Applies a change file to the tasks of the current graph; returns the new task list, the keys to retry, and the problems. */
@@ -251,27 +324,30 @@ export const applyChanges = (
     dir: string,
     base: string,
     ops: Ops,
+    plan: { readonly workflow: string; readonly place: PlanPlace },
 ): { readonly tasks: readonly PlanTask[]; readonly retries: ReadonlySet<string>; readonly problems: readonly string[] } => {
+    if (changes.some((change) => uatOfChange(change) !== undefined)) workRootOf(plan.place)
     const tasks = new Map(current.map((task) => [task.key, task]))
     const retries = new Set<string>()
     const problems: string[] = []
     for (const change of changes) {
         const key = change.op === "add" ? change.task.id : change.id
         const existing = tasks.get(key)
+        const at = { workflow: plan.workflow, key, place: plan.place }
         try {
             switch (change.op) {
                 case "add": {
                     if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
                     const { id, ...fields } = change.task
-                    tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
+                    tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
                     break
                 }
                 case "edit": {
                     if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
-                    const touchesContract = change.set.contract !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
+                    const touchesContract = change.set.contract !== undefined || change.set.uat !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
                     tasks.set(key, {
                         key,
-                        contract: touchesContract ? resolveContract(change.set, dir, base, ops, existing.contract) : existing.contract,
+                        contract: touchesContract ? resolveContract(change.set, dir, base, ops, at, existing.contract) : existing.contract,
                         dependsOn: change.set.dependsOn ?? existing.dependsOn,
                         route: routeOf(change.set, existing.route),
                         round: existing.round,

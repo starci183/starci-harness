@@ -41,8 +41,10 @@ A second copy is a defect even while both agree.
 | fact | owner |
 |---|---|
 | a verb: path, flags, effect, roles, json schema | its one `defineVerb({...})` file, listed in `cli/src/registry.ts`; `starci explain` prints it |
-| worker labels, check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
-| the worker brief | [ops/worker.md](ops/worker.md) |
+| a label: its base context, inputs, output keys and checks, floor, host tools and procedure | its op file `ops/ops/<label>.md` |
+| the op pattern (base and extend) and the worker procedure common to every brief | [ops/ops/README.md](ops/ops/README.md) |
+| check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
+| the map of ops/, the router's steps, failure classes and their accounting | [ops/README.md](ops/README.md) |
 | gate tiers, profiles, project overlays, banned markers, the secret scan's configuration | the files of [policy/](policy/README.md), mapped by its README |
 | what each gate and marker detects | `cli/src/core/check/` and `cli/src/shared/secrets.ts` |
 | every state path | `cli/src/harness/ledger.ts` |

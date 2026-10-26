@@ -26,8 +26,8 @@ architecture, `features/<f>`) and the code the goal touches. Fold what you find 
 
 Split the goal into tasks, one outcome each. Per task decide:
 
-- `label`: one of `ops/labels.yaml` (code, test, ui, verify, uat, docs, deliver). It sets the default checks
-  and the difficulty floor.
+- `label`: one of the op files of `ops/ops/` (code, test, ui, verify, uat, docs, deliver). Its op gives the base
+  context, inputs, output keys and checks, and the difficulty floor; the task only extends them.
 - `allowPaths`: literal files or folders, never a glob, never `.` and never the whole `.starciwork`. Inside
   `.starciwork` lease one scope, for example `.starciwork/features/<f>`.
 - `checks`: presets from `ops/checks.yaml`. At least one behavioural check (`tests-pass`, `json-required`,
@@ -69,7 +69,7 @@ tasks:
 ```
 
 Optional header fields: `agent` with `model` (and `effort`) to pin every orca task, `bias`
-(`only`, `avoid`, `prefer`), `worktree`, `base`. Optional task fields: `details`, `readPaths`, `cwd`,
+(`only`, `avoid`, `prefer`), `worktree`, `base`. Optional task fields: `details`, `context` (files to read beyond the op's base), `inputs`, `output`, `cwd`,
 `budget`, `difficulty`, `agent` with `model`, `effort`.
 
 For orca tasks without a pin, show who the router would pick:

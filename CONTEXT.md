@@ -122,13 +122,9 @@ goes to [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml) ins
 - **Ops are plain workers.** Every task runs the one brief, [ops/worker.md](ops/worker.md); there is no catalog of op
   kinds. The Kernel writes each contract, and a label of [ops/labels.yaml](ops/labels.yaml) is a routing hint plus
   default checks, composed from the presets of [ops/checks.yaml](ops/checks.yaml).
-- **Op pattern: `base` and `extend`.** Each label has one op file, `ops/ops/<label>.md`, whose front matter states the
-  `base` of its `context` (the files the op reads), `input`, `output` and `checks`. A task's contract adds an `extend`
-  to each that may only add (files, inputs, output keys, checks), never drop or loosen the base, and the harness
-  refuses a contract that does. An op reads exactly `context.base` plus `context.extend`; its output carries the trace
-  of what it read (rule ids applied, Work record ids), which a check verifies against those files. The Kernel loads the
-  full context (this file, knowledge, `knowledge/project/`, the project's Work, the op files) to write each task's
-  `extend`. The CLI does not enforce it yet.
+- **Op pattern: `base` and `extend`.** Each label has one op file, `ops/ops/<label>.md`, owning the base of a task's
+  context, input, output and checks; the Kernel's contract only extends it, and the output carries the trace of what
+  the op read. [ops/ops/README.md](ops/ops/README.md) owns the mechanics and names the code that enforces them.
 - **Project pattern.** `knowledge/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.

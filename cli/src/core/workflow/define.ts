@@ -1,11 +1,11 @@
 import { resolve } from "node:path"
 import { workflowBudgets } from "../../harness/budget.js"
-import { buildGraph, readPlanSource } from "../../harness/graph.js"
+import { buildGraph, planPlace, readPlanSource, uatWalksOf } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
+import { assertRunPlace } from "../../harness/work.js"
 import { insertWorkflow } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
-import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
@@ -26,12 +26,14 @@ export const workflowDefineVerb = defineVerb({
     run: async (context, flags) => {
         const file = resolve(context.cwd, flags.file)
         const ops = loadOps()
-        const source = readPlanSource(file, ops)
+        const place = await planPlace(context.cwd)
+        const source = readPlanSource(file, ops, place)
         if (source.kind !== "workflow") throw new Refusal("WORKFLOW_INVALID", `${file} is a change file; define takes a starci/workflow@1 file (a change goes to workflow amend)`)
         const built = buildGraph(source.tasks, ops)
         const problems = [...source.problems, ...built.problems]
         if (problems.length > 0) throw new Refusal("WORKFLOW_INVALID", `${file} is not fit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
-        const root = await repositoryRoot(context.cwd)
+        const root = place.repo
+        for (const walk of uatWalksOf(source, ops)) await assertRunPlace(root, walk)
         const db = openLedger(root)
         const workflow = (() => {
             try {

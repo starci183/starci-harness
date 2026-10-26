@@ -118,7 +118,7 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
 /** The runtime root, found like ops/: the harness checkout holding cli/ and ops/, else the installed package carrying ops/ itself. */
 export const runtimeRoot = (): string => {
     const checkout = resolve(packageRoot, "..")
-    return existsSync(join(checkout, "ops", "labels.yaml")) && existsSync(join(checkout, "cli")) ? checkout : resolve(packageRoot)
+    return existsSync(join(checkout, "ops", "checks.yaml")) && existsSync(join(checkout, "cli")) ? checkout : resolve(packageRoot)
 }
 
 /** The host's harness state, outside every product repository: STARCI_LOCAL_ROOT, else `<runtime root>/.runtime` (git-ignored). */

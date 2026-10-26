@@ -8,14 +8,13 @@ import { asRefusal, Refusal } from "../shared/errors.js"
 import { captureTool, headline, pidAlive } from "../shared/exec.js"
 import { currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
 import type { CleanVerify } from "./clean-verify.js"
-import { resolveChecks } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { now } from "./ledger.js"
 import { loadOps } from "./ops.js"
 import type { ResultSource } from "./run-checks.js"
 import type { TaskRow } from "./tasks.js"
-import { appendEvidence, digestRun, judgeUatResult, parseUatRecord, placeOfRecord, runFiles, writeRecordState } from "./work.js"
-import type { EvidenceRun } from "./work.js"
+import { appendEvidence, digestRun, judgeUatResult, parseUatRecord, placeOfRecord, runFiles, uatBinding, writeRecordState } from "./work.js"
+import type { EvidenceRun, UatBinding } from "./work.js"
 
 /**
  * What a settle wrote into the Work of a uat task (one whose contract carries a uat-flow check): the record's new state and
@@ -139,18 +138,6 @@ const refreshIndex = async (root: string, paths: readonly string[]): Promise<str
 
 const literal = (path: string): string => `:(top,literal)${path}`
 
-/** The record and run folder a task's uat-flow check names. */
-interface UatBinding {
-    readonly record: string
-    readonly run: string
-}
-
-/** The binding of a task that walks a Work flow; undefined for any other task. */
-const uatBinding = (contract: Contract): UatBinding | undefined => {
-    for (const { check } of resolveChecks(contract, loadOps())) if (check.kind === "uat-flow") return { record: check.record, run: check.run }
-    return undefined
-}
-
 /** One file a Work write puts into a commit. */
 interface WorkFile {
     readonly path: string
@@ -270,7 +257,7 @@ export const settle = async (root: string, built: CleanVerify, task?: TaskRow): 
         new Refusal("HEAD_MOVED", `${branch} moved from ${built.parent.slice(0, 12)} to ${head.slice(0, 12)} after the candidate was built; the work tree is untouched and no try is spent, verify again`)
     const head = await resolveSha(root, "HEAD")
     if (head !== built.parent) throw moved(head)
-    const binding = task === undefined ? undefined : uatBinding(task.contract)
+    const binding = task === undefined ? undefined : uatBinding(task.contract, loadOps())
     let candidate = built.candidate
     let changed = built.changed
     let work: WorkWrite | null = null
@@ -320,7 +307,7 @@ const redOutcome = (root: string, binding: UatBinding, result: ResultSource | un
  * comes back skipped with the reason.
  */
 export const blockWork = async (root: string, task: TaskRow, result: ResultSource | undefined, red: readonly string[]): Promise<WorkWrite | null> => {
-    const binding = uatBinding(task.contract)
+    const binding = uatBinding(task.contract, loadOps())
     if (binding === undefined) return null
     const outcome = redOutcome(root, binding, result, red)
     try {

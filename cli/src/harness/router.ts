@@ -139,7 +139,7 @@ const RECENT_PICKS = 20
 const gatherFacts = (label: string, at: string): Facts => {
     const routing = loadRouting()
     const spec = loadOps().labels[label]
-    if (spec === undefined) throw new Refusal("LABEL_UNKNOWN", `no label ${label} in ops/labels.yaml`)
+    if (spec === undefined) throw new Refusal("LABEL_UNKNOWN", `no label ${label} in ops/ops/`)
     const hostTools = Object.fromEntries(spec.hostTools.filter((tool) => tool in routing.hostProbes).map((tool) => [tool, hostHas(routing, tool)]))
     const running: RunningWorkers = runningWorkers()
     const snapshot = (db: DatabaseSync | undefined): { recent: Map<string, string[]>; candidates: Map<string, Candidate[]> } => {
