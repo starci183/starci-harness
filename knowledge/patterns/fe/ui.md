@@ -10,15 +10,16 @@ component looks like is the grammar's ([contract](../../grammars/contract.md)).
 
 An app renders every visual element through the one grammar its `hfs.json` names (`sides.fe.grammar`), imported from
 that grammar's published entry and driven by published props. It adds no second kit, no CSS-in-JS and no local
-recipe for a component the grammar owns. A visual capability the grammar lacks is added to the grammar and released
-before the app consumes it; until then the screen records the gap (`COMMON_CAPABILITY_MISSING`). Shells follow the
-app-shell rules of [ui/composition](../../ui/composition.md).
+recipe for a component the grammar owns. A visual capability the grammar lacks, or a defect in one it has, is fixed
+in the grammar and released before the app consumes it; the app imports a grammar component where it renders it and
+never re-exports it under its own name to work around the defect. Until the release the screen records the gap
+(`COMMON_CAPABILITY_MISSING`). Shells follow the app-shell rules of [ui/composition](../../ui/composition.md).
 
 Why: two apps built from the same grammar and the same knowledge must come out the same; every visual choice left
-to an app is a fork that drifts.
+to an app is a fork that drifts, and a defect shimmed in one app stays in the grammar for every other.
 
 Enforced by: R93 FE_VENDOR_BOUNDARY, R244 FE_STACK_FORBIDDEN, R313-R317, R318 FE_NESTED_VARIANT, R319
-FE_BUTTON_INTENT, R320 FE_CONTROL_HEIGHT.
+FE_BUTTON_INTENT, R320 FE_CONTROL_HEIGHT, R321 FE_GRAMMAR_SHIM.
 
 ## FE-CSS-1 App CSS is layout only
 

@@ -21,6 +21,7 @@ import { recommended as envOwnerRecommended, rules as envOwnerRules } from "./en
 import { recommended as feStackRecommended, rules as feStackRules } from "./fe-stack.mjs"
 import { recommended as fileLayoutRecommended, rules as fileLayoutRules } from "./file-layout.mjs"
 import { recommended as formattingRecommended, rules as formattingRules } from "./formatting.mjs"
+import { recommended as grammarShimRecommended, rules as grammarShimRules } from "./grammar-shim.mjs"
 import { recommended as hooksFolderRecommended, rules as hooksFolderRules } from "./hooks-folder.mjs"
 import { recommended as hygieneRecommended, rules as hygieneRules } from "./hygiene.mjs"
 import { recommended as landmarkRecommended, rules as landmarkRules } from "./landmark.mjs"
@@ -65,6 +66,7 @@ const CONTRIBUTIONS = [
   { law: "fe-stack", rules: feStackRules, recommended: feStackRecommended },
   { law: "file-layout", rules: fileLayoutRules, recommended: fileLayoutRecommended },
   { law: "formatting", rules: formattingRules, recommended: formattingRecommended },
+  { law: "grammar-shim", rules: grammarShimRules, recommended: grammarShimRecommended },
   { law: "hooks-folder", rules: hooksFolderRules, recommended: hooksFolderRecommended },
   { law: "hygiene", rules: hygieneRules, recommended: hygieneRecommended },
   { law: "landmark", rules: landmarkRules, recommended: landmarkRecommended },

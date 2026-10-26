@@ -2204,3 +2204,10 @@ rules:
       - FE_CONTROL_HEIGHT
     enforcers:
       - {kind: eslint-fe, id: control-height}
+  - id: R321
+    code: FE_GRAMMAR_SHIM
+    law: An app imports a Grammar component where it renders it and never re-exports a Grammar export under its own name; a Grammar defect is reported to the Grammar.
+    failureCodes:
+      - FE_GRAMMAR_SHIM
+    enforcers:
+      - {kind: eslint-fe, id: no-grammar-shim}

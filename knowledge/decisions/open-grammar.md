@@ -52,7 +52,7 @@ the knowledge to be true; until then the gate that checks it stays red, by desig
 | C-4 | `core` binds `--surface-tertiary` under the HeroUI name instead of `--starci-surface-tertiary` (D-14) |
 | C-5 | Common base sheet reads `--grammar-*` rhythm directly; today the base renderers read `--starci-core-*` aliases a grammar must set, and `data-grammar-theme` is read only inside a grammar scope |
 | C-6 | Overlays use one portal helper; today two helpers implement the root rule |
-| C-7 | Every grammar component that passes a render callback across the RSC boundary (`SurfaceCard` first) declares `"use client"` itself; found by the starci-next-fe trial, where an op had to re-export `SurfaceCard` behind a `"use client"` shim in the app |
+| C-7 | Every grammar component that passes a render callback across the RSC boundary (`SurfaceCard` first) declares `"use client"` itself; found by the starci-next-fe trial, where an op re-exported `SurfaceCard` behind a `"use client"` shim in the app; R321 `FE_GRAMMAR_SHIM` refuses that shim in an app, which reports the defect instead |
 
 ## Gaps: choices an app can make two ways
 
