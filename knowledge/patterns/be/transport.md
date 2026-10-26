@@ -3,55 +3,56 @@ slots: [be.transport, be.transport.message, be.contract]
 ---
 # Transport
 
-Decides how any door into the application is written: GraphQL by default, REST only with evidence, a thin adapter that dispatches
-one message, and no envelope. Each trigger kind's door has its own topic; a cli command is an action runner, not a transport
-(cli.md). Who may call a door is api-auth.md.
+How a door into the application is written: GraphQL by default, REST only with evidence, a thin adapter that
+dispatches one message, no envelope. Who may call a door is api-auth.md; a cli command is an action runner (cli.md).
 
-## BE-TRANSPORT-1 GraphQL is the default door; REST carries evidence per route
-GraphQL (code-first) is the default. Files are flat: `transport/graphql/<action>.resolver.ts`, `dto/<action>.input.ts`
-(`<Action>Input`), `dto/<action>.type.ts` (`<Action>Type`), `dto/<action>.args.ts` when needed and `<action>.mapper.ts`
-(`to<Action>Type`, `to<Action>Request`). One module per transport (`<feature>-graphql.module.ts`), never one per operation. A REST
-route, in either edition, carries its own evidence on its decorator: a probe, an auth handshake, a signed webhook, a real byte
-stream, an event stream (an `@Sse` method of the realtime sse slot only) or a public versioned operation of the app's non-empty
-operation table (BE-OPERATIONS-1). A class-level reason or an unused `StreamableFile` import proves no route.
+## BE-TRANSPORT-1 GraphQL is the default door; a REST route carries its evidence
 
-Browser uploads and downloads never pass through the back end: the `ObjectStorage` port of `integrations/object-storage`
-(`presignUpload`, `presignDownload`, `head`, `put`, `delete`; one S3 adapter for every S3-compatible store) serves both editions.
-An authenticated operation authorizes the principal, derives the exact object key itself (the caller never names a principal,
-bucket or key), validates the content type and a positive bounded size, and returns a short-lived presigned PUT whose signature
-covers the exact Content-Type and Content-Length. After the transfer a second operation has the domain service `head` the object
-and compare it with the declaration; a mismatch deletes it and refuses. Downloads authorize against the same scope, re-check the
-object and sign a short-lived GET per request. Signed URLs and headers are bearer credentials and are never logged. Stray uploads
-that are never completed are expired by a bucket lifecycle rule; bucket limits are defense in depth. No presigned POST policy, no
-buffering upload decorator or middleware, and presigning is not byte-stream evidence for a REST route.
+GraphQL is code-first and flat: `transport/graphql/<action>.resolver.ts` (one `@Resolver()` class per operation),
+`dto/<name>.input.ts` (`<Name>Input`), `dto/<name>.type.ts` (`<Name>Type`) and `<action>.mapper.ts` (`to<Action>Request`,
+`to<Name>Type`). A REST route lives in `transport/http/<action>.controller.ts` (DTOs `<Name>Request`, `<Name>Response`)
+and shows on its own method why it is not GraphQL: a probe, an auth handshake or signed webhook
+(`@Public({ reason })`), a credential-authenticated public API route (`@Credential({ kind })`), a byte transfer, a
+redirect, an event stream (`@Sse` in a realtime channel) or a declared operation table. No buffered multipart upload:
+a browser transfers bytes to storage through an address the domain signs (`signedUpload`) after authorizing the key.
 
-Why: one flat shape makes the operation, its input, output and mapper findable from the name; a direct presigned transfer keeps
-bytes out of the process while the domain still decides who may store what.
+Why: one flat shape makes an operation, its input, output and mapper findable from the name; a REST route without a
+reason is a JSON read that belongs in the schema the client already uses.
 
-Enforced by: R88 BE_TRANSPORT_SHAPE, R278 BE_REST_DOOR_EVIDENCE, R312 BE_UPLOAD_BUFFERED.
+Enforced by: `door-lives-in-features`, `rest-door-needs-a-reason`, `rest-route-declared`, `no-buffered-upload` (R88,
+R278, R312).
 
-## BE-TRANSPORT-2 A transport adapts protocol and dispatches one message
-A resolver, controller, gateway, consumer, processor or step validates protocol input, obtains the verified principal
-(`@CurrentPrincipal()`), maps to a plain request, dispatches exactly one command or query and projects the result. It may import
-its feature's application messages and contracts, `platform/*`, the public decorators of `domain/identity` and its own `dto/`;
-never another feature. It injects only `InjectCommandBus` / `InjectQueryBus` (and `InjectRequestLocale` for REST content
-negotiation): no EntityManager, no domain service, no branch or loop. A refusal becomes a throw only here, with
-`unwrapOutcome(outcome, <C>Error)`. Resource authorization stays in the domain service so no other entry point bypasses it. A
-scenario needing a read and a write is one command, not two dispatches.
+## BE-TRANSPORT-2 A door maps, dispatches one message and maps back
 
-Why: a transport that reaches the database or a service bypasses the handler's authorization and transaction, and a second
-dispatch is a scenario that belongs in one command.
+A resolver or controller injects only `@InjectCommandBus()` / `@InjectQueryBus()` (plus `RequestLocale` in REST), takes
+the principal from `@CurrentPrincipal()` and any tenant selector from its decorator (`@WorkspaceId()`), maps the input
+with a pure mapper, dispatches exactly one message and maps the result. No manager, no domain service, no branch or
+loop. A refusal returned as an `Outcome` becomes a throw here, with `unwrapOutcome(outcome, <C>Error)`.
 
-- `return toPlaceOrderType(unwrapOutcome(await this.commandBus.execute(new PlaceOrderCommand({ request: toPlaceOrderRequest(input), principal })), PurchaseError))`
+Why: a door that reaches a service or the database bypasses the handler's failure log and the service's authorization.
 
-Enforced by: R88 BE_TRANSPORT_SHAPE, R203 BE_FEATURE_THIN.
+```ts
+/** Reads an order belonging to the selected workspace. */
+@Query(() => OrderType, { name: "order", nullable: true })
+async order(
+    @CurrentPrincipal() principal: Principal,
+    @WorkspaceId() workspaceId: string,
+    @Args("input") input: OrderInput,
+): Promise<OrderType | null> {
+    const result = await this.queryBus.execute(
+        new GetOrderQuery({ request: toGetOrderRequest(workspaceId, input), principal }),
+    )
+    return toOptionalOrderType(result)
+}
+```
 
-## BE-TRANSPORT-3 No response envelope
-No transform interceptor, success-message decorator or response-wrapper class exists. A resolver returns the typed payload; a
-failure travels as `errors[].extensions.{code,kind}` (BE-ERROR-5); success copy is front-end i18n. `GraphQLJSON` is never an
-input or output type.
+Enforced by: `transport-is-thin`, `feature-thin`, `no-capability-imports-features`, `em-injection-slots` (R88, R203).
 
-Why: an envelope duplicates GraphQL's own error channel, turns failures into HTTP 200 `success: false` and puts user copy in the
-back end.
+## BE-TRANSPORT-3 No response envelope, no JSON tunnel
 
-Enforced by: R88 BE_TRANSPORT_SHAPE, R78 BE_USER_COPY_LITERAL.
+A door returns the typed payload; a failure travels through the error filter or formatter (BE-ERROR-5). No transform
+interceptor, success flag or message wrapper, and `GraphQLJSON` is never an input or output.
+
+Why: an envelope duplicates GraphQL's error channel and puts user copy in the back end.
+
+Enforced by: `no-response-envelope`, `no-graphql-json` (R88).

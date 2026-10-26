@@ -3,73 +3,86 @@ slots: [be.feature.application, be.domain, be.errors]
 ---
 # Error
 
-Decides how a back-end failure or refusal is declared, returned or thrown, and mapped onto HTTP and GraphQL: refusals are
-`Outcome` unions, failures one `DomainError` family per capability, undeclared errors masked. Logging a failure is logging.md
-(BE-LOGGING-2); display text lookup is messages.md.
+How a failure or refusal is declared, thrown or returned, and answered on HTTP and GraphQL. Logging a failure is
+logging.md; its display text messages.md.
 
-## BE-ERROR-1 One base owned by platform, one family per capability
-`platform/errors` owns `DomainError`, the closed `ErrorKind` set and its one kind-to-HTTP-status table, the REST `ExceptionFilter`
-and the GraphQL `formatError`, and nothing else. Each capability owns `errors/<capability>.error.ts` declaring exactly one code
-enum `<Capability>ErrorCode`, one exhaustive table `<CAPABILITY>_ERROR_KINDS: Record<code, ErrorKind>` and one class
-`<Capability>Error extends DomainError<<Capability>ErrorCode>`. No per-case error class, no `exceptions/` folder; a
-`DomainError` carries no HTTP status.
+## BE-ERROR-1 One base in platform, one error family per capability
 
-Why: a class per case is boilerplate without exhaustiveness, and a status guessed from a name is a heuristic; a code enum with a
-`Record` table makes the compiler prove every code has a kind, and error policy stays with the capability that decides it.
+`platform/errors` owns `DomainError<C>`, the closed `ErrorKind` set (`invalid`, `unauthenticated`, `forbidden`,
+`not-found`, `conflict`, `rate-limited`, `unavailable`, `internal`), its status table, the REST filter and the GraphQL
+formatter. Each capability (domain, platform or integration) owns `errors/<capability>.error.ts` with exactly one code
+enum `<Capability>ErrorCode`, one exhaustive `<CAPABILITY>_ERROR_KINDS: Record<Code, ErrorKind>` and one empty class
+`<Capability>Error extends DomainError<<Capability>ErrorCode>`. The index exports the table, which the app composes into
+`ErrorsModule.register({ kinds })`. No per-case class, no `exceptions/` folder, no status on an error.
 
-Enforced by: R38 BE_ERROR_HOME.
+Why: a code enum with a `Record` table makes the compiler prove every code has a kind, and the policy stays with the
+capability that decides it.
 
-## BE-ERROR-2 Codes are capability-prefixed, unique and carry no prose
-Code values are `<CAPABILITY>_<WHAT>` in UPPER_SNAKE (members PascalCase), with no `_EXCEPTION` or `_ERROR` suffix, unique across the
-repository. The constructor takes `({ code, params?, cause? })`: `params` interpolate the display text and `cause` keeps the raw
-caught value; an error never carries prose. A code that crosses a process or storage boundary is stable text, never a class name.
+```ts
+/** Codes of the orders capability. */
+export enum OrdersErrorCode {
+    /** The order cannot be shipped, or somebody shipped it already. */
+    NotShippable = "ORDERS_NOT_SHIPPABLE",
+}
 
-Why: a stable code is what transports map and clients match on; prose in the error puts user copy in the wrong layer.
+/** How each orders code travels. */
+export const ORDERS_ERROR_KINDS: Record<OrdersErrorCode, ErrorKind> = {
+    [OrdersErrorCode.NotShippable]: "conflict",
+}
 
-- `throw new PurchaseError({ code: PurchaseErrorCode.OfferNotFound, params: { offerId } })`
+/** The one error class of the orders capability. */
+export class OrdersError extends DomainError<OrdersErrorCode> {}
+```
 
-Enforced by: R38 BE_ERROR_HOME.
+Enforced by: `error-home`, `error-family-shape`, `error-code-unique` (R38).
 
-## BE-ERROR-3 Expected refusals are returned, exceptional failures are thrown
-An expected business refusal is returned as `Outcome<V, C> = { kind: "ok"; value: V } | { kind: "refused"; code: C; params? }` of
-`platform/primitives`, `C` a subset of the capability's codes. The transport turns it into a throw with
-`unwrapOutcome(outcome, <C>Error)`, the only place a refusal becomes an exception. An escaping failure is a `DomainError`. Never
-`throw new Error`, the framework HTTP exception family, a throw of a non-`DomainError`, or a domain throwing a platform error
-outward.
+## BE-ERROR-2 A code is stable text; an error carries no prose
 
-Why: a union makes the compiler force the caller to handle a refusal; an exception hides it from the type system.
+Code values are `<CAPABILITY>_<WHAT>` in UPPER_SNAKE (members PascalCase), unique across the repository, never suffixed
+`_ERROR`. An error is built from `{ code, params?, cause? }`: `params` fill the display text, `cause` keeps the caught
+value; its `message` is the code.
 
-- When the caller cannot recover (a missing aggregate) → throw; when the requirements name the refusal → return it.
+Why: a stable code is what transports map and clients match on; prose in an error is user copy in the wrong layer.
 
-Enforced by: R38 BE_ERROR_HOME.
+Enforced by: `error-code-unique`, `user-copy-through-catalog`, `no-secret-in-error` (R38, R78, R71).
 
-## BE-ERROR-4 Every catch accounts for its error and keeps the cause
-Every `catch` does exactly one of: rethrow, call a method of a value typed `Logger`, or return an `Outcome` that carries the cause.
-An empty `catch {}` or one that ignores the caught value is forbidden. When a boundary replaces a caught failure, the exact caught
-value (non-Error values included) becomes the new error's `cause`; a spec proves it is kept.
+## BE-ERROR-3 A refusal is the capability error; an `Outcome` only when a caller branches on it
 
-Why: a swallowed error turns a real failure into an unexplained state with no trace for the on-call reader.
+A service refuses by throwing its capability error (`throw new OrdersError({ code: OrdersErrorCode.NotShippable })`).
+It returns `Outcome<V, C>` of `platform/primitives` instead only when a caller in the modules must decide on the
+refusal; the door then throws it with `unwrapOutcome(outcome, <C>Error)`. "Absent" is a `null` result typed by a named
+alias (`type OptionalOrder = OrderRow | null`), not an error, when absence is a normal answer. Never `throw new Error`,
+a framework HTTP exception, or a platform error thrown out of a domain.
 
-- `catch (error) { throw new CryptoError({ code: CryptoErrorCode.DecryptionFailed, cause: error }) }`
+Why: one throw per refusal keeps services short, the handler's base logs it once, and the filter maps it by kind; a
+union is worth its weight only where code reads it.
 
-Enforced by: R40 BE_LOGGER_REQUIRED, R108 BE_ERROR_CAUSE_DROPPED.
+Enforced by: `throw-domain-error` (R38); the Outcome-versus-throw choice is review only.
 
-## BE-ERROR-5 One REST filter and one GraphQL formatter per app
-Each api app registers the `ExceptionFilter` through `APP_FILTER` and passes `formatError` to the GraphQL module, both from
-`platform/errors`. The filter maps a `DomainError` kind to its status through the one table and answers the code with the display
-text resolved by code (BE-ERROR-6). GraphQL failures use HTTP 200 per GraphQL-over-HTTP and carry `errors[].extensions.{code,kind}`.
-Anything that is not a `DomainError` is masked to `INTERNAL` with a generic message, the detail only in the log. Clients match on
-`extensions.code`, never the message. A transport test covers both, including an unknown error.
+## BE-ERROR-4 Every catch accounts for the error and keeps the cause
 
-Why: a client never receives an internal message, a SQL error or a stack, and one mapping per protocol means masking cannot differ
-per operation.
+A `catch` rethrows, calls the `Logger`, or returns a value that carries the cause; a replacement error passes the
+caught value as `cause`. No empty or ignoring catch.
 
-Enforced by: R39 BE_ERROR_MASKED.
+Why: a swallowed error turns a real failure into an unexplained state with no trace.
 
-## BE-ERROR-6 Display text of an error comes from the catalog by code
-A client never reads `message`. The filter and `formatError` resolve the text from the `errors.<code>` key of the owning
-capability's catalog through `MessageCatalog` and the request locale (BE-MESSAGES-2), interpolating `params`.
+```ts
+.catch((cause: unknown) => {
+    throw new TelegramError({ code: TelegramErrorCode.Unavailable, cause })
+})
+```
 
-Why: locale is a fact about the receiver; resolving it once per response translates every error the same way.
+Enforced by: `catch-must-account`, `replacement-throw-carries-cause` (R40, R108).
 
-Enforced by: R78 BE_USER_COPY_LITERAL.
+## BE-ERROR-5 One REST filter and one GraphQL formatter answer every failure
+
+The api root binds `ErrorsFilter` as `APP_FILTER`; GraphQL failures go through the formatter of `platform/graphql`.
+Both describe the error through `ErrorsService`: a `DomainError` answers `{ code, kind, message, params }` with the
+kind's status (GraphQL: HTTP 200 with `extensions.code` and `kind`); anything else is masked to `ERRORS_INTERNAL` and
+recorded with its site, the detail only in the log. The message is resolved from the catalog by code and request
+locale (`errors.<CODE>` key, BE-MESSAGES-1). Clients match on the code, never the message.
+
+Why: a client never receives an internal message, SQL error or stack, and one mapping per protocol means masking
+cannot differ per operation.
+
+Enforced by: `error-masked` (R39).

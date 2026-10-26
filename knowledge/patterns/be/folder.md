@@ -3,45 +3,42 @@ slots: []
 ---
 # Folder
 
-Decides which directory a piece of back-end code lives in. The machine form is the `be.*` slots of `hfs/slots.yaml`; the shape
-inside a kind folder is that kind's topic, errors are error.md, persistence is persistence.md and tests are test.md.
+Which directory back-end code lives in. The machine form is the `be.*` slots of `hfs/slots.yaml`; the shape inside a
+kind folder is that kind's topic.
 
-## BE-FOLDER-1 Responsibility roots
-The back end is a `be/apps/<app>/` monorepo even with one app; apps own process composition only. `be/src/features/<kind>/` owns
-what triggers the application, one root per trigger kind (BE-FOLDER-2). `be/src/modules/<tier>/<capability>` owns reusable
-capabilities: `domain` for business rules, `platform` for technical runtime, `integrations` for a third-party provider or
-protocol, plus the opt-in pattern tiers of `tiers.be`. `be/src/tests/` holds non-unit tests and shared test data. Nothing else
-sits at `be/src/`, and no teaching, mock or sandbox code lives under it. No folder named `types`, `constants`, `utils`, `helpers`,
-`shared`, `common`, `testing` or `exceptions` exists under modules or features: types go in `<name>.contracts.ts`, constants in
-the file that owns them, an ownerless helper in the platform capability that uses it. A feature stays within the file budget
-`ruleParams.common.featureFiles`; a larger one splits by product capability. A module may have one consumer.
+## BE-FOLDER-1 Four responsibility roots
 
-Why: ownership decides placement, not topology or consumer count; a closed tier set keeps every capability under the same
-dependency rules, and catch-all folders hide mixed ownership.
+`be/apps/<app>/` composes processes (a monorepo even with one app). `be/src/features/<kind>/` holds what triggers the
+application, one root per trigger kind. `be/src/modules/<tier>/<capability>/` holds capabilities: `domain` (business
+rules), `platform` (technical runtime), `integrations` (one provider each) and the opt-in pattern tiers (`queues`; in
+full `events`, `projections`). `be/src/tests/` holds non-unit tests and shared test data. Nothing else sits under
+`be/src`, and no folder is named `types`, `constants`, `utils`, `helpers`, `shared`, `common` or `exceptions`: a type
+goes in `<name>.contracts.ts`, a constant beside its owner, an ownerless pure helper in `platform/primitives`. A feature
+stays within `ruleParams.common.featureFiles`.
 
-Enforced by: R01 HFS_SLOT_UNDECLARED, R02 HFS_SLOT_REQUIRED_MISSING, R145 HFS_MONO_NEST_PROJECTS, R292 HFS_FEATURE_FILE_BUDGET.
+Why: ownership decides placement, and a catch-all folder hides mixed ownership.
+
+Enforced by: hfs and `slot-undeclared` (R01), R02, R145, R292.
 
 ## BE-FOLDER-2 Features are grouped by trigger kind
-`be/src/features/` holds one folder per trigger kind and nothing else: `api/<feature>/` (api.md), `cli/` (cli.md) and one root per
-further kind of `triggerKinds` (webhooks, realtime, saga, reactors, jobs), each enabled by declaring its pattern in `hfs.json`
-`sides.be.patterns`. A feature root holds exactly what its kind's slot `requires`/`allows`: its entries, `application/` (the CQRS
-files, no protocol-named folder) and one `transport/<protocol>/` per protocol with exactly one `<feature>-<protocol>.module.ts`.
-A socket gateway or subscription is the realtime kind and a provider webhook the webhooks kind. A non-door feature role (policy,
-guard, client, filter, interceptor, projection, contracts) declares only data, types and DTO metadata; renaming a suffix never
-grants a place for business logic, which belongs in a tested module capability.
 
-Why: the trigger decides which app composes the code, so grouping by trigger keeps each app's composition one folder and makes a
-cross-kind import visible from the path alone.
+`be/src/features/` holds one folder per kind the app declares in `hfs.json` `sides.be.kinds`: `api/<feature>/`,
+`cli/`, `jobs/<job>/`, `webhooks/<provider>/`, `realtime/<channel>/`. A feature holds exactly what its kind's slot
+allows: its module files, `application/` (CQRS only) and one `transport/<protocol>/` per protocol with one
+`<feature>-<protocol>.module.ts`. A feature file declares no business logic under any suffix: that belongs in a tested
+capability.
 
-Enforced by: R29 BE_FEATURE_SHAPE, R179 BE_KIND_DECLARATION, R180 BE_KIND_EMPTY, R264 HFS_FEATURE_LOGIC_ROLE.
+Why: the trigger decides which app composes the code, so a cross-kind import is visible from the path alone.
 
-## BE-FOLDER-4 Capability shape follows owned behaviour
-A domain, platform or integration capability has exactly one `index.ts` at its root and only the parts it owns, within its slot's
-closed `requires`/`allows`: a module and module definition when it registers providers, config and options when configured, and
-`errors/`, `messages/` and `persistence/` in their sub-slots. Same-owner imports are relative and never go through the owner's
-own `index.ts`; no nested `index.ts` and no empty conventional folder exist. `platform/primitives` holds ownerless pure helpers
-(Outcome, time arithmetic, hashing, ids); a helper with an owner sits beside it.
+Enforced by: `feature-layout` (R29), R179, R180, `feature-logic-role` (R264).
+
+## BE-FOLDER-4 A capability holds only what it owns, behind one index
+
+A capability has one `index.ts` at its root and only the parts it owns: module files when it registers providers,
+`<c>.config.ts` and `<c>.options.ts` when configured, `<c>.decorators.ts` for its injectors, ports
+(`<c>.port.ts`), services, policies, mappers, clients, and the sub-folders `errors/`, `messages/` and `persistence/`.
+No nested `index.ts`, no empty folder; the index exports named symbols within the slot's `budget.indexExports`.
 
 Why: one public entry per owner is the only way to change internals without a repository-wide search.
 
-Enforced by: R30 BE_PUBLIC_SURFACE, R01 HFS_SLOT_UNDECLARED.
+Enforced by: `no-folder-reexport`, `import-owner-entry` (R30), `slot-undeclared` (R01).

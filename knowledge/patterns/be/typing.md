@@ -3,79 +3,68 @@ slots: []
 ---
 # Typing
 
-Decides which type expresses a back-end contract, value or boundary, and which validator reads untrusted data. Types never stand
-in for runtime validation. Message params are BE-CQRS-2; input bounds of transport DTOs are BE-AUTH-5.
+Which type expresses a back-end contract, value or boundary, and which validator reads untrusted data. The strict
+flags, `Array<T>`, no type escape and the type-aware rules are shared: [SHARED-TYPING-1 … 4](../shared/typing.md).
 
-## BE-TYPING-1 One strict flag set
-`be/tsconfig.json` is the render of `starci app sync`: it extends `@starci/tsconfig/be.json` (which owns the strict flags) and adds
-only the three path aliases and the template excludes; an app lowers no flag. `interface` is for object shapes, `type` for unions,
-intersections and aliases, and arrays are `Array<T>` or `ReadonlyArray<T>`.
+## BE-TYPING-1 Interfaces for shapes, types for unions and aliases
 
-Why: one flag set makes every app read the same, and compile-time shape is not runtime validation.
+An object shape is an `interface` with `readonly` documented members; a union, intersection or alias is a `type`. A
+named alias carries a meaning a bare union would hide (`type OrderViewLookup = OrderView | null`). An inline object type
+in a signature takes a name.
 
-Enforced by: R22 HFS_TS_STRICT.
+Why: a named type is greppable and documented once; an inline shape is copied and drifts.
 
-## BE-TYPING-2 Public params and results are named projections
-Public handler, service and capability APIs have explicit params and result types; object parameters use a named `<Name>Params`.
-No ORM entity, `*Entity` type or SDK response is a public contract, DTO or resolver/controller return type: return a projection.
-Inferred locals need no ceremonial interface.
+Enforced by: `no-inline-object-type`, `no-inline-param-type`, `public-contract-form` (R89).
 
-Why: a stable public API makes boundary changes visible and keeps persistence shape from leaking.
+## BE-TYPING-2 Each layer has its own contract
 
-- `type StartCheckoutResult = Outcome<{ purchaseId: string }, PurchaseErrorCode.OfferNotFound | PurchaseErrorCode.AlreadyOwned>`
+A door speaks DTO classes (`transport/<protocol>/dto/`, BE-AUTH-4), the application `<Action>Request` interfaces, a
+service its `<capability>.contracts.ts` types and views, persistence `<Name>Row` interfaces. A row never crosses a door:
+a mapper turns it into a view (`toOrderView(row)`). No entity, row or SDK response is a message result, DTO or
+resolver return type.
 
-Enforced by: R37 BE_ENTITY_IN_CONTRACT.
+Why: protocol, application and storage evolve at different boundaries; a leaked row turns a column rename into an API
+change.
+
+Enforced by: `no-entity-in-contract` (R37); rows at doors are review only.
 
 ## BE-TYPING-3 Mutability follows lifecycle
-Injected dependencies and message params are `readonly`. DTO classes may be mutable where validation or transform tooling needs
-it. A received message is never mutated to store progress, and no module-level `let` holds shared state.
 
-Why: execution state and request data have different owners, and module state breaks across instances.
+Injected dependencies and message params are `readonly`, contract and row members `readonly`, arrays in contracts
+`ReadonlyArray<T>`. A DTO class may be mutable where class-validator needs it. No module-level `let`.
 
-Enforced by: R87 BE_CQRS_SHAPE (readonly boundary), R45 BE_MODULE_SHAPE.
+Why: request data and execution state have different owners, and module state breaks across replicas.
 
-## BE-TYPING-4 Stable values are enumerated deliberately
-Public enums and discriminated unions have explicit serialized values; no `const enum` across a package or runtime boundary. A
-domain value stays with its domain owner; a stored enum is `varchar` with a `CHECK`, never a native database enum. GraphQL
-registration (`registerEnumType`) happens in the transport that exposes it.
+Enforced by: `readonly-boundary`, `no-module-let` (R87, R45).
 
-Why: serialization stability and ownership outlast naming, and a native enum change can crash a migration.
+## BE-TYPING-4 Stable values are string enums or literal unions
 
-Enforced by: R89 BE_SOURCE_FORM, R264 HFS_FEATURE_LOGIC_ROLE.
+A public enum has explicit string values and documented members; no `const enum`. A stored enum is `text` or
+`varchar` with a `CHECK`, never a native database enum. GraphQL registers an enum in the transport that exposes it.
 
-## BE-TYPING-5 Unknown input is narrowed; no type escape anywhere
-`unknown` is the type of untrusted payloads and caught errors, then narrowed. Nowhere, specs included: `as X` (only `as const`),
-`<X>y`, `x!`, `any`, `Function`, `eval`, `as never`, `as unknown as`. A request body is a typed DTO, never `unknown`. Test doubles
-use `mock<T>()` and typed fixtures, not casts.
+Why: serialized values must stay stable, and a native enum change can break a migration.
 
-Why: a cast cannot establish trust in external data, and a cast in a spec keeps a stale spec green.
+Enforced by: `no-const-enum`, `require-enum-member-jsdoc` (R89).
 
-Enforced by: R72 BE_TYPE_ESCAPE, R22 HFS_TS_STRICT, R41 BE_DEFAULT_DENY.
+## BE-TYPING-5 A DTO is validated; an unknown payload is narrowed by its owner
 
-## BE-TYPING-7 DTOs are owned protocol representations
-GraphQL and HTTP DTO classes live under the owning feature's `transport/<protocol>/dto/` and carry semantic validation and bounds
-(BE-AUTH-5); a GraphQL `ID` or string shape alone is not validation. Plain application contracts stay under `application/`.
-Output is mapped deliberately, with nullability and errors as the API contract states.
+A request body or argument is a DTO class, never `unknown` or a record (BE-AUTH-4). Data that never reaches a DTO (a
+provider answer, a queue payload read back, model output, `JSON.parse` of outside text) is `unknown` until the owner
+narrows it (SHARED-TYPING-2): a type guard `is<Name>(value): value is <Name>` in the owner's contracts, or a bounded zod
+schema (BE-TYPING-8). Specs build doubles with `mock<T>()` and builders, never casts.
 
-Why: protocol, application and persistence contracts evolve at different boundaries.
+Why: a type cannot establish trust in external data, and a cast in a spec keeps a stale spec green.
 
-Enforced by: R37 BE_ENTITY_IN_CONTRACT, R42 BE_INPUT_BOUNDED.
+Enforced by: `no-untyped-body` (R41), `json-parse-needs-guard` (R76), `no-return-only-generic` (R48).
 
-## BE-TYPING-8 Data that never reaches a DTO is parsed by a bounded zod schema in its owner
-Validation is zoned. A transport DTO is validated by `class-validator`, never zod. Untrusted data that does not arrive through a DTO
-(a provider response, a model's structured output, a queue or outbox payload read back, a tool argument, the operation-table
-request) is read through a zod schema in a `<name>.schema.ts` of the domain, platform or integrations owner that reads it; zod is
-imported nowhere else, and a schema file imports no class-validator, class-transformer or GraphQL decorator. The reader calls
-`safeParse`, returns the inferred type and maps a failure to its owner's error (`<Owner>ErrorCode.MalformedResponse`), never
-returning partly trusted data. Every string, array, set, record and map is bounded, and `z.any()`, `z.unknown()` and `z.json()`
-do not exist. A schema is covered through its reader's spec, reject branch included (or parsed directly, BE-TEST-2). No schema is
-shared with the front end; the shared contract is the emitted snapshot.
+## BE-TYPING-8 A zod schema lives in its owner's `*.schema.ts` and is bounded
 
-Why: a hand-written `typeof` ladder narrows what its author remembered and drifts from the provider, while one schema is both
-reader and type; one validator per door keeps the zones disjoint, and an unbounded collection whose elements all fail validation
-allocates an issue each.
+Zod is imported only by a `<name>.schema.ts` of a domain, platform or integration owner, never by a feature, door or
+`dto/`, and the file holds only zod values and their inferred types. Every string, array, record and map is bounded;
+`z.any()`, `z.unknown()` and `z.json()` do not exist. The reader calls `safeParse` and maps a failure to its owner's
+error. Use a schema when the shape is deep (model output, tool arguments, wire envelopes); a flat payload may use a
+type guard.
 
-- When a payload is read back from the inbox or a queue → the service parses it through its owner's schema before any effect and
-  fails the job with the owner's `MalformedPayload` code.
+Why: one schema is reader and type at once, and an unbounded collection is a denial-of-service lever.
 
-Enforced by: R304 BE_SCHEMA_PLACE, R305 BE_SCHEMA_BOUNDED.
+Enforced by: `schema-place`, `schema-file-values-only`, `schema-bounded` (R304, R305).
