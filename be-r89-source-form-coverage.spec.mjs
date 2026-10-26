@@ -23,6 +23,14 @@ const nameGood = 'src/modules/domain/orders/order.service.ts';
 const nameBad = 'src/modules/domain/orders/wrong.service.ts';
 const contractGood = 'src/modules/domain/orders/read-order.service.ts';
 const contractBad = 'src/modules/domain/orders/invalid.service.ts';
+const topicPolicy = 'src/modules/domain/orders/order-status.policy.ts';
+const topicSuffix = 'src/modules/domain/orders/order-status.topic.ts';
+const topicBuilder = [
+  'import type { RealtimeTopic } from "../../platform/realtime/realtime.port";',
+  'import type { OrderStatusFrame } from "./order.contracts";',
+  'const isOrderStatusFrame = (value: unknown): value is OrderStatusFrame => typeof value === "object" && value !== null && "id" in value && typeof value.id === "string";',
+  'export const orderStatusTopic = (principalId: string, orderId: string): RealtimeTopic<OrderStatusFrame> => ({ name: `order-status:${principalId}:${orderId}`, accepts: isOrderStatusFrame });',
+].join('\n');
 const files = {
   [suffixGood]: 'export class CancelOrderCommand {}',
   [suffixBad]: 'export class CancelOrderUseCase {}',
@@ -30,12 +38,17 @@ const files = {
   [nameBad]: 'export class Wrong {}',
   [contractGood]: 'import type { Order } from "./order.contracts"; export class ReadOrderService { read(input: Order): Order { return input; } }',
   [contractBad]: 'export class InvalidService { read(input: { readonly id: string }): { readonly id: string } { return input; } }',
-  'src/modules/domain/orders/order.contracts.ts': 'export interface Order { readonly id: string }',
+  [topicPolicy]: topicBuilder,
+  [topicSuffix]: topicBuilder,
+  'src/modules/domain/orders/order.contracts.ts': 'export interface Order { readonly id: string } export interface OrderStatusFrame { readonly id: string }',
+  'src/modules/platform/realtime/realtime.port.ts': 'export interface RealtimeTopic<T extends object> { readonly name: string; accepts(value: unknown): value is T }',
+  'src/modules/platform/realtime/index.ts': 'export type { RealtimeTopic } from "./realtime.port";',
   'src/modules/domain/orders/index.ts': [
     'export { OrderService } from "./order.service";',
     'export { Wrong } from "./wrong.service";',
     'export { ReadOrderService } from "./read-order.service";',
     'export { InvalidService } from "./invalid.service";',
+    'export { orderStatusTopic } from "./order-status.policy";',
   ].join('\n'),
 };
 
@@ -110,6 +123,24 @@ for (const edition of ['lite', 'full']) {
     });
     tester.run('public-contract-form', graphRules['public-contract-form'], {
       valid: [{ filename: fixture.at(contractGood), code: files[contractGood] }],
+      invalid: [{ filename: fixture.at(contractBad), code: files[contractBad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }] }],
+    });
+  });
+
+  test(`R89 ${edition} accepts a typed topic policy and rejects an undeclared topic suffix`, (t) => {
+    const fixture = projectFixture({ edition, files });
+    t.after(fixture.cleanup);
+    const policy = { filename: fixture.at(topicPolicy), code: topicBuilder };
+    fixture.tester.run('source-suffix', graphRules['source-suffix'], {
+      valid: [policy],
+      invalid: [{ filename: fixture.at(topicSuffix), code: topicBuilder, errors: [{ messageId: 'finding' }] }],
+    });
+    fixture.tester.run('source-names', graphRules['source-names'], {
+      valid: [policy],
+      invalid: [{ filename: fixture.at(nameBad), code: files[nameBad], errors: [{ messageId: 'finding' }] }],
+    });
+    fixture.tester.run('public-contract-form', graphRules['public-contract-form'], {
+      valid: [policy],
       invalid: [{ filename: fixture.at(contractBad), code: files[contractBad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }] }],
     });
   });
