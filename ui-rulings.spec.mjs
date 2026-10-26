@@ -1,8 +1,17 @@
 /** Navigation selection and Grammar styling remain owned by the public component API. */
+// proves: FE_NESTED_VARIANT@lite
+// proves: FE_NESTED_VARIANT@full
+// proves: FE_GRAMMAR_LAYOUT_ONLY@lite
+// proves: FE_GRAMMAR_LAYOUT_ONLY@full
 import assert from "node:assert/strict";
 import test from "node:test";
 import { at, slotTester } from "./fixtures/typed/tester.mjs";
-import { rules, recommended } from "./ui-rulings.mjs";
+import {
+  rules,
+  recommended,
+  selectionFillNoCheck,
+  noGrammarInternalSelector,
+} from "./ui-rulings.mjs";
 import { rules as published, recommended as universal } from "./index.mjs";
 import { rules as buttonRules } from "./button-intent.mjs";
 
@@ -23,11 +32,9 @@ test("UI rulings are registered universally at error", () => {
   }
 });
 
-test("fill replaces checks in navigation-like single-select lists", () => {
-  slotTester().run(
-    "selection-fill-no-check",
-    rules["selection-fill-no-check"],
-    {
+for (const edition of ["lite", "full"])
+  test(`COLLECTION-1 ${edition}: fill replaces checks in navigation-like single-select lists`, () => {
+    slotTester().run("selection-fill-no-check", selectionFillNoCheck, {
       valid: [
         grammar +
           'const C=()=> <nav><ListBox selectionIndicator="none" /></nav>',
@@ -76,55 +83,60 @@ test("fill replaces checks in navigation-like single-select lists", () => {
           errors: [{ messageId: "indicator" }],
         },
       ],
-    },
-  );
-});
+    });
+  });
 
-test("application selectors cannot restyle Grammar internals", () => {
-  slotTester().run(
-    "no-grammar-internal-selector",
-    rules["no-grammar-internal-selector"],
-    {
-      valid: [
-        { filename, code: 'const C=()=> <div className="flex min-w-0" />' },
-        {
-          filename,
-          code: 'const classes=cn("[&_.app-row]:flex", active && "gap-4")',
-        },
-        { filename, code: "const C=()=> <ChatBubble actions={actions} />" },
-        { filename, code: 'const note="Grammar owns starci-core-bubble"' },
-      ],
-      invalid: [
-        fixture(
-          'const C=()=> <div className="[&_.starci-core-chat-bubble]:bg-transparent" />',
-          "internal",
-        ),
-        fixture(
-          'const classes=cn("[&_.starci-core-chat-bubble]:opacity-0")',
-          "internal",
-        ),
-        fixture(
-          'const classes=cn(active && "[&_.starci-core-button]:hidden")',
-          "internal",
-        ),
-        fixture(
-          'const classes={hover:"[&_.starci-core-chat-actions]:absolute"}',
-          "internal",
-        ),
-        fixture(
-          "const classes=`[&_.starci-core-chat-actions]:${tone}`",
-          "internal",
-        ),
-        fixture('const classes="[&_[class^=starci-core-]]:hidden"', "internal"),
-        {
-          filename: at("apps/web/src/components/blocks/Messages/classNames.ts"),
-          code: 'export const root=cn("[&_.starci-core-chat-bubble]:bg-transparent")',
-          errors: [{ messageId: "internal" }],
-        },
-      ],
-    },
-  );
-});
+for (const edition of ["lite", "full"])
+  test(`ACTION-3 ${edition}: application selectors cannot restyle Grammar internals`, () => {
+    slotTester().run(
+      "no-grammar-internal-selector",
+      noGrammarInternalSelector,
+      {
+        valid: [
+          { filename, code: 'const C=()=> <div className="flex min-w-0" />' },
+          {
+            filename,
+            code: 'const classes=cn("[&_.app-row]:flex", active && "gap-4")',
+          },
+          { filename, code: "const C=()=> <ChatBubble actions={actions} />" },
+          { filename, code: 'const note="Grammar owns starci-core-bubble"' },
+        ],
+        invalid: [
+          fixture(
+            'const C=()=> <div className="[&_.starci-core-chat-bubble]:bg-transparent" />',
+            "internal",
+          ),
+          fixture(
+            'const classes=cn("[&_.starci-core-chat-bubble]:opacity-0")',
+            "internal",
+          ),
+          fixture(
+            'const classes=cn(active && "[&_.starci-core-button]:hidden")',
+            "internal",
+          ),
+          fixture(
+            'const classes={hover:"[&_.starci-core-chat-actions]:absolute"}',
+            "internal",
+          ),
+          fixture(
+            "const classes=`[&_.starci-core-chat-actions]:${tone}`",
+            "internal",
+          ),
+          fixture(
+            'const classes="[&_[class^=starci-core-]]:hidden"',
+            "internal",
+          ),
+          {
+            filename: at(
+              "apps/web/src/components/blocks/Messages/classNames.ts",
+            ),
+            code: 'export const root=cn("[&_.starci-core-chat-bubble]:bg-transparent")',
+            errors: [{ messageId: "internal" }],
+          },
+        ],
+      },
+    );
+  });
 
 test("CTA-6 repeated commands declare neutral and never commit or a filled variant", () => {
   slotTester().run(
