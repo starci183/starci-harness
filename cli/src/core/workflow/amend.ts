@@ -1,13 +1,13 @@
 import { resolve } from "node:path"
 import { openLedger } from "../../harness/ledger.js"
+import { planPlace } from "../../harness/graph.js"
 import { loadOps } from "../../harness/ops.js"
 import { DISPATCHING, recordReplan, snapshotOf } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
-import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { cancelTasks, readSnapshot, reconcile, reportMessage, reportOf, stepWorkflow } from "./engine.js"
 import type { StepAction } from "./engine.js"
-import { buildReplan, classCounts, classificationTable } from "./replan.js"
+import { buildReplan, classCounts, classificationTable, readReplanSource } from "./replan.js"
 
 /**
  * `starci workflow amend <id> --change <file>`: the Kernel's replan. It builds the new graph from a change file (add, edit,
@@ -26,9 +26,11 @@ export const workflowAmendVerb = defineVerb({
         change: { kind: "string", summary: "a starci/workflow-change@1 file, or a whole starci/workflow@1 file of the same id", required: true },
     },
     run: async (context, flags) => {
-        const root = await repositoryRoot(context.cwd)
+        const place = await planPlace(context.cwd)
+        const root = place.repo
         const file = resolve(context.cwd, flags.change)
         const ops = loadOps()
+        const source = await readReplanSource(file, ops, place)
         const db = openLedger(root)
         const { replan, workflow } = (() => {
             try {
@@ -36,7 +38,7 @@ export const workflowAmendVerb = defineVerb({
                 if (snapshot.workflow.status === "stopping" || snapshot.workflow.status === "stopped") {
                     throw new Refusal("WORKFLOW_STOPPED", `workflow ${snapshot.workflow.id} is ${snapshot.workflow.status}; a stopped workflow is not amended`)
                 }
-                const built = buildReplan(db, snapshot, file, ops)
+                const built = buildReplan(db, snapshot, file, source, ops, place)
                 if (built.unchanged) throw new Refusal("NOTHING_TO_AMEND", `${file} changes nothing in workflow ${snapshot.workflow.id} (graph v${String(snapshot.workflow.graphVersion)})`)
                 return { replan: built, workflow: recordReplan(db, snapshot.workflow, built.header, built.nodes, built.reason, built.classification) }
             } finally {

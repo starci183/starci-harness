@@ -1,7 +1,8 @@
 # Contributing to the harness
 
 These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `knowledge/`, `packages/`, `skills/`
-and the root documents. Read [CONTEXT.md](CONTEXT.md) first.
+and the root documents. Read [CONTEXT.md](CONTEXT.md) first. Each rule is a heading with a stable id (`CONTRIB-<n>`), so
+a task on the harness itself cites the ids it applied in its `rulesApplied`.
 
 ## Setup and the checks you run
 
@@ -25,15 +26,22 @@ must be installed together).
 
 ## How a change is proved
 
-- **The CLI keeps no spec suite.** A CLI change is proved by running the built CLI (`node cli/dist/main.js ...`)
-  against a scratch git repository created under a temp directory, with `STARCI_LOCAL_ROOT` pointed at a temp state
-  base. The proof is scoped to what the change touches; never run it inside a real project or this checkout's
-  `.runtime/`. Do not add a test framework to `cli/`.
-- **Packages keep their specs.** Each package under `packages/` proves itself with its own `node:test` specs
-  (`npm test` in its folder). A rule change in a canon comes with the spec that holds it.
-- **Test only what you changed.** The full suite is CI's, after the push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+### CONTRIB-1 The CLI keeps no spec suite
 
-## One owner per fact
+A CLI change is proved by running the built CLI (`node cli/dist/main.js ...`) against a scratch git repository created
+under a temp directory, with `STARCI_LOCAL_ROOT` pointed at a temp state base. The proof is scoped to what the change
+touches; never run it inside a real project or this checkout's `.runtime/`. Do not add a test framework to `cli/`.
+
+### CONTRIB-2 Packages keep their specs
+
+Each package under `packages/` proves itself with its own `node:test` specs (`npm test` in its folder). A rule change
+in a canon comes with the spec that holds it.
+
+### CONTRIB-3 Test only what you changed
+
+The full suite is CI's, after the push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+## CONTRIB-4 One owner per fact
 
 A fact, number, path, name or rule has exactly one owner; everything else reads it, cites it or is generated from it.
 A second copy is a defect even while both agree.
@@ -41,8 +49,10 @@ A second copy is a defect even while both agree.
 | fact | owner |
 |---|---|
 | a verb: path, flags, effect, roles, json schema | its one `defineVerb({...})` file, listed in `cli/src/registry.ts`; `starci explain` prints it |
-| worker labels, check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
-| the worker brief | [ops/worker.md](ops/worker.md) |
+| a label: its base context, inputs, output keys and checks, floor, host tools and procedure | its op file `ops/ops/<label>.md` |
+| the op pattern (base and extend) and the worker procedure common to every brief | [ops/ops/README.md](ops/ops/README.md) |
+| check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
+| the map of ops/, the router's steps, failure classes and their accounting | [ops/README.md](ops/README.md) |
 | gate tiers, profiles, project overlays, banned markers, the secret scan's configuration | the files of [policy/](policy/README.md), mapped by its README |
 | what each gate and marker detects | `cli/src/core/check/` and `cli/src/shared/secrets.ts` |
 | every state path | `cli/src/harness/ledger.ts` |
@@ -58,42 +68,67 @@ no owner exists yet, create it first. Never answer a duplicate with an allowlist
 
 ## Writing rules and prose
 
-1. **Present tense, no ghosts.** Describe the tree as it is. Do not define something by the state it replaced; history
-   lives in git.
-2. **Replace, never append.** An edit rewrites the sentence that holds the rule. One concept has one paragraph, and it
-   is the latest version.
-3. **Feedback hardens.** Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never
-   becomes a case note beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
-   [CONTEXT.md](CONTEXT.md) "Decisions", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml).
-   No design document sits beside the owners: plans, phases and history live in git, not in a file.
-4. **Claims execute.** A sentence that says something refuses, validates or is enforced names code that does it. If the
-   code does not, fix the code or remove the claim.
-5. **Data is data.** `ops/` and `policy/` hold declarative YAML the CLI validates; a key no code reads is deleted.
-   Numbers live there once and are never repeated in prose.
-6. **Gates before rules.** Prefer a check that refuses the mistake over a sentence that forbids it; a rule with no gate
-   says it is held by review.
+### CONTRIB-5 Present tense, no ghosts
+
+Describe the tree as it is. Do not define something by the state it replaced; history lives in git.
+
+### CONTRIB-6 Replace, never append
+
+An edit rewrites the sentence that holds the rule. One concept has one paragraph, and it is the latest version.
+
+### CONTRIB-7 Feedback hardens
+
+Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never becomes a case note
+beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in [CONTEXT.md](CONTEXT.md)
+"Decisions", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml). No design
+document sits beside the owners: plans, phases and history live in git, not in a file.
+
+### CONTRIB-8 Claims execute
+
+A sentence that says something refuses, validates or is enforced names code that does it. If the code does not, fix the
+code or remove the claim.
+
+### CONTRIB-9 Data is data
+
+`ops/` and `policy/` hold declarative YAML (and the op files' front matter) the CLI validates; a key no code reads is
+deleted. Numbers live there once and are never repeated in prose.
+
+### CONTRIB-10 Gates before rules
+
+Prefer a check that refuses the mistake over a sentence that forbids it; a rule with no gate says it is held by review.
 
 ## Code rules
 
-- ESLint `strictTypeChecked` plus `stylisticTypeChecked` with `noInlineConfig`. Never `eslint-disable`, `ts-ignore`,
-  `as any`, `NOSONAR`, a skipped check, `|| true` or `--no-verify`. Change the code, not the gate; an unavoidable marker
-  is an exception in `policy/loosening.yaml` with its reason, never inline.
-- A verb is one `defineVerb` in its own file. Refusals throw `Refusal(code, message)`; a red verdict returns exit code 1.
-- Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through `cli/src/shared/git.ts`.
-- Style: 4-space indent, no semicolons, double quotes, a one-line JSDoc on every export, comments only where they carry a
-  rule. No new dependency without a reason the owner accepts.
-- Line endings are LF (`.gitattributes`).
+### CONTRIB-11 No loosening
 
-## Removed vocabulary
+ESLint `strictTypeChecked` plus `stylisticTypeChecked` with `noInlineConfig`. Never `eslint-disable`, `ts-ignore`,
+`as any`, `NOSONAR`, a skipped check, `|| true` or `--no-verify`. Change the code, not the gate; an unavoidable marker
+is an exception in `policy/loosening.yaml` with its reason, never inline.
+
+### CONTRIB-12 One verb, one file
+
+A verb is one `defineVerb` in its own file. Refusals throw `Refusal(code, message)`; a red verdict returns exit code 1.
+
+### CONTRIB-13 No shell
+
+Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through `cli/src/shared/git.ts`.
+
+### CONTRIB-14 House style
+
+4-space indent, no semicolons, double quotes, a one-line JSDoc on every export, comments only where they carry a rule.
+No new dependency without a reason the owner accepts. Line endings are LF (`.gitattributes`).
+
+## CONTRIB-15 Removed vocabulary
 
 These legacy terms do not reappear in source, data or documents. The list is held by review; the legacy runtime's
 analysis notes under `docs/knowledge-analysis/` may quote them.
 
 | removed | instead |
 |---|---|
-| op manifests, op kinds (`request.analyze`, `review.verify`, `code.fix`, ...), `route op`, the ops registry | one worker brief; the Kernel writes each contract; a label is a routing hint |
+| op manifests, op kinds (`request.analyze`, `review.verify`, `code.fix`, ...), `route op`, the ops registry | one op file per label, `ops/ops/<label>.md`, owning the base; the Kernel's contract extends it |
+| `ops/labels.yaml`, `ops/worker.md`, a contract's `expectedOutput` and `readPaths` | the op files and their README; a contract@2's checks and context, base ∪ extend (the contract@1 reader in `cli/src/harness/contract.ts` still names them) |
 | ops as planners (an op that analyses, scopes or decides) | planning and decisions are the Kernel's own work |
-| the Critic role, independent reviewers | machine checks in `expectedOutput`; taste goes to the owner ("CI is the critic" names CI after a push) |
+| the Critic role, independent reviewers | the contract's machine checks (base ∪ extend); taste goes to the owner ("CI is the critic" names CI after a push) |
 | `observe`, `nudge`, `redesign`, Kernel verbs that watch an op's terminal | the task protocol: contract, result, `task verify`; liveness by ping and pong |
 | `starci kernel <command>`, `driver-loop`, `settle` as a verb | `task send/result/verify`, `workflow step` |
 | the reconciler and its controllers | one host daemon for seat liveness and sweeps (not built yet) |
@@ -109,11 +144,25 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 
 ## Commit and push
 
-- Work in your own worktree on your own branch. Never stash, reset, force or switch branches in a checkout holding
-  someone else's work; two agents never write the same files.
-- Commit with hooks, in small commits whose message says what the change does.
-- Main is pushed right after a green scoped check: run `starci check run` on your diff, then `starci release push`
-  (it refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges everything else.
-- A red CI is fixed by the next commit, scoped to the red checks (`starci release ci-status` names them). It does not
-  block the next push.
-- Publishing packages happens in CI on a `v*` tag, with the owner's approval.
+### CONTRIB-16 Your own worktree
+
+Work in your own worktree on your own branch. Never stash, reset, force or switch branches in a checkout holding someone
+else's work; two agents never write the same files.
+
+### CONTRIB-17 Small commits with hooks
+
+Commit with hooks, in small commits whose message says what the change does.
+
+### CONTRIB-18 Push after a green scoped check
+
+Main is pushed right after a green scoped check: run `starci check run` on your diff, then `starci release push` (it
+refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges everything else.
+
+### CONTRIB-19 A red CI is the next commit
+
+A red CI is fixed by the next commit, scoped to the red checks (`starci release ci-status` names them). It does not
+block the next push.
+
+### CONTRIB-20 Publishing is CI's
+
+Publishing packages happens in CI on a `v*` tag, with the owner's approval.

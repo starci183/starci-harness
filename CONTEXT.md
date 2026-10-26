@@ -16,7 +16,7 @@ Read the files of your task's row, in order, before planning or editing. A task 
 | task | read |
 |---|---|
 | operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md`, then `starci explain --term <group>` for the verbs you call |
-| work as a worker on one task | the brief the harness rendered for the task ([ops/worker.md](ops/worker.md) is its template), then the contract it names |
+| work as a worker on one task | the brief the harness rendered for the task (the worker procedure of [ops/ops/README.md](ops/ops/README.md), then the label's op file `ops/ops/<label>.md`), then the contract it names |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](CONTRIBUTING.md), then the owner of your surface: [cli/README.md](cli/README.md), [policy/README.md](policy/README.md), the header of the `ops/` file you change, and "Decisions" below |
 | author app code or UI | [knowledge/README.md](knowledge/README.md) and the knowledge files it routes you to; the app's own `hfs.json` and `.starciwork/` |
 | change a gate, a profile, a banned marker or the secret scan | [policy/README.md](policy/README.md) and the file it names; the code of the gate is under `cli/src/core/check/` |
@@ -41,13 +41,13 @@ directory belongs to (`runtime`, `lite`, `full` or `none`).
 
 ## Roles
 
-The Kernel never reads a worker's terminal: it sends work as a contract (context, input, `expectedOutput`) and judges
+The Kernel never reads a worker's terminal: it sends work as a contract (context, input, output and checks: its op's base plus its own extend) and judges
 the result with `starci task verify`. A role's rights come from each verb's `effect` and `roles`
 ([cli/README.md](cli/README.md) "The verb standard" says when they are enforced).
 
 | role | job | never | escalates to |
 |---|---|---|---|
-| worker (an Orca seat, or the inline chat agent) | one task, until its output meets `expectedOutput`, writing only its `allowPaths` | commit, push, merge into main, change its contract, ask the owner | Kernel: `blocked` or `mismatch` |
+| worker (an Orca seat, or the inline chat agent) | one task, until its output passes the contract's checks (base ∪ extend), writing only its `allowPaths` | commit, push, merge into main, change its contract, ask the owner | Kernel: `blocked` or `mismatch` |
 | Kernel, one per workflow | plan (analyze the request, bound the scope, write every contract and the workflow file), make provisional business and architecture choices, send, step, verify, amend, and finish with a handover for owner acceptance | write product code under the `orca` runner, read a worker's terminal, push main | Supervisor: a task beyond a worker |
 | Supervisor, one per host (seat not built yet) | the owner channel, tasks beyond a worker, owner asks (credentials, accounts), host and runtime operation, scope amends, landing on main with `release push`, turning a red CI into a scoped `code` contract | write product code, bend a gate, publish without the owner | Owner |
 | Debug (seat not built yet) | diagnose a harness or environment failure, read-only, never task content | edit code, change rules, run a writing verb | Supervisor: the diagnosis and a repair contract |
@@ -119,22 +119,19 @@ goes to [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml) ins
 
 - **One CLI.** The harness is one TypeScript CLI on `commander`, with no framework; `starci explain`, generated from
   the verb definitions, is the one list of commands ([cli/README.md](cli/README.md)).
-- **Ops are plain workers.** Every task runs the one brief, [ops/worker.md](ops/worker.md); there is no catalog of op
-  kinds. The Kernel writes each contract, and a label of [ops/labels.yaml](ops/labels.yaml) is a routing hint plus
-  default checks, composed from the presets of [ops/checks.yaml](ops/checks.yaml).
-- **Op pattern: `base` and `extend`.** Each label has one op file, `ops/ops/<label>.md`, whose front matter states the
-  `base` of its `context` (the files the op reads), `input`, `output` and `checks`. A task's contract adds an `extend`
-  to each that may only add (files, inputs, output keys, checks), never drop or loosen the base, and the harness
-  refuses a contract that does. An op reads exactly `context.base` plus `context.extend`; its output carries the trace
-  of what it read (rule ids applied, Work record ids), which a check verifies against those files. The Kernel loads the
-  full context (this file, knowledge, `knowledge/project/`, the project's Work, the op files) to write each task's
-  `extend`. The CLI does not enforce it yet.
+- **One brief per task.** Every brief is the worker procedure common to all ops followed by the label's op file
+  ([ops/ops/README.md](ops/ops/README.md)); there is no catalog of op kinds beyond the labels. The Kernel writes each
+  contract; a label also routes (its floor and host tools) and its checks are presets of [ops/checks.yaml](ops/checks.yaml).
+- **Op pattern: `base` and `extend`.** Each label has one op file, `ops/ops/<label>.md`, owning the base of a task's
+  context, input, output and checks; the Kernel's contract only extends it, and the output carries the trace of what
+  the op read. [ops/ops/README.md](ops/ops/README.md) owns the mechanics and names the code that enforces them.
 - **Project pattern.** `knowledge/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.
-- **Machine checks only.** A contract's `expectedOutput` holds only checks a machine runs (`command`, `starci`,
-  `files`, `json`, `probe`), and a label with `requireBehavioural` refuses a contract without a behavioural check.
-  Anything no machine can judge (taste, UX) is an owner review step, never part of a contract.
+- **Machine checks only.** A contract's checks, its op file's `checks.base` plus its own `checks.extend`, are only
+  checks a machine runs (`command`, `starci`, `files`, `json`, `probe`, `cited`, `uat-flow`), and an op whose
+  `checks.behavioural` is true makes a contract without a behavioural check unfit (`contractProblems` in
+  `cli/src/harness/contract.ts`). Anything no machine can judge (taste, UX) is an owner review step, never part of a contract.
 - **Tests stay inside the task; CI judges the rest.** A contract's checks cover only what the task changed: the scoped
   `check run`, the tests related to the changed files (never a whole suite) and `paths-only`. A `verify` worker runs a
   heavy suite only when the goal itself is that suite. CI runs the full suite on main after the push; a red CI becomes

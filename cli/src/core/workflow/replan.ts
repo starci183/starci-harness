@@ -1,7 +1,8 @@
 import type { DatabaseSync } from "node:sqlite"
-import { applyChanges, buildGraph, classify, readPlanSource } from "../../harness/graph.js"
-import type { Classified, PlanNode, PlanTask, WorkflowHeader } from "../../harness/graph.js"
+import { applyChanges, buildGraph, classify, readPlanSource, uatWalksOf } from "../../harness/graph.js"
+import type { Classified, PlanNode, PlanPlace, PlanSource, PlanTask, WorkflowHeader } from "../../harness/graph.js"
 import type { Ops } from "../../harness/ops.js"
+import { assertRunPlace } from "../../harness/work.js"
 import { retryOfNode } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -20,13 +21,22 @@ export interface Replan {
 const sameHeader = (left: WorkflowHeader, right: WorkflowHeader): boolean => JSON.stringify(left) === JSON.stringify(right)
 
 /**
- * Builds the replan a file asks for: a change file (add, edit, remove, retry) applied to the current graph, or a whole workflow
+ * Reads the replan file of a workflow and checks the run place of every uat walk it asks for (assertRunPlace), the async part
+ * a replan needs before buildReplan judges it against the ledger.
+ */
+export const readReplanSource = async (file: string, ops: Ops, place: PlanPlace): Promise<PlanSource> => {
+    const source = readPlanSource(file, ops, place)
+    for (const walk of uatWalksOf(source, ops)) await assertRunPlace(place.repo, walk)
+    return source
+}
+
+/**
+ * Builds the replan a file asks for (`source`, read by readReplanSource): a change file (add, edit, remove, retry) applied to the current graph, or a whole workflow
  * file of the same id and runner that replaces it (a task keeps its retry round by key). The new graph must be fit; a redo of
  * a failed task must stay within its try budget. Refuses WORKFLOW_INVALID with every problem; `unchanged` says it moves nothing.
  */
-export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, ops: Ops): Replan => {
+export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace): Replan => {
     const { workflow } = snapshot
-    const source = readPlanSource(file, ops)
     let header = workflow.header
     let tasks: readonly PlanTask[]
     let retries: ReadonlySet<string> = new Set<string>()
@@ -34,7 +44,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     let reason: string
     if (source.kind === "change") {
         if (source.workflow !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} changes workflow ${source.workflow}, not ${workflow.id}`)
-        const applied = applyChanges(snapshot.nodes, source.changes, source.dir, header.base, ops)
+        const applied = applyChanges(snapshot.nodes, source.changes, source.dir, header.base, ops, { workflow: workflow.id, place })
         tasks = applied.tasks
         retries = applied.retries
         problems.push(...applied.problems)

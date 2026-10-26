@@ -41,7 +41,7 @@ usage. Read every refusal code; never retry blindly.
 ## Roles in a chat
 
 The Kernel plans: it writes every contract and the workflow file, sends, steps and verifies. Ops are plain
-workers that run [ops/worker.md](../../ops/worker.md) on one contract. Until a Kernel seat exists, the chat
+workers that run the procedure of their label's op file ([ops/ops/](../../ops/ops/README.md)) on one contract. Until a Kernel seat exists, the chat
 that defines a workflow is its Kernel. Under the `orca` runner the chat never writes product code; under
 `inline` it is Kernel and worker, one task at a time.
 

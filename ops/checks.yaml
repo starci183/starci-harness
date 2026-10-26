@@ -1,5 +1,5 @@
-# Named check presets a contract composes into its expectedOutput.
-# Each preset expands into one primitive check: command, starci, files, json or probe.
+# Named check presets an op file (checks.base) or a contract (checks.extend) names; ops/ops/README.md says how they compose.
+# Each preset expands into one primitive check: command, starci, files, json, probe or cited.
 # Arguments a preset needs are named in `args`; `{name}` in a value is replaced by the contract's argument.
 schema: starci/check-presets@1
 presets:
@@ -72,6 +72,12 @@ presets:
       kind: uat-flow
       record: "{record}"
       run: "{run}"
+  # The trace of what the worker read: the ids its result cites (rulesApplied, workRecords) come from its context files.
+  rules-cited:
+    summary: every rule or Work record id the result cites is named by one of the task's context files, and as many are cited as the op requires
+    behavioural: false
+    check:
+      kind: cited
   probe:
     summary: an http endpoint answers with the expected status
     behavioural: true

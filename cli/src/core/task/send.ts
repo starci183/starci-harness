@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { contractProblems, normaliseRepoPath, parseContract, readContract, resolveChecks } from "../../harness/contract.js"
+import { contractProblems, normaliseRepoPath, parseContract, readContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
 import { openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
 import { acquireLeases, inTransaction } from "../../harness/leases.js"
@@ -9,7 +9,7 @@ import type { LeaseGrant } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { createTask, getTask } from "../../harness/tasks.js"
 import type { TaskRow } from "../../harness/tasks.js"
-import { freshRunId, ignoredBy, locateWorkRoot, readUatRecord, REPORT_FILE, uatContract } from "../../harness/work.js"
+import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
 import type { WorkRoot } from "../../harness/work.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot, resolveSha } from "../../shared/git.js"
@@ -76,8 +76,7 @@ const runOfTask = (root: string, taskId: string): string | undefined => {
     const db = openExistingLedger(root)
     if (db === undefined) throw new Refusal("TASK_UNKNOWN", `no task ${taskId}: ${root} has no ledger yet`)
     try {
-        for (const { check } of resolveChecks(getTask(db, taskId).contract, loadOps())) if (check.kind === "uat-flow") return check.run
-        return undefined
+        return uatBinding(getTask(db, taskId).contract, loadOps())?.run
     } finally {
         db.close()
     }
@@ -86,7 +85,7 @@ const runOfTask = (root: string, taskId: string): string | undefined => {
 /**
  * The contract of `--uat <flow>`, built from the Work record in the Work root and written to contracts/ of that project's state
  * folder. A retry walks into the run folder of the task it retries, so its allowPaths stay the same work. Refused when git
- * would commit the run folder (a run's raw output stays git-ignored) or ignores the flow's evidence.yaml (no settle could cite the run).
+ * would commit the run folder or ignores the flow's evidence.yaml (assertRunPlace).
  */
 const uatSend = async (cwd: string, flow: string, retryOf: string | undefined): Promise<{ readonly file: string; readonly contract: Contract; readonly uat: UatSent }> => {
     const workRoot = await locateWorkRoot(cwd)
@@ -95,13 +94,9 @@ const uatSend = async (cwd: string, flow: string, retryOf: string | undefined): 
     const previous = retryOf === undefined ? undefined : runOfTask(root, retryOf)
     if (retryOf !== undefined && previous === undefined) throw new Refusal("RETRY_NOT_SAME_WORK", `task ${retryOf} walks no Work flow; send this one as a new task`)
     const runId = previous === undefined ? freshRunId() : posix.basename(previous)
-    const contract = parseContract(uatContract(record, { base: await resolveSha(root, "HEAD"), runId }))
+    const contract = parseContract(uatContract(record, { revision: await resolveSha(root, "HEAD"), runId }))
     const run = posix.join(record.place.runs, runId)
-    if ((await ignoredBy(root, posix.join(run, REPORT_FILE))) === undefined) {
-        throw new Refusal("WORK_RUNS_TRACKED", `git in ${root} would commit ${run}; a run's raw output stays git-ignored, so ignore runs/ in the Work tree's .gitignore`)
-    }
-    const evidenceRule = await ignoredBy(root, record.place.evidence)
-    if (evidenceRule !== undefined) throw new Refusal("WORK_EVIDENCE_IGNORED", `git in ${root} ignores ${record.place.evidence} (${evidenceRule}); un-ignore it so a settle can cite the run`)
+    await assertRunPlace(root, { record: record.place.record, run })
     const file = join(projectDir(root), "contracts", `uat-${flow.replace(/[^a-z0-9-]+/g, "-")}-${runId}.json`)
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, `${JSON.stringify(contract, null, 2)}\n`)

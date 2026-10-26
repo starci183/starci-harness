@@ -1,6 +1,6 @@
 # @starci/jest-preset
 
-The jest config of a Nest repository and the one shared unit-test double kit (`mock<T>()`, `mockEntityManager`, `fakeTransaction`, `fakeCache`, `fakeLock`, `recordingEventBus`, `recordingQueueOutbox`, `fakeInbox`, `builder`, `FakeClock`, `fakeIds` and the Outcome matchers). Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/hfs/canon-pins.yaml` (see [`packages/README.md`](../README.md)).
+The jest config of a Nest repository and the one shared unit-test double kit (`mock<T>()`, `mockEntityManager`, `fakeTransaction`, `fakeCache`, `fakeLock`, `recordingEventBus`, `recordingQueueOutbox`, `fakeInbox`, `builder`, `FakeClock`, `fakeIds` and the Outcome matchers). Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/stack/pins.yaml` (see [`packages/README.md`](../README.md)).
 
 ```js
 // jest.config.js (a managed file: `starci app sync` renders it, `starci app check` compares it; do not edit)
@@ -24,7 +24,7 @@ and the exclusions. A repository has no other jest setting to tune.
   (a framework registry such as `@nestjs/graphql`'s type metadata) reaches the file; and up to `min(--maxWorkers, slots)` files at
   once, each bound to its own data slot of `@starci/test-world` 1.1.0 (`STARCI_TEST_WORLD_SLOT`), never two files on one slot,
   because the test world resets a slot's data when a file boots. The runner reads test-world state protocol 2 only: pin
-  the two packages together (canon-pins); another protocol fails with `JEST_PRESET_WORLD_PAIR_MISMATCH`. Only the unit project has a `setupFilesAfterEnv`. The managed scripts select one
+  the two packages together (`knowledge/stack/pins.yaml`); another protocol fails with `JEST_PRESET_WORLD_PAIR_MISMATCH`. Only the unit project has a `setupFilesAfterEnv`. The managed scripts select one
   project each: `test`, `test:integration`, `test:e2e`, `test:contract`; a contract spec skips itself without sandbox config.
 - **The three path aliases** `@features/*`, `@modules/*`, `@tests/*` (`MODULE_NAME_MAPPER`), the same ones the managed `tsconfig.json` declares.
 - **ts-jest with `diagnostics: false`** in every project. `isolatedModules: true` comes from `@starci/tsconfig` (ts-jest 29.4 reads it
@@ -70,7 +70,7 @@ const service = moduleRef.get(CommissionService)
 ```
 
 No `new` of the service, no `imports`, no `overrideProvider`, no `jest.mock`, no casts, no `Date.now()` and no `process.env`. The
-full rules and the dependency-to-double-to-cases table are `knowledge/patterns/be/test.yaml` (BE-TEST-1 to BE-TEST-15). Every
+full rules and the dependency-to-double-to-cases table are `knowledge/patterns/be/test.md` (the BE-TEST rules). Every
 export below is on the package root (`@starci/jest-preset`); the sub-paths `./mock`, `./clock`, `./entity-manager`, `./ids`,
 `./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox` and `./builders` exist as well.
 

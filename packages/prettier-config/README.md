@@ -8,7 +8,7 @@ from the canon and never come back.
 { "prettier": "@starci/prettier-config" }
 ```
 
-Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/hfs/canon-pins.yaml` (see [`packages/README.md`](../README.md)).
+Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/stack/pins.yaml` (see [`packages/README.md`](../README.md)).
 
 ## The choice
 

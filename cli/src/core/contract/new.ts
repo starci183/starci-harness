@@ -1,20 +1,14 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
-import { contractProblems, parseContract } from "../../harness/contract.js"
-import type { Contract } from "../../harness/contract.js"
+import { CONTRACT_SCHEMA, DEFAULT_BUDGET, contractProblems, parseContract, resolveChecks } from "../../harness/contract.js"
 import { projectDir } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
+import type { CheckEntry } from "../../harness/ops.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot, resolveSha } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
-const DEFAULT_MINUTES = 60
-
-const DEFAULT_TRIES = 3
-
 const SLUG_CHARS = 48
-
-type CheckEntry = Contract["expectedOutput"]["checks"][number]
 
 type ArgValue = string | number | string[]
 
@@ -53,10 +47,22 @@ const parseCheck = (entry: string): CheckEntry => {
     return { preset: entry.slice(0, colon).trim(), args }
 }
 
-/** `starci contract new`: writes a contract with the label's default checks plus the given ones, and says whether it is fit. */
+/** `name=value;name=value` pairs, for --input and --output, where a value may hold commas. */
+const pairs = (flag: string, value: string | undefined): [string, string][] =>
+    (value ?? "")
+        .split(";")
+        .map((pair) => pair.trim())
+        .filter((pair) => pair !== "")
+        .map((pair): [string, string] => {
+            const equals = pair.indexOf("=")
+            if (equals <= 0) throw new Refusal("CLI_USAGE", `--${flag} ${pair}: write name=value`, EXIT_USAGE)
+            return [pair.slice(0, equals).trim(), pair.slice(equals + 1).trim()]
+        })
+
+/** `starci contract new`: writes a contract that extends its label's op (ops/ops/<label>.md) and says whether it is fit. */
 export const contractNewVerb = defineVerb({
     path: ["contract", "new"],
-    summary: "write a contract for one task with its label's default checks plus --check presets; it says what still keeps it unfit",
+    summary: "write a contract for one task: its label's op file gives the base, --read, --input, --output and --check extend it; it says what still keeps it unfit",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor", "agent"],
@@ -65,37 +71,48 @@ export const contractNewVerb = defineVerb({
         label: { kind: "string", summary: "the worker label (code, test, ui, verify, uat, docs, deliver)", required: true },
         summary: { kind: "string", summary: "what the task must do, in one sentence", required: true },
         allow: { kind: "string", summary: "comma-separated repository paths the task may write (literal folders or files, no globs)", required: true },
-        read: { kind: "string", summary: "comma-separated repository paths the task should read" },
+        read: { kind: "string", summary: "comma-separated files the task reads beyond its op's base: repository paths, or harness:<path> for a file of the harness" },
+        input: { kind: "string", summary: "named inputs, \"name=value;name=value\": the op's base inputs (ops/ops/<label>.md) and any the task adds" },
+        output: { kind: "string", summary: "output keys the result must carry beyond the op's base, \"key=type;key=type\" (string, number, boolean, object, array, string[])" },
         "cwd-path": { kind: "string", summary: "the repository folder the checks run in (default: the repository root)" },
         check: {
             kind: "string",
             summary: 'checks to add, separated by ";": preset or preset:arg=value,arg=value (a|b is a list), or {"preset":"tests-pass","args":{"command":"npm test"}}',
         },
         details: { kind: "string", summary: "more words on the input, beyond the summary" },
-        base: { kind: "string", summary: "the base revision (default: HEAD)" },
+        base: { kind: "string", summary: "the revision the task starts from (default: HEAD)" },
         out: { kind: "string", summary: "the file to write (default: contracts/<summary>.json in the project's state folder under the state base)" },
         force: { kind: "boolean", summary: "overwrite an existing file" },
     },
     run: async (context, flags) => {
         const ops = loadOps()
-        const label = ops.labels[flags.label]
-        if (label === undefined) throw new Refusal("CONTRACT_UNKNOWN_LABEL", `unknown label ${flags.label}; labels: ${Object.keys(ops.labels).join(", ")}`)
+        const op = ops.labels[flags.label]
+        if (op === undefined) throw new Refusal("CONTRACT_UNKNOWN_LABEL", `unknown label ${flags.label}; labels: ${Object.keys(ops.labels).join(", ")}`)
         const root = await repositoryRoot(context.cwd)
         const given = (flags.check ?? "").split(";").map((entry) => entry.trim()).filter((entry) => entry !== "").map(parseCheck)
-        const named = new Set(given.map((entry) => ("preset" in entry ? entry.preset : "")))
         const read = list(flags.read)
-        const raw: Contract = {
-            schema: "starci/contract@1",
+        const inputs = pairs("input", flags.input)
+        const inputBase = Object.fromEntries(inputs.filter(([name]) => name in op.input.base))
+        const inputExtend = Object.fromEntries(inputs.filter(([name]) => !(name in op.input.base)))
+        const output = Object.fromEntries(pairs("output", flags.output))
+        const raw = {
+            schema: CONTRACT_SCHEMA,
             label: flags.label,
             context: {
-                base: await resolveSha(root, flags.base ?? "HEAD"),
+                revision: await resolveSha(root, flags.base ?? "HEAD"),
                 allowPaths: list(flags.allow),
-                ...(read.length === 0 ? {} : { readPaths: read }),
                 ...(flags["cwd-path"] === undefined ? {} : { cwd: flags["cwd-path"] }),
+                ...(read.length === 0 ? {} : { extend: read }),
             },
-            input: { summary: flags.summary, ...(flags.details === undefined ? {} : { details: flags.details }) },
-            expectedOutput: { checks: [...label.defaultChecks.filter((preset) => !named.has(preset)).map((preset) => ({ preset })), ...given] },
-            budget: { minutes: DEFAULT_MINUTES, tries: DEFAULT_TRIES },
+            input: {
+                summary: flags.summary,
+                ...(flags.details === undefined ? {} : { details: flags.details }),
+                ...(Object.keys(inputBase).length === 0 ? {} : { base: inputBase }),
+                ...(Object.keys(inputExtend).length === 0 ? {} : { extend: inputExtend }),
+            },
+            ...(Object.keys(output).length === 0 ? {} : { output: { extend: output } }),
+            ...(given.length === 0 ? {} : { checks: { extend: given } }),
+            budget: { ...DEFAULT_BUDGET },
         }
         // Through the schema, so the file holds the same normalised paths every reader will see.
         const contract = parseContract(raw)
@@ -105,6 +122,6 @@ export const contractNewVerb = defineVerb({
         writeFileSync(out, `${JSON.stringify(contract, null, 2)}\n`)
         const problems = contractProblems(contract, ops)
         const verdict = problems.length === 0 ? "fit to send" : `not fit yet:\n${problems.map((problem) => `- ${problem}`).join("\n")}`
-        return { data: { file: out, contract, fit: problems.length === 0, problems }, message: `wrote ${out} with ${String(contract.expectedOutput.checks.length)} check(s); ${verdict}` }
+        return { data: { file: out, contract, fit: problems.length === 0, problems }, message: `wrote ${out}${problems.length === 0 ? ` with ${String(resolveChecks(contract, ops).length)} check(s), base and extend` : ""}; ${verdict}` }
     },
 })

@@ -1,12 +1,13 @@
 import { existsSync, globSync, readFileSync, statSync } from "node:fs"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
-import { RESULT_FILE, underPaths } from "./contract.js"
+import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { now, openExistingLedger } from "./ledger.js"
+import type { OutputType } from "./ops.js"
 import { TERMINAL_STATUSES } from "./tasks.js"
 import { judgeUatResult, parseUatRecord, runFiles } from "./work.js"
 
@@ -144,15 +145,70 @@ const readJsonDocument = (file: string, place: CheckPlace): { readonly value: un
     }
 }
 
+const hasType = (value: unknown, type: OutputType): boolean => {
+    switch (type) {
+        case "string":
+        case "number":
+        case "boolean":
+            return typeof value === type
+        case "object":
+            return typeof value === "object" && value !== null && !Array.isArray(value)
+        case "array":
+            return Array.isArray(value)
+        case "string[]":
+            return Array.isArray(value) && value.every((item) => typeof item === "string")
+    }
+}
+
 const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "json" } }, place: CheckPlace): CheckOutcome => {
     const document = readJsonDocument(check.check.file, place)
     if ("problem" in document) return outcome(check, [document.problem], "")
     const record = typeof document.value === "object" && document.value !== null ? (document.value as Record<string, unknown>) : {}
     const missing = check.check.requiredKeys.filter((key) => !(key in record))
+    const mistyped = Object.entries(check.check.types ?? {})
+        .filter(([key, type]) => key in record && !hasType(record[key], type))
+        .map(([key, type]) => `${key} is ${Array.isArray(record[key]) ? "an array" : typeof record[key]}, expected ${type}`)
     const expected = Object.entries(check.check.expect ?? {})
     const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
-    const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...wrong.map((line) => `${document.from}: ${line}`)]
+    const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...[...mistyped, ...wrong].map((line) => `${document.from}: ${line}`)]
     return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${expected.length === 0 ? "" : ` and ${String(expected.length)} expected value(s)`}`)
+}
+
+/** The ids each context file names, read once per check; a file the checkout lacks names none. */
+const idsOfFiles = (files: readonly string[], place: CheckPlace): Map<string, Set<string>> =>
+    new Map(
+        files.map((file) => {
+            const path = isAbsolute(file) ? file : join(place.root, file)
+            return [file, existsSync(path) ? ruleIdsIn(readFileSync(path, "utf8")) : new Set<string>()]
+        }),
+    )
+
+/**
+ * The read trace: every id the filed result cites under a traced key (rulesApplied, workRecords) is named by one of the task's
+ * context files, literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires.
+ */
+const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "cited" } }, place: CheckPlace): CheckOutcome => {
+    const document = readJsonDocument(RESULT_FILE, place)
+    if ("problem" in document) return outcome(check, [document.problem], "")
+    const record = typeof document.value === "object" && document.value !== null ? (document.value as Record<string, unknown>) : {}
+    const problems: string[] = []
+    const found: string[] = []
+    for (const trace of check.check.trace ?? []) {
+        const value = record[trace.key] ?? []
+        if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+            problems.push(`${trace.key} is not a list of ids`)
+            continue
+        }
+        if (value.length < trace.minItems) problems.push(`${trace.key} cites ${String(value.length)} id(s); the op requires at least ${String(trace.minItems)}`)
+        const files = idsOfFiles(trace.files, place)
+        for (const id of value) {
+            const owner = [...files].find(([, ids]) => ids.has(id))?.[0]
+            if (owner !== undefined) found.push(`${id} in ${owner}`)
+            else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
+            else problems.push(`${trace.key}: ${id} is named by none of the context files (${trace.files.length === 0 ? "none" : listed(trace.files)})`)
+        }
+    }
+    return outcome(check, problems, found.length === 0 ? "no id cited, none required" : `cited: ${listed(found)}`)
 }
 
 const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "probe" } }): Promise<CheckOutcome> => {
@@ -256,5 +312,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return runProbeCheck({ ...check, check: primitive })
         case "uat-flow":
             return runUatFlowCheck({ ...check, check: primitive }, place)
+        case "cited":
+            return runCitedCheck({ ...check, check: primitive }, place)
     }
 }

@@ -7,7 +7,9 @@ import { Refusal } from "../shared/errors.js"
 import { captureTool } from "../shared/exec.js"
 import { repositoryRoot } from "../shared/git.js"
 import { locateTree } from "../shared/tree.js"
+import { CONTRACT_SCHEMA, DEFAULT_BUDGET, resolveChecks } from "./contract.js"
 import type { Contract } from "./contract.js"
+import type { Ops } from "./ops.js"
 
 /** The folder of a repository that holds its product Work; the repository that has it is a Work root. */
 export const WORK_DIR = ".starciwork"
@@ -22,7 +24,8 @@ export interface WorkRoot {
     readonly hfs: string | undefined
 }
 
-const samePath = (left: string, right: string): boolean => {
+/** True when two paths name the same folder (case-folded on Windows). */
+export const samePath = (left: string, right: string): boolean => {
     const fold = (path: string): string => {
         const full = resolve(path).replace(/\\/g, "/")
         return process.platform === "win32" ? full.toLowerCase() : full
@@ -183,9 +186,6 @@ export const freshRunId = (): string => `${new Date().toISOString().replace(/[-:
 
 const RUN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
-/** The default budget of a uat contract built from a record; the same as `contract new` gives. */
-const UAT_BUDGET = { minutes: 60, tries: 3 } as const
-
 const SUMMARY_CHARS = 100
 
 const flat = (text: string): string => text.replace(/\s+/g, " ").trim()
@@ -210,12 +210,13 @@ const stepLines = (record: UatFlow): string[] =>
     ])
 
 /**
- * The contract of a uat task built from a Work record. It may write only its run folder `<flow>/runs/<runId>` (git-ignored,
- * so raw output never lands), reads the record and its accounts file (named, never its values), and its checks are the walk
- * judged against the record with the run's report and one screenshot per step (uat-flow) and the result's verdict
- * (result-passed). `runId` is fresh for a task sent by hand and stable for a workflow node, so a replan sees the same contract.
+ * The contract@2 of a uat task built from a Work record; the uat op (ops/ops/uat.md) adds its base. Its extend: the run folder
+ * `<flow>/runs/<runId>` as its only write path (git-ignored, so raw output never lands), the record and its accounts file
+ * (named, never its values) to read, the steps in the details, one `steps` entry per record step, and the walk judged against
+ * the record with the run's report and one screenshot per step (uat-flow). `runId` is fresh for a task sent by hand and
+ * `<workflow>-<task key>` for a workflow node, so a replan sees the same contract.
  */
-export const uatContract = (file: UatRecordFile, options: { readonly base: string; readonly runId: string }): Contract => {
+export const uatContract = (file: UatRecordFile, options: { readonly revision: string; readonly runId: string }): Contract => {
     const { place, record } = file
     if (!RUN_ID.test(options.runId)) throw new Refusal("WORK_RUN_INVALID", `${options.runId} is no run id (letters, digits, dot, dash, underscore)`)
     const run = posix.join(place.runs, options.runId)
@@ -231,16 +232,47 @@ export const uatContract = (file: UatRecordFile, options: { readonly base: strin
         `Run folder: ${run}. Keep the walk script there (for example ${posix.join(run, "walk.mjs")}); write ${REPORT_FILE} there (what you walked and saw per step) and one screenshot per step under the name below. The folder is git-ignored: the harness cites it by digest in ${place.evidence} when it settles the task.`,
         "Steps:",
         ...stepLines(record),
-        `Result output (task result --output): {"verdict": "passed" | "failed", "steps": [{"order": <n>, "status": "passed" | "failed" | "skipped", "screenshot": "<file in the run folder>", "checks": {"<check id>": <observed value>}, "observed": "<what the page showed>"}]}: one entry per step above, every check id answered with what you observed. The verdict is passed only when every step passed with every check at its expected value; a step you may not walk (an owner authorization is missing) is skipped, never passed.`,
+        `Output: besides the keys the brief lists, each entry of steps is {"order": <n>, "status": "passed" | "failed" | "skipped", "screenshot": "<file in the run folder>", "checks": {"<check id>": <observed value>}, "observed": "<what the page showed>"}: one entry per step above, every check id answered with what you observed. The verdict is passed only when every step passed with every check at its expected value; a step you may not walk (an owner authorization is missing) is skipped, never passed.`,
     ].join("\n")
     return {
-        schema: "starci/contract@1",
+        schema: CONTRACT_SCHEMA,
         label: "uat",
-        context: { base: options.base, allowPaths: [run], readPaths: [place.record, ...(accounts === undefined ? [] : [accounts])] },
-        input: { summary: `walk ${place.id}: ${shortTitle(record.title)}`, details },
-        expectedOutput: { checks: [{ preset: "uat-flow", args: { record: place.record, run } }, { preset: "result-passed" }] },
-        budget: { ...UAT_BUDGET },
+        context: { revision: options.revision, allowPaths: [run], extend: [place.record, ...(accounts === undefined ? [] : [accounts])] },
+        input: { summary: `walk ${place.id}: ${shortTitle(record.title)}`, details, extend: { flow: place.id, record: place.record, run } },
+        output: {
+            extend: {
+                verdict: { type: "string", summary: "passed only when every step passed with every check at its expected value, else failed" },
+                steps: { type: "array", minItems: record.steps.length, summary: "one entry per record step: order, status, screenshot, checks, observed" },
+            },
+        },
+        checks: { extend: [{ preset: "uat-flow", args: { record: place.record, run } }] },
+        budget: { ...DEFAULT_BUDGET },
     }
+}
+
+/** The record and run folder a uat task's uat-flow check names. */
+export interface UatBinding {
+    readonly record: string
+    readonly run: string
+}
+
+/** The binding of a contract that walks a Work flow; undefined for any other contract. */
+export const uatBinding = (contract: Contract, ops: Ops): UatBinding | undefined => {
+    for (const { check } of resolveChecks(contract, ops)) if (check.kind === "uat-flow") return { record: check.record, run: check.run }
+    return undefined
+}
+
+/**
+ * Refuses a uat walk whose run folder git in `root` would commit (a run's raw output stays git-ignored) or whose evidence file
+ * git ignores (no settle could cite the run). Every uat contract is checked so before it is queued or recorded in a workflow.
+ */
+export const assertRunPlace = async (root: string, binding: UatBinding): Promise<void> => {
+    if ((await ignoredBy(root, posix.join(binding.run, REPORT_FILE))) === undefined) {
+        throw new Refusal("WORK_RUNS_TRACKED", `git in ${root} would commit ${binding.run}; a run's raw output stays git-ignored, so ignore runs/ in the Work tree's .gitignore`)
+    }
+    const evidence = placeOfRecord(binding.record).evidence
+    const rule = await ignoredBy(root, evidence)
+    if (rule !== undefined) throw new Refusal("WORK_EVIDENCE_IGNORED", `git in ${root} ignores ${evidence} (${rule}); un-ignore it so a settle can cite the run`)
 }
 
 /** The files of a run folder, relative to it with forward slashes; none when it does not exist. */

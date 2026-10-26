@@ -2,7 +2,9 @@
 
 `@starci/cli` is the `starci` command: one TypeScript source on `commander`, built with `tsc` into `dist/`, which git
 never tracks. `npm ci` builds it (`prepare`); `prepublishOnly` gates on typecheck, lint and build, and `prepack` copies
-the runtime's `ops/` and `policy/` into the package so a published CLI carries its data. The checks a change must pass
+the runtime's `ops/`, `policy/`, `knowledge/` and the jest preset's README into the package (`files` of
+[package.json](package.json)), so a published CLI carries its data and resolves every `harness:` context file of the
+op files from itself. The checks a change must pass
 are in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Source layout

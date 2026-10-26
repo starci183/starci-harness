@@ -4,24 +4,30 @@ A `uat` task walks one flow of the project's Work in a real browser and lands on
 accounts and its expectations come from the flow's record (`work/uat-flow@1`), never retyped by hand;
 [knowledge/project/work.md](../../../knowledge/project/work.md) owns the record, its state vocabulary and where a run
 lands. The machine is the harness's ([CONTEXT.md](../../../CONTEXT.md) hard rule 7): your script runs through
-`starci uat run` in the image pinned in [ops/uat.yaml](../../../ops/uat.yaml).
+the harness's uat run verb (section 4) in the image pinned in [ops/uat.yaml](../../../ops/uat.yaml).
 
 ## 1. Send the task from the record
 
 ```text
-starci task send --uat uat.<feature>.<flow> [--workflow <w>] [--retry-of <task>] [--launch ...]
+starci task send --uat uat.<feature>.<flow>
 ```
+
+`--workflow`, `--retry-of` and `--launch` work as for any task. A workflow file walks a flow with a task that names
+only `uat: uat.<feature>.<flow>` (beside `dependsOn` and the routing pins); its run id is `<workflow>-<task key>`, so a
+replan builds the same contract, and `WORK_ROOT_ELSEWHERE` refuses a workflow defined outside the Work root.
 
 - **Work root.** The task is queued in the repository that owns `.starciwork`: the app's own, or the one its
   `hfs.json` names as `"work": {"root": "../<be repository>"}` (relative to that `hfs.json`). So a send from the fe
   repository queues the task, its run and its Work commit in the be repository; file the result and verify there.
   `WORK_ROOT_UNKNOWN`, `WORK_ROOT_MISSING` and `WORK_ROOT_AMBIGUOUS` (the repository holds `.starciwork` and names
   another root) say which binding is wrong.
-- **The contract** (`uatContract` in [cli/src/harness/work.ts](../../../cli/src/harness/work.ts)): the summary is the
-  record's title; the details carry the entry, the actor, the accounts file (named, never its values) and every step
-  with its expectation, its screenshot name (`step-01.png` ...) and its check ids; `allowPaths` is the run folder
-  `<flow>/runs/<runId>`; the checks are `uat-flow` and `result-passed` ([ops/checks.yaml](../../../ops/checks.yaml)).
-  A retry walks into the run folder of the task it retries.
+- **The contract** (`uatContract` in [cli/src/harness/work.ts](../../../cli/src/harness/work.ts)) extends the uat op
+  file [ops/ops/uat.md](../../../ops/ops/uat.md): the summary is the record's title; the details carry the entry, the
+  actor, the accounts file (named, never its values) and every step with its expectation, its screenshot name
+  (`step-01.png` ...) and its check ids; `context.extend` reads the record and the accounts file; `allowPaths` is the
+  run folder `<flow>/runs/<runId>`; `output.extend` asks for one `steps` entry per record step; `checks.extend` adds
+  `uat-flow` to the op's `result-passed` ([ops/checks.yaml](../../../ops/checks.yaml)). A retry walks into the run
+  folder of the task it retries.
 - **Gates at send:** `WORK_RUNS_TRACKED` when git would commit the run folder (raw output stays git-ignored),
   `WORK_EVIDENCE_IGNORED` when git ignores the flow's `evidence.yaml`, `WORK_RECORD_MISSING` and
   `WORK_RECORD_INVALID` for the record itself.
@@ -57,7 +63,7 @@ where the Docker gateway reaches it (`0.0.0.0`), since the relay arrives from th
 ## 4. Run it
 
 ```text
-starci uat run <run folder>/walk.mjs --forward 3000,3001 --out <run folder>
+starci uat run <run-folder>/walk.mjs --forward 3000,3001 --out <run-folder>
 ```
 
 - `--out` is relative to the repository root and is created. `--timeout-ms` bounds the run (the default is in
@@ -77,7 +83,7 @@ the output or the `--json` report, which lists the names.
 2. Run the script with `--env` naming them, and the script's own parameters after `--`:
 
 ```text
-starci uat run flows/sign-in.mjs --env UAT_USER,UAT_PASS --forward 3000 --out <run folder>
+starci uat run flows/sign-in.mjs --env UAT_USER,UAT_PASS --forward 3000 --out <run-folder>
 ```
 
    Append `-- --role admin` (anything after `--`) to hand the script its own arguments: it reads them as

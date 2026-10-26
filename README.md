@@ -11,8 +11,9 @@ changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How it works
 
-A task is a contract: its context (where it works, which paths it may write and read), its input (what to do) and its
-`expectedOutput`, a list of checks a machine can run, with a budget of minutes and tries. Sending a task leases its
+A task is a contract: its context (where it works, which paths it may write and read), its input (what to do), its
+output keys and its checks, a list a machine can run, with a budget of minutes and tries. Each part is the base its
+label's op file holds ([ops/ops/README.md](ops/ops/README.md)) plus the Kernel's extend. Sending a task leases its
 `allowPaths`, so two live tasks never write the same paths. A worker does the task, dry-replays the contract with
 `starci task verify --contract` until it is green, and files one result: `done`, `blocked` (with the reason),
 `mismatch` (the contract itself is wrong) or `failed`. The harness then replays the checks on a clean checkout of HEAD
