@@ -1,6 +1,6 @@
 /** Grammar owns surface nesting and the single content edge of a panel list (ANATOMY-2, PADDING-0). */
-import { attributeValue, stringOf } from "./lib/ast.mjs"
-import { importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.mjs"
+import { attributeValue, stringOf, walk } from "./lib/ast.mjs"
+import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.mjs"
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.mjs"
 import { reactHookOf } from "./lib/react.mjs"
 
@@ -356,8 +356,88 @@ export const noListPanelPadding = {
   },
 }
 
+/** BOUNDARY-1 case-5: only content bands carry inset; horizontal separators reach the surface edges. */
+export const dividerFullBleed = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "BOUNDARY-1 case-5: horizontal Grammar dividers are full-bleed.",
+    },
+    schema: [],
+    messages: {
+      padding:
+        "FE_DIVIDER_FULL_BLEED: horizontal padding on this wrapper insets a Grammar Divider/Separator. Move padding to the sibling content bands so the divider reaches both surface edges.",
+    },
+  },
+  create(context) {
+    // Follow rendered same-file components, helper calls and JSX constants, with cycle protection.
+    const containsDivider = (root, seen = new Set()) => {
+      if (!root || seen.has(root)) return false
+      seen.add(root)
+      let found = false
+      const follow = (node) => {
+        found = containsDivider(node, seen) || found
+      }
+      walk(context.sourceCode, root, (node) => {
+        if (found) return false
+        if (isFn(node)) return false
+        if (node.type === "JSXOpeningElement") {
+          const name = grammarName(context, node.name)
+          if (
+            name?.length === 1 &&
+            ["Divider", "Separator"].includes(name[0])
+          ) {
+            const orientations = node.attributes.flatMap((entry) =>
+              propStrings(context, entry, "orientation", "variant"),
+            )
+            if (
+              !orientations.length ||
+              orientations.some((entry) => entry.text !== "vertical")
+            )
+              found = true
+          } else if (node.name.type === "JSXIdentifier") {
+            for (const definition of variableOf(context, node.name)?.defs ??
+              []) {
+              if (definition.type === "FunctionName")
+                follow(definition.node.body)
+              if (definition.type === "Variable")
+                follow(functionOf(context, definition.node.init)?.body)
+            }
+          }
+        }
+        if (node.type === "CallExpression") {
+          follow(functionOf(context, node.callee)?.body)
+          for (const argument of node.arguments)
+            if (isFn(argument)) follow(argument.body)
+        }
+        if (
+          node.type === "Identifier" &&
+          node.parent?.type === "JSXExpressionContainer"
+        ) {
+          for (const value of bindingValues(context, node)) follow(value)
+        }
+        return undefined
+      })
+      return found
+    }
+    return {
+      JSXOpeningElement(node) {
+        const padding = node.attributes.find((entry) =>
+          propStrings(context, entry, "className").some((value) =>
+            classTokens(value.text).some(horizontalPadding),
+          ),
+        )
+        if (!padding) return
+        if (node.parent.children.some((child) => containsDivider(child)))
+          context.report({ node: padding, messageId: "padding" })
+      },
+    }
+  },
+}
+
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint }
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint }
 
 /** No app can lower or omit a surface law. */
 export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
