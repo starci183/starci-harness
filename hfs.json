@@ -1,0 +1,6 @@
+{
+  "hfs": 1,
+  "kind": "runtime",
+  "project": "starci",
+  "policy": "runtime"
+}

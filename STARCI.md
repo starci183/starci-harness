@@ -1,6 +1,6 @@
 # STARCI.md: the starci CLI rewrite (1.0.0-alpha.40)
 
-Owner: the owner. This is the working design of the rewritten CLI in `D:\.claude`. It records the owner's decisions and the verb set under discussion. The old CLI in `starci-academy-backend/.claude` keeps running until the new one reaches parity.
+Owner: the owner. This is the working design of the rewritten CLI in this repository. It records the owner's decisions and the verb set under discussion. The old CLI in `starci-academy-backend/.claude` keeps running until the new one reaches parity. An agent starts at [CONTEXT.md](CONTEXT.md), which owns the load order, the project binding and the hard rules.
 
 ## Decisions taken (owner, 2026-10-27)
 
@@ -17,20 +17,33 @@ Owner: the owner. This is the working design of the rewritten CLI in `D:\.claude
   - The **runner** (`orca` or `inline`) says how the harness runs a task, and is chosen per workflow or per task, never by edition. `orca` launches a worker seat through Orca (`seat start`, `task send --launch`), so tasks run in parallel. `inline` means the Claude or Codex session that is open does the task itself: it sends the task, files the result inline and has it verified, one task at a time.
   - Both editions get both runners. Contracts, leases, the clean verify and the harness commit are the same for either runner.
   - Inline guards: the agent is both Kernel and worker, so its contract must be sent (and its hash fixed) before it edits code, and the harness verify on a clean checkout is what decides green. Liveness (ping and pong) applies only to the `orca` runner.
+- **One CI workflow** (`.github/workflows/ci.yml`). Job `check` on every push and pull request to main: the CLI's typecheck, lint and build (the CLI keeps no specs), `check loosening`, `check secrets --all`, every package's specs, then the Sonar new-code gate. Job `publish` on a `v*` tag: every package under `packages/` that is not private and whose version is not on npm. Tokens live only in GitHub secrets; the repository is public.
 - **Harness state never lives in a product repository** (owner correction of the alpha layout, as the legacy had it). A product's `.starciwork/` is product content only and is committed; the harness writes its ledger, briefs and scratch under the runtime root (see Storage).
 
 ## Layout
 
 ```
+AGENTS.md, CLAUDE.md           the agent bootstrap: read CONTEXT.md first
+CONTEXT.md                     load order, state, project binding, hard rules
+CONTRIBUTING.md                rules for editing this repository
+hfs.json                       kind runtime, policy profile runtime
 cli/
   src/
     main.ts                    builds the commander program for the tree of the working directory
     registry.ts                every verb, core first, then each edition
-    shared/                    verb, errors, output, tree, exec
+    shared/                    verb, errors, output, tree, exec, git, secrets, workspace
+    harness/                   ledger, contracts, tasks, router, workflow graph, seats
     core/<group>/<verb>.ts     verbs of both editions
     lite/<group>/<verb>.ts     verbs of lite apps
     full/<group>/<verb>.ts     verbs of full apps
   dist/                        build output, not committed
+ops/                           the worker brief, labels, check presets, routing (data the CLI validates)
+policy/                        quality tiers and profiles, canon packages, loosening, security
+knowledge/                     how app code and UI are written
+packages/                      the canon packages apps install from npm, each with its own specs
+skills/starci/                 the agent entry for operating the harness
+.github/workflows/ci.yml       CI: the CLI gates, the package specs, Sonar; publish on a v* tag
+.runtime/                      harness state (git-ignored), see Storage
 ```
 
 ## Verbs written so far
