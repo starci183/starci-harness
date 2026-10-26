@@ -1,0 +1,15 @@
+# How `starci uat run` runs a Playwright script: the pinned image and the bounds of one run.
+# The playwright npm package installed beside the browsers takes the version of the image tag (v<version>-<distro>), so
+# the two never drift; uat.ts reads every key here and nothing is restated in code.
+schema: starci/uat@1
+
+# The official Playwright image; its browsers match the package version of its tag.
+image: mcr.microsoft.com/playwright:v1.64.1-noble
+# A run's deadline when --timeout-ms is not given; the container is killed and removed at the deadline.
+timeoutMs: 300000
+# The one-time preparation (base pull plus the playwright package install) is bounded on its own.
+prepareTimeoutMs: 1200000
+# Chromium needs more shared memory than Docker's 64 MB default.
+shmSize: 1g
+# How many trailing lines of the script's stdout and stderr the result keeps.
+tailLines: 40
