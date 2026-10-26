@@ -23,4 +23,10 @@ neverRead:
   - "**/.secrets/**"
   - "**/keys.txt"
   - "**/credentials.toml"
-exceptions: []
+exceptions:
+  - path: packages/eslint-canon-be/runtime/scripts/hfs/rules/secrets.mjs
+    rule: assigned-secret
+    reason: "a failure-code name (HFS_PLAINTEXT_SECRET) in the secret rule itself, not a secret value"
+  - path: packages/eslint-canon-fe/runtime/scripts/hfs/rules/secrets.mjs
+    rule: assigned-secret
+    reason: "a failure-code name (HFS_PLAINTEXT_SECRET) in the secret rule itself, not a secret value"

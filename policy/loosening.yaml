@@ -19,4 +19,80 @@ banned:
   - gate-widening
 scan:
   maxFileBytes: 1048576
-exceptions: []
+# The canon packages test the very markers they ban: their rule specs feed them as code samples.
+exceptions:
+  - path: packages/eslint-canon-be/spec-no-skip.mjs
+    marker: skipped-test
+    reason: "the rule source documents the forms it bans in its own doc comment"
+  - path: packages/eslint-canon-be/spec-no-skip.spec.mjs
+    marker: skipped-test
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/spec-no-skip.spec.mjs
+    marker: focused-test
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/spec-quality-unit-backfill.spec.mjs
+    marker: skipped-test
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: eslint-disable
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: ts-ignore
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: ts-expect-error
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: ts-nocheck
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: gate-widening
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/suppression.spec.mjs
+    marker: nosonar
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/unit-spec.spec.mjs
+    marker: focused-test
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-be/unit-spec.spec.mjs
+    marker: skipped-test
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
+    marker: eslint-disable
+    reason: "the rule source documents the forms it bans in its own doc comment"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
+    marker: ts-ignore
+    reason: "the rule source documents the forms it bans in its own doc comment"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
+    marker: gate-widening
+    reason: "the rule source documents the forms it bans in its own doc comment"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
+    marker: stylelint-disable
+    reason: "the rule source documents the forms it bans in its own doc comment"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: ts-ignore
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: ts-expect-error
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: ts-nocheck
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: nosonar
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: gate-widening
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: stylelint-disable
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/eslint-canon-fe/lint-escape-hatch.spec.mjs
+    marker: eslint-disable
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/stylelint-canon/config.spec.mjs
+    marker: stylelint-disable
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"
+  - path: packages/stylelint-canon/no-inline-lint-config.spec.mjs
+    marker: stylelint-disable
+    reason: "rule-test input: a code sample the canon rule under test must reject or accept"

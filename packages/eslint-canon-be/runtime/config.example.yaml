@@ -1,0 +1,194 @@
+# config.example.yaml — seed for the per-project owner config.
+# The installer copies this file to the gitignored `config.yaml` next to it;
+# owners edit that copy. Everything below is read at runtime — no key here is
+# decorative. Kernel route precedence: explicit `--agent` flag >
+# `kernel` below > the tier chain (modules/models/tiers.yaml).
+language: vi
+model: null
+effort: medium
+# Explicit current owner adoption is required; shipped defaults grant no trust or purge authority.
+# launchTrust: {profile: automatic, approvedBy: owner, approvalRef: '<current approval>', roots: ['<exact absolute repository root>']}
+# profile: declined preserves an explicit decision; provider-side declines also remain authoritative.
+launchTrust: null
+# retention: {workflowPurge: {approvedBy: owner, approvalRef: '<current approval>', repos: ['<exact absolute ledger-owner repo>']}}
+retention: null
+# kernel — the long-lived [Kernel] seat. It takes the `high` tier of modules/models/tiers.yaml (an ordered chain of
+# members; the picker takes the first member with tokens after your bias and the balance step; docs/config-format.md).
+# {agent?, model?, effort?}: agent and/or model PIN the seat — the bias `only`, keeping the tier's model of that agent
+# (an explicit `--agent` flag is the same bias and wins). effort: the seat's effort; null takes the tier member's effort.
+kernel: {effort: high}
+# parallel — the one knob for how wide the workers run. `gear` indexes the agent
+# table in modules/models/runtimes.yaml allocation.slicing.size: a long (`l`)
+# operation asks for the `l.agents[gear]` agents, an extra-long (`xl`) one for
+# `xl.agents[gear]`; `s` and `m` operations are always one agent. Declared gears
+# are allocation.slicing.gears — an undeclared value fails closed. Absent means
+# the first declared gear. A gear raises only what `starci kernel estimate` requests; it
+# never raises a pool's maxParallel, maxParallelOps or budgets.maxOps below.
+parallel: {gear: 1}
+# supervisor — the optional chat digest cadence. pollIntervalMs controls
+# scripts/supervisor/poll.mjs when run continuously (its floor is the config
+# validation of engine/config.mjs); null uses scripts/machine/home.mjs
+# DEFAULTS, and --interval-ms overrides this key.
+# The reconciler engine owns host runtime cadence and restores seats after reboot.
+# repos: managed product ledger-owner repositories for the reconciler and Supervisor tools,
+# relative to the source root (the directory holding this skill) or absolute.
+# --repo on the poll command line can add another. stallMinutes (optional,
+# integer >= 5) marks a running workflow STALLED in scripts/supervisor/stall.mjs;
+# the Workflow controller turns actionable findings into Decision Items. The [Supervisor]
+# kernel (docs/supervisor.md) also takes, optional, defaults in home.mjs DEFAULTS:
+#   kernel: {agent, model, effort}   its agent pin (default: the kernel pin below)
+#   workers: {base, max}             the adaptive [Worker] cap, 0 to 10 (0 = the Supervisor runs no fix worker)
+#   landGate: {mode: shared, push: true}  shared lets running lanes commit directly; exclusive = gate only. A land
+#                                    fast-forwards LOCAL main; main reaches the remote right after a green scoped check through
+#                                    `starci release push` (push: true, the default; false locks the remote). CI is the critic.
+supervisor:
+  # mode: chat (default) - the owner's desktop chat session is the Supervisor: it owns channel 'main'
+  #   and reads Decision Items; nothing starts a [Supervisor] kernel. kernel - the optional [Supervisor]
+  #   Orca kernel (scripts/supervisor/start-supervisor.mjs), kept alive by the reconciler Host controller.
+  #   See docs/supervisor.md.
+  # mode: chat
+  pollIntervalMs: null
+  repos: []
+  # frozenMinutes: <n>   # Host seat check: a busy frame unchanged this long is frozen, not busy
+  # landGate: {mode: shared|exclusive, push: true|false}
+# delegation — while the owner is away, a named delegate (e.g. the supervisor chat) may
+# answer owner asks until the given time; excluded classes stay owner-only. null = none.
+#   delegation: {asks: supervisor, until: 2026-09-23T09:00:00+07:00,
+#     excludes: [credentials, oauth-consent, payments, legal, payment-provider]}
+delegation: null
+# budgets — the owner's ceiling, surfaced by every plan before `ok`. Null = unbounded.
+budgets:
+  maxOps: null       # max concurrent dispatched ops one workflow may hold open;
+                     # route/dispatch refuse `max-ops` at min(this, maxParallelOps)
+# allocation — the owner's default grant for a pool whose capacity is an explicit grant (Devin).
+#   grants: '<pool>=<slots>@<role>+<role>' — the default grant every workflow gets. Once a grants list is
+#     declared it is the whole set: a pool whose registry.yaml capacityAuthority is explicit-workflow-quota
+#     (Devin) routes only for the roles and up to the running slots a grant names ([] closes it).
+allocation:
+  grants: [devin-agent=10@implement+verify+write]
+# models — optional overrides of the shipped model tiers (modules/models/tiers.yaml owns the defaults). Every key is optional:
+#   tiers:   {<tier>: [{agent, model, effort?}, ...]}  replaces or adds one tier's ordered member chain
+#   seats:   {<seat>: <tier>}                          remaps a seat (supervisor, kernel, worker, planner, validator, kernelManager)
+#   balance: {maxStreak, maxSharePercent}              a head member picked maxStreak times in a row, or holding more than
+#                                                      maxSharePercent of the tier's running seats, yields to the next member
+#   usage:   {reservePercent, biasPercent}             a member at reservePercent of its tokens is skipped; an owner bias
+#                                                      naming it keeps it usable up to biasPercent; never above it
+models: {}
+# connectors — the owner's public ask channel (docs/connectors.md). Everything is off by default.
+# One local gateway (scripts/connectors/ask-gateway.mjs) fronts every serve-ask form; a Cloudflare
+# tunnel (scripts/connectors/tunnel.mjs) publishes the gateway; when serve-ask binds a form, the
+# kernel's ask path sends the owner one Telegram message (scripts/connectors/telegram.mjs) with the
+# question, its options and the public link. Telegram carries owner asks only.
+# SECRETS NEVER GO IN THIS FILE: tokenEnv/botTokenEnv NAME an environment variable holding the token
+# (or <NAME>_FILE pointing at a custody file); a value that is not an UPPER_SNAKE env var name is refused.
+#   Host credentials use the canonical runtime root secret.env; docs/host-secrets.md owns setup.
+#     Supplied environment values win, including blank values. Missing local file adds no values.
+#   repos: ledger-owner repository roots whose asks go public, relative to the source root (the
+#     directory holding this skill) or absolute. [] = the source root plus every .workspaces project owner.
+#   gateway.port: the one fixed local port the tunnel points at (outside the 6969..7069 form band).
+#   cloudflare.mode: off | quick | named.
+#     quick — `cloudflared tunnel --url`, a random https://*.trycloudflare.com host, no account, no auth,
+#       a new host on every restart. Good for decisions only.
+#     named — a fixed `hostname`, authenticated one of two ways: `tunnel` (UUID) + `credentialsFile`
+#       (the JSON `cloudflared tunnel create` wrote; the manager writes its own ingress config mapping
+#       hostname -> the gateway and never reads ~/.cloudflared/config.yml), or a remotely managed tunnel
+#       token in `tokenEnv` (its public hostname is routed to http://127.0.0.1:<gateway.port> in the
+#       Cloudflare dashboard).
+#   cloudflare.access: whether a Cloudflare Access application guards `hostname` (informational; false
+#     prints a warning). Recommended for anything beyond yes/no decisions.
+#   telegram.enabled / chatId: the owner's chat with the bot (BotFather token in botTokenEnv). Send the
+#     bot /start, then `starci connect telegram discover-chat` prints the chat id.
+#   telegram.exposeCredentialAsks: false keeps a credential/secret ask off the public link — the message
+#     says to answer it on this machine and carries only the localhost link, and the gateway refuses it.
+connectors:
+  repos: []
+  gateway: {port: 7070}
+  cloudflare: {mode: off, tunnel: null, credentialsFile: null, tokenEnv: CLOUDFLARE_TUNNEL_TOKEN, hostname: null, access: false}
+  telegram:
+    enabled: false
+    botTokenEnv: TELEGRAM_BOT_TOKEN
+    chatId: null
+    exposeCredentialAsks: false
+# asks — owner asks that carry a recommended option (question.recommended, or exactly one option
+# marked "(recommended)" or its Vietnamese equivalents). autoAcceptRecommended: true answers such an
+# ask with its recommendation instead of serving the form: the ledger records ask-answered with
+# answeredBy auto-recommended, the kernel is woken, and Telegram gets one plain message naming the
+# pick. A later owner answer supersedes it. excludes lists the ask classes that always reach the owner:
+#   credential — any ask with secret fields, or of kind credential, account, access or consent;
+#   handover — every handover.review ask (always excluded, even when removed from this list);
+#   draw-review — the opt-out for drawings (interface.draw, scripts/work/draw-review.mjs): unlisted, a
+#     drawing the owner did not ask to review is accepted without the owner (its accept option is the
+#     recommendation); a drawing the owner asked for (a prior owner redraw of the record, the owner
+#     opened its form, or question.ownerRequested) always reaches the owner;
+#   or any ask kind: information, authority, business-decision, irreversible-confirmation, ...
+asks:
+  autoAcceptRecommended: false
+  excludes: [credential, irreversible-confirmation, handover]
+# uat — the machine-wide UAT ceiling. At most maxConcurrent UAT runs (a browser session, a player, the
+# app it drives) execute at once on this host, across every workflow; the rest wait queued for a slot
+# (scripts/uat/uat-slots.mjs, lock files under <runtime>/uat-slots). A slot whose holder died is
+# reclaimed. STARCI_UAT_MAX_CONCURRENT overrides it for one process tree.
+uat:
+  maxConcurrent: 10
+# orca — the owner's Orca app settings the runtime must know (engine/orca-config.mjs orcaSettings). maxWorkerDepth MUST equal
+# the worker depth set in the Orca app: the deepest worker Orca starts under the owner's chat (chat 0, Kernel or
+# Supervisor 1, op or [Worker] 2, draw critic 3). Orca exposes no read of it, so the runtime trusts this value and refuses
+# a deeper launch before worker-start (worker-depth-exceeded). `start --check` with STARCI_ORCA_LIVE=1 measures Orca's
+# real limit and turns red when the two differ.
+orca:
+  maxWorkerDepth: 4
+# debugLoop — the debug watcher. Workflow DEBUG is a /loop of the chat that started the workflow (the /starci skill sets it up in
+# Claude Code and Codex; no seat, no background agent, nothing in the runtime schedules it). Each tick runs the read-only
+# `starci debug digest`. interval is the loop cadence (<n>s | <n>m | <n>h, default `10m` = `debugLoop.interval`); worktreeLimit is the
+# per-repository core-watch alert threshold (default `40` = `debugLoop.worktreeLimit`). Both keys are optional (engine/config.mjs DEBUG_LOOP_DEFAULTS).
+debugLoop:
+  interval: 10m
+  worktreeLimit: 40
+# reconciler — the host's one reconciler engine (scripts/reconciler/engine.mjs; contract
+# modules/reconciler/reconciler.yaml). Each controller runs off | shadow (reads, records what it would do as
+# reconciler.would rows, runs nothing) | active (acts; the old loop yields that duty via scripts/reconciler/owns.mjs).
+# profile — the operational default of every controller, so a host is never left all-shadow by accident:
+#   operational  job, host, workflow, resource active (they settle jobs, start services and seats, wake stalled
+#                workflows, throttle); gc, workers, learning shadow. The `start` skill applies and checks it.
+#   observe      every controller shadow (read-only; a debugging or audit host).
+#   (absent)     only the explicit controllers.<name>.mode entries count; an unnamed controller is off.
+# controllers.<name>.mode overrides the profile for that one controller (e.g. gc: {mode: active}).
+# Rollback of a controller: set its mode to off (the old loops take the duty back within
+# allocation.reconciler.heartbeatStaleMs). Numbers: modules/models/runtimes.yaml allocation.reconciler.
+reconciler:
+  enabled: true
+  profile: operational
+  controllers: {}
+# specs.unit / specs.e2e in workflows (the `specs` map near the top; owner 2026-09-28 "speed up development;
+# test later when asked"; scripts/route/spec-deferral.mjs). Each op brief's policy.specsToggle says what it does:
+#   unit: false - backend.implement, interface.implement and code.refactor run no jest/vitest/test:ci/coverage
+#     and demand no changed-line coverage (Sonar still runs: bugs, smells, security gate);
+#     test.author legs are never dispatched; review/handover gates do not count unit tests or coverage.
+#   e2e: false - e2e.verify legs and e2e test authoring are never dispatched; uat.verify is not e2e.
+#   A leg that is not dispatched settles `deferred: specs.<class>=false` with no attempt spent and the workflow
+#   proceeds past it; starci kernel status lists testsDeferred and `starci kernel run-deferred-tests --workflow <id> [--kind unit|e2e]`
+#   runs them later. Read on every wake: flipping a switch needs no restart.
+# roots — where this host keeps the archive, the lane worktrees and its temporary files, when the owner moves them off the defaults.
+# All keys are optional absolute directories; env STARCI_ARCHIVE_ROOT / STARCI_LANES_ROOT / STARCI_TEMP_ROOT win over them, and an
+# absent key means <starciLocalRoot>/archive (<runtime root>/.runtime/archive), the per-user profile lanes directory, kept out of the checkout (scripts/machine/home.mjs lanesRoot),
+# and the OS temp directory (engine/temp-root.mjs tempRoot; the processes the runtime starts get it as TEMP/TMP/TMPDIR). No host location lives in
+# a tracked file: set the real directories only in the gitignored config.yaml copy, e.g.
+#   roots: {archive: <absolute directory>, lanes: <absolute directory>, temp: <absolute directory>}
+# sonar — the SonarCloud organization the release's Sonar proof of the example apps analyses in (scripts/supervisor/release-sonarcloud.mjs). It is configuration, not a secret,
+# so it lives here and not in secret.env; the project keys are <organization>_starci-example-<app>. The environment variable SONAR_ORGANIZATION wins over it (CI reads the
+# repository variable of the same name). Empty until the owner sets it in the gitignored config.yaml copy, e.g.
+#   sonar: {organization: <the organization key shown on sonarcloud.io>}
+sonar: {organization: null}
+# resources — the host capacity floors the dispatch gate enforces, over the shipped numbers of modules/models/runtimes.yaml allocation.resources
+# (scripts/machine/host-resources.mjs; docs/config-format.md "Host resource floors"). Every key is optional (a number above 0, or null):
+#   minFreeDiskGb  free GB a drive holding the temp root or the repository must keep
+#   minFreeDiskPct the same floor as a percentage of the drive's size; with minFreeDiskGb the larger requirement applies
+#   minFreeRamPct  free-RAM percentage below which no new heavy op starts
+# set them only in the gitignored config.yaml copy, e.g.
+#   resources: {minFreeDiskGb: 5, minFreeDiskPct: 1, minFreeRamPct: 10}
+# release - where the full suite of a release is judged (scripts/guards/release-suite-mode.mjs; docs/releasing.md "Where the suite runs"). One key:
+#   suite: local   the shipped default: `starci release cut` also runs the L4 rows on this host (root rows, example apps, Sonar proofs, Linux parity container) before it tags; it never gates a push
+#   suite: ci      the owner's recorded choice (2026-10-09, widened 2026-10-26 by push-main-after-scoped-check): EVERY row is judged by the GitHub workflows (ci, examples, sonar) on each push to main;
+#                  the cut runs none and lists each row as delegated, never green. A red CI opens the next alpha.N.M and never blocks the next push (starci release ci-status).
+# "none" is refused: the suite does not vanish, it moves to CI. Set it only in the gitignored config.yaml copy: release: {suite: ci}
+release: {suite: local}

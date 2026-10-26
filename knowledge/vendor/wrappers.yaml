@@ -1,0 +1,108 @@
+# Every Grammar source file that imports HeroUI (paths under @starci/grammar src/). Read by the parity gate.
+#   wraps      the HeroUI components the file imports (checked against the file)
+#   delegates  parts of a wrapped component the file does not draw; the caller or a sibling supplies them
+#   overrides  deliberate deviations: kind slot (CSS targets a vendor class or data-slot), style (CSS restyles a paint
+#              family of a vendor part), default (a prop replaces a vendor default) or role (a declared role deviation).
+#              Each names its ruling in ../decisions/rulings.yaml; `status: proposed` stays red until the ruling is recorded.
+#              A repaint without a ruling reverts to the HeroUI default (ruling repaint-default-heroui-unless-ruled).
+# Pinned by sha256 (README.md#pin).
+schema: starci/vendor-wrappers@1
+wrappers:
+  - { file: core/OtpInput.tsx, wraps: [InputOTP, Label] }
+  - { file: core/branch/Accordion/index.tsx, wraps: [Accordion] }
+  - { file: core/branch/AlertDialog/index.tsx, wraps: [AlertDialog], delegates: { AlertDialog: [CloseTrigger, Trigger] } }
+  - { file: core/branch/Calendar/index.tsx, wraps: [Calendar] }
+  - { file: core/branch/ComboBox/index.tsx, wraps: [ComboBox, Input, ListBox, Spinner] }
+  - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Table], delegates: { Table: [ColumnResizer] } }
+  - { file: core/branch/DatePicker/index.tsx, wraps: [Calendar, DateField, DatePicker, RangeCalendar] }
+  - { file: core/branch/DateRangePicker/index.tsx, wraps: [DateField, DateRangePicker] }
+  - { file: core/branch/Dialog/index.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger] } }
+  - { file: core/branch/Disclosure/index.tsx, wraps: [Disclosure] }
+  - { file: core/branch/Drawer/index.tsx, wraps: [Drawer], delegates: { Drawer: [CloseTrigger, Trigger] } }
+  - { file: core/branch/DropdownMenu/index.tsx, wraps: [Description, Dropdown, Header, Kbd, Label, Separator], delegates: { Dropdown: [Trigger] } }
+  - { file: core/branch/ListBox/index.tsx, wraps: [Description, Header, Label, ListBox, Separator] }
+  - { file: core/branch/Popover/index.tsx, wraps: [Popover], delegates: { Popover: [Trigger] } }
+  - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
+      overrides: [
+        { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
+  - { file: core/branch/Subnav/index.tsx, wraps: [Button] }
+  - { file: core/branch/SurfaceAccordionCard/index.tsx, wraps: [Accordion] }
+  - { file: core/branch/SurfaceCard/index.tsx, wraps: [Card],
+      overrides: [
+        { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page and bordered without a shadow when nested" } ] }
+  - { file: core/branch/Tabs/index.tsx, wraps: [Tabs] }
+  - { file: core/branch/Tooltip/index.tsx, wraps: [Tooltip], delegates: { Tooltip: [Trigger] } }
+  - { file: core/branch/Toast/index.tsx, wraps: [Alert, Spinner] }
+  - { file: core/composite/Alert/index.tsx, wraps: [Alert, Spinner] }
+  - { file: core/composite/AvatarGroup/index.tsx, wraps: [Avatar, AvatarGroup],
+      overrides: [
+        { kind: style, target: "Avatar.Root:block-size", ruling: R318/case-1, reason: "a group identity is one composite at one size, so each grid cell is filled by its member" },
+        { kind: style, target: "Avatar.Root:radius", ruling: R318/case-1, reason: "the group identity is round and its member cells are square crops" },
+        { kind: style, target: "AvatarGroup.Count:block-size", ruling: control-height-40, reason: "the overflow count of a control-size group is drawn at the control height" } ] }
+  - { file: core/composite/Breadcrumbs/index.tsx, wraps: [Breadcrumbs] }
+  - { file: core/composite/ButtonGroup/index.tsx, wraps: [ButtonGroup] }
+  - { file: core/composite/CheckboxGroup/index.tsx, wraps: [Checkbox], delegates: { Checkbox: [Content] } }
+  - { file: core/composite/Fieldset/index.tsx, wraps: [Fieldset] }
+  - { file: core/composite/Form/index.tsx, wraps: [Form] }
+  - { file: core/composite/HorizontalScrollRegion/index.tsx, wraps: [ScrollShadow] }
+  - { file: core/composite/Pagination/index.tsx, wraps: [Pagination],
+      overrides: [
+        { kind: style, target: "Pagination.Link:background", ruling: grammar-menu-drawer-live-time, reason: "the current page paints its exclusive mark" },
+        { kind: style, target: "Pagination.Link:color", ruling: grammar-menu-drawer-live-time, reason: "the current page paints its exclusive mark" } ] }
+  - { file: core/composite/RadioGroup/index.tsx, wraps: [Radio, RadioGroup] }
+  - { file: core/composite/SegmentedControl/index.tsx, wraps: [ToggleButton, ToggleButtonGroup] }
+  - { file: core/composite/TagGroup/index.tsx, wraps: [Tag, TagGroup] }
+  - { file: core/composite/VerticalScrollRegion/index.tsx, wraps: [ScrollShadow],
+      overrides: [
+        { kind: slot, target: ".scroll-shadow--vertical", ruling: grammar-scroll-region-fills-parent, status: proposed, reason: "a contained scroll region fills its parent's block size, so the parent owns the height cap and one owner scrolls each axis" } ] }
+  - { file: core/composition/ChatWorkspace/index.tsx, wraps: [Drawer] }
+  - { file: core/composition/Sidebar/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
+      overrides: [
+        { kind: style, target: "ListBox.Item:background", ruling: grammar-menu-drawer-live-time, reason: "the current navigation item paints its exclusive mark" } ] }
+  - { file: core/composition/TopBar/index.tsx, wraps: [Button] }
+  - { file: core/primitive/Avatar/index.tsx, wraps: [Avatar, Badge],
+      overrides: [
+        { kind: style, target: "Avatar.Fallback:font", ruling: avatar-default-dicebear-initials, reason: "initials stay readable in a group cell, so the fallback text scales with the cell" },
+        { kind: style, target: "Avatar.Root:background", ruling: grammar-menu-drawer-live-time, reason: "an avatar in the current navigation item takes the item's exclusive mark" } ] }
+  - { file: core/primitive/Badge/index.tsx, wraps: [Chip] }
+  - { file: core/primitive/Button/index.tsx, wraps: [Button, Link, Spinner],
+      overrides: [
+        { kind: style, target: "Link.Root:block-size", ruling: control-height-40, reason: "a link drawn as a button is held at the control height at every breakpoint" } ] }
+  - { file: core/primitive/Checkbox/index.tsx, wraps: [Checkbox] }
+  - { file: core/primitive/CloseButton/index.tsx, wraps: [CloseButton] }
+  - { file: core/primitive/DateField/index.tsx, wraps: [DateField] }
+  - { file: core/primitive/Divider/index.tsx, wraps: [Separator] }
+  - { file: core/primitive/Field/index.tsx, wraps: [Description, FieldError, Label] }
+  - { file: core/primitive/Heading/index.tsx, wraps: [Typography] }
+  - { file: core/primitive/IconButton/index.tsx, wraps: [Button] }
+  - { file: core/primitive/Input/index.tsx, wraps: [Description, ErrorMessage, Input, InputGroup, Label, Skeleton, TextField], delegates: { InputGroup: [TextArea] },
+      overrides: [
+        { kind: style, target: "InputGroup.Input:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
+  - { file: core/primitive/Kbd/index.tsx, wraps: [Kbd] }
+  - { file: core/primitive/Link/index.tsx, wraps: [Link],
+      overrides: [
+        { kind: style, target: "Link.Root:color", ruling: grammar-menu-drawer-live-time, reason: "the current navigation link paints its exclusive mark" } ] }
+  - { file: core/primitive/Meter/index.tsx, wraps: [Label, Meter],
+      overrides: [
+        { kind: style, target: "Meter.Track:block-size", ruling: meter-segments-h1, reason: "the segmented meter sits on a thin full-width track" },
+        { kind: style, target: "Meter.Track:background", ruling: meter-segments-h1, reason: "the segmented track is transparent so its equal segments read as separate" },
+        { kind: style, target: "Meter.Track:radius", ruling: meter-segments-h1, reason: "the segments are equal pills and take the track radius" } ] }
+  - { file: core/primitive/NumberField/index.tsx, wraps: [NumberField] }
+  - { file: core/primitive/PlainPressable/index.tsx, wraps: [Button] }
+  - { file: core/primitive/Progress/index.tsx, wraps: [ProgressBar] }
+  - { file: core/primitive/ProgressCircle/index.tsx, wraps: [ProgressCircle] }
+  - { file: core/primitive/Rating/index.tsx, wraps: [],
+      overrides: [
+        { kind: role, target: "core/primitive/Rating/index.tsx:radiogroup", ruling: grammar-rating-radiogroup, status: proposed, reason: "HeroUI ships no rating; the stars are one radio group, the platform pattern for one value from a closed set" } ] }
+  - { file: core/primitive/SearchField/index.tsx, wraps: [SearchField, Spinner] }
+  - { file: core/primitive/Skeleton/index.tsx, wraps: [Skeleton] }
+  - { file: core/primitive/Slider/index.tsx, wraps: [Slider] }
+  - { file: core/primitive/Spinner/index.tsx, wraps: [Spinner] }
+  - { file: core/primitive/Switch/index.tsx, wraps: [Switch],
+      overrides: [
+        { kind: slot, target: "description", ruling: control-height-40, reason: "the control-size switch track is wider than the vendor's, so the description indents past it to stay aligned with the label" },
+        { kind: style, target: "Switch.Control:block-size", ruling: control-height-40, reason: "the control-size switch track is drawn at the control height" },
+        { kind: style, target: "Switch.Thumb:block-size", ruling: control-height-40, reason: "the control-size switch thumb fills that track" } ] }
+  - { file: core/primitive/TextAction/index.tsx, wraps: [Link, Spinner] }
+  - { file: core/primitive/Textarea/index.tsx, wraps: [TextArea, TextField] }
+  - { file: core/primitive/TimeField/index.tsx, wraps: [TimeField] }

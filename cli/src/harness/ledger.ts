@@ -182,6 +182,19 @@ const mintLedgerId = (project: Project): string => `${nameOf(project)}-${createH
 
 const ledgerFile = (id: string): string => join(projectsRoot(), id, "runtime.sqlite")
 
+/** Opens (creating it) the host store with its base tables, for modules that add host-wide tables of their own; the caller closes it. */
+export const openMachine = (): DatabaseSync => {
+    mkdirSync(stateBase(), { recursive: true })
+    const db = connect(machinePath())
+    try {
+        db.exec(MACHINE_SCHEMA)
+    } catch (error: unknown) {
+        db.close()
+        throw error
+    }
+    return db
+}
+
 /** The ledger id the host registry holds for a repository, without creating anything; undefined when it has none. */
 export const findLedgerId = (root: string): string | undefined => {
     const file = machinePath()

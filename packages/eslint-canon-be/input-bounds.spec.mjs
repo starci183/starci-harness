@@ -1,0 +1,149 @@
+/**
+ * Twin tests for the input-bounds rules (R42).
+ *
+ *   node --test input-bounds.spec.mjs
+ *
+ * The bound a property owes comes from its TYPE (string, enum, array, nested object), so the cases rename fields freely.
+ */
+import assert from "node:assert/strict"
+import test from "node:test"
+import { at, typedTester } from "./fixtures/typed/tester.mjs"
+import { authDoorStrictRateTier, inputBounded, noOffsetPagination, rules } from "./input-bounds.mjs"
+
+const tester = typedTester()
+const REQUEST = at("src/features/api/plan/transport/http/dto/create-plan.request.ts")
+const INPUT = at("src/features/api/plan/transport/graphql/dto/create-plan.input.ts")
+const ARGS = at("src/features/api/plan/transport/graphql/dto/list-plans.args.ts")
+const SERVICE = at("src/modules/domain/plan/plan.service.ts")
+const SPEC = at("src/features/api/plan/transport/http/dto/create-plan.request.spec.ts")
+
+const IMPORTS =
+    "import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min, ValidateNested } from 'class-validator'\nimport { Type } from 'class-transformer'\nenum Tier { Free = 'free', Paid = 'paid' }\ninterface Address { street: string }\n"
+
+test("every rule this law declares is exported under its published name", () => {
+    for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
+    assert.equal("dto-needs-validator" in rules, false, "dto-needs-validator is merged into input-bounded")
+})
+
+test("R42: every property of an input class is validated and bounded by its type", () => {
+    tester.run("input-bounded", inputBounded, {
+        valid: [
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsString() @MaxLength(80) name!: string }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsOptional() @IsInt() @Min(0) count?: number }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsBoolean() flag!: boolean }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsEnum(Tier) tier!: Tier }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsOptional() @IsEnum(Tier) tier?: Tier }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsArray() @ArrayMaxSize(10) ids!: Array<number> }` },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @ValidateNested() @Type(() => Address) address!: Address }` },
+            // a closed set of literals is bounded by its membership validator, no length bound is owed
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsIn(["paid", "failed"]) status!: "paid" | "failed" }` },
+            // a validator imported under an alias still counts
+            { filename: REQUEST, code: "import { IsString as Str, MaxLength as Max } from 'class-validator'\nexport class CreatePlanRequest { @Str() @Max(5) name!: string }" },
+            // a GraphQL input or args class in a dto folder
+            { filename: INPUT, code: `${IMPORTS}export class CreatePlanInput { @IsUUID() @MaxLength(36) planId!: string }` },
+            { filename: ARGS, code: `${IMPORTS}export class ListPlansArgs { @IsInt() @Min(1) first!: number }` },
+            // a class decorated as an input, in any file
+            { filename: SERVICE, code: `${IMPORTS}@InputType()\nexport class PlanInput { @Field() @IsUUID() @MaxLength(36) planId!: string }` },
+            // a response type is not input
+            { filename: at("src/features/api/plan/transport/http/dto/plan.response.ts"), code: "export class PlanResponse { name!: string }" },
+            { filename: SERVICE, code: "@ObjectType()\nexport class PlanType { @Field() name!: string }" },
+            // an ordinary class is not input
+            { filename: SERVICE, code: "export class PlanService { private name!: string }" },
+            // a file that is not an input file of a transport dto folder is not judged
+            { filename: SPEC, code: "export class CreatePlanRequest { name!: string }" },
+        ],
+        invalid: [
+            { filename: REQUEST, code: "export class CreatePlanRequest { name!: string }", errors: [{ messageId: "missing" }] },
+            // a decorator that is not from class-validator does not count
+            { filename: REQUEST, code: "export class CreatePlanRequest { @Field() @Type(() => String) name!: string }", errors: [{ messageId: "missing" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsString() name!: string }`, errors: [{ messageId: "string" }] },
+            // the type decides, not the field name: `title`, `code` and `description` all owe a bound
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsString() title!: string; @IsString() code!: string; @IsString() description!: string }`, errors: [{ messageId: "string" }, { messageId: "string" }, { messageId: "string" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsOptional() @IsString() name?: string }`, errors: [{ messageId: "string" }] },
+            // membership bounds a literal set only: a free string with @IsIn, or a literal set with only @IsString, stays open
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsIn(["a", "b"]) name!: string }`, errors: [{ messageId: "string" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsString() status!: "paid" | "failed" }`, errors: [{ messageId: "string" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsString() @MaxLength(5) tier!: Tier }`, errors: [{ messageId: "enum" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsArray() ids!: Array<number> }`, errors: [{ messageId: "array" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @IsArray() ids!: ReadonlyArray<string> }`, errors: [{ messageId: "array" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @ValidateNested() address!: Address }`, errors: [{ messageId: "nested" }] },
+            { filename: REQUEST, code: `${IMPORTS}export class CreatePlanRequest { @Type(() => Address) address!: Address }`, errors: [{ messageId: "missing" }] },
+            { filename: INPUT, code: "export class CreatePlanInput { planId!: string }", errors: [{ messageId: "missing" }] },
+            { filename: ARGS, code: "export class ListPlansArgs { first!: number }", errors: [{ messageId: "missing" }] },
+            { filename: SERVICE, code: "@InputType()\nexport class PlanInput { @Field() planId!: string }", errors: [{ messageId: "missing" }] },
+        ],
+    })
+})
+
+const EM = "import { EntityManager } from 'typeorm'\nclass Plan {}\ndeclare const em: EntityManager\ndeclare const renamed: EntityManager\ndeclare const other: { find(e: unknown, o?: object): void }\ndeclare function sql(s: TemplateStringsArray, ...v: Array<unknown>): unknown\n"
+
+test("R42: reads page by cursor, never by offset", () => {
+    tester.run("no-offset-pagination", noOffsetPagination, {
+        valid: [
+            { filename: SERVICE, code: `${EM}em.find(Plan, { take: 10 })` },
+            { filename: SERVICE, code: `${EM}em.query('SELECT id FROM plan WHERE id > $1 ORDER BY id LIMIT $2', [1, 10])` },
+            { filename: SERVICE, code: `${EM}sql\`SELECT id FROM plan WHERE id > \${1} ORDER BY id LIMIT 10\`` },
+            // a receiver that is not a typeorm EntityManager is not judged, whatever it is called
+            { filename: SERVICE, code: `${EM}other.find(Plan, { skip: 5 })` },
+            // "offset" as a word inside a comment of ordinary code is not SQL
+            { filename: SERVICE, code: "const offsetDays = 3\nexport const x = { offsetDays }" },
+            { filename: REQUEST, code: "export class CreatePlanRequest { name!: string }" },
+            // a page field outside a transport dto is not a request field
+            { filename: SERVICE, code: "export class Window { page!: number }" },
+        ],
+        invalid: [
+            { filename: SERVICE, code: `${EM}em.find(Plan, { skip: 5, take: 10 })`, errors: [{ messageId: "option" }] },
+            { filename: SERVICE, code: `${EM}em.find(Plan, { offset: 5 })`, errors: [{ messageId: "option" }] },
+            // a renamed receiver is still an EntityManager
+            { filename: SERVICE, code: `${EM}renamed.find(Plan, { skip: 5 })`, errors: [{ messageId: "option" }] },
+            // options built elsewhere are judged by their type
+            { filename: SERVICE, code: `${EM}const options = { skip: 5 }\nem.find(Plan, options)`, errors: [{ messageId: "option" }] },
+            // a transaction manager is an EntityManager
+            { filename: SERVICE, code: `${EM}em.transaction(async (manager) => manager.find(Plan, { skip: 1 }))`, errors: [{ messageId: "option" }] },
+            { filename: SERVICE, code: `${EM}sql\`SELECT id FROM plan ORDER BY id LIMIT 10 OFFSET \${5}\``, errors: [{ messageId: "sql" }] },
+            { filename: SERVICE, code: `${EM}em.query('SELECT id FROM plan LIMIT 10 offset 5')`, errors: [{ messageId: "sql" }] },
+            { filename: REQUEST, code: "export class ListPlansRequest { page!: number }", errors: [{ messageId: "field" }] },
+            { filename: ARGS, code: "export class ListPlansArgs { pageNumber!: number; offset!: number }", errors: [{ messageId: "field" }, { messageId: "field" }] },
+            // a spec is not exempt
+            { filename: at("src/modules/domain/plan/plan.service.spec.ts"), code: `${EM}em.find(Plan, { skip: 1 })`, errors: [{ messageId: "option" }] },
+        ],
+    })
+})
+
+const DOORS = [
+    "import { Public, PublicReason } from \"@modules/domain/identity\"",
+    "import { RateLimit, RateTier, Tier } from \"@modules/platform/http-security\"",
+    "declare const Throttle: (tier: Tier) => MethodDecorator",
+    "",
+].join("\n")
+const RESOLVER = at("src/features/api/identity/transport/graphql/sign-in.resolver.ts")
+const WEBHOOK = at("src/features/api/payment/transport/http/payos-webhook.controller.ts")
+
+test("R42: a handshake or webhook door is on the strict rate-limit tier", () => {
+    tester.run("auth-door-strict-rate-tier", authDoorStrictRateTier, {
+        valid: [
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.AuthHandshake }) @RateLimit(RateTier.Strict) signIn() {} }` },
+            { filename: WEBHOOK, code: `${DOORS}class C { @RateLimit(RateTier.Strict) @Public({ reason: PublicReason.SignedWebhook }) receive() {} }` },
+            // the tier on the class covers its methods
+            { filename: RESOLVER, code: `${DOORS}@RateLimit(RateTier.Strict) class R { @Public({ reason: PublicReason.AuthHandshake }) signIn() {} @Public({ reason: PublicReason.AuthHandshake }) signUp() {} }` },
+            // a class opened for a handshake, strict on the class
+            { filename: RESOLVER, code: `${DOORS}@Public({ reason: PublicReason.AuthHandshake }) @RateLimit(RateTier.Strict) class R { signIn() {} }` },
+            // a health door and a closed door owe no strict tier
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.Health }) live() {} me() {} }` },
+            // a string reason is public-needs-reason's finding, not this one's
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: 'auth-handshake' }) signIn() {} }` },
+        ],
+        invalid: [
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.AuthHandshake }) signIn() {} }`, errors: [{ messageId: "strict", data: { reason: "AuthHandshake" } }] },
+            { filename: WEBHOOK, code: `${DOORS}class C { @Public({ reason: PublicReason.SignedWebhook }) receive() {} }`, errors: [{ messageId: "strict", data: { reason: "SignedWebhook" } }] },
+            // the default tier is not the strict tier
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.AuthHandshake }) @RateLimit(RateTier.Default) signIn() {} }`, errors: [{ messageId: "strict" }] },
+            // a lookalike enum member named Strict is not RateTier.Strict of platform/http-security
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.AuthHandshake }) @Throttle(Tier.Strict) signIn() {} }`, errors: [{ messageId: "strict" }] },
+            // strict on another method does not cover this one
+            { filename: RESOLVER, code: `${DOORS}class R { @Public({ reason: PublicReason.AuthHandshake }) @RateLimit(RateTier.Strict) signIn() {} @Public({ reason: PublicReason.AuthHandshake }) signUp() {} }`, errors: [{ messageId: "strict" }] },
+            // an opened class without the tier
+            { filename: RESOLVER, code: `${DOORS}@Public({ reason: PublicReason.AuthHandshake }) class R { signIn() {} }`, errors: [{ messageId: "strict" }] },
+        ],
+    })
+})

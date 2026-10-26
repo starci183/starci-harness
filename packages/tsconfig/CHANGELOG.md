@@ -1,0 +1,27 @@
+# Changelog
+
+## 2.0.7 - 2026-10-23
+
+- Changed: `base.json` sets `exactOptionalPropertyTypes`, so every preset (back end, front end, overlays) distinguishes a missing optional property from one that holds `undefined` (owner ruling 2026-10-22, no loosening): `prop?: T` no longer accepts an explicit `undefined`, a type that is passed `undefined` on purpose says `T | undefined` (or declares the field required), and a value that may be absent is spread in only when present. The three example apps, the scaffold skeletons and the runtime packages that extend a preset compile with 0 errors.
+
+## 2.0.6 - 2026-10-22
+
+- Changed: every strictness flag lives in `base.json`, so no preset is looser than another (owner ruling 2026-10-22, no loosening): `noImplicitReturns`, `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters` move down from `be.json` (and `next.json`) and the front end now compiles under them; new in the base: `allowUnusedLabels: false`. `skipLibCheck` stays on, stated once in `base.json` (checking `node_modules` declarations reports errors in third-party typings no repository can fix); no repository config restates it.
+
+## 2.0.5 - 2026-10-22
+
+- Fixed: next.json sets `noUnusedLocals` and `noUnusedParameters`, as be.json does: the lint canons leave Sonar S1481 (unused local) to the compiler, which no front end ran (owner ruling 2026-10-22, no loosening). The three example front ends compile with 0 unused-declaration errors.
+
+## 2.0.4 - 2026-10-13
+
+- Fixed: next.json sets `noUncheckedSideEffectImports`, so a missing non-CSS side-effect import of a Next app is a type error (TS2882); stylesheets are declared by the app's ambient owner (the alpha.12 CI red of the registry-install scaffold spec).
+
+## 2.0.1 - 2026-10-01
+
+- Changed: pins typescript for its own tests and carries a lockfile (lane PKGT clean proof); no config change. The published package.json differs from 2.0.0, so the version moves.
+
+## 2.0.0 - 2026-09-30
+
+- Breaking: `nest.json` is replaced by `be.json`. `be.json` is the whole back-end compiler contract: `strict`, `noImplicitAny`, `strictNullChecks`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `allowJs: false`, `isolatedModules`, `experimentalDecorators`, `emitDecoratorMetadata`, and the module settings a Nest 11 + ts-jest project runs on (`nodenext` over a CommonJS package, ES2023). It is `noEmit` by default; nothing in a repository turns a flag off (HFS_TS_STRICT).
+- Added: `build.json`, the emit overlay `tsconfig.build.json` extends (`noEmit: false`).
+- The repository `tsconfig.json` is a managed file: `extends` this preset and `paths` for the three aliases, nothing else (`hfs sync` renders it, `hfs check` compares it).
