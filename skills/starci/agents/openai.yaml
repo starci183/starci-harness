@@ -1,0 +1,5 @@
+interface:
+  display_name: "StarCi"
+  short_description: "Define, run, debug and release StarCi harness workflows"
+policy:
+  allow_implicit_invocation: false

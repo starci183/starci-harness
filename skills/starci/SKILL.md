@@ -1,0 +1,77 @@
+---
+name: starci
+description: >-
+  Drive the StarCi harness only through an explicit /starci request or explicit native skill selection.
+  Resolve the runtime root and the product repository, draft and define workflows with the owner's OK,
+  run and watch them (orca or inline), work an inline task, author UI on a grammar, read routing and
+  providers, debug a stuck workflow, and release authorized work.
+disable-model-invocation: true
+triggers: [user]
+---
+
+# StarCi
+
+Invocation selects these instructions. It approves nothing: no workflow, task, seat, amend, stop, budget
+raise, push or publish. Act only within the owner's recorded scope. A plain chat request that says
+workflow, task or debug does not enroll into StarCi.
+
+## Resolve once, carry everywhere
+
+- **Runtime root**: the harness checkout that holds this skill, two folders up from this file (it holds
+  `cli/`, `ops/`, `policy/`, `knowledge/`). The harness keeps its state under `<runtime root>/.runtime/`
+  (git-ignored): `machine.sqlite` and `projects/<ledger_id>/` with `runtime.sqlite`, `contracts/`,
+  `briefs/`, `outputs/`, `preserved/`.
+- **CLI**: `starci` in these files means `node <runtime root>/cli/dist/main.js`. If `cli/dist` is missing,
+  build it in `<runtime root>/cli` with `npm ci` then `npm run build`. A `starci` on PATH may be the legacy
+  CLI; use it only when `starci version` reports version 2 or later and it resolves to this root. The state base follows
+  the CLI's location, so a CLI built in another worktree reads another ledger: always run the runtime root's.
+- **Product repository**: the git repository the work lands in. Its ledger is found from its git common dir,
+  so every worktree of it shares one ledger. Run verbs from inside it, or pass `--cwd <repo>`.
+- **Product content** (specs, architecture, `features/...`) lives in the app's `.starciwork/` and is
+  committed. Never put harness state there; never put product content under `.runtime/`.
+- **Edition and runner are independent.** The edition (`lite` or `full`, in the app's `hfs.json`) says what
+  the app is. The runner (`orca` or `inline`) says how a workflow runs its tasks and is chosen per workflow.
+- When you delegate or change directory, pass the absolute runtime root, the absolute product repository,
+  the workflow id and the task id. A task opened elsewhere gets them explicitly.
+
+Run `starci explain` (or `starci explain --term <word>`) for the exact flags of a verb. Add `--json` to any
+verb for one `{schema, ok, data}` envelope. Exit 0 is done, 1 is refused or red (nothing moved), 2 is bad
+usage. Read every refusal code; never retry blindly.
+
+## Roles in a chat
+
+The Kernel plans: it writes every contract and the workflow file, sends, steps and verifies. Ops are plain
+workers that run [ops/worker.md](../../ops/worker.md) on one contract. Until a Kernel seat exists, the chat
+that defines a workflow is its Kernel. Under the `orca` runner the chat never writes product code; under
+`inline` it is Kernel and worker, one task at a time.
+
+## Approvals
+
+Get the owner's OK on the exact artefact before each effect, and reuse it only while scope stays the same:
+
+| Effect | The owner approves |
+| --- | --- |
+| `workflow define`, `workflow start` | the workflow file: goal, runner, tasks, allowPaths, checks, pins |
+| `task send`, `seat start` outside a workflow | the contract |
+| `workflow amend` that adds, removes or widens work | the `plan diff` output |
+| `workflow stop`, `task cancel`, `budget raise`, `provider recover` | the target and the reason |
+| `release push`, `release cut` | the repository, commit and version |
+| `release publish --publish` | every package and version in the plan, each time (npm is public) |
+
+Silence, a question or "handle it" is not an OK. A retry or a contract fix inside an accepted goal is the
+Kernel's own call; report it. Never decide for the owner, enter a credential or print a secret.
+
+## Load only the reference you need
+
+| Request | Read |
+| --- | --- |
+| Turn an owner goal into a workflow and define it | [references/define-workflow.md](references/define-workflow.md) |
+| Start, step, watch, amend or stop a workflow | [references/run-workflow.md](references/run-workflow.md) |
+| Do one task yourself in this chat (inline runner) | [references/inline-task.md](references/inline-task.md) |
+| Know what an Orca worker sees and does | [references/worker.md](references/worker.md) |
+| Write or review front-end UI on a grammar | [references/ui-on-grammar.md](references/ui-on-grammar.md) |
+| Router picks, provider circuits, budgets | [references/routing-and-providers.md](references/routing-and-providers.md) |
+| Push, cut, publish, read CI | [references/release.md](references/release.md) |
+| A workflow or task is stuck | [references/debug.md](references/debug.md) |
+
+Design and rationale: [STARCI.md](../../STARCI.md). Gates and profiles: [policy/](../../policy/quality.yaml).
