@@ -70,11 +70,9 @@ The old CLI has 268 verbs in 30 groups (see the inventory in `starci-academy-bac
 
 ### Full (workflows in Orca)
 - `workflow` holds define, start, status, stop and archive.
-- `kernel` goes from 55 verbs to about 20.
-  - Kept: status, survey, dispatch, report, consume, settle, decide, inbox, reply, nudge, observe, reconcile, incident, plan, enqueue, log, lifecycle, usage, verify-proofs.
-  - Folded: decisions into decide, questions into reply, logs into log, revision-ack into kernel-ack-rev, messages into survey.
+- `task`, `msg` and `seat` replace the old kernel's watching verbs. See "Harness core" below. Without observe, nudge, critic or redesign, the Kernel needs only plan, send, wait, verify, escalate and status.
 - `lane` holds workers and worktrees (old worker, machine worktrees and supervisor gc).
-- `supervisor` is slimmed to status, decide, tell, start, stop and actions.
+- `supervisor` takes the same task protocol, plus the owner channel: status, decide and tell.
 - `work` collects the drawing steps under one `work draw <step>`, plus brand, graph and validate.
 - `uat` holds record and slots.
 - `app add reactor|saga|projection` and `test-world`.
@@ -85,6 +83,55 @@ The old CLI has 268 verbs in 30 groups (see the inventory in `starci-academy-bac
   - `supervisor push`, which still says "run full suites then push", against ruling push-main-after-scoped-check;
   - the 21 verbs nothing references, unless the owner keeps one.
 - Hidden, still callable by hooks and seats: `guard *`, `orca terminal-*`, `reconciler once`, `supervisor watchdog`.
+
+## Harness core (owner model, 2026-10-27)
+
+Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(context, input, expectedOutput)`, and waits for the output and an exit code. The Supervisor is reached the same way. Liveness is a ping-pong. This replaces the critic, debug, observe and nudge model.
+
+### Three parties, one protocol
+- **Op:** a short-lived agent (Claude, Codex or Devin) in an Orca seat. It receives one task, works until its own output meets `expectedOutput`, and returns the output.
+- **Kernel:** one long-lived seat per workflow.
+  - It splits the goal into tasks, sends them, waits and verifies each output by machine.
+  - It escalates a `blocked` or `mismatch` result to the Supervisor as a new task.
+- **Supervisor:** one seat per host.
+  - It receives the tasks no op can finish: cross-workflow work, runtime repair, owner decisions.
+  - It returns an output the same way, asking the owner when the contract needs a person.
+
+### Two kinds of message
+1. **Command, a short request and response.**
+   - A closed set: `ping`, `status`, `cancel`, `pause`, `resume`.
+   - The answer is due within seconds.
+   - The answer comes from the **seat runner**, the harness process that hosts the agent, not from the model. A model in the middle of a long tool call cannot answer promptly, and liveness must not depend on it.
+   - No pong before the deadline means the seat is dead. The sender relaunches the task with its next attempt, or escalates.
+2. **Task, an asynchronous contract and its result.**
+   - `context`: what the receiver may read and where it works: repository, base commit, worktree, rulings, the paths it may write.
+   - `input`: what to do, in words plus structured fields (op kind, target).
+   - `expectedOutput`: what the result must satisfy, as **machine checks only**:
+     - `command`: a command that must exit 0, for example `starci check run`;
+     - `files`: globs it may touch, globs it must not touch, files that must exist;
+     - `json`: an output document that must match a schema;
+     - `test`: named tests that must pass.
+     Anything no machine can judge (taste, UX) is an owner review step, never part of the contract.
+   - `budget`: minutes and attempts.
+   - **Result:** `status` is one of `done`, `blocked` (with the reason), `mismatch` (the receiver shows that `expectedOutput` itself is wrong or contradictory) or `failed`, plus the output and evidence such as commit, files and json.
+   - The sender runs `starci task verify`, which replays every check of `expectedOutput` against the result. Only a green verify settles the task.
+
+### Storage: one SQLite file per project
+There are four tables, instead of about 50 runtime tables and 90 machine tables:
+- `seats`: who runs where, plus the last pong;
+- `messages`: commands and their replies, with a correlation id and a deadline;
+- `tasks`: the contract, the sender, the receiver, the status and the attempts;
+- `results`: the output, the evidence and the verify verdict.
+
+### CLI
+- `starci task send --to <seat|op-kind> --contract <file.json>` returns a task id.
+- `starci task wait <id>` blocks until a result.
+- `starci task verify <id>` replays the checks and sets the verdict.
+- `starci task status [<id>]` reports the task or tasks.
+- `starci task result <id> --status ... --output <file>` is what the receiver runs to return its result.
+- `starci msg send <seat> ping|status|cancel|pause|resume` and `starci msg recv` (the seat runner's loop).
+- `starci seat start|stop|list` launches a seat, which is an agent plus its runner, in Orca or headless.
+- Lite has no Kernel. The chat agent can still write a contract for its own work and run `starci task verify` on it, so the edition shares the same checks.
 
 ## Open questions
 
