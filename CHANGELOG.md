@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.1.7 - 2026-10-26
+
+- Changed: the alpha.31.1 round folded into alpha.31; the bundled canon pins and runtime copies follow the final package versions. No rule changes.
+
 ## 9.1.6 - 2026-10-26
 - Changed: the bundled runtime copies follow the hfs 4.7.44 and cli 1.7.44 pins and the lint family versions (the runtime install file carries the wave version). No rule changes.
 
