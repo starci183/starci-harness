@@ -3,6 +3,8 @@ import { join } from "node:path"
 import { LOCAL_ROOT_ENV, ledgerCount, machinePath, runtimeRoot, stateBase } from "../harness/ledger.js"
 import { locateOrca } from "../harness/orca/client.js"
 import { loadPolicy, resolveProfile } from "../harness/policy.js"
+import { hostHas } from "../harness/router.js"
+import { loadRouting } from "../harness/routing.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { captureTool, probeTool, runNpm } from "../shared/exec.js"
 import { formatTable } from "../shared/output.js"
@@ -52,6 +54,18 @@ const NODE_MAJOR = 24
 const firstLine = (text: string | undefined): string | undefined => text?.split("\n")[0]?.trim()
 
 const lineCount = (text: string): number => text.split("\n").filter((line) => line.trim() !== "").length
+
+/** The host tools ops/routing.yaml probes (browser, docker ...) beyond the ones listed above; the router reads the same probes. */
+const hostToolProbes = (): Probe[] => {
+    try {
+        const routing = loadRouting()
+        return Object.keys(routing.hostProbes)
+            .filter((tool) => tool !== "git" && tool !== "node")
+            .map((tool): Probe => ({ name: tool, required: false, found: hostHas(routing, tool) ? "ok (routing probe)" : undefined }))
+    } catch {
+        return []
+    }
+}
 
 /** The orca binary this host would run and the version it reports; null when there is none (orca is optional). */
 const orcaOf = async (cwd: string): Promise<DoctorData["orca"]> => {
@@ -134,6 +148,7 @@ export const doctorVerb = defineVerb({
             { name: "npm", required: true, found: firstLine(await runNpm(["--version"], context.cwd).then((output) => output.stdout, () => undefined)) },
             { name: "gh", required: false, found: firstLine(await probeTool("gh", ["--version"], context.cwd)) },
             { name: "orca", required: false, found: orca === null ? undefined : `${orca.version ?? "version unknown"} (${orca.path}, ${orca.source})` },
+            ...hostToolProbes(),
         ]
         const missing = probes.filter((probe) => probe.required && probe.found === undefined)
         if (missing.length > 0) {

@@ -118,7 +118,7 @@ const memberId = (member: { readonly agent: string; readonly model: string }): s
 const hostProbed = new Map<string, boolean>()
 
 /** Whether a host tool answers on this machine; probed once per process. */
-const hostHas = (routing: Routing, tool: string): boolean => {
+export const hostHas = (routing: Routing, tool: string): boolean => {
     const known = hostProbed.get(tool)
     if (known !== undefined) return known
     const [command, ...args] = routing.hostProbes[tool] ?? []
