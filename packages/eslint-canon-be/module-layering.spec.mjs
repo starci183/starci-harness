@@ -73,6 +73,7 @@ test("R30: another owner is imported through its public entry, never through a p
       { filename: IN_FEATURE, code: "import { X } from '../index'", errors: [{ messageId: "ownIndex" }] },
     ],
   })
+    assert.ok(Object.keys(importOwnerEntry.meta.messages).length > 0, "import-owner-entry keeps its published messages")
 })
 
 test("R30: an owner does not reach itself through its own alias", () => {
@@ -93,6 +94,7 @@ test("R30: an owner does not reach itself through its own alias", () => {
       { filename: IN_FEATURE, code: "import { X } from '@features/api/checkout'", errors: [{ messageId: "self" }] },
     ],
   })
+    assert.ok(Object.keys(noSelfModuleAlias.meta.messages).length > 0, "no-self-module-alias keeps its published messages")
 })
 
 /** An index that names `count` symbols from one file. */
@@ -169,6 +171,7 @@ test("R30: no folder re-export, no nested index, and an owner's index holds only
       { filename: at("src/modules/platform/logging/adapters/index.ts"), code: "export { A } from './a'", errors: [{ messageId: "nestedIndex" }] },
     ],
   })
+    assert.ok(Object.keys(noFolderReexport.meta.messages).length > 0, "no-folder-reexport keeps its published messages")
 })
 
 test("R30: a relative import may not walk out of its own owner", () => {
@@ -193,4 +196,5 @@ test("R30: a relative import may not walk out of its own owner", () => {
       { filename: IN_FEATURE, code: "import { X } from '../../cart/application/add.handler'", errors: [{ messageId: "escape" }] },
     ],
   })
+    assert.ok(Object.keys(noRelativeCapabilityEscape.meta.messages).length > 0, "no-relative-capability-escape keeps its published messages")
 })

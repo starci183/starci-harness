@@ -73,6 +73,7 @@ test("R42: every property of an input class is validated and bounded by its type
             { filename: SERVICE, code: "@InputType()\nexport class PlanInput { @Field() planId!: string }", errors: [{ messageId: "missing" }] },
         ],
     })
+    assert.ok(Object.keys(inputBounded.meta.messages).length > 0, "input-bounded keeps its published messages")
 })
 
 const EM = "import { EntityManager } from 'typeorm'\nclass Plan {}\ndeclare const em: EntityManager\ndeclare const renamed: EntityManager\ndeclare const other: { find(e: unknown, o?: object): void }\ndeclare function sql(s: TemplateStringsArray, ...v: Array<unknown>): unknown\n"
@@ -108,6 +109,7 @@ test("R42: reads page by cursor, never by offset", () => {
             { filename: at("src/modules/domain/plan/plan.service.spec.ts"), code: `${EM}em.find(Plan, { skip: 1 })`, errors: [{ messageId: "option" }] },
         ],
     })
+    assert.ok(Object.keys(noOffsetPagination.meta.messages).length > 0, "no-offset-pagination keeps its published messages")
 })
 
 const DOORS = [
@@ -146,4 +148,5 @@ test("R42: a handshake or webhook door is on the strict rate-limit tier", () => 
             { filename: RESOLVER, code: `${DOORS}@Public({ reason: PublicReason.AuthHandshake }) class R { signIn() {} }`, errors: [{ messageId: "strict" }] },
         ],
     })
+    assert.ok(Object.keys(authDoorStrictRateTier.meta.messages).length > 0, "auth-door-strict-rate-tier keeps its published messages")
 })

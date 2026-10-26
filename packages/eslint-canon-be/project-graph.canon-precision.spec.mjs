@@ -98,4 +98,5 @@ test("duplicate-code accepts canon handler wiring while still finding copied bus
         ],
         invalid: [{ ...source(f, files, "src/modules/domain/alpha/alpha.service.ts"), errors: [{ messageId: "finding", line: 1 }] }],
     })
+    assert.ok("finding" in rules["duplicate-code"].meta.messages, "duplicate-code keeps its finding message")
 })

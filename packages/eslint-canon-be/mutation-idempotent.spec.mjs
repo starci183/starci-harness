@@ -132,6 +132,7 @@ for (const edition of ["lite", "full"]) {
                 ].map((code) => ({ filename: RESOLVER, code, errors: [{ messageId: "validation" }] })),
             ],
         })
+        assert.ok(Object.keys(mutationIdempotent.meta.messages).length > 0, "mutation-idempotent keeps its published messages")
     })
     test(`only marked client commands require the idempotency pattern in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["queue"] }), edition }, TYPED_ROOT)
@@ -139,5 +140,6 @@ for (const edition of ["lite", "full"]) {
             valid: [{ filename: COMMAND, code: command("{ amount: number }", { mark: "" }) }],
             invalid: [{ filename: COMMAND, code: command("{ idempotencyKey: string }"), errors: [{ messageId: "declaration" }] }],
         })
+        assert.ok(Object.keys(mutationIdempotent.meta.messages).length > 0, "mutation-idempotent keeps its published messages")
     })
 }

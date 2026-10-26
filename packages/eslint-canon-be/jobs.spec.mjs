@@ -49,6 +49,7 @@ test("job-write-owner: the job row is written only by platform/jobs", () => {
             { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().delete().from(JobEntity).execute()`, errors: [{ messageId: "foreign" }] },
         ],
     })
+    assert.ok(Object.keys(jobWriteOwner.meta.messages).length > 0, "job-write-owner keeps its published messages")
 })
 
 const CLAIMS = `import type { ClaimedJob, GuardedWrite, JobClaims } from "@modules/platform/jobs"
@@ -70,6 +71,7 @@ test("job-fence-required: every guarded write requires its token, never casts ar
             { filename: STEP, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch (error) { console.log(error) } }`, errors: [{ messageId: "swallowed" }] },
         ],
     })
+    assert.ok(Object.keys(jobFenceRequired.meta.messages).length > 0, "job-fence-required keeps its published messages")
 })
 
 const STEP_HEAD = `import type { ClaimedJob, JobClaims, RunKey } from "@modules/platform/jobs"
@@ -89,6 +91,7 @@ test("job-run-key: an external call of a step carries the run key made by JobCla
             { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.send("a", "fixed" as RunKey)`, errors: [{ messageId: "forged" }] },
         ],
     })
+    assert.ok(Object.keys(jobRunKey.meta.messages).length > 0, "job-run-key keeps its published messages")
 })
 
 const SHAPE_HEAD = `import type { ClaimedJob, JobStep } from "@modules/platform/jobs"
@@ -112,4 +115,5 @@ test("job-shape: a processor extends the fenced base in its job folder and a ste
             { filename: HANDLER, code: `${SHAPE_HEAD}export class Sneaky implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "stepPlacement" }] },
         ],
     })
+    assert.ok(Object.keys(jobShape.meta.messages).length > 0, "job-shape keeps its published messages")
 })

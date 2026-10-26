@@ -95,6 +95,7 @@ for (const edition of ["lite", "full"]) {
             const failing = queryReadinessFixture({ [filename]: mutate })
             testerOf(failing.root, edition).run("ready-real", readyReal, { valid: [], invalid: [{ filename: failing.filename, code: failing.code, errors: [{ messageId: "real" }] }] })
         }
+        assert.ok(Object.keys(readyReal.meta.messages).length > 0, "ready-real keeps its published messages")
     })
 
     test(`BE_READY_REAL@${edition}: dependency probes are bounded and liveness aliases fail`, () => {
@@ -124,6 +125,7 @@ for (const edition of ["lite", "full"]) {
                 { filename, code: ready(bounded.replace("reject(new Error('unavailable'))", "{ throw new Error('unavailable') }")), errors: [{ messageId: "real" }] },
             ],
         })
+        assert.ok(Object.keys(readyReal.meta.messages).length > 0, "ready-real keeps its published messages")
     })
 
     test(`BE_READY_REAL@${edition}: thin readiness controllers delegate to the actual bounded dependency service`, () => {
@@ -140,6 +142,7 @@ for (const edition of ["lite", "full"]) {
                 { filename, code: code.replace("return this.readiness.probeRequired()", "this.readiness.probeRequired(); return {ok:true}"), errors: [{ messageId: "real" }] },
             ],
         })
+        assert.ok(Object.keys(readyReal.meta.messages).length > 0, "ready-real keeps its published messages")
     })
 
     test(`BE_HEALTH_SIGNALS@${edition}: each API app registers both live and ready controllers`, () => {
@@ -156,5 +159,6 @@ for (const edition of ["lite", "full"]) {
             valid: [{ filename: path.join(complete, "apps/api/src/main.ts"), code: "bootstrap()" }, { filename: path.join(complete, "apps/worker/src/main.ts"), code: "bootstrap()" }],
             invalid: [{ filename: path.join(missing, "apps/api/src/main.ts"), code: "bootstrap()", settings: { starci: { hfs: hfsFromDeclaration(declaration(edition), missing) } }, errors: [{ messageId: "signals", data: { app: "api", missing: "/health/ready" } }] }],
         })
+        assert.ok(Object.keys(healthSignals.meta.messages).length > 0, "health-signals keeps its published messages")
     })
 }

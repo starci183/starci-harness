@@ -54,6 +54,7 @@ test("OBSERVABILITY-1: the framework logger is refused, imported, constructed or
       { filename: SPEC, code: "import { Logger } from '@nestjs/common'", errors: [{ messageId: "imported" }] },
     ],
   })
+    assert.ok(Object.keys(noFrameworkLogger.meta.messages).length > 0, "no-framework-logger keeps its published messages")
 })
 
 test("OBSERVABILITY-1: the platform/logging owner may build what it adapts", () => {
@@ -61,6 +62,7 @@ test("OBSERVABILITY-1: the platform/logging owner may build what it adapts", () 
     valid: [{ filename: LOGGING, code: "import { Logger } from '@nestjs/common'\nexport const inner = new Logger('adapter')" }],
     invalid: [],
   })
+    assert.ok(Object.keys(noFrameworkLogger.meta.messages).length > 0, "no-framework-logger keeps its published messages")
 })
 
 test("OBSERVABILITY-2: a Logger call's first argument is a member of a log-events enum", () => {
@@ -92,6 +94,7 @@ test("OBSERVABILITY-2: a Logger call's first argument is a member of a log-event
       { filename: SPEC, code: withPrelude("logger.info('x')"), errors: [{ messageId: "notEvent" }] },
     ],
   })
+    assert.ok(Object.keys(noInterpolatedLogMessage.meta.messages).length > 0, "no-interpolated-log-message keeps its published messages")
 })
 
 test("OBSERVABILITY-5: a failure log carries the exception's code, not only its wording", () => {
@@ -118,4 +121,5 @@ test("OBSERVABILITY-5: a failure log carries the exception's code, not only its 
       { filename: SPEC, code: withPrelude("try { run() } catch (error) { logger.warn(OrderLogEvent.CheckoutRetried, { detail: error.message }) }"), errors: [{ messageId: "wordingOnly" }] },
     ],
   })
+    assert.ok(Object.keys(noErrorWordingAsLogIdentity.meta.messages).length > 0, "no-error-wording-as-log-identity keeps its published messages")
 })

@@ -157,6 +157,7 @@ export { Kafka }`, errors: [{ messageId: "foreign" }] },
 export { Worker }`, errors: [{ messageId: "foreign" }] },
         ],
     })
+    assert.ok(Object.keys(infraImportOwner.meta.messages).length > 0, "infra-import-owner keeps its published messages")
 })
 
 test("infra-import-owner under lite: the queue and Redis libraries keep full's owners, Kafka and Qdrant are owned nowhere", () => {
@@ -211,6 +212,8 @@ test("full: declared Qdrant clients retain their ordinary third-party integratio
             invalid: [{ filename: fixture.at("src/modules/domain/order/order.service.ts"), code, errors: [{ messageId: "foreign" }, { messageId: "foreign" }] }],
         })
     } finally { fixture.cleanup() }
+    assert.ok(Object.keys(infraImportOwner.meta.messages).length > 0, "infra-import-owner keeps its published messages")
+    assert.ok(Object.keys(thirdPartyImportOwner.meta.messages).length > 0, "third-party-import-owner keeps its published messages")
 })
 
 const typedRules = typedTester()
@@ -245,4 +248,5 @@ test("R90: the HttpClient port of platform/http is called only by an integration
             { filename: at("src/features/api/plan/application/plan.handler.ts"), code: `${PORT}export const read = () => http.get("x")`, errors: [{ messageId: "foreign" }] },
         ],
     })
+    assert.ok(Object.keys(httpClientOnlyInIntegrations.meta.messages).length > 0, "http-client-only-in-integrations keeps its published messages")
 })

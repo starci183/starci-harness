@@ -30,7 +30,7 @@ const APP = at("apps/api/src/app.module.ts")
 
 test("every rule this law declares is exported as a rule", () => {
     for (const [name, rule] of Object.entries(rules)) {
-        if (!rule?.meta || typeof rule.create !== "function") throw new Error(`${name} is not a rule`)
+        assert.ok(rule?.meta && typeof rule.create === "function", `${name} is not a rule`)
     }
 })
 
@@ -49,6 +49,7 @@ test("@Global() is refused everywhere, specs included", () => {
             { filename: MODULE, code: 'import * as common from "@nestjs/common"\n@common.Global() class PlanModule {}', errors: [{ messageId: "global" }] },
         ],
     })
+    assert.ok(Object.keys(noGlobalDecorator.meta.messages).length > 0, "no-global-decorator keeps its published messages")
 })
 
 test("isGlobal: true is written only in apps/<app>/src/app.module.ts", () => {
@@ -82,6 +83,7 @@ test("isGlobal: true is written only in apps/<app>/src/app.module.ts", () => {
             { filename: MODULE, code: "const d = { module: PlanModule, global: true }", errors: [{ messageId: "isGlobal" }] },
         ],
     })
+    assert.ok(Object.keys(isGlobalOnlyInApp.meta.messages).length > 0, "is-global-only-in-app keeps its published messages")
 })
 
 const CROSS = at("src/modules/domain/plan/plan.module.ts")
@@ -116,6 +118,7 @@ test("a module never imports another owner's module", () => {
             },
         ],
     })
+    assert.ok(Object.keys(noCrossOwnerModuleImport.meta.messages).length > 0, "no-cross-owner-module-import keeps its published messages")
 })
 
 test("a configurable module builder names its options type", () => {
@@ -123,6 +126,7 @@ test("a configurable module builder names its options type", () => {
         valid: [{ filename: MODULE, code: "const b = new ConfigurableModuleBuilder<PlanOptions>()" }],
         invalid: [{ filename: MODULE, code: "const b = new ConfigurableModuleBuilder()", errors: [{ messageId: "untyped" }] }],
     })
+    assert.ok(Object.keys(typedModuleDefinition.meta.messages).length > 0, "typed-module-definition keeps its published messages")
 })
 
 test("register is the one factory and it is static", () => {
@@ -140,6 +144,7 @@ test("register is the one factory and it is static", () => {
             { filename: MODULE, code: "@Module({}) class M { static forRoot = () => ({}) }", errors: [{ messageId: "otherName" }] },
         ],
     })
+    assert.ok(Object.keys(staticModuleRegister.meta.messages).length > 0, "static-module-register keeps its published messages")
 })
 
 const ORDER = 'import { CommandHandler } from "@nestjs/cqrs"\nimport { OrderProvider, PlainGuard, ReportService } from "@modules/domain/order"\n'
@@ -165,6 +170,7 @@ test("a provider is built by the container, not by new", () => {
             { filename: MODULE, code: '@Controller()\nclass Ctl {}\nconst t = new Ctl()', errors: [{ messageId: "construct" }] },
         ],
     })
+    assert.ok(Object.keys(noNewInjectable.meta.messages).length > 0, "no-new-injectable keeps its published messages")
 })
 
 test("no mutable state at module scope", () => {
@@ -177,6 +183,7 @@ test("no mutable state at module scope", () => {
             { filename: at("src/modules/domain/plan/plan.service.spec.ts"), code: "let shared = 1", errors: [{ messageId: "mutable" }] },
         ],
     })
+    assert.ok(Object.keys(noModuleLet.meta.messages).length > 0, "no-module-let keeps its published messages")
 })
 
 test("a file declares one module", () => {
@@ -184,6 +191,7 @@ test("a file declares one module", () => {
         valid: [{ filename: MODULE, code: "@Module({}) class A {}\nclass B {}" }],
         invalid: [{ filename: MODULE, code: "@Module({}) class A {}\n@Module({}) class B {}", errors: [{ messageId: "many" }] }],
     })
+    assert.ok(Object.keys(oneModulePerFile.meta.messages).length > 0, "one-module-per-file keeps its published messages")
 })
 
 const BASE = 'import { ConfigurableModuleClass, OPTIONS_TYPE } from "./plan.module-definition"\nimport type { DynamicModule } from "@nestjs/common"\n'
@@ -237,6 +245,7 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative defi
             { filename: at("src/features/cli/migrate/migrate.module-definition.ts"), code: "export const x = 1", errors: [{ messageId: "chain" }] },
         ],
     })
+    assert.ok(Object.keys(capabilityModuleShape.meta.messages).length > 0, "capability-module-shape keeps its published messages")
 })
 
 const LEDGER = at("src/modules/domain/ledger/ledger.module.ts")
@@ -279,4 +288,5 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a siblin
             { filename: APP, code: 'import { CatalogModule } from "@modules/domain/catalog"\n@Module({}) export class AppModule { static register(options: AppOptions) { return { module: AppModule, imports: [CatalogModule] } } }', errors: [{ messageId: "unregistered" }] },
         ],
     })
+    assert.ok(Object.keys(moduleDefinitionRequired.meta.messages).length > 0, "module-definition-required keeps its published messages")
 })

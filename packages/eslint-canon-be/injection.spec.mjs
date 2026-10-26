@@ -95,6 +95,7 @@ test("injector-only: raw injection lives only in <owner>.decorators.ts", () => {
             { filename: SERVICE, code: `${CLOCK}export class S { run(@InjectClock() clock: Clock): Date { return clock.now() } }`, errors: [{ messageId: "notConstructor" }] },
         ],
     })
+    assert.ok(Object.keys(injectorOnly.meta.messages).length > 0, "injector-only keeps its published messages")
 })
 
 test("injector-shape: zero-arg, typed, built with injector<T>, documented, over a unique symbol", () => {
@@ -211,6 +212,7 @@ export const InjectClock = (): TypedParameterDecorator<Clock> => injector<Clock>
             { filename: SERVICE, code: `export const providers = [{ provide: 42, useValue: 1 }]`, errors: [{ messageId: "provide" }] },
         ],
     })
+    assert.ok(Object.keys(injectorShape.meta.messages).length > 0, "injector-shape keeps its published messages")
 })
 
 test("injector-type-match: T of the injector is the parameter's type", () => {
@@ -235,6 +237,7 @@ export class H { constructor(private readonly names: ReadonlyArray<string>) {} }
             { filename: SERVICE, code: `import { InjectClock } from "@modules/platform/clock"\nexport class S { constructor(@InjectClock() private readonly clock) {} }`, errors: [{ messageId: "unannotated" }] },
         ],
     })
+    assert.ok(Object.keys(injectorTypeMatch.meta.messages).length > 0, "injector-type-match keeps its published messages")
 })
 
 test("infra-needs-injector: class injection only for domain services and the same owner", () => {
@@ -315,6 +318,7 @@ export class Probe { constructor(private readonly commandBus: CommandBus) {} }`,
 export class H { constructor(@Marker() private readonly em: EntityManager) {} }`, errors: [{ messageId: "missing" }] },
         ],
     })
+    assert.ok(Object.keys(infraNeedsInjector.meta.messages).length > 0, "infra-needs-injector keeps its published messages")
 })
 
 test("no-module-ref: no service locator anywhere", () => {
@@ -338,6 +342,7 @@ test("no-module-ref: no service locator anywhere", () => {
             { filename: SERVICE, code: `export { ModuleRef } from "@nestjs/core"`, errors: [{ messageId: "use" }] },
         ],
     })
+    assert.ok(Object.keys(noModuleRef.meta.messages).length > 0, "no-module-ref keeps its published messages")
 })
 
 test("no-forward-ref: a cycle is a layering finding", () => {
@@ -354,6 +359,7 @@ test("no-forward-ref: a cycle is a layering finding", () => {
             { filename: SERVICE, code: `import * as common from "@nestjs/common"\nexport const x = common.forwardRef(() => 1)`, errors: [{ messageId: "cycle" }] },
         ],
     })
+    assert.ok(Object.keys(noForwardRef.meta.messages).length > 0, "no-forward-ref keeps its published messages")
 })
 
 test("no-string-token: a token is a class or a unique symbol", () => {
@@ -392,6 +398,7 @@ export const providers = [{ provide: APP_GUARD, useClass: Object }]`, errors: [{
             { filename: SERVICE, code: `import { getEntityManagerToken as token } from "@nestjs/typeorm"\nexport const t = token(\`primary\`)`, errors: [{ messageId: "connection" }] },
         ],
     })
+    assert.ok(Object.keys(noStringToken.meta.messages).length > 0, "no-string-token keeps its published messages")
 })
 
 test("injected-param-name: a port the paramNames table names is named the same way in every class", () => {
@@ -420,4 +427,5 @@ test("injected-param-name: a port the paramNames table names is named the same w
             { filename: SPEC, code: `${INJ}${CLOCK}@Injectable()\nexport class H { constructor(@InjectClock() private readonly now: Clock) {} }`, errors: [{ messageId: "name" }] },
         ],
     })
+    assert.ok(Object.keys(injectedParamName.meta.messages).length > 0, "injected-param-name keeps its published messages")
 })

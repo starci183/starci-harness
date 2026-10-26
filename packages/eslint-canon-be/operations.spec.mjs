@@ -48,6 +48,7 @@ test("operation-contract-decidable: an operation names closed input, output and 
             { filename: TABLE, code: `import type { OperationContract } from "@modules/platform/operations"\nexport const CONTRACT: OperationContract<unknown, { readonly ok: boolean }, "DENIED"> = { kind: "query" }`, errors: [{ messageId: "type", data: { label: "input", why: "unknown" } }] },
         ],
     })
+    assert.ok(Object.keys(operationContractDecidable.meta.messages).length > 0, "operation-contract-decidable keeps its published messages")
 })
 
 const ROUTE_HEAD = `import { Body, Controller, Post } from "@nestjs/common"\nimport { defineOperations, query, OperationValidationPolicy } from "@modules/platform/operations"\nimport { PlanInputSchema, PlanOutputSchema } from "@modules/platform/operations/plan.schema"\nimport type { OperationReply, OperationRequest } from "@modules/platform/operations"\nexport const OPERATIONS = defineOperations({ "plan.read@1": query({ input: PlanInputSchema, output: PlanOutputSchema }) })\nexport const OTHER = defineOperations({ "plan.other@1": query({ input: PlanInputSchema, output: PlanOutputSchema }) })\nexport type Table = typeof OPERATIONS\n`
@@ -69,6 +70,7 @@ test("operation-route-driven-by-table: a route takes OperationRequest<Table> and
             { filename: CONTROLLER, code: `${ROUTE_HEAD}@Controller("api/v1")\nexport class C { @Post("operations") async handle(@Body() request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`, errors: [{ messageId: "validation" }] },
         ],
     })
+    assert.ok(Object.keys(operationRouteDrivenByTable.meta.messages).length > 0, "operation-route-driven-by-table keeps its published messages")
 })
 
 test("the message of a half-typed route names the missing side", () => {
@@ -127,6 +129,7 @@ class PlainGuard { canActivate() { return true } }
                 { filename: CONTROLLER, code: `${head}@Controller("api/v1") class C { @Get("file") file() { return new StreamableFile(Buffer.from("")) } @Get() list() { return { items: [] } } }`, errors: [{ messageId: "undeclared" }] },
             ],
         })
+        assert.ok(Object.keys(restRouteDeclared.meta.messages).length > 0, "rest-route-declared keeps its published messages")
     })
 
     test(`BE_REST_ROUTE_UNDECLARED: ${edition} lets the @Sse stream of the sse slot stand without an operation table`, () => {
@@ -138,5 +141,6 @@ class PlainGuard { canActivate() { return true } }
             valid: [{ filename: at("src/features/realtime/orders/transport/sse/orders.controller.ts"), code }],
             invalid: [{ filename: CONTROLLER, code, errors: [{ messageId: "undeclared" }] }],
         })
+        assert.ok(Object.keys(restRouteDeclared.meta.messages).length > 0, "rest-route-declared keeps its published messages")
     })
 }

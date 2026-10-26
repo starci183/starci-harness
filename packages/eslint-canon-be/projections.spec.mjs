@@ -49,6 +49,7 @@ test("projection-write-owner: a read-model table is written only by its own proj
             { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().update(UserXpProjectionEntity).set({ total: 1 }).execute()`, errors: [{ messageId: "foreign" }] },
         ],
     })
+    assert.ok(Object.keys(projectionWriteOwner.meta.messages).length > 0, "projection-write-owner keeps its published messages")
 })
 
 const PROJECTION_HEAD = `import { UserXpProjectionEntity } from "./user-xp.projection-entity"\n`
@@ -70,4 +71,5 @@ test("projection-shape: recompute and get only, the entity stays inside, and the
             { filename: API_HANDLER, code: `import type { UserXpProjection } from "@modules/projections/userxp"\nexport const show = (projection: UserXpProjection) => projection.recomputeUserXp("a", 1)`, errors: [{ messageId: "apiRecompute" }] },
         ],
     })
+    assert.ok(Object.keys(projectionShape.meta.messages).length > 0, "projection-shape keeps its published messages")
 })

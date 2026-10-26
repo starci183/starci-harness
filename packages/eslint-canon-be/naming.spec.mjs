@@ -97,6 +97,7 @@ test("NAME-1: a module's own static factory is named register, not a vendor's fa
       },
     ],
   })
+    assert.ok(Object.keys(noVendorModuleFactoryName.meta.messages).length > 0, "no-vendor-module-factory-name keeps its published messages")
 })
 
 test("NAME-2: a schema generation does not go in a name", () => {
@@ -124,6 +125,7 @@ test("NAME-2: a schema generation does not go in a name", () => {
       },
     ],
   })
+    assert.ok(Object.keys(noVersionInName.meta.messages).length > 0, "no-version-in-name keeps its published messages")
 })
 
 test("NAME-5: an exported function names its object", () => {
@@ -143,6 +145,7 @@ test("NAME-5: an exported function names its object", () => {
       { code: "export const run = async () => null", errors: [{ messageId: "bareVerb" }] },
     ],
   })
+    assert.ok(Object.keys(noBareVerbExport.meta.messages).length > 0, "no-bare-verb-export keeps its published messages")
 })
 
 test("R89: named exports only; the Jest global setup of the e2e setup folder is the one default export", () => {
@@ -175,4 +178,5 @@ test("R89: named exports only; the Jest global setup of the e2e setup folder is 
       { filename: at("src/modules/domain/order/order.service.spec.ts"), code: "export default {}", errors: [{ messageId: "default" }] },
     ],
   })
+    assert.ok(Object.keys(noDefaultExport.meta.messages).length > 0, "no-default-export keeps its published messages")
 })

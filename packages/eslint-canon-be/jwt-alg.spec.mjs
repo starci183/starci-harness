@@ -55,5 +55,6 @@ for (const edition of ["lite", "full"]) {
                 { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') { return {id: payload.sub}; throw new Error('unreachable') }" }), errors: [{ message: /reject every role/ }] },
             ],
         })
+        assert.ok(Object.keys(jwtAlgPinned.meta.messages).length > 0, "jwt-alg-pinned keeps its published messages")
     })
 }
