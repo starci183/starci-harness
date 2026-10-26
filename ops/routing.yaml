@@ -20,7 +20,7 @@ tiers:
   high:
     - {agent: claude, model: claude-sonnet-5-5}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
-  # Claude closes the medium chain, so a uat task always has a member that drives a browser.
+  # Claude closes the medium chain, so a uat task always has a member whose pool takes the uat label.
   medium:
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6.1-sol, effort: medium}
@@ -53,8 +53,9 @@ hostProbes:
   git: [git, --version]
   node: [node, --version]
   docker: [docker, --version]
-  # Playwright Chromium installed for the host user: uat runs it from the shell, whatever agent drives it.
-  browser: [node, -e, "const p=require('path'),o=require('os'),f=require('fs');const d=process.env.PLAYWRIGHT_BROWSERS_PATH||(process.platform==='win32'?p.join(process.env.LOCALAPPDATA||'','ms-playwright'):process.platform==='darwin'?p.join(o.homedir(),'Library','Caches','ms-playwright'):p.join(o.homedir(),'.cache','ms-playwright'));process.exit(f.existsSync(d)&&f.readdirSync(d).some(n=>n.startsWith('chromium'))?0:1)"]
+  # This host can run the uat image (ops/uat.yaml): a Docker engine answers. `starci uat run` pulls and prepares the image
+  # on its first run, whatever agent calls it.
+  browser: [docker, info, --format, "{{.ServerVersion}}"]
 
 # A member picked maxStreak times in a row, or holding more than maxSharePercent of its tier's running seats, yields.
 balance: {maxStreak: 3, maxSharePercent: 70}

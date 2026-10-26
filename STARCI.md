@@ -18,6 +18,7 @@ Owner: the owner. This is the working design of the rewritten CLI in this reposi
   - Both editions get both runners. Contracts, leases, the clean verify and the harness commit are the same for either runner.
   - Inline guards: the agent is both Kernel and worker, so its contract must be sent (and its hash fixed) before it edits code, and the harness verify on a clean checkout is what decides green. Liveness (ping and pong) applies only to the `orca` runner.
 - **One CI workflow** (`.github/workflows/ci.yml`). Job `check` on every push and pull request to main: the CLI's typecheck, lint and build (the CLI keeps no specs), `check loosening`, `check secrets --all`, every package's specs, then the Sonar new-code gate. Job `publish` on a `v*` tag: every package under `packages/` that is not private and whose version is not on npm. Tokens live only in GitHub secrets; the repository is public.
+- **Machine actions are the harness's job** (owner ruling). An agent never installs Playwright or browsers, or runs Docker by hand: a `uat` worker writes a short Playwright script and calls `uat run`, which runs it in the official Playwright image pinned in `ops/uat.yaml` and keeps the playwright package inside that image, never in the product.
 - **Harness state never lives in a product repository** (owner correction of the alpha layout, as the legacy had it). A product's `.starciwork/` is product content only and is committed; the harness writes its ledger, briefs and scratch under the runtime root (see Storage).
 
 ## Layout
@@ -84,7 +85,7 @@ Every op is the same worker running `ops/worker.md`. A label is a routing hint p
 | `test` | write the tests of one slice, inside test paths | tests-pass (the new tests), paths-only (test paths) | medium | git, node |
 | `ui` | draw screens, generate assets, grow the Grammar | renders (viewports), check-run-green, paths-only | hard | git, node, browser |
 | `verify` | run one heavy suite the goal asks for (perf, security, e2e) and report it | json-schema (suite report) | medium | git, node, docker |
-| `uat` | walk the flows in a browser with evidence | json-schema (flow report), renders (evidence) | medium | browser |
+| `uat` | walk the flows with `starci uat run` (Playwright in Docker), a screenshot per step | json-schema (flow report), renders (evidence) | medium | browser (a Docker engine answers) |
 | `docs` | documentation and product content | paths-only, doc-language | easy | git |
 | `deliver` | publish, deploy or migrate one target and probe it live | probe (url/registry/migration) | hard | git, node, docker |
 
@@ -92,7 +93,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 
 ### CLI: 83 verbs in 4 sets, plus 5 hidden
 
-**Core: both editions (32)**
+**Core: both editions (33)**
 
 | group | verbs |
 |---|---|
@@ -104,6 +105,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `task` | `send`, `result`, `status`, `verify`, `cancel` (a lite agent sends its own task, files the result inline and verifies it) |
 | `app` | `scaffold`, `sync`, `check`, `info`, `emit`, `db`, `secret` |
 | `pattern` | `list`, `show`, `add` |
+| `uat` | `run` (a `uat` worker's Playwright script in the pinned image of `ops/uat.yaml`, host ports forwarded on 127.0.0.1, screenshots into the evidence folder) |
 
 **Lite apps (agent in chat) (10)**
 
@@ -113,13 +115,12 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `deploy`, `verify`, `rollback` |
 | `docker` | `build`, `up`, `down` |
 
-**Full apps (6)**
+**Full apps (5)**
 
 | group | verbs |
 |---|---|
 | `app add` | `reactor`, `saga`, `projection` (the patterns lite refuses) |
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
-| `uat` | `record` (the browser recorder a `uat` worker uses) |
 
 **Harness: both editions (35).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
 
@@ -395,6 +396,7 @@ ops/                       everything that describes work, as data validated by 
   routing.yaml             tiers and their chains, pools (provider, maxParallel, labels, tools), host probes, balance, quota bands,
                            circuit cooldowns and strikes, failure signals, AIMD tuning, workflow budgets
   liveness.yaml            seat liveness thresholds and the Orca answers that prove a worker gone
+  uat.yaml                 the pinned Playwright image of `uat run` and the bounds of one run
 ```
 `ops/` is data, not code. Every tunable number lives there once, and the CLI reads it. Nothing is restated in prose.
 

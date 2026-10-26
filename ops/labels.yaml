@@ -30,7 +30,7 @@ labels:
     defaultChecks: [result-json]
     requireBehavioural: true
   uat:
-    summary: walk the flows in Playwright Chromium on this host, with a screenshot per step as evidence
+    summary: walk the flows with `starci uat run` (Playwright in Docker), one screenshot per step into the evidence folder
     floor: medium
     hostTools: [browser]
     defaultChecks: [result-passed]

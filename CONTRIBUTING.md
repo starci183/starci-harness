@@ -41,7 +41,7 @@ A second copy is a defect even while both agree.
 | fact | owner |
 |---|---|
 | a verb: path, flags, effect, roles, json schema | its one `defineVerb({...})` file, listed in `cli/src/registry.ts`; `starci explain` prints it |
-| worker labels, check presets, routing, failure bounds, budgets | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml` |
+| worker labels, check presets, routing, failure bounds, budgets, the uat image | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml`, `ops/uat.yaml` |
 | the worker brief | [ops/worker.md](ops/worker.md) |
 | gate tiers, profiles, banned markers, the secret scan's configuration | [policy/](policy/) |
 | what each gate and marker detects | `cli/src/core/check/` and `cli/src/shared/secrets.ts` |
