@@ -469,7 +469,7 @@ export const viewNodes = (nodes: readonly PlanNode[], tasks: ReadonlyMap<string,
     return nodes.map((node) => views.get(node.key)).filter((view): view is NodeView => view !== undefined)
 }
 
-/** How a replan treats one task: kept, continued, redone, added or dropped (STARCI "Changing a running workflow"). */
+/** How a replan treats one task: kept, continued, redone, added or dropped (cli/README.md "Workflow graph"). */
 export type ReplanClass = "keep" | "continue" | "redo" | "add" | "drop"
 
 /** One task of a replan: its class, its state before, the live task the replan cancels (if any), and why. */

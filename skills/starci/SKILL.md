@@ -75,4 +75,4 @@ Kernel's own call; report it. Never decide for the owner, enter a credential or 
 | Push, cut, publish, read CI | [references/release.md](references/release.md) |
 | A workflow or task is stuck | [references/debug.md](references/debug.md) |
 
-Design and rationale: [STARCI.md](../../STARCI.md). Gates and profiles: [policy/](../../policy/quality.yaml).
+Decisions, roles and open questions: [CONTEXT.md](../../CONTEXT.md). Gates and profiles: [policy/](../../policy/quality.yaml).

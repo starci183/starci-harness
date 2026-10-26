@@ -59,7 +59,7 @@ the knowledge to be true.
 - **CI standard** (legacy `hfs/ci-standard.yaml`, ruling `ci-standard`): the app CI shape is template and policy data.
 - **Runtime-only rules** (52, enforced by the runtime's own checks): R07, R09, R114-R119, R121, R122, R124-R127,
   R192-R196, R198-R202, R205, R206, R208-R211, R221-R225, R227-R234, R236-R242, R247, R274. They govern the harness
-  repository; the new harness states its own in `policy/` and `STARCI.md`.
+  repository; the new harness states its own in `policy/` and `CONTEXT.md` "Decisions".
 - **Harness rulings** not logged here: supervisor-mission, supervisor-self-learning, supervisor-machine-log,
   ram-aware-concurrency, autopilot-run-to-finish, settle-runtime-service, evidence-in-db-and-blobs,
   providers-claude-codex-devin, one-pattern-no-legacy, no-runtime-specs, speed-flow, release-waves,
