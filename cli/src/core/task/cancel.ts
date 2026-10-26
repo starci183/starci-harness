@@ -50,6 +50,13 @@ export const taskCancelVerb = defineVerb({
                 const detail = running.map((seat) => `seat ${seat.seat} (dispatch ${seat.handle ?? "-"}): stop ${seat.closed?.stop ?? "-"}`).join("; ")
                 throw new Refusal("SEAT_NOT_STOPPED", `task ${before.id} keeps its state and leases: Orca did not stop its worker, which may still write (${detail}); run task cancel again once Orca answers`)
             }
+            const unknown = seats.filter((seat) => seat.outcome === "launch-unknown")
+            if (unknown.length > 0) {
+                throw new Refusal(
+                    "SEAT_LAUNCH_UNKNOWN",
+                    `task ${before.id} keeps its state and leases: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
+                )
+            }
             // A task that lost a lease must not reset that path: another task may own it now.
             const lost = missingLeases(db, before)
             const preserved = lost.length === 0 ? await preserveTaskPaths(root, getTask(db, before.id), db) : null

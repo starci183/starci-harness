@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 1
+export const LEDGER_VERSION = 2
 
 /**
  * The ten tables of the harness ledger. Status rules live in the code's one state machine, not in triggers;
@@ -46,6 +46,42 @@ CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL,
   subject TEXT, data_json TEXT NOT NULL);
 `
+
+/**
+ * Columns added after a table was first created, by the ledger version that added them. A migration is additive only: a
+ * missing column is added (ALTER TABLE ADD COLUMN) to a new and an old ledger alike, so this list is the one owner of them.
+ */
+const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string; readonly type: string; readonly since: number }[] = [
+    { table: "seats", column: "attempt_id", type: "TEXT", since: 2 },
+    { table: "seats", column: "model", type: "TEXT", since: 2 },
+    { table: "seats", column: "ended_at", type: "TEXT", since: 2 },
+    { table: "seats", column: "request_id", type: "TEXT", since: 2 },
+    { table: "seats", column: "run_id", type: "TEXT", since: 2 },
+    { table: "seats", column: "launch_json", type: "TEXT", since: 2 },
+]
+
+const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
+    const tables = new Map<string, Set<string>>()
+    const columnsOf = (table: string): Set<string> => {
+        const known = tables.get(table) ?? new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((row) => String(row.name)))
+        tables.set(table, known)
+        return known
+    }
+    return ADDED_COLUMNS.filter(({ table, column }) => !columnsOf(table).has(column))
+}
+
+// The check repeats under BEGIN IMMEDIATE, so two processes opening an old ledger at once never both add the same column.
+const migrate = (db: DatabaseSync): void => {
+    if (missingColumns(db).length === 0) return
+    db.exec("BEGIN IMMEDIATE")
+    try {
+        for (const { table, column, type } of missingColumns(db)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
+        db.exec("COMMIT")
+    } catch (error: unknown) {
+        db.exec("ROLLBACK")
+        throw error
+    }
+}
 
 /** The project's work folder, which holds its ledger. */
 export const WORK_DIR = ".starciwork"
@@ -123,6 +159,7 @@ export const openLedger = (root: string): DatabaseSync => {
     ensureWorkDir(root)
     const db = connect(ledgerPath(root))
     db.exec(SCHEMA)
+    migrate(db)
     db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
     return db
 }

@@ -40,32 +40,51 @@ export const SEAT_RELEASED = "released"
 /** Statuses after which a seat holds nothing on the host. */
 export const CLOSED_SEAT_STATUSES: readonly SeatStatus[] = [SEAT_LAUNCH_FAILED, SEAT_RELEASED]
 
-/** A seat as the ledger stores it; `handle` is Orca's dispatch id, the key every worker verb takes. */
+/**
+ * A seat as the ledger stores it; `handle` is Orca's dispatch id, the key every worker verb takes. `launch` is everything its
+ * launch sent to Orca (replayed as it was by a resume), `requestId` the worker-start request id, `runId` the Orca Run.
+ */
 export interface SeatRow {
     readonly id: string
     readonly role: SeatRole
     readonly agent: string | null
+    readonly model: string | null
+    readonly attemptId: string | null
     readonly handle: string | null
     readonly taskId: string | null
     readonly status: SeatStatus
+    readonly requestId: string | null
+    readonly runId: string | null
+    readonly launch: unknown
     readonly lastPongAt: string | null
     readonly startedAt: string
+    readonly endedAt: string | null
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 
 const optText = (value: unknown): string | null => (value === null || value === undefined ? null : text(value))
 
-const toSeat = (row: Record<string, unknown>): SeatRow => ({
-    id: text(row.id),
-    role: text(row.role) as SeatRole,
-    agent: optText(row.agent),
-    handle: optText(row.handle),
-    taskId: optText(row.task_id),
-    status: text(row.status),
-    lastPongAt: optText(row.last_pong_at),
-    startedAt: text(row.started_at),
-})
+// A ledger opened read-only may predate the version 2 columns; a missing column reads as null.
+const toSeat = (row: Record<string, unknown>): SeatRow => {
+    const launch = optText(row.launch_json)
+    return {
+        id: text(row.id),
+        role: text(row.role) as SeatRole,
+        agent: optText(row.agent),
+        model: optText(row.model),
+        attemptId: optText(row.attempt_id),
+        handle: optText(row.handle),
+        taskId: optText(row.task_id),
+        status: text(row.status),
+        requestId: optText(row.request_id),
+        runId: optText(row.run_id),
+        launch: launch === null ? null : JSON.parse(launch),
+        lastPongAt: optText(row.last_pong_at),
+        startedAt: text(row.started_at),
+        endedAt: optText(row.ended_at),
+    }
+}
 
 /** One seat by id; refuses an unknown id. */
 export const getSeat = (db: DatabaseSync, id: string): SeatRow => {
@@ -83,41 +102,53 @@ export const seatsOfTask = (db: DatabaseSync, taskId: string): SeatRow[] => db.p
 /** True while a seat may still hold something on the host. */
 export const isSeatOpen = (seat: SeatRow): boolean => !CLOSED_SEAT_STATUSES.includes(seat.status)
 
-/**
- * Every fact recorded about a seat (its opening facts, then each status update's), merged in order, later facts winning.
- * The seats table has no columns for the attempt, model, launch request or Run yet, so they live in its events.
- */
-export const seatFacts = (db: DatabaseSync, id: string): Readonly<Record<string, unknown>> => {
-    const rows = db.prepare("SELECT data_json FROM events WHERE subject = ? AND kind IN ('seat-opened', 'seat-status') ORDER BY id").all(id)
-    const merged: Record<string, unknown> = {}
-    for (const row of rows) {
-        const data: unknown = JSON.parse(text(row.data_json))
-        const facts = typeof data === "object" && data !== null && "facts" in data ? data.facts : undefined
-        if (typeof facts === "object" && facts !== null) Object.assign(merged, facts)
-    }
-    return merged
+/** What a seat is opened with: who, on which task and attempt, and the launch it is about to send. */
+export interface SeatOpening {
+    readonly role: SeatRole
+    readonly agent: string
+    readonly model: string
+    readonly taskId: string
+    readonly attemptId: string
+    readonly requestId: string
+    readonly launch: unknown
 }
 
-/** Opens a seat row in `starting` before its launch is issued, so a launch that dies half-way still leaves its trace. */
-export const openSeat = (db: DatabaseSync, seat: { readonly role: SeatRole; readonly agent: string; readonly taskId: string; readonly facts?: unknown }): SeatRow => {
+/** Opens a seat row in `starting` before its launch is issued, so a launch that dies half-way still leaves its trace (and its launch to replay). */
+export const openSeat = (db: DatabaseSync, seat: SeatOpening): SeatRow => {
     const id = `s-${randomUUID().slice(0, 8)}`
-    db.prepare("INSERT INTO seats (id, role, agent, handle, task_id, status, last_pong_at, started_at) VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)").run(
-        id,
-        seat.role,
-        seat.agent,
-        seat.taskId,
-        SEAT_STARTING,
-        now(),
-    )
-    recordEvent(db, "seat-opened", id, { role: seat.role, agent: seat.agent, taskId: seat.taskId, ...(seat.facts === undefined ? {} : { facts: seat.facts }) })
+    db.prepare(
+        "INSERT INTO seats (id, role, agent, model, attempt_id, handle, task_id, status, request_id, run_id, launch_json, last_pong_at, started_at, ended_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, ?, NULL, ?, NULL)",
+    ).run(id, seat.role, seat.agent, seat.model, seat.attemptId, seat.taskId, SEAT_STARTING, seat.requestId, JSON.stringify(seat.launch), now())
+    recordEvent(db, "seat-opened", id, { role: seat.role, agent: seat.agent, model: seat.model, taskId: seat.taskId, attempt: seat.attemptId, request: seat.requestId })
     return getSeat(db, id)
 }
 
-/** Records what Orca said about a seat: its status, and its dispatch handle once known; `facts` go to the event log as they were. */
-export const recordSeat = (db: DatabaseSync, id: string, update: { readonly status: SeatStatus; readonly handle?: string; readonly facts?: unknown }): SeatRow => {
+/** What Orca said about a seat: its status, its dispatch handle and Run once known; `facts` go to the event log as they were. */
+export interface SeatUpdate {
+    readonly status: SeatStatus
+    readonly handle?: string
+    readonly runId?: string
+    readonly facts?: unknown
+}
+
+/** Records what Orca said about a seat; a seat that reaches a closed status gets its end time once. */
+export const recordSeat = (db: DatabaseSync, id: string, update: SeatUpdate): SeatRow => {
     const seat = getSeat(db, id)
-    db.prepare("UPDATE seats SET status = ?, handle = COALESCE(?, handle) WHERE id = ?").run(update.status, update.handle ?? null, id)
-    recordEvent(db, "seat-status", id, { from: seat.status, to: update.status, ...(update.handle === undefined ? {} : { handle: update.handle }), ...(update.facts === undefined ? {} : { facts: update.facts }) })
+    const endedAt = CLOSED_SEAT_STATUSES.includes(update.status) ? now() : null
+    db.prepare("UPDATE seats SET status = ?, handle = COALESCE(?, handle), run_id = COALESCE(?, run_id), ended_at = COALESCE(ended_at, ?) WHERE id = ?").run(
+        update.status,
+        update.handle ?? null,
+        update.runId ?? null,
+        endedAt,
+        id,
+    )
+    recordEvent(db, "seat-status", id, {
+        from: seat.status,
+        to: update.status,
+        ...(update.handle === undefined ? {} : { handle: update.handle }),
+        ...(update.runId === undefined ? {} : { runId: update.runId }),
+        ...(update.facts === undefined ? {} : { facts: update.facts }),
+    })
     return getSeat(db, id)
 }
 
@@ -125,14 +156,15 @@ export const recordSeat = (db: DatabaseSync, id: string, update: { readonly stat
 export interface SeatClosing {
     readonly seat: string
     readonly handle: string | null
-    readonly outcome: "closed" | "stopped" | "not-stopped" | "no-dispatch"
+    readonly outcome: "closed" | "stopped" | "not-stopped" | "no-dispatch" | "launch-unknown"
     readonly closed: WorkerClosed | null
 }
 
 /**
- * Stops and releases every open seat of a task through Orca and records each answer; for a task that ended (done) or is being
- * cancelled. A seat still starting has no dispatch yet: its own `seat start` closes the worker once it sees the task is no
- * longer its own. Opens its own ledger connection, so call it outside a transaction.
+ * Stops and releases every open seat of a task through Orca and records each answer; for a task that ended (done or failed) or
+ * is being cancelled. A seat still starting has no dispatch yet: its own `seat start` closes the worker once it sees the task is
+ * no longer its own. A launch whose outcome is unknown and named no dispatch may have a worker nobody can address yet: it is
+ * reported `launch-unknown` (a resume learns its dispatch). Opens its own ledger connection, so call it outside a transaction.
  */
 export const closeSeatsOfTask = async (root: string, taskId: string): Promise<SeatClosing[]> => {
     const db = openLedger(root)
@@ -143,7 +175,7 @@ export const closeSeatsOfTask = async (root: string, taskId: string): Promise<Se
         const closings: SeatClosing[] = []
         for (const seat of open) {
             if (seat.handle === null || binary === undefined) {
-                closings.push({ seat: seat.id, handle: null, outcome: "no-dispatch", closed: null })
+                closings.push({ seat: seat.id, handle: null, outcome: seat.status === SEAT_LAUNCH_UNKNOWN ? "launch-unknown" : "no-dispatch", closed: null })
                 continue
             }
             const closed = await closeWorker(binary, seat.handle, root)

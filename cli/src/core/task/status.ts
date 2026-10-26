@@ -116,7 +116,7 @@ const describe = (detail: TaskDetail): string => {
     ]
     if (attempts.length > 0) lines.push("", formatTable([["ATTEMPT", "AGENT", "OUTCOME", "VERDICT", "STARTED"], ...attempts.map((attempt) => [attempt.id, attempt.agent ?? "-", attempt.outcome ?? "-", attempt.verdict ?? "-", attempt.startedAt])]))
     if (result !== null) lines.push("", `result: ${result.status} on ${result.attemptId} at ${result.filedAt}`)
-    if (seats.length > 0) lines.push("", formatTable([["SEAT", "AGENT", "STATUS", "DISPATCH", "STARTED"], ...seats.map((seat) => [seat.id, seat.agent ?? "-", seat.status, seat.handle ?? "-", seat.startedAt])]))
+    if (seats.length > 0) lines.push("", formatTable([["SEAT", "AGENT", "MODEL", "STATUS", "DISPATCH", "STARTED", "ENDED"], ...seats.map((seat) => [seat.id, seat.agent ?? "-", seat.model ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, seat.endedAt ?? "-"])]))
     if (leases.length > 0) lines.push("", formatTable([["LEASE", "DUE", "HELD"], ...leases.map((lease) => [lease.path, `${lease.expiresAt}${lease.overdue ? " (overdue)" : ""}`, lease.live ? "yes" : "no"])]))
     for (const dir of preserved) lines.push(`preserved: ${dir}`)
     if (checkRuns.length > 0) lines.push("", formatTable([["CHECK", "RUNNER", "STATUS", "RAN"], ...checkRuns.map((run) => [run.name, run.runner, run.status, run.ranAt])]))

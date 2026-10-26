@@ -22,7 +22,7 @@ import {
     workerStartFlags,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, openSeat, recordSeat, seatFacts, seatsOfTask } from "../../harness/seats.js"
+import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, openSeat, recordSeat, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { getTask, latestAttempt, openAttempt, recordEvent, setStatus } from "../../harness/tasks.js"
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
@@ -83,7 +83,7 @@ const worktreeSelector = (value: string | undefined, cwd: string, root: string):
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-/** Everything one launch sends to Orca, stored on its seat (facts.launch) so a resume replays exactly the same calls and request ids. */
+/** Everything one launch sends to Orca, stored on its seat (seats.launch_json) so a resume replays exactly the same calls and request ids. */
 const launchRecordSchema = z.object({
     attempt: z.string(),
     objective: z.string(),
@@ -150,7 +150,7 @@ const launch = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, recor
             // No worker-start was issued, so whatever happened to the Run, no worker can be running.
             return { kind: "failed", runId: null, dispatchId: null, error: asRefusal(error) }
         }
-        recordSeat(db, seat.id, { status: SEAT_STARTING, facts: { runId } })
+        recordSeat(db, seat.id, { status: SEAT_STARTING, runId })
     }
     try {
         return { kind: "ready", runId, started: await workerStart(binary, startInput(record, runId), cwd) }
@@ -174,18 +174,10 @@ const endAttempt = (db: DatabaseSync, attemptId: string, outcome: string): void 
     db.prepare("UPDATE attempts SET outcome = ?, ended_at = ? WHERE id = ? AND outcome IS NULL").run(outcome, now(), attemptId)
 }
 
-/**
- * Puts a task whose launch certainly failed back in the queue: losing a try to an Orca hiccup is wrong. This needs the
- * transitions running -> queued and effect_unknown -> queued ("launch rolled back"); until tasks.ts has them, the refusal
- * is reported instead and the task keeps its state.
- */
+/** Puts a task whose launch certainly failed back in the queue (launch rolled back): losing a try to an Orca hiccup is wrong. */
 const rollBack = (db: DatabaseSync, taskId: string): string => {
-    try {
-        setStatus(db, taskId, "queued")
-        return `task ${taskId} is queued again`
-    } catch (error: unknown) {
-        return `task ${taskId} was not rolled back (${messageOf(error)})`
-    }
+    setStatus(db, taskId, "queued")
+    return `task ${taskId} is queued again`
 }
 
 const closeNote = (closed: WorkerClosed | null): string => (closed === null ? "" : `; worker ${closed.dispatchId}: stop ${closed.stop}, release ${closed.release}`)
@@ -245,7 +237,7 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     }
 
     const { started, runId } = launched
-    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, facts: { runId, orcaTask: started.taskId, terminal: started.terminal, effective: started.effective } })
+    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, runId, facts: { orcaTask: started.taskId, terminal: started.terminal, effective: started.effective } })
     // Attest the launch from worker-show; an Orca that does not answer proves nothing about the worker, so it is only noted.
     const shown: WorkerShown | string = await workerShow(binary, started.dispatchId, cwd).catch((error: unknown) => messageOf(error))
     const effective = typeof shown === "string" ? started.effective : (shown.effective ?? started.effective)
@@ -323,7 +315,7 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
             renewLeases(db, current)
             const files = writeBrief(running, ops, root)
             const record = launchRecord(running, files, options, attempt.id)
-            const seat = openSeat(db, { role: "worker", agent: options.agent, taskId: current.id, facts: { attempt: attempt.id, model: options.model, effort: options.effort ?? null, worktree: record.start.worktree, launch: record } })
+            const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
             return { task: running, seat, record, files }
         })
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, cwd)
@@ -356,13 +348,12 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
                 (seat.status === SEAT_LAUNCH_UNKNOWN || (seat.status === SEAT_STARTING && seat.handle === null)) &&
                 (task.status === "effect_unknown" || seat.status === SEAT_STARTING)
             if (!resumable || attempt === undefined) throw new Refusal("SEAT_NOT_RESUMABLE", `task ${task.id} is ${task.status} with ${seat === undefined ? "no open seat" : `seat ${seat.id} ${seat.status}`}; only a launch whose outcome is unknown resumes`)
-            const facts = seatFacts(db, seat.id)
-            const parsed = launchRecordSchema.safeParse(facts.launch)
+            const parsed = launchRecordSchema.safeParse(seat.launch)
             if (!parsed.success || parsed.data.attempt !== attempt.id) throw new Refusal("SEAT_NOT_RESUMABLE", `seat ${seat.id} carries no launch record of attempt ${attempt.id}; it cannot be replayed`)
             assertLeasesHeld(db, task)
             renewLeases(db, task)
             recordEvent(db, "seat-resume", task.id, { seat: seat.id, attempt: attempt.id, request: parsed.data.start.retryRequest })
-            const runId = typeof facts.runId === "string" ? facts.runId : parsed.data.run
+            const runId = seat.runId ?? parsed.data.run
             return { task, seat, record: parsed.data, runId }
         })
         const files = writeBrief(claim.task, loadOps(), root)

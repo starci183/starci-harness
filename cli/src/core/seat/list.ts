@@ -65,8 +65,8 @@ export const seatListVerb = defineVerb({
         }
         const data: SeatListData = { ledger, seats }
         if (seats.length === 0) return { data, message: "no seats" }
-        const header = ["SEAT", "ROLE", "AGENT", "TASK", "STATUS", "DISPATCH", "STARTED", ...(flags.live ? ["ORCA"] : [])]
-        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, ...(flags.live ? [liveCell(seat.live)] : [])])
+        const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", ...(flags.live ? ["ORCA"] : [])]
+        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.model ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, ...(flags.live ? [liveCell(seat.live)] : [])])
         return { data, message: formatTable([header, ...table]) }
     },
 })
