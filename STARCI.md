@@ -145,6 +145,15 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
   4. It records the graph version and the classification, then resumes dispatch from the new graph.
 - **Owner gate:** when a replan drops or redoes more than the owner's threshold, the Kernel returns the plan to the Supervisor, which asks the owner before resuming.
 - **Stop:** `graceful` dispatches nothing new and waits for running tasks. `hard` cancels every seat at once with the `cancel` command.
+- **A feature added while several workflows run.** The Supervisor first maps the impact: which workflow owns the paths and outputs the feature touches.
+  - It amends only the owners. A workflow the feature does not touch keeps running unfrozen.
+  - When the feature spans owners, each owner gets its part, and the cross-workflow dependency is declared on the other owner's output (its contract hash). If no owner fits, it starts a new workflow.
+  - It checks the `allowPaths` of the new tasks against every running workflow and serializes the overlaps.
+  - Done work is kept, and only queued tasks are rewritten, which is cheap because they never ran.
+  - Example: the realtime bell for pending approvals.
+    - The chat workflow owns `platform/realtime`. It keeps its done hub and door and adds an approvals topic. Its queued FE subscription and UAT tasks get new contracts.
+    - The agent-pages workflow owns `approval-requests`. It adds the event that the topic waits on.
+    - The billing workflow is untouched.
 
 ### Storage: one SQLite file per project
 There are four tables, instead of about 50 runtime tables and 90 machine tables:
