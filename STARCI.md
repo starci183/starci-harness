@@ -50,39 +50,77 @@ Parity gaps with the old CLI, by design for now:
 - `release publish` has no clean-install proof, canon rebind or example re-pin. Those belong to the runtime's canon packages, not to a product.
 - Roles are declared on every verb but not yet enforced. Enforcement needs the caller's role, from the seat or an env var.
 
-## Proposed verb set (for the owner's review)
+## Final lists: ops and CLI (owner, 2026-10-27)
 
-The old CLI has 268 verbs in 30 groups (see the inventory in `starci-academy-backend/.claude/STARCI.md`). The proposal keeps what each edition needs and folds the rest.
+This section is the one list of worker labels and verbs. The tables further down ("CLI of the harness", "Verbs added to the harness set") explain the harness verbs, and this list supersedes them where the two differ.
 
-### Core (both editions)
-- `version`, `explain`, `doctor`
-- `check` holds run (scoped), lint, typecheck and unit. It replaces the one-verb groups check, lint and typecheck, and gate unit.
-- `git` holds commit, sync and backup.
-- `release` holds push (light gate), cut (tag only), publish, ci-status and notes.
-- `pattern` holds list, show and add. It covers the canonical capabilities (old `app add` and `app new`), and the lite edition leads with it.
-- `app` holds scaffold, sync, check, emit, db, secret, coverage and hygiene. The `--edition` given at scaffold is fixed.
+### Ops: one worker, seven labels
 
-### Lite (agent in chat, pattern first)
-- `app info`
-- `supabase` holds start, stop, status and cloud.
-- `stack` holds deploy, verify and rollback (Swarm, one api).
-- `docker` holds build, up and down.
+Every op is the same worker running `ops/worker.md`. A label is a routing hint plus default checks, declared once in `ops/labels.yaml`. The Kernel writes the contract, and the label only helps it pick the agent and the presets.
 
-### Full (workflows in Orca)
-- `workflow` holds define, start, status, stop and archive.
-- `task`, `msg` and `seat` replace the old kernel's watching verbs. See "Harness core" below. Without observe, nudge, critic or redesign, the Kernel needs only plan, send, wait, verify, escalate and status.
-- `lane` holds workers and worktrees (old worker, machine worktrees and supervisor gc).
-- `supervisor` takes the same task protocol, plus the owner channel: status, decide and tell.
-- `work` collects the drawing steps under one `work draw <step>`, plus brand, graph and validate.
-- `uat` holds record and slots.
-- `app add reactor|saga|projection` and `test-world`.
-- `stack` keeps the full infra (Kafka, Keycloak, test world).
+| label | the work | default checks (`ops/checks.yaml`) | difficulty floor | host tools |
+|---|---|---|---|---|
+| `code` | scaffold, implement, fix, refactor, remove a feature | check-run-green, paths-only, tests-pass (related) | medium | git, node |
+| `test` | write the tests of one slice, inside test paths | tests-pass (the new tests), paths-only (test paths) | medium | git, node |
+| `ui` | draw screens, generate assets, grow the Grammar | renders (viewports), check-run-green, paths-only | hard | git, node, browser |
+| `verify` | run one heavy suite the goal asks for (perf, security, e2e) and report it | json-schema (suite report) | medium | git, node, docker |
+| `uat` | walk the flows in a browser with evidence | json-schema (flow report), renders (evidence) | medium | browser |
+| `docs` | documentation and product content | paths-only, doc-language | easy | git |
+| `deliver` | publish, deploy or migrate one target and probe it live | probe (url/registry/migration) | hard | git, node, docker |
 
-### Removed or hidden
-- Removed:
-  - `supervisor push`, which still says "run full suites then push", against ruling push-main-after-scoped-check;
-  - the 21 verbs nothing references, unless the owner keeps one.
-- Hidden, still callable by hooks and seats: `guard *`, `orca terminal-*`, `reconciler once`, `supervisor watchdog`.
+The Kernel's own work is plan, decide and finish. The Supervisor's is the owner channel, operations, land and push, and CI-red routing. The Owner's is taste and acceptance.
+
+### CLI: 79 verbs in 4 sets
+
+**Core: both editions, every role (26)**
+
+| group | verbs |
+|---|---|
+| (top) | `version`, `explain`, `doctor` |
+| `check` | `run`, `lint`, `typecheck`, `unit` |
+| `git` | `commit`, `sync`, `backup` |
+| `release` | `push`, `cut`, `publish`, `ci-status`, `notes` |
+| `contract` | `new`, `check` |
+| `task` | `verify` |
+| `app` | `scaffold`, `sync`, `check`, `info`, `emit`, `db`, `secret` |
+| `pattern` | `list`, `show`, `add` |
+
+**Lite apps (agent in chat) (10)**
+
+| group | verbs |
+|---|---|
+| `supabase` | `start`, `stop`, `status`, `cloud` |
+| `stack` | `deploy`, `verify`, `rollback` |
+| `docker` | `build`, `up`, `down` |
+
+**Full apps (2 + full stack infra)**
+
+| group | verbs |
+|---|---|
+| `app add` | `reactor`, `saga`, `projection` (the patterns lite refuses) |
+| `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
+| `uat` | `record` (the browser recorder a `uat` worker uses) |
+
+**Harness: full edition, Orca workflows (41)**
+
+| group | verbs | who |
+|---|---|---|
+| `workflow` | `define`, `start`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone) |
+| `plan` | `show`, `diff`, `apply` | Kernel |
+| `task` | `send`, `wait`, `result`, `status`, `cancel` | Kernel and Supervisor send; a worker runs `result` |
+| `msg` | `send` (hidden: `recv`, `reply`) | Kernel, Supervisor |
+| `seat` | `start`, `list`, `stop` (hidden: `run`) | Kernel, Supervisor |
+| `route` | `explain` | everyone |
+| `provider` | `status`, `recover` | Supervisor |
+| `budget` | `show`, `raise` | raise: owner or Supervisor |
+| `lease` | `list` | everyone |
+| `daemon` | `start`, `stop`, `status` (hidden: `sweep`) | owner, Supervisor |
+| `supervisor` | `start`, `stop`, `status`, `tell`, `decide` | owner |
+| `debug` | `open`, `report` | Supervisor opens; Debug reports |
+
+**Hidden** (called by the daemon, seat runner or hooks, not listed in `explain`): `msg recv|reply`, `seat run`, `daemon sweep`, the PreToolUse `guard`.
+
+**Removed from the legacy 268:** every op-watching Kernel verb (observe, nudge, critic, redesign, decisions menu, foundations, cut-seam), the 39 op manifests and `route op`, `supervisor push`, the qualification store, and the 21 unreferenced verbs.
 
 ## Harness core (owner model, 2026-10-27)
 
