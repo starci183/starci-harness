@@ -94,7 +94,8 @@ export const locateOrca = async (cwd: string): Promise<OrcaBinary> => {
     if (installed !== undefined && existsSync(installed)) return { path: installed, source: "install" }
     const name = pathName()
     if ((await probeTool(name, ["--version"], cwd)) !== undefined) return { path: name, source: "PATH" }
-    throw new Refusal("ORCA_MISSING", `no orca binary: set STARCI_ORCA_BIN, install the Orca app${installed === undefined ? "" : ` (${installed})`} or put ${name} on PATH`)
+    const where = installed === undefined ? "" : " (" + installed + ")"
+    throw new Refusal("ORCA_MISSING", `no orca binary: set STARCI_ORCA_BIN, install the Orca app${where} or put ${name} on PATH`)
 }
 
 /** Orca's worktree selectors; anything else is a filesystem path and becomes `path:<absolute path>`. */
@@ -175,11 +176,16 @@ const effectOfRefusal = (reply: z.infer<typeof replySchema>): OrcaEffect => {
 
 const stderrNote = (run: ToolRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
 
+const flagArgs = (name: string, value: string | true | undefined): string[] => {
+    if (value === undefined) return []
+    return value === true ? [`--${name}`] : [`--${name}`, value]
+}
+
 /** The argv of any orca `<group> <command>` (terminal, repo) with its flags and --json; a flag whose value is true is given bare. */
 export const orcaToolArgv = (group: string, command: string, flags: Readonly<Record<string, string | true | undefined>>): string[] => [
     group,
     command,
-    ...Object.entries(flags).flatMap(([name, value]) => (value === undefined ? [] : value === true ? [`--${name}`] : [`--${name}`, value])),
+    ...Object.entries(flags).flatMap(([name, value]) => flagArgs(name, value)),
     "--json",
 ]
 
@@ -238,7 +244,7 @@ export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<{ r
 }
 
 /** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
-const TERMINAL_GONE_CODES: readonly string[] = ["terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"]
+const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
 
 /**
  * `orca terminal close --terminal <handle> --tab`: closes the terminal's whole tab. `closed` when Orca closed it, `gone` when
@@ -249,7 +255,7 @@ export const terminalClose = async (binary: OrcaBinary, handle: string, cwd: str
         await callOrcaArgv(binary, orcaToolArgv("terminal", "close", { terminal: handle, tab: true }), "orca terminal close", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
         return "closed"
     } catch (error: unknown) {
-        if (error instanceof OrcaFailure && error.orcaCode !== undefined && TERMINAL_GONE_CODES.includes(error.orcaCode)) return "gone"
+        if (error instanceof OrcaFailure && error.orcaCode !== undefined && TERMINAL_GONE_CODES.has(error.orcaCode)) return "gone"
         throw error
     }
 }
@@ -501,11 +507,17 @@ export interface WorkerClosed {
     readonly tab: string
 }
 
-const RELEASED_STATES: readonly string[] = ["released", "already_released"]
+const RELEASED_STATES: ReadonlySet<string> = new Set(["released", "already_released"])
 
 const errorText = (error: unknown): string => `error: ${error instanceof Error ? error.message : String(error)}`
 
 const stateOrError = async (step: Promise<string>): Promise<string> => step.catch(errorText)
+
+const tabOutcome = async (binary: OrcaBinary, settled: boolean, release: string, terminal: string | null, cwd: string): Promise<string> => {
+    if (!settled) return `kept: the worker is not released (${release})`
+    if (terminal === null) return "kept: no terminal handle is known"
+    return terminalClose(binary, terminal, cwd).catch(errorText)
+}
 
 /**
  * Stops then releases one worker; both steps always run (release is idempotent), so a half-closed worker is finished on a repeat.
@@ -516,9 +528,9 @@ const stateOrError = async (step: Promise<string>): Promise<string> => step.catc
 export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string, terminal: string | null = null): Promise<WorkerClosed> => {
     const stop = await stateOrError(workerStop(binary, dispatchId, cwd))
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
-    const settled = RELEASED_STATES.includes(release)
+    const settled = RELEASED_STATES.has(release)
     const stopped = settled || (!stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop))
-    const tab = !settled ? `kept: the worker is not released (${release})` : terminal === null ? "kept: no terminal handle is known" : await terminalClose(binary, terminal, cwd).catch(errorText)
+    const tab = await tabOutcome(binary, settled, release, terminal, cwd)
     return { dispatchId, stop, release, stopped, settled, terminal, tab }
 }
 

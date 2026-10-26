@@ -65,7 +65,7 @@ export interface RunningWorkers {
 }
 
 // A seat that is stopped, lost or closed runs no worker; anything else (starting, ready, launch-unknown, ...) may hold a slot.
-const NOT_RUNNING: readonly string[] = [...CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST]
+const NOT_RUNNING: ReadonlySet<string> = new Set([...CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST])
 
 /**
  * Counts the open worker seats of every ledger the host registry lists, read-only: a pool's slots are host-wide, so the
@@ -83,7 +83,7 @@ export const runningWorkers = (): RunningWorkers => {
             for (const row of ledger.prepare("SELECT * FROM seats WHERE role = 'worker'").all()) {
                 const status = textOf(row.status) ?? ""
                 const agent = textOf(row.agent)
-                if (NOT_RUNNING.includes(status) || agent === null || textOf(row.ended_at) !== null) continue
+                if (NOT_RUNNING.has(status) || agent === null || textOf(row.ended_at) !== null) continue
                 const member = `${agent}/${textOf(row.model) ?? "?"}`
                 byMember.set(member, (byMember.get(member) ?? 0) + 1)
                 byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)

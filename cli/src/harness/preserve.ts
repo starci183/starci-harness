@@ -5,6 +5,7 @@ import { Refusal } from "../shared/errors.js"
 import { git } from "../shared/git.js"
 import { leasePaths } from "./leases.js"
 import { projectDir } from "./ledger.js"
+import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
 import { recordEvent } from "./tasks.js"
 
@@ -33,7 +34,11 @@ const pathspecs = (task: TaskRow): string[] => leasePaths(task).map(literal)
 const freshDir = (root: string, taskId: string): string => {
     const base = join(projectDir(root), "preserved", taskId)
     let dir = base
-    for (let n = 2; existsSync(dir); n += 1) dir = `${base}.${String(n)}`
+    let n = 2
+    while (existsSync(dir)) {
+        dir = `${base}.${String(n)}`
+        n += 1
+    }
     return dir
 }
 
@@ -73,8 +78,8 @@ export const preserveTaskPaths = async (root: string, task: TaskRow, db: Databas
     // Only after the copy is on disk is the work tree put back: files HEAD knows come back from HEAD, files it does not know leave.
     const inHead = status.filter((entry) => entry.kind !== "A").map((entry) => entry.path)
     const added = status.filter((entry) => entry.kind === "A").map((entry) => entry.path)
-    for (const part of chunks(inHead)) await git(root, ["checkout", "HEAD", "--", ...part.map(literal)])
-    for (const part of chunks(added)) await git(root, ["rm", "-q", "-f", "--", ...part.map(literal)])
+    await inOrder(chunks(inHead), (part) => git(root, ["checkout", "HEAD", "--", ...part.map(literal)]))
+    await inOrder(chunks(added), (part) => git(root, ["rm", "-q", "-f", "--", ...part.map(literal)]))
     for (const file of untracked) rmSync(join(root, file), { force: true })
     return { dir, patch, tracked, untracked }
 }

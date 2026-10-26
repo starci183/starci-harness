@@ -12,6 +12,7 @@ import type { Contract } from "./contract.js"
 import { now } from "./ledger.js"
 import { loadOps } from "./ops.js"
 import type { ResultSource } from "./run-checks.js"
+import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
 import { appendEvidence, digestRun, judgeUatResult, parseUatRecord, placeOfRecord, runFiles, uatBinding, writeRecordState } from "./work.js"
 import type { EvidenceRun, UatBinding } from "./work.js"
@@ -96,21 +97,24 @@ const tryLock = (db: DatabaseSync, me: Verifier): Verifier | undefined => {
     }
 }
 
+/** Takes the settle lock, polling until `deadline`; refuses with SETTLE_BUSY when its holder outlasts it. */
+const acquireLock = async (db: DatabaseSync, me: Verifier, deadline: number): Promise<void> => {
+    const holder = tryLock(db, me)
+    if (holder === undefined) return
+    if (Date.now() >= deadline) {
+        throw new Refusal("SETTLE_BUSY", `task ${holder.task} has been verifying since ${holder.at} (pid ${String(holder.pid)} on ${holder.host}); nothing changed, verify again when it ends`)
+    }
+    await sleep(LOCK_POLL_MS)
+    await acquireLock(db, me, deadline)
+}
+
 /**
  * Runs `work` while this process holds the project's settle lock (a ledger row), so verifies that settle run one at a time
  * (side serialisation): each builds its candidate on the HEAD the previous one left. A holder whose process died is taken
  * over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing.
  */
 export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, work: () => Promise<T>): Promise<T> => {
-    const deadline = Date.now() + waitMs
-    for (;;) {
-        const holder = tryLock(db, me)
-        if (holder === undefined) break
-        if (Date.now() >= deadline) {
-            throw new Refusal("SETTLE_BUSY", `task ${holder.task} has been verifying since ${holder.at} (pid ${String(holder.pid)} on ${holder.host}); nothing changed, verify again when it ends`)
-        }
-        await sleep(LOCK_POLL_MS)
-    }
+    await acquireLock(db, me, Date.now() + waitMs)
     try {
         return await work()
     } finally {
@@ -125,15 +129,19 @@ const INDEX_RETRY_MS = 400
 /** Refreshes the user's index for the settled paths; best effort, since the branch already moved: a held index.lock is retried, then reported. */
 const refreshIndex = async (root: string, paths: readonly string[]): Promise<string[]> => {
     if (paths.length === 0) return []
-    let last = ""
-    for (let attempt = 1; attempt <= INDEX_TRIES; attempt++) {
-        const run = await captureTool("git", ["reset", "-q", "--", ...paths.map((path) => `:(top,literal)${path}`)], root)
-        if (run.exitCode === 0) return []
-        last = headline(run.stderr)
-        if (!last.includes("index.lock")) break
-        await sleep(INDEX_RETRY_MS * attempt)
-    }
+    const last = await resetIndex(root, paths, 1)
+    if (last === undefined) return []
     return [`the branch moved, but the index of the settled paths was not refreshed (${last}); \`git status\` may show them changed until \`git reset -q -- <paths>\` runs`]
+}
+
+/** One `git reset` of the paths, retried while a held index.lock is the only complaint; undefined when it worked, else the last complaint. */
+const resetIndex = async (root: string, paths: readonly string[], attempt: number): Promise<string | undefined> => {
+    const run = await captureTool("git", ["reset", "-q", "--", ...paths.map((path) => `:(top,literal)${path}`)], root)
+    if (run.exitCode === 0) return undefined
+    const last = headline(run.stderr)
+    if (!last.includes("index.lock") || attempt >= INDEX_TRIES) return last
+    await sleep(INDEX_RETRY_MS * attempt)
+    return resetIndex(root, paths, attempt + 1)
 }
 
 const literal = (path: string): string => `:(top,literal)${path}`
@@ -200,18 +208,21 @@ const commitWork = async (root: string, onto: string, parent: string, files: rea
     const index = `${scratch}.index`
     const indexed = async (args: readonly string[]): Promise<string> => {
         const run = await captureTool("git", args, root, { env: { GIT_INDEX_FILE: index } })
-        if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${headline(run.stderr) || `exit ${String(run.exitCode)}`}`)
+        if (run.exitCode !== 0) {
+            const why = headline(run.stderr) || `exit ${String(run.exitCode)}`
+            throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${why}`)
+        }
         return run.stdout
     }
     try {
         await indexed(["read-tree", onto])
-        for (const file of files) {
+        await inOrder(files, async (file) => {
             writeFileSync(scratch, file.text)
             const blob = await git(root, ["hash-object", "-w", `--path=${file.path}`, scratch])
             const listed = await git(root, ["ls-tree", onto, "--", literal(file.path)])
             const mode = listed === "" ? "100644" : (listed.split(" ")[0] ?? "100644")
             await indexed(["update-index", "--add", "--cacheinfo", `${mode},${blob},${file.path}`])
-        }
+        })
         const tree = await indexed(["write-tree"])
         return await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
     } finally {
@@ -239,10 +250,12 @@ const skippedWrite = (binding: UatBinding, verdict: WorkWrite["verdict"], step: 
 })
 
 /** One line on what a settle did to the Work, for the verify report. */
-export const workLine = (work: WorkWrite): string =>
-    work.skipped === null
-        ? `work: ${work.record} -> state ${String(work.state)}, activity ${String(work.activity)}${work.step === null ? "" : ` at step ${String(work.step)}`}; run ${work.run} cited in its evidence.yaml (${String(work.commit?.slice(0, 12))})${work.warning === null ? "" : `; warning: ${work.warning}`}`
-        : `work: ${work.record} left as it was: ${work.skipped}`
+export const workLine = (work: WorkWrite): string => {
+    if (work.skipped !== null) return `work: ${work.record} left as it was: ${work.skipped}`
+    const atStep = work.step === null ? "" : " at step " + String(work.step)
+    const warning = work.warning === null ? "" : "; warning: " + work.warning
+    return `work: ${work.record} -> state ${String(work.state)}, activity ${String(work.activity)}${atStep}; run ${work.run} cited in its evidence.yaml (${String(work.commit?.slice(0, 12))})${warning}`
+}
 
 /**
  * Lands exactly the candidate the checks saw: the branch moves to that commit only while it still points at the candidate's

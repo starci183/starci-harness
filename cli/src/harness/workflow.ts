@@ -88,10 +88,10 @@ export interface GraphVersion {
     readonly createdAt: string
 }
 
-const LIVE_TASK_STATUSES: readonly TaskStatus[] = ["queued", "running", "effect_unknown", "reported", "verifying"]
+const LIVE_TASK_STATUSES: ReadonlySet<TaskStatus> = new Set<TaskStatus>(["queued", "running", "effect_unknown", "reported", "verifying"])
 
 /** True for a task that was dispatched and has not ended. */
-export const isLiveTask = (task: WorkflowTask): boolean => LIVE_TASK_STATUSES.includes(task.status)
+export const isLiveTask = (task: WorkflowTask): boolean => LIVE_TASK_STATUSES.has(task.status)
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 
@@ -331,7 +331,7 @@ export const derivedStatus = (snapshot: Snapshot): { readonly status: WorkflowSt
 /** The live node states, for counting what holds a parallel slot. */
 export const isLiveView = (view: NodeView): boolean => LIVE_STATES.includes(view.state)
 
-const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort().join("\n")
+const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort((a, b) => (a < b ? -1 : Number(a > b))).join("\n")
 
 /**
  * The task a new dispatch of a node retries: the newest failed task of the same plan key doing the same work (label and

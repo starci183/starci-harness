@@ -4,16 +4,11 @@ import { Refusal } from "../shared/errors.js"
 import { now, openLedger } from "./ledger.js"
 import { closeWorker, locateOrca, tabLeftOpen, workerShow } from "./orca/client.js"
 import type { OrcaBinary, WorkerClosed } from "./orca/client.js"
+import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
 
 /** Who a seat is. P1 launches workers only; the Kernel and Supervisor seats come later. */
 export type SeatRole = "worker" | "kernel" | "supervisor" | "debug"
-
-/**
- * A seat's status is a fact, not a liveness verdict (that is P2): `starting` while the launch is issued, then the state Orca
- * last reported (`ready`, `stopped`, ...), or `launch-failed` and `released` when the harness closes it.
- */
-export type SeatStatus = string
 
 /** The status of a seat whose launch failed and whose leftovers were cleaned up (or never existed). */
 export const SEAT_LAUNCH_FAILED = "launch-failed"
@@ -45,7 +40,7 @@ export const SEAT_RELEASED = "released"
 export const SEAT_WORKER_LOST = "worker-lost"
 
 /** Statuses after which a seat holds nothing on the host. */
-export const CLOSED_SEAT_STATUSES: readonly SeatStatus[] = [SEAT_LAUNCH_FAILED, SEAT_RELEASED]
+export const CLOSED_SEAT_STATUSES: readonly string[] = [SEAT_LAUNCH_FAILED, SEAT_RELEASED]
 
 /**
  * A seat as the ledger stores it; `handle` is Orca's dispatch id, the key every worker verb takes, and `terminal` the handle of
@@ -61,7 +56,8 @@ export interface SeatRow {
     readonly handle: string | null
     readonly terminal: string | null
     readonly taskId: string | null
-    readonly status: SeatStatus
+    /** A fact, not a liveness verdict: `starting` while the launch is issued, then the state Orca last reported, or `launch-failed` and `released` when the harness closes it. */
+    readonly status: string
     readonly requestId: string | null
     readonly runId: string | null
     readonly launch: unknown
@@ -144,7 +140,7 @@ export const recordSeatLaunch = (db: DatabaseSync, id: string, launch: unknown, 
 
 /** What Orca said about a seat: its status, its dispatch handle, agent terminal and Run once known; `facts` go to the event log as they were. */
 export interface SeatUpdate {
-    readonly status: SeatStatus
+    readonly status: string
     readonly handle?: string
     readonly terminal?: string | null
     readonly runId?: string
@@ -202,6 +198,29 @@ export interface SeatClosing {
     readonly closed: WorkerClosed | null
 }
 
+const closingOutcome = (closed: WorkerClosed, lost: boolean): SeatClosing["outcome"] => {
+    if (closed.settled) return "closed"
+    if (closed.stopped) return "stopped"
+    return lost ? "lost" : "not-stopped"
+}
+
+const closedStatus = (closed: WorkerClosed, lost: boolean, current: string): string => {
+    if (closed.settled) return SEAT_RELEASED
+    return closed.stopped && !lost ? SEAT_STOPPED : current
+}
+
+const closeOneSeat = async (db: DatabaseSync, binary: OrcaBinary | undefined, seat: SeatRow, root: string, taskId: string): Promise<SeatClosing> => {
+    if (seat.handle === null || binary === undefined) {
+        return { seat: seat.id, handle: null, outcome: seat.status === SEAT_LAUNCH_UNKNOWN ? "launch-unknown" : "no-dispatch", closed: null }
+    }
+    const closed = await closeWorker(binary, seat.handle, root, await terminalOfSeat(binary, seat, root))
+    noteTab(db, seat.id, closed)
+    // Orca already said a lost worker is gone, so a stop it cannot do (dispatch_not_found) leaves nothing that writes.
+    const lost = seat.status === SEAT_WORKER_LOST
+    recordSeat(db, seat.id, { status: closedStatus(closed, lost, seat.status), facts: { closed, closedFor: taskId } })
+    return { seat: seat.id, handle: seat.handle, outcome: closingOutcome(closed, lost), closed }
+}
+
 /**
  * Stops and releases every open seat of a task through Orca, closes each released worker's tab, and records each answer; for a
  * task whose result is settled (done, failed, returned to the Kernel) or that is being cancelled. A seat still starting has no dispatch yet: its own `seat start` closes the worker once it sees the task is
@@ -214,21 +233,7 @@ export const closeSeatsOfTask = async (root: string, taskId: string): Promise<Se
         const open = seatsOfTask(db, taskId).filter(isSeatOpen)
         if (open.length === 0) return []
         const binary = open.some((seat) => seat.handle !== null) ? await locateOrca(root) : undefined
-        const closings: SeatClosing[] = []
-        for (const seat of open) {
-            if (seat.handle === null || binary === undefined) {
-                closings.push({ seat: seat.id, handle: null, outcome: seat.status === SEAT_LAUNCH_UNKNOWN ? "launch-unknown" : "no-dispatch", closed: null })
-                continue
-            }
-            const closed = await closeWorker(binary, seat.handle, root, await terminalOfSeat(binary, seat, root))
-            noteTab(db, seat.id, closed)
-            // Orca already said a lost worker is gone, so a stop it cannot do (dispatch_not_found) leaves nothing that writes.
-            const lost = seat.status === SEAT_WORKER_LOST
-            const outcome = closed.settled ? "closed" : closed.stopped ? "stopped" : lost ? "lost" : "not-stopped"
-            recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : closed.stopped && !lost ? SEAT_STOPPED : seat.status, facts: { closed, closedFor: taskId } })
-            closings.push({ seat: seat.id, handle: seat.handle, outcome, closed })
-        }
-        return closings
+        return await inOrder(open, (seat) => closeOneSeat(db, binary, seat, root, taskId))
     } finally {
         db.close()
     }

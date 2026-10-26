@@ -27,7 +27,7 @@ export interface WorkRoot {
 /** True when two paths name the same folder (case-folded on Windows). */
 export const samePath = (left: string, right: string): boolean => {
     const fold = (path: string): string => {
-        const full = resolve(path).replace(/\\/g, "/")
+        const full = resolve(path).replaceAll("\\", "/")
         return process.platform === "win32" ? full.toLowerCase() : full
     }
     return fold(left) === fold(right)
@@ -58,9 +58,10 @@ export const locateWorkRoot = async (cwd: string): Promise<WorkRoot> => {
     const ownsWork = existsSync(join(own, WORK_DIR))
     if (declared === undefined) {
         if (ownsWork) return { root: own, from: "self", hfs }
+        const naming = hfs === undefined ? "has no hfs.json naming a Work root" : `${hfs} names no Work root`
         throw new Refusal(
             "WORK_ROOT_UNKNOWN",
-            `${own} holds no ${WORK_DIR} and ${hfs === undefined ? "has no hfs.json naming a Work root" : `${hfs} names no Work root`}; add "work": {"root": "<path of the repository holding ${WORK_DIR}>"} to the app's hfs.json`,
+            `${own} holds no ${WORK_DIR} and ${naming}; add "work": {"root": "<path of the repository holding ${WORK_DIR}>"} to the app's hfs.json`,
         )
     }
     const target = resolve(dirname(hfs ?? own), declared)
@@ -75,7 +76,7 @@ export const locateWorkRoot = async (cwd: string): Promise<WorkRoot> => {
 
 const SEGMENT = "[a-z0-9][a-z0-9-]*"
 
-const UAT_ID = new RegExp(`^uat\\.(${SEGMENT})\\.(${SEGMENT}(?:\\.${SEGMENT})*)$`)
+const UAT_ID = new RegExp(String.raw`^uat\.(${SEGMENT})\.(${SEGMENT}(?:\.${SEGMENT})*)$`)
 
 /** Where a uat flow's files live, repository-relative with forward slashes: its folder, record, runs folder and evidence file. */
 export interface UatPlace {
@@ -201,12 +202,18 @@ const quoted = (value: z.infer<typeof valueSchema>): string => JSON.stringify(va
 
 const ordered = (record: UatFlow): UatFlow["steps"] => [...record.steps].sort((left, right) => left.order - right.order)
 
+const checkLines = (step: UatFlow["steps"][number]): string[] => {
+    if (step.checks === undefined || step.checks.length === 0) return []
+    const listed = step.checks.map((check) => check.id + " = " + quoted(check.expected)).join(", ")
+    return ["   Checks: " + listed]
+}
+
 const stepLines = (record: UatFlow): string[] =>
     ordered(record).flatMap((step) => [
         `${String(step.order)}. [${step.actor ?? record.actor}] ${flat(step.action)}`,
         `   Expected: ${flat(step.expected)}`,
         `   Screenshot: ${screenshotOf(step.order, record)}`,
-        ...(step.checks === undefined || step.checks.length === 0 ? [] : [`   Checks: ${step.checks.map((check) => `${check.id} = ${quoted(check.expected)}`).join(", ")}`]),
+        ...checkLines(step),
     ])
 
 /**
@@ -280,8 +287,8 @@ export const runFiles = (folder: string): string[] => {
     if (!existsSync(folder)) return []
     return readdirSync(folder, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile())
-        .map((entry) => relative(folder, join(entry.parentPath, entry.name)).replace(/\\/g, "/"))
-        .sort()
+        .map((entry) => relative(folder, join(entry.parentPath, entry.name)).replaceAll("\\", "/"))
+        .sort((a, b) => (a < b ? -1 : Number(a > b)))
 }
 
 /** The uat result a worker files, as far as the uat-flow check reads it. */
@@ -310,7 +317,7 @@ export interface UatJudgement {
     readonly failingStep: number | undefined
 }
 
-const insideFolder = (file: string): boolean => !file.startsWith("/") && !/^[A-Za-z]:/.test(file) && !file.replace(/\\/g, "/").split("/").includes("..")
+const insideFolder = (file: string): boolean => !file.startsWith("/") && !/^[A-Za-z]:/.test(file) && !file.replaceAll("\\", "/").split("/").includes("..")
 
 const stepProblems = (step: UatFlow["steps"][number], entries: readonly z.infer<typeof uatResultSchema>["steps"][number][], present: ReadonlySet<string>): UatProblem[] => {
     const order = step.order
@@ -328,7 +335,7 @@ const stepProblems = (step: UatFlow["steps"][number], entries: readonly z.infer<
     const shot = entry.screenshot
     if (shot === undefined) problems.push({ step: order, text: `${at} names no screenshot` })
     else if (!insideFolder(shot)) problems.push({ step: order, text: `${at} screenshot ${shot} lies outside the run folder` })
-    else if (!present.has(posix.normalize(shot.replace(/\\/g, "/")))) problems.push({ step: order, text: `${at} screenshot ${shot} is not in the run folder` })
+    else if (!present.has(posix.normalize(shot.replaceAll("\\", "/")))) problems.push({ step: order, text: `${at} screenshot ${shot} is not in the run folder` })
     return problems
 }
 
@@ -360,7 +367,7 @@ export const judgeUatResult = (record: UatFlow, output: unknown, present: Readon
 }
 
 // The tail keeps a trailing comment and a CRLF line end as they are.
-const TOP_SCALAR = (key: string): RegExp => new RegExp(`^(${key}:[ \\t]*)([^\\s#]+)([^\\n]*)$`)
+const TOP_SCALAR = (key: string): RegExp => new RegExp(String.raw`^(${key}:[ \t]*)([^\s#]+)([^\n]*)$`)
 
 const withoutKeys = (value: unknown, keys: readonly string[]): string => {
     const record = typeof value === "object" && value !== null ? { ...(value as Record<string, unknown>) } : {}

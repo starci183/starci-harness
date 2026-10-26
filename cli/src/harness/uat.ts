@@ -86,7 +86,8 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
     const runImage = `starci-uat:${version}-${hash}`
     if (await imageExists(runImage, cwd)) return { runImage, state: "cached", pulledBase: false, durationMs: Date.now() - started }
     const pulledBase = !(await imageExists(image, cwd))
-    progress(`preparing ${runImage} once: ${pulledBase ? `pulling ${image}, ` : ""}installing playwright@${version}`)
+    const pulling = pulledBase ? "pulling " + image + ", " : ""
+    progress(`preparing ${runImage} once: ${pulling}installing playwright@${version}`)
     const context = mkdtempSync(join(tmpdir(), "starci-uat-image-"))
     try {
         writeFileSync(join(context, "Dockerfile"), dockerfile)
@@ -94,7 +95,8 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
         const labels = ["--label", "starci.uat=1", "--label", `starci.uat.base=${image}`, "--label", `starci.uat.playwright=${version}`]
         const build = await captureTool("docker", ["build", "--tag", runImage, ...labels, context], cwd, { timeoutMs: config.prepareTimeoutMs })
         if (build.exitCode !== 0) {
-            const why = build.timedOut ? `timed out after ${String(config.prepareTimeoutMs)} ms` : headline(build.stderr) || `exit ${String(build.exitCode)}`
+            const failure = headline(build.stderr) || "exit " + String(build.exitCode)
+            const why = build.timedOut ? "timed out after " + String(config.prepareTimeoutMs) + " ms" : failure
             throw new Refusal("UAT_PREPARE_FAILED", `building ${runImage} from ${image} failed: ${why}`)
         }
     } finally {
@@ -106,7 +108,10 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
 /** Refuses unless a Linux Docker engine answers; returns its server version. */
 export const dockerServer = async (cwd: string): Promise<string> => {
     const info = await captureTool("docker", ["info", "--format", "{{.OSType}} {{.ServerVersion}}"], cwd, { timeoutMs: 30_000 })
-    if (info.exitCode !== 0) throw new Refusal("UAT_DOCKER_UNREACHABLE", `no Docker engine answers: ${headline(info.stderr) || `exit ${String(info.exitCode)}`}`)
+    if (info.exitCode !== 0) {
+        const why = headline(info.stderr) || "exit " + String(info.exitCode)
+        throw new Refusal("UAT_DOCKER_UNREACHABLE", `no Docker engine answers: ${why}`)
+    }
     const [os, version] = info.stdout.split(" ")
     if (os !== "linux") throw new Refusal("UAT_DOCKER_NOT_LINUX", `the Docker engine runs ${os ?? "an unknown OS"} containers; the uat image needs Linux containers`)
     return version ?? ""
@@ -120,7 +125,7 @@ export const fileStamps = (dir: string): Map<string, string> => {
         if (!entry.isFile()) continue
         const path = join(entry.parentPath, entry.name)
         const stat = statSync(path)
-        stamps.set(relative(dir, path).split("\\").join("/"), `${String(stat.size)}:${String(stat.mtimeMs)}`)
+        stamps.set(relative(dir, path).replaceAll("\\", "/"), `${String(stat.size)}:${String(stat.mtimeMs)}`)
     }
     return stamps
 }
