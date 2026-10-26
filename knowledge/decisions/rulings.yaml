@@ -1,0 +1,506 @@
+# The one log of owner rulings that knowledge, the grammar package and the canon lint carry. A ruling is what the
+# owner decided, in present tense and in one place; the rule it shaped states it as plain law and lives in `owner`
+# (a knowledge file and rule id, a package file, or a lint rule). Rules never carry dates or ruling citations; a
+# change that needs to point at the decision cites the ruling id here.
+#   id        stable; legacy spellings are kept so existing citations resolve (R212/case-4, control-height-40)
+#   status    live | proposed (written, awaiting the owner; the gate that depends on it stays red)
+#   absorbs   ids of earlier rulings this one replaced; a citation of an absorbed id resolves to this entry
+#   pins      digests a gate compares against; only a ruling records a pin
+# A new ruling replaces the entry it amends (replace, never append). Decisions taken by an agent and not yet
+# confirmed live in decisions/open-*.md; when the owner confirms one, it moves here and its row there is deleted.
+# Harness, release and process rulings (supervisor, release waves, push policy, loosening, draw loop) are not
+# knowledge; decisions/open-core.md lists them for policy/ and STARCI.md.
+schema: starci/rulings@1
+
+rulings:
+  # --- knowledge itself
+  - id: knowledge-product-agnostic
+    date: '2026-10-27'
+    status: live
+    ruling: "Knowledge is product-agnostic and English only; product records (brand direction, worked examples, screen records) live in that product's .starciwork."
+    owner: "knowledge/README.md"
+  - id: feedback-hardens
+    date: '2026-10-27'
+    status: live
+    ruling: "A feedback is absorbed by making the system stricter in one place (a rule rewritten where it lives, a grammar API that removes the choice, or a lint, gate or threshold), never by a case note or a second rule; each hardening records its ruling here."
+    owner: "knowledge/README.md"
+  - id: same-app-from-same-inputs
+    date: '2026-10-27'
+    status: live
+    ruling: "Every app is built from the grammar package plus knowledge and comes out the same; a visual choice an app could make two ways is a gap closed in the grammar or in ui, never left to the app."
+    owner: "knowledge/README.md; patterns/fe/README.md"
+  - id: two-grammars
+    date: '2026-10-27'
+    status: live
+    ruling: "Two grammars exist, `core` (the legacy core grammar kept faithfully) and `offset-pop` (redesigned on the contract), both implementing the grammar contract per component role; an app picks one in hfs.json. Heritage and a separate `starci` family are dropped; the legacy catalog id `starci`, source id `core` and DNA id `starci-core` all mean `core`."
+    owner: "knowledge/grammars/README.md; knowledge/grammars/contract.yaml"
+    absorbs: [heritage-family]
+
+  # --- grammar and vendor
+  - id: grammar-vendor-parity
+    date: '2026-10-25'
+    status: live
+    ruling: "Each grammar component that wraps HeroUI keeps HeroUI's anatomy, behaviour, accessibility and defaults; what a grammar may change is declared by its parity mode, and every deviation is a declared override in the wrapper manifest citing a ruling. The vendor reference is generated, never hand-written."
+    owner: "knowledge/vendor/parity.yaml; knowledge/vendor/wrappers.yaml"
+    absorbs: [grammar-vendor-wrappers-pin, grammar-vendor-wrappers-pin-final, grammar-vendor-wrappers-pin-repaints, grammar-vendor-wrappers-pin-control-height]
+    pins:
+      knowledge/vendor/wrappers.yaml: 6c17a7c16b8667208a4b3439336318954cba7108cafccf4e85c16479a39ae5f4
+  - id: repaint-default-heroui-unless-ruled
+    date: '2026-10-25'
+    status: live
+    ruling: "A grammar repaint of a property HeroUI decides stays only when a recorded ruling names it and its wrapper override cites that ruling; otherwise the CSS is removed and the vendor default shows, without waiting for the owner."
+    owner: "knowledge/vendor/wrappers.yaml"
+  - id: heroui-defaults-first
+    date: '2026-09-27'
+    status: live
+    ruling: "HeroUI and grammar defaults come first; the canvas stays the vendor background, and a brand departure is a declared brand token, never a local repaint."
+    owner: "knowledge/ui/presentation.md (Paint)"
+  - id: control-height-40
+    date: '2026-10-26'
+    status: live
+    ruling: "One control height, the vendor md (40px), is the default of every standalone control; only sm (a control nested in an item or a dense toolbar) and lg (a landing hero call to action) exist besides it; controls of one row share one height. The values are the grammar's."
+    owner: "knowledge/ui/scale.md; '@starci/grammar src/common (control height tokens)'; lint control-height (R320)"
+  - id: surfacecard-always-painted
+    date: '2026-10-25'
+    status: live
+    ruling: "A card carries its shadow on the page background and its border, without shadow, when it sits on another surface."
+    owner: "knowledge/ui/components/card.md; knowledge/grammars/core.md"
+  - id: R318/case-1
+    date: '2026-10-25'
+    status: live
+    ruling: "Apps on a grammar write layout-only CSS and every visual element lives in the grammar package; contextual field variants, panel-list alignment and composite group identities are grammar capabilities, and the canon refuses static field variants, app surface paint and stacked list padding."
+    owner: "knowledge/patterns/fe/ui.md FE-CSS-1; knowledge/ui/composition.md COLLECTION-3; lint R318"
+  - id: alert-white-surface
+    date: '2026-09-27'
+    status: live
+    ruling: "A notice is the vendor Alert on its surface with the tone on its indicator and title only; a `soft` appearance (the tone's soft tint, no shadow) is the one tinted alternative; its action is the grammar Button in the variant the Alert gives its tone."
+    owner: "knowledge/ui/components/toast-alert.md; knowledge/grammars/core.md"
+    absorbs: [ACCENT-5/case-6]
+  - id: meter-segments-h1
+    date: '2026-09-27'
+    status: live
+    ruling: "A segmented capability meter is the grammar Meter's equal segments on a thin full-width transparent track."
+    owner: "knowledge/vendor/wrappers.yaml (Meter)"
+  - id: buttons-pill
+    date: '2026-09-27'
+    status: live
+    ruling: "Buttons are pills in the core grammar (the vendor's own corner), and a button skeleton takes the same corner."
+    owner: "knowledge/grammars/core.md"
+  - id: icon-tile-neutral
+    date: '2026-09-27'
+    status: live
+    ruling: "An identity tile is neutral and spends no accent."
+    owner: "knowledge/ui/composition.md ACCENT-2"
+  - id: status-tones-follow-heroui
+    date: '2026-09-30'
+    status: live
+    ruling: "A status tone has a solid pair and a soft pair as HeroUI defines them; the soft foreground on its tint is accepted at the lower contrast floor, a bare status glyph takes the soft foreground, and body and interactive text keep the full floor."
+    owner: "knowledge/ui/proof/thresholds.yaml; knowledge/ui/presentation.md (Paint)"
+  - id: secondary-input-contrast-accepted
+    date: '2026-09-27'
+    status: live
+    ruling: "The fill of a field nested in a surface is accepted as the vendor renders it; the field is carried by its fill, label and focus outline, and the focus outline still meets the non-text floor."
+    owner: "knowledge/ui/proof.md"
+  - id: grammar-menu-drawer-live-time
+    date: '2026-10-25'
+    status: live
+    ruling: "The grammar owns a menu item's exclusive mark or glyph, the current-item mark of navigation, drawer state through its overlay contract, and one shared clock for live relative time and countdowns; apps compose these with layout-only CSS and own no display clock."
+    owner: "knowledge/vendor/wrappers.yaml; knowledge/patterns/fe/i18n.md FE-I18N-5"
+  - id: avatar-default-dicebear-initials
+    date: '2026-10-25'
+    status: live
+    ruling: "An avatar without an uploaded image draws the grammar's bundled initials (first letter of the first and last words of the name), coloured by the user or entity id when given and by the name otherwise, through one renderer for every avatar surface."
+    owner: "knowledge/ui/components/identity-mark.md; '@starci/grammar Avatar'"
+  - id: agent-avatar-initials-bot-badge
+    date: '2026-10-25'
+    status: live
+    ruling: "An agent's name is free text under the same initials rule; the agent kind adds the grammar's bot badge with an accessible name, hidden below its size floor."
+    owner: "knowledge/ui/components/identity-mark.md"
+  - id: item-description-one-line
+    date: '2026-10-25'
+    status: live
+    ruling: "A collection item's description shows one line with an ellipsis by default (up to three by prop); a conversation title carries no group glyph, and an unread row strengthens label and description through the grammar."
+    owner: "knowledge/ui/components/list-table.md"
+  - id: panel-list-box-edge
+    date: '2026-10-25'
+    status: live
+    ruling: "A panel list aligns each row box with the panel content edge; content keeps the vendor item padding and radius inside it, and hover, pressed and selected fills keep them, with no negative-margin bleed."
+    owner: "knowledge/ui/presentation.md (Space)"
+  - id: selection-fill-no-check
+    date: '2026-10-26'
+    status: live
+    ruling: "Navigation-like single-select rows show selection and hover by fill, without a check indicator, while the selected state stays available to assistive technology."
+    owner: "knowledge/ui/components/list-table.md"
+  - id: joined-multi-pane
+    date: '2026-10-26'
+    status: live
+    ruling: "List, detail and information panes form one joined surface separated by vertical dividers, with no gap showing the page background; an absent pane removes its divider."
+    owner: "knowledge/ui/composition.md LAYOUT-1"
+  - id: scroll-region-background-tone
+    date: '2026-10-26'
+    status: live
+    ruling: "A chat-like or log-like scroll region takes the background tone under its items, while its header and composer stay on the surface tone."
+    owner: "knowledge/ui/presentation.md (Surface)"
+  - id: hover-actions-floating-toolbar
+    date: '2026-10-26'
+    status: live
+    ruling: "Message actions use the grammar's floating toolbar beside the bubble, tooltip-named icon buttons that never overlap its text."
+    owner: "knowledge/ui/composition.md (Action)"
+  - id: divider-full-bleed
+    date: '2026-10-26'
+    status: live
+    ruling: "A divider runs the full width of its surface, flush to the edge; padding sits on the bands, never on the ancestor."
+    owner: "knowledge/ui/presentation.md (Boundary)"
+  - id: button-variant-follows-intent
+    date: '2026-10-25'
+    status: live
+    ruling: "A button's variant is a consequence of its declared intent (and step for destructive), resolved by the grammar from the placement it reads from context; the label word never decides the intent. A command repeated per collection item is neutral and renders without fill."
+    owner: "knowledge/ui/composition.md CTA-6; knowledge/grammars/contract.yaml (intent); lint R319"
+  - id: grammar-scroll-region-fills-parent
+    date: '2026-10-27'
+    status: proposed
+    ruling: "A contained scroll region fills its parent's block size, so the parent owns the height cap and one owner scrolls each axis."
+    owner: "knowledge/vendor/wrappers.yaml; knowledge/decisions/open-grammar.md D-11"
+  - id: grammar-rating-radiogroup
+    date: '2026-10-27'
+    status: proposed
+    ruling: "A rating, which HeroUI does not ship, is one radio group of stars, the platform pattern for one value from a closed set."
+    owner: "knowledge/vendor/wrappers.yaml; knowledge/decisions/open-grammar.md D-11"
+
+  # --- ui composition (owner decisions folded into ui/ as plain rules)
+  - id: CTA-1/case-5
+    date: '2026-10-11'
+    status: live
+    ruling: "A view shows one primary per command; an empty region's empty notice owns the command and the header omits it until content exists."
+    owner: "knowledge/ui/composition.md CTA-1"
+  - id: CTA-1/case-6
+    date: '2026-10-11'
+    status: live
+    ruling: "Peer choices are bordered secondary chips or a segmented control, the selected one on accent-soft with an accent border; never bare pills, a primary among them, or a local chip recipe."
+    owner: "knowledge/ui/components/chip.md; knowledge/ui/components/segmented-control.md"
+  - id: CTA-1/case-7
+    date: '2026-10-12'
+    status: live
+    ruling: "A decision and its way out are separate buttons at the inline gap, way out first and the single primary last, never a button group; a button group is only for a few peer commands of one intent on one object."
+    owner: "knowledge/ui/components/action-group.md; knowledge/ui/composition.md CTA-5"
+  - id: CTA-4/case-5
+    date: '2026-10-12'
+    status: live
+    ruling: "An unsubmitted row is removed at once by a danger-soft icon button; deleting stored data goes through a confirmation dialog whose confirm is the solid danger button."
+    owner: "knowledge/ui/composition.md CTA-4"
+  - id: LAYOUT-1/case-8
+    date: '2026-10-12'
+    status: live
+    ruling: "Secondary options of a task sit in one closed accordion card below the main task, whose summary says in words who may use the result."
+    owner: "knowledge/ui/composition.md LAYOUT-1"
+  - id: LAYOUT-1/case-9
+    date: '2026-10-12'
+    status: live
+    ruling: "Each source sits with its own kind: a cloud picker as a secondary button under the drop zone, links as a list of inputs with an \"add\" ghost command; no separate staging step."
+    owner: "knowledge/ui/composition.md LAYOUT-1"
+  - id: page-header-breadcrumbs
+    date: '2026-10-11'
+    status: live
+    ruling: "The trail above a page heading is breadcrumbs; the page's command sits in the header's action slot and no loose action row stands between header and content."
+    owner: "knowledge/ui/composition.md LAYOUT-1"
+  - id: RESPONSIVE-1/case-6
+    date: '2026-10-12'
+    status: live
+    ruling: "A form inside a narrow owner stays one column; several field columns appear only through a container query on the form's own owner."
+    owner: "knowledge/ui/composition.md RESPONSIVE-1"
+  - id: STATE-6/case-5
+    date: '2026-10-12'
+    status: live
+    ruling: "Switching whole panels is tabs; a segmented control chooses one value inside a form and never swaps panels."
+    owner: "knowledge/ui/components/tabs.md; knowledge/ui/components/segmented-control.md"
+  - id: STATE-6/case-6
+    date: '2026-10-12'
+    status: live
+    ruling: "Page tabs switch the page's main areas once per page and may reflect the URL; region tabs switch panels inside a drawer, card, dialog or rail and never reflect the URL; same-look tab sets never nest."
+    owner: "knowledge/ui/components/tabs.md"
+    absorbs: [STATE-6/case-7]
+  - id: COLLECTION-1/case-8
+    date: '2026-10-12'
+    status: live
+    ruling: "Multi-value input is a list of single-value fields with per-row remove and an \"add another\" command, never one free text area \"one per line\"."
+    owner: "knowledge/ui/composition.md COLLECTION-1"
+  - id: FOCUS-1/case-6
+    date: '2026-10-12'
+    status: live
+    ruling: "A focused single-line field shows exactly one focus ring."
+    owner: "knowledge/ui/proof.md"
+  - id: empty-region-keeps-drawing
+    date: '2026-10-11'
+    status: live
+    ruling: "An empty region still renders what is known inside its joined card, with the empty notice as the card's last band, never a loose notice on the canvas."
+    owner: "knowledge/ui/composition.md FEEDBACK-2"
+  - id: one-accent-mass
+    date: '2026-10-11'
+    status: live
+    ruling: "The primary action is the one accent mass; figures, headers and summaries stay neutral, and a full-accent band is reserved for the overview's signature moment."
+    owner: "knowledge/ui/composition.md ACCENT-6"
+  - id: kpi-ribbon-ordinary-card
+    date: '2026-10-11'
+    status: live
+    ruling: "A figure ribbon is an ordinary surface card holding a divided stat list, never a bare strip and never the full-accent band."
+    owner: "knowledge/ui/composition.md DISCIPLINE-2"
+  - id: no-promo-strip
+    date: '2026-10-11'
+    status: live
+    ruling: "A promotion lives only on the overview's or landing's signature moment, never as a strip on a working page."
+    owner: "knowledge/ui/composition.md DISCIPLINE-3"
+  - id: STATE-8/loading-keeps-anatomy
+    date: '2026-10-11'
+    status: live
+    ruling: "Loading and failure keep the page's anatomy; the page renders in skeleton mode, a failed region fails in place and a failed route keeps its chrome."
+    owner: "knowledge/ui/composition.md STATE-8; knowledge/patterns/fe/README.md (data status)"
+  - id: band-is-first-face
+    date: '2026-10-11'
+    status: live
+    ruling: "An artwork band is a joined card's first face, edge to edge and clipped by the card's radius, never inset inside a padded card."
+    owner: "knowledge/ui/presentation.md (Surface)"
+  - id: dna-only-composition
+    date: '2026-09-27'
+    status: live
+    ruling: "Screens compose only the grammar's components (a notice is Alert, a ratio is Meter); anything missing is a grammar proposal, never an inline invention."
+    owner: "knowledge/patterns/fe/ui.md FE-UI-1"
+  - id: beautiful-by-eye
+    date: '2026-09-27'
+    status: live
+    ruling: "A surface that is correct by the rules and ugly by eye is still rejected; a rejection means a rule is missing or wrong."
+    owner: "knowledge/ui/proof.md"
+  - id: brand-masters-not-reused
+    date: '2026-09-27'
+    status: live
+    ruling: "Brand character art for a product surface is generated for its slot in the masters' style; a product surface never reuses the landing masters' bytes."
+    owner: "knowledge/ui/proof.md (Brand)"
+
+  # --- front end
+  - id: heroicons-family-icon-set
+    date: '2026-10-13'
+    status: live
+    ruling: "The application glyph set is the heroicons family: @heroicons/react is the base, @starci/heroicons holds only the glyphs it lacks in the same style, and a missing glyph is added there."
+    owner: "knowledge/stack/fe.yaml (icons); knowledge/patterns/fe/ui.md FE-ICON"
+  - id: fe-stack-one-library
+    date: '2026-10-13'
+    status: live
+    ruling: "Every front-end concern has one library, the same in both editions; a second library for a concern is refused and the feature is rebuilt on the canonical one."
+    owner: "knowledge/stack/fe.yaml"
+  - id: fe-auth-only
+    date: '2026-10-13'
+    status: live
+    ruling: "The front end uses its identity provider for auth only and reaches application data through the back end; the front end serves no API (no Server Action, no route handler beyond health and the auth callback)."
+    owner: "knowledge/patterns/fe/transport.md FE-AUTH; knowledge/patterns/fe/architecture.md FE-ROUTE"
+  - id: graphql-default-door
+    date: '2026-10-13'
+    status: live
+    ruling: "GraphQL is the default application door in both editions; REST is reserved for probes, auth handshakes, signed webhooks, byte transfers and a public versioned table, each with its reason."
+    owner: "knowledge/patterns/be/transport.md; knowledge/patterns/fe/transport.md"
+  - id: fe-wire-generated
+    date: '2026-10-13'
+    status: live
+    ruling: "Front-end wire types are generated from the back-end contract snapshot, never typed by hand."
+    owner: "knowledge/patterns/fe/transport.md FE-WIRE-GENERATED"
+  - id: event-stream-package
+    date: '2026-10-26'
+    status: live
+    ruling: "The server-sent-events client of every front end is the published @starci/event-stream package (token renewal, resume, backoff, heartbeat, an SWR adapter); apps create one instance and keep no hand-written reader."
+    owner: "knowledge/patterns/fe/realtime.md FE-REALTIME"
+  - id: locale-accept-language
+    date: '2026-10-14'
+    status: live
+    ruling: "The one front-end locale writer sends Accept-Language, and back-end localization reads that header."
+    owner: "knowledge/patterns/fe/transport.md FE-API-GRAPHQL; lint R50"
+    absorbs: [accept-language-locale-header]
+  - id: hooks-compose-hooks
+    date: '2026-10-16'
+    status: live
+    ruling: "A function in a hooks folder is a hook when it calls a hook (React, SWR, Redux, the app's own hooks resolved by symbol, or a listed library hook); a file exporting a non-hook still fails."
+    owner: "lint R56 FE_HOOKS_ARE_HOOKS"
+  - id: auth-callback-shape
+    date: '2026-10-17'
+    status: live
+    ruling: "The auth callback route performs exactly the code exchange, or one email-link OTP verification from the query's token hash and type, may call pure helpers of modules/routes and modules/auth to compute and validate the redirect, and does nothing else."
+    owner: "knowledge/patterns/fe/architecture.md FE-ROUTE; lint R287"
+    absorbs: [auth-callback-email-link, auth-callback-pure-helpers]
+  - id: lite-fe-app-cardinality
+    date: '2026-10-14'
+    status: live
+    ruling: "A lite app may have more than one front-end app."
+    owner: "knowledge/hfs/slots.yaml (fe.app.next)"
+  - id: fe-observe-optional
+    date: '2026-10-14'
+    status: live
+    ruling: "A front-end error reporter is optional, declared in hfs.json; no finding is raised for its absence."
+    owner: "knowledge/stack/fe.yaml (observability)"
+    absorbs: [fe-error-reporter-optional]
+
+  # --- app shape, editions and back end
+  - id: R212/case-10
+    date: '2026-10-24'
+    status: live
+    ruling: "Both editions share one code structure and one front-end standard; lite is a minimal production of one stateless, horizontally scaled instance type on managed Supabase (Postgres, Auth, Storage) plus one minimal instance of each declared backing service, with no e2e world, while full runs several services with their own infrastructure. The queue is BullMQ on Redis in both editions; the lite event bus stays on pgmq topics or in-process delivery. Editions are fixed at scaffold."
+    owner: "knowledge/hfs/rules.yaml R212; knowledge/hfs/slots.yaml (editions, ruleParams.be.backing)"
+    absorbs: [R212/case-1, R212/case-2, R212/case-3, lite-minimal-production, lite-backing-services, lite-event-bus-stays-pgmq]
+  - id: R212/case-4
+    date: '2026-10-14'
+    status: live
+    ruling: "A lite app's .starciwork admits only .gitignore, an optional workspace.yaml and brand records; full keeps its Work tree."
+    owner: "knowledge/hfs/slots.yaml (app.starciwork)"
+    absorbs: [lite-work-brand-only]
+  - id: R212/case-7
+    date: '2026-10-24'
+    status: live
+    ruling: "Realtime has three doors in both editions: server-sent events (the default for one-way push), socket.io (two-way messages) and the GraphQL subscription (only for a client already on GraphQL that needs the typed payload, with a snapshot refetch on reconnect)."
+    owner: "knowledge/patterns/be/realtime.md; knowledge/patterns/fe/realtime.md FE-REALTIME-2"
+    absorbs: [R212/case-5, lite-sse-door, lite-graphql-subscription-door]
+  - id: R212/case-9
+    date: '2026-10-24'
+    status: live
+    ruling: "Every replica serves any request or reconnect; shared state lives in Postgres or the declared Redis; no sticky sessions. The realtime hub is memory for one replica or tests only, else Redis when declared and Postgres otherwise."
+    owner: "knowledge/patterns/be/realtime.md"
+    absorbs: [lite-scales-stateless]
+  - id: lite-vector-is-pgvector
+    date: '2026-10-25'
+    status: live
+    ruling: "Lite's vector store is Supabase pgvector; lite declares only Redis as a backing service, while full may declare Redis and Qdrant."
+    owner: "knowledge/hfs/slots.yaml (ruleParams.be.backing)"
+  - id: lite-contract-specs
+    date: '2026-10-14'
+    status: live
+    ruling: "Lite may have contract specs; e2e, stack and browser runs stay full-only."
+    owner: "knowledge/patterns/be/test.md"
+  - id: lite-webhook-after-commit
+    date: '2026-10-14'
+    status: live
+    ruling: "Webhook intake records its receipt and typed outbox event in its transaction; processing runs after commit in a reactor or job, never inside the intake transaction."
+    owner: "knowledge/patterns/be/webhooks.md"
+  - id: webhook-intake-shape
+    date: '2026-10-14'
+    status: live
+    ruling: "A webhook door answers the provider's literal acknowledgement, serves at most one GET challenge, and hands off durably to the inbox before any reactor or job runs."
+    owner: "knowledge/patterns/be/webhooks.md"
+  - id: webhook-receipt-port
+    date: '2026-10-17'
+    status: live
+    ruling: "A call on a domain receipt port (a domain class over platform ports with the platform Inbox) inside the intake transaction is the inbox record, not processing; any other service or bus call there is processing."
+    owner: "lint R263 BE_WEBHOOK_SCOPE"
+  - id: oauth-redirect-not-webhook
+    date: '2026-10-17'
+    status: live
+    ruling: "A third-party OAuth redirect (a public GET with the auth-handshake reason on a non-webhook path) is not a webhook door."
+    owner: "lint R263"
+  - id: credential-guarded-rest-door
+    date: '2026-10-16'
+    status: live
+    ruling: "A REST route serving an external machine client behind a declared credential guard is a justified REST door without joining the operation table; anonymous public REST routes still need a closed public reason."
+    owner: "knowledge/patterns/be/transport.md; lint R278, R290"
+  - id: feature-type-file-register-enum-type
+    date: '2026-10-16'
+    status: live
+    ruling: "A feature's GraphQL type file may call registerEnumType at module top level, because the schema emit loads only files the resolver imports; nowhere else may it run."
+    owner: "lint R264"
+  - id: module-definition-everywhere
+    date: '2026-10-15'
+    status: live
+    ruling: "Every NestJS module has a module definition (ConfigurableModuleBuilder with register, an options type, a module class) and is registered with XModule.register(...)."
+    owner: "knowledge/patterns/be/architecture.md; lint R295"
+  - id: typed-app-environment
+    date: '2026-10-14'
+    status: live
+    ruling: "Every back-end app reads its environment through apps/<app>/src/<app>.env.ts (an interface and read<App>Env); main.ts only delegates, and app.module.ts spreads composition groups that hold composition only."
+    owner: "knowledge/patterns/be/architecture.md; knowledge/patterns/be/config.md"
+    absorbs: [R245, R265, R246]
+  - id: code-function-feature-budgets
+    date: '2026-10-14'
+    status: live
+    ruling: "Function bodies and feature sizes have absolute budgets in both sides; the numbers are hfs/slots.yaml ruleParams.common."
+    owner: "knowledge/hfs/slots.yaml (ruleParams.common)"
+  - id: be-convention
+    date: '2026-09-30'
+    status: live
+    ruling: "The back-end convention is owner-locked: features grouped by trigger kind and composed only by apps, a plain CQRS application layer, one schema authority, one connection per database, injected infrastructure, default deny, configuration per capability, and background work as a transport."
+    owner: "knowledge/patterns/be/README.md"
+  - id: be-bounded-contexts
+    date: '2026-10-02'
+    status: live
+    ruling: "Work inside one bounded context is synchronous; contexts and trigger kinds meet only through events (Kafka with a transactional outbox, typed event classes), projections replace cross-context joins, reactors keep local copies, background jobs are fenced, queues use BullMQ with schedulers instead of cron, and each service is its own app with its own image."
+    owner: "knowledge/patterns/be/domain.md; knowledge/patterns/be/event-bus.md"
+  - id: effectful-command-receipt
+    date: '2026-10-24'
+    status: live
+    ruling: "Every effectful client command carries an idempotency key with a transaction-owned receipt that replays the outcome."
+    owner: "knowledge/patterns/be/idempotency.md"
+  - id: app-owned-schedules
+    date: '2026-10-14'
+    status: live
+    ruling: "Schedules are application-owned (a queue job scheduler, a declared replicated job); a host never runs a crontab."
+    owner: "knowledge/patterns/be/background.md"
+  - id: observability-required-signals
+    date: '2026-10-14'
+    status: live
+    ruling: "The logger port, live and ready probes and a Docker health check are mandatory in both editions; request-id correlation, metrics and tracing are not yet mandatory."
+    owner: "knowledge/patterns/be/logging.md; knowledge/patterns/be/api-auth.md"
+    absorbs: [observability-deferred-signals]
+  - id: sealed-secret-custody
+    date: '2026-10-14'
+    status: live
+    ruling: "Product secrets exist only as sops/age sealed .starcistacks/<env>/secrets/*.enc members; plaintext secrets are never tracked, and the age identity is held only by the owner outside the repository."
+    owner: "knowledge/hfs/rules.yaml R06, R253"
+    absorbs: [platform-age-file-custody]
+  - id: lite-production-swarm
+    date: '2026-10-14'
+    status: live
+    ruling: "Production runs on a declared Docker Swarm stack (lite and full); dev runs every dependency in Docker except hosted Supabase in production; scheduling is app-owned and the host runs no crontab."
+    owner: "knowledge/hfs/slots.yaml (app.starcistacks)"
+    absorbs: [dev-docker-prod-swarm]
+  - id: single-declared-ingress
+    date: '2026-10-14'
+    status: live
+    ruling: "Any single declared ingress component, pinned by digest, is accepted."
+    owner: "lint R266, R275"
+  - id: owner-run-steps
+    date: '2026-10-14'
+    status: live
+    ruling: "DNS changes, provider URIs, swarm init and key rotation are owner-run steps that the standard declares with their evidence and never automates."
+    owner: "lint R266, R267"
+  - id: graphql-13-pin
+    date: '2026-10-18'
+    status: live
+    ruling: '@nestjs/graphql stays on its 13 line with its advisory accepted, and @graphql-tools/utils is overridden at a fixed release in every app root until the 14 upgrade.'
+    owner: "knowledge/stack/pins.yaml"
+    absorbs: [graphql-13-advisory-accepted-until-a19, graphql-tools-utils-override]
+  - id: message-catalogs-not-duplicate-code
+    date: '2026-10-22'
+    status: live
+    ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
+    owner: "policy (sonar configuration of the app template)"
+
+# Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
+# write instead. `pending` marks a name that still exists in published code until the follow-up lands.
+removedVocabulary:
+  - spelling: starci
+    as: grammar family id
+    replacedBy: core
+    ruling: "two-grammars"
+  - spelling: starci-core
+    replacedBy: core
+    ruling: "two-grammars"
+  - spelling: heritage
+    as: grammar family
+    replacedBy: nothing (dropped)
+    ruling: "two-grammars"
+  - spelling: '@starci/eslint-grammar-starci'
+    replacedBy: '@starci/eslint-grammar-common plus the grammar factory @starci/eslint-grammar-<id>'
+    ruling: "two-grammars"
+    pending: the package is still published under the old name (stack/pins.yaml); decisions/open-grammar.md D-7
+  - spelling: fe.package.ui
+    as: slot (a product UI package)
+    replacedBy: the grammar package; shared front-end packages hold no visuals
+    ruling: "R318/case-1"
+  - spelling: dataviz grammar
+    replacedBy: the selected grammar's tokens
+    ruling: "two-grammars"
+  - spelling: CONTROL-HEIGHT-1
+    replacedBy: control-height-40 (ruling) and R320 (rule)
+    ruling: "control-height-40"

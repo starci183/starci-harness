@@ -207,13 +207,15 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     let loosening = readYaml(join(dir, "loosening.yaml"), looseningSchema)
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
     checkCrossReferences(dir, quality, canon, security)
+    // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
+    if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {
+        loosening = { ...loosening, exceptions: [] }
+        security = { ...security, exceptions: [] }
+    }
     const overlay = overlayDir(dir, repositoryRoot)
     if (overlay !== undefined) {
         const refused = ["quality.yaml", "canon.yaml"].filter((file) => existsSync(join(overlay, file)))
         if (refused.length > 0) throw new Refusal("POLICY_OVERLAY_REFUSED", `${overlay} carries ${refused.join(" and ")}; a project picks its profile in hfs.json ("policy": "<profile>") and never redefines tiers or canon`)
-        // The runtime's exceptions are the runtime repository's own; a project's exceptions replace them.
-        loosening = { ...loosening, exceptions: [] }
-        security = { ...security, exceptions: [] }
         const looseningFile = join(overlay, "loosening.yaml")
         if (existsSync(looseningFile)) {
             const extra = readYaml(looseningFile, looseningOverlay)

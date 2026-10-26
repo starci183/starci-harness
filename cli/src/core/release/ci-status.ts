@@ -11,6 +11,7 @@ interface WorkflowRun {
     readonly status: string
     readonly conclusion: string
     readonly url: string
+    readonly databaseId: number
 }
 
 interface CiStatusData {
@@ -29,12 +30,21 @@ const isRun = (value: unknown): value is WorkflowRun =>
     "conclusion" in value &&
     typeof value.conclusion === "string" &&
     "url" in value &&
-    typeof value.url === "string"
+    typeof value.url === "string" &&
+    "databaseId" in value &&
+    typeof value.databaseId === "number"
+
+// Inside Actions the run asking the question is itself a run of the commit; it would keep the verdict pending forever.
+const ownRunId = (): number | undefined => {
+    const id = Number(process.env.GITHUB_RUN_ID)
+    return Number.isInteger(id) && id > 0 ? id : undefined
+}
 
 const parseRuns = (stdout: string): WorkflowRun[] => {
     const parsed: unknown = JSON.parse(stdout === "" ? "[]" : stdout)
     if (!Array.isArray(parsed)) throw new Refusal("CI_STATUS_UNREADABLE", "gh run list did not return a json array")
-    return parsed.filter(isRun)
+    const own = ownRunId()
+    return parsed.filter(isRun).filter((run) => run.databaseId !== own)
 }
 
 const verdictOf = (runs: readonly WorkflowRun[]): Verdict => {
@@ -56,7 +66,7 @@ export const ciStatusVerb = defineVerb({
     },
     run: async (context, flags) => {
         const sha = flags.sha ?? (await runTool("git", ["rev-parse", "HEAD"], context.cwd)).stdout
-        const listed = await runTool("gh", ["run", "list", "--commit", sha, "--json", "name,status,conclusion,url", "--limit", "50"], context.cwd)
+        const listed = await runTool("gh", ["run", "list", "--commit", sha, "--json", "name,status,conclusion,url,databaseId", "--limit", "50"], context.cwd)
         const runs = parseRuns(listed.stdout)
         const verdict = verdictOf(runs)
         const data: CiStatusData = { sha, verdict, runs }
