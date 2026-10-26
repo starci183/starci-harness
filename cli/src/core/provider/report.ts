@@ -56,11 +56,13 @@ export const providerReportVerb = defineVerb({
             if (pool === undefined) throw new Refusal("CLI_USAGE", `provider ${flags.provider} has several pools (${pools.join(", ")}); name one with --pool`, EXIT_USAGE)
             const reading = recordQuota(pool, Number(flags.quota), { resetsAt, source: "report" })
             const data: ReportData = { outcome: null, quota: reading }
-            return Promise.resolve({ data, message: `pool ${pool}: quota ${String(reading.usedPercent)}%${reading.resetsAt === null ? "" : `, resets ${reading.resetsAt}`}` })
+            const resetNote = reading.resetsAt === null ? "" : `, resets ${reading.resetsAt}`
+            return Promise.resolve({ data, message: `pool ${pool}: quota ${String(reading.usedPercent)}%${resetNote}` })
         }
         const recorded = recordOutcome(flags.provider, outcomeOf(flags.outcome ?? "", flags.pool, flags.detail, resetsAt))
+        const untilNote = recorded.after.open ? ` until ${recorded.after.openUntil ?? "?"}` : ""
         const lines = [
-            `provider ${flags.provider}: ${recorded.before.status} -> ${recorded.after.status}${recorded.after.open ? ` until ${recorded.after.openUntil ?? "?"}` : ""}`,
+            `provider ${flags.provider}: ${recorded.before.status} -> ${recorded.after.status}${untilNote}`,
             ...(recorded.opened === null ? [] : [`circuit opened for ${String(recorded.opened.cooldownMinutes)} min (reopen ${String(recorded.opened.reopens)} in the window)`]),
             ...recorded.concurrency.map((step) => `pool ${step.pool}: cap ${String(step.from)} -> ${String(step.to)} of ${String(step.max)} (${step.reason})`),
         ]

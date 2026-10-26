@@ -18,8 +18,10 @@ interface PushData {
 /** Git's empty tree: the base of a first push, so the whole tree is scanned. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
+const lineSuffix = (line: number | null): string => (line === null ? "" : `:${String(line)}`)
+
 const describeFindings = (findings: readonly SecretFinding[]): string =>
-    findings.map((finding) => `${finding.file}${finding.line === null ? "" : `:${String(finding.line)}`} (${finding.pattern})`).join("; ")
+    findings.map((finding) => `${finding.file}${lineSuffix(finding.line)} (${finding.pattern})`).join("; ")
 
 /** `starci release push`: the light gate of ruling push-main-after-scoped-check: on the branch, clean, fast-forward, no secret; then git push with hooks. */
 export const releasePushVerb = defineVerb({
@@ -56,10 +58,12 @@ export const releasePushVerb = defineVerb({
         const files = (await git(root, ["diff", "--name-only", "--diff-filter=AMR", ...range])).split("\n").filter((file) => file !== "")
         const diff = await git(root, ["diff", "-U0", "--no-color", "--diff-filter=AMR", ...range])
         const encrypted = new Map<string, string>()
-        for (const file of files.filter((name) => name.endsWith(".enc"))) {
-            const shown = await captureTool("git", ["show", `${head}:${file}`], root)
-            if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
-        }
+        const shownFiles = await Promise.all(
+            files
+                .filter((name) => name.endsWith(".enc"))
+                .map(async (file) => ({ file, shown: await captureTool("git", ["show", `${head}:${file}`], root) })),
+        )
+        for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
         const findings = scanDiff(diff, files, (file) => encrypted.get(file))
         if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))

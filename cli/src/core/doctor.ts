@@ -168,13 +168,15 @@ export const doctorVerb = defineVerb({
         const warnings = warningsOf(work, harness)
         const data: DoctorData = { tree: context.tree, treeRoot: context.treeRoot ?? null, probes, orca, harness, policy, work, warnings }
         const table = formatTable(probes.map((probe) => [probe.name, probe.found ?? (probe.required ? "MISSING" : "absent"), probe.required ? "required" : "optional"]))
+        const treeNote = context.treeRoot === undefined ? "" : ` (${context.treeRoot})`
+        const ledgerNote = harness.ledgers === null ? `none yet (no ${harness.machine})` : `${String(harness.ledgers)} in ${harness.machine}`
         const lines = [
-            `tree: ${context.tree}${context.treeRoot === undefined ? "" : ` (${context.treeRoot})`}`,
+            `tree: ${context.tree}${treeNote}`,
             "error" in policy ? `policy: unreadable (${policy.error})` : `policy: profile ${policy.profile} (${policy.source})`,
             table,
             `runtime root: ${harness.runtimeRoot}`,
             `state base: ${harness.stateBase} (from ${harness.stateBaseFrom})`,
-            `ledgers: ${harness.ledgers === null ? `none yet (no ${harness.machine})` : `${String(harness.ledgers)} in ${harness.machine}`}`,
+            `ledgers: ${ledgerNote}`,
             workLine(work),
             ...warnings.map((warning) => `warning: ${warning}`),
         ]

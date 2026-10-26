@@ -18,11 +18,11 @@ interface CutData {
     readonly ci: string
 }
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegExp = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 
 /** The CHANGELOG section of `version`: from its `## ` heading to the next `## ` heading. */
 const changelogSection = (text: string, version: string): string | undefined => {
-    const heading = new RegExp(`^## \\[?v?${escapeRegExp(version)}\\]?(?:\\s|$)`, "m")
+    const heading = new RegExp(String.raw`^## \[?v?${escapeRegExp(version)}\]?(?:\s|$)`, "m")
     const start = heading.exec(text)
     if (start === null) return undefined
     const rest = text.slice(start.index)

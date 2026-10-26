@@ -16,7 +16,8 @@ const circuitCell = (view: ProviderView): string => {
 
 const quotaCell = (quota: ProviderView["pools"][number]["quota"]): string => {
     if (quota.usedPercent === null) return "unknown"
-    const reading = `${String(quota.usedPercent)}%${quota.resetsAt === null ? "" : ` resets ${quota.resetsAt}`}`
+    const resetNote = quota.resetsAt === null ? "" : ` resets ${quota.resetsAt}`
+    const reading = `${String(quota.usedPercent)}%${resetNote}`
     return quota.fresh ? reading : `unknown (stale: ${reading})`
 }
 

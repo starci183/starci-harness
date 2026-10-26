@@ -57,7 +57,7 @@ const killTree = (child: ChildProcess): void => {
     const pid = child.pid
     if (pid === undefined) return
     if (process.platform === "win32") {
-        spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" })
+        spawnSync(join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"), ["/pid", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" })
         return
     }
     try {
@@ -107,7 +107,8 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             done = true
             if (timer !== undefined) clearTimeout(timer)
             const errors = stderr.text()
-            const note = timedOut ? `${errors === "" ? "" : "\n"}timed out after ${String(Math.round((options.timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
+            const separator = errors === "" ? "" : "\n"
+            const note = timedOut ? `${separator}timed out after ${String(Math.round((options.timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
             settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, notStarted, timedOut })
         }
         child.on("error", (error: Error) => {
@@ -148,7 +149,8 @@ export const runTool = async (tool: string, args: readonly string[], cwd: string
     const run = await execute(tool, args, cwd, options)
     if (run.notStarted !== undefined) throw new ToolNotStarted(tool, run.notStarted)
     if (run.timedOut) throw new Refusal("CLI_TOOL_TIMEOUT", `${tool} ${args.join(" ")} ${headline(run.stderr)}`)
-    if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `${tool} ${args.join(" ")} failed: ${headline(run.stderr) || `exit ${String(run.exitCode)}`}`)
+    const reason = headline(run.stderr) || `exit ${String(run.exitCode)}`
+    if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `${tool} ${args.join(" ")} failed: ${reason}`)
     return { stdout: run.stdout, stderr: run.stderr }
 }
 

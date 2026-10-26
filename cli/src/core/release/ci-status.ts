@@ -71,6 +71,7 @@ export const ciStatusVerb = defineVerb({
         const verdict = verdictOf(runs)
         const data: CiStatusData = { sha, verdict, runs }
         const table = formatTable(runs.map((run) => [run.name, run.status, run.conclusion === "" ? "-" : run.conclusion]))
-        return { data, message: `${sha.slice(0, 9)}: ${verdict}${runs.length === 0 ? "" : `\n${table}`}` }
+        const tableNote = runs.length === 0 ? "" : `\n${table}`
+        return { data, message: `${sha.slice(0, 9)}: ${verdict}${tableNote}` }
     },
 })
