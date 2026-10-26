@@ -244,7 +244,7 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
     if (view?.task == null) return null
     const id = view.task.id
     const task = withLedger(root, (db) => getTask(db, id))
-    const files = writeBrief(task, loadOps(), root)
+    const files = writeBrief(task, loadOps(), root, "agent")
     const output = files.output.replace(/\\/g, "/")
     return {
         key: view.key,

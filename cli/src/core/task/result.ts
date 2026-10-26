@@ -79,7 +79,7 @@ export const taskResultVerb = defineVerb({
     summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; failed preserves and resets its dirty allowPaths",
     editions: BOTH_EDITIONS,
     effect: "local-write",
-    roles: ["worker", "op", "kernel", "supervisor"],
+    roles: ["worker", "op", "agent", "kernel", "supervisor"],
     schema: "starci/task-result@1",
     flags: {
         task: { kind: "string", summary: "the task id", required: true, positional: true },
