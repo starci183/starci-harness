@@ -201,6 +201,34 @@ That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today
 
 Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task verify`, so a chat agent can state the contract of its own work and prove it with the same checks.
 
+## Op kinds (full edition)
+
+The old runtime declares 39 ops in `modules/ops/ops`. In the contract model an op kind is a **contract template**: the default `context` it reads, the `allowPaths` it may write and the default `expectedOutput` checks. The Kernel fills in the input. The proposal keeps 13 kinds.
+
+| op kind | does | default expectedOutput (machine checks) | replaces |
+|---|---|---|---|
+| `plan.define` | turn a request or a goal change into a graph proposal of tasks | a json graph matching the plan schema, with every task contract passing `contract check` | request.analyze, task.execute, scope.define, goal.revise, work.author, workspace.manage |
+| `design.decide` | decide one business, architecture or brand slice as a typed record | the record matches its schema and every referenced path exists | business.decide, architecture.decide, brand.decide, decision.prepare |
+| `ui.design` | draw the screens and generate their assets | renders exist at the declared viewports, assets are in the repository, the Grammar lint is green | interface.draw, interface.asset, interface.audit |
+| `grammar.update` | add one semantic unit to the design Grammar | Grammar typecheck and the stories build are green, plus the new story exists | grammar.update |
+| `code.scaffold` | create a new back-end, front-end or package tree | `starci check run --all` is green in the new tree | backend.scaffold, interface.scaffold, package.scaffold |
+| `code.implement` | implement one slice (be, fe or package), including removing a feature | `starci check run` is green, only `allowPaths` changed, the named tests pass | backend.implement, interface.implement, scope.finish |
+| `code.fix` | repair a red check or a red CI of a landed revision | the named red checks are green and nothing else turned red | code.fix, knowledge.repair |
+| `code.refactor` | restructure under an unchanged behaviour | the same tests pass before and after, `starci check run` is green | code.refactor |
+| `test.author` | write the tests of one slice inside test paths only | the new tests run, coverage of the slice meets the threshold, only test paths changed | test.author |
+| `verify.run` | run a heavy suite (unit, integration, e2e, perf or security) on a real stack and report it | a json report matching the suite schema, with the verdict computed from it | unit.verify, integration.verify, e2e.verify, perf.verify, security.verify |
+| `uat.run` | walk the UAT flows in a browser with screenshots or video | every flow step has its evidence file, and the failed steps are listed in the json | uat.verify, uat.assisted.prepare, uat.assisted.verify |
+| `docs.author` | write the docs or product content one scope needs | files are in `allowPaths`, links resolve, the doc-language check is green | docs.author, content.generate |
+| `release.deliver` | publish, deploy or migrate one selected target and verify it live | the registry, health or migration probe returns the expected state | release.deliver |
+
+These leave the op list and become another party's job:
+- `review.verify`: an agent judging another agent is the critic model. Machine checks go in `expectedOutput`, and taste goes to the owner's review.
+- `handover.review`: finishing a workflow is the Kernel's and the Supervisor's.
+- `provision.ask`: asking the owner for a credential is the Supervisor's owner channel.
+- `runtime.operate`: host and runtime operation belongs to the Supervisor.
+
+The lite edition has no ops. The chat agent does the work itself, and it can use the same templates through `contract new --kind <op-kind>` to state and verify its own task.
+
 ## Open questions
 
 1. Is the kernel slim list above right, or should the full kernel be audited verb by verb?
