@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noEmit": true,
+    "types": [],
+    "paths": {
+      "@modules/*": [
+        "./src/modules/*"
+      ],
+      "@features/*": [
+        "./src/features/*"
+      ],
+      "@tests/*": [
+        "./src/tests/*"
+      ]
+    }
+  },
+  "include": [
+    "anchor.ts"
+  ]
+}
