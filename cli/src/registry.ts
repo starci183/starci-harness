@@ -22,6 +22,15 @@ import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
 import { checkCiVerb } from "./core/check/ci.js"
+import { workflowDefineVerb } from "./core/workflow/define.js"
+import { workflowStartVerb } from "./core/workflow/start.js"
+import { workflowStatusVerb } from "./core/workflow/status.js"
+import { workflowListVerb } from "./core/workflow/list.js"
+import { workflowStepVerb } from "./core/workflow/step.js"
+import { workflowAmendVerb } from "./core/workflow/amend.js"
+import { workflowStopVerb } from "./core/workflow/stop.js"
+import { planShowVerb } from "./core/plan/show.js"
+import { planDiffVerb } from "./core/plan/diff.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -53,6 +62,15 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     checkLooseningVerb,
     checkSecretsVerb,
     checkCiVerb,
+    workflowDefineVerb,
+    workflowStartVerb,
+    workflowStatusVerb,
+    workflowListVerb,
+    workflowStepVerb,
+    workflowAmendVerb,
+    workflowStopVerb,
+    planShowVerb,
+    planDiffVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */

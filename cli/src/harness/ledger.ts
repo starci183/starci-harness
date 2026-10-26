@@ -7,11 +7,12 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 3
+export const LEDGER_VERSION = 4
 
 /**
- * The nine tables of a project ledger. Status rules live in the code's one state machine, not in triggers;
- * the tables only keep facts (contracts and results are immutable once written). Provider health is host-wide and lives in
+ * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
+ * graph_versions, one set per graph version, since version 4). Status rules live in the code's one state machine, not in
+ * triggers; the tables only keep facts (contracts, results and recorded graphs are immutable once written). Provider health is host-wide and lives in
  * machine.sqlite since version 3; a ledger from before keeps its unused provider_health table, since a migration never drops.
  */
 const SCHEMA = `
@@ -43,6 +44,16 @@ CREATE TABLE IF NOT EXISTS seats (
 CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, seat_id TEXT NOT NULL, command TEXT NOT NULL, correlation_id TEXT,
   deadline_at TEXT NOT NULL, sent_at TEXT NOT NULL, answered_at TEXT, answer_json TEXT);
+CREATE TABLE IF NOT EXISTS plan_nodes (
+  workflow_id TEXT NOT NULL REFERENCES workflows(id), graph_version INTEGER NOT NULL, plan_key TEXT NOT NULL,
+  contract_json TEXT NOT NULL, contract_hash TEXT NOT NULL, node_hash TEXT NOT NULL, route_json TEXT NOT NULL, round INTEGER NOT NULL,
+  PRIMARY KEY (workflow_id, graph_version, plan_key));
+CREATE TABLE IF NOT EXISTS edges (
+  workflow_id TEXT NOT NULL REFERENCES workflows(id), graph_version INTEGER NOT NULL, plan_key TEXT NOT NULL,
+  depends_on TEXT NOT NULL, PRIMARY KEY (workflow_id, graph_version, plan_key, depends_on));
+CREATE TABLE IF NOT EXISTS graph_versions (
+  workflow_id TEXT NOT NULL REFERENCES workflows(id), graph_version INTEGER NOT NULL, goal_version INTEGER NOT NULL,
+  reason TEXT, classification_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (workflow_id, graph_version));
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL,
   subject TEXT, data_json TEXT NOT NULL);
@@ -59,6 +70,10 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "seats", column: "request_id", type: "TEXT", since: 2 },
     { table: "seats", column: "run_id", type: "TEXT", since: 2 },
     { table: "seats", column: "launch_json", type: "TEXT", since: 2 },
+    { table: "workflows", column: "reason", type: "TEXT", since: 4 },
+    { table: "workflows", column: "updated_at", type: "TEXT", since: 4 },
+    { table: "tasks", column: "plan_key", type: "TEXT", since: 4 },
+    { table: "tasks", column: "plan_hash", type: "TEXT", since: 4 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
