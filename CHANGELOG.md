@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.49 - 2026-10-26
+- Fixed: `BE_SQL_TABLE_OWNER` (R86) bounds a FROM-less SELECT and an aggregate-only SELECT as one row; `IN (`, `FROM (` and `FILTER (` are no longer read as unknown function calls.
+- Changed: the bundled runtime copies follow the hfs 4.7.42 and cli 1.7.42 pins and the lint family versions.
+
 ## 3.4.48 - 2026-10-26
 - Changed: the bundled runtime copies (canon pins) follow the hfs 4.7.41 and cli 1.7.41 pins and the lint family versions. No rule changes.
 
