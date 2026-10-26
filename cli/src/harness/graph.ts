@@ -65,7 +65,12 @@ type TaskFields = z.infer<typeof taskFieldsSchema>
 
 const fileTaskSchema = z.strictObject({ id: keySchema, ...taskFieldsShape })
 
-/** The workflow-wide fields of a workflow file, kept in the ledger as the workflow's goal. */
+const biasSchema = z.strictObject({ only: z.array(z.string().min(1)).optional(), avoid: z.array(z.string().min(1)).optional(), prefer: z.array(z.string().min(1)).optional() })
+
+/**
+ * The workflow-wide fields of a workflow file, kept in the ledger as the workflow's goal. `agent` with `model` pins every
+ * task of an orca run (a task's own pair wins); without a pin the router picks, steered by `bias` (only, avoid, prefer).
+ */
 export const headerSchema = z.strictObject({
     schema: z.literal(WORKFLOW_SCHEMA),
     id: keySchema,
@@ -74,6 +79,7 @@ export const headerSchema = z.strictObject({
     agent: z.string().min(1).optional(),
     model: z.string().min(1).optional(),
     effort: z.string().min(1).optional(),
+    bias: biasSchema.optional(),
     worktree: z.string().min(1).optional(),
     maxParallel: z.number().int().min(1).max(MAX_PARALLEL).default(DEFAULT_PARALLEL),
     base: z.string().min(1).default("HEAD"),

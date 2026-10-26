@@ -1,0 +1,88 @@
+# Which agent and model takes a task, how a provider in trouble is set aside, and the workflow budgets.
+# The router reads this file and ops/labels.yaml (a label's difficulty floor and the host tools it needs); nothing here is
+# restated in code. A tier is an ordered chain of members; the first member that survives every step is picked.
+schema: starci/routing@1
+
+# A difficulty is given by name or as 1..4 in this order.
+difficulties: [easy, medium, hard, insane]
+# tier = labelTiers[label] ?? difficultyTier[max(difficulty, label floor)].
+difficultyTier: {easy: low, medium: medium, hard: high, insane: frontier}
+# A label named here takes that tier whatever its difficulty.
+labelTiers: {}
+# Lowest first: a second contract-red in a task's lineage raises the tier one step along this order.
+tierOrder: [low, medium, high, frontier]
+escalateAfterReds: 2
+
+tiers:
+  frontier:
+    - {agent: claude, model: claude-opus-5-5}
+    - {agent: codex, model: gpt-6.1-sol, effort: max}
+  high:
+    - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: codex, model: gpt-6.1-sol, effort: high}
+  # Claude closes the medium chain: uat needs a browser, and only the claude pool has one.
+  medium:
+    - {agent: devin, model: swe-2-max}
+    - {agent: codex, model: gpt-6.1-sol, effort: medium}
+    - {agent: claude, model: claude-sonnet-5-5}
+  low:
+    - {agent: devin, model: swe-2-max}
+    - {agent: codex, model: gpt-6-luna, effort: low}
+
+# One pool per agent: one provider quota window with real parallel slots. `labels` are the work it may take, `tools` what
+# its agent can use. A label's host tool that has a probe below must also answer on this host.
+pools:
+  claude:
+    provider: claude
+    maxParallel: 6
+    labels: [code, test, ui, verify, uat, docs, deliver]
+    tools: [git, node, browser, docker]
+  codex:
+    provider: codex
+    maxParallel: 10
+    labels: [code, test, ui, verify, uat, docs, deliver]
+    tools: [git, node, docker]
+  devin:
+    provider: devin
+    maxParallel: 10
+    labels: [code, test, verify, docs]
+    tools: [git, node, docker]
+
+# Host tools the router checks on this machine (the command must exit 0); a tool without a probe is the pool's own.
+hostProbes:
+  git: [git, --version]
+  node: [node, --version]
+  docker: [docker, --version]
+
+# A member picked maxStreak times in a row, or holding more than maxSharePercent of its tier's running seats, yields.
+balance: {maxStreak: 3, maxSharePercent: 70}
+
+# Quota use of a pool's window, in percent. A member at reservePercent is skipped; one the bias names may go to
+# biasPercent; exhaustedPercent is never used. No reading, or one older than maxAgeMinutes, is unknown and not blocked.
+quota: {reservePercent: 90, biasPercent: 95, exhaustedPercent: 100, maxAgeMinutes: 1440}
+
+# Provider circuit: a failure of a kind opens the provider for its cooldown once it has `strikes` of that kind in a row
+# (1 when not named). An open within reopenWindowMinutes of the last one waits reopenFactor times longer, capped at
+# capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
+circuit:
+  cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2}
+  strikes: {launch: 2}
+  reopenFactor: 5
+  reopenWindowMinutes: 60
+  capMinutes: 60
+
+# Typed launch errors are read for these signals (case-insensitive regular expressions); a certain launch failure with
+# none of them is a `launch` failure. Nothing else is read: no terminal screen is scraped.
+failureSignals:
+  rate: ["rate.?limit", "too many requests", "\\b429\\b"]
+  quota: ["quota", "usage limit", "credit", "out of tokens", "billing"]
+  capacity: ["overloaded", "capacity", "\\b529\\b", "\\b503\\b"]
+  auth: ["unauthori[sz]ed", "\\b401\\b", "forbidden", "not logged in", "login expired", "invalid api key"]
+
+# Pool concurrency (AIMD): a rate or capacity failure halves the pool's cap (never below floor, at most once per
+# decreaseCooldownMinutes); a success after quietMinutes without one adds 1, at most once per increaseStepMinutes.
+concurrency: {floor: 2, decreaseCooldownMinutes: 2, quietMinutes: 15, increaseStepMinutes: 5}
+
+# Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise).
+budgets:
+  workflow: {minutes: 480, tries: 40}

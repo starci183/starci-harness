@@ -4,16 +4,11 @@ import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { getTask } from "../../harness/tasks.js"
-import {
-    createNodeTask,
-    derivedStatus,
-    DISPATCHING,
-    pickRouteLocally,
-    setWorkflowStatus,
-    snapshotOf,
-    staleLiveTasks,
-} from "../../harness/workflow.js"
-import type { Route, RouteInput, Snapshot, WorkflowRow, WorkflowStatus } from "../../harness/workflow.js"
+import { assertWorkflowBudget } from "../../harness/budget.js"
+import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
+import type { RoutePick } from "../../harness/router.js"
+import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
+import type { Snapshot, WorkflowRow, WorkflowStatus } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
 import type { VerbContext } from "../../shared/verb.js"
@@ -109,50 +104,52 @@ const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise
     return actions
 }
 
-const routeFor = (db: DatabaseSync, workflow: WorkflowRow, node: PlanNode): Route | Refusal => {
-    const { agent, model, effort } = node.route
-    if (agent !== undefined && model !== undefined) return { agent, model, ...(effort === undefined ? {} : { effort }) }
-    const earlier = db.prepare("SELECT status FROM tasks WHERE workflow_id = ? AND plan_key = ? ORDER BY created_at DESC, rowid DESC").all(workflow.id, node.key)
-    const input: RouteInput = {
-        label: node.contract.label,
-        ...(node.route.difficulty === undefined ? {} : { difficulty: node.route.difficulty }),
-        attempt: earlier.length + 1,
-        ...(earlier[0] === undefined ? {} : { previousRed: earlier[0].status === "failed" }),
-    }
-    // The one seam to the router: swap pickRouteLocally for harness/router.ts pickRoute once it lands.
-    const picked = pickRouteLocally(workflow.header)(input)
-    if (picked instanceof Refusal) return picked
-    return effort === undefined ? picked : { ...picked, effort }
+/** A launch: a pinned agent and model (the task's pair, else the workflow file's), or the router's pick. */
+interface Launch {
+    readonly agent: string
+    readonly model: string
+    readonly effort?: string | undefined
+    readonly pick?: RoutePick | undefined
 }
 
-const launch = async (context: VerbContext, root: string, workflow: WorkflowRow, key: string, task: string, route: Route): Promise<StepAction> => {
+/**
+ * The launch of a queued node task. A pin (the task's agent and model, else the workflow file's) is used as written; otherwise
+ * the router picks from the task's label, the node's difficulty, its lineage (attempt number and contract-red members, through
+ * the retry chain) and the workflow's bias. A refused pick is a wait: the task stays queued and the next step routes it again.
+ */
+const launchOf = (root: string, workflow: WorkflowRow, node: PlanNode, taskId: string): Launch | Refusal => {
+    const { header } = workflow
+    const effort = node.route.effort ?? header.effort
+    if (node.route.agent !== undefined && node.route.model !== undefined) return { agent: node.route.agent, model: node.route.model, effort }
+    if (header.agent !== undefined && header.model !== undefined) return { agent: header.agent, model: header.model, effort }
+    const lineage = withLedger(root, (db) => lineageOf(db, taskId))
+    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, workflowBias: header.bias })
+    if (pick instanceof RouteRefusal) return new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("; "))
+    return { agent: pick.agent, model: pick.model, effort: effort ?? pick.effort, pick }
+}
+
+const launchTask = async (context: VerbContext, root: string, workflow: WorkflowRow, node: PlanNode, task: string): Promise<StepAction> => {
+    const chosen = launchOf(root, workflow, node, task)
+    if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
-        const started = await startSeat({ root, cwd: context.cwd, task, agent: route.agent, model: route.model, effort: route.effort, worktree: workflow.header.worktree })
-        return { key, task, action: "launched", detail: started.message.split("\n")[0] ?? "launched" }
+        const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen.pick, worktree: workflow.header.worktree })
+        const by = chosen.pick === undefined ? "pinned" : `routed (tier ${chosen.pick.tier}, pool ${chosen.pick.pool})`
+        return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} ${by}: ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
-        return { key, task, action: "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
+        return { key: node.key, task, action: "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
     }
 }
 
 /**
- * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline): each
- * becomes a queued task holding its leases; an orca task then gets its seat. A lease overlap or a refused route is a wait.
- * An orca task left queued by a launch that certainly failed is launched again first.
+ * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline) and
+ * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
+ * gets its seat: the new ones, and any left queued by a launch that certainly failed or a refused route.
  */
 const dispatchReady = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const { workflow } = snapshot
     const actions: StepAction[] = []
     const orca = workflow.header.runner === "orca"
-    if (orca) {
-        for (const view of snapshot.views) {
-            if (view.state !== "queued" || view.task === null) continue
-            const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
-            if (node === undefined) continue
-            const route = withLedger(root, (db) => routeFor(db, workflow, node))
-            actions.push(route instanceof Refusal ? { key: view.key, task: view.task.id, action: "wait", detail: `${route.code}: ${route.message}` } : await launch(context, root, workflow, view.key, view.task.id, route))
-        }
-    }
     let free = (orca ? workflow.header.maxParallel : 1) - snapshot.live
     for (const view of snapshot.views) {
         if (view.state !== "ready") continue
@@ -162,22 +159,27 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
         }
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
         if (node === undefined) continue
-        const route = orca ? withLedger(root, (db) => routeFor(db, workflow, node)) : null
-        if (route instanceof Refusal) {
-            actions.push({ key: node.key, task: null, action: "wait", detail: `${route.code}: ${route.message}` })
-            continue
-        }
-        let task: string
         try {
-            task = withLedger(root, (db) => createNodeTask(db, workflow.id, node).task.id)
+            assertWorkflowBudget(root, workflow.id)
+        } catch (error: unknown) {
+            const refusal = asRefusal(error)
+            actions.push({ key: node.key, task: null, action: "wait", detail: `${refusal.code}: ${refusal.message}` })
+            break
+        }
+        try {
+            const task = withLedger(root, (db) => createNodeTask(db, workflow.id, node).task.id)
+            free -= 1
+            actions.push({ key: node.key, task, action: "dispatched", detail: orca ? "queued for a worker seat" : "queued for the chat agent" })
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             actions.push({ key: node.key, task: null, action: refusal.code === "LEASE_CONFLICT" || refusal.code === "NODE_TAKEN" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
-            continue
         }
-        free -= 1
-        actions.push({ key: node.key, task, action: "dispatched", detail: orca ? `queued for ${route?.agent ?? "-"}/${route?.model ?? "-"}` : "queued for the chat agent" })
-        if (route !== null) actions.push(await launch(context, root, workflow, node.key, task, route))
+    }
+    if (!orca) return actions
+    for (const view of readSnapshot(root, workflow.id).views) {
+        const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
+        if (view.state !== "queued" || view.task === null || node === undefined) continue
+        actions.push(await launchTask(context, root, workflow, node, view.task.id))
     }
     return actions
 }

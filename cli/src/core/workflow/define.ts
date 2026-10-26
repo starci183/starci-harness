@@ -1,4 +1,5 @@
 import { resolve } from "node:path"
+import { workflowBudgets } from "../../harness/budget.js"
 import { buildGraph, readPlanSource } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
@@ -32,19 +33,24 @@ export const workflowDefineVerb = defineVerb({
         if (problems.length > 0) throw new Refusal("WORKFLOW_INVALID", `${file} is not fit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
         const root = await repositoryRoot(context.cwd)
         const db = openLedger(root)
-        try {
-            const workflow = insertWorkflow(db, source.header, built.nodes, file)
-            const nodes = built.nodes.map((node) => ({ key: node.key, label: node.contract.label, dependsOn: node.dependsOn, contractHash: node.contractHash, hash: node.hash }))
-            const table = formatTable([["TASK", "LABEL", "DEPENDS ON", "NODE HASH"], ...nodes.map((node) => [node.key, node.label, node.dependsOn.join(", ") || "-", node.hash.slice(0, 12)])])
-            const message = [
-                `defined workflow ${workflow.id} (${workflow.header.runner}): ${String(nodes.length)} task(s), graph v1`,
-                table,
-                ...built.notes.map((note) => `note: ${note}`),
-                `start it: starci workflow start ${workflow.id}`,
-            ].join("\n")
-            return { data: { workflow: workflow.id, runner: workflow.header.runner, status: workflow.status, graphVersion: workflow.graphVersion, goal: workflow.header.goal, nodes, notes: built.notes }, message }
-        } finally {
-            db.close()
-        }
+        const workflow = (() => {
+            try {
+                return insertWorkflow(db, source.header, built.nodes, file)
+            } finally {
+                db.close()
+            }
+        })()
+        // The row is the workflow's budget account: the ops default ceiling until the owner or the Supervisor raises it.
+        const budget = workflowBudgets(root, workflow.id).budgets[0] ?? null
+        const nodes = built.nodes.map((node) => ({ key: node.key, label: node.contract.label, dependsOn: node.dependsOn, contractHash: node.contractHash, hash: node.hash }))
+        const table = formatTable([["TASK", "LABEL", "DEPENDS ON", "NODE HASH"], ...nodes.map((node) => [node.key, node.label, node.dependsOn.join(", ") || "-", node.hash.slice(0, 12)])])
+        const message = [
+            `defined workflow ${workflow.id} (${workflow.header.runner}): ${String(nodes.length)} task(s), graph v1`,
+            table,
+            ...built.notes.map((note) => `note: ${note}`),
+            ...(budget === null ? [] : [`budget: ${String(budget.ceiling.minutes)} minutes, ${String(budget.ceiling.tries)} tries`]),
+            `start it: starci workflow start ${workflow.id}`,
+        ].join("\n")
+        return { data: { workflow: workflow.id, runner: workflow.header.runner, status: workflow.status, graphVersion: workflow.graphVersion, goal: workflow.header.goal, budget, nodes, notes: built.notes }, message }
     },
 })

@@ -300,29 +300,3 @@ export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanN
         recordEvent(db, "workflow-dispatched", workflowId, { key: node.key, task: created.id, graphVersion: workflow.graphVersion })
         return { task: created, leases: acquireLeases(db, created) }
     })
-
-/** What the router picks for one dispatch: the agent, the model and the effort. */
-export interface Route {
-    readonly agent: string
-    readonly model: string
-    readonly effort?: string
-}
-
-/** What a dispatch asks the router: the task's label, its difficulty, which attempt of the node this is, and whether the last one was red. */
-export interface RouteInput {
-    readonly label: string
-    readonly difficulty?: Difficulty
-    readonly attempt: number
-    readonly previousRed?: boolean
-}
-
-/**
- * The local stand-in of the router's `pickRoute(input) => Route | Refusal` (harness/router.ts, P2): until it lands, every
- * dispatch gets the workflow file's default agent, model and effort, and no default is a refusal. Pins on a task bypass both.
- */
-export const pickRouteLocally =
-    (header: WorkflowHeader) =>
-    (input: RouteInput): Route | Refusal =>
-        header.agent === undefined || header.model === undefined
-            ? new Refusal("ROUTE_NONE", `no route for a ${input.label} task: the router is not built yet, so workflow ${header.id} must name a default agent and model (or the task pins them)`)
-            : { agent: header.agent, model: header.model, ...(header.effort === undefined ? {} : { effort: header.effort }) }
