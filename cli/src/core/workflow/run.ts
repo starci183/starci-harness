@@ -5,6 +5,7 @@ import type { WorkflowStatus } from "../../harness/workflow.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import type { VerbResult } from "../../shared/verb.js"
 import { exitOf, readSnapshot, reportMessage, stepWorkflow } from "./engine.js"
 import type { StepAction, WorkflowReport } from "./engine.js"
 
@@ -25,7 +26,7 @@ const DEFAULT_INTERVAL_SECONDS = 30
 const MIN_INTERVAL_SECONDS = 1
 
 // Actions that move a task; a wait or a repeated problem is not progress.
-const PROGRESS: readonly StepAction["action"][] = ["verified", "dispatched", "launched", "cancelled", "lost"]
+const PROGRESS: ReadonlySet<StepAction["action"]> = new Set(["verified", "dispatched", "launched", "cancelled", "lost"])
 
 /** What a run did: how many ticks, why it ended, every change line it printed, and the last step's report. */
 interface RunData {
@@ -73,14 +74,18 @@ const stamp = (tick: number): string => `[${new Date().toISOString().slice(11, 1
 /** The lines one tick changed against what the run saw before; an action line is printed once, not every tick it repeats. */
 const changesOf = (seen: Seen, report: WorkflowReport, tick: number): { readonly lines: string[]; readonly moved: boolean; readonly next: Seen } => {
     const lines: string[] = []
-    if (seen.status !== report.status) lines.push(`${stamp(tick)} workflow ${report.workflow}: ${seen.status} -> ${report.status}${report.reason === null ? "" : ` (${report.reason})`}`)
+    if (seen.status !== report.status) {
+        const why = report.reason === null ? "" : ` (${report.reason})`
+        lines.push(`${stamp(tick)} workflow ${report.workflow}: ${seen.status} -> ${report.status}${why}`)
+    }
     for (const node of report.nodes) {
         const before = seen.nodes.get(node.key)
-        if (before !== node.state) lines.push(`${stamp(tick)} ${node.key}: ${before ?? "new"} -> ${node.state}${node.task === null ? "" : ` (${node.task.id})`}`)
+        const ledgerTask = node.task === null ? "" : ` (${node.task.id})`
+        if (before !== node.state) lines.push(`${stamp(tick)} ${node.key}: ${before ?? "new"} -> ${node.state}${ledgerTask}`)
     }
     const actions = new Set(report.actions.map(actionLine))
     for (const line of actions) if (!seen.actions.has(line)) lines.push(`${stamp(tick)} ${line}`)
-    const moved = lines.length > 0 && (seen.status !== report.status || report.nodes.some((node) => seen.nodes.get(node.key) !== node.state) || report.actions.some((action) => PROGRESS.includes(action.action)))
+    const moved = lines.length > 0 && (seen.status !== report.status || report.nodes.some((node) => seen.nodes.get(node.key) !== node.state) || report.actions.some((action) => PROGRESS.has(action.action)))
     return { lines, moved, next: { status: report.status, nodes: new Map(report.nodes.map((node) => [node.key, node.state])), actions } }
 }
 
@@ -128,19 +133,23 @@ export const workflowRunVerb = defineVerb({
         const until: Until = asked ?? (before.workflow.header.runner === "inline" ? "idle" : "done")
         let seen: Seen = { status: before.workflow.status, nodes: new Map(before.views.map((view) => [view.key, view.state])), actions: new Set() }
         const changes: string[] = []
-        context.progress(`${stamp(0)} run ${flags.workflow} until ${until}, every ${String(intervalSeconds)} s${maxTicks === undefined ? "" : `, at most ${String(maxTicks)} tick(s)`}`)
-        for (let tick = 1; ; tick += 1) {
+        const limit = maxTicks === undefined ? "" : `, at most ${String(maxTicks)} tick(s)`
+        context.progress(`${stamp(0)} run ${flags.workflow} until ${until}, every ${String(intervalSeconds)} s${limit}`)
+        // One tick per call; the sleep between ticks is a tail call of the loop, so no await sits in a loop statement.
+        const tickFrom = async (tick: number): Promise<VerbResult<RunData>> => {
             const report = await stepWorkflow(context, root, flags.workflow)
             const { lines, moved, next } = changesOf(seen, report, tick)
             seen = next
             for (const line of lines) context.progress(line)
             changes.push(...lines)
             const ended = endOf(report, until, moved) ?? (maxTicks !== undefined && tick >= maxTicks ? "max-ticks" : undefined)
-            if (ended !== undefined) {
-                const data: RunData = { workflow: report.workflow, until, intervalSeconds, ticks: tick, ended, changes, report }
-                return { data, message: `run ${report.workflow} ended ${ended} after ${String(tick)} tick(s)\n${reportMessage(report)}`, exitCode: exitOf(report) }
+            if (ended === undefined) {
+                await sleep(intervalSeconds * 1000)
+                return tickFrom(tick + 1)
             }
-            await sleep(intervalSeconds * 1000)
+            const data: RunData = { workflow: report.workflow, until, intervalSeconds, ticks: tick, ended, changes, report }
+            return { data, message: `run ${report.workflow} ended ${ended} after ${String(tick)} tick(s)\n${reportMessage(report)}`, exitCode: exitOf(report) }
         }
+        return tickFrom(1)
     },
 })

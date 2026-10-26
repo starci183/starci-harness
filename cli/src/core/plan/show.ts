@@ -59,8 +59,12 @@ export const planShowVerb = defineVerb({
                     ...(current ? [node.state ?? "-", node.task ?? "-"] : []),
                 ]),
             ])
-            const history = versions.map((row) => `v${String(row.version)} (goal v${String(row.goalVersion)}, ${row.createdAt}): ${row.reason ?? "-"}${row.classes.length === 0 ? "" : ` [${row.classes.join(" ")}]`}`)
-            const message = [`workflow ${workflow.id}, graph v${String(version)}${current ? " (current)" : ` of ${String(workflow.graphVersion)}`}: ${workflow.header.goal}`, table, "versions:", ...history].join("\n")
+            const history = versions.map((row) => {
+                const classes = row.classes.length === 0 ? "" : ` [${row.classes.join(" ")}]`
+                return `v${String(row.version)} (goal v${String(row.goalVersion)}, ${row.createdAt}): ${row.reason ?? "-"}${classes}`
+            })
+            const which = current ? " (current)" : ` of ${String(workflow.graphVersion)}`
+            const message = [`workflow ${workflow.id}, graph v${String(version)}${which}: ${workflow.header.goal}`, table, "versions:", ...history].join("\n")
             return { data: { workflow: workflow.id, graphVersion: version, current, nodes, versions }, message }
         } finally {
             db.close()

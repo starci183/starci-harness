@@ -69,7 +69,8 @@ export const taskCancelVerb = defineVerb({
                 return { task: task.id, from: before.status, status: task.status, reason: flags.reason ?? null, seats, preserved, leasesReleased }
             })
             const dir = preserved?.dir ?? null
-            const kept = dir === null ? (lost.length > 0 ? `; lost leases on ${lost.join(", ")}, nothing reset` : "; nothing dirty to preserve") : `; dirty work preserved in ${dir}`
+            const nothingKept = lost.length > 0 ? `; lost leases on ${lost.join(", ")}, nothing reset` : "; nothing dirty to preserve"
+            const kept = dir === null ? nothingKept : `; dirty work preserved in ${dir}`
             return { data, message: `cancelled ${data.task} (was ${data.from}); ${seatNote(seats)}${kept}; released ${String(data.leasesReleased)} lease(s)` }
         } finally {
             db.close()

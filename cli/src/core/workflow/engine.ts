@@ -20,6 +20,7 @@ import { formatTable } from "../../shared/output.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { startSeat } from "../seat/start.js"
 import { taskCancelVerb } from "../task/cancel.js"
+import { mapInSequence } from "../task/sequence.js"
 import { taskVerifyVerb } from "../task/verify.js"
 
 /**
@@ -83,17 +84,15 @@ export const reconcile = (root: string, id: string): Snapshot =>
  * (a verify in flight, a worker Orca did not stop) is reported and the task stays live; the next step tries again.
  */
 export const cancelTasks = async (context: VerbContext, tasks: readonly { readonly key: string | null; readonly task: string }[], reason: string): Promise<StepAction[]> => {
-    const actions: StepAction[] = []
-    for (const { key, task } of tasks) {
+    return mapInSequence(tasks, async ({ key, task }): Promise<StepAction> => {
         try {
             const done = await taskCancelVerb.run(context, { task, reason })
-            actions.push({ key, task, action: "cancelled", detail: done.message })
+            return { key, task, action: "cancelled", detail: done.message }
         } catch (error: unknown) {
             const refusal = asRefusal(error)
-            actions.push({ key, task, action: "problem", detail: `not cancelled (${refusal.code}): ${refusal.message}` })
+            return { key, task, action: "problem", detail: `not cancelled (${refusal.code}): ${refusal.message}` }
         }
-    }
-    return actions
+    })
 }
 
 /**
@@ -121,41 +120,42 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
         const refusal = asRefusal(error)
         return [{ key: null, task: null, action: "problem", detail: `liveness not checked (${refusal.code}): ${refusal.message}` }]
     }
-    const actions: StepAction[] = []
-    for (const target of targets) {
+    const found = await mapInSequence(targets, async (target): Promise<StepAction | null> => {
         const answer = await askOrca(binary, target.handle, context.cwd, rules)
         const recorded = withLedger(root, (db) => recordPing(db, target.seat, answer))
         const verdict = livenessOf(recorded.seat, rules).verdict
         if (answer.kind === "gone") {
             const marked = recorded.lostTask === null ? "" : `; task ${recorded.lostTask} is effect_unknown and keeps its leases: cancel it (starci task cancel ${recorded.lostTask}) and amend with retry`
-            actions.push({ key: target.key, task: target.task, action: "lost", detail: `seat ${target.seat} worker-lost: ${answer.evidence}${marked}` })
-        } else if (answer.kind === "unknown") {
-            const quiet = verdict === "quiet" ? `; quiet past ${String(rules.quietMinutes)} min, held` : ""
-            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat}: Orca could not tell (${answer.why}); unknown is not dead${quiet}` })
-        } else if (verdict === "stale") {
-            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat} is stale: Orca answers but its terminal printed nothing for ${String(rules.activeStaleMinutes)} min or more` })
+            return { key: target.key, task: target.task, action: "lost", detail: `seat ${target.seat} worker-lost: ${answer.evidence}${marked}` }
         }
-    }
-    return actions
+        if (answer.kind === "unknown") {
+            const quiet = verdict === "quiet" ? `; quiet past ${String(rules.quietMinutes)} min, held` : ""
+            return { key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat}: Orca could not tell (${answer.why}); unknown is not dead${quiet}` }
+        }
+        if (verdict === "stale") {
+            return { key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat} is stale: Orca answers but its terminal printed nothing for ${String(rules.activeStaleMinutes)} min or more` }
+        }
+        return null
+    })
+    return found.filter((action) => action !== null)
 }
 
 /** Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. */
 const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
-    const actions: StepAction[] = []
-    for (const view of snapshot.views) {
-        if (view.state !== "reported" || view.task === null) continue
+    const reported = snapshot.views.flatMap((view) => (view.state === "reported" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
+    return mapInSequence(reported, async ({ key, task }): Promise<StepAction> => {
         try {
-            const verified = await taskVerifyVerb.run(context, { task: view.task.id, contract: undefined, record: false, "no-commit": false, recover: false })
+            const verified = await taskVerifyVerb.run(context, { task, contract: undefined, record: false, "no-commit": false, recover: false })
             const data = verified.data as { readonly verdict?: string; readonly status?: string; readonly checks?: readonly { readonly name: string; readonly status: string }[] }
             const red = (data.checks ?? []).filter((check) => check.status === "red").map((check) => check.name)
-            actions.push({ key: view.key, task: view.task.id, action: "verified", detail: `verdict ${String(data.verdict)}, task ${String(data.status)}${red.length === 0 ? "" : `; red: ${red.join(", ")} (starci task status ${view.task.id})`}` })
+            const redNote = red.length === 0 ? "" : `; red: ${red.join(", ")} (starci task status ${task})`
+            return { key, task, action: "verified", detail: `verdict ${String(data.verdict)}, task ${String(data.status)}${redNote}` }
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             // Another verifier took it first: that one settles it.
-            actions.push({ key: view.key, task: view.task.id, action: refusal.code === "TASK_NOT_VERIFIABLE" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
+            return { key, task, action: refusal.code === "TASK_NOT_VERIFIABLE" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` }
         }
-    }
-    return actions
+    })
 }
 
 /** True for a task whose result is settled: it ended, or it came back to the Kernel (blocked or mismatch); its worker has nothing left to do. */
@@ -172,20 +172,21 @@ const isSweepable = (seat: SeatRow): boolean => isSeatOpen(seat) && seat.handle 
  */
 const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const settled = withLedger(root, (db) => snapshot.tasks.filter((task) => isSettled(task) && seatsOfTask(db, task.id).some(isSweepable)))
-    const actions: StepAction[] = []
-    for (const task of settled) {
+    const closed = await mapInSequence(settled, async (task): Promise<StepAction[]> => {
         try {
-            for (const closing of await closeSeatsOfTask(root, task.id)) {
+            const closings = await closeSeatsOfTask(root, task.id)
+            return closings.map((closing) => {
                 const tab = closing.closed === null ? "" : `, tab ${closing.closed.tab}`
-                const detail = `seat ${closing.seat} ${closing.outcome} (task ${task.status}${task.result === null ? "" : `, result ${task.result}`})${tab}`
-                actions.push({ key: task.key, task: task.id, action: closing.outcome === "not-stopped" ? "problem" : "closed", detail })
-            }
+                const resultNote = task.result === null ? "" : `, result ${task.result}`
+                const detail = `seat ${closing.seat} ${closing.outcome} (task ${task.status}${resultNote})${tab}`
+                return { key: task.key, task: task.id, action: closing.outcome === "not-stopped" ? "problem" : "closed", detail }
+            })
         } catch (error: unknown) {
             const refusal = asRefusal(error)
-            actions.push({ key: task.key, task: task.id, action: "problem", detail: `seats not closed (${refusal.code}): ${refusal.message}` })
+            return [{ key: task.key, task: task.id, action: "problem", detail: `seats not closed (${refusal.code}): ${refusal.message}` }]
         }
-    }
-    return actions
+    })
+    return closed.flat()
 }
 
 /**
@@ -255,14 +256,23 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
 }
 
 // A node that cannot be dispatched now for one of these reasons waits for a later step; anything else is a problem to report.
-const WAIT_CODES: readonly string[] = ["LEASE_CONFLICT", "NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"]
+const WAIT_CODES: ReadonlySet<string> = new Set(["LEASE_CONFLICT", "NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"])
 
-/**
- * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline) and
- * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
- * gets its seat: the new ones, and any left queued by a launch that certainly failed or a refused route.
- */
-const dispatchReady = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+/** Queues one ready node as a task: the action it made, whether a task was queued, and whether the workflow stopped dispatching. */
+const queueNode = (root: string, workflow: WorkflowRow, node: PlanNode): { readonly action: StepAction; readonly queued: boolean; readonly halted: boolean } => {
+    const orca = workflow.header.runner === "orca"
+    try {
+        const task = withLedger(root, (db) => createNodeTask(db, workflow.id, node).task.id)
+        return { action: { key: node.key, task, action: "dispatched", detail: orca ? "queued for a worker seat" : "queued for the chat agent" }, queued: true, halted: false }
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        const action: StepAction = { key: node.key, task: null, action: WAIT_CODES.has(refusal.code) ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` }
+        return { action, queued: false, halted: refusal.code === "WORKFLOW_NOT_DISPATCHING" }
+    }
+}
+
+/** The ready nodes in dependency order become queued tasks while there are free slots and budget; `halted` says the workflow stopped dispatching. */
+const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepAction[]; readonly halted: boolean } => {
     const { workflow } = snapshot
     const actions: StepAction[] = []
     const orca = workflow.header.runner === "orca"
@@ -282,22 +292,28 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
             actions.push({ key: node.key, task: null, action: "wait", detail: `${refusal.code}: ${refusal.message}` })
             break
         }
-        try {
-            const task = withLedger(root, (db) => createNodeTask(db, workflow.id, node).task.id)
-            free -= 1
-            actions.push({ key: node.key, task, action: "dispatched", detail: orca ? "queued for a worker seat" : "queued for the chat agent" })
-        } catch (error: unknown) {
-            const refusal = asRefusal(error)
-            actions.push({ key: node.key, task: null, action: WAIT_CODES.includes(refusal.code) ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
-            if (refusal.code === "WORKFLOW_NOT_DISPATCHING") return actions
-        }
+        const made = queueNode(root, workflow, node)
+        actions.push(made.action)
+        if (made.queued) free -= 1
+        if (made.halted) return { actions, halted: true }
     }
-    if (!orca) return actions
-    for (const view of readSnapshot(root, workflow.id).views) {
+    return { actions, halted: false }
+}
+
+/**
+ * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline) and
+ * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
+ * gets its seat: the new ones, and any left queued by a launch that certainly failed or a refused route.
+ */
+const dispatchReady = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const { workflow } = snapshot
+    const { actions, halted } = queueReady(root, snapshot)
+    if (halted || workflow.header.runner !== "orca") return actions
+    const launches = readSnapshot(root, workflow.id).views.flatMap((view) => {
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
-        if (view.state !== "queued" || view.task === null || node === undefined) continue
-        actions.push(await launchTask(context, root, workflow, node, view.task.id))
-    }
+        return view.state === "queued" && view.task !== null && node !== undefined ? [{ node, task: view.task.id }] : []
+    })
+    actions.push(...(await mapInSequence(launches, ({ node, task }) => launchTask(context, root, workflow, node, task))))
     return actions
 }
 
@@ -309,7 +325,7 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
     const id = view.task.id
     const task = withLedger(root, (db) => getTask(db, id))
     const files = writeBrief(task, loadOps(), root, "agent")
-    const output = files.output.replace(/\\/g, "/")
+    const output = files.output.replaceAll("\\", "/")
     return {
         key: view.key,
         task: id,
@@ -317,7 +333,7 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
         brief: files.brief,
         output: files.output,
         commands: [
-            `starci task verify ${id} --contract ${files.contract.replace(/\\/g, "/")}`,
+            `starci task verify ${id} --contract ${files.contract.replaceAll("\\", "/")}`,
             `starci task result ${id} --status done --output @${output}`,
             `starci workflow step ${snapshot.workflow.id}`,
         ],
@@ -337,10 +353,12 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
     const actions: StepAction[] = []
     if (SETTLING.includes(status)) {
         const stale = staleLiveTasks(snapshot.nodes, snapshot.tasks).map((task) => ({ key: task.key, task: task.id }))
-        actions.push(...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)))
-        actions.push(...(await checkLiveness(context, root, readSnapshot(root, id))))
-        actions.push(...(await settleReported(context, readSnapshot(root, id))))
-        actions.push(...(await closeSettledSeats(root, readSnapshot(root, id))))
+        actions.push(
+            ...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)),
+            ...(await checkLiveness(context, root, readSnapshot(root, id))),
+            ...(await settleReported(context, readSnapshot(root, id))),
+            ...(await closeSettledSeats(root, readSnapshot(root, id))),
+        )
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
         snapshot = reconcile(root, id)
@@ -367,8 +385,9 @@ export const nodeTable = (nodes: readonly NodeView[]): string => formatTable([["
 /** The human text of a report: the status line, the node table, the actions and the inline next task. */
 export const reportMessage = (report: WorkflowReport): string => {
     const done = report.nodes.filter((node) => node.state === "done").length
+    const reasonLine = report.reason === null ? "" : `\nreason: ${report.reason}`
     const lines = [
-        `workflow ${report.workflow} (${report.runner}, graph v${String(report.graphVersion)}): ${report.status}, ${String(done)}/${String(report.nodes.length)} done${report.reason === null ? "" : `\nreason: ${report.reason}`}`,
+        `workflow ${report.workflow} (${report.runner}, graph v${String(report.graphVersion)}): ${report.status}, ${String(done)}/${String(report.nodes.length)} done${reasonLine}`,
         nodeTable(report.nodes),
         ...report.actions.map((action) => `${action.action}: ${action.key ?? "-"} ${action.task ?? ""} ${action.detail}`.replace(/\s+/g, " ").trim()),
     ]

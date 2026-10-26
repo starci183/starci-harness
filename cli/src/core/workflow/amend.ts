@@ -46,7 +46,8 @@ export const workflowAmendVerb = defineVerb({
             }
         })()
         const doomed = replan.classification.flatMap((row) => (row.cancel === null ? [] : [{ key: row.key, task: row.cancel, why: row.class }]))
-        const actions: StepAction[] = await cancelTasks(context, doomed, `workflow ${workflow.id} amend to graph v${String(workflow.graphVersion)}: ${doomed.map((row) => `${row.key} ${row.why}`).join(", ")}`)
+        const doomedList = doomed.map((row) => `${row.key} ${row.why}`).join(", ")
+        const actions: StepAction[] = await cancelTasks(context, doomed, `workflow ${workflow.id} amend to graph v${String(workflow.graphVersion)}: ${doomedList}`)
         let snapshot = reconcile(root, workflow.id)
         // Resume: a started workflow dispatches from the new graph at once.
         const resumed = DISPATCHING.includes(snapshot.workflow.status) ? await stepWorkflow(context, root, workflow.id) : null
