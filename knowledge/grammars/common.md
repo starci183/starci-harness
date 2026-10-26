@@ -105,6 +105,6 @@ from all three is asked, not invented.
 | One question per screen | Progress from a real count; the prompt as the heading; the answer choices as the control itself (radio group, checkbox group or segmented control), each choice a full-width row; one commit at the bottom, disabled until a choice exists so nothing moves; the outcome as an Alert in place above the action; an optional explanation in a bottom drawer. A wrong answer is an outcome, never a field error |
 | Result | One highlighted card with the display heading, the score and its facts as real labelled values, one commit onward and a quieter way to review; an earned reward announced politely as a toast |
 | Browse and pick | A labelled search field; filters as a selectable tag group; a list box when picking is the task, a list card when rows only report; pagination; pending keeps the list shape |
-| Data status of a region | Loading, unauthorized, forbidden, failed and empty render through the product's one status view in that region's place, inside the unchanged surface; the recipe belongs to [patterns/fe](../patterns/fe/README.md) |
+| Data status of a region | Loading, forbidden, failed and empty (a signed-out viewer never reaches a region: the session gate redirects) render through the product's one status view in that region's place, inside the unchanged surface; the recipe belongs to [patterns/fe](../patterns/fe/README.md) |
 
 A grammar file lists only the shapes it composes differently.

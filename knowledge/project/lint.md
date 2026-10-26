@@ -43,9 +43,9 @@ These standard facts live only in knowledge; a reviewer (the Kernel judging a re
 Each leaves this list the day a machine checks it.
 
 - **Front-end pattern rules without an enforcer.** A rule in [patterns/fe](../patterns/fe/README.md) whose section
-  has no "Enforced by" line: FE-COMMENT-2, FE-COMMENT-3, FE-COMMENT-4, FE-STATE-1, FE-STORAGE, FE-ERROR-3, FE-APPS-2,
-  FE-PACKAGES-3, FE-FUNCTION-3, FE-FUNCTION-6, FE-NAMING-3, FE-NAMING-5, FE-NAMING-6, FE-UPLOAD, FE-TYPING-3,
-  FE-TYPING-4, FE-TYPING-5, FE-TYPING-7. Every back-end pattern rule names its enforcer.
+  says review only: FE-NAMING-3, FE-NAMING-4, FE-NAMING-5 (partly), FE-COMMENT-1, FE-TYPING-2,
+  FE-ERROR-4, FE-UPLOAD, FE-STATE-1 (partly), FE-BOUNDARY-3, the FE-FORM bounds and the FE-DATA-KEY helpers. Every
+  back-end pattern rule names its enforcer.
 - **Shared pattern rules held by review.** A rule of [patterns/shared](../patterns/shared/README.md) whose "Enforced
   by" line says review only, on both sides or on one: SHARED-IMPORTS-2 on both sides; SHARED-COMMENT-2,
   SHARED-NAMING-1 and SHARED-TYPING-3 on the front end; SHARED-NAMING-3 on the back end; SHARED-TYPING-1 for a

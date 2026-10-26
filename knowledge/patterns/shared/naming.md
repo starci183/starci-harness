@@ -30,7 +30,7 @@ file (`page.tsx`, `layout.tsx`, `loading.tsx`, `not-found.tsx`, `error.tsx`), wh
 Why: a named export is found by search and renamed in one place; a default lets every importer pick its own name.
 
 ```tsx
-const Page = async ({ params }: PageProps) => <InvoicesScreen workspaceId={(await params).workspaceId} />
+const Page = async (props: PageProps) => <InvoicesScreen workspaceId={(await props.params).workspaceId} />
 
 export default Page
 ```
