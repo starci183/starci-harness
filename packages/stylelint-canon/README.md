@@ -50,11 +50,12 @@ The file kind comes from the path: `**/modules/brand/brand.css` is the brand lay
 
 ## The vocabulary
 
-The tokens the rules accept are the grammar's own, read from `packages/grammar/src/**/*.css` by
+The tokens the rules accept are the grammar's own, read from the grammar CSS by
 `lib/extract-vocabulary.mjs`: every custom property under `--grammar-`, `--starci-core-`, `--heritage-` and
 `--offset-pop-`, the un-prefixed semantic layer the grammar declares (`--accent`, `--surface`, `--border`, ...) and
 the vendor tokens it reads (`--radius-md`, `--font-mono`). `lib/vocabulary.generated.mjs` is the committed result;
-`npm run vocabulary` regenerates it and `vocabulary.spec.mjs` fails when it is stale.
+`npm run vocabulary` regenerates it from the committed grammar CSS snapshot in `fixtures/grammar/src`, and
+`vocabulary.spec.mjs` fails when it is stale. `npm run vocabulary -- <grammar checkout>/src` refreshes the snapshot first.
 
 ## Status colours (soft pairs)
 

@@ -1,0 +1,591 @@
+/*
+ * Common form anatomy: the structure every family inherits for the form and input renderers
+ * (Field, Textarea, Select, ComboBox, SearchField, NumberField, Checkbox, CheckboxGroup, RadioGroup,
+ * Switch, Slider, SegmentedControl, DateField, DatePicker, DateRangePicker, TimeField, FileDropzone,
+ * Fieldset, Form, ButtonGroup).
+ *
+ * Only structure, rhythm and the touch floor live here. Paint resolves through the semantic
+ * variables every family binds (`--field-*`, `--accent`, `--danger`, `--muted`, `--focus`,
+ * `--border`), so Core, Heritage and Offset Pop each get their own look without a Common colour.
+ * Spacing uses the Common 4px scale (0.25 / 0.5 / 0.75 / 1 / 1.5rem).
+ *
+ * `!important` appears only on the few declarations the vendor's field roots also set (display and
+ * gap), the same concession `.starci-core-input` makes: the vendor rule must lose in either import
+ * order.
+ */
+@layer starci-grammar-common {
+    /* --- Field anatomy: label, control, description, error --- */
+    .starci-core-field {
+        display: flex !important;
+        min-width: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--starci-core-field-gap, 0.5rem) !important;
+    }
+
+    .starci-core-field-label {
+        color: var(--foreground, CanvasText);
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-field-required {
+        margin-inline-start: 0.25rem;
+        color: var(--danger, CanvasText);
+    }
+
+    .starci-core-field-description {
+        margin: 0;
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-field-error {
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-field-error:empty {
+        display: none;
+    }
+
+    .starci-core-field-meta {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .starci-core-field-count {
+        flex-shrink: 0;
+        margin-inline-start: auto;
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .starci-core-field-count[data-grammar-invalid="true"] {
+        color: var(--danger, CanvasText);
+    }
+
+    .starci-core-field-spinner {
+        flex-shrink: 0;
+    }
+
+    .starci-core-field-control {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    /* A native or third-party control handed to `Field` reads the same field paint Input reads. */
+    .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) {
+        width: 100%;
+        min-width: 0;
+        min-height: var(--starci-core-field-min-height, 2.5rem);
+        border: var(--field-border-width, 1px) solid var(--field-border, var(--border, ButtonBorder));
+        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
+        padding: 0.5rem 0.75rem;
+        box-sizing: border-box;
+        background: var(--field-background, var(--surface, Canvas));
+        color: var(--field-foreground, var(--foreground, CanvasText));
+        box-shadow: var(--field-shadow, none);
+        font: inherit;
+        font-size: 0.875rem;
+    }
+
+    .starci-core-field-control > :where(input, select, textarea):focus-visible {
+        outline: 2px solid var(--focus, Highlight);
+        outline-offset: 2px;
+    }
+
+    .starci-core-field-control > :where(input, select, textarea):disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+    .starci-core-field[data-grammar-invalid="true"] > .starci-core-field-control > :where(input, select, textarea) {
+        border-color: var(--danger, CanvasText);
+    }
+
+    /* --- Text-shaped controls fill their field --- */
+    .starci-core-textarea-control {
+        width: 100%;
+        min-width: 0;
+        min-height: 5rem;
+        resize: vertical;
+    }
+
+    /*
+     * Loading field (knowledge STATE-8, Select and Textarea `isSkeleton`): the label stays real, the control is one
+     * Skeleton block of the loaded control's height (the select trigger 2.5rem, with the touch floor below; the textarea
+     * `rows` at 1.25rem a line plus its padding, never under the 5rem field minimum). Not focusable: no control exists.
+     */
+    /* The loading root (Field, Select, NumberField, SearchField, SegmentedControl, CheckboxGroup, Switch, Textarea): inert geometry that can shrink inside its row or column. */
+    .starci-core-field-skeleton {
+        min-width: 0;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .starci-core-field-skeleton-control { display: block; min-width: 0; }
+
+    .starci-core-field-skeleton-control > .starci-core-skeleton {
+        block-size: 100%;
+        aspect-ratio: auto;
+    }
+
+    .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="input"]) { block-size: 2.5rem; }
+
+    /* The select trigger is HeroUI's own (min-h-9). */
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="select"] { block-size: 2.25rem; }
+
+    /* Joined segments: one block, a segment-width (5rem) per option, never wider than the field; `fill` takes the whole row. */
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"] {
+        block-size: 2.5rem;
+        inline-size: min(100%, calc(var(--starci-core-skeleton-segments, 2) * 5rem));
+    }
+
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-width="fill"] { inline-size: 100%; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-grammar-segmented-size="control"] { block-size: var(--starci-core-control-min-size, 2.75rem); }
+
+    /* A checkbox box and a switch track beside their real labels. */
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="choice"] { flex: none; block-size: 1rem; inline-size: 1rem; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"] { flex: none; block-size: 1.25rem; inline-size: 2rem; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="lg"] { block-size: 1.5rem; inline-size: 3rem; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="control"] { block-size: var(--starci-core-control-min-size, 2.75rem); inline-size: 4.875rem; }
+
+    .starci-core-field-skeleton-choice-label {
+        color: var(--foreground, CanvasText);
+        font-size: 0.875rem;
+        line-height: 1.25;
+    }
+
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="textarea"] {
+        block-size: max(5rem, calc(var(--starci-core-skeleton-rows, 4) * 1.25rem + 1rem));
+    }
+
+    @media (pointer: coarse), (max-width: 40rem) {
+        .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="select"], [data-grammar-field-skeleton="input"], [data-grammar-field-skeleton="segmented"]) {
+            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        }
+    }
+
+    .starci-core-combo-box-group,
+    .starci-core-search-field-group,
+    .starci-core-number-field-group,
+    .starci-core-date-group {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .starci-core-combo-box-input,
+    .starci-core-search-field-input,
+    .starci-core-number-field-input {
+        min-width: 0;
+    }
+
+    /*
+     * ONE SINGLE-LINE FIELD ANATOMY (0.9.8). Input, Select, ComboBox, SearchField, NumberField, DateField, TimeField
+     * (and the pickers built on the date group) draw one box: the same radius token, the same minimum height
+     * (`--starci-core-field-min-height`, 2.5rem: the height the loading skeletons already promise), the same border-box
+     * sizing, the same 0.75rem inline padding, and a trigger or chevron 0.5rem from the inline end. The box of a
+     * ComboBox is its input group, not the vendor's inner input, so it carries the radius and height too and the input
+     * inside inherits the corner (no square right side behind the trigger) and stretches to the group's height.
+     */
+    .starci-core-input-field,
+    .starci-core-combo-box-group,
+    .starci-core-search-field-group,
+    .starci-core-number-field-group,
+    .starci-core-date-group {
+        box-sizing: border-box;
+    }
+
+    .starci-core-input-field,
+    .starci-core-combo-box-group {
+        min-block-size: var(--starci-core-field-min-height, 2.5rem);
+    }
+
+    /* Owner 2026-10-25: Select has the same 2.5rem field height as Input. */
+    .starci-core-select-trigger {
+        min-block-size: var(--starci-core-field-min-height, 2.5rem);
+    }
+
+    /*
+     * ONE FOCUS RING PER FIELD (0.9.14, owner ruling 2026-10-12, FOCUS-1). The ring is drawn once, on the field frame:
+     * the group of SearchField, NumberField, ComboBox and the date fields, the trigger of Select, the control itself
+     * for Input and a native control handed to Field. The inner text input of a grouped field never draws a ring,
+     * outline or shadow of its own, whatever the page's global `:focus-visible` rule says, so the wrapper and the input
+     * are never both outlined. The frame keeps the ring for every way focus arrives (`:focus-within`), so keyboard
+     * focus stays visible; forced-colors draws it as a system outline on the same frame.
+     */
+    .starci-core-combo-box-input:is(:focus, :focus-visible, [data-focused="true"], [data-focus-visible="true"]) {
+        box-shadow: none;
+    }
+
+    .starci-core-combo-box-group:focus-within {
+        box-shadow: 0 0 0 2px var(--focus, Highlight);
+    }
+
+    @media (forced-colors: active) {
+        :is(.starci-core-search-field-group, .starci-core-number-field-group, .starci-core-combo-box-group, .starci-core-date-group):focus-within {
+            outline: 2px solid Highlight;
+        }
+    }
+
+    .starci-core-combo-box-group {
+        align-items: stretch;
+    }
+
+    .starci-core-combo-box-input {
+        box-sizing: border-box;
+        flex: 1 1 0;
+        border-radius: inherit;
+        text-overflow: ellipsis;
+    }
+
+    .starci-core-combo-box-trigger {
+        inset-inline-end: 0;
+    }
+
+    .starci-core-date-input {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .starci-core-date-range-separator {
+        flex-shrink: 0;
+    }
+
+    /* --- List popover (Select, ComboBox) ---
+     * An option is HeroUI's own: a `Label`, with a `Description` under it inside one column when it has one, then the
+     * item indicator. The column is the only Grammar element; it lays out and paints nothing. */
+    [data-grammar-option-copy] {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .starci-core-list-empty {
+        padding: 0.5rem 0.75rem;
+        color: var(--muted, GrayText);
+        font-size: 0.875rem;
+    }
+
+    /* --- Choices: Checkbox, Radio, Switch --- */
+    .starci-core-choice {
+        min-width: 0;
+    }
+
+    .starci-core-choice-content {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .starci-core-choice-control {
+        flex-shrink: 0;
+    }
+
+    .starci-core-choice-group-options {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    [data-grammar-orientation="horizontal"] > .starci-core-choice-group-options {
+        flex-flow: row wrap;
+        gap: 0.75rem 1rem;
+    }
+
+    /*
+     * --- Switch size "control" ---
+     * HeroUI's `lg` switch scaled to the shared control height (2.75rem) so a theme switch lines up with the IconButtons and the avatar of a
+     * bar. Keyed on the stamps the component emits (`data-grammar-switch-size`, `data-grammar-switch-thumb`), never on vendor class names.
+     * The geometry is `!important` because consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide
+     * against the vendor `.switch--*` size rules. The on position is a margin (as HeroUI's own thumb), the percentage resolving against
+     * the track: 100% - thumb - inset.
+     */
+    [data-component="Switch"][data-grammar-switch-size="control"] {
+        --grammar-switch-height: var(--starci-core-control-min-size, 2.75rem);
+        --grammar-switch-width: 4.875rem;
+        --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
+    }
+
+    [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-choice-control="switch"] {
+        inline-size: var(--grammar-switch-width) !important;
+    }
+
+    [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-thumb] {
+        inline-size: var(--grammar-switch-thumb) !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /*
+     * The thumb glyph box is the canon icon size: 20px (size-5, `Icon` `leading`) on `lg` and `control`, 16px (`chip`) on `md`. The glyph fills its box, centred in the thumb.
+     */
+    .starci-core-switch-icon {
+        display: inline-flex;
+        flex: none;
+        inline-size: 1.25rem;
+        block-size: 1.25rem;
+        align-items: center;
+        justify-content: center;
+    }
+
+    [data-component="Switch"][data-grammar-switch-size="md"] .starci-core-switch-icon {
+        inline-size: 1rem;
+        block-size: 1rem;
+    }
+
+    .starci-core-switch-icon > .starci-core-icon {
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    /* A swapping pair shows the glyph of the current state only; a single glyph always shows. */
+    [data-component="Switch"][data-grammar-switch-icons="swap"] [data-grammar-switch-icon="on"] { display: none; }
+    [data-component="Switch"][data-grammar-switch-icons="swap"]:is([data-selected="true"], [aria-checked="true"]) [data-grammar-switch-icon="on"] { display: inline-flex; }
+    [data-component="Switch"][data-grammar-switch-icons="swap"]:is([data-selected="true"], [aria-checked="true"]) [data-grammar-switch-icon="off"] { display: none; }
+
+    /* --- Slider --- */
+    .starci-core-slider {
+        width: 100%;
+    }
+
+    .starci-core-slider-header {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .starci-core-slider-output {
+        color: var(--muted, GrayText);
+    }
+
+    /* --- SegmentedControl --- */
+    .starci-core-segmented-control {
+        align-items: flex-start;
+    }
+
+    .starci-core-segmented-control[data-width="fill"] {
+        align-items: stretch;
+    }
+
+    .starci-core-segmented-control-group {
+        max-width: 100%;
+    }
+
+    .starci-core-segmented-control[data-width="fill"] .starci-core-segment {
+        flex: 1 1 0;
+    }
+
+    .starci-core-segment {
+        min-width: 0;
+        white-space: nowrap;
+    }
+
+    /*
+     * --- SegmentedControl size "control" ---
+     * HeroUI's `lg` group held to the shared control height (2.75rem) so a language switch lines up with the IconButtons, Switch and buttons of a
+     * bar. Keyed on the stamp the component emits (`data-grammar-segmented-size`), never on vendor class names. The height is `!important` because
+     * consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide against the vendor `.toggle-button--lg` rule
+     * (h-11, then md:h-10). `md` and `lg` stay HeroUI's own.
+     */
+    [data-component="SegmentedControl"][data-grammar-segmented-size="control"] .starci-core-segment {
+        block-size: var(--starci-core-control-min-size, 2.75rem) !important;
+    }
+
+    /* --- ButtonGroup --- */
+    .starci-core-button-group {
+        max-width: 100%;
+    }
+
+    .starci-core-button-group[data-width="fill"] {
+        width: 100%;
+    }
+
+    .starci-core-button-group[data-width="fill"] > [data-component="Button"] {
+        flex: 1 1 0;
+    }
+
+    /* --- Fieldset and Form --- */
+    .starci-core-fieldset {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        margin: 0;
+        border: 0;
+        padding: 0;
+    }
+
+    .starci-core-fieldset-legend {
+        float: left;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .starci-core-fieldset-legend + * {
+        clear: both;
+    }
+
+    .starci-core-fieldset-fields {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-section-gap, 1rem);
+    }
+
+    .starci-core-fieldset-actions {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: var(--grammar-inline-gap, 0.5rem);
+    }
+
+    .starci-core-form {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-region-gap, 1.5rem);
+    }
+
+    /* --- FileDropzone: a native file input stretched over the drop target --- */
+    .starci-core-file-dropzone-target {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        min-height: 7rem;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed var(--border, ButtonBorder);
+        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
+        padding: 1.5rem;
+        background: var(--field-background, var(--surface, Canvas));
+        color: var(--muted, GrayText);
+        text-align: center;
+        transition:
+            border-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)),
+            background-color var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-file-dropzone-input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .starci-core-file-dropzone-input:disabled {
+        cursor: default;
+    }
+
+    .starci-core-file-dropzone-prompt {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        pointer-events: none;
+    }
+
+    .starci-core-file-dropzone-icon {
+        display: inline-flex;
+        color: var(--foreground, CanvasText);
+    }
+
+    .starci-core-file-dropzone-target[data-grammar-drag="over"] {
+        border-color: var(--accent, Highlight);
+        background: color-mix(in srgb, var(--accent, Highlight) 8%, var(--field-background, var(--surface, Canvas)));
+    }
+
+    .starci-core-file-dropzone-target:has(.starci-core-file-dropzone-input:focus-visible) {
+        outline: 2px solid var(--focus, Highlight);
+        outline-offset: 2px;
+    }
+
+    .starci-core-file-dropzone[data-grammar-invalid="true"] .starci-core-file-dropzone-target {
+        border-color: var(--danger, CanvasText);
+    }
+
+    .starci-core-file-dropzone[data-grammar-disabled="true"] .starci-core-file-dropzone-target {
+        opacity: 0.5;
+    }
+
+    .starci-core-file-dropzone-files {
+        margin: 0;
+        padding-inline-start: 1rem;
+        color: var(--foreground, CanvasText);
+        font-size: 0.875rem;
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * THE 44px TOUCH FLOOR.
+     *
+     * On a touch pointer or a narrow viewport every pressable part of a form control - the field
+     * box, the choice row (label included, it is part of the hit area), each segment, the stepper
+     * and trigger glyph buttons, list options and calendar days - is at least 44px in both axes that
+     * matter. It is a MINIMUM (`min-*-size`), which the vendor never sets, so no paint changes and no
+     * `!important` is owed. The slider thumb keeps its drawn size and grows an invisible hit area.
+     */
+    @media (pointer: coarse), (max-width: 40rem) {
+        .starci-core-select-trigger,
+        .starci-core-combo-box-group,
+        .starci-core-search-field-group,
+        .starci-core-number-field-group,
+        .starci-core-date-group,
+        .starci-core-choice-content,
+        .starci-core-segment,
+        .starci-core-list-option,
+        .starci-core-button-group > *,
+        .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="range"]), select) {
+            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        }
+
+        .starci-core-number-field-step,
+        .starci-core-combo-box-trigger,
+        .starci-core-search-field-clear,
+        .starci-core-date-trigger,
+        .starci-core-calendar-nav,
+        .starci-core-calendar-cell {
+            min-inline-size: var(--starci-core-control-min-size, 2.75rem);
+            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        }
+
+        .starci-core-slider-thumb::after {
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-start: 50%;
+            width: var(--starci-core-control-min-size, 2.75rem);
+            height: var(--starci-core-control-min-size, 2.75rem);
+            translate: -50% -50%;
+            content: "";
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-file-dropzone-target {
+            transition: none;
+        }
+    }
+}

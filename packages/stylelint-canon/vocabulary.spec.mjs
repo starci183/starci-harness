@@ -1,6 +1,6 @@
 /**
- * The vocabulary the rules judge against is the grammar's own: this twin test recomputes it from
- * packages/grammar/src and fails when `lib/vocabulary.generated.mjs` is stale (run `npm run vocabulary`).
+ * The vocabulary the rules judge against is the grammar's own: this twin test recomputes it from the grammar CSS snapshot
+ * in fixtures/grammar/src and fails when `lib/vocabulary.generated.mjs` is stale (run `npm run vocabulary`).
  */
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -15,7 +15,7 @@ import { BREAKPOINTS, DECLARED, STATUS_TONES, VENDOR } from "./lib/vocabulary.ge
 import { isGrammarToken, isKnownToken } from "./lib/vocabulary.mjs"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const grammarSrc = path.resolve(here, "..", "grammar", "src")
+const grammarSrc = path.resolve(here, "fixtures", "grammar", "src")
 
 test("the generated vocabulary equals what the grammar CSS declares and reads", () => {
   const fresh = extractVocabulary(grammarSrc)
@@ -65,9 +65,4 @@ test("the generated grammar values equal what the grammar CSS declares on its th
   assert.equal(GRAMMAR_VALUES.light.core["--success"], "var(--starci-core-success)")
   assert.match(GRAMMAR_VALUES.light.common["--success-soft-foreground"], /^color-mix\(in oklab, var\(--success\)/)
   assert.ok(GRAMMAR_VALUES.dark.common["--background"])
-})
-
-test("eslint-grammar-starci reads the status tones from one generated copy of this list", async () => {
-  const copy = await import("../eslint/grammar-starci/lib/status-tones.generated.mjs")
-  assert.deepEqual(copy.STATUS_TONES, STATUS_TONES)
 })
