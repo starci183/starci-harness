@@ -40,7 +40,8 @@ const parseOutput = (cwd: string, given: string): unknown => {
     try {
         return JSON.parse(raw)
     } catch (error: unknown) {
-        throw new Refusal("RESULT_OUTPUT_INVALID", `--output ${source === undefined ? "" : `(${source}) `}is not json: ${error instanceof Error ? error.message : String(error)}`)
+        const from = source === undefined ? "" : `(${source}) `
+        throw new Refusal("RESULT_OUTPUT_INVALID", `--output ${from}is not json: ${error instanceof Error ? error.message : String(error)}`)
     }
 }
 

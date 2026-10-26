@@ -107,8 +107,10 @@ const detailOf =(db: DatabaseSync, id: string): TaskDetail => {
 
 const describe = (detail: TaskDetail): string => {
     const { task, attempts, result, leases, checkRuns, seats, preserved } = detail
+    const retryNote = task.retryOf === null ? "" : ` (retry of ${task.retryOf})`
+    const workflowNote = task.workflowId === null ? "" : `  workflow ${task.workflowId}`
     const lines = [
-        `${task.id}  ${task.label}  ${task.status}  try ${String(task.tryNo)}${task.retryOf === null ? "" : ` (retry of ${task.retryOf})`}${task.workflowId === null ? "" : `  workflow ${task.workflowId}`}`,
+        `${task.id}  ${task.label}  ${task.status}  try ${String(task.tryNo)}${retryNote}${workflowNote}`,
         `input: ${task.contract.input.summary}`,
         `allowPaths: ${task.contract.context.allowPaths.join(", ")}`,
         `budget: ${String(task.contract.budget.minutes)} min, ${String(task.contract.budget.tries)} tries; contract ${task.contractHash.slice(0, 12)}`,

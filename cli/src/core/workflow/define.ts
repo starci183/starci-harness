@@ -31,9 +31,12 @@ export const workflowDefineVerb = defineVerb({
         if (source.kind !== "workflow") throw new Refusal("WORKFLOW_INVALID", `${file} is a change file; define takes a starci/workflow@1 file (a change goes to workflow amend)`)
         const built = buildGraph(source.tasks, ops)
         const problems = [...source.problems, ...built.problems]
-        if (problems.length > 0) throw new Refusal("WORKFLOW_INVALID", `${file} is not fit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
+        if (problems.length > 0) {
+            const listed = problems.map((problem) => `- ${problem}`).join("\n")
+            throw new Refusal("WORKFLOW_INVALID", `${file} is not fit:\n${listed}`)
+        }
         const root = place.repo
-        for (const walk of uatWalksOf(source, ops)) await assertRunPlace(root, walk)
+        await Promise.all(uatWalksOf(source, ops).map((walk) => assertRunPlace(root, walk)))
         const db = openLedger(root)
         const workflow = (() => {
             try {

@@ -22,6 +22,7 @@ import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus, se
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
+import { mapInSequence } from "./sequence.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -125,8 +126,7 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
             db.close()
         }
     }
-    const checks: CheckOutcome[] = []
-    for (const check of resolveChecks(contract, ops)) checks.push(await runCheck(check, contract, place))
+    const checks = await mapInSequence(resolveChecks(contract, ops), (check) => runCheck(check, contract, place))
     const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
     const hash = contractHash(contract)
     if (record) {
@@ -191,6 +191,14 @@ const seatLine = (ending: Ending): string[] => [
     ...(ending.seatProblem === undefined ? [] : [`warning: the task's seats were not closed (${ending.seatProblem}); close them with starci seat stop <seat>`]),
 ]
 
+/** How the verdict landed: settled with a commit, settled with nothing to commit, left unsettled, or checked only. */
+const landedNote = (settlement: Settlement | null, commit: boolean, preserved: Preserved | null): string => {
+    if (settlement !== null) return settlement.committed ? `settled: ${settlement.branch} -> ${settlement.commit.slice(0, 12)}` : "settled: the task changed nothing, no commit"
+    if (!commit) return "checked only (--no-commit): nothing settled"
+    const work = preserved?.dir == null ? "nothing of the task was dirty" : `its work was preserved in ${preserved.dir} and its paths reset`
+    return `not settled: ${work}`
+}
+
 const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanVerify, ending: Ending, commit: boolean, pruned: readonly string[]): VerbResult<VerifyData> => {
     const { status, settlement, preserved, leasesReleased, seats } = ending
     const data: TaskVerifyData = {
@@ -213,14 +221,7 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
         seats,
         pruned,
     }
-    const landed =
-        settlement === null
-            ? commit
-                ? `not settled: ${preserved?.dir == null ? "nothing of the task was dirty" : `its work was preserved in ${preserved.dir} and its paths reset`}`
-                : "checked only (--no-commit): nothing settled"
-            : settlement.committed
-              ? `settled: ${settlement.branch} -> ${settlement.commit.slice(0, 12)}`
-              : "settled: the task changed nothing, no commit"
+    const landed = landedNote(settlement, commit, preserved)
     const released = commit ? `; released ${String(leasesReleased)} lease(s)` : ""
     const extra = [
         `task ${taskId}: ${status}; ${landed}${released}`,

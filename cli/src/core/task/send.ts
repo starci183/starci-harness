@@ -45,7 +45,7 @@ interface UatSent {
 /** The flags only a launch uses; each one without --launch is a usage error, not silently ignored. */
 const LAUNCH_FLAGS = ["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const
 
-const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort().join("\n")
+const pathSet = (contract: Contract): string => [...new Set(contract.context.allowPaths.map(normaliseRepoPath))].sort((left, right) => left.localeCompare(right)).join("\n")
 
 /**
  * Refuses a retry that is not one: a retry is the same work (same label, same allowPaths) after a try that did not land, and
@@ -127,7 +127,8 @@ export const taskSendVerb = defineVerb({
     run: async (context, flags): Promise<VerbResult<SendData>> => {
         if (!flags.launch) {
             const given = LAUNCH_FLAGS.filter((name) => flags[name] !== undefined)
-            if (given.length > 0) throw new Refusal("CLI_USAGE", `${given.map((name) => `--${name}`).join(", ")} only go with --launch`, EXIT_USAGE)
+            const named = given.map((name) => `--${name}`).join(", ")
+            if (given.length > 0) throw new Refusal("CLI_USAGE", `${named} only go with --launch`, EXIT_USAGE)
         } else if (!roleMayLaunch()) {
             // An inline agent sends its own task; launching an Orca seat stays with the roles of seat start.
             throw new Refusal("ROLE_REFUSED", `task send --launch starts a seat, which is for ${seatStartVerb.roles.join(", ")}; ${ROLE_ENV} says this caller is ${String(callerRole())}`)

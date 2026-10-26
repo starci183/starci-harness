@@ -26,8 +26,38 @@ const sameHeader = (left: WorkflowHeader, right: WorkflowHeader): boolean => JSO
  */
 export const readReplanSource = async (file: string, ops: Ops, place: PlanPlace): Promise<PlanSource> => {
     const source = readPlanSource(file, ops, place)
-    for (const walk of uatWalksOf(source, ops)) await assertRunPlace(place.repo, walk)
+    await Promise.all(uatWalksOf(source, ops).map((walk) => assertRunPlace(place.repo, walk)))
     return source
+}
+
+/** What a replan file asks for before the graph is built: the goal, the tasks, the retries, and the problems found so far. */
+interface Asked {
+    readonly header: WorkflowHeader
+    readonly tasks: readonly PlanTask[]
+    readonly retries: ReadonlySet<string>
+    readonly problems: readonly string[]
+    readonly reason: string
+}
+
+type ChangeSource = Extract<PlanSource, { readonly kind: "change" }>
+type WorkflowSource = Exclude<PlanSource, ChangeSource>
+
+/** A change file applied to the current graph; it must name this workflow. */
+const tasksOfChange = (snapshot: Snapshot, file: string, source: ChangeSource, ops: Ops, place: PlanPlace): Asked => {
+    const { workflow } = snapshot
+    if (source.workflow !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} changes workflow ${source.workflow}, not ${workflow.id}`)
+    const applied = applyChanges(snapshot.nodes, source.changes, source.dir, workflow.header.base, ops, { workflow: workflow.id, place })
+    return { header: workflow.header, tasks: applied.tasks, retries: applied.retries, problems: applied.problems, reason: source.reason ?? `change file ${file}` }
+}
+
+/** A whole workflow file of the same id and runner; each task keeps its retry round by key. */
+const tasksOfWorkflowFile = (snapshot: Snapshot, file: string, source: WorkflowSource): Asked => {
+    const { workflow } = snapshot
+    if (source.header.id !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} is workflow ${source.header.id}, not ${workflow.id}`)
+    if (source.header.runner !== workflow.header.runner) throw new Refusal("WORKFLOW_RUNNER_FIXED", `workflow ${workflow.id} runs ${workflow.header.runner}; a replan keeps its runner`)
+    const rounds = new Map(snapshot.nodes.map((node) => [node.key, node.round]))
+    const tasks = source.tasks.map((task) => ({ ...task, round: rounds.get(task.key) ?? 0 }))
+    return { header: source.header, tasks, retries: new Set<string>(), problems: source.problems, reason: `workflow file ${file}` }
 }
 
 /**
@@ -37,30 +67,15 @@ export const readReplanSource = async (file: string, ops: Ops, place: PlanPlace)
  */
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace): Replan => {
     const { workflow } = snapshot
-    let header = workflow.header
-    let tasks: readonly PlanTask[]
-    let retries: ReadonlySet<string> = new Set<string>()
-    const problems: string[] = []
-    let reason: string
-    if (source.kind === "change") {
-        if (source.workflow !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} changes workflow ${source.workflow}, not ${workflow.id}`)
-        const applied = applyChanges(snapshot.nodes, source.changes, source.dir, header.base, ops, { workflow: workflow.id, place })
-        tasks = applied.tasks
-        retries = applied.retries
-        problems.push(...applied.problems)
-        reason = source.reason ?? `change file ${file}`
-    } else {
-        if (source.header.id !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} is workflow ${source.header.id}, not ${workflow.id}`)
-        if (source.header.runner !== header.runner) throw new Refusal("WORKFLOW_RUNNER_FIXED", `workflow ${workflow.id} runs ${header.runner}; a replan keeps its runner`)
-        const rounds = new Map(snapshot.nodes.map((node) => [node.key, node.round]))
-        tasks = source.tasks.map((task) => ({ ...task, round: rounds.get(task.key) ?? 0 }))
-        problems.push(...source.problems)
-        header = source.header
-        reason = `workflow file ${file}`
-    }
+    const asked = source.kind === "change" ? tasksOfChange(snapshot, file, source, ops, place) : tasksOfWorkflowFile(snapshot, file, source)
+    const { header, tasks, retries, reason } = asked
+    const problems: string[] = [...asked.problems]
     const built = buildGraph(tasks, ops)
     problems.push(...built.problems)
-    if (problems.length > 0) throw new Refusal("WORKFLOW_INVALID", `the replan of ${workflow.id} is not fit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
+    if (problems.length > 0) {
+        const listed = problems.map((problem) => `- ${problem}`).join("\n")
+        throw new Refusal("WORKFLOW_INVALID", `the replan of ${workflow.id} is not fit:\n${listed}`)
+    }
     const classification = classify(snapshot.views, snapshot.nodes, built.nodes, retries)
     for (const row of classification) {
         if (row.class !== "redo" && row.class !== "add") continue
