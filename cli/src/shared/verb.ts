@@ -37,6 +37,8 @@ export interface VerbContext {
     readonly tree: TreeKind
     readonly treeRoot: string | undefined
     readonly verbs: readonly AnyVerb[]
+    /** Prints one progress line as it happens (a long-running verb's live log); silent under --json, whose one envelope comes at the end. */
+    readonly progress: (line: string) => void
 }
 
 /** A handler's answer: the json data, the human message, and a non-zero exit when the verb's own verdict is red (a failed lint) while its report is still printed. */

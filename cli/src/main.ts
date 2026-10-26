@@ -5,6 +5,7 @@ import { verbsFor } from "./registry.js"
 import { asRefusal, EXIT_USAGE, UsageError } from "./shared/errors.js"
 import { printRefusal, printResult } from "./shared/output.js"
 import type { OutputMode } from "./shared/output.js"
+import { assertRole } from "./shared/role.js"
 import { locateTree } from "./shared/tree.js"
 import type { AnyVerb, FlagSpec, VerbContext } from "./shared/verb.js"
 
@@ -22,9 +23,14 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
     const options = globalsOf(command)
     const mode = modeOf(options)
     try {
+        // Only the verb the caller typed is checked; what it runs inside (a step's task verify) is part of that verb.
+        assertRole(verb)
         const cwd = resolve(options.cwd ?? process.cwd())
         const location = locateTree(cwd)
-        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs }
+        const progress = (line: string): void => {
+            if (mode === "human") process.stdout.write(`${line}\n`)
+        }
+        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs, progress }
         const flags = command.opts<Record<string, string | boolean | undefined>>()
         const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true)
         const given = command.processedArgs as unknown[]

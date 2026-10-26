@@ -1,0 +1,18 @@
+# Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
+# explicit word that a worker is gone. Read by `seat ping` and `workflow step`; nothing here is restated in code.
+# Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
+schema: starci/liveness@1
+
+# A seat younger than this is launching: it is not pinged by a step and not judged.
+launchGraceSeconds: 90
+# The deadline of one worker-show a ping sends; no answer by then is unknown, not dead.
+pingDeadlineSeconds: 15
+# Orca answers, but the worker's terminal printed nothing for this long (when Orca reports its last output): stale (worker-hung).
+activeStaleMinutes: 10
+# Pings went unanswered for this long: quiet. The seat is held and reported, never declared dead.
+quietMinutes: 20
+
+# Orca's explicit word that a worker ended: a worker state or observation.status in goneStates, or a typed worker-show
+# error in goneErrors. Only these make a seat worker-lost (and its running task effect_unknown).
+goneStates: [exited, failed, stopped, released, abandoned]
+goneErrors: [dispatch_not_found]

@@ -10,9 +10,10 @@ import { createTask, getTask } from "../../harness/tasks.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
+import { callerRole, ROLE_ENV } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
-import { chooseLaunch, parseTimeout, routeLines, startSeat } from "../seat/start.js"
+import { chooseLaunch, parseTimeout, routeLines, seatStartVerb, startSeat } from "../seat/start.js"
 import type { SeatStartData } from "../seat/start.js"
 
 interface SendData {
@@ -52,13 +53,18 @@ const assertRetry = (db: DatabaseSync, contract: Contract, retryOf: string): voi
     }
 }
 
+const roleMayLaunch = (): boolean => {
+    const role = callerRole()
+    return role === undefined || seatStartVerb.roles.includes(role)
+}
+
 /** `starci task send <contract>`: registers a fit contract as a queued task and leases its allowPaths; --launch also starts its worker seat. */
 export const taskSendVerb = defineVerb({
     path: ["task", "send"],
     summary: "queue a fit contract as a task and lease its allowPaths; --launch also starts an Orca worker on it; prints the task id",
     editions: BOTH_EDITIONS,
     effect: "host",
-    roles: ["kernel", "supervisor", "owner", "coordinator"],
+    roles: ["kernel", "supervisor", "owner", "coordinator", "agent"],
     schema: "starci/task-send@1",
     flags: {
         contract: { kind: "string", summary: "the contract json file", required: true, positional: true },
@@ -76,6 +82,9 @@ export const taskSendVerb = defineVerb({
         if (!flags.launch) {
             const given = LAUNCH_FLAGS.filter((name) => flags[name] !== undefined)
             if (given.length > 0) throw new Refusal("CLI_USAGE", `${given.map((name) => `--${name}`).join(", ")} only go with --launch`, EXIT_USAGE)
+        } else if (!roleMayLaunch()) {
+            // An inline agent sends its own task; launching an Orca seat stays with the roles of seat start.
+            throw new Refusal("ROLE_REFUSED", `task send --launch starts a seat, which is for ${seatStartVerb.roles.join(", ")}; ${ROLE_ENV} says this caller is ${String(callerRole())}`)
         } else if ((flags.agent === undefined) !== (flags.model === undefined)) {
             throw new Refusal("CLI_USAGE", "task send --launch takes both --agent and --model, or neither and the router picks them", EXIT_USAGE)
         }

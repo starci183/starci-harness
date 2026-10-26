@@ -37,6 +37,13 @@ export const SEAT_STOPPED = "stopped"
 /** The status of a seat whose terminal Orca released; nothing of it is left on the host. */
 export const SEAT_RELEASED = "released"
 
+/**
+ * The status of a seat whose worker Orca explicitly reported gone (a gone worker state, or a typed error such as
+ * dispatch_not_found; ops/liveness.yaml lists both). Never set without that answer: unknown is not dead. Its task is
+ * effect_unknown, since the worker may have written before it went; it runs no worker, so it holds no pool slot.
+ */
+export const SEAT_WORKER_LOST = "worker-lost"
+
 /** Statuses after which a seat holds nothing on the host. */
 export const CLOSED_SEAT_STATUSES: readonly SeatStatus[] = [SEAT_LAUNCH_FAILED, SEAT_RELEASED]
 
@@ -57,6 +64,8 @@ export interface SeatRow {
     readonly runId: string | null
     readonly launch: unknown
     readonly lastPongAt: string | null
+    readonly lastPingAt: string | null
+    readonly lastActivityAt: string | null
     readonly startedAt: string
     readonly endedAt: string | null
 }
@@ -81,6 +90,8 @@ const toSeat = (row: Record<string, unknown>): SeatRow => {
         runId: optText(row.run_id),
         launch: launch === null ? null : JSON.parse(launch),
         lastPongAt: optText(row.last_pong_at),
+        lastPingAt: optText(row.last_ping_at),
+        lastActivityAt: optText(row.last_activity_at),
         startedAt: text(row.started_at),
         endedAt: optText(row.ended_at),
     }
@@ -156,7 +167,7 @@ export const recordSeat = (db: DatabaseSync, id: string, update: SeatUpdate): Se
 export interface SeatClosing {
     readonly seat: string
     readonly handle: string | null
-    readonly outcome: "closed" | "stopped" | "not-stopped" | "no-dispatch" | "launch-unknown"
+    readonly outcome: "closed" | "stopped" | "not-stopped" | "no-dispatch" | "launch-unknown" | "lost"
     readonly closed: WorkerClosed | null
 }
 
@@ -179,8 +190,10 @@ export const closeSeatsOfTask = async (root: string, taskId: string): Promise<Se
                 continue
             }
             const closed = await closeWorker(binary, seat.handle, root)
-            const outcome = closed.settled ? "closed" : closed.stopped ? "stopped" : "not-stopped"
-            recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : closed.stopped ? SEAT_STOPPED : seat.status, facts: { closed, closedFor: taskId } })
+            // Orca already said a lost worker is gone, so a stop it cannot do (dispatch_not_found) leaves nothing that writes.
+            const lost = seat.status === SEAT_WORKER_LOST
+            const outcome = closed.settled ? "closed" : closed.stopped ? "stopped" : lost ? "lost" : "not-stopped"
+            recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : closed.stopped && !lost ? SEAT_STOPPED : seat.status, facts: { closed, closedFor: taskId } })
             closings.push({ seat: seat.id, handle: seat.handle, outcome, closed })
         }
         return closings

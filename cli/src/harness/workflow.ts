@@ -5,21 +5,40 @@ import type { Contract } from "./contract.js"
 import { headerSchema, LIVE_STATES, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { now } from "./ledger.js"
+import { SEAT_WORKER_LOST } from "./seats.js"
 import { acquireLeases, inTransaction } from "./leases.js"
 import type { LeaseGrant } from "./leases.js"
 import { createTask, getTask, recordEvent } from "./tasks.js"
 import type { ResultStatus, TaskRow, TaskStatus } from "./tasks.js"
 
 /**
- * The states of a workflow. defined -> running (start) -> done when every node is done; blocked while a node failed or came
- * back unfinished (an amend clears it); stopping -> stopped (stop: graceful waits for live tasks, hard cancels them).
+ * The states of a workflow. defined -> running (start) -> done when every node is done; blocked while a node failed, came
+ * back unfinished or lost its worker (an amend clears it); paused while dispatch is held (pause; resume returns to running);
+ * stopping -> stopped (stop: graceful waits for live tasks, hard cancels them).
  */
-export type WorkflowStatus = "defined" | "running" | "blocked" | "stopping" | "stopped" | "done"
+export type WorkflowStatus = "defined" | "running" | "blocked" | "paused" | "stopping" | "stopped" | "done"
 
-const WORKFLOW_STATUSES: readonly WorkflowStatus[] = ["defined", "running", "blocked", "stopping", "stopped", "done"]
+/**
+ * Allowed transitions of a workflow, the one rule every status change goes through (setWorkflowStatus). A paused workflow
+ * settles its live tasks but keeps its status until resume or stop; an amend that adds work reopens a done workflow.
+ */
+export const WORKFLOW_TRANSITIONS: Readonly<Record<WorkflowStatus, readonly WorkflowStatus[]>> = {
+    defined: ["running", "stopped"],
+    running: ["blocked", "done", "paused", "stopping"],
+    blocked: ["running", "done", "paused", "stopping"],
+    paused: ["running", "stopping"],
+    stopping: ["stopped"],
+    stopped: [],
+    done: ["running", "blocked"],
+}
+
+const WORKFLOW_STATUSES = Object.keys(WORKFLOW_TRANSITIONS) as WorkflowStatus[]
 
 /** The workflow statuses in which the harness dispatches ready nodes. */
 export const DISPATCHING: readonly WorkflowStatus[] = ["running", "blocked"]
+
+/** The workflow statuses in which a step still settles live tasks: every one that is started and not ended. */
+export const SETTLING: readonly WorkflowStatus[] = ["running", "blocked", "paused", "stopping"]
 
 /** A workflow as the ledger stores it: its goal and defaults (the workflow file without its tasks), versions and status. */
 export interface WorkflowRow {
@@ -42,6 +61,7 @@ export interface WorkflowTask {
     readonly result: ResultStatus | null
     readonly tryNo: number
     readonly redChecks: string | null
+    readonly lost: boolean
     readonly createdAt: string
 }
 
@@ -182,10 +202,13 @@ export const recordReplan = (db: DatabaseSync, workflow: WorkflowRow, header: Wo
         return getWorkflow(db, fresh.id)
     })
 
-/** Moves a workflow to a status with its reason (an event records each change); returns the row. */
+/** Moves a workflow to a status with its reason (an event records each change), refusing a move WORKFLOW_TRANSITIONS does not allow; returns the row. */
 export const setWorkflowStatus = (db: DatabaseSync, id: string, status: WorkflowStatus, reason: string | null): WorkflowRow => {
     const before = getWorkflow(db, id)
     if (before.status === status && before.reason === reason) return before
+    if (before.status !== status && !WORKFLOW_TRANSITIONS[before.status].includes(status)) {
+        throw new Refusal("WORKFLOW_BAD_TRANSITION", `workflow ${id} cannot go from ${before.status} to ${status}`)
+    }
     db.prepare("UPDATE workflows SET status = ?, reason = ?, updated_at = ? WHERE id = ?").run(status, reason, now(), id)
     if (before.status !== status) recordEvent(db, "workflow-status", id, { from: before.status, to: status, reason })
     return getWorkflow(db, id)
@@ -197,10 +220,11 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
         .prepare(
             // The newest attempt's result and the harness checks that were red on it, so a blocked reason names what failed.
             "SELECT tasks.*, (SELECT results.status FROM attempts JOIN results ON results.attempt_id = attempts.id WHERE attempts.task_id = tasks.id ORDER BY attempts.seq DESC LIMIT 1) AS result_status, " +
-                "(SELECT group_concat(name, ', ') FROM check_runs WHERE check_runs.task_id = tasks.id AND check_runs.status = 'red' AND check_runs.runner = 'harness' AND check_runs.attempt_id = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1)) AS red_checks " +
+                "(SELECT group_concat(name, ', ') FROM check_runs WHERE check_runs.task_id = tasks.id AND check_runs.status = 'red' AND check_runs.runner = 'harness' AND check_runs.attempt_id = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1)) AS red_checks, " +
+                "EXISTS (SELECT 1 FROM seats WHERE seats.task_id = tasks.id AND seats.status = ?) AS lost " +
                 "FROM tasks WHERE workflow_id = ? ORDER BY created_at, rowid",
         )
-        .all(workflowId)
+        .all(SEAT_WORKER_LOST, workflowId)
         .map((row) => ({
             id: text(row.id),
             key: optText(row.plan_key),
@@ -209,6 +233,7 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
             result: optText(row.result_status) as ResultStatus | null,
             tryNo: Number(row.try_no),
             redChecks: optText(row.red_checks),
+            lost: Number(row.lost) === 1,
             createdAt: text(row.created_at),
         }))
 
@@ -218,7 +243,7 @@ export const nodeTasks = (nodes: readonly PlanNode[], tasks: readonly WorkflowTa
     const hashes = new Map(nodes.map((node) => [node.key, node.hash]))
     for (const task of tasks) {
         if (task.key === null || hashes.get(task.key) !== task.hash) continue
-        current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks })
+        current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost })
     }
     return current
 }
@@ -252,7 +277,7 @@ export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
  */
 export const derivedStatus = (snapshot: Snapshot): { readonly status: WorkflowStatus; readonly reason: string | null } => {
     const { workflow, views, live } = snapshot
-    if (workflow.status === "defined" || workflow.status === "stopped") return { status: workflow.status, reason: workflow.reason }
+    if (workflow.status === "defined" || workflow.status === "stopped" || workflow.status === "paused") return { status: workflow.status, reason: workflow.reason }
     if (workflow.status === "stopping") return live === 0 ? { status: "stopped", reason: workflow.reason } : { status: "stopping", reason: workflow.reason }
     // Done waits for every task of the workflow, a leftover one still being cancelled or verified included.
     if (views.every((view) => view.state === "done") && live === 0) return { status: "done", reason: null }
@@ -289,6 +314,8 @@ export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode
 export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanNode): { readonly task: TaskRow; readonly leases: LeaseGrant } =>
     inTransaction(db, () => {
         const workflow = getWorkflow(db, workflowId)
+        // A pause or stop that landed while this step was running holds dispatch at once.
+        if (!DISPATCHING.includes(workflow.status)) throw new Refusal("WORKFLOW_NOT_DISPATCHING", `workflow ${workflowId} is ${workflow.status}; nothing new is dispatched`)
         const planned = db.prepare("SELECT node_hash FROM plan_nodes WHERE workflow_id = ? AND graph_version = ? AND plan_key = ?").get(workflowId, workflow.graphVersion, node.key)
         if (planned === undefined || text(planned.node_hash) !== node.hash) throw new Refusal("WORKFLOW_MOVED", `${node.key} is not in graph version ${String(workflow.graphVersion)} as read; step again`)
         if (db.prepare("SELECT 1 FROM tasks WHERE workflow_id = ? AND plan_key = ? AND plan_hash = ?").get(workflowId, node.key, node.hash) !== undefined) {

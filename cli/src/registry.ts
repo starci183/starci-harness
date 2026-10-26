@@ -37,6 +37,10 @@ import { providerRecoverVerb } from "./core/provider/recover.js"
 import { providerReportVerb } from "./core/provider/report.js"
 import { budgetShowVerb } from "./core/budget/show.js"
 import { budgetRaiseVerb } from "./core/budget/raise.js"
+import { workflowPauseVerb } from "./core/workflow/pause.js"
+import { workflowResumeVerb } from "./core/workflow/resume.js"
+import { workflowRunVerb } from "./core/workflow/run.js"
+import { seatPingVerb } from "./core/seat/ping.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -83,6 +87,10 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     providerReportVerb,
     budgetShowVerb,
     budgetRaiseVerb,
+    workflowPauseVerb,
+    workflowResumeVerb,
+    workflowRunVerb,
+    seatPingVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */

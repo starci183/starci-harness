@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 4
+export const LEDGER_VERSION = 5
 
 /**
  * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
@@ -74,6 +74,8 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "workflows", column: "updated_at", type: "TEXT", since: 4 },
     { table: "tasks", column: "plan_key", type: "TEXT", since: 4 },
     { table: "tasks", column: "plan_hash", type: "TEXT", since: 4 },
+    { table: "seats", column: "last_ping_at", type: "TEXT", since: 5 },
+    { table: "seats", column: "last_activity_at", type: "TEXT", since: 5 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
@@ -208,6 +210,19 @@ export const openMachine = (): DatabaseSync => {
         throw error
     }
     return db
+}
+
+/** How many project ledgers the host registry lists, read-only; undefined when there is no machine.sqlite (or no registry) yet. */
+export const ledgerCount = (): number | undefined => {
+    const file = machinePath()
+    if (!existsSync(file)) return undefined
+    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    try {
+        if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledgers'").get() === undefined) return undefined
+        return Number(db.prepare("SELECT COUNT(*) AS n FROM ledgers").get()?.n ?? 0)
+    } finally {
+        db.close()
+    }
 }
 
 /** The ledger id the host registry holds for a repository, without creating anything; undefined when it has none. */

@@ -8,7 +8,7 @@ import { exitOf, reportMessage, stepWorkflow } from "./engine.js"
  */
 export const workflowStepVerb = defineVerb({
     path: ["workflow", "step"],
-    summary: "one dispatch tick: verify reported tasks, dispatch newly ready ones within maxParallel, update the status (exit 1 when blocked)",
+    summary: "one dispatch tick: ping running seats, verify reported tasks, dispatch newly ready ones within maxParallel, update the status (exit 1 when blocked)",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "agent"],

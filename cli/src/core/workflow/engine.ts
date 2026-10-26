@@ -2,12 +2,16 @@ import type { DatabaseSync } from "node:sqlite"
 import { writeBrief } from "../../harness/brief.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
+import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
+import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
+import { locateOrca } from "../../harness/orca/client.js"
+import { seatsOfTask } from "../../harness/seats.js"
 import { getTask } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
-import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
+import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
 import type { Snapshot, WorkflowRow, WorkflowStatus } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
@@ -20,7 +24,7 @@ import { taskVerifyVerb } from "../task/verify.js"
 export interface StepAction {
     readonly key: string | null
     readonly task: string | null
-    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "wait" | "problem"
+    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "lost" | "wait" | "problem"
     readonly detail: string
 }
 
@@ -58,14 +62,16 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 /** Reads a workflow's snapshot in a ledger connection of its own. */
 export const readSnapshot = (root: string, id: string): Snapshot => withLedger(root, (db) => snapshotOf(db, id))
 
-/** Moves the workflow to the status its nodes call for and returns the fresh snapshot. */
+/** Moves the workflow to the status its nodes call for, in one transaction (a pause or stop is never overwritten), and returns the fresh snapshot. */
 export const reconcile = (root: string, id: string): Snapshot =>
-    withLedger(root, (db) => {
-        const snapshot = snapshotOf(db, id)
-        const { status, reason } = derivedStatus(snapshot)
-        setWorkflowStatus(db, id, status, reason)
-        return snapshotOf(db, id)
-    })
+    withLedger(root, (db) =>
+        inTransaction(db, () => {
+            const snapshot = snapshotOf(db, id)
+            const { status, reason } = derivedStatus(snapshot)
+            setWorkflowStatus(db, id, status, reason)
+            return snapshotOf(db, id)
+        }),
+    )
 
 /**
  * Cancels tasks through `task cancel` (seats stopped and released, dirty paths preserved and reset, leases freed). A refusal
@@ -80,6 +86,49 @@ export const cancelTasks = async (context: VerbContext, tasks: readonly { readon
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             actions.push({ key, task, action: "problem", detail: `not cancelled (${refusal.code}): ${refusal.message}` })
+        }
+    }
+    return actions
+}
+
+/**
+ * Pings the worker seat of every running node past its launch grace (ops/liveness.yaml) and records each answer. Only Orca's
+ * explicit word that a worker is gone marks its seat worker-lost and its task effect_unknown (the node turns lost and blocks
+ * its dependents); an Orca that cannot tell is reported and nothing is concluded: unknown is not dead.
+ */
+const checkLiveness = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const running = snapshot.views.flatMap((view) => (view.state === "running" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
+    if (running.length === 0) return []
+    const rules = loadLiveness()
+    const at = Date.now()
+    const targets = withLedger(root, (db) =>
+        running.flatMap((node) =>
+            seatsOfTask(db, node.task)
+                .filter((seat) => seat.role === "worker" && isPingable(seat) && !inLaunchGrace(seat, rules, at))
+                .map((seat) => ({ ...node, seat: seat.id, handle: seat.handle ?? "" })),
+        ),
+    )
+    if (targets.length === 0) return []
+    let binary: Awaited<ReturnType<typeof locateOrca>>
+    try {
+        binary = await locateOrca(context.cwd)
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return [{ key: null, task: null, action: "problem", detail: `liveness not checked (${refusal.code}): ${refusal.message}` }]
+    }
+    const actions: StepAction[] = []
+    for (const target of targets) {
+        const answer = await askOrca(binary, target.handle, context.cwd, rules)
+        const recorded = withLedger(root, (db) => recordPing(db, target.seat, answer))
+        const verdict = livenessOf(recorded.seat, rules).verdict
+        if (answer.kind === "gone") {
+            const marked = recorded.lostTask === null ? "" : `; task ${recorded.lostTask} is effect_unknown and keeps its leases: cancel it (starci task cancel ${recorded.lostTask}) and amend with retry`
+            actions.push({ key: target.key, task: target.task, action: "lost", detail: `seat ${target.seat} worker-lost: ${answer.evidence}${marked}` })
+        } else if (answer.kind === "unknown") {
+            const quiet = verdict === "quiet" ? `; quiet past ${String(rules.quietMinutes)} min, held` : ""
+            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat}: Orca could not tell (${answer.why}); unknown is not dead${quiet}` })
+        } else if (verdict === "stale") {
+            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat} is stale: Orca answers but its terminal printed nothing for ${String(rules.activeStaleMinutes)} min or more` })
         }
     }
     return actions
@@ -141,6 +190,9 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
     }
 }
 
+// A node that cannot be dispatched now for one of these reasons waits for a later step; anything else is a problem to report.
+const WAIT_CODES: readonly string[] = ["LEASE_CONFLICT", "NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"]
+
 /**
  * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline) and
  * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
@@ -172,7 +224,8 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
             actions.push({ key: node.key, task, action: "dispatched", detail: orca ? "queued for a worker seat" : "queued for the chat agent" })
         } catch (error: unknown) {
             const refusal = asRefusal(error)
-            actions.push({ key: node.key, task: null, action: refusal.code === "LEASE_CONFLICT" || refusal.code === "NODE_TAKEN" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
+            actions.push({ key: node.key, task: null, action: WAIT_CODES.includes(refusal.code) ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
+            if (refusal.code === "WORKFLOW_NOT_DISPATCHING") return actions
         }
     }
     if (!orca) return actions
@@ -191,7 +244,7 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
     if (view?.task == null) return null
     const id = view.task.id
     const task = withLedger(root, (db) => getTask(db, id))
-    const files = writeBrief(task, loadOps(), root)
+    const files = writeBrief(task, loadOps(), root, "agent")
     const output = files.output.replace(/\\/g, "/")
     return {
         key: view.key,
@@ -217,9 +270,10 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
     const { status } = snapshot.workflow
     if (status === "defined") throw new Refusal("WORKFLOW_NOT_STARTED", `workflow ${id} is defined, not started; run starci workflow start ${id}`)
     const actions: StepAction[] = []
-    if (status !== "done" && status !== "stopped") {
+    if (SETTLING.includes(status)) {
         const stale = staleLiveTasks(snapshot.nodes, snapshot.tasks).map((task) => ({ key: task.key, task: task.id }))
         actions.push(...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)))
+        actions.push(...(await checkLiveness(context, root, readSnapshot(root, id))))
         actions.push(...(await settleReported(context, readSnapshot(root, id))))
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))

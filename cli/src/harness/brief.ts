@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
+import { ROLE_ENV } from "../shared/role.js"
+import type { Role } from "../shared/verb.js"
 import { resolveChecks } from "./contract.js"
 import { projectDir } from "./ledger.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
@@ -67,8 +69,8 @@ const renderTemplate = (ops: Ops, values: Readonly<Record<string, string>>): str
     return filled.trimEnd()
 }
 
-/** Renders the brief a worker reads: ops/worker.md, then the task's own contract in plain words. */
-export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefFiles): string => {
+/** Renders the brief a worker reads: ops/worker.md, then the task's own contract in plain words; `role` is who works it (an Orca worker, or the inline chat agent). */
+export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefFiles, role: Role = "worker"): string => {
     const { contract } = task
     const label = ops.labels[contract.label]
     const checks = resolveChecks(contract, ops)
@@ -84,6 +86,8 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
             `Base: ${contract.context.base}`,
             `Working folder: ${contract.context.cwd ?? "the repository root"}`,
             `CLI: \`starci\`; when it is not on PATH, run \`node ${cli}\` in its place`,
+            // Orca's worker-start has no flag to set the worker's environment, so the role travels in the brief.
+            `Role: ${role}. Run every starci command with ${ROLE_ENV}=${role} in its environment (sh: \`${ROLE_ENV}=${role} starci ...\`; PowerShell: \`$env:${ROLE_ENV}='${role}'\`); a verb your role may not run refuses ROLE_REFUSED`,
         ]
             .map((fact) => `- ${fact}`)
             .join("\n"),
@@ -117,9 +121,9 @@ export const pointerSpec = (taskId: string, files: BriefFiles): string =>
     ].join("\n")
 
 /** Writes a task's brief and the contract copy it points at; returns the files. The worker writes the output file itself. */
-export const writeBrief = (task: TaskRow, ops: Ops, root: string): BriefFiles => {
+export const writeBrief = (task: TaskRow, ops: Ops, root: string, role: Role = "worker"): BriefFiles => {
     const files = briefFiles(root, task.id)
-    const brief = renderBrief(task, ops, root, files)
+    const brief = renderBrief(task, ops, root, files, role)
     mkdirSync(dirname(files.brief), { recursive: true })
     mkdirSync(dirname(files.output), { recursive: true })
     writeFileSync(files.contract, `${JSON.stringify(task.contract, null, 2)}\n`)

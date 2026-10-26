@@ -52,7 +52,7 @@ skills/starci/                 the agent entry for operating the harness
 |---|---|---|---|
 | `starci version` | core | read | CLI and Node versions |
 | `starci explain [--term t]` | core | read | the verbs available here, from their definitions |
-| `starci doctor` | core | read | node, git, npm and gh on the host; the StarCi tree of the folder |
+| `starci doctor` | core | read | node, git, npm, gh and Orca (with its version) on the host; the StarCi tree of the folder and its policy profile; the runtime root, state base and how many ledgers `machine.sqlite` lists; the repository's `.starciwork` (tracked, untracked, git-ignored), warning about an ignored one or a `runtime.sqlite` of the old layout inside it |
 | `starci check run [--base ref] [--all]` | core | read | the scope decision from the diff, then typecheck and lint of exactly that scope |
 | `starci check lint` / `check typecheck` | core | read | one step of the same scope, using each package's own ESLint or tsconfig |
 | `starci release push [--dry-run]` | core | remote | the light gate (on main, clean, fast-forward, no secret in the pushed range), then git push with hooks |
@@ -61,14 +61,14 @@ skills/starci/                 the agent entry for operating the harness
 | `starci release ci-status [--sha]` | core | read | the GitHub Actions verdict of a commit |
 | `starci app info` | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
 | `starci contract new\|check`, `task send\|result\|status\|verify\|cancel` | core | see "CLI of the harness" | the P1 task protocol, in both editions |
-| `starci seat start\|list\|stop` | core | see "CLI of the harness" | Orca worker seats, the `orca` runner in either edition |
+| `starci seat start\|list\|stop\|ping` | core | see "CLI of the harness" | Orca worker seats, the `orca` runner in either edition |
 | `starci route explain`, `provider status\|recover\|report`, `budget show\|raise` | core | see "Verbs added to the harness set" | the P2 router, provider circuit, pool concurrency and workflow budgets |
-| `starci workflow define\|start\|step\|status\|list\|amend\|stop`, `plan show\|diff` | core | see "CLI of the harness" and "Workflow file and graph" | the P3 workflow: a goal as a graph of contracts, dispatched as its dependencies settle |
+| `starci workflow define\|start\|step\|run\|pause\|resume\|status\|list\|amend\|stop`, `plan show\|diff` | core | see "CLI of the harness" and "Workflow file and graph" | the P3 workflow: a goal as a graph of contracts, dispatched as its dependencies settle |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
 - `release publish` has no clean-install proof, canon rebind or example re-pin. Those belong to the runtime's canon packages, not to a product.
-- Roles are declared on every verb but not yet enforced. Enforcement needs the caller's role, from the seat or an env var.
+- Roles are enforced only when `STARCI_ROLE` names the caller's role: a verb whose `roles` do not list it refuses `ROLE_REFUSED`, a value that is no role is usage (`ROLE_UNKNOWN`), and unset means not enforced. Orca's `worker-start` cannot set a worker's environment, so the brief names the role (`worker` for an Orca seat, `agent` for an inline task) and tells the worker to set it.
 
 ## Final lists: ops and CLI (owner, 2026-10-27)
 
@@ -90,7 +90,7 @@ Every op is the same worker running `ops/worker.md`. A label is a routing hint p
 
 The Kernel's own work is plan, decide and finish. The Supervisor's is the owner channel, operations, land and push, and CI-red routing. The Owner's is taste and acceptance.
 
-### CLI: 79 verbs in 4 sets, plus 5 hidden
+### CLI: 83 verbs in 4 sets, plus 5 hidden
 
 **Core: both editions (32)**
 
@@ -121,15 +121,15 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
 | `uat` | `record` (the browser recorder a `uat` worker uses) |
 
-**Harness: both editions (31).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
+**Harness: both editions (35).** `seat`, `msg`, `daemon`, `supervisor` and `debug` need the `orca` runner; the rest also serve an `inline` run, where the chat agent is the Kernel.
 
 | group | verbs | who |
 |---|---|---|
-| `workflow` | `define`, `start`, `step`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone; step: Kernel, Supervisor, the inline agent) |
+| `workflow` | `define`, `start`, `step`, `run`, `pause`, `resume`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone; step and run: Kernel, Supervisor, the inline agent; pause and resume: Kernel, Supervisor) |
 | `plan` | `show`, `diff` (`workflow amend` applies a replan) | Kernel |
 | `task` | `wait` (later) | Kernel, Supervisor |
 | `msg` | `send` (hidden: `recv`, `reply`) | Kernel, Supervisor |
-| `seat` | `start`, `list`, `stop` (hidden: `run`) | Kernel, Supervisor |
+| `seat` | `start`, `list`, `stop`, `ping` (hidden: `run`) | Kernel, Supervisor |
 | `route` | `explain` | everyone |
 | `provider` | `status`, `recover`, `report` | status: everyone; recover: owner or Supervisor; report: Kernel or Supervisor |
 | `budget` | `show`, `raise` | raise: owner or Supervisor |
@@ -183,13 +183,13 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
 | supervisor | run the host, take tasks beyond an op, carry the owner channel | always, one per host | every workflow, seat and ruling | land on main, the light push, seats, budgets, rulings the owner decides | + remote (push); publish only with the owner's approval | write product code (it sends a task to an op), bend a gate | Owner: decisions, publish, rulings |
 | debug | diagnose a harness or environment failure, never task content | one incident | everything, read-only (ledgers, logs, transcripts) | a diagnosis and a repair task only | read | edit code, change rules, run any writing verb | Supervisor: the diagnosis plus the repair task |
 
-The rights come from each verb's `effect` and `roles`. Once the seat runner tells the CLI its role, a verb refuses a role it does not list; until then they are declared, not enforced.
+The rights come from each verb's `effect` and `roles`. With `STARCI_ROLE` set, a verb refuses a role it does not list (see "Verbs written so far"); unset, they are declared, not enforced.
 
 ### Changing a running workflow (amend)
 
 Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edited or trimmed through the Supervisor. Each change rebuilds the graph and decides what keeps running.
 - **Entry:** `starci workflow amend <workflow> --change <file>` (format: "Workflow file and graph").
-  - The change is a list of entries, each `add`, `edit`, `remove` or `retry`, or a whole workflow file that replaces the graph. Stopping is `workflow stop`; `pause` and `resume` come later.
+  - The change is a list of entries, each `add`, `edit`, `remove` or `retry`, or a whole workflow file that replaces the graph. Stopping is `workflow stop`; `workflow pause` holds dispatch and `workflow resume` restarts it.
   - The change goes to the Supervisor as a task contract, and the Supervisor hands it to that workflow's Kernel.
 - **Kernel replan:**
   1. Freeze: it sends no new task, and running tasks keep running.
@@ -229,13 +229,15 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
 
 ### CLI of the harness (both editions)
 
-Who runs each verb is declared in its `roles` (enforcement comes later, see "Verbs written so far"). `hidden` verbs are called by the seat runner, not typed by people or agents. A verb marked (later) is not built yet. Every verb here serves both editions; a seat verb needs the `orca` runner and refuses `ORCA_MISSING` on a host without Orca.
+Who runs each verb is declared in its `roles` (enforced when `STARCI_ROLE` is set, see "Verbs written so far"). `hidden` verbs are called by the seat runner, not typed by people or agents. A verb marked (later) is not built yet. Every verb here serves both editions; a seat verb needs the `orca` runner and refuses `ORCA_MISSING` on a host without Orca.
 
 | verb | who runs it | effect | what it does |
 |---|---|---|---|
 | `workflow define <file>` | owner, kernel, supervisor | local-write | record the Kernel's workflow file as graph v1: every contract fit (`contract check` rules), dependencies known, no cycle; the workflow row is its budget account (the ops default ceiling) |
 | `workflow start <id>` | owner, supervisor, kernel | host | a defined workflow runs and takes its first step: `orca` dispatches the ready tasks, `inline` prints the next task for the chat agent. Booting a Kernel seat comes with P4 |
-| `workflow step <id>` | owner, kernel, supervisor, agent | host | one idempotent tick: cancel live tasks no node carries, settle reported tasks through `task verify`, dispatch the ready ones within `maxParallel` and the workflow budget, update the status; exit 1 when blocked. A loop or the daemon calls it |
+| `workflow step <id>` | owner, kernel, supervisor, agent | host | one idempotent tick: cancel live tasks no node carries, ping the seats of running tasks past their launch grace (§5), settle reported tasks through `task verify`, dispatch the ready ones within `maxParallel` and the workflow budget, update the status; exit 1 when blocked. `workflow run`, a chat loop or the daemon calls it |
+| `workflow run <id> [--interval <s>] [--until done\|blocked\|idle] [--max-ticks <n>]` | owner, kernel, supervisor, agent | host | the daemon-less driver: `workflow step` every interval (default 30 s, at least 1 s; it sleeps, never spins), one line per change (a status, a node state, a new action); returns when done or stopped, blocked with nothing left moving (`--until blocked`: at the first blocked), paused with nothing live, at the first quiet tick (`--until idle`, the inline default) or after `--max-ticks`; exit 0, 1 when blocked, 2 on usage |
+| `workflow pause <id> [--reason <r>]` / `workflow resume <id>` | owner, supervisor, kernel | local-write / host | pause holds dispatch (nothing new is sent or launched; live tasks keep running and each step still settles them); resume returns it to running and takes a step. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status moves |
 | `workflow list` / `workflow status <id>` | everyone | read | the workflows with runner, status and reason, graph version, progress and budget; each task's state, ledger task and why it waits |
 | `workflow amend <id> --change <file>` | owner, kernel, supervisor | host | the replan: classify keep, continue, redo, add or drop, record graph v+1 with the classification, cancel the live tasks of redo and drop through `task cancel`, resume dispatch |
 | `workflow stop <id> --graceful\|--hard` | owner, supervisor | host | graceful sends nothing new and lets live tasks settle (stopped once none is live); hard cancels every live task and its seats now |
@@ -243,16 +245,17 @@ Who runs each verb is declared in its `roles` (enforcement comes later, see "Ver
 | `plan diff <workflow> --to <file>` | owner, kernel, supervisor | read | the classification an amend with that file would apply, and the tasks it would cancel; changes nothing |
 | `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `contracts/<summary>.json` in the project's state folder, see Storage), composing `expectedOutput` from the label's default checks and named presets |
 | `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository nor the whole `.starciwork` Work tree, never named twice (`./src/a` is `src/a`) |
-| `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does, routed when `--agent` and `--model` are left out; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
+| `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator, agent (`--launch`: the roles of `seat start`) | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does, routed when `--agent` and `--model` are left out; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
 | `task wait <id> [--timeout]` (later) | kernel, supervisor | read | block until the result arrives or the deadline passes |
-| `task result <id> --status done\|blocked\|mismatch\|failed --output <json>\|@<file>` | worker, op, kernel, supervisor | local-write | file the one immutable result of the open attempt; a queued task is worked inline (lite); `failed` preserves and resets the task's dirty `allowPaths`, then releases its leases |
+| `task result <id> --status done\|blocked\|mismatch\|failed --output <json>\|@<file>` | worker, op, agent, kernel, supervisor | local-write | file the one immutable result of the open attempt; a queued task is worked inline (lite); `failed` preserves and resets the task's dirty `allowPaths`, then releases its leases |
 | `task verify <id> [--no-commit]` / `task verify <id> --recover` / `task verify --contract <file> [<id>] [--record]` | every writing role, op included | local-write | verify a reported task on a clean checkout of HEAD plus its `allowPaths`, one settle at a time: green moves the branch to a harness commit of only those paths (never pushed) and closes the task's seats; red preserves and resets its paths, fails the task and releases its leases; no verdict (`HEAD_MOVED`, a broken verifier) returns it to reported with no try spent. `--no-commit` only checks; `--recover` frees a task whose verifier died; `--contract` dry-replays a contract in the working tree, its `@result` json checks reading the task's output file |
 | `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts, result, leases, check runs, seats and preserved work |
 | `task cancel <id> [--reason <r>]` | owner, kernel, supervisor | host | stop and release the task's seats through Orca, preserve and reset its dirty `allowPaths`, cancel it and release its leases; refused while a worker may still write |
 | `msg send <seat> ping\|status\|cancel\|pause\|resume` (later) | kernel, supervisor | host | one command; the seat runner answers within the deadline |
 | `msg recv` / `msg reply` | hidden (seat runner) | local-write | the runner's command loop |
 | `seat start <task> [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>] [--dry-run]` / `seat start <task> --resume` | owner, kernel, supervisor, coordinator | host | write the task's brief, claim the queued task and launch one Orca worker on it (see §7); without `--agent` and `--model` the router picks them (§3) and the pick is stored on the attempt; other roles and headless seats come later |
-| `seat list [--live]` / `seat stop <seat>` | list: everyone; stop: owner, kernel, supervisor, coordinator | read / host | the seats with agent, model and status (`--live` asks Orca); stop and release one seat's worker |
+| `seat list [--live]` / `seat stop <seat>` | list: everyone; stop: owner, kernel, supervisor, coordinator | read / host | the seats with agent, model, status, last pong and liveness verdict from the recorded pings (`--live` asks Orca); stop and release one seat's worker |
+| `seat ping <seat>` | owner, kernel, supervisor, coordinator | local-write | ask Orca (`worker-show`, under the ping deadline) about one open seat and record last ping, last pong and Orca's last-output time; Orca's explicit word that the worker is gone makes the seat `worker-lost` and its running task `effect_unknown` (exit 1); no answer proves nothing |
 | `seat run` | hidden | host | the seat runner process itself |
 | `supervisor start\|stop\|status` | owner | host | the one host Supervisor seat |
 | `supervisor tell "<text>"` | owner | local-write | an owner message; the Supervisor turns it into a task or an amend |
@@ -301,8 +304,8 @@ A change file is `{schema: starci/workflow-change@1, workflow: <id>, reason?, ch
 
 - **Graph:** each task is a node keyed by its id. Its **node hash** covers its contract hash, its retry round and the node hashes of its dependencies, so a change flows down to every dependent. Two tasks with no order between them whose `allowPaths` overlap are allowed; `define` notes them and the path lease runs them one after the other.
 - **Dispatch:** a node is ready when every dependency is done. Its ledger task is created only then (with `workflow_id`, its plan key and its node hash), so a waiting node holds no lease. An `orca` task is then launched through the seat-start module function: pinned, or routed by `pickRoute` from its label, difficulty, lineage and the workflow's bias; a refused route or a failed launch leaves it queued for the next step. Every dispatch first checks the workflow budget (`BUDGET_EXHAUSTED` holds it).
-- **Node states:** waiting, ready, blocked (a dependency is stuck), then the task's own: queued, running, launch-unknown, reported, returned (the worker filed blocked or mismatch), verifying, done, failed, cancelled.
-- **Workflow states:** defined, running, blocked, stopping, stopped, done. A red verify (or a failed, returned or cancelled task) blocks its dependents and makes the workflow `blocked` with the reason, naming the red checks; independent tasks keep going. A retry is the Kernel's amend (`edit` or `retry`), never automatic: the new task retries the failed one (same label and paths) within its try budget.
+- **Node states:** waiting, ready, blocked (a dependency is stuck), then the task's own: queued, running, launch-unknown, lost (Orca said its worker is gone: stuck until the Kernel cancels and amends), reported, returned (the worker filed blocked or mismatch), verifying, done, failed, cancelled.
+- **Workflow states:** defined, running, blocked, paused, stopping, stopped, done (`WORKFLOW_TRANSITIONS`). A red verify (or a failed, returned, lost or cancelled task) blocks its dependents and makes the workflow `blocked` with the reason, naming the red checks; independent tasks keep going. A retry is the Kernel's amend (`edit` or `retry`), never automatic: the new task retries the failed one (same label and paths) within its try budget.
 - **Inline:** the step queues one task at a time and prints it with its brief and the commands (`task verify --contract`, `task result`, `workflow step`); the contract is sent before the agent edits code.
 
 ## Ops are plain workers (owner, 2026-10-27)
@@ -391,7 +394,7 @@ ops/                       everything that describes work, as data validated by 
   checks.yaml              the named check presets (check-run-green, paths-only, tests-pass, json-schema, renders, probe)
   routing.yaml             tiers and their chains, pools (provider, maxParallel, labels, tools), host probes, balance, quota bands,
                            circuit cooldowns and strikes, failure signals, AIMD tuning, workflow budgets
-  policy.yaml              failure routes, cooldowns, liveness thresholds, budgets
+  liveness.yaml            seat liveness thresholds and the Orca answers that prove a worker gone
 ```
 `ops/` is data, not code. Every tunable number lives there once, and the CLI reads it. Nothing is restated in prose.
 
@@ -452,17 +455,8 @@ Dropped from the legacy: the 2,235-code catalog (about 95% are lint findings), t
 
 ### 5. Liveness
 - **Who answers.** The **seat runner** answers a `ping` for its seat, not the model. It is one host process, the harness daemon. It answers from Orca's own worker state (terminal alive, last output time) and from the task's ledger state.
-- **Thresholds** (`ops/policy.yaml`):
-
-| threshold | value |
-|---|---|
-| `launchGrace` | 90 s |
-| `pingDeadline` | 15 s |
-| `activeStale` | 10 min |
-| `quiet` | 20 min |
-| nudges | at most 2 |
-| Kernel turn budget | 20 min |
-| Supervisor turn budget | 30 min |
+- **Thresholds** live once in `ops/liveness.yaml`: `launchGrace`, `pingDeadline`, `activeStale` and `quiet`, with the Orca answers that prove a worker gone (a gone worker state or observation, or `dispatch_not_found`). Nudges (at most 2) and the Kernel (20 min) and Supervisor (30 min) turn budgets come with P4.
+- **Built (P2, no daemon yet):** `seat ping` and every `workflow step` ask Orca's `worker-show` and record last ping, last pong and the last output time Orca reports. Only an explicit gone answer marks a seat `worker-lost` and its task `effect_unknown`, keeping its leases; the node is `lost` and the Kernel cancels and retries it. An Orca that is down, slow or unsure leaves the seat `unknown`, then `quiet` past the threshold, held and never dead; a pong with no output for `activeStale` is `stale` and only reported. The ping retry and the automatic no-report retry of §4 come with the daemon.
 
 - **Seat rotation.** The Kernel and Supervisor seats are rotated after a wake or token budget. They keep no memory, because the ledger is the state.
 
@@ -475,14 +469,14 @@ A project ledger has twelve tables:
 - `results` (immutable, unique per attempt);
 - `check_runs` (raw exit codes; a worker's own runs are evidence only);
 - `leases` (path prefixes held until the task ends, a fencing token, and a due time that is information only and never frees a path);
-- `seats` (role, agent, model, attempt, Orca dispatch handle, worker-start request id, Run, the launch record a resume replays, status, last pong, end time);
+- `seats` (role, agent, model, attempt, Orca dispatch handle, worker-start request id, Run, the launch record a resume replays, status, last ping, last pong and last output time since ledger version 5, end time);
 - `messages` (commands with a correlation id and a deadline);
 - `events` (append-only).
 
 `machine.sqlite` keeps only host-wide state: `ledgers` (the legacy registry columns plus `repo_common_dir`, the lookup key) and `provider_health` (a provider's rate limit or circuit is the same for every project, so it moved out of the project ledger; an older ledger keeps its unused table, since migrations never drop). P2 adds, in `harness/machine.ts`: `provider_events` (every outcome, open, recover and quota reading; reopens are counted from it), `pool_quota` (the newest reading per pool window; none is unknown, never blocked), `pool_concurrency` (the AIMD cap below maxParallel), `route_picks` (recent picks per tier, for balance) and `budgets`/`budget_raises` (a workflow's raised ceilings, who and why). Running workers are counted from the open seats of every registered ledger, read-only. Host locks come later. Seats and leases stay in the project ledger. The legacy's other machine tables are not carried over.
 
 Status transitions are enforced in code with one state machine (`TRANSITIONS` in `harness/tasks.ts`), not duplicated in triggers. Task states are:
-`queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a launch Orca could not confirm or deny). A launch that certainly failed returns `running` or `effect_unknown` to `queued`; a verify with no verdict returns `verifying` to `reported`. A new column comes by an additive migration that bumps the ledger version.
+`queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly failed returns `running` or `effect_unknown` to `queued`; a verify with no verdict returns `verifying` to `reported`. A new column comes by an additive migration that bumps the ledger version.
 
 ### 7. Seat launch (Orca)
 - The claim comes first, in one transaction: the queued task goes to running, and an attempt and a `starting` seat carrying the launch record are opened. Only then is Orca called, so two starts never both launch.

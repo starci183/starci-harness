@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
 import { inTransaction } from "./leases.js"
 import { machinePath, openMachine } from "./ledger.js"
-import { CLOSED_SEAT_STATUSES, SEAT_STOPPED } from "./seats.js"
+import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js"
 
 /**
  * The host-wide tables P2 adds to machine.sqlite, beside ledger.ts's `ledgers` and `provider_health` (the circuit row of a
@@ -64,8 +64,8 @@ export interface RunningWorkers {
     readonly byAgent: ReadonlyMap<string, number>
 }
 
-// A seat that is stopped or closed runs no worker; anything else (starting, ready, launch-unknown, ...) may hold a slot.
-const NOT_RUNNING: readonly string[] = [...CLOSED_SEAT_STATUSES, SEAT_STOPPED]
+// A seat that is stopped, lost or closed runs no worker; anything else (starting, ready, launch-unknown, ...) may hold a slot.
+const NOT_RUNNING: readonly string[] = [...CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST]
 
 /**
  * Counts the open worker seats of every ledger the host registry lists, read-only: a pool's slots are host-wide, so the
