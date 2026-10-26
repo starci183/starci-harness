@@ -1,0 +1,124 @@
+# The exact version of every shared dependency: one version per dependency for every app and package. Raising a
+# version changes this file first (with the package release when it is a @starci package), then each app moves in
+# its own upgrade. `side` is the side whose code uses it; `install: registry` marks a published @starci package that
+# apps install from npm, never by path. `why` is one line; history lives in the package CHANGELOG.
+schema: starci/stack-pins@1
+pins:
+  '@starci/heroicons': {version: 0.3.4, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
+  '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
+  '@starci/grammar': {version: 0.12.13, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/eslint-canon-be': {version: 3.4.55, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.1.9, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-starci': {version: 0.12.13, group: starci, side: fe, install: registry, why: "the grammar API lint every grammar inherits (to become eslint-grammar-common with eslint-grammar-core, open-grammar D-7); versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.12.13, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/stylelint-canon': {version: 2.0.13, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/tsconfig': {version: 2.0.7, group: starci, side: both, install: registry}
+  '@starci/prettier-config': {version: 1.0.4, group: starci, side: both, install: registry}
+  '@starci/jest-preset': {version: 2.3.6, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
+  '@starci/cli': {version: 1.7.46, group: starci, side: both, install: registry, why: "the app CLI a product installs"}
+  '@starci/hfs': {version: 4.7.46, group: starci, side: both, install: registry, why: "the app implementation behind @starci/cli"}
+  typescript: {version: 5.9.3, group: tooling, side: both}
+  turbo: {version: 2.11.6, group: tooling, side: fe, why: "runs build, dev, lint and typecheck over the fe workspaces"}
+  prettier: {version: 3.9.6, group: tooling, side: both}
+  stylelint: {version: 17.15.0, group: tooling, side: fe, why: "the canon plugin needs the ESM-only 17 line"}
+  postcss-value-parser: {version: 4.2.0, group: tooling, side: fe, why: "peer of @starci/stylelint-canon"}
+  eslint: {version: 9.39.5, group: tooling, side: both}
+  eslint-plugin-react-hooks: {version: 7.1.1, group: tooling, side: fe, why: "hooks rules of the front-end canon"}
+  '@types/node': {version: 22.20.4, group: tooling, side: both}
+  '@types/express': {version: 4.17.25, group: tooling, side: be}
+  '@types/react': {version: 19.3.0, group: tooling, side: fe}
+  '@types/react-dom': {version: 19.3.0, group: tooling, side: fe}
+  husky: {version: 9.1.7, group: tooling, side: both, why: "the managed git hooks of the app root"}
+  ts-node-dev: {version: 2.0.0, group: tooling, side: be, why: "the watch runner of the back-end dev script"}
+  tsc-alias: {version: 1.9.7, group: tooling, side: be, why: "rewrites path aliases in the compiled back end"}
+  tsconfig-paths: {version: 4.2.0, group: tooling, side: be, why: "loads path aliases for the back-end dev runner"}
+  jest: {version: 29.7.0, group: test, side: be}
+  ts-jest: {version: 29.4.12, group: test, side: be}
+  '@types/jest': {version: 29.5.14, group: test, side: be}
+  next: {version: 16.4.2, group: framework, side: fe}
+  react: {version: 19.2.3, group: framework, side: fe}
+  react-dom: {version: 19.2.3, group: framework, side: fe}
+  nest-commander: {version: 3.21.0, group: framework, side: be, why: "the one command-line framework of a back end"}
+  '@nestjs/core': {version: 11.2.5, group: framework, side: be}
+  '@nestjs/common': {version: 11.2.5, group: framework, side: be}
+  '@nestjs/platform-express': {version: 11.2.7, group: framework, side: be}
+  '@nestjs/testing': {version: 11.2.5, group: framework, side: be}
+  '@nestjs/terminus': {version: 11.1.1, group: framework, side: be, why: "readiness probes with dependency indicators"}
+  '@nestjs/cqrs': {version: 11.0.3, group: framework, side: be, why: "the CQRS buses of the application layer"}
+  '@nestjs/typeorm': {version: 11.0.3, group: framework, side: be, why: "the Nest bridge of TypeORM"}
+  typeorm: {version: 0.3.31, group: framework, side: be, why: "the one ORM of a back end"}
+  pg: {version: 8.23.1, group: framework, side: be, why: "the Postgres driver behind TypeORM and the realtime Postgres hub"}
+  bullmq: {version: 6.3.11, group: framework, side: be, why: "the queue transport of both editions behind platform/queue"}
+  reflect-metadata: {version: 0.2.2, group: framework, side: be}
+  rxjs: {version: 7.8.2, group: framework, side: be}
+  tslib: {version: 2.8.1, group: framework, side: be}
+  server-only: {version: 0.0.1, group: framework, side: fe, why: "the Next marker that fails a client bundle importing it"}
+  next-intl: {version: 4.13.6, group: framework, side: fe, why: "the one i18n library"}
+  graphql: {version: 16.14.2, group: framework, side: both, why: "one version for both sides"}
+  supertest: {version: 7.3.0, group: tooling, side: be, why: "the e2e world calls the app over HTTP"}
+  '@xyflow/react': {version: 12.11.6, group: ui, side: fe, why: "a required peer of the grammar's flow graph"}
+  react-aria-components: {version: 1.21.1, group: ui, side: fe, why: "a required peer of the grammar"}
+  '@heroui/react': {version: 3.2.6, group: ui, side: fe, why: "the vendor the grammar wraps; vendor/README.md reads this pin"}
+  '@heroui/styles': {version: 3.2.6, group: ui, side: fe, why: "the vendor stylesheet, the same release as @heroui/react"}
+  tailwindcss: {version: 4.3.3, group: ui, side: fe, why: "the styling engine of a front end"}
+  '@tailwindcss/postcss': {version: 4.3.3, group: ui, side: fe, why: "the PostCSS plugin of tailwindcss"}
+  '@apollo/client': {version: 4.1.6, group: framework, side: fe}
+  graphql-ws: {version: 6.2.1, group: framework, side: both, why: "the subscription transport: the Apollo clients folder and platform/realtime only"}
+  '@graphql-codegen/cli': {version: 7.4.6, group: tooling, side: fe}
+  '@graphql-codegen/client-preset': {version: 6.2.3, group: tooling, side: fe}
+  axios: {version: 1.20.0, group: framework, side: fe}
+  swr: {version: 2.4.2, group: framework, side: fe}
+  react-hook-form: {version: 7.77.0, group: framework, side: fe}
+  '@hookform/resolvers': {version: 5.4.0, group: framework, side: fe}
+  zod: {version: 4.6.7, group: framework, side: both, why: "front-end forms and back-end boundary parsers; also an override of every app root (security fix)"}
+  '@reduxjs/toolkit': {version: 2.11.2, group: framework, side: fe}
+  react-redux: {version: 9.2.0, group: framework, side: fe}
+  zustand: {version: 5.0.12, group: framework, side: fe}
+  socket.io-client: {version: 4.8.3, group: framework, side: fe}
+  eventemitter2: {version: 6.4.9, group: framework, side: fe}
+  '@heroicons/react': {version: 2.2.0, group: ui, side: fe}
+  '@dicebear/core': {version: 10.4.0, group: ui, side: fe, why: "a runtime dependency of the grammar's avatars; apps never import it"}
+  '@dicebear/styles': {version: 10.4.0, group: ui, side: fe, why: "a runtime dependency of the grammar's avatars; apps never import it"}
+  next-themes: {version: 0.4.6, group: ui, side: fe}
+  framer-motion: {version: 12.42.2, group: ui, side: fe}
+  dayjs: {version: 1.11.21, group: framework, side: fe}
+  decimal.js: {version: 10.6.0, group: framework, side: fe}
+  superjson: {version: 2.2.6, group: framework, side: fe}
+  lodash: {version: 4.17.23, group: framework, side: fe}
+  usehooks-ts: {version: 3.1.1, group: framework, side: fe}
+  recharts: {version: 3.8.1, group: ui, side: fe}
+  react-markdown: {version: 10.1.0, group: ui, side: fe}
+  remark-gfm: {version: 4.0.1, group: ui, side: fe}
+  remark-directive: {version: 4.0.0, group: ui, side: fe}
+  react-shiki: {version: 0.9.2, group: ui, side: fe}
+  '@monaco-editor/react': {version: 4.7.0, group: ui, side: fe}
+  mermaid: {version: 11.16.0, group: ui, side: fe}
+  react-dropzone: {version: 15.0.0, group: ui, side: fe}
+  react-pdf: {version: 10.4.1, group: ui, side: fe}
+  '@fingerprintjs/fingerprintjs': {version: 5.2.0, group: framework, side: fe}
+  '@sentry/nextjs': {version: 11.7.0, group: framework, side: fe}
+  '@nestjs/graphql': {version: 13.4.5, group: framework, side: be, why: "the GraphQL transport; held on the 13 line with an accepted advisory until the 14 upgrade"}
+  '@graphql-tools/utils': {version: 12.1.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/graphql 13; drop with the 14 upgrade"}
+  multer: {version: 2.5.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/platform-express; drop when Nest depends on a fixed release"}
+  '@nestjs/apollo': {version: 13.4.5, group: framework, side: be, why: "the Apollo driver, on the @nestjs/graphql line"}
+  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the one ObjectStorage adapter of both editions"}
+  '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET; the client-s3 release"}
+  '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
+  '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
+  '@nestjs/platform-socket.io': {version: 11.2.5, group: framework, side: be, why: "the socket.io platform; the @nestjs/core line"}
+  socket.io: {version: 4.8.3, group: framework, side: be, why: "the exact version @nestjs/platform-socket.io depends on, so one copy exists"}
+  '@socket.io/postgres-adapter': {version: 0.5.0, group: framework, side: be, why: "the realtime adapter of replicas without Redis; platform/realtime only"}
+  '@socket.io/redis-adapter': {version: 8.3.0, group: framework, side: be, why: "the sharded realtime adapter on a declared Redis; platform/realtime only"}
+  ioredis: {version: 5.11.1, group: framework, side: be, why: "the one Redis client; held on 5.x because typeorm's peer range excludes 6"}
+  '@types/pg': {version: 8.23.1, group: framework, side: be, why: "types of the pg driver"}
+  '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the Express 5 integration @nestjs/apollo loads at boot"}
+  '@supabase/ssr': {version: 0.12.7, group: framework, side: fe, why: "the lite identity client factory"}
+  '@supabase/supabase-js': {version: 2.117.2, group: framework, side: both, why: "the lite identity client and the back end's Auth and Storage integration"}
+  jose: {version: 6.2.12, group: framework, side: be, why: "verifies access tokens against the identity provider's JWKS"}
+  supabase: {version: 2.119.0, group: tooling, side: both, why: "the CLI that owns the local schema lifecycle and generated database types"}
+  class-transformer: {version: 0.5.1, group: framework, side: be, why: "Nest request transformation, pinned with class-validator"}
+  class-validator: {version: 0.15.1, group: framework, side: be, why: "Nest boundary validation, pinned with class-transformer"}
+# Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.
+images:
+  node: {version: 22.14.0-alpine3.21, why: "the base image of every back-end and front-end Dockerfile"}

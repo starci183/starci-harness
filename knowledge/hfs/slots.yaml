@@ -1,0 +1,3661 @@
+# The HFS slot manifest: what may exist in an app repository and where. An app is one repository: the app root
+# (slots of profile app) holds the one package.json, lockfile, hfs.json, CI, hooks and .starciwork; be/ and fe/ are its
+# two sides (profile be or fe, paths relative to the side). Every tracked path matches exactly one slot. Checks, lint
+# factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
+# ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
+schema: starci/hfs-slots@3
+version: 3.8.0
+presenceValues:
+  - required
+  - optional
+  - opt-in
+  - forbidden
+trackedValues:
+  - tracked
+  - ignored
+  - external
+testValues:
+  - unit-beside
+  - e2e
+  - none
+editions:
+  - full
+  - lite
+sides:
+  be:
+    reads:
+      - supabase/types/
+  fe:
+    reads:
+      - be/contracts/
+      - supabase/types/
+triggerKinds:
+  - api
+  - webhooks
+  - realtime
+  - saga
+  - reactors
+  - jobs
+  - cli
+appKinds:
+  be:
+    - api
+    - worker
+    - cli
+  fe:
+    - next
+naming:
+  prefixes:
+    - app
+    - be
+    - fe
+    - repo
+  sameConceptPairs:
+    - - step
+      - saga-step
+  refusedPairs:
+    - - use-case
+      - handler
+    - - listener
+      - subscription
+    - - job
+      - processor
+    - - worker
+      - processor
+    - - dto
+      - input
+    - - repository
+      - mapper
+  glossary:
+    consumer: event
+    subscription: realtime
+    webhook: webhook
+    processor: job
+    handler: cqrs
+tiers:
+  be:
+    app:
+      mayImport:
+        - feature
+        - domain
+        - events
+        - queues
+        - projections
+        - platform
+        - integrations
+        - package
+    feature:
+      mayImport:
+        - domain
+        - events
+        - queues
+        - projections
+        - platform
+        - integrations
+        - package
+    domain:
+      mayImport:
+        - domain
+        - events
+        - queues
+        - platform
+        - integrations
+        - package
+      acyclic: true
+    events:
+      mayImport:
+        - events
+        - platform
+        - package
+      acyclic: true
+    queues:
+      mayImport:
+        - queues
+        - events
+        - platform
+        - package
+      acyclic: true
+    projections:
+      mayImport:
+        - projections
+        - domain
+        - events
+        - platform
+        - integrations
+        - package
+      acyclic: true
+    integrations:
+      mayImport:
+        - platform
+        - package
+    platform:
+      mayImport:
+        - platform
+        - package
+      acyclic: true
+    e2e:
+      mayImport:
+        - e2e
+        - app
+        - feature
+        - domain
+        - events
+        - queues
+        - projections
+        - platform
+        - integrations
+        - fixtures
+        - package
+    fixtures:
+      mayImport:
+        - domain
+        - events
+        - queues
+        - projections
+        - platform
+        - integrations
+        - package
+    package:
+      mayImport:
+        - package
+  fe:
+    route:
+      mayImport:
+        - feature
+        - foundation
+        - modules
+        - transport
+        - package
+    feature:
+      mayImport:
+        - feature
+        - components
+        - hooks
+        - foundation
+        - modules
+        - package
+      mayImportKinds:
+        feature:
+          from:
+            - pages
+            - layouts
+          to:
+            - overlays
+    components:
+      mayImport:
+        - components
+        - hooks
+        - foundation
+        - package
+      lowerLayerOnly: true
+    hooks:
+      mayImport:
+        - hooks
+        - foundation
+        - modules
+        - transport
+        - package
+      mayImportSlots:
+        transport:
+          from:
+            - fe.hooks.swr
+    foundation:
+      mayImport:
+        - foundation
+        - package
+      acyclic: true
+    modules:
+      mayImport:
+        - foundation
+        - modules
+        - transport
+        - package
+      acyclic: true
+    transport:
+      mayImport:
+        - foundation
+        - modules
+        - package
+    package:
+      mayImport:
+        - package
+crossOwner: every import across owners targets the owner's public entry (index.ts or index.tsx);
+  never export *.
+crossApp: apps never import each other; shared code is a packages/<pkg> slot.
+ruleParams:
+  db:
+    extensions:
+      - pgmq
+      - pg_cron
+      - pgcrypto
+      - pg_trgm
+      - vector
+      - uuid-ossp
+      - pg_net
+      - supabase_vault
+      - unaccent
+      - btree_gist
+    queueOutbox:
+      table: public.queue
+      columns:
+        - queue
+        - payload
+        - created_at
+        - correlation_id
+  common:
+    fileLines:
+      soft: 500
+      hardGrowth: true
+    functionLines: 80
+    featureFiles: 250
+    duplicateBlock:
+      lines: 8
+      tokens: 60
+  be:
+    infraOwners:
+      fetch:
+        - platform/http
+      axios:
+        - platform/http
+      got:
+        - platform/http
+      undici:
+        - platform/http
+      node:http:
+        - platform/http
+      node:https:
+        - platform/http
+      http:
+        - platform/http
+      https:
+        - platform/http
+      "@aws-sdk/client-s3":
+        - integrations/object-storage
+      "@aws-sdk/s3-request-presigner":
+        - integrations/object-storage
+      cache-manager:
+        - integrations/cache
+        - integrations/redis
+      "@nestjs/cache-manager":
+        - integrations/cache
+        - integrations/redis
+      redis:
+        - integrations/cache
+        - integrations/redis
+      ioredis:
+        - integrations/cache
+        - integrations/redis
+        - platform/realtime
+      "@keyv/redis":
+        - integrations/cache
+        - integrations/redis
+      cache-manager-redis-yet:
+        - integrations/cache
+        - integrations/redis
+      cache-manager-ioredis-yet:
+        - integrations/cache
+        - integrations/redis
+      bullmq:
+        - platform/queue
+      "@nestjs/bullmq":
+        - platform/queue
+      bull:
+        - platform/queue
+      "@nestjs/bull":
+        - platform/queue
+      kafkajs:
+        - platform/event-bus
+      "@nestjs/schedule": []
+      eventemitter2: []
+      setInterval:
+        - platform/retry
+        - platform/event-bus
+        - platform/queue
+        - platform/http
+        - platform/realtime
+      setTimeout:
+        - platform/retry
+        - platform/event-bus
+        - platform/queue
+        - platform/http
+      node:timers:
+        - platform/retry
+        - platform/event-bus
+        - platform/queue
+        - platform/http
+      node:timers/promises:
+        - platform/retry
+        - platform/event-bus
+        - platform/queue
+        - platform/http
+      winston:
+        - platform/logging
+      node:async_hooks:
+        - platform/logging
+      nestjs-cls: []
+      dayjs:
+        - platform/clock
+        - platform/primitives
+      moment:
+        - platform/clock
+        - platform/primitives
+      date-fns-tz:
+        - platform/clock
+        - platform/primitives
+      "@nestjs/config": []
+      dotenv: []
+      "@nestjs/event-emitter": []
+      "@nestjs/platform-socket.io":
+        - platform/realtime
+      socket.io:
+        - platform/realtime
+      graphql-subscriptions:
+        - platform/realtime
+      graphql-ws:
+        - platform/realtime
+      "@socket.io/postgres-adapter":
+        - platform/realtime
+      "@socket.io/redis-adapter":
+        - platform/realtime
+      pg:
+        - platform/realtime
+    eventBus:
+      imports:
+        "@nestjs/cqrs":
+          - EventBus
+          - EventsHandler
+          - IEventHandler
+        "@nestjs/event-emitter": []
+      classes:
+        events:
+          - EventEmitter
+        node:events:
+          - EventEmitter
+        rxjs:
+          - Subject
+          - BehaviorSubject
+          - ReplaySubject
+          - AsyncSubject
+    specDoubles:
+      kit: "@starci/jest-preset"
+      doubles:
+        - token: (?:^|_)OPTIONS$
+          double: builder
+          forms:
+            - curried
+            - object
+        - token: (?:^|_)ENTITY_MANAGER$
+          double: mockEntityManager
+          forms:
+            - call
+        - token: (?:^|_)TRANSACTION(?:_RUNNER)?$
+          double: fakeTransaction
+          forms:
+            - call
+        - token: (?:^|_)CLOCK$
+          double: FakeClock
+          forms:
+            - new
+        - token: (?:^|_)EVENT_BUS$
+          double: recordingEventBus
+          forms:
+            - call
+        - token: (?:^|_)QUEUE_OUTBOX$
+          double: recordingQueueOutbox
+          forms:
+            - call
+        - token: (?:^|_)INBOX(?:_|$)
+          double: fakeInbox
+          forms:
+            - call
+        - token: (?:^|_)CACHE(?:_|$)
+          double: fakeCache
+          forms:
+            - call
+        - token: (?:^|_)(?:LOCK|LEASE|FENCE|HOLD)(?:_|$)
+          double: fakeLock
+          forms:
+            - call
+        - token: (?:^|_)(?:IDS|ID_GENERATOR|ID_FACTORY)$
+          from: /src/modules/platform/ids/
+          double: fakeIds
+          forms:
+            - call
+      fallback:
+        double: mock
+        forms:
+          - call
+          - primitive
+          - array
+    paramNames:
+      - type: Clock
+        names:
+          - clock
+      - type: Logger
+        names:
+          - logger
+      - type: Cache
+        names:
+          - cache
+      - type: CommandBus
+        names:
+          - commandBus
+      - type: QueryBus
+        names:
+          - queryBus
+      - type: EntityManager
+        names:
+          - entityManager
+        nameSuffix: EntityManager
+      - typeSuffix: Options
+        names:
+          - options
+        nameSuffix: Options
+    suffixes:
+      - module
+      - module-definition
+      - decorators
+      - options
+      - config
+      - connection
+      - service
+      - schema
+      - command
+      - query
+      - handler
+      - templates
+      - compensation
+      - saga-state
+      - saga-step
+      - saga
+      - contracts
+      - port
+      - resolver
+      - controller
+      - gateway
+      - webhook
+      - subscription
+      - consumer
+      - cli
+      - event
+      - queue
+      - projection
+      - projection-entity
+      - processor
+      - step
+      - input
+      - type
+      - args
+      - request
+      - response
+      - mapper
+      - policy
+      - entity
+      - sql
+      - rows
+      - error
+      - messages
+      - log-events
+      - cache-keys
+      - guard
+      - interceptor
+      - filter
+      - client
+      - adapter
+      - spec
+      - integration-spec
+      - e2e-spec
+      - contract-spec
+      - global-setup
+      - builder
+    contractShape:
+      helper: shapeOf
+    unitRoles:
+      - role: service
+        spec: service.spec
+      - role: cli
+        spec: cli.spec
+        slot: be.cli
+        exempt:
+          - BE_TRANSPORT_SHAPE
+    logicRoles:
+      - service
+      - schema
+      - policy
+      - projection
+      - guard
+      - mapper
+      - client
+      - adapter
+      - filter
+      - interceptor
+      - processor
+      - step
+      - saga
+      - saga-step
+      - compensation
+      - consumer
+      - webhook
+    valueRoles:
+      - schema
+    thinRoles:
+      - handler
+      - resolver
+      - controller
+      - consumer
+      - processor
+      - step
+      - saga
+      - saga-step
+      - compensation
+      - webhook
+      - gateway
+      - subscription
+      - cli
+      - mapper
+      - service
+    patternScenarios:
+      logging:
+        - correlation-survives-queue
+      event-bus:
+        - atomic-with-transaction
+        - relay-only-after-commit
+        - redelivery-then-dead-letter
+        - duplicate-delivery-is-a-noop
+      queue:
+        - enqueue-atomic-with-transaction
+        - relay-job-id-is-outbox-id
+        - scheduler-fires-once
+      webhooks:
+        - bad-signature-is-refused
+        - replay-is-refused
+        - accepted-delivery-publishes-once
+      realtime:
+        - subscriber-receives-push
+        - foreign-topic-is-isolated
+        - disconnect-releases-subscription
+        - push-crosses-replicas
+        - resume-after-reconnect
+      fenced-job:
+        - claim-bumps-token
+        - zombie-fenced-out
+        - redispatch-isolated
+      projection:
+        - recompute-is-idempotent
+        - replay-rebuilds
+      idempotency:
+        - repeat-returns-same-outcome
+        - reused-key-other-body-is-refused
+    kindPatterns:
+      api: []
+      webhooks: []
+      realtime: []
+      saga:
+        - saga
+      reactors:
+        - event-bus
+      jobs:
+        - fenced-job
+        - queue
+      cli: []
+    addKinds:
+      job:
+        topic: jobs
+        variable: job
+        trigger: jobs
+        patterns:
+          - fenced-job
+          - queue
+        also:
+          - queue
+        defaults:
+          step: "@name"
+      reactor:
+        topic: reactors
+        variable: reactor
+        trigger: reactors
+        patterns:
+          - event-bus
+        needs:
+          - event
+          - from
+          - service
+        defaults:
+          action: "@name"
+      queue:
+        topic: queues
+        variable: queue
+        patterns:
+          - queue
+      webhook:
+        topic: webhooks
+        variable: provider
+        trigger: webhooks
+        patterns:
+          - webhooks
+        needs:
+          - service
+        defaults:
+          event: "@name"
+      realtime:
+        topic: realtime
+        variable: channel
+        trigger: realtime
+        patterns:
+          - realtime
+        needs:
+          - service
+      saga:
+        topic: saga
+        variable: saga
+        trigger: saga
+        patterns:
+          - saga
+        needs:
+          - owner
+          - from
+          - failed
+          - done
+          - service
+        defaults:
+          step: "@name"
+      projection:
+        topic: projections
+        variable: name
+        patterns:
+          - projection
+        needs:
+          - connection
+      api:
+        topic: api
+        variable: feature
+        trigger: api
+        patterns: []
+        needs:
+          - service
+        defaults:
+          action: "@name"
+      cli:
+        topic: cli
+        variable: group
+        trigger: cli
+        patterns: []
+        needs:
+          - service
+        wire:
+          file: src/features/cli/cli.module.ts
+          import: ./@@group@@/@@group@@.module
+          symbol: "@@Group@@Module"
+    bannedSuffixes:
+      - use-case
+      - repository
+      - fixture
+      - factory
+      - store
+      - worker
+      - scheduler
+      - cron
+      - job
+      - listener
+      - dto
+      - util
+      - utils
+      - helper
+      - helpers
+      - rules
+      - types
+      - constants
+      - int-spec
+      - harness-spec
+      - test
+    backing:
+      redis:
+        clients:
+          - bullmq
+          - "@nestjs/bullmq"
+          - bull
+          - "@nestjs/bull"
+          - ioredis
+          - redis
+          - "@keyv/redis"
+          - cache-manager-redis-yet
+          - cache-manager-ioredis-yet
+          - "@socket.io/redis-adapter"
+        patterns:
+          - queue
+          - fenced-job
+        images:
+          - redis
+          - redis-stack
+          - redis-stack-server
+      qdrant:
+        clients:
+          - "@qdrant/js-client-rest"
+          - "@qdrant/qdrant-js"
+        patterns: []
+        images:
+          - qdrant
+        editions:
+          - full
+    lite:
+      schemaAuthority: supabase
+      infraOwners:
+        kafkajs: []
+        "@qdrant/js-client-rest": []
+        "@qdrant/qdrant-js": []
+slots:
+  - id: app.declaration
+    profiles:
+      - app
+    path: hfs.json
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_ARCH_CONFIG_UNREAD
+  - id: app.readme
+    profiles:
+      - app
+    path: README.md
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_README_*
+  - id: app.package-manifest
+    profiles:
+      - app
+    editionWhy: lite manages Supabase and wiring scripts; full also manages e2e and stack test scripts.
+      Both may run optional contracts.
+    path: package.json
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: package-scripts
+    liteManagedBy: package-scripts-lite
+    rules:
+      - HFS_PACKAGE_MANAGER_MIXED
+      - HFS_DEP_VERSION_SKEW
+      - HFS_CANON_PIN_DRIFT
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_MONO_WORKSPACES
+      - HFS_MONO_WORKSPACE_DEP
+  - id: app.task-graph
+    profiles:
+      - app
+    path: turbo.json
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: task-graph
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_MONO_WORKSPACES
+  - id: app.lockfile
+    profiles:
+      - app
+    path: package-lock.json
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PACKAGE_MANAGER_MIXED
+      - HFS_DEP_VERSION_SKEW
+  - id: app.git-meta
+    profiles:
+      - app
+    path: .gitignore
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_GITIGNORE_BLOCK_DRIFT
+  - id: app.gitattributes
+    profiles:
+      - app
+    path: .gitattributes
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: skeleton
+    liteManagedBy: skeleton-lite
+    editionWhy: Lite renders the same managed file from skeleton-lite because the editions share one
+      code structure while their adapters differ.
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.tool-config
+    profiles:
+      - app
+    path: "{.editorconfig,.nvmrc}"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: skeleton
+    liteManagedBy: skeleton-lite
+    editionWhy: Lite renders the same managed files from skeleton-lite because the editions share one
+      code structure while their adapters differ.
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.format-config
+    profiles:
+      - app
+    editionWhy: lite additionally ignores Supabase-generated row types when formatting; full has its
+      TypeORM schema authority.
+    path: "{.prettierrc,.prettierignore}"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: tool-config
+    liteManagedBy: tool-config-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_TOOL_CONFIG_LOCAL
+  - id: app.tool-config-optional
+    profiles:
+      - app
+    path: "{.npmrc,.npmignore}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.tool-config-local
+    profiles:
+      - app
+    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.*,.stylelintrc,.stylelintrc\
+      .*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-sta\
+      ged.config.*,.lintstagedrc*}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration
+      (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config)"
+    rules:
+      - HFS_TOOL_CONFIG_LOCAL
+  - id: app.quality-config
+    profiles:
+      - app
+    path: "{sonar-project.properties,codecov.yml}"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: quality-config
+    rules:
+      - HFS_SONAR_CONFIG
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.hooks
+    profiles:
+      - app
+    path: .husky/{pre-commit,pre-push}
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: hooks
+    rules:
+      - HFS_CI_E2E_AUTOMATIC
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci
+    profiles:
+      - app
+    editionWhy: lite CI proves boot through R272 wiring and checks Supabase artifacts; full also
+      provides its e2e lane.
+    path: .github/workflows/ci.yml
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_CI_E2E_AUTOMATIC
+      - HFS_CI_MISSING_CANON
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-e2e
+    profiles:
+      - app
+    editionWhy: lite has no e2e world; R272 supplies its wiring proof, while optional contracts run separately.
+    path: .github/workflows/e2e.yml
+    presence: optional
+    litePresence: forbidden
+    tracked: tracked
+    tier: none
+    tests: none
+    goesTo: "the full edition: a lite app has no e2e world; its unit specs and wiring proof run in
+      .github/workflows/ci.yml; contract specs use test:contract"
+    managedBy: ci-workflows
+    rules:
+      - HFS_CI_E2E_AUTOMATIC
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-images
+    profiles:
+      - app
+    editionWhy: lite renders its Supabase-backed image workflow; full renders images for its separately
+      deployed services.
+    path: .github/workflows/images.yml
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-db
+    profiles:
+      - app
+    editionWhy: lite manages its Supabase database deploy workflow; full owns an optional
+      provider-specific workflow.
+    path: .github/workflows/db-deploy.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-stack-deploy
+    profiles:
+      - app
+    editionWhy: both editions deploy their images to a Docker Swarm stack through the same starci stack
+      verbs; the workflow lists the images the app declares.
+    path: .github/workflows/stack-deploy.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.dockerignore
+    profiles:
+      - app
+    path: .dockerignore
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: docker-ignore
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.deploy
+    profiles:
+      - app
+    path: deploy/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PLAINTEXT_SECRET
+  - id: app.ci-deploy
+    profiles:
+      - app
+    path: .github/workflows/<app>-deploy.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PLAINTEXT_SECRET
+  - id: app.ci-authorize-deploy-key
+    profiles:
+      - app
+    path: .github/workflows/authorize-deploy-key.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PLAINTEXT_SECRET
+  - id: app.browser
+    profiles:
+      - app
+    editionWhy: browser journeys belong to full; lite proves app boot through R272 wiring.
+    path: browser/
+    presence: opt-in
+    litePresence: forbidden
+    goesTo: "the full edition: a lite app has no e2e world, so no browser journey"
+    tracked: tracked
+    tier: none
+    tests: none
+    requires:
+      - playwright.config.ts
+      - journeys/
+    allows:
+      - playwright.config.ts
+      - stack.mjs
+      - journeys/*.ts
+  - id: app.browser-config
+    profiles:
+      - app
+    editionWhy: browser journeys belong to full; lite proves app boot through R272 wiring.
+    path: browser/tsconfig.json
+    presence: opt-in
+    litePresence: forbidden
+    goesTo: "the full edition: a lite app has no browser journey to type-check"
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: browser-config
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.github-meta
+    profiles:
+      - app
+    path: .github/{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.dependabot
+    profiles:
+      - app
+    path: .github/dependabot.yml
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: skeleton
+    liteManagedBy: skeleton-lite
+    editionWhy: Lite renders the same managed file from skeleton-lite because the editions share one
+      code structure while their adapters differ.
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_DEPENDABOT_MISSING
+  - id: app.scripts
+    profiles:
+      - app
+    editionWhy: Lite manages its Supabase codegen script; full owns operational scripts through the
+      generic path.
+    path: scripts/{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    lite:
+      path: scripts/codegen.mjs
+    liteManagedBy: codegen-lite
+    rules:
+      - HFS_SCRIPT_ONE_OFF
+      - BE_SPEC_PLACEMENT
+      - HFS_REPO_LOCAL_CHECK
+  - id: app.scripts.delivery
+    profiles:
+      - app
+    editionWhy: Lite splits product delivery tooling from managed codegen; full owns the same files
+      through app.scripts.
+    editions:
+      - lite
+    path: scripts/{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PLAINTEXT_SECRET
+      - HFS_SCRIPT_ONE_OFF
+      - BE_SPEC_PLACEMENT
+      - HFS_REPO_LOCAL_CHECK
+  - id: app.scripts.integration
+    profiles:
+      - app
+    editionWhy: "Lite and full share the slot: a product's integration proof that needs a throwaway,
+      unmigrated database has the same need in both editions, and lite's generic scripts path is
+      closed to anything but codegen and delivery tooling."
+    path: scripts/integration/*.mjs
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_PLAINTEXT_SECRET
+      - HFS_SCRIPT_ONE_OFF
+      - BE_SPEC_PLACEMENT
+      - HFS_REPO_LOCAL_CHECK
+  - id: app.sides
+    profiles:
+      - app
+    path: "{be,fe}/"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.starciwork
+    profiles:
+      - app
+    editionWhy: lite optionally keeps .gitignore, workspace.yaml and brand records; full keeps the Work
+      catalog and product summaries.
+    path: .starciwork/
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    requires:
+      - .gitignore
+      - workspace.yaml
+      - index.yaml
+    allows:
+      - workspace.yaml
+      - index.yaml
+      - brand/**
+      - shell/index.yaml
+      - features/<feature>/index.yaml
+      - features/<feature>/<family>/<name>/index.yaml
+      - features/<feature>/br/<rule>/ac/<name>/index.yaml
+      - features/<feature>/ui/<name>/assets/<approved-file>
+      - features/<feature>/uat/<name>/{index,accounts,fixtures}.yaml
+      - features/<feature>/uat/<name>/{seed,cleanup}.sql
+      - _resources/{identities,environments,fixtures}/<slug>/resource.yaml
+      - _derived/{index.yaml,frontier.md,critique.yaml,critique.md}
+    forbids:
+      - evidence/
+      - logs/
+      - reports/
+      - captures/
+      - runs/
+      - kernel-*/
+      - "*.sqlite*"
+    litePresence: optional
+    lite:
+      requires:
+        - .gitignore
+      allows:
+        - workspace.yaml
+        - brand/**
+    rules:
+      - HFS_AGENT_DATA_TRACKED
+      - HFS_IDENTITY_CUSTODY
+  - id: app.starcistacks
+    profiles:
+      - app
+    editionWhy: lite requires declared docker-swarm production with Supabase backing; dependencies in
+      Docker Linux containers in dev and the app and dependencies on Swarm in prod except hosted
+      Supabase.
+    path: .starcistacks/
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    requires:
+      - application-stacks.yaml
+    allows:
+      - application-stacks.yaml
+      - <env>/README.md
+      - <env>/environment.json
+      - <env>/infra/{compose,swarm,k8s,terraform}/**
+      - <env>/infra/metadata.json
+      - <env>/runtime/{config,env}/**
+      - <env>/runtime/env/KEYS.md
+      - <env>/secrets/<slug>.enc
+      - <env>/secrets/.gitkeep
+      - <env>/seeds/**
+    forbids:
+      - <env>/runtime/files/**
+      - "**/*.enc outside <env>/secrets/"
+      - DESIGN.md
+      - deployment.json
+      - k8s/ at root
+    lite:
+      requires:
+        - application-stacks.yaml
+      allows:
+        - application-stacks.yaml
+        - <env>/README.md
+        - <env>/environment.json
+        - <env>/infra/swarm/**
+        - <env>/infra/metadata.json
+        - <env>/runtime/{config,env}/**
+        - <env>/runtime/env/KEYS.md
+        - <env>/secrets/<slug>.enc
+        - <env>/secrets/.gitkeep
+        - <env>/seeds/**
+      forbids:
+        - <env>/runtime/files/**
+        - "**/*.enc outside <env>/secrets/"
+        - DESIGN.md
+        - deployment.json
+        - k8s/ at root
+    rules:
+      - HFS_STACKS_SHAPE
+      - HFS_STACKS_IN_SIDE
+      - HFS_PLAINTEXT_SECRET
+      - HFS_IDENTITY_CUSTODY
+  - id: app.sops
+    profiles:
+      - app
+    path: .sops.yaml
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.build-output
+    profiles:
+      - app
+    path: "{**/node_modules/,coverage/,reports/,test-results/,**/*.tsbuildinfo}"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+  - id: app.tool-cache
+    profiles:
+      - app
+    path: "{.eslintcache,.turbo/,.scannerwork/,.sonar/,.jest-cache/,.cache/,.tools/}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: ${STARCI_CACHE_HOME:-%LOCALAPPDATA%/StarCi/cache}/<repo>/<tool>/ (the canon presets set
+      eslint --cache-location, jest cacheDirectory, turbo cacheDir, sonar.working.directory)
+  - id: app.agent-output
+    profiles:
+      - app
+    path: "{report*.json,*.tmp.json,%*%,nul,.artifacts/,.tmp-*,*-lint.json,lf.json,lt.json,*.log,design\
+      -plans/,.gitmounts/,.dat,vi-flat.txt}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: agent scratchpad or the StarCi blob store (%LOCALAPPDATA%/StarCi/blobs), cited by {name,
+      sha256}
+    rules:
+      - HFS_UNTRACKED_ROOT_ENTRY
+      - HFS_AGENT_DATA_TRACKED
+  - id: app.worktrees
+    profiles:
+      - app
+    path: "{.worktrees/,worktrees/,.starciwork/worktrees/}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: <lanes root>/<project>/<lane>/ (outside every repository) for a lane; a Kernel workflow's
+      worktree is created and owned by Orca outside the app checkout, never tracked, and removed by
+      the runtime's host-side controller once the workflow's finish marked it release-pending
+  - id: app.plaintext-env
+    profiles:
+      - app
+    path: "{.env,.env.*,secrets.env,.secrets/,**/*.pem,**/*.key}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: .starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or
+      under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE
+    rules:
+      - HFS_PLAINTEXT_SECRET
+  - id: app.supabase
+    profiles:
+      - app
+    editionWhy: Supabase is required in lite; full enables it only through a declared connection.
+    path: supabase/
+    presence: opt-in
+    provider: supabase
+    litePresence: required
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.config
+    profiles:
+      - app
+    editionWhy: lite requires Supabase configuration; full requires it only when Supabase is declared.
+    path: supabase/config.toml
+    presence: opt-in
+    provider: supabase
+    litePresence: required
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.migrations
+    profiles:
+      - app
+    editionWhy: lite uses Supabase schema authority and requires a migration; full opts into that provider.
+    path: supabase/migrations/<stamp>_<name>.sql
+    presence: opt-in
+    provider: supabase
+    litePresence: required
+    lite:
+      minInstances: 1
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.migrations.archive
+    profiles:
+      - app
+    path: supabase/migrations/_archive/
+    presence: opt-in
+    provider: supabase
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.seed
+    profiles:
+      - app
+    path: supabase/seed.sql
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.types
+    profiles:
+      - app
+    editionWhy: lite requires generated Supabase row types; full enables them with the provider.
+    path: supabase/types/database.types.ts
+    presence: opt-in
+    provider: supabase
+    litePresence: required
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.templates
+    profiles:
+      - app
+    path: supabase/templates/*.html
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.supabase.local-state
+    profiles:
+      - app
+    path: supabase/{.temp,.branches}/
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+  - id: app.supabase.functions
+    profiles:
+      - app
+    path: supabase/functions/
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "a be feature: webhooks/<provider> for a third-party callback, api for an endpoint, a job of
+      a queue (BullMQ on the declared Redis, its tick enqueued through the queue outbox) or a cli
+      command on a schedule (pg_cron / pg_net)"
+  - id: repo.side-root-forbidden
+    profiles:
+      - be
+      - fe
+    path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github\
+      /,.starciwork/,.starcistacks/,supabase/,.sops.yaml,sonar-project.properties,codecov.yml,.pret\
+      tierrc,.prettierignore,scripts/}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "the app root: one package.json, lockfile, hfs.json, README, git and CI files, hooks,
+      formatter, Sonar and Codecov configuration, scripts/, .starciwork, .starcistacks and
+      .sops.yaml per app"
+  - id: be.tool-config
+    profiles:
+      - be
+    path: "{tsconfig.json,tsconfig.build.json,src/tests/tsconfig.json,eslint.config.mjs,jest.config.js}"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    managedBy: tool-config
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_TOOL_CONFIG_LOCAL
+      - HFS_TS_STRICT
+  - id: be.nest-cli
+    profiles:
+      - be
+    path: nest-cli.json
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    rules:
+      - HFS_MONO_NEST_PROJECTS
+  - id: be.tool-config-local
+    profiles:
+      - be
+    path: "{.eslintrc,.eslintrc.*,.eslintignore,eslint.config.js,eslint.config.cjs,eslint.config.ts,esl\
+      int.config.mts,eslint.config.cts,.prettierrc.*,prettier.config.*,jest.config.ts,jest.config.m\
+      js,jest.config.cjs,jest.config.json,jest.config.e2e.js}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "nowhere: a back end has exactly the managed tool configuration (be.tool-config); a change
+      to a rule or a flag is proposed in the .claude runtime"
+    rules:
+      - HFS_TOOL_CONFIG_LOCAL
+  - id: fe.tool-config
+    profiles:
+      - fe
+    path: "{tsconfig.json,eslint.config.mjs,stylelint.config.mjs}"
+    presence: required
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: tool-config
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_TOOL_CONFIG_LOCAL
+      - HFS_RULE_OFF_WITHOUT_REPLACEMENT
+      - HFS_TS_STRICT
+  - id: fe.tool-config-local
+    profiles:
+      - fe
+    path: "{.eslintrc,.eslintrc.*,.eslintignore,eslint.config.js,eslint.config.cjs,eslint.config.ts,esl\
+      int.config.mts,eslint.config.cts,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.confi\
+      g.js,stylelint.config.cjs,stylelint.config.ts,stylelint.config.json,prettier.config.*,.pretti\
+      errc.*,lint-staged.config.*,.lintstagedrc*,turbo.json}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "nowhere: a front end has exactly the managed tool configuration (fe.tool-config); the task
+      graph is the app root's turbo.json (app.task-graph); a change to a rule or a flag is proposed
+      in the .claude runtime"
+    rules:
+      - HFS_TOOL_CONFIG_LOCAL
+  - id: repo.docs
+    profiles:
+      - be
+      - fe
+    path: docs/{adr,runbooks,guides}/**/*.md
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    rules:
+      - HFS_ROOT_MARKDOWN_FORBIDDEN
+  - id: repo.docs-media
+    profiles:
+      - be
+      - fe
+    path: docs/**/*.{png,svg,webp}
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    budget:
+      bytes: 512000
+  - id: repo.i18n-dynamic-keys
+    profiles:
+      - be
+      - fe
+    path: i18n-dynamic-keys.yaml
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    rules:
+      - HFS_UNUSED_SYMBOL
+  - id: repo.packages
+    profiles:
+      - be
+      - fe
+    path: packages/<pkg>/
+    presence: opt-in
+    tracked: tracked
+    tier: package
+    owner: true
+    requires:
+      - package.json
+      - src/index.ts
+      - tsconfig.json
+    tests: unit-beside
+    coverage: none
+    rules:
+      - FE_PACKAGE_SHAPE
+      - HFS_UNUSED_EXPORT
+  - id: repo.app-image
+    profiles:
+      - be
+      - fe
+    editionWhy: lite may host Next without its own image; back-end images stay required in both editions.
+    path: apps/<app>/Dockerfile
+    presence: required
+    litePresence:
+      fe: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    rules:
+      - HFS_DOCKER_BUILD_CONTEXT
+      - HFS_DOCKER_STAGES
+      - HFS_DOCKER_ENTRY
+      - HFS_DOCKER_BASE_PIN
+      - HFS_DOCKER_SECRETS
+  - id: repo.build-output
+    profiles:
+      - be
+      - fe
+    path: "{**/node_modules/,dist/,apps/*/dist/,packages/*/dist/,.next/,apps/*/.next/,coverage/,reports\
+      /,test-results/,**/next-env.d.ts,**/*.tsbuildinfo}"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+  - id: repo.generated
+    profiles:
+      - be
+      - fe
+    path: "{**/__generated__/,apps/*/src/schema.gql}"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+    why: produced by `npm run codegen` (prebuild and pretypecheck); never committed
+  - id: repo.tool-cache
+    profiles:
+      - be
+      - fe
+    path: "{.eslintcache,.turbo/,.scannerwork/,.sonar/,.jest-cache/,.cache/,.tools/}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: ${STARCI_CACHE_HOME:-%LOCALAPPDATA%/StarCi/cache}/<repo>/<tool>/ (the canon presets set
+      eslint --cache-location, jest cacheDirectory, turbo cacheDir, sonar.working.directory)
+  - id: repo.agent-output
+    profiles:
+      - be
+      - fe
+    path: "{report*.json,*.tmp.json,%*%,nul,.artifacts/,.tmp-*,*-lint.json,lf.json,lt.json,*.log,design\
+      -plans/,.gitmounts/,.dat,vi-flat.txt}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: agent scratchpad or the StarCi blob store (%LOCALAPPDATA%/StarCi/blobs), cited by {name,
+      sha256}
+    rules:
+      - HFS_UNTRACKED_ROOT_ENTRY
+      - HFS_AGENT_DATA_TRACKED
+  - id: repo.worktrees
+    profiles:
+      - be
+      - fe
+    path: "{.worktrees/,worktrees/,.starciwork/worktrees/}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: <lanes root>/<project>/<lane>/ (outside every repository)
+  - id: repo.plaintext-env
+    profiles:
+      - be
+      - fe
+    path: "{.env,.env.*,.secrets/,**/*.pem,**/*.key}"
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: .starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or
+      under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE
+    rules:
+      - HFS_PLAINTEXT_SECRET
+  - id: be.root-e2e
+    profiles:
+      - be
+    path: e2e/
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: src/tests/e2e/ for specs; operational probes move to scripts/ or are deleted
+  - id: be.contract.graphql
+    profiles:
+      - be
+    path: contracts/<app>/schema.graphql
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: emitted by `npm run contract:emit` (`starci app emit`, never written by hand); CI fails when
+      the emitted file differs (a contract, not a build artefact)
+    rules:
+      - HFS_CONTRACT_SNAPSHOT_DRIFT
+  - id: be.contract.openapi
+    profiles:
+      - be
+    path: contracts/<app>/openapi.json
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: emitted by `npm run contract:emit` (`starci app emit`, never written by hand) from the app's
+      typed operation table `apps/<app>/src/operations.ts` (canon BE-OPERATIONS-1); CI fails when
+      the emitted file differs
+    rules:
+      - HFS_CONTRACT_SNAPSHOT_DRIFT
+  - id: be.contract.events
+    profiles:
+      - be
+    path: contracts/<app>/events.json
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: the async contract of a service (`starci/event-contract@1`), emitted by `npm run contract:emit`
+      (`starci app emit`, never written by hand) from the typed event classes of
+      `src/modules/events/<service>/`; the consumers of its events rely on it (R166
+      HFS_EVENT_CONTRACT)
+    rules:
+      - HFS_EVENT_CONTRACT
+  - id: be.contract.events.pin
+    profiles:
+      - be
+    path: contracts/<app>/events.pin.json
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: the previously published event contract of a service, the same format as its events.json
+      (copied over when the contract is published, never edited); the current events.json may only
+      extend it additively, a breaking change is a new `<event>.v2` key (R177 BE_CONTRACT_BREAKING)
+    rules:
+      - BE_CONTRACT_BREAKING
+  - id: be.contract.mcp-tools
+    profiles:
+      - be
+    path: contracts/<app>/<contract>.tools.json
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: the MCP tool catalog an app's MCP server publishes at one contract major (`<server>@<major>`),
+      the `tools/list` result its clients rely on, committed as a cross-repo interface; the canon
+      emits no MCP catalog, so its shape is judged (R302 HFS_MCP_TOOLS_SNAPSHOT)
+    rules:
+      - HFS_MCP_TOOLS_SNAPSHOT
+  - id: be.app.api
+    profiles:
+      - be
+    path: apps/<app>/src/
+    appKind: api
+    presence: required
+    tracked: tracked
+    tier: app
+    owner: true
+    minInstances: 1
+    requires:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+    allows:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+      - <app>.options.ts
+      - compose/<area>.ts
+      - operations.ts
+    tests: none
+    coverage: none
+    budget:
+      app.module.ts: 250
+      main.ts: 80
+      <app>.env.ts: 150
+      <app>.options.ts: 200
+      compose/<area>.ts: 120
+    rules:
+      - BE_APP_COMPOSITION_ONLY
+      - BE_APP_BUSINESS_ROLE
+      - BE_APP_OPTIONS_COMPOSITION
+      - BE_APP_COMPOSITION_BUDGET
+      - BE_DEFAULT_DENY
+      - BE_ERROR_MASKED
+      - BE_FEATURE_NOT_COMPOSED
+      - BE_CONTEXT_OWNER
+      - BE_APP_ENV_REQUIRED
+  - id: be.app.worker
+    profiles:
+      - be
+    path: apps/<app>/src/
+    appKind: worker
+    presence: opt-in
+    tracked: tracked
+    tier: app
+    owner: true
+    requires:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+    allows:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+      - <app>.options.ts
+      - compose/<area>.ts
+    tests: none
+    coverage: none
+    budget:
+      app.module.ts: 250
+      main.ts: 80
+      <app>.env.ts: 150
+      <app>.options.ts: 200
+      compose/<area>.ts: 120
+    rules:
+      - BE_APP_COMPOSITION_ONLY
+      - BE_APP_OPTIONS_COMPOSITION
+      - BE_APP_COMPOSITION_BUDGET
+      - BE_BACKGROUND_UNOWNED
+      - BE_CONTEXT_OWNER
+      - BE_APP_ENV_REQUIRED
+  - id: be.app.cli
+    profiles:
+      - be
+    editionWhy: Supabase CLI owns lite migrations; a lite cli app is optional for declared operator commands.
+    path: apps/<app>/src/
+    appKind: cli
+    presence: opt-in
+    litePresence: optional
+    tracked: tracked
+    tier: app
+    owner: true
+    requires:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+    allows:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+      - <app>.options.ts
+      - compose/<area>.ts
+    tests: none
+    coverage: none
+    budget:
+      app.module.ts: 250
+      main.ts: 80
+      <app>.env.ts: 150
+      <app>.options.ts: 200
+      compose/<area>.ts: 120
+    rules:
+      - BE_CLI_REQUIRED
+      - BE_CLI_BOOTSTRAP
+      - BE_CLI_OWNER
+      - BE_SCHEMA_AUTHORITY
+      - BE_APP_OPTIONS_COMPOSITION
+      - BE_APP_COMPOSITION_BUDGET
+      - BE_APP_ENV_REQUIRED
+  - id: be.feature
+    profiles:
+      - be
+    path: src/features/api/<feature>/
+    presence: required
+    trigger: api
+    tracked: tracked
+    tier: feature
+    owner: true
+    minInstances: 1
+    requires:
+      - index.ts
+      - <feature>.module.ts
+      - application/
+    allows:
+      - index.ts
+      - <feature>.module.ts
+      - <feature>.module-definition.ts
+      - <feature>.options.ts
+      - application/
+      - transport/
+      - messages/
+    tests: none
+    coverage: none
+    budget:
+      files: 250
+      indexExports: 60
+    rules:
+      - BE_FEATURE_SHAPE
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_PUBLIC_SURFACE
+      - BE_FEATURE_NOT_COMPOSED
+  - id: be.feature.application
+    profiles:
+      - be
+    path: src/features/{api/,jobs/,reactors/,saga/}<feature>/application/
+    presence: required
+    tracked: tracked
+    tier: feature
+    allows:
+      - <action>.{command,query,handler,contracts}.ts
+    forbids:
+      - graphql/
+      - http/
+      - message/
+      - schedule/
+      - transport/
+    tests: none
+    coverage: none
+    rules:
+      - BE_APPLICATION_IMPORTS_TRANSPORT
+      - BE_APPLICATION_TRANSPORT_FRAMEWORK
+      - BE_ENTITY_IN_CONTRACT
+      - BE_CQRS_SHAPE
+  - id: be.feature.saga
+    profiles:
+      - be
+    path: src/features/saga/<saga>/
+    pattern: saga
+    presence: opt-in
+    trigger: saga
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - <saga>.module.ts
+      - <saga>.saga.service.ts
+      - <saga>.saga-state.ts
+      - steps/
+      - compensations/
+      - transport/
+    allows:
+      - index.ts
+      - <saga>.module.ts
+      - <saga>.module-definition.ts
+      - <saga>.options.ts
+      - <saga>.saga.service.ts
+      - <saga>.saga.service.spec.ts
+      - <saga>.saga-state.ts
+      - <saga>.saga.log-events.ts
+      - application/
+      - steps/
+      - compensations/
+      - transport/
+    tests: unit-beside
+    coverage: none
+    rules:
+      - BE_KIND_ISOLATION
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_FEATURE_NOT_COMPOSED
+      - BE_SAGA_STEP_COMPENSATION
+      - BE_SAGA_STATE_VERSIONED
+      - BE_SAGA_EVENT_CONTRACT
+      - BE_SAGA_E2E_MISSING
+  - id: be.feature.saga.steps
+    profiles:
+      - be
+    path: src/features/saga/<saga>/steps/
+    pattern: saga
+    presence: opt-in
+    tracked: tracked
+    tier: feature
+    allows:
+      - <step>.saga-step.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_SAGA_STEP_COMPENSATION
+      - BE_SAGA_EVENT_CONTRACT
+  - id: be.feature.saga.compensations
+    profiles:
+      - be
+    path: src/features/saga/<saga>/compensations/
+    pattern: saga
+    presence: opt-in
+    tracked: tracked
+    tier: feature
+    allows:
+      - <step>.compensation.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_SAGA_STEP_COMPENSATION
+      - BE_SAGA_EVENT_CONTRACT
+      - BE_SAGA_E2E_MISSING
+  - id: be.feature.application.support
+    profiles:
+      - be
+    path: src/features/{api/,jobs/,reactors/,saga/}<feature>/application/support/
+    presence: optional
+    tracked: tracked
+    tier: feature
+    allows:
+      - <name>.<role>.ts
+    forbids:
+      - graphql/
+      - http/
+      - message/
+      - schedule/
+      - transport/
+    tests: none
+    coverage: none
+    rules:
+      - BE_APPLICATION_IMPORTS_TRANSPORT
+      - BE_APPLICATION_TRANSPORT_FRAMEWORK
+      - BE_FEATURE_IMPORTS_FEATURE
+  - id: be.transport.http
+    profiles:
+      - be
+    path: src/features/api/<feature>/transport/http/
+    presence: optional
+    tracked: tracked
+    tier: feature
+    requires:
+      - <feature>-http.module.ts
+    allows:
+      - <action>.controller.ts
+      - dto/<action>.{request,response}.ts
+      - <action>.mapper.ts
+      - <feature>-http.module-definition.ts
+      - <feature>-http.options.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_DEFAULT_DENY
+      - BE_INPUT_BOUNDED
+      - BE_TRANSPORT_SHAPE
+  - id: be.transport.graphql
+    profiles:
+      - be
+    path: src/features/api/<feature>/transport/graphql/
+    presence: optional
+    tracked: tracked
+    tier: feature
+    requires:
+      - <feature>-graphql.module.ts
+    allows:
+      - <action>.resolver.ts
+      - dto/<action>.{input,type,args}.ts
+      - <action>.mapper.ts
+      - <feature>-graphql.module-definition.ts
+      - <feature>-graphql.options.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_DEFAULT_DENY
+      - BE_INPUT_BOUNDED
+      - BE_TRANSPORT_SHAPE
+  - id: be.transport.message
+    profiles:
+      - be
+    path: src/features/{api/,reactors/,saga/}<feature>/transport/message/
+    presence: opt-in
+    pattern: event-bus
+    tracked: tracked
+    tier: feature
+    requires:
+      - <feature>-message.module.ts
+    allows:
+      - <event>.consumer.ts
+      - <feature>-message.module-definition.ts
+      - <feature>-message.options.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+      - worker
+    rules:
+      - BE_BACKGROUND_UNOWNED
+      - BE_SAGA_CONSUMER_DEDUPE
+  - id: be.feature.webhooks
+    profiles:
+      - be
+    path: src/features/webhooks/<provider>/
+    presence: opt-in
+    pattern: webhooks
+    trigger: webhooks
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - transport/
+    allows:
+      - index.ts
+      - transport/
+    tests: none
+    coverage: none
+    rules:
+      - BE_KIND_ISOLATION
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_FEATURE_NOT_COMPOSED
+  - id: be.feature.webhooks.http
+    profiles:
+      - be
+    path: src/features/webhooks/<provider>/transport/http/
+    presence: opt-in
+    pattern: webhooks
+    tracked: tracked
+    tier: feature
+    requires:
+      - <provider>-http.module.ts
+      - <provider>.webhook.ts
+      - <provider>.webhook.spec.ts
+    allows:
+      - <provider>-http.module.ts
+      - <provider>-http.module-definition.ts
+      - <provider>-http.options.ts
+      - <provider>.webhook.ts
+      - <provider>.webhook.spec.ts
+      - dto/
+    tests: unit-beside
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_WEBHOOK_SHAPE
+      - BE_WEBHOOK_UNVERIFIED
+      - BE_DEFAULT_DENY
+      - BE_INPUT_BOUNDED
+  - id: be.feature.webhooks.dto
+    profiles:
+      - be
+    path: src/features/webhooks/<provider>/transport/http/dto/
+    presence: opt-in
+    pattern: webhooks
+    tracked: tracked
+    tier: feature
+    allows:
+      - <event>.request.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_INPUT_BOUNDED
+  - id: be.feature.realtime
+    profiles:
+      - be
+    editionWhy: and both editions serve server-sent events (the default door for one-way push), the
+      socket.io gateway (two-way) and the restricted GraphQL subscription from the api process, and
+      scale on the hub of their declared infrastructure (BE-REALTIME-7).
+    path: src/features/realtime/<channel>/
+    presence: opt-in
+    pattern: realtime
+    trigger: realtime
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - transport/
+    allows:
+      - index.ts
+      - transport/
+    tests: none
+    lite:
+      why: "a push channel with the three doors of both editions: server-sent events
+        (be.feature.realtime.sse, the default for one-way push), the
+        socket.io gateway and the restricted GraphQL subscription; all run inside the be api
+        process, which scales horizontally and stateless on the hub of its declared infrastructure;
+        the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or
+        hooks/socketio (knowledge/patterns/be/realtime.yaml, liteAdapter)"
+    coverage: none
+    rules:
+      - BE_KIND_ISOLATION
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_FEATURE_NOT_COMPOSED
+  - id: be.feature.realtime.graphql
+    profiles:
+      - be
+    path: src/features/realtime/<channel>/transport/graphql/
+    presence: opt-in
+    pattern: realtime
+    tracked: tracked
+    tier: feature
+    requires:
+      - <channel>-graphql.module.ts
+      - <channel>.subscription.ts
+      - <channel>.subscription.spec.ts
+    allows:
+      - <channel>-graphql.module.ts
+      - <channel>-graphql.module-definition.ts
+      - <channel>-graphql.options.ts
+      - <channel>.subscription.ts
+      - <channel>.subscription.spec.ts
+      - dto/
+    tests: unit-beside
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_REALTIME_SHAPE
+      - BE_REALTIME_WRITES
+      - BE_REALTIME_TOPIC_SCOPE
+      - BE_DEFAULT_DENY
+  - id: be.feature.realtime.dto
+    profiles:
+      - be
+    path: src/features/realtime/<channel>/transport/graphql/dto/
+    presence: opt-in
+    pattern: realtime
+    tracked: tracked
+    tier: feature
+    allows:
+      - <name>.{input,type,args}.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_INPUT_BOUNDED
+  - id: be.feature.realtime.websocket
+    profiles:
+      - be
+    path: src/features/realtime/<channel>/transport/websocket/
+    presence: opt-in
+    pattern: realtime
+    tracked: tracked
+    tier: feature
+    requires:
+      - <channel>-websocket.module.ts
+      - <channel>.gateway.ts
+      - <channel>.gateway.spec.ts
+    allows:
+      - <channel>-websocket.module.ts
+      - <channel>-websocket.module-definition.ts
+      - <channel>-websocket.options.ts
+      - <channel>.gateway.ts
+      - <channel>.gateway.spec.ts
+    tests: unit-beside
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_REALTIME_SHAPE
+      - BE_REALTIME_WRITES
+      - BE_REALTIME_TOPIC_SCOPE
+      - BE_DEFAULT_DENY
+  - id: be.feature.realtime.sse
+    profiles:
+      - be
+    path: src/features/realtime/<channel>/transport/sse/
+    presence: opt-in
+    pattern: realtime
+    tracked: tracked
+    tier: feature
+    requires:
+      - <channel>-sse.module.ts
+      - <channel>.controller.ts
+      - <channel>.controller.spec.ts
+    allows:
+      - <channel>-sse.module.ts
+      - <channel>-sse.module-definition.ts
+      - <channel>-sse.options.ts
+      - <channel>.controller.ts
+      - <channel>.controller.spec.ts
+    tests: unit-beside
+    coverage: none
+    composedBy:
+      - api
+    rules:
+      - BE_REALTIME_SHAPE
+      - BE_REALTIME_WRITES
+      - BE_REALTIME_TOPIC_SCOPE
+      - BE_DEFAULT_DENY
+      - BE_REST_DOOR_EVIDENCE
+  - id: be.cli
+    profiles:
+      - be
+    path: src/features/cli/
+    presence: optional
+    trigger: cli
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - cli.module.ts
+    composedBy:
+      - cli
+    allows:
+      - index.ts
+      - cli.module.ts
+      - cli.module-definition.ts
+      - cli.options.ts
+      - <group>/<group>.cli.ts
+      - <group>/<group>.cli.spec.ts
+      - <group>/<group>.module.ts
+      - <group>/<group>.module-definition.ts
+      - <group>/<group>.options.ts
+      - <group>/subs/<name>.cli.ts
+      - <group>/subs/<name>.cli.spec.ts
+    tests: unit-beside
+    coverage: none
+    rules:
+      - BE_CLI_COMMAND_SHAPE
+      - BE_CLI_OWNER
+      - BE_CLI_REQUIRED
+      - BE_MODULE_SHAPE
+      - BE_SCHEMA_AUTHORITY
+  - id: be.assets
+    profiles:
+      - be
+    path: src/assets/<kind>/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    rules:
+      - HFS_ASSET_OVERSIZE
+      - HFS_ASSET_KIND
+  - id: be.domain
+    profiles:
+      - be
+    path: src/modules/domain/<capability>/
+    presence: optional
+    tracked: tracked
+    tier: domain
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - <capability>.module.ts
+      - <capability>.module-definition.ts
+      - <capability>.config.ts
+      - <capability>.options.ts
+      - errors/
+      - messages/
+      - persistence/
+      - policies/
+      - "*.service.ts"
+      - "*.service.spec.ts"
+      - "*.contracts.ts"
+      - "*.templates.ts"
+      - "*.schema.ts"
+      - "*.schema.spec.ts"
+      - "*.policy.ts"
+      - "*.policy.spec.ts"
+    forbids:
+      - testing/
+      - exceptions/
+      - utils/
+      - helpers/
+      - shared/
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_PUBLIC_SURFACE
+      - BE_ERROR_HOME
+      - BE_CONFIG_OWNER
+      - BE_CONTEXT_COUPLING
+      - BE_CONTEXT_TRANSACTION
+  - id: be.errors
+    profiles:
+      - be
+    path: src/modules/{domain,integrations}/<capability>/errors/
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    allows:
+      - <capability>.error.ts
+      - <name>.error.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_ERROR_HOME
+  - id: be.domain.messages
+    profiles:
+      - be
+    path: src/modules/{domain,platform,integrations}/<capability>/messages/
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    allows:
+      - <capability>.messages.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_USER_COPY_LITERAL
+  - id: be.feature.messages
+    profiles:
+      - be
+    path: src/features/api/<feature>/messages/
+    presence: optional
+    tracked: tracked
+    tier: feature
+    allows:
+      - <feature>.messages.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_USER_COPY_LITERAL
+  - id: be.persistence
+    profiles:
+      - be
+    editionWhy: Supabase migrations own lite tables, with SQL and row types here; full keeps TypeORM
+      entities and migrations here.
+    path: src/modules/{domain,platform,projections}/<capability>/persistence/
+    perConnection:
+      - event-bus
+      - inbox
+      - jobs
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    requires:
+      - connection.ts
+    allows:
+      - entities/<table>.entity.ts
+      - migrations/<epochMs13>-<kebab-name>.ts
+      - <name>.sql.ts
+      - <name>.rows.ts
+      - connection.ts
+    forbids:
+      - index.ts
+      - <name>.repository.ts
+    lite:
+      requires: []
+      allows:
+        - <name>.sql.ts
+        - <name>.rows.ts
+        - connection.ts
+      forbids:
+        - index.ts
+        - <name>.repository.ts
+        - entities/
+        - migrations/
+    tests: none
+    coverage: none
+    rules:
+      - BE_SCHEMA_OWNER
+      - BE_SCHEMA_AUTHORITY
+      - BE_SQL_OUTSIDE_PERSISTENCE
+      - BE_SQL_TABLE_OWNER
+      - BE_SQL_RETURNING_SHAPE
+      - BE_CONTEXT_COUPLING
+      - BE_CONTEXT_PLATFORM_TABLES
+  - id: be.platform
+    profiles:
+      - be
+    path: src/modules/platform/<capability>/
+    presence: required
+    tracked: tracked
+    tier: platform
+    owner: true
+    requiredInstances:
+      capability:
+        - config
+        - errors
+        - primitives
+        - clock
+        - i18n
+    requires:
+      - index.ts
+    forbids:
+      - common/
+      - utils/
+      - shared/
+      - testing/
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_MODULE_SHAPE
+  - id: be.platform.logging
+    profiles:
+      - be
+    path: src/modules/platform/logging/
+    presence: required
+    pattern: logging
+    tracked: tracked
+    tier: platform
+    owner: true
+    requires:
+      - index.ts
+    forbids:
+      - common/
+      - utils/
+      - shared/
+      - testing/
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_MODULE_SHAPE
+  - id: be.platform.event-bus
+    profiles:
+      - be
+    editionWhy: lite implements the event ports with outbox and pgmq; full uses its Kafka adapter.
+    path: src/modules/platform/event-bus/
+    presence: opt-in
+    pattern: event-bus
+    tracked: tracked
+    tier: platform
+    owner: true
+    lite:
+      why: "the same EventPublisher and EventConsumer ports on Supabase Queues (pgmq): the outbox relay
+        sends each committed row to the pgmq queue of every consumer group of its topic through the
+        shared EntityManager, a consumer reads with a visibility timeout, retries by letting it
+        lapse and archives the message on dead letter (read_ct over the budget); a single api may
+        deliver in process. No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)"
+    requires:
+      - index.ts
+      - event-bus.module.ts
+      - event-bus.port.ts
+      - event-bus.contracts.ts
+      - event-bus.service.ts
+      - event-bus.service.spec.ts
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_MODULE_SHAPE
+      - BE_INFRA_OWNER
+  - id: be.platform.queue
+    profiles:
+      - be
+    editionWhy: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in
+      hfs.json sides.be.backing and keeps the outbox table in a supabase migration.
+    path: src/modules/platform/queue/
+    presence: opt-in
+    pattern: queue
+    tracked: tracked
+    tier: platform
+    owner: true
+    lite:
+      why: "the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared
+        Redis (backing: [redis]): the relay adds each committed outbox row with the outbox id as the
+        job id, workers retry with exponential backoff and keep a job that exhausts its attempts as
+        failed (the dead letter); the outbox table comes from a supabase migration, and a schedule
+        is a BullMQ job scheduler or a pg_cron tick that inserts one outbox row
+        (knowledge/patterns/be/queues.yaml liteAdapter)"
+    requires:
+      - index.ts
+      - queue.module.ts
+      - queue.port.ts
+      - queue.contracts.ts
+      - queue-outbox.service.ts
+      - queue-outbox.service.spec.ts
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_MODULE_SHAPE
+      - BE_INFRA_OWNER
+  - id: be.events
+    profiles:
+      - be
+    path: src/modules/events/<service>/
+    presence: opt-in
+    pattern: event-bus
+    tracked: tracked
+    tier: events
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - <event>.event.ts
+      - index.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_EVENT_CLASS_CONTRACT
+      - BE_TIER_DIRECTION
+  - id: be.queues
+    profiles:
+      - be
+    path: src/modules/queues/<queue>/
+    presence: opt-in
+    pattern: queue
+    tracked: tracked
+    tier: queues
+    owner: true
+    requires:
+      - index.ts
+      - <queue>.queue.ts
+    allows:
+      - <queue>.queue.ts
+      - <queue>.module.ts
+      - <queue>.module-definition.ts
+      - <queue>.options.ts
+      - <queue>.contracts.ts
+      - index.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_OUTBOX_WRITE_TX
+      - BE_TIER_DIRECTION
+  - id: be.feature.reactors
+    profiles:
+      - be
+    path: src/features/reactors/<reactor>/
+    presence: opt-in
+    pattern: event-bus
+    trigger: reactors
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - <reactor>.module.ts
+      - transport/
+    allows:
+      - index.ts
+      - <reactor>.module.ts
+      - <reactor>.module-definition.ts
+      - <reactor>.options.ts
+      - application/
+      - transport/
+    tests: none
+    coverage: none
+    rules:
+      - BE_KIND_ISOLATION
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_FEATURE_NOT_COMPOSED
+  - id: be.feature.jobs
+    profiles:
+      - be
+    path: src/features/jobs/<job>/
+    presence: opt-in
+    pattern: fenced-job
+    trigger: jobs
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - <job>.module.ts
+      - steps/
+      - transport/
+    allows:
+      - index.ts
+      - <job>.module.ts
+      - <job>.module-definition.ts
+      - <job>.options.ts
+      - application/
+      - steps/
+      - transport/
+    tests: none
+    coverage: none
+    rules:
+      - BE_KIND_ISOLATION
+      - BE_FEATURE_IMPORTS_FEATURE
+      - BE_FEATURE_NOT_COMPOSED
+  - id: be.feature.jobs.queue
+    profiles:
+      - be
+    path: src/features/jobs/<job>/transport/queue/
+    presence: opt-in
+    pattern: fenced-job
+    tracked: tracked
+    tier: feature
+    requires:
+      - <job>-queue.module.ts
+      - <job>.processor.ts
+    allows:
+      - <job>-queue.module.ts
+      - <job>-queue.module-definition.ts
+      - <job>-queue.options.ts
+      - <job>.processor.ts
+    tests: none
+    coverage: none
+    composedBy:
+      - api
+      - worker
+    rules:
+      - BE_BACKGROUND_UNOWNED
+  - id: be.feature.jobs.steps
+    profiles:
+      - be
+    path: src/features/jobs/<job>/steps/
+    presence: opt-in
+    pattern: fenced-job
+    tracked: tracked
+    tier: feature
+    allows:
+      - <step>.step.ts
+    tests: none
+    coverage: none
+    rules:
+      - BE_JOB_SHAPE
+      - BE_JOB_RUN_KEY
+  - id: be.platform.jobs
+    profiles:
+      - be
+    editionWhy: lite persists fenced claims in Supabase migrations and dispatches through the BullMQ
+      queue on its declared Redis; full uses TypeORM schema authority and the same queue adapter.
+    path: src/modules/platform/jobs/
+    presence: opt-in
+    pattern: fenced-job
+    tracked: tracked
+    tier: platform
+    owner: true
+    requires:
+      - index.ts
+      - jobs.module.ts
+      - jobs.port.ts
+      - jobs.contracts.ts
+      - job-claim.service.ts
+      - job-claim.service.spec.ts
+      - fenced.processor.ts
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 60
+    rules:
+      - BE_TIER_DIRECTION
+      - ARCH_OWNER_CYCLE
+      - BE_MODULE_SHAPE
+      - BE_JOB_WRITE_OUTSIDE_OWNER
+      - BE_JOB_FENCE_REQUIRED
+  - id: be.projections
+    profiles:
+      - be
+    editionWhy: lite projection tables live in Supabase migrations; full keeps the TypeORM projection
+      entity beside its projection.
+    path: src/modules/projections/<name>/
+    presence: opt-in
+    pattern: projection
+    tracked: tracked
+    tier: projections
+    owner: true
+    requires:
+      - index.ts
+      - <name>.module.ts
+      - <name>.projection.ts
+      - <name>.projection-entity.ts
+    allows:
+      - index.ts
+      - <name>.module.ts
+      - <name>.module-definition.ts
+      - <name>.options.ts
+      - <name>.projection.ts
+      - <name>.projection-entity.ts
+      - <name>.contracts.ts
+      - persistence/
+    lite:
+      requires:
+        - index.ts
+        - <name>.module.ts
+        - <name>.projection.ts
+      allows:
+        - index.ts
+        - <name>.module.ts
+        - <name>.module-definition.ts
+        - <name>.options.ts
+        - <name>.projection.ts
+        - <name>.contracts.ts
+        - persistence/
+    tests: unit-beside
+    coverage: required
+    rules:
+      - BE_PROJECTION_WRITE_OWNER
+      - BE_PROJECTION_SHAPE
+      - BE_TIER_DIRECTION
+      - BE_CONTEXT_COUPLING
+  - id: be.integrations
+    profiles:
+      - be
+    path: src/modules/integrations/<provider>/
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires:
+      - index.ts
+      - <provider>.config.ts
+    tests: unit-beside
+    coverage: required
+    budget:
+      indexExports: 80
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_ERROR_HOME
+      - BE_SECRET_DEFAULT
+      - BE_INTEGRATION_SPEC_MISSING
+  - id: be.integrations.model
+    profiles:
+      - be
+    path: src/modules/integrations/<provider>/model/
+    presence: opt-in
+    tracked: tracked
+    tier: integrations
+    tests: none
+    coverage: required
+    why: an ML or LLM model client is an integration; weights and datasets are never in git
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_INFRA_OWNER
+      - BE_INTEGRATION_SPEC_MISSING
+  - id: be.integrations.supabase
+    profiles:
+      - be
+    editionWhy: lite requires the Supabase Auth and Storage integration; full opts in through a connection.
+    path: src/modules/integrations/supabase/
+    presence: opt-in
+    provider: supabase
+    litePresence: required
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires:
+      - index.ts
+      - supabase.config.ts
+      - supabase.options.ts
+      - supabase.decorators.ts
+      - supabase.client.ts
+      - supabase.jwks.ts
+    allows:
+      - index.ts
+      - supabase.config.ts
+      - supabase.options.ts
+      - supabase.decorators.ts
+      - supabase.client.ts
+      - supabase.jwks.ts
+      - errors/
+    tests: unit-beside
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_ERROR_HOME
+      - BE_SECRET_DEFAULT
+    coverage: required
+  - id: be.tests.world
+    profiles:
+      - be
+    editionWhy: lite integration proofs use the local Supabase stack and network fakes; full also boots
+      apps and self-hosted services.
+    path: src/tests/world/
+    presence: optional
+    tracked: tracked
+    tier: e2e
+    lite:
+      why: "the world of the optional integration specs of a lite app: global-setup.ts connects to the
+        local Supabase CLI stack (`starci supabase start`, with the migrations applied by the local
+        stack) and starts no container, no toxiproxy and no stack of its own; use-test-world.ts
+        exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager)
+        and world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps
+        (no e2e) and no world.infra (no self-hosted service to cut)"
+    allows:
+      - global-setup.ts
+      - global-teardown.ts
+      - use-test-world.ts
+      - fakes/<provider>/server.ts
+      - fakes/
+    tests: none
+    coverage: none
+    why: "the ONLY test infrastructure location, shared by integration and e2e: global-setup.ts starts
+      the shared infrastructure (containers) and runs the migrations once over the cli app's
+      connections; use-test-world.ts exports useTestWorld({ apps: { <name>: { module, listen? } } }
+      | { modules: [...] }) -> world.apps.<name>.api, world.db.<connection> (the shared
+      EntityManager), world.infra.<service> (latency/cut/restore on a REAL service of the
+      repository's own stack, the app root's `.starcistacks/<env>`, each behind toxiproxy),
+      world.fake.<provider> (a network-edge fake of an external SaaS started by the world, with
+      failNext/replayWebhook/delay), world.waitFor; fakes/<provider>/ holds the fake servers and
+      payload fixtures, kit/ the inlined test helpers, and the world root may hold role-suffixed
+      helpers (<name>.client.ts, <name>.contracts.ts, ...). Nothing is overridden in the DI
+      container. It is the only test location that may import typeorm's DataSource or
+      testcontainers, call migrate/runMigrations/synchronize, or write process.env."
+    rules:
+      - BE_TEST_TOPOLOGY
+      - BE_TEST_CONSTRAINTS_ON
+  - id: be.tests.world.kit
+    profiles:
+      - be
+    path: src/tests/world/kit/
+    presence: optional
+    tracked: tracked
+    tier: e2e
+    allows:
+      - <name>.ts
+    tests: none
+    coverage: none
+    why: the helpers the test world needs (polling, free ports, transports), inlined so the world
+      imports no other repository; a bare <name>.ts entry in allows is what admits a plain name in
+      BE_SOURCE_FORM
+  - id: be.tests.fixtures
+    profiles:
+      - be
+    path: src/tests/fixtures/
+    presence: optional
+    tracked: tracked
+    tier: fixtures
+    allows:
+      - i18n/
+    tests: none
+    coverage: none
+    why: payload fixtures with a role suffix (the doubles come from @starci/jest-preset, not from here);
+      the test data builders live in its builders/ slot; importable by unit specs, integration and
+      e2e; never imports a feature
+  - id: be.tests.fixtures.builders
+    profiles:
+      - be
+    path: src/tests/fixtures/builders/*.builder.ts
+    presence: optional
+    tracked: tracked
+    tier: fixtures
+    tests: none
+    coverage: none
+    why: "the ONLY home of test data builders, one <area>.builder.ts per area, shared by every spec of
+      that area: pure object builders (commissionRow(overrides), accrueInput(overrides)) for unit
+      specs and persisting builders (orderBuilder(world.db.primary).pending().build(overrides)) for
+      integration and e2e; arrange only, constraints on, deterministic defaults. A .builder.ts
+      anywhere else, and a *.repository.ts, *.fixture.ts or *.factory.ts anywhere, is a
+      BE_SOURCE_FORM finding"
+    rules:
+      - BE_SOURCE_FORM
+  - id: be.tests.fixtures.i18n
+    profiles:
+      - be
+    path: src/tests/fixtures/i18n/
+    presence: optional
+    tracked: tracked
+    tier: fixtures
+    allows:
+      - <name>.<role>.ts
+    tests: none
+    coverage: none
+    why: the ONLY test-fixture location where a language other than English may appear in source
+      (LANG_NOT_ENGLISH); placement is the marker, there is no comment pragma
+  - id: be.tests.integration
+    profiles:
+      - be
+    editionWhy: Lite integration specs use the local Supabase CLI stack without containers or toxiproxy;
+      R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages
+      through its world (R112).
+    path: src/tests/integration/<capability>/*.integration-spec.ts
+    presence: optional
+    tracked: tracked
+    tier: e2e
+    tests: e2e
+    coverage: none
+    lite:
+      why: "optional under lite: one capability module through useTestWorld({ modules }) against the local
+        Supabase CLI stack (`starci supabase start`), run by test:integration; no container, no
+        toxiproxy and no outage through the world (R112 is full's)"
+    why: one capability module through useTestWorld({ modules }), no HTTP door of ours (SQL,
+      transactions, concurrency, inbox claims on the real database; and every integration client,
+      `<capability>` being its provider folder, against our real infra, a real peer app or the
+      library fake at the network edge, with its success, its ErrorCode refusal mapping and an
+      outage through the world, R112); run by test:integration
+    rules:
+      - BE_TEST_TOPOLOGY
+      - BE_INTEGRATION_SPEC_MISSING
+  - id: be.tests.e2e
+    profiles:
+      - be
+    editionWhy: full proves app flows through its e2e world; lite uses the R272 wiring proof and
+      unit/integration specs.
+    path: src/tests/e2e/<area>/*.e2e-spec.ts
+    presence: optional
+    litePresence: forbidden
+    tracked: tracked
+    tier: e2e
+    tests: e2e
+    goesTo: "the full edition: a lite app has no e2e world; its logic is proven by unit specs and its
+      database by optional integration specs on `starci supabase start`"
+    coverage: none
+    why: flow e2e through useTestWorld({ apps }); external services are the world's network fakes; run
+      by test:e2e
+    rules:
+      - HFS_CI_E2E_AUTOMATIC
+      - BE_TEST_TOPOLOGY
+      - BE_E2E_FLOW
+  - id: be.tests.contract
+    profiles:
+      - be
+    path: src/tests/contract/<provider>/*.contract-spec.ts
+    presence: optional
+    litePresence: optional
+    tracked: tracked
+    tier: e2e
+    tests: e2e
+    goesTo: "src/tests/contract/<provider>/*.contract-spec.ts in either edition: optional provider
+      sandbox specs via test:contract; e2e stays full-only"
+    coverage: none
+    why: provider sandbox contracts, skipped without sandbox config; run only by test:contract, never
+      part of test or test:e2e
+    rules:
+      - BE_TEST_TOPOLOGY
+  - id: be.tests.e2e-world-dir
+    profiles:
+      - be
+    path: src/tests/e2e/world/
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: src/tests/world/ (the only test infrastructure location; e2e/<area>/ holds only *.e2e-spec.ts)
+  - id: fe.app.next
+    profiles:
+      - fe
+    path: apps/<app>/{package.json,next.config.ts,tsconfig.json,postcss.config.mjs}
+    appKind: next
+    presence: required
+    tracked: tracked
+    tier: none
+    minInstances: 1
+    requires:
+      - package.json
+      - next.config.ts
+      - tsconfig.json
+      - postcss.config.mjs
+      - src/app/
+      - src/modules/i18n/
+      - src/app/global-error.tsx
+      - src/app/[locale]/layout.tsx
+      - src/app/[locale]/error.tsx
+      - src/app/[locale]/not-found.tsx
+      - src/app/[locale]/loading.tsx
+    tests: none
+    rules:
+      - FE_APP_ISOLATION
+      - FE_ERROR_BOUNDARY_MISSING
+      - FE_NEXT_CONVENTIONS
+      - HFS_MONO_FE_WORKSPACE
+      - HFS_MONO_WORKSPACE_DEP
+  - id: fe.app-optional
+    profiles:
+      - fe
+    path: apps/<app>/public/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: fe.route
+    profiles:
+      - fe
+    path: apps/<app>/src/app/
+    presence: required
+    tracked: tracked
+    tier: route
+    allows:
+      - "[locale]/**/{page,layout,template,loading,error,not-found,default}.tsx"
+      - "[locale]/providers.tsx"
+      - global-error.tsx
+      - page.tsx
+      - not-found.tsx
+      - layout.tsx
+      - health/live/route.ts
+      - _*/**
+      - providers.tsx
+      - globals.css
+      - "{icon,favicon,apple-icon,opengraph-image,twitter-image}.*"
+      - robots.ts
+      - sitemap.ts
+      - manifest.ts
+    roles:
+      page: page.tsx
+      layout: layout.tsx
+      template: template.tsx
+      loading: loading.tsx
+      error: error.tsx
+      not-found: not-found.tsx
+      default: default.tsx
+      route: route.ts
+      global-error: global-error.tsx
+      providers: providers.tsx
+    tests: none
+    rules:
+      - FE_ROUTE_FILES_THIN
+      - FE_CLIENT_BOUNDARY
+      - FE_OWNER_REACHABLE
+      - FE_ROUTE_HANDLER_FORBIDDEN
+      - FE_SERVER_ACTION_FORBIDDEN
+  - id: fe.source-root-pinned
+    profiles:
+      - fe
+    path: apps/<app>/src/{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}
+    presence: optional
+    tracked: tracked
+    tier: route
+    roles:
+      proxy: proxy.ts
+      instrumentation: instrumentation.ts
+      instrumentation-client: instrumentation-client.ts
+      sentry: sentry.*.config.ts
+    tests: none
+    rules:
+      - FE_NEXT_CONVENTIONS
+  - id: fe.source-root-middleware
+    profiles:
+      - fe
+    path: apps/<app>/src/{middleware.ts,middleware.js}
+    presence: forbidden
+    tracked: external
+    tier: none
+    tests: none
+    goesTo: "apps/<app>/src/proxy.ts: Next >= 16 reads proxy.ts and refuses middleware.ts"
+    rules:
+      - FE_NEXT_CONVENTIONS
+  - id: fe.route.callback
+    profiles:
+      - fe
+    path: apps/<app>/src/app/auth/callback/route.ts
+    presence: opt-in
+    provider: supabase
+    tracked: tracked
+    tier: route
+    tests: none
+    rules:
+      - FE_ROUTE_HANDLER_FORBIDDEN
+      - FE_CALLBACK_SHAPE
+      - FE_SUPABASE_CLIENT_OWNER
+      - FE_SERVICE_ROLE_FORBIDDEN
+  - id: fe.feature
+    profiles:
+      - fe
+    path: apps/<app>/src/features/{pages,layouts,overlays}/<name>/
+    presence: required
+    tracked: tracked
+    tier: feature
+    owner: true
+    kinds:
+      - pages
+      - layouts
+      - overlays
+    requires:
+      - index.tsx
+    allows:
+      - index.tsx
+      - component.tsx
+      - classNames.ts
+    roles:
+      entry: index.tsx
+      drawing: component.tsx
+      styles: classNames.ts
+    tests: none
+    budget:
+      component.tsx: 300
+      index.tsx: 200
+      dataHooks: 6
+      useState: 6
+    rules:
+      - FE_SIZE_BUDGET
+      - FE_OWNER_REACHABLE
+      - FE_I18N_LITERAL
+  - id: fe.components
+    profiles:
+      - fe
+    path: apps/<app>/src/components/{blocks,composites,branches,leaves}/<name>/
+    presence: optional
+    tracked: tracked
+    tier: components
+    owner: true
+    layers:
+      - blocks
+      - composites
+      - branches
+      - leaves
+    requires:
+      - index.tsx
+    allows:
+      - index.tsx
+      - component.tsx
+      - classNames.ts
+    roles:
+      entry: index.tsx
+      drawing: component.tsx
+      styles: classNames.ts
+    tests: none
+    budget:
+      component.tsx: 300
+      index.tsx: 200
+      dataHooks: 6
+      useState: 6
+    rules:
+      - FE_CONNECTED_BLOCK_RENDER_PAIR
+      - FE_I18N_LITERAL
+      - FE_NATIVE_FORM_CONTROL
+      - FE_CLIENT_BOUNDARY
+  - id: fe.components.providers
+    profiles:
+      - fe
+    path: apps/<app>/src/components/providers/<name>/
+    presence: optional
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.tsx
+    allows:
+      - index.tsx
+    roles:
+      entry: index.tsx
+    tests: none
+    rules:
+      - FE_CLIENT_BOUNDARY
+  - id: fe.hooks
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/<domain>/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - use<name>.ts
+      - <domain>.shared.ts
+    roles:
+      entry: index.ts
+      shared: <domain>.shared.ts
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+      dataHooks: 6
+      useState: 6
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+      - FE_DATA_FRESHNESS
+  - id: fe.hooks.swr
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/swr/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - SwrSideEffects.tsx
+      - api/index.ts
+      - api/{graphql,rest}/index.ts
+      - api/{graphql,rest}/{queries,mutations}/index.ts
+      - api/graphql/queries/useQuery*Swr.ts
+      - api/graphql/mutations/useMutate*Swr.ts
+      - api/rest/queries/useGet*Swr.ts
+      - api/rest/mutations/use{Post,Put,Patch,Delete}*Swr.ts
+      - api/graphql/subscriptions/index.ts
+      - api/graphql/subscriptions/useSubscribe*Swr.ts
+      - api/sse/index.ts
+      - api/sse/subscriptions/index.ts
+      - api/sse/subscriptions/useSubscribe*Swr.ts
+    roles:
+      entry: index.ts
+      effects: SwrSideEffects.tsx
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+      - FE_DATA_FRESHNESS
+  - id: fe.hooks.rhf
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/rhf/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - use*Form.ts
+    roles:
+      entry: index.ts
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+  - id: fe.hooks.zustand
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/zustand/<store>/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+      - store.ts
+    allows:
+      - index.ts
+      - store.ts
+      - use*.ts
+    roles:
+      entry: index.ts
+      store: store.ts
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+  - id: fe.hooks.socketio
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/socketio/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+      - sockets.ts
+      - SocketIoSideEffects.tsx
+    allows:
+      - index.ts
+      - sockets.ts
+      - SocketIoSideEffects.tsx
+      - connectionStore.ts
+      - enums/*.ts
+      - types/*.ts
+      - use*.ts
+    roles:
+      entry: index.ts
+      effects: SocketIoSideEffects.tsx
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+  - id: fe.hooks.effects
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/effects/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - use*.ts
+      - "*SideEffect.tsx"
+      - "*SideEffects.tsx"
+    roles:
+      entry: index.ts
+      effects: "*SideEffect.tsx"
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+  - id: fe.hooks.reuseables
+    profiles:
+      - fe
+    path: apps/<app>/src/hooks/reuseables/
+    presence: optional
+    tracked: tracked
+    tier: hooks
+    owner: true
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - use*.ts
+    roles:
+      entry: index.ts
+    tests: none
+    budget:
+      file: 200
+      barrel: 400
+    rules:
+      - FE_HOOKS_ARE_HOOKS
+  - id: fe.redux
+    profiles:
+      - fe
+    path: apps/<app>/src/redux/
+    presence: optional
+    tracked: tracked
+    tier: modules
+    owner: true
+    requires:
+      - index.ts
+      - store.ts
+      - hooks.ts
+    allows:
+      - index.ts
+      - store.ts
+      - hooks.ts
+      - ReduxProvider.tsx
+      - slices/*.ts
+    roles:
+      entry: index.ts
+      store: store.ts
+      hooks: hooks.ts
+    tests: none
+    budget:
+      file: 400
+    rules:
+      - FE_SOURCE_FORM
+      - FE_HOOKS_ARE_HOOKS
+      - FE_OWNER_REACHABLE
+  - id: fe.modules
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/<capability>/
+    presence: required
+    tracked: tracked
+    tier: modules
+    owner: true
+    requiredInstances:
+      capability:
+        - config
+        - i18n
+        - routes
+    requires:
+      - index.ts
+    tests: none
+    budget:
+      file: 400
+    rules:
+      - FE_ENV_OWNER
+      - FE_TRANSPORT_OWNER
+  - id: fe.modules.api
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/api/
+    presence: optional
+    tracked: tracked
+    tier: transport
+    requires:
+      - index.ts
+    allows:
+      - index.ts
+      - graphql/index.ts
+      - graphql/types.ts
+      - graphql/clients/**
+      - graphql/queries/query-*.ts
+      - graphql/queries/types/*.ts
+      - graphql/mutations/mutation-*.ts
+      - graphql/mutations/types/*.ts
+      - graphql/subscriptions/subscription-*.ts
+      - graphql/subscriptions/types/*.ts
+      - graphql/__generated__/**
+      - rest/index.ts
+      - rest/<area>/*.ts
+      - sse/clients/**
+      - sse/*/stream-*.ts
+    roles:
+      entry: index.ts
+      query: query-*.ts
+      mutation: mutation-*.ts
+    entries:
+      - graphql/queries/query-*.ts
+      - graphql/queries/types/*.ts
+      - graphql/mutations/mutation-*.ts
+      - graphql/mutations/types/*.ts
+      - graphql/subscriptions/subscription-*.ts
+      - graphql/subscriptions/types/*.ts
+      - sse/*/stream-*.ts
+    tests: none
+    rules:
+      - FE_TRANSPORT_OWNER
+      - FE_HTTP_STATUS_COLLAPSE
+      - FE_WIRE_GENERATED
+  - id: fe.transport.generated
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/api/graphql/__generated__/
+    presence: optional
+    tracked: ignored
+    tier: transport
+    tests: none
+    why: the canonical GraphQL client output of codegen is local and never committed; this specific slot
+      overrides the tracked API parent
+    rules:
+      - FE_WIRE_GENERATED
+  - id: fe.transport.client
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/api/graphql/clients/
+    presence: optional
+    tracked: tracked
+    tier: transport
+    tests: none
+    why: the auth and no-auth Apollo clients and their link chain (retry, error, timeout, token refresh,
+      attach access token, http) of the one app that calls the back end; when several apps do, the
+      shared client is fe.package.api.client
+    rules:
+      - FE_TRANSPORT_OWNER
+  - id: fe.transport.stream
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/api/sse/clients/
+    presence: optional
+    tracked: tracked
+    tier: transport
+    allows:
+      - "*.ts"
+    tests: none
+    why: "the event-stream client of the one app that calls the back end, the stream half of the
+      transport client layer (FE-REALTIME): event-stream.ts creates the app's one
+      @starci/event-stream instance (createEventStream with the bearer access token source, which
+      opens the stream with fetch, parses the events and reopens it with Last-Event-ID after a
+      capped, doubling wait); a stream operation (sse/<area>/stream-<channel>.ts) follows on it and
+      a useSubscribe hook of hooks/swr reads that operation; no hand-written reader lives here and
+      only a stream operation imports this folder (FE_TRANSPORT_OWNER); a repository where several
+      apps stream keeps one instance in each of them"
+    rules:
+      - FE_TRANSPORT_OWNER
+  - id: fe.transport.outcome
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/api/graphql/types.ts
+    presence: optional
+    tracked: tracked
+    tier: transport
+    outcomeHome: true
+    tests: none
+    why: the one GraphQLResponse union ({success, message, error, data}) of the one app that calls the
+      back end; when several apps do, the shared union is fe.package.api.outcome
+    rules:
+      - FE_HTTP_STATUS_COLLAPSE
+  - id: fe.modules.config
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/config/
+    presence: required
+    tracked: tracked
+    tier: foundation
+    tests: none
+    why: the only reader of process.env and NEXT_PUBLIC_*; fails fast, no localhost fallback
+    rules:
+      - FE_ENV_OWNER
+  - id: fe.modules.i18n
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/i18n/
+    presence: required
+    tracked: tracked
+    tier: foundation
+    requires:
+      - index.ts
+    tests: none
+    rules:
+      - FE_I18N_PLACEMENT
+      - FE_I18N_CATALOG
+  - id: fe.modules.brand
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/brand/brand.css
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    why: the ONLY app file that may hold colour values; sets grammar brand tokens only, light and dark
+    rules:
+      - FE_STYLE_TOKEN_ONLY
+  - id: fe.modules.routes
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/routes/
+    presence: required
+    tracked: tracked
+    tier: foundation
+    tests: none
+    why: every href builder; FE_HREF_RESOLVES checks each against app/
+    rules:
+      - FE_HREF_RESOLVES
+      - FE_ROUTE_HARDCODED
+  - id: fe.modules.types
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/types/
+    presence: optional
+    tracked: tracked
+    tier: foundation
+    tests: none
+    why: shared types with no runtime behaviour; a component may import them
+    rules:
+      - FE_TYPE_ESCAPE
+      - HFS_TS_STRICT
+  - id: fe.modules.types.ambient
+    parent: fe.modules.types
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/types/ambient/
+    presence: optional
+    tracked: tracked
+    tier: foundation
+    owner: true
+    allows:
+      - "*.d.ts"
+    tests: none
+    why: global ambient declarations loaded by the app compiler; this owner exposes no runtime API
+    rules:
+      - FE_TYPE_ESCAPE
+      - HFS_TS_STRICT
+  - id: fe.modules.auth
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/auth/
+    presence: optional
+    tracked: tracked
+    tier: modules
+    owner: true
+    requires:
+      - index.ts
+    entries:
+      - server.ts
+    tests: none
+    rules:
+      - FE_SUPABASE_CLIENT_OWNER
+      - FE_SERVICE_ROLE_FORBIDDEN
+  - id: fe.modules.toast
+    profiles:
+      - fe
+    path: apps/<app>/src/modules/toast/
+    presence: optional
+    tracked: tracked
+    tier: modules
+    owner: true
+    requires:
+      - index.ts
+      - toast.tsx
+      - api.ts
+      - hooks.ts
+    allows:
+      - index.ts
+      - toast.tsx
+      - api.ts
+      - hooks.ts
+    roles:
+      entry: index.ts
+      hooks: hooks.ts
+    tests: none
+    rules:
+      - FE_I18N_LITERAL
+      - FE_HOOKS_ARE_HOOKS
+      - FE_HTTP_STATUS_COLLAPSE
+  - id: fe.package.api
+    profiles:
+      - fe
+    path: packages/<family>-api/
+    presence: opt-in
+    tracked: tracked
+    tier: package
+    owner: true
+    requires:
+      - package.json
+      - src/index.ts
+      - src/graphql/clients/index.ts
+      - src/graphql/types.ts
+      - tsconfig.json
+    tests: none
+    why: the one transport client and the one Outcome union shared by every app of the repository; no
+      app keeps its own
+    rules:
+      - FE_TRANSPORT_OWNER
+      - FE_PACKAGE_SHAPE
+      - HFS_UNUSED_EXPORT
+  - id: fe.package.api.client
+    profiles:
+      - fe
+    path: packages/<family>-api/src/graphql/clients/
+    presence: optional
+    tracked: tracked
+    tier: package
+    tests: none
+    why: the repository's one pair of Apollo clients and their link chain
+    rules:
+      - FE_TRANSPORT_OWNER
+  - id: fe.package.api.outcome
+    profiles:
+      - fe
+    path: packages/<family>-api/src/graphql/types.ts
+    presence: optional
+    tracked: tracked
+    tier: package
+    outcomeHome: true
+    tests: none
+    why: the repository's one GraphQLResponse union
+    rules:
+      - FE_HTTP_STATUS_COLLAPSE
+  - id: fe.package.i18n
+    profiles:
+      - fe
+    path: packages/<family>-i18n/
+    presence: opt-in
+    tracked: tracked
+    tier: package
+    owner: true
+    requires:
+      - package.json
+      - src/index.ts
+      - tsconfig.json
+    tests: none
+    why: the next-intl stack (routing, navigation, request config) written once, exported as the
+      createAppI18n factory every app calls
+    rules:
+      - FE_I18N_PLACEMENT
+      - FE_PACKAGE_SHAPE
+      - HFS_UNUSED_EXPORT
