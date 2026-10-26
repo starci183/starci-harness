@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.4.51 - 2026-10-26
+- Changed: the bundled runtime copies follow the hfs 4.7.44 and cli 1.7.44 pins and the lint family versions (the runtime install file carries the wave version). No rule changes.
+
+## 3.4.50 - 2026-10-26
+- Changed: R280 reads one assignment-target index per run (bundled hfs copy); the bundled runtime copies follow the hfs 4.7.43 and cli 1.7.43 pins and the lint family versions. No rule changes.
+
 ## 3.4.49 - 2026-10-26
 - Fixed: `BE_SQL_TABLE_OWNER` (R86) bounds a FROM-less SELECT and an aggregate-only SELECT as one row; `IN (`, `FROM (` and `FILTER (` are no longer read as unknown function calls.
 - Changed: the bundled runtime copies follow the hfs 4.7.42 and cli 1.7.42 pins and the lint family versions.
