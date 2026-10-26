@@ -50,6 +50,7 @@ cli/
 | `starci contract new\|check`, `task send\|result\|status\|verify\|cancel` | core | see "CLI of the harness" | the P1 task protocol, in both editions |
 | `starci seat start\|list\|stop` | core | see "CLI of the harness" | Orca worker seats, the `orca` runner in either edition |
 | `starci route explain`, `provider status\|recover\|report`, `budget show\|raise` | core | see "Verbs added to the harness set" | the P2 router, provider circuit, pool concurrency and workflow budgets |
+| `starci workflow define\|start\|step\|status\|list\|amend\|stop`, `plan show\|diff` | core | see "CLI of the harness" and "Workflow file and graph" | the P3 workflow: a goal as a graph of contracts, dispatched as its dependencies settle |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
@@ -111,8 +112,8 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 
 | group | verbs | who |
 |---|---|---|
-| `workflow` | `define`, `start`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone) |
-| `plan` | `show`, `diff`, `apply` | Kernel |
+| `workflow` | `define`, `start`, `step`, `list`, `status`, `amend`, `stop` | owner (list and status: everyone; step: Kernel, Supervisor, the inline agent) |
+| `plan` | `show`, `diff` (`workflow amend` applies a replan) | Kernel |
 | `task` | `wait` (later) | Kernel, Supervisor |
 | `msg` | `send` (hidden: `recv`, `reply`) | Kernel, Supervisor |
 | `seat` | `start`, `list`, `stop` (hidden: `run`) | Kernel, Supervisor |
@@ -174,20 +175,20 @@ The rights come from each verb's `effect` and `roles`. Once the seat runner tell
 ### Changing a running workflow (amend)
 
 Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edited or trimmed through the Supervisor. Each change rebuilds the graph and decides what keeps running.
-- **Entry:** `starci workflow amend <workflow> --change <file.json>`.
-  - The change is a list of entries, each `stop` (`graceful` or `hard`), `pause`, `resume`, `add`, `edit` or `remove`, written against the goal's requirements.
+- **Entry:** `starci workflow amend <workflow> --change <file>` (format: "Workflow file and graph").
+  - The change is a list of entries, each `add`, `edit`, `remove` or `retry`, or a whole workflow file that replaces the graph. Stopping is `workflow stop`; `pause` and `resume` come later.
   - The change goes to the Supervisor as a task contract, and the Supervisor hands it to that workflow's Kernel.
 - **Kernel replan:**
   1. Freeze: it sends no new task, and running tasks keep running.
   2. It applies the change to the goal, which becomes goal version n+1.
-  3. It builds the new graph and diffs it against the old one by each task's **contract hash** (context, input, expectedOutput and the hashes of its dependencies). Each old task is classified:
-     - keep: done and unchanged, so its result is reused;
+  3. It builds the new graph and diffs it against the old one by each task's **node hash** (its contract hash, its retry round and the node hashes of its dependencies). Each old task is classified:
+     - keep: unchanged and not running: a done result is reused, a task not yet sent waits on, a failed one stays failed;
      - continue: running and unchanged;
      - redo: its contract or a dependency changed, so it is cancelled and queued again;
      - add: new in the goal;
      - drop: no longer in the goal, so it is cancelled and its history kept.
   4. It records the graph version and the classification, then resumes dispatch from the new graph.
-- **Owner gate:** when a replan drops or redoes more than the owner's threshold, the Kernel returns the plan to the Supervisor, which asks the owner before resuming.
+- **Owner gate** (later, with the Supervisor): when a replan drops or redoes more than the owner's threshold, the Kernel returns the plan to the Supervisor, which asks the owner before resuming.
 - **Stop:** `graceful` dispatches nothing new and waits for running tasks. `hard` cancels every seat at once with the `cancel` command.
 - **A feature added while several workflows run.** The Supervisor first maps the impact: which workflow owns the paths and outputs the feature touches.
   - It amends only the owners. A workflow the feature does not touch keeps running unfrozen.
@@ -219,14 +220,14 @@ Who runs each verb is declared in its `roles` (enforcement comes later, see "Ver
 
 | verb | who runs it | effect | what it does |
 |---|---|---|---|
-| `workflow define <goal.json>` | owner | local-write | record a goal (its requirements) and queue its workflow |
-| `workflow start <id>` | owner, supervisor | host | boot the workflow's Kernel seat |
-| `workflow list` / `workflow status <id>` | everyone | read | the workflows and their graph version, progress and waits |
-| `workflow amend <id> --change <file>` | owner | local-write | stop, pause, resume, add, edit or remove scope; sent to the Supervisor |
-| `workflow stop <id> --graceful\|--hard` | owner, supervisor | host | the stop entry of amend as a shorthand |
-| `plan show <workflow>` | everyone | read | the current graph: tasks, edges, contract hashes and states |
-| `plan diff <workflow> --to <goal-version>` | kernel, supervisor | read | the keep, continue, redo, add and drop classification of a replan |
-| `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
+| `workflow define <file>` | owner, kernel, supervisor | local-write | record the Kernel's workflow file as graph v1: every contract fit (`contract check` rules), dependencies known, no cycle; the workflow row is its budget account (the ops default ceiling) |
+| `workflow start <id>` | owner, supervisor, kernel | host | a defined workflow runs and takes its first step: `orca` dispatches the ready tasks, `inline` prints the next task for the chat agent. Booting a Kernel seat comes with P4 |
+| `workflow step <id>` | owner, kernel, supervisor, agent | host | one idempotent tick: cancel live tasks no node carries, settle reported tasks through `task verify`, dispatch the ready ones within `maxParallel` and the workflow budget, update the status; exit 1 when blocked. A loop or the daemon calls it |
+| `workflow list` / `workflow status <id>` | everyone | read | the workflows with runner, status and reason, graph version, progress and budget; each task's state, ledger task and why it waits |
+| `workflow amend <id> --change <file>` | owner, kernel, supervisor | host | the replan: classify keep, continue, redo, add or drop, record graph v+1 with the classification, cancel the live tasks of redo and drop through `task cancel`, resume dispatch |
+| `workflow stop <id> --graceful\|--hard` | owner, supervisor | host | graceful sends nothing new and lets live tasks settle (stopped once none is live); hard cancels every live task and its seats now |
+| `plan show <workflow> [--version n]` | everyone | read | a recorded graph: tasks, edges, contract and node hashes, the current graph's states, and the version history with each classification |
+| `plan diff <workflow> --to <file>` | owner, kernel, supervisor | read | the classification an amend with that file would apply, and the tasks it would cancel; changes nothing |
 | `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `contracts/<summary>.json` in the project's state folder, see Storage), composing `expectedOutput` from the label's default checks and named presets |
 | `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository nor the whole `.starciwork` Work tree, never named twice (`./src/a` is `src/a`) |
 | `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch [--agent <a> --model <m>] [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does, routed when `--agent` and `--model` are left out; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
@@ -251,6 +252,45 @@ Core verbs that every role uses: `check run|lint|typecheck`, `release ci-status`
 That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today.
 
 An `inline` run, in either edition, needs no Kernel seat, Supervisor or worker seats. It uses `contract new|check` and `task send|result|status|verify|cancel`: the chat agent states the contract of its own work, sends it, files the result inline and has it verified and committed with the same checks.
+
+### Workflow file and graph (P3)
+
+The Kernel (an agent) writes the workflow file; the harness validates and records it and never invents a task.
+
+```yaml
+schema: starci/workflow@1        # yaml or json
+id: todo-api                     # lower-case key, the workflow id
+goal: A todo module in three layers, with a guide
+runner: orca                     # orca | inline
+agent: claude                    # agent + model pin every orca task (optional; without a pin the router picks)
+model: claude-sonnet-5-5
+effort: high                     # optional, with a pin
+bias: {prefer: [claude]}         # optional router bias: only, avoid, prefer
+maxParallel: 2                   # orca live tasks at once (default 2); inline runs one
+base: HEAD                       # base of inline contracts (default HEAD)
+worktree: path:/work/wf-todo     # optional orca worktree selector
+tasks:
+  - id: model                    # the plan key of its ledger tasks
+    label: test                  # inline contract: label, summary, allowPaths, checks (+ details, readPaths, cwd, budget)
+    summary: write src/model.js exporting todo(title)
+    allowPaths: [src/model.js]
+    checks:                      # the label's default checks are added, as contract new does; a bare name is a preset
+      - check: {kind: command, run: [node, -e, "require('./src/model.js')"]}
+    difficulty: medium           # optional, read by the router
+  - id: store
+    contract: contracts/store.json   # or a contract file, relative to this file
+    dependsOn: [model]
+    agent: codex                 # optional per-task pin (agent and model together)
+    model: gpt-6.1-sol
+```
+
+A change file is `{schema: starci/workflow-change@1, workflow: <id>, reason?, changes: [...]}` with entries `{op: add, task: {...}}`, `{op: edit, id, set: {...}}` (inline fields merge onto the task's contract, `contract:` replaces it, `dependsOn` and pins replace theirs), `{op: remove, id}` and `{op: retry, id}` (a new retry round, so the same contract is sent again).
+
+- **Graph:** each task is a node keyed by its id. Its **node hash** covers its contract hash, its retry round and the node hashes of its dependencies, so a change flows down to every dependent. Two tasks with no order between them whose `allowPaths` overlap are allowed; `define` notes them and the path lease runs them one after the other.
+- **Dispatch:** a node is ready when every dependency is done. Its ledger task is created only then (with `workflow_id`, its plan key and its node hash), so a waiting node holds no lease. An `orca` task is then launched through the seat-start module function: pinned, or routed by `pickRoute` from its label, difficulty, lineage and the workflow's bias; a refused route or a failed launch leaves it queued for the next step. Every dispatch first checks the workflow budget (`BUDGET_EXHAUSTED` holds it).
+- **Node states:** waiting, ready, blocked (a dependency is stuck), then the task's own: queued, running, launch-unknown, reported, returned (the worker filed blocked or mismatch), verifying, done, failed, cancelled.
+- **Workflow states:** defined, running, blocked, stopping, stopped, done. A red verify (or a failed, returned or cancelled task) blocks its dependents and makes the workflow `blocked` with the reason, naming the red checks; independent tasks keep going. A retry is the Kernel's amend (`edit` or `retry`), never automatic: the new task retries the failed one (same label and paths) within its try budget.
+- **Inline:** the step queues one task at a time and prints it with its brief and the commands (`task verify --contract`, `task result`, `workflow step`); the contract is sent before the agent edits code.
 
 ## Ops are plain workers (owner, 2026-10-27)
 
@@ -414,9 +454,10 @@ Dropped from the legacy: the 2,235-code catalog (about 95% are lint findings), t
 - **Seat rotation.** The Kernel and Supervisor seats are rotated after a wake or token budget. They keep no memory, because the ledger is the state.
 
 ### 6. Ledger and host store (where they live: Storage)
-A project ledger has nine tables:
-- `workflows` (goal version, graph version);
-- `tasks` (contract, label, try number, retry-of, status);
+A project ledger has twelve tables:
+- `workflows` (the goal and defaults of the workflow file, goal version, graph version, status and reason);
+- `plan_nodes`, `edges` and `graph_versions` (since ledger version 4: each graph version's nodes with contract, contract hash, node hash, routing hints and retry round; their dependencies; and why the version was recorded, with its replan classification);
+- `tasks` (contract, label, try number, retry-of, status; a workflow task also its plan key and node hash);
 - `attempts` (one per dispatch: pick record, agent, model, outcome, verdict);
 - `results` (immutable, unique per attempt);
 - `check_runs` (raw exit codes; a worker's own runs are evidence only);
@@ -457,7 +498,7 @@ Status transitions are enforced in code with one state machine (`TRANSITIONS` in
 | P0 | ledger, `ops/` schemas, `contract new\|check`, `task verify` | lite agents prove their own work |
 | P1 | `task send\|result\|status\|verify\|cancel`, `seat start\|list\|stop`, path leases, the worker brief, Orca seat launch, harness commit per green task | the owner sends single tasks by hand |
 | P2 | router, provider circuit, AIMD, budgets, failure routes, daemon liveness and sweep | unattended retries |
-| P3 | Kernel loop: `plan show\|diff\|apply`, `workflow define\|start\|status\|amend\|stop` | full workflows |
+| P3 | workflow graph: `plan show\|diff`, `workflow define\|start\|step\|status\|list\|amend\|stop` (orca and inline); the Kernel loop that writes and amends the file is an agent | full workflows |
 | P4 | Supervisor: owner channel, land, `release push`, CI red becomes a fix task, Debug seats | host-wide operation |
 | P5 | parity run against the legacy on one real project, then cut over | alpha.40 |
 

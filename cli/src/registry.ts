@@ -22,6 +22,15 @@ import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
 import { checkCiVerb } from "./core/check/ci.js"
+import { workflowDefineVerb } from "./core/workflow/define.js"
+import { workflowStartVerb } from "./core/workflow/start.js"
+import { workflowStatusVerb } from "./core/workflow/status.js"
+import { workflowListVerb } from "./core/workflow/list.js"
+import { workflowStepVerb } from "./core/workflow/step.js"
+import { workflowAmendVerb } from "./core/workflow/amend.js"
+import { workflowStopVerb } from "./core/workflow/stop.js"
+import { planShowVerb } from "./core/plan/show.js"
+import { planDiffVerb } from "./core/plan/diff.js"
 import { routeExplainVerb } from "./core/route/explain.js"
 import { providerStatusVerb } from "./core/provider/status.js"
 import { providerRecoverVerb } from "./core/provider/recover.js"
@@ -59,6 +68,15 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     checkLooseningVerb,
     checkSecretsVerb,
     checkCiVerb,
+    workflowDefineVerb,
+    workflowStartVerb,
+    workflowStatusVerb,
+    workflowListVerb,
+    workflowStepVerb,
+    workflowAmendVerb,
+    workflowStopVerb,
+    planShowVerb,
+    planDiffVerb,
     routeExplainVerb,
     providerStatusVerb,
     providerRecoverVerb,
