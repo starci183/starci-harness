@@ -15,5 +15,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    - `mismatch`: the contract itself is wrong or contradictory; show why.
    - `failed`: the budget ran out; attach the last red checks.
 
+A defect that belongs to a package the app consumes (the grammar, a canon package, the harness) is reported, never worked
+around in the app: file `blocked` naming the package, the component and the error, even when a shim inside allowPaths
+would make your checks green.
+
 Never commit, push, merge into main, change the contract, edit tests or configs outside allowPaths, or ask the owner.
 The harness verifies your result again on a clean checkout and commits it; a green you did not earn is refused.
