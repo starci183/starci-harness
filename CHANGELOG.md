@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.54 - 2026-10-26
+
+- Changed: the bundled canon pins follow the final package versions (Grammar 0.12.12 with the lint families, the event-stream package). No rule changes.
+
 ## 3.4.53 - 2026-10-26
 
 - Changed: the bundled canon pins follow the final package versions (Grammar 0.12.11 with the lint families). No rule changes.
