@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.55 - 2026-10-26
+
+- Changed: the bundled runtime copies and canon pins move with the alpha.31 cohort (light push gate, owner rulings of 2026-10-26).
+
 ## 3.4.54 - 2026-10-26
 
 - Changed: the bundled canon pins follow the final package versions (Grammar 0.12.12 with the lint families, the event-stream package). No rule changes.
