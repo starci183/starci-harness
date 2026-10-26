@@ -1,7 +1,7 @@
 # Contributing to the harness
 
 These rules hold for every edit of this repository: `cli/`, `ops/`, `policy/`, `knowledge/`, `packages/`, `skills/`
-and the root documents. Read [CONTEXT.md](CONTEXT.md) first; [STARCI.md](STARCI.md) owns the design.
+and the root documents. Read [CONTEXT.md](CONTEXT.md) first.
 
 ## Setup and the checks you run
 
@@ -41,15 +41,17 @@ A second copy is a defect even while both agree.
 | fact | owner |
 |---|---|
 | a verb: path, flags, effect, roles, json schema | its one `defineVerb({...})` file, listed in `cli/src/registry.ts`; `starci explain` prints it |
-| worker labels, check presets, routing, failure bounds, budgets, the uat image | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml`, `ops/uat.yaml` |
+| worker labels, check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/labels.yaml`, `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
 | the worker brief | [ops/worker.md](ops/worker.md) |
-| gate tiers, profiles, banned markers, the secret scan's configuration | [policy/](policy/) |
+| gate tiers, profiles, project overlays, banned markers, the secret scan's configuration | the files of [policy/](policy/README.md), mapped by its README |
 | what each gate and marker detects | `cli/src/core/check/` and `cli/src/shared/secrets.ts` |
 | every state path | `cli/src/harness/ledger.ts` |
 | task states and their transitions | `TRANSITIONS` in `cli/src/harness/tasks.ts`, changed only through `setStatus` |
-| design, decisions and phases | [STARCI.md](STARCI.md) |
-| load order, binding and hard rules | [CONTEXT.md](CONTEXT.md) |
+| how the CLI is built, the verb standard, how the harness inside it works (ledgers, settling, graph, seat launch) | [cli/README.md](cli/README.md), naming the code that implements each |
+| load order, binding, roles, hard rules, the owner's harness decisions, open questions | [CONTEXT.md](CONTEXT.md) |
+| what the harness is, how it works, the verb groups, CI | [README.md](README.md) |
 | how app code is written | [knowledge/](knowledge/README.md) |
+| a knowledge ruling | [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml) |
 
 When you find a copy, keep the owner, make the other site read or cite it, and delete the copy in the same commit. If
 no owner exists yet, create it first. Never answer a duplicate with an allowlist, a baseline or a suppression.
@@ -62,7 +64,8 @@ no owner exists yet, create it first. Never answer a duplicate with an allowlist
    is the latest version.
 3. **Feedback hardens.** Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never
    becomes a case note beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
-   [STARCI.md](STARCI.md) "Decisions taken", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml).
+   [CONTEXT.md](CONTEXT.md) "Decisions", a knowledge ruling in [knowledge/decisions/rulings.yaml](knowledge/decisions/rulings.yaml).
+   No design document sits beside the owners: plans, phases and history live in git, not in a file.
 4. **Claims execute.** A sentence that says something refuses, validates or is enforced names code that does it. If the
    code does not, fix the code or remove the claim.
 5. **Data is data.** `ops/` and `policy/` hold declarative YAML the CLI validates; a key no code reads is deleted.
@@ -93,7 +96,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | the Critic role, independent reviewers | machine checks in `expectedOutput`; taste goes to the owner ("CI is the critic" names CI after a push) |
 | `observe`, `nudge`, `redesign`, Kernel verbs that watch an op's terminal | the task protocol: contract, result, `task verify`; liveness by ping and pong |
 | `starci kernel <command>`, `driver-loop`, `settle` as a verb | `task send/result/verify`, `workflow step` |
-| the reconciler and its controllers | one host daemon for seat liveness and sweeps (STARCI.md, "Liveness"; not built yet) |
+| the reconciler and its controllers | one host daemon for seat liveness and sweeps (not built yet) |
 | the `starci` grammar family, `heritage` | grammars `core` and `offset-pop` |
 | `examples/`, example apps, example re-pins | scratch-repository proofs; packages keep their specs |
 | the ledger in the app at `<app>/.starciwork/runtime.sqlite` | `<runtime root>/.runtime/projects/<ledger_id>/runtime.sqlite` |
@@ -102,6 +105,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | `runtime verify`, `gate run`, `release clean-test`, `scaffold-e2e` | `check run` before a push; CI runs the suites |
 | the edition decides who codes (lite by chat, full by ops) | the runner (`orca` or `inline`) is chosen per workflow or task |
 | the qualification and probation store, admission reason codes | the router of `ops/routing.yaml` |
+| `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in CONTEXT.md "Decisions" |
 
 ## Commit and push
 
