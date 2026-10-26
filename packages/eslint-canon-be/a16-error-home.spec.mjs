@@ -42,17 +42,19 @@ for (const edition of ['lite', 'full']) {
     });
 
     test(`${edition}: valid unique capability error codes and invalid duplicated code`, (t) => {
-        const files = {
-            'src/modules/domain/purchase/index.ts': 'export const purchase = 1;\n',
-            'src/modules/domain/purchase/errors/purchase.error.ts': 'export enum PurchaseErrorCode { Missing = "PURCHASE_MISSING" }\n',
-            'src/modules/domain/plan/index.ts': 'export const plan = 1;\n',
-            'src/modules/domain/plan/errors/plan.error.ts': 'export enum PlanErrorCode { Missing = "PLAN_MISSING", Again = "PLAN_MISSING" }\n',
-        };
-        const f = projectFixture({ edition, files });
-        t.after(f.cleanup);
-        f.tester.run('error-code-unique', rules['error-code-unique'], {
-            valid: [{ filename: f.at('src/modules/domain/purchase/errors/purchase.error.ts'), code: files['src/modules/domain/purchase/errors/purchase.error.ts'] }],
-            invalid: [{ filename: f.at('src/modules/domain/plan/errors/plan.error.ts'), code: files['src/modules/domain/plan/errors/plan.error.ts'], errors: [{ messageId: 'finding' }] }],
-        });
+      assert.doesNotThrow(() => {
+          const files = {
+              'src/modules/domain/purchase/index.ts': 'export const purchase = 1;\n',
+              'src/modules/domain/purchase/errors/purchase.error.ts': 'export enum PurchaseErrorCode { Missing = "PURCHASE_MISSING" }\n',
+              'src/modules/domain/plan/index.ts': 'export const plan = 1;\n',
+              'src/modules/domain/plan/errors/plan.error.ts': 'export enum PlanErrorCode { Missing = "PLAN_MISSING", Again = "PLAN_MISSING" }\n',
+          };
+          const f = projectFixture({ edition, files });
+          t.after(f.cleanup);
+          f.tester.run('error-code-unique', rules['error-code-unique'], {
+              valid: [{ filename: f.at('src/modules/domain/purchase/errors/purchase.error.ts'), code: files['src/modules/domain/purchase/errors/purchase.error.ts'] }],
+              invalid: [{ filename: f.at('src/modules/domain/plan/errors/plan.error.ts'), code: files['src/modules/domain/plan/errors/plan.error.ts'], errors: [{ messageId: 'finding' }] }],
+          });
+      })
     });
 }

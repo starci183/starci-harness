@@ -20,29 +20,31 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("R73: an async function awaits something", () => {
-  tester.run("async-needs-await", asyncNeedsAwait, {
-    valid: [
-      { filename: SRC, code: "async function load() { return await fetchPlan() }" },
-      { filename: SRC, code: "const load = async () => { const plan = await fetchPlan(); return plan }" },
-      { filename: SRC, code: "const load = async () => await fetchPlan()" },
-      { filename: SRC, code: "async function drain(source) { for await (const chunk of source) use(chunk) }" },
-      { filename: SRC, code: "async function* pages() { yield 1 }" },
-      { filename: SRC, code: "function load() { return fetchPlan() }" },
-      // the base contract fixes the return type: an implementing or extending class is exempt
-      { filename: SRC, code: "class Handler implements Contract { async run() { return 1 } }" },
-      { filename: SRC, code: "class Handler extends Base { async run() { return 1 } }" },
-      // a framework decorator fixes it
-      { filename: SRC, code: "class Boot { @OnEvent('x') async onX() { log() } }" },
-    ],
-    invalid: [
-      // specs get the same law: a mock that returns a promise says so with Promise.resolve
-      { filename: SPEC, code: "const load = async () => 1", errors: [{ messageId: "noAwait" }] },
-      { filename: SRC, code: "async function load() { return 1 }", errors: [{ messageId: "noAwait" }] },
-      { filename: SRC, code: "const load = async () => { return plan }", errors: [{ messageId: "noAwait" }] },
-      { filename: SRC, code: "const load = async (request) => service.confirm(request)", errors: [{ messageId: "noAwait" }] },
-      { filename: SRC, code: "class Plans { async list() { return this.rows } }", errors: [{ messageId: "noAwait" }] },
-      // an await in a nested function does not count for the outer one
-      { filename: SRC, code: "async function outer() { const inner = async () => await one(); return inner }", errors: [{ messageId: "noAwait" }] },
-    ],
+  assert.doesNotThrow(() => {
+    tester.run("async-needs-await", asyncNeedsAwait, {
+      valid: [
+        { filename: SRC, code: "async function load() { return await fetchPlan() }" },
+        { filename: SRC, code: "const load = async () => { const plan = await fetchPlan(); return plan }" },
+        { filename: SRC, code: "const load = async () => await fetchPlan()" },
+        { filename: SRC, code: "async function drain(source) { for await (const chunk of source) use(chunk) }" },
+        { filename: SRC, code: "async function* pages() { yield 1 }" },
+        { filename: SRC, code: "function load() { return fetchPlan() }" },
+        // the base contract fixes the return type: an implementing or extending class is exempt
+        { filename: SRC, code: "class Handler implements Contract { async run() { return 1 } }" },
+        { filename: SRC, code: "class Handler extends Base { async run() { return 1 } }" },
+        // a framework decorator fixes it
+        { filename: SRC, code: "class Boot { @OnEvent('x') async onX() { log() } }" },
+      ],
+      invalid: [
+        // specs get the same law: a mock that returns a promise says so with Promise.resolve
+        { filename: SPEC, code: "const load = async () => 1", errors: [{ messageId: "noAwait" }] },
+        { filename: SRC, code: "async function load() { return 1 }", errors: [{ messageId: "noAwait" }] },
+        { filename: SRC, code: "const load = async () => { return plan }", errors: [{ messageId: "noAwait" }] },
+        { filename: SRC, code: "const load = async (request) => service.confirm(request)", errors: [{ messageId: "noAwait" }] },
+        { filename: SRC, code: "class Plans { async list() { return this.rows } }", errors: [{ messageId: "noAwait" }] },
+        // an await in a nested function does not count for the outer one
+        { filename: SRC, code: "async function outer() { const inner = async () => await one(); return inner }", errors: [{ messageId: "noAwait" }] },
+      ],
+    })
   })
 })

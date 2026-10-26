@@ -33,38 +33,44 @@ for (const edition of ['lite', 'full']) {
     });
 
     test(`${edition} valid CLI command with its unit spec passes and missing sibling is invalid`, () => {
-        tester.run('unit-test-colocated', unitTestColocated, {
-            valid: [{ filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB }],
-            invalid: [{ filename: at('src/features/cli/migrate/subs/seed.cli.ts'), code: SUB, errors: [{ messageId: 'missing' }] }],
-        });
+      assert.doesNotThrow(() => {
+          tester.run('unit-test-colocated', unitTestColocated, {
+              valid: [{ filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB }],
+              invalid: [{ filename: at('src/features/cli/migrate/subs/seed.cli.ts'), code: SUB, errors: [{ messageId: 'missing' }] }],
+          });
+      })
     });
 
     test(`${edition} valid CLI commands pass and misplaced or non-runner commands are invalid`, () => {
-        tester.run('cli-command-shape', cliCommandShape, {
-            valid: [
-                { filename: at('src/features/cli/migrate/migrate.cli.ts'), code: GROUP },
-                { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB },
-            ],
-            invalid: [
-                { filename: at('src/features/cli/migrate/migrate.cli.ts'), code: SUB, errors: [{ messageId: 'misplaced' }] },
-                { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: 'import { SubCommand } from "nest-commander"; @SubCommand({ name: "run" }) export class RunCli {}', errors: [{ messageId: 'runner' }] },
-                { filename: at('src/modules/domain/order/order.service.ts'), code: SUB, errors: [{ messageId: 'outside' }] },
-            ],
-        });
+      assert.doesNotThrow(() => {
+          tester.run('cli-command-shape', cliCommandShape, {
+              valid: [
+                  { filename: at('src/features/cli/migrate/migrate.cli.ts'), code: GROUP },
+                  { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB },
+              ],
+              invalid: [
+                  { filename: at('src/features/cli/migrate/migrate.cli.ts'), code: SUB, errors: [{ messageId: 'misplaced' }] },
+                  { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: 'import { SubCommand } from "nest-commander"; @SubCommand({ name: "run" }) export class RunCli {}', errors: [{ messageId: 'runner' }] },
+                  { filename: at('src/modules/domain/order/order.service.ts'), code: SUB, errors: [{ messageId: 'outside' }] },
+              ],
+          });
+      })
     });
 
     test(`${edition} valid CLI ownership passes and foreign parsers or argv access are invalid`, () => {
-        tester.run('cli-owner', cliOwner, {
-            valid: [
-                { filename: at('apps/cli/src/main.ts'), code: BOOT },
-                { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB },
-                { filename: at('src/modules/domain/order/order.service.ts'), code: 'export const mode = process.env.NODE_ENV;' },
-            ],
-            invalid: [
-                { filename: at('apps/api/src/main.ts'), code: BOOT, errors: [{ messageId: 'commander' }] },
-                { filename: at('src/modules/domain/order/order.service.ts'), code: 'export const args = process.argv;', errors: [{ messageId: 'argv' }] },
-                { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: 'import minimist from "minimist"; export const parse = minimist;', errors: [{ messageId: 'parser' }] },
-            ],
-        });
+      assert.doesNotThrow(() => {
+          tester.run('cli-owner', cliOwner, {
+              valid: [
+                  { filename: at('apps/cli/src/main.ts'), code: BOOT },
+                  { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: SUB },
+                  { filename: at('src/modules/domain/order/order.service.ts'), code: 'export const mode = process.env.NODE_ENV;' },
+              ],
+              invalid: [
+                  { filename: at('apps/api/src/main.ts'), code: BOOT, errors: [{ messageId: 'commander' }] },
+                  { filename: at('src/modules/domain/order/order.service.ts'), code: 'export const args = process.argv;', errors: [{ messageId: 'argv' }] },
+                  { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: 'import minimist from "minimist"; export const parse = minimist;', errors: [{ messageId: 'parser' }] },
+              ],
+          });
+      })
     });
 }
