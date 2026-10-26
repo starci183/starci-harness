@@ -16,7 +16,7 @@ import { why } from "./lib/why.mjs"
 const grammar = 'import { Divider, Separator } from "@starci/grammar/core"; '
 const error = { messageId: "padding" }
 
-test("horizontal dividers reach both edges, while sibling bands and vertical dividers keep padding", () => {
+for (const edition of ["lite", "full"]) test(`BOUNDARY-1 ${edition}: valid bands pass and invalid padded horizontal dividers are rejected`, () => {
   assert.ok(SLOT_FREE_RULES.includes("divider-full-bleed"))
   assert.equal(why["divider-full-bleed"].code, "FE_DIVIDER_FULL_BLEED")
   assert.equal(rules["divider-full-bleed"], dividerFullBleed)
