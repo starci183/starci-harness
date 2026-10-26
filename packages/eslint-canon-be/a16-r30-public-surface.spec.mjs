@@ -15,7 +15,7 @@ import { projectFixture } from "./fixtures/project/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { importOwnerEntry, noFolderReexport, noRelativeCapabilityEscape, noSelfModuleAlias } from "./module-layering.mjs"
 import { rules as beGraphRules } from "./project-graph.mjs"
-import { rules as feGraphRules } from "../fe/project-graph.mjs"
+import { rules as feGraphRules } from "../eslint-canon-fe/project-graph.mjs"
 
 const plan = at("src/modules/domain/plan/plan.service.ts")
 const planIndex = at("src/modules/domain/plan/index.ts")

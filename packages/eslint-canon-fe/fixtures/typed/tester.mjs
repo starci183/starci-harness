@@ -3,7 +3,7 @@
  * directory's tsconfig.json (JSX on), and `settings.starci.hfs` built from an in-memory hfs.json - the same inputs
  * starciFeConfig gives a repository. A case's `filename` is `at("apps/web/src/hooks/lesson/useLesson.ts")`: the file need not
  * exist; its slot comes from its path and its types from the library stubs in ./node_modules.
- * The RuleTester itself is the shared factory of ../../../be/fixtures/typed/tester.mjs - one implementation, one side's
+ * The RuleTester itself is the shared factory of ../../../eslint-canon-be/fixtures/typed/tester.mjs - one implementation, one side's
  * dialect and cap per caller.
  */
 import { dirname, join } from "node:path"
@@ -11,8 +11,8 @@ import { fileURLToPath } from "node:url"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
 import { hfsFromDeclaration } from "../../lib/hfs.mjs"
-import { appDeclaration } from "../../../be/fixtures/app.mjs"
-import { ruleTester } from "../../../be/fixtures/typed/tester.mjs"
+import { appDeclaration } from "../../../eslint-canon-be/fixtures/app.mjs"
+import { ruleTester } from "../../../eslint-canon-be/fixtures/typed/tester.mjs"
 
 /** The fixture repository root. */
 export const TYPED_ROOT = dirname(fileURLToPath(import.meta.url))

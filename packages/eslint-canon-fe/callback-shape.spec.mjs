@@ -1,11 +1,11 @@
 // proves: FE_CALLBACK_SHAPE@lite FE_CALLBACK_SHAPE@full
 /** R287: callbacks are PKCE exchanges and redirects in both editions, with lexical provenance for the allowed calls. */
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
-import { appDeclaration } from "../be/fixtures/app.mjs"
+import { appDeclaration } from "../eslint-canon-be/fixtures/app.mjs"
 import { at, TYPED_ROOT } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { callbackShape, recommended, rules } from "./callback-shape.mjs"
@@ -21,10 +21,9 @@ const emailCallback = (replacement = []) => callback(replacement.reduce((body, [
 const PURE_IMPORTS = 'import { NextResponse, type NextRequest } from "next/server"\nimport { exchangeAuthCode } from "@/modules/auth/server"\nimport { APP_ROUTES, AUTH_ROUTES, requestOrigin, safeNextPath } from "@/modules/routes"'
 const PURE_BODY = 'const { searchParams } = request.nextUrl; const origin = requestOrigin(request); const code = searchParams.get("code"); const next = safeNextPath(searchParams.get("next"), origin); if (code) { if (!(await exchangeAuthCode(code)).success) return NextResponse.redirect(new URL(`${APP_ROUTES.login}?error=link_expired`, origin)) } return NextResponse.redirect(new URL(next === "/" ? AUTH_ROUTES.workspaces : next, origin))'
 const pureCallback = (replacements = [], imports = PURE_IMPORTS) => callback(replacements.reduce((body, [from, to]) => body.replaceAll(from, to), PURE_BODY), imports)
-const TEMPLATE_CALLBACK = readFileSync(new URL("../../hfs/templates/fe/skeleton/apps/__app__/src/app/auth/callback/route.ts", import.meta.url), "utf8")
-// The shipped example lives in the repository, not in the package: a package tested from its own copy has the template witness only.
-const EXAMPLE_URL = new URL("../../../examples/lite-app/fe/apps/web/src/app/auth/callback/route.ts", import.meta.url)
-const EXAMPLE_WITNESS = existsSync(EXAMPLE_URL) ? [{ filename: CALLBACK, code: readFileSync(EXAMPLE_URL, "utf8") }] : []
+// Witnesses copied from the runtime repository: the @starci/hfs scaffold template and the lite example app's callback.
+const TEMPLATE_CALLBACK = readFileSync(new URL("./fixtures/hfs-templates/fe/skeleton/apps/__app__/src/app/auth/callback/route.ts", import.meta.url), "utf8")
+const EXAMPLE_WITNESS = [{ filename: CALLBACK, code: readFileSync(new URL("./fixtures/lite-app/fe/apps/web/src/app/auth/callback/route.ts", import.meta.url), "utf8") }]
 const callback = (body = BODY, imports = IMPORTS) => `${imports}\nexport async function GET(request: NextRequest) { ${body} }`
 const invalid = (code) => ({ filename: CALLBACK, code, errors: [{ messageId: "shape" }] })
 

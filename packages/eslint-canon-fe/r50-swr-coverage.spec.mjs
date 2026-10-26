@@ -3,7 +3,7 @@
 // proves: FE_SWR_MUTATION_RESOURCE_IDENTITY@lite
 // proves: FE_SWR_MUTATION_RESOURCE_IDENTITY@full
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const VALID_QUERY = "src/features/course/use-valid-query.ts"

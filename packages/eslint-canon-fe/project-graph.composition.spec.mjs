@@ -1,5 +1,5 @@
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 import { rules as boundaryRules } from "./client-boundary.mjs"
 import { rules as drawingRules } from "./drawing.mjs"

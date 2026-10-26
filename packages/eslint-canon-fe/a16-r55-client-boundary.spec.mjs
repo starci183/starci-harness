@@ -11,7 +11,7 @@
 // proves: FE_DANGEROUS_HTML@lite
 // proves: FE_DANGEROUS_HTML@full
 import test from 'node:test';
-import { projectFixture } from '../be/fixtures/project/tester.mjs';
+import { projectFixture } from '../eslint-canon-be/fixtures/project/tester.mjs';
 import {
   clientNoServerImport,
   noDangerousHtml,

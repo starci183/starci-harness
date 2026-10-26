@@ -1,10 +1,11 @@
 import fs from "node:fs"
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { hooksFolderHoldsHooksOnly } from "./hooks-folder.mjs"
 
 // proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
-const base = new URL("../../hfs/templates/fe/skeleton/apps/__app__/src/", import.meta.url)
+// The @starci/hfs fe scaffold template files these cases read, copied from the runtime repository.
+const base = new URL("./fixtures/hfs-templates/fe/skeleton/apps/__app__/src/", import.meta.url)
 const session = fs.readFileSync(new URL("hooks/auth/useSession.ts", base), "utf8")
 const redux = fs.readFileSync(new URL("redux/hooks.ts", base), "utf8")
 for (const edition of ["lite", "full"]) {

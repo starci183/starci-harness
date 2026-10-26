@@ -1,7 +1,7 @@
 // proves: FE_APP_ISOLATION@lite
 // proves: FE_APP_ISOLATION@full
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const APPS = [{ name: "web", kind: "next" }, { name: "admin", kind: "next" }]

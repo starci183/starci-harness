@@ -7,7 +7,7 @@
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import { projectFixture } from '../be/fixtures/project/tester.mjs';
+import { projectFixture } from '../eslint-canon-be/fixtures/project/tester.mjs';
 import { at, fixtureHfs, LITE_FE_DECLARATION } from './fixtures/typed/tester.mjs';
 import { noHardcodedRoute } from './next-conventions.mjs';
 import { rules } from './project-graph.mjs';

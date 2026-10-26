@@ -5,7 +5,7 @@
 // proves: BE_FEATURE_IMPORTS_FEATURE@lite BE_FEATURE_IMPORTS_FEATURE@full
 import test from "node:test"
 import bePlugin from "./index.mjs"
-import fePlugin from "../fe/index.mjs"
+import fePlugin from "../eslint-canon-fe/index.mjs"
 import { projectFixture } from "./fixtures/project/tester.mjs"
 
 const good = (fixture, files, rel) => ({ filename: fixture.at(rel), code: files[rel] })

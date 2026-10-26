@@ -1,5 +1,5 @@
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 // proves: FE_COMPONENT_WORLD_OWNERSHIP@lite FE_COMPONENT_WORLD_OWNERSHIP@full

@@ -8,12 +8,12 @@ import test from "node:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { runGit } from "../be/runtime/scripts/api/git/lib.mjs"
+import { runGit } from "../eslint-canon-be/runtime/scripts/api/git/lib.mjs"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { fixtureHfs } from "./fixtures/typed/tester.mjs"
 import { fileSizeGrowth, rules } from "./size-growth.mjs"
-import { lines, sizeGrowthSharedSpec } from "../be/fixtures/size-growth.mjs"
+import { lines, sizeGrowthSharedSpec } from "../eslint-canon-be/fixtures/size-growth.mjs"
 
 const tester = new RuleTester({
   languageOptions: {

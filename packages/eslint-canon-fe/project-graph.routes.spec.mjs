@@ -6,7 +6,7 @@
  *   node --test project-graph.routes.spec.mjs
  */
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const finding = (extra = {}) => ({ messageId: "finding", ...extra })

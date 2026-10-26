@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { appDeclaration } from "../be/fixtures/app.mjs"
+import { appDeclaration } from "../eslint-canon-be/fixtures/app.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { classifyImport } from "./lib/scope.mjs"
 

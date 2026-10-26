@@ -1,5 +1,5 @@
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const source = (f, files, rel) => ({ filename: f.at(rel), code: files[rel] })

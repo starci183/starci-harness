@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { byCodeUnit } from './runtime/scripts/lib/list.mjs';
-import { appDeclaration, archFixture, findings, runArch, ts } from '../../hfs/src/helpers/hfs-arch-fixture.mjs';
+import { appDeclaration, archFixture, ts } from './fixtures/arch-fixture.mjs';
 import { loadArchitectureConfig } from './runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext } from './runtime/scripts/hfs/architecture/typescript.mjs';
 import { buildHfsGraph } from './runtime/scripts/hfs/architecture/hfs-graph.mjs';
@@ -49,19 +49,6 @@ for (const edition of ['lite', 'full']) {
     const config = loadArchitectureConfig(root);
     const graph = buildHfsGraph(config, buildTypeScriptContext(config, ts, []));
     assert.deepEqual(checkTiers(graph).violations, []);
-  });
-
-  test(`${edition} kind isolation rejects static, dynamic, re-export and type-only cross-kind imports`, t => {
-    const root = machineFixture(t, edition, { ...passingFiles, ...violatingFiles });
-    const hits = findings(runArch(root), 'BE_KIND_ISOLATION');
-    assert.equal(hits.length, 4);
-    assert.deepEqual(hits.map(hit => hit.path).sort(byCodeUnit), Object.keys(violatingFiles).sort(byCodeUnit));
-    assert.equal(hits.find(hit => hit.path.includes('/typed/')).typeOnly, true);
-  });
-
-  test(`${edition} kind isolation accepts imports within one owner and down into modules`, t => {
-    const root = machineFixture(t, edition, passingFiles);
-    assert.deepEqual(findings(runArch(root), 'BE_KIND_ISOLATION'), []);
   });
 
   test(`${edition} kind isolation lint accepts valid owners and rejects cross-kind imports`, t => {

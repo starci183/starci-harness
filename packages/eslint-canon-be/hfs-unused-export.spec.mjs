@@ -5,7 +5,7 @@
 import test from 'node:test';
 import { projectFixture } from './fixtures/project/tester.mjs';
 import { rules as beRules } from './project-graph.mjs';
-import { rules as feRules } from '../fe/project-graph.mjs';
+import { rules as feRules } from '../eslint-canon-fe/project-graph.mjs';
 
 const sourceCase = (fixture, files, file) => ({ filename: fixture.at(file), code: files[file] });
 

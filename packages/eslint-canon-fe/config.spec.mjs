@@ -27,7 +27,7 @@ import { BORROWED, PLAIN_SOURCE_FILES, SLOT_FREE_RULES } from "./lib/config.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
 import { declaredHfsView } from "./runtime/scripts/hfs/view.mjs"
 import { hasSecondLanguage } from "./runtime/scripts/lib/language.mjs"
-import { appDeclaration } from "../be/fixtures/app.mjs"
+import { appDeclaration } from "../eslint-canon-be/fixtures/app.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "typed")
 /** The files the typed fixture lints without listing them in its tsconfig; one list for every test, the project service is shared by root. */

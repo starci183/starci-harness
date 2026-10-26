@@ -2,7 +2,6 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 import { projectFixture } from "./fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
-import { render } from "../../hfs/sync/index.mjs"
 
 /** The cases of one repository: `rels` are clean files, `lines` maps a violating file to the lines the machine names. */
 const ok = (f, files, rels) => rels.map((rel) => ({ filename: f.at(rel), code: files[rel] }))
@@ -623,7 +622,8 @@ test("an exported const, type or interface that only renames another declaration
 })
 
 test("scaffold env templates declare their own fields, while an empty options extension remains an alias", (t) => {
-    const template = (relative) => render(readFileSync(new URL(`../../hfs/templates/${relative}`, import.meta.url), "utf8"), { app: "api", appPascal: "Api" })
+    // The scaffold env templates of @starci/hfs, rendered for the app "api": fixtures/scaffold-env/<edition>/...
+    const template = (relative) => readFileSync(new URL(`./fixtures/scaffold-env/${relative}`, import.meta.url), "utf8")
     const modules = {
         "tsconfig.json": JSON.stringify({
             compilerOptions: {
@@ -658,14 +658,14 @@ test("scaffold env templates declare their own fields, while an empty options ex
     const apps = [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }]
     const make = (edition, env) => projectFixture({ edition, apps, files: { ...modules, ...env } })
     const lite = {
-        "apps/api/src/api.env.ts": template("be/skeleton-lite/apps/api/src/api.env.ts"),
-        "apps/api/src/api.options.ts": template("be/skeleton-lite/apps/api/src/api.options.ts"),
-        "apps/cli/src/cli.env.ts": template("be/skeleton-lite/apps/cli/src/cli.env.ts"),
+        "apps/api/src/api.env.ts": template("lite/apps/api/src/api.env.ts"),
+        "apps/api/src/api.options.ts": template("lite/apps/api/src/api.options.ts"),
+        "apps/cli/src/cli.env.ts": template("lite/apps/cli/src/cli.env.ts"),
     }
     const full = {
-        "apps/api/src/api.env.ts": template("be/skeleton/apps/__app__/src/__app__.env.ts"),
-        "apps/api/src/api.options.ts": template("be/skeleton/apps/__app__/src/__app__.options.ts"),
-        "apps/cli/src/cli.env.ts": template("be/skeleton/apps/cli/src/cli.env.ts"),
+        "apps/api/src/api.env.ts": template("full/apps/api/src/api.env.ts"),
+        "apps/api/src/api.options.ts": template("full/apps/api/src/api.options.ts"),
+        "apps/cli/src/cli.env.ts": template("full/apps/cli/src/cli.env.ts"),
     }
     for (const [edition, files] of [["lite", lite], ["full", full]]) {
         const f = make(edition, files)

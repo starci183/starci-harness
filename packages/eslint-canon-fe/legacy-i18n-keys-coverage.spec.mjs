@@ -1,7 +1,7 @@
 // proves: FE_I18N_KEYS@lite
 // proves: FE_I18N_KEYS@full
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const GOOD = "apps/web/src/modules/i18n/use-title.ts"

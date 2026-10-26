@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
-import { appDeclaration } from '../be/fixtures/app.mjs';
+import { appDeclaration } from '../eslint-canon-be/fixtures/app.mjs';
 import { at, TYPED_ROOT } from './fixtures/typed/tester.mjs';
 import { hfsFromDeclaration } from './lib/hfs.mjs';
 import { noServerAction } from './client-boundary.mjs';

@@ -1,5 +1,5 @@
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 // proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
 // proves: FE_CUSTOM_HOOK_LOCATION@lite FE_CUSTOM_HOOK_LOCATION@full

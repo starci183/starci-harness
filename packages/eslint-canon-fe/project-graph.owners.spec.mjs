@@ -7,7 +7,7 @@
  *   node --test project-graph.owners.spec.mjs
  */
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.mjs"
 
 const TWO_APPS = [{ name: "web", kind: "next" }, { name: "admin", kind: "next" }]

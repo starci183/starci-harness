@@ -10,7 +10,7 @@ import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { at, fixtureHfs, LITE_FE_DECLARATION } from "./fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.mjs"
-import { appDeclaration } from "../be/fixtures/app.mjs"
+import { appDeclaration } from "../eslint-canon-be/fixtures/app.mjs"
 import { operationsOnlyInSwrHooks, rules, subscriptionRefetchesSnapshot, swrOnlyInFamily } from "./swr-family.mjs"
 
 const COMPONENT = at("apps/web/src/components/blocks/Orders/index.tsx")

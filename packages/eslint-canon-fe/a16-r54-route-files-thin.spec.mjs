@@ -15,7 +15,7 @@
 // proves: FE_ROUTE_DEFAULT_EXPORT@lite
 // proves: FE_ROUTE_DEFAULT_EXPORT@full
 import test from "node:test"
-import { projectFixture } from "../be/fixtures/project/tester.mjs"
+import { projectFixture } from "../eslint-canon-be/fixtures/project/tester.mjs"
 import { noMiddlewareFile, pageExportsMetadata } from "./next-conventions.mjs"
 import { rules } from "./project-graph.mjs"
 

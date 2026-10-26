@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { projectFixture } from '../be/fixtures/project/tester.mjs';
+import { projectFixture } from '../eslint-canon-be/fixtures/project/tester.mjs';
 import { rules } from './project-graph.mjs';
 import { checkArchitecture } from './runtime/scripts/hfs/architecture/index.mjs';
 import { checkGrammar } from './runtime/scripts/hfs/architecture/frontend-grammar.mjs';
