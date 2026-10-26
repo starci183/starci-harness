@@ -2,12 +2,13 @@ import type { DatabaseSync } from "node:sqlite"
 import { writeBrief } from "../../harness/brief.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
+import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { getTask } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
-import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
+import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
 import type { Snapshot, WorkflowRow, WorkflowStatus } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
@@ -58,14 +59,16 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 /** Reads a workflow's snapshot in a ledger connection of its own. */
 export const readSnapshot = (root: string, id: string): Snapshot => withLedger(root, (db) => snapshotOf(db, id))
 
-/** Moves the workflow to the status its nodes call for and returns the fresh snapshot. */
+/** Moves the workflow to the status its nodes call for, in one transaction (a pause or stop is never overwritten), and returns the fresh snapshot. */
 export const reconcile = (root: string, id: string): Snapshot =>
-    withLedger(root, (db) => {
-        const snapshot = snapshotOf(db, id)
-        const { status, reason } = derivedStatus(snapshot)
-        setWorkflowStatus(db, id, status, reason)
-        return snapshotOf(db, id)
-    })
+    withLedger(root, (db) =>
+        inTransaction(db, () => {
+            const snapshot = snapshotOf(db, id)
+            const { status, reason } = derivedStatus(snapshot)
+            setWorkflowStatus(db, id, status, reason)
+            return snapshotOf(db, id)
+        }),
+    )
 
 /**
  * Cancels tasks through `task cancel` (seats stopped and released, dirty paths preserved and reset, leases freed). A refusal
@@ -141,6 +144,9 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
     }
 }
 
+// A node that cannot be dispatched now for one of these reasons waits for a later step; anything else is a problem to report.
+const WAIT_CODES: readonly string[] = ["LEASE_CONFLICT", "NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"]
+
 /**
  * Dispatches ready nodes in dependency order while the workflow has free slots (maxParallel for orca, one for inline) and
  * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
@@ -172,7 +178,8 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
             actions.push({ key: node.key, task, action: "dispatched", detail: orca ? "queued for a worker seat" : "queued for the chat agent" })
         } catch (error: unknown) {
             const refusal = asRefusal(error)
-            actions.push({ key: node.key, task: null, action: refusal.code === "LEASE_CONFLICT" || refusal.code === "NODE_TAKEN" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
+            actions.push({ key: node.key, task: null, action: WAIT_CODES.includes(refusal.code) ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` })
+            if (refusal.code === "WORKFLOW_NOT_DISPATCHING") return actions
         }
     }
     if (!orca) return actions
@@ -217,7 +224,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
     const { status } = snapshot.workflow
     if (status === "defined") throw new Refusal("WORKFLOW_NOT_STARTED", `workflow ${id} is defined, not started; run starci workflow start ${id}`)
     const actions: StepAction[] = []
-    if (status !== "done" && status !== "stopped") {
+    if (SETTLING.includes(status)) {
         const stale = staleLiveTasks(snapshot.nodes, snapshot.tasks).map((task) => ({ key: task.key, task: task.id }))
         actions.push(...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)))
         actions.push(...(await settleReported(context, readSnapshot(root, id))))
