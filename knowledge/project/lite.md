@@ -36,7 +36,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - Jobs and projections keep their tables in Supabase migrations. Owners: slots `be.platform.jobs`, `be.projections`.
 - Reactor, saga and projection: open. The pattern topics ([saga.md](../patterns/be/saga.md),
   [projections.md](../patterns/be/projections.md), [event-bus.md](../patterns/be/event-bus.md)) describe each one
-  running in lite, while [STARCI.md](../../STARCI.md) "Final lists" gives `app add reactor|saga|projection` to full
+  running in lite, while [README.md](../../README.md) (verb groups; `starci explain` lists what is built) gives `app add reactor|saga|projection` to full
   apps only. The owner's ruling decides which holds.
 
 ## Infrastructure the project runs
@@ -45,7 +45,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
   `lite` block of slot `app.starcistacks`; R10, R276. The local dependencies come from the Supabase CLI and the
   declared Redis.
 - The lite verbs are `supabase start|stop|status|cloud`, `stack deploy|verify|rollback`, `docker build|up|down`.
-  Owner: [STARCI.md](../../STARCI.md) "Final lists".
+  Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets
 

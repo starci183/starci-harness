@@ -89,7 +89,7 @@ Every environment's runbook declares the same seven operations, one row each, wi
 acceptance gate. They are run by the owner or a `deliver` worker; deploying needs the owner's approval
 ([CONTEXT.md](../../CONTEXT.md) hard rule 5) and `deploy.prod` waits for green CI (`requireCi` in
 [policy/quality.yaml](../../policy/quality.yaml)). The harness verbs that will run them are listed in
-[STARCI.md](../../STARCI.md) "Final lists" and are not built yet, so today the runbook is the operation and these
+[README.md](../../README.md) (verb groups; `starci explain` lists what is built) and are not built yet, so today the runbook is the operation and these
 rules are held by review.
 
 | operation | does | safety rule |

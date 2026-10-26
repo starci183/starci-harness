@@ -47,12 +47,12 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
   tests trace to records and never redefine them. A record's `requiresProof` names the commands that prove it; the
   Kernel carries them into the contract's `expectedOutput`.
 - **Contract.** Its shape, presets and refusals are `starci explain` (`contract new`, `contract check`) and
-  [STARCI.md](../../STARCI.md) "Two kinds of message"; a docs task leases a scope inside `.starciwork`, never the
+  [README.md](../../README.md) "How it works"; a docs task leases a scope inside `.starciwork`, never the
   whole tree. A project whose clean checkout lacks generated code (GraphQL types, Supabase row types, catalogs)
   declares the commands that produce it in the contract's `context.setup`; the clean verify runs them after install
   and before the checks, so a green never depends on a file only the worker's checkout had.
 - **Op and verify.** The worker brief is [ops/worker.md](../../ops/worker.md); checks cover only what the task
-  changed, and the full suite is CI's after the push ([STARCI.md](../../STARCI.md) "Tests stay inside the task").
+  changed, and the full suite is CI's after the push ([CONTEXT.md](../../CONTEXT.md) "Decisions").
 - **Settle and state.** Who writes a record's state and what counts as evidence is [work.md](work.md) "Who writes
   what".
 

@@ -20,12 +20,12 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`; ruling
   `be-bounded-contexts`; [patterns/be/event-bus.md](../patterns/be/event-bus.md).
 - Identity is the project's own identity provider (Keycloak in the full stack verbs). Owners:
-  [STARCI.md](../../STARCI.md) "Final lists"; [patterns/be/api-auth.md](../patterns/be/api-auth.md) BE-AUTH-2.
+  [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [patterns/be/api-auth.md](../patterns/be/api-auth.md) BE-AUTH-2.
 - Supabase is used only through a declared connection. Owners: slots `app.supabase*`, `be.integrations.supabase`.
 
 ## Patterns
 
-- `app add reactor|saga|projection` are full verbs. Owner: [STARCI.md](../../STARCI.md) "Final lists"; the patterns
+- `app add reactor|saga|projection` are full verbs. Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built); the patterns
   each needs are `ruleParams.be.kindPatterns` and `addKinds` in [hfs/slots.yaml](../hfs/slots.yaml). Whether lite may
   also declare them is open ([lite.md](lite.md)).
 - Contexts meet only through events, projections replace cross-context joins and reactors keep local copies.
@@ -38,7 +38,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 - `.starcistacks/` may carry compose, swarm, k8s and terraform trees per environment; dev runs every dependency from
   its compose files. Owner: slot `app.starcistacks`; R10; [stacks.md](stacks.md).
 - `stack up|down` start and stop the full infrastructure (broker, identity provider, test world) beside the shared
-  `stack deploy|verify|rollback`. Owner: [STARCI.md](../../STARCI.md) "Final lists".
+  `stack deploy|verify|rollback`. Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets
 
