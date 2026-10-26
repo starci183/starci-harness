@@ -51,7 +51,7 @@ export const LAUNCH_TIMEOUT_MS = 120_000
 const LAUNCH_GRACE_MS = 15_000
 
 /** Worker and request states in which Orca itself does not know what happened. */
-const UNKNOWN_STATES: readonly string[] = ["outcome_unknown", "unknown", "stop_unknown", "release_unknown", "unverifiable"]
+export const UNKNOWN_STATES: readonly string[] = ["outcome_unknown", "unknown", "stop_unknown", "release_unknown", "unverifiable"]
 
 /**
  * The namespace of every --retry-request id this CLI derives; fixed forever, so a restarted process derives the same id
@@ -308,14 +308,28 @@ const workerShowSchema = z.looseObject({
         })
         .nullish(),
     launch: z.looseObject({ effective: z.unknown() }).nullish(),
+    observation: z.looseObject({ status: z.string().nullish(), lastOutputAt: z.union([z.number(), z.string()]).nullish() }).nullish(),
+    terminal: z.looseObject({ lastOutputAt: z.union([z.number(), z.string()]).nullish() }).nullish(),
 })
 
-/** One worker as Orca shows it: its state, its terminal and the agent and model it really launched. */
+/**
+ * One worker as Orca shows it: its state, its terminal, the agent and model it really launched, what Orca observed of its
+ * process (observation.status, e.g. exited) and when its terminal last printed, when Orca says so (ISO time, else null).
+ */
 export interface WorkerShown {
     readonly dispatchId: string | null
     readonly state: string | null
     readonly terminal: string | null
     readonly effective: unknown
+    readonly observed: string | null
+    readonly lastOutputAt: string | null
+}
+
+// Orca writes a time as epoch milliseconds or as text; anything that is not a valid time is no evidence.
+const isoOf = (value: number | string | null | undefined): string | null => {
+    if (value === null || value === undefined) return null
+    const time = new Date(value)
+    return Number.isNaN(time.getTime()) ? null : time.toISOString()
 }
 
 // Older receipts carry the launch as a json string in worker.start_options; malformed text is no attestation.
@@ -330,9 +344,11 @@ const effectiveFromText = (text: string | null | undefined): unknown => {
 }
 
 /** `orca orchestration worker-show`: the worker's state and its effective launch, never inferred from titles or terminal text. */
-export const workerShow = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<WorkerShown> => {
-    const result = await callOrca(binary, "worker-show", { dispatch: dispatchId }, workerShowSchema, cwd)
+export const workerShow = async (binary: OrcaBinary, dispatchId: string, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<WorkerShown> => {
+    const result = await callOrca(binary, "worker-show", { dispatch: dispatchId }, workerShowSchema, cwd, timeoutMs)
     return {
+        observed: result.observation?.status ?? null,
+        lastOutputAt: isoOf(result.observation?.lastOutputAt ?? result.terminal?.lastOutputAt),
         dispatchId: result.dispatch?.id ?? dispatchId,
         state: result.worker?.state ?? null,
         terminal: result.worker?.agentTerminalHandle ?? result.dispatch?.assigneeHandle ?? null,

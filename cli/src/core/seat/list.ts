@@ -1,4 +1,6 @@
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
+import { livenessOf, loadLiveness } from "../../harness/liveness.js"
+import type { SeatLiveness } from "../../harness/liveness.js"
 import { OrcaFailure, locateOrca, workerShow } from "../../harness/orca/client.js"
 import type { WorkerShown } from "../../harness/orca/client.js"
 import { CLOSED_SEAT_STATUSES, listSeats } from "../../harness/seats.js"
@@ -11,6 +13,7 @@ import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 type LiveView = WorkerShown | { readonly error: string }
 
 interface SeatView extends SeatRow {
+    readonly liveness: SeatLiveness
     readonly live?: LiveView
 }
 
@@ -24,10 +27,12 @@ const liveCell = (live: LiveView | undefined): string => {
     return "error" in live ? `unknown (${live.error.split("\n")[0] ?? ""})` : (live.state ?? "unknown")
 }
 
+const livenessCell = (liveness: SeatLiveness): string => (liveness.quietSeconds > 0 ? `${liveness.verdict} (quiet ${String(liveness.quietSeconds)} s)` : liveness.verdict)
+
 /** `starci seat list`: the seats of this project's ledger; --live adds what Orca says of each open seat, without recording it. */
 export const seatListVerb = defineVerb({
     path: ["seat", "list"],
-    summary: "list the seats of this project's ledger; --live asks Orca for each open seat's worker state",
+    summary: "list the seats of this project's ledger with each one's liveness from its recorded pings; --live asks Orca for each open seat's worker state",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
@@ -48,11 +53,13 @@ export const seatListVerb = defineVerb({
             db.close()
         }
         const open = rows.filter((seat) => seat.handle !== null && !CLOSED_SEAT_STATUSES.includes(seat.status))
+        const rules = loadLiveness()
         const binary = flags.live && open.length > 0 ? await locateOrca(context.cwd) : undefined
         const seats: SeatView[] = []
         for (const seat of rows) {
+            const liveness = livenessOf(seat, rules)
             if (binary === undefined || seat.handle === null || !open.includes(seat)) {
-                seats.push(seat)
+                seats.push({ ...seat, liveness })
                 continue
             }
             // Only Orca's own answer is per seat; an orca that cannot even be started is refused for the whole listing.
@@ -60,12 +67,12 @@ export const seatListVerb = defineVerb({
                 if (error instanceof OrcaFailure) return { error: error.message }
                 throw error
             })
-            seats.push({ ...seat, live })
+            seats.push({ ...seat, liveness, live })
         }
         const data: SeatListData = { ledger, seats }
         if (seats.length === 0) return { data, message: "no seats" }
-        const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", ...(flags.live ? ["ORCA"] : [])]
-        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.model ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, ...(flags.live ? [liveCell(seat.live)] : [])])
+        const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", "LIVENESS", "LAST PONG", ...(flags.live ? ["ORCA"] : [])]
+        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.model ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, livenessCell(seat.liveness), seat.lastPongAt ?? "-", ...(flags.live ? [liveCell(seat.live)] : [])])
         return { data, message: formatTable([header, ...table]) }
     },
 })

@@ -5,6 +5,7 @@ import type { Contract } from "./contract.js"
 import { headerSchema, LIVE_STATES, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { now } from "./ledger.js"
+import { SEAT_WORKER_LOST } from "./seats.js"
 import { acquireLeases, inTransaction } from "./leases.js"
 import type { LeaseGrant } from "./leases.js"
 import { createTask, getTask, recordEvent } from "./tasks.js"
@@ -60,6 +61,7 @@ export interface WorkflowTask {
     readonly result: ResultStatus | null
     readonly tryNo: number
     readonly redChecks: string | null
+    readonly lost: boolean
     readonly createdAt: string
 }
 
@@ -218,10 +220,11 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
         .prepare(
             // The newest attempt's result and the harness checks that were red on it, so a blocked reason names what failed.
             "SELECT tasks.*, (SELECT results.status FROM attempts JOIN results ON results.attempt_id = attempts.id WHERE attempts.task_id = tasks.id ORDER BY attempts.seq DESC LIMIT 1) AS result_status, " +
-                "(SELECT group_concat(name, ', ') FROM check_runs WHERE check_runs.task_id = tasks.id AND check_runs.status = 'red' AND check_runs.runner = 'harness' AND check_runs.attempt_id = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1)) AS red_checks " +
+                "(SELECT group_concat(name, ', ') FROM check_runs WHERE check_runs.task_id = tasks.id AND check_runs.status = 'red' AND check_runs.runner = 'harness' AND check_runs.attempt_id = (SELECT id FROM attempts WHERE task_id = tasks.id ORDER BY seq DESC LIMIT 1)) AS red_checks, " +
+                "EXISTS (SELECT 1 FROM seats WHERE seats.task_id = tasks.id AND seats.status = ?) AS lost " +
                 "FROM tasks WHERE workflow_id = ? ORDER BY created_at, rowid",
         )
-        .all(workflowId)
+        .all(SEAT_WORKER_LOST, workflowId)
         .map((row) => ({
             id: text(row.id),
             key: optText(row.plan_key),
@@ -230,6 +233,7 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
             result: optText(row.result_status) as ResultStatus | null,
             tryNo: Number(row.try_no),
             redChecks: optText(row.red_checks),
+            lost: Number(row.lost) === 1,
             createdAt: text(row.created_at),
         }))
 
@@ -239,7 +243,7 @@ export const nodeTasks = (nodes: readonly PlanNode[], tasks: readonly WorkflowTa
     const hashes = new Map(nodes.map((node) => [node.key, node.hash]))
     for (const task of tasks) {
         if (task.key === null || hashes.get(task.key) !== task.hash) continue
-        current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks })
+        current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost })
     }
     return current
 }

@@ -371,13 +371,15 @@ export interface NodeTask {
     readonly result: ResultStatus | null
     readonly tryNo: number
     readonly redChecks: string | null
+    /** True when a seat of the task is worker-lost: Orca said its worker is gone. */
+    readonly lost: boolean
 }
 
 /**
  * Where a node stands. Without a task: waiting (a dependency is not done), ready, or blocked (a dependency failed or came
  * back unfinished). With one: its task's status, where a reported task whose result is not done is `returned` to the Kernel.
  */
-export type NodeState = "waiting" | "ready" | "blocked" | "queued" | "running" | "launch-unknown" | "reported" | "returned" | "verifying" | "done" | "failed" | "cancelled"
+export type NodeState = "waiting" | "ready" | "blocked" | "queued" | "running" | "launch-unknown" | "lost" | "reported" | "returned" | "verifying" | "done" | "failed" | "cancelled"
 
 /** A node's state, its task and why it stands there. */
 export interface NodeView {
@@ -388,10 +390,10 @@ export interface NodeView {
 }
 
 /** The node states that stop the work below them until the Kernel amends the graph. */
-export const STUCK_STATES: readonly NodeState[] = ["failed", "returned", "cancelled", "blocked"]
+export const STUCK_STATES: readonly NodeState[] = ["failed", "returned", "lost", "cancelled", "blocked"]
 
 /** The node states whose task is live: dispatched and not ended. */
-export const LIVE_STATES: readonly NodeState[] = ["queued", "running", "launch-unknown", "reported", "returned", "verifying"]
+export const LIVE_STATES: readonly NodeState[] = ["queued", "running", "launch-unknown", "lost", "reported", "returned", "verifying"]
 
 const taskState = (task: NodeTask): NodeState => {
     switch (task.status) {
@@ -400,7 +402,7 @@ const taskState = (task: NodeTask): NodeState => {
         case "running":
             return "running"
         case "effect_unknown":
-            return "launch-unknown"
+            return task.lost ? "lost" : "launch-unknown"
         case "reported":
             return task.result === "done" ? "reported" : "returned"
         case "verifying":
@@ -423,6 +425,7 @@ const taskWhy = (task: NodeTask, state: NodeState): string => {
         return `task ${task.id} try ${String(task.tryNo)}: ${how}; its dependents are blocked until the Kernel amends`
     }
     if (state === "cancelled") return `task ${task.id} was cancelled; amend with retry or remove`
+    if (state === "lost") return `task ${task.id}: Orca says its worker is gone and what it wrote is unknown; cancel it (starci task cancel ${task.id}), then amend with retry or remove`
     return `task ${task.id} is ${task.status}`
 }
 

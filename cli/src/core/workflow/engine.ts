@@ -4,6 +4,9 @@ import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
+import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
+import { locateOrca } from "../../harness/orca/client.js"
+import { seatsOfTask } from "../../harness/seats.js"
 import { getTask } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
@@ -83,6 +86,49 @@ export const cancelTasks = async (context: VerbContext, tasks: readonly { readon
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             actions.push({ key, task, action: "problem", detail: `not cancelled (${refusal.code}): ${refusal.message}` })
+        }
+    }
+    return actions
+}
+
+/**
+ * Pings the worker seat of every running node past its launch grace (ops/liveness.yaml) and records each answer. Only Orca's
+ * explicit word that a worker is gone marks its seat worker-lost and its task effect_unknown (the node turns lost and blocks
+ * its dependents); an Orca that cannot tell is reported and nothing is concluded: unknown is not dead.
+ */
+const checkLiveness = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const running = snapshot.views.flatMap((view) => (view.state === "running" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
+    if (running.length === 0) return []
+    const rules = loadLiveness()
+    const at = Date.now()
+    const targets = withLedger(root, (db) =>
+        running.flatMap((node) =>
+            seatsOfTask(db, node.task)
+                .filter((seat) => seat.role === "worker" && isPingable(seat) && !inLaunchGrace(seat, rules, at))
+                .map((seat) => ({ ...node, seat: seat.id, handle: seat.handle ?? "" })),
+        ),
+    )
+    if (targets.length === 0) return []
+    let binary: Awaited<ReturnType<typeof locateOrca>>
+    try {
+        binary = await locateOrca(context.cwd)
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return [{ key: null, task: null, action: "problem", detail: `liveness not checked (${refusal.code}): ${refusal.message}` }]
+    }
+    const actions: StepAction[] = []
+    for (const target of targets) {
+        const answer = await askOrca(binary, target.handle, context.cwd, rules)
+        const recorded = withLedger(root, (db) => recordPing(db, target.seat, answer))
+        const verdict = livenessOf(recorded.seat, rules).verdict
+        if (answer.kind === "gone") {
+            const marked = recorded.lostTask === null ? "" : `; task ${recorded.lostTask} is effect_unknown and keeps its leases: cancel it (starci task cancel ${recorded.lostTask}) and amend with retry`
+            actions.push({ key: target.key, task: target.task, action: "lost", detail: `seat ${target.seat} worker-lost: ${answer.evidence}${marked}` })
+        } else if (answer.kind === "unknown") {
+            const quiet = verdict === "quiet" ? `; quiet past ${String(rules.quietMinutes)} min, held` : ""
+            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat}: Orca could not tell (${answer.why}); unknown is not dead${quiet}` })
+        } else if (verdict === "stale") {
+            actions.push({ key: target.key, task: target.task, action: "wait", detail: `seat ${target.seat} is stale: Orca answers but its terminal printed nothing for ${String(rules.activeStaleMinutes)} min or more` })
         }
     }
     return actions
@@ -227,6 +273,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
     if (SETTLING.includes(status)) {
         const stale = staleLiveTasks(snapshot.nodes, snapshot.tasks).map((task) => ({ key: task.key, task: task.id }))
         actions.push(...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)))
+        actions.push(...(await checkLiveness(context, root, readSnapshot(root, id))))
         actions.push(...(await settleReported(context, readSnapshot(root, id))))
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
