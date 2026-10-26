@@ -22,6 +22,7 @@ test("CONTROL-HEIGHT-1 is registered universally at error with its finding code"
 
 for (const edition of ["lite", "full"]) {
   test(`CONTROL-HEIGHT-1 ${edition}: the default height passes and a larger step or a mixed row is rejected`, () => {
+  assert.doesNotThrow(() => {
     tester().run("control-height", rules["control-height"], {
       valid: [
         grammar + "const Bar = () => <div><IconButton intent=\"dismiss\" label=\"a\" /><Switch label=\"t\" size=\"control\" /><SearchField label=\"s\" /></div>",
@@ -42,5 +43,7 @@ for (const edition of ["lite", "full"]) {
         { code: "import * as G from \"@starci/grammar/offset-pop\"; const Bar = () => <G.Button intent=\"commit\" size=\"lg\">a</G.Button>", errors: [{ messageId: "FE_CONTROL_HEIGHT" }] },
       ],
     })
+  
   })
+})
 }

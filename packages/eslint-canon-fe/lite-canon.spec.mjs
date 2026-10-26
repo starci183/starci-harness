@@ -11,6 +11,7 @@ const ONE_APP = {
 }
 
 test("one app may own shell composites while two apps must share them", () => {
+  assert.doesNotThrow(() => {
   slotTester({ declaration: ONE_APP }).run("one-app composite", monorepoTierBelongsToItsSide, {
     valid: [{
       filename: at("apps/web/src/components/composites/SiteShell/index.tsx"),
@@ -25,6 +26,8 @@ test("one app may own shell composites while two apps must share them", () => {
       code: "export const SiteShell = () => null",
       errors: [{ messageId: "vocabularyInApp" }],
     }],
+  })
+
   })
 })
 
@@ -43,6 +46,7 @@ test("the result vocabulary home follows slot data rather than a remembered slot
 })
 
 test("the server-only marker follows a BOM/CRLF directive prologue", () => {
+  assert.doesNotThrow(() => {
   typedTester().run("server marker after directives", serverModuleMarksServerOnly, {
     valid: [{
       filename: at("apps/web/src/modules/orders/order-headers.ts"),
@@ -53,5 +57,7 @@ test("the server-only marker follows a BOM/CRLF directive prologue", () => {
       code: 'import { headers } from "next/headers";\r\n"use strict";\r\nimport "server-only";\r\nexport const orderHeaders = async () => headers();\r\n',
       errors: [{ messageId: "mark" }],
     }],
+  })
+
   })
 })

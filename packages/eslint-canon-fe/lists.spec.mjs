@@ -25,6 +25,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("LISTS-1: every element a map returns carries a key", () => {
+  assert.doesNotThrow(() => {
   tester.run("list-item-has-key", listItemHasKey, {
     valid: [
       { filename: FILE, code: "const A = () => rows.map((row) => <li key={row.id}>{row.name}</li>)" },
@@ -50,9 +51,12 @@ test("LISTS-1: every element a map returns carries a key", () => {
       },
     ],
   })
+
+  })
 })
 
 test("LISTS-2: the key is stable data, never the index or a random value", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-index-key", noIndexKey, {
     valid: [
       { filename: FILE, code: "const A = () => rows.map((row, index) => <li key={row.id}>{index}</li>)" },
@@ -68,9 +72,12 @@ test("LISTS-2: the key is stable data, never the index or a random value", () =>
       { filename: FILE, code: "const A = () => rows.map((row) => <li key={crypto.randomUUID()}>{row}</li>)", errors: [{ messageId: "random" }] },
     ],
   })
+
+  })
 })
 
 test("LISTS-3: no object or array literal prop on a component inside a map", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-inline-literal-prop-in-list", noInlineLiteralPropInList, {
     valid: [
       { filename: FILE, code: "const A = () => rows.map((row) => <Row key={row.id} row={row} />)" },
@@ -102,5 +109,7 @@ test("LISTS-3: no object or array literal prop on a component inside a map", () 
         errors: [{ messageId: "literal" }],
       },
     ],
+  })
+
   })
 })

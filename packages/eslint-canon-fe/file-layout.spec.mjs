@@ -37,6 +37,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("FILE-2: a surface folder holds its two halves and their twins", () => {
+  assert.doesNotThrow(() => {
   tester.run("surface-folder-two-files-only", surfaceFolderTwoFilesOnly, {
     valid: [
       { filename: at(`${F}/pages/DashboardPage/index.tsx`), code: cmp },
@@ -57,9 +58,12 @@ test("FILE-2: a surface folder holds its two halves and their twins", () => {
       { filename: at(`${F}/overlays/auth/SignInOverlay/helper.ts`), code: cmp, errors: [{ messageId: "extra" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-6: the routing tree holds route files and nothing else", () => {
+  assert.doesNotThrow(() => {
   const A = "apps/web/src/app"
   const L = `${A}/[locale]`
   tester.run("route-tree-holds-routes-only", routeTreeHoldsRoutesOnly, {
@@ -107,9 +111,12 @@ test("FILE-6: the routing tree holds route files and nothing else", () => {
       { filename: at("apps/admin/src/app/[locale]/users/UserList.tsx"), code: "export const f = () => null", errors: [{ messageId: "stray" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-3: a helper folder under components has a real home elsewhere", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-helper-folder-in-components", noHelperFolderInComponents, {
     valid: [
       { filename: at(`${R}/leaves/Text/index.tsx`), code: cmp },
@@ -129,9 +136,12 @@ test("FILE-3: a helper folder under components has a real home elsewhere", () =>
       { filename: at("packages/nivo-ui/src/leaves/Text/types/tone.ts"), code: "export const TONE = 1", errors: [{ messageId: "helper" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-1: the path predicts the name", () => {
+  assert.doesNotThrow(() => {
   tester.run("export-matches-folder", exportMatchesFolder, {
     valid: [
       { filename: at(`${R}/leaves/Text/index.tsx`), code: "export const Text = () => null" },
@@ -152,9 +162,12 @@ test("FILE-1: the path predicts the name", () => {
       { filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "export const Paragraph = () => null", errors: [{ messageId: "mismatch" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-4: a family is exported as members, not as one object", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-runtime-namespace", noRuntimeNamespace, {
     valid: [
       "export const CardRoot = () => null",
@@ -168,6 +181,8 @@ test("FILE-4: a family is exported as members, not as one object", () => {
       { code: "export const Chip = { Dot: ChipDot, Label: ChipLabel } as const", errors: [{ messageId: "namespace" }] },
     ],
   })
+
+  })
 })
 
 /**
@@ -175,6 +190,7 @@ test("FILE-4: a family is exported as members, not as one object", () => {
  * component and feature layers), and an app holds the shared layers only when the repository declares the UI package.
  */
 test("FILE-5: each tier sits on its own side of the feature line", () => {
+  assert.doesNotThrow(() => {
   tester.run("monorepo-tier-belongs-to-its-side", monorepoTierBelongsToItsSide, {
     valid: [
       // The shared package holds the tiers that know no feature.
@@ -214,9 +230,12 @@ test("FILE-5: each tier sits on its own side of the feature line", () => {
     ],
     invalid: [],
   })
+
+  })
 })
 
 test("FILE-7: the source marker and owning tier agree", () => {
+  assert.doesNotThrow(() => {
   tester.run("source-tier-marker-matches-folder", sourceTierMarkerMatchesFolder, {
     valid: [
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const meta = { shape: 'branch' } as const" },
@@ -232,9 +251,12 @@ test("FILE-7: the source marker and owning tier agree", () => {
       { filename: at(`${F}/pages/Home/index.tsx`), code: "export const meta = { shape: 'layout' } as const", errors: [{ messageId: "mismatch" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-8: shells are not a component tier", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-shell-tier", noShellTier, {
     valid: [
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const ModalBranch = () => null" },
@@ -248,9 +270,12 @@ test("FILE-8: shells are not a component tier", () => {
       { filename: at("packages/nivo-ui/src/shells/ModalShell/index.tsx"), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
     ],
   })
+
+  })
 })
 
 test("FILE-9: a route slot default-exports a component named after the slot", () => {
+  assert.doesNotThrow(() => {
   const app = "apps/web/src/app"
   tester.run("route-slot-fixed-name", routeSlotFixedName, {
     valid: [
@@ -277,5 +302,7 @@ test("FILE-9: a route slot default-exports a component named after the slot", ()
       { filename: at(`${app}/error.tsx`), code: "const Error = () => null; export default Error", errors: [{ messageId: "wrong" }] },
       { filename: at("apps/admin/src/app/[locale]/page.tsx"), code: "export const metadata = {}", errors: [{ messageId: "missing" }] },
     ],
+  })
+
   })
 })

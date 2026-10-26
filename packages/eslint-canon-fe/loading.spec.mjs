@@ -25,6 +25,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("LOADING-1: no component exists to mirror another one's shape", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-resting-twin-component", noRestingTwinComponent, {
     valid: [
       { filename: BLOCK, code: "export const X = () => null" },
@@ -41,9 +42,12 @@ test("LOADING-1: no component exists to mirror another one's shape", () => {
       { filename: TWIN, code: "export const DailyQuestSkeleton = () => null", errors: [{ messageId: "twin" }] },
     ],
   })
+
+  })
 })
 
 test("LOADING-1: a ready-made resting shape is not handed in", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-placeholder-prop", noPlaceholderProp, {
     valid: [
       { filename: BLOCK, code: "const E = () => <Card isLoading={pending} />" },
@@ -65,9 +69,12 @@ test("LOADING-1: a ready-made resting shape is not handed in", () => {
       },
     ],
   })
+
+  })
 })
 
 test("LOADING-2: a waiting flag never picks between two different components", () => {
+  assert.doesNotThrow(() => {
   tester.run("no-resting-branch-at-call-site", noRestingBranchAtCallSite, {
     valid: [
       // one description, two states
@@ -91,5 +98,7 @@ test("LOADING-2: a waiting flag never picks between two different components", (
         errors: [{ messageId: "branch" }],
       },
     ],
+  })
+
   })
 })

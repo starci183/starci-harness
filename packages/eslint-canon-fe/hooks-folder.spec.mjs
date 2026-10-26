@@ -17,6 +17,7 @@ const react = (code) => `import { useState } from "react"\n${code}`
 
 for (const edition of ["lite", "full"]) {
   test(`R56: canonical theme hooks preserve import identity (${edition})`, () => {
+  assert.doesNotThrow(() => {
     const filename = at("apps/web/src/hooks/theme/useGrammarTheme.ts")
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
     const entry = (code) => ({ filename, code, settings })
@@ -44,7 +45,9 @@ for (const edition of ["lite", "full"]) {
         refused('import { useTheme } from "next-themes"; export const useGrammarTheme = () => { const unused = () => useTheme(); return "dark" }'),
       ],
     })
+  
   })
+})
 }
 
 test("every rule this law declares is a rule", () => {
@@ -52,6 +55,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FE-HOOKS-1: hooks/ holds hooks, one shared helper file per domain, and nothing else", () => {
+  assert.doesNotThrow(() => {
   tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
     valid: [
       { filename: HOOK, code: react("export const useCourse = () => useState(1)") },
@@ -86,9 +90,12 @@ test("FE-HOOKS-1: hooks/ holds hooks, one shared helper file per domain, and not
       { filename: HOOK, code: react("import { headers } from \"next/headers\"\nexport const useCourse = () => { useState(1); return headers() }"), errors: [{ messageId: "server" }] },
     ],
   })
+
+  })
 })
 
 test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per hook file", () => {
+  assert.doesNotThrow(() => {
   const SWR = "apps/web/src/hooks/swr"
   tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
     valid: [
@@ -141,10 +148,13 @@ test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per
       { filename: at("apps/web/src/hooks/effects/useLocale.ts"), code: react("import { headers } from \"next/headers\"\nexport const useLocale = () => { useState(1); return headers() }"), errors: [{ messageId: "server" }] },
     ],
   })
+
+  })
 })
 
 for (const edition of ["lite", "full"]) {
   test(`R56: zero-hook, default-export and fake use* files are refused (${edition})`, () => {
+  assert.doesNotThrow(() => {
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
     const entry = (code, filename = HOOK) => ({ filename, code, settings })
     const refused = (code, messageId, filename = HOOK) => ({ ...entry(code, filename), errors: [{ messageId }] })
@@ -200,5 +210,7 @@ for (const edition of ["lite", "full"]) {
         refused("import React from 'react'; const method = 'useState'; export const useCourse = () => React[method](1)", "fake"),
       ],
     })
+  
   })
+})
 }

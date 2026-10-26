@@ -45,6 +45,7 @@ test("R287 registers one error rule", () => {
 
 for (const edition of ["lite", "full"]) {
   test(`R287 ${edition}: natural OAuth callback shapes pass, extra work and lookalikes fail`, () => {
+  assert.doesNotThrow(() => {
     testerFor(edition).run("callback-shape", callbackShape, {
       valid: [
         // These exact shipped sources are R287 witnesses, not just copied fixture shapes.
@@ -152,5 +153,7 @@ import { readStore } from "@/modules/storage/store"`)),
         invalid(callback(BODY.replace('new URL("/", request.url))', 'new URL("/", request.url), { headers: request.nextUrl.searchParams })'))),
       ],
     })
+  
   })
+})
 }

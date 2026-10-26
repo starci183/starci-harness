@@ -39,6 +39,7 @@ test("CTA-6 laws are registered universally at error with their finding codes", 
 for (const edition of ["lite", "full"]) {
   for (const family of ["core", "offset-pop"]) {
     test(`CTA-6 ${edition} ${family}: valid intents pass and missing intents are rejected`, () => {
+  assert.doesNotThrow(() => {
       tester().run("button-intent-required", rules["button-intent-required"], {
         valid: [
           grammar + 'const Page = () => <Button intent="commit" />',
@@ -62,10 +63,13 @@ for (const edition of ["lite", "full"]) {
           { code: `import * as G from "@starci/grammar/${family}"; const Page=()=> <G.IconButton />`, errors: [{ messageId: "FE_BUTTON_INTENT_REQUIRED" }] },
         ],
       })
-    })
+    
+  })
+})
   }
 
   test(`CTA-6 ${edition}: valid app intent passes and app variant is forbidden even with a props spread`, () => {
+  assert.doesNotThrow(() => {
     tester().run("button-no-variant", rules["button-no-variant"], {
       valid: [grammar + 'const Page=()=> <Button intent="commit" />', grammar + 'const Page=({Button})=> <Button variant="primary" />', 'import {Button} from "other-kit"; const Page=()=> <Button variant="primary" />'],
       invalid: [
@@ -78,9 +82,12 @@ for (const edition of ["lite", "full"]) {
         { code: 'import * as G from "@starci/grammar/offset-pop"; const Page=()=> <G.Button variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
       ],
     })
+  
   })
+})
 
   test(`CTA-6 ${edition}: valid same-file dialog confirms pass and outside confirms are rejected`, () => {
+  assert.doesNotThrow(() => {
     tester().run("destructive-confirm-in-dialog", rules["destructive-confirm-in-dialog"], {
       valid: [
         grammar + 'const Page=()=> <AlertDialog><Button intent="dismiss" /><Button intent="destructive" step="confirm" /></AlertDialog>',
@@ -102,9 +109,12 @@ for (const edition of ["lite", "full"]) {
         fixture('const Page=()=> <><AlertDialog /><Button intent="destructive" step="confirm" /></>', "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG"),
       ],
     })
+  
   })
+})
 
   test(`CTA-6 ${edition}: valid exclusive commit paths pass and concurrent commits are rejected`, () => {
+  assert.doesNotThrow(() => {
     tester().run("single-commit-per-render", rules["single-commit-per-render"], {
       valid: [
         grammar + 'const Page=()=> <><Button intent="dismiss" /><Button intent="commit" /></>',
@@ -130,9 +140,12 @@ for (const edition of ["lite", "full"]) {
         fixture('function Page(){ return <><Button intent="commit" /><Button intent="commit" /></> }', "FE_SINGLE_COMMIT_PER_RENDER"),
       ],
     })
+  
   })
+})
 
   test(`CTA-6 ${edition}: valid item alternatives pass and collection commits are rejected`, () => {
+  assert.doesNotThrow(() => {
     tester().run("no-commit-in-collection-item", rules["no-commit-in-collection-item"], {
       valid: [
         grammar + 'const Page=()=> rows.map(row => <Button key={row.id} intent="alternative" />)',
@@ -158,7 +171,9 @@ for (const edition of ["lite", "full"]) {
         fixture('const Page=()=> rows.map(row => <CollectionItem><Button intent="commit" /></CollectionItem>)', "FE_NO_COMMIT_IN_COLLECTION_ITEM"),
       ],
     })
+  
   })
+})
 
 }
 

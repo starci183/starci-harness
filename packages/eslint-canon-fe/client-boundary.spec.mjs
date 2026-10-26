@@ -30,6 +30,7 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("FE-CLIENT-1: the directive sits only at an interaction boundary", () => {
+  assert.doesNotThrow(() => {
   slots.run("use-client-only-at-boundary", useClientOnlyAtBoundary, {
     valid: [
       { filename: at("apps/web/src/components/blocks/Feed/index.tsx"), code: DIRECTIVE },
@@ -95,9 +96,12 @@ test("FE-CLIENT-1: the directive sits only at an interaction boundary", () => {
       { filename: at("apps/web/src/modules/api/graphql/queries/query-course.ts"), code: DIRECTIVE, errors: [{ messageId: "elsewhere" }] },
     ],
   })
+
+  })
 })
 
 test("FE-CLIENT-2: a client component imports nothing that exists only on the server", () => {
+  assert.doesNotThrow(() => {
   const CLIENT = at("apps/web/src/components/blocks/Feed/index.tsx")
   slots.run("client-no-server-import", clientNoServerImport, {
     valid: [
@@ -125,9 +129,12 @@ test("FE-CLIENT-2: a client component imports nothing that exists only on the se
       { filename: at("apps/web/src/features/overlays/Confirm/index.tsx"), code: `${OVERLAY}\nimport { cookies } from "next/headers"`, errors: [{ messageId: "server" }] },
     ],
   })
+
+  })
 })
 
 test("FE-CLIENT-2c: the front end holds no Server Action", () => {
+  assert.doesNotThrow(() => {
   slots.run("no-server-action", noServerAction, {
     valid: [
       { filename: at("apps/web/src/modules/api/graphql/mutations/mutation-enroll.ts"), code: "export const mutationEnroll = () => 1" },
@@ -145,9 +152,12 @@ test("FE-CLIENT-2c: the front end holds no Server Action", () => {
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "const save = async () => { \"use server\" }", errors: [{ messageId: "action" }] },
     ],
   })
+
+  })
 })
 
 test("FE-CLIENT-3: web storage is touched only inside modules", () => {
+  assert.doesNotThrow(() => {
   slots.run("web-storage-only-in-modules", webStorageOnlyInModules, {
     valid: [
       { filename: at("apps/web/src/modules/theme/index.ts"), code: 'window.localStorage.setItem("theme", value)' },
@@ -162,9 +172,12 @@ test("FE-CLIENT-3: web storage is touched only inside modules", () => {
       { filename: at("apps/web/src/hooks/session/useDraft.ts"), code: 'window.sessionStorage.removeItem("k")', errors: [{ messageId: "storage" }] },
     ],
   })
+
+  })
 })
 
 test("FE-CLIENT-4: raw HTML only on a script", () => {
+  assert.doesNotThrow(() => {
   slots.run("no-dangerous-html", noDangerousHtml, {
     valid: [
       { code: "const A = () => <script type=\"application/ld+json\" dangerouslySetInnerHTML={{ __html: JSON_LD }} />" },
@@ -175,6 +188,8 @@ test("FE-CLIENT-4: raw HTML only on a script", () => {
       { code: "const A = () => <Article dangerouslySetInnerHTML={{ __html: html }} />", errors: [{ messageId: "html" }] },
       { code: "const A = () => <span dangerouslySetInnerHTML={{ __html: t('x') }} />", errors: [{ messageId: "html" }] },
     ],
+  })
+
   })
 })
 
@@ -187,6 +202,7 @@ const FEATURE = at("apps/web/src/features/pages/home/index.tsx")
 const MARKED = 'import "server-only"\n'
 
 test("FE-CLIENT-2b: a module that uses the server marks itself server-only", () => {
+  assert.doesNotThrow(() => {
   typed.run("server-module-marks-server-only", serverModuleMarksServerOnly, {
     valid: [
       // marked, whatever it imports
@@ -241,6 +257,8 @@ test("FE-CLIENT-2b: a module that uses the server marks itself server-only", () 
       { filename: MODULE, code: 'import { headers } from "next/headers"\nimport fs from "node:fs"\nexport const r = [headers, fs]', errors: [{ messageId: "mark" }, { messageId: "mark" }] },
     ],
   })
+
+  })
 })
 
 const cookieTester = typedTester()
@@ -254,6 +272,7 @@ const SESSION = [
 ].join("\n")
 
 test("FE-CLIENT-5: a written cookie states httpOnly and is secure and same-site", () => {
+  assert.doesNotThrow(() => {
   cookieTester.run("response-cookie-attributes", responseCookieAttributes, {
     valid: [
       { filename: ROUTE, code: `${SESSION}const response = NextResponse.json({ ok: true })\nresponse.cookies.set("app-session", "t", SESSION_OPTIONS)` },
@@ -277,5 +296,7 @@ test("FE-CLIENT-5: a written cookie states httpOnly and is secure and same-site"
       { filename: ROUTE, code: `${SESSION}declare const flag: boolean\nNextResponse.json({ ok: true }).cookies.set("app-session", "t", { ...SESSION_OPTIONS, httpOnly: flag })`, errors: [{ messageId: "attributes" }] },
       { filename: ROUTE, code: `${SESSION}export const signIn = async () => { (await cookies()).set({ name: "app-session", value: "t" }) }`, errors: [{ messageId: "attributes" }] },
     ],
+  })
+
   })
 })
