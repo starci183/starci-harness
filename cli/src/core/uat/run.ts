@@ -36,7 +36,7 @@ const portsOf = (value: string | undefined): number[] => {
     return [...new Set(ports)]
 }
 
-const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
+const ENV_NAME = /^[A-Za-z_]\w*$/
 
 /**
  * The names of --env: each a variable name, none the harness's own, each set in this process's environment (else
@@ -76,6 +76,48 @@ const repositoryOrCwd = async (cwd: string): Promise<string> => {
     }
 }
 
+/** The evidence folder under the repository root: its mountable absolute path and its path from the root; a folder outside the root is refused. */
+const evidenceFolder = (root: string, outFlag: string): { readonly out: string; readonly fromRoot: string } => {
+    if (isAbsolute(outFlag)) throw new Refusal("UAT_OUT_OUTSIDE", `--out is relative to the repository root ${root}, not absolute: ${outFlag}`)
+    const out = mountable(resolve(root, outFlag), "evidence")
+    const fromRoot = relative(root, out)
+    if (fromRoot === "" || fromRoot.startsWith("..") || isAbsolute(fromRoot)) throw new Refusal("UAT_OUT_OUTSIDE", `--out ${outFlag} must name a folder inside the repository root ${root}`)
+    return { out, fromRoot }
+}
+
+/** The progress note naming the forwarded ports, empty when none. */
+const forwardNote = (forwards: readonly number[]): string => (forwards.length === 0 ? "" : ", forwarding " + forwards.join(", ") + " to the host")
+
+/** The line naming how the image was made ready. */
+const imageNote = (data: UatRunData): string => {
+    const { prepared } = data
+    if (prepared.state === "cached") return "cached as " + prepared.runImage
+    const pulled = prepared.pulledBase ? " after pulling the base" : ""
+    return `built ${prepared.runImage}${pulled} in ${(prepared.durationMs / 1000).toFixed(1)} s`
+}
+
+/** The verdict line of a run: the deadline it hit, or its exit code. */
+const verdictOf = (data: UatRunData, timeoutMs: number): string => {
+    if (data.timedOut) return `timed out after ${String(timeoutMs)} ms; ${data.container} was killed`
+    return `exit ${String(data.exitCode)} (${data.exitCode === 0 ? "green" : "red"}) in ${(data.durationMs / 1000).toFixed(1)} s`
+}
+
+/** The human lines of a run, before the tails of its streams. */
+const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
+    const forwards = data.forwards.length === 0 ? "none" : data.forwards.map((port) => `127.0.0.1:${String(port)}`).join(", ")
+    const env = data.env.length === 0 ? "none" : data.env.join(", ") + " (by name)"
+    const args = data.args.length === 0 ? "none" : JSON.stringify(data.args)
+    const files = data.files.length === 0 ? "no files written" : data.files.join(", ")
+    return [
+        `image ${data.image} (${imageNote(data)})`,
+        `forwards ${forwards}`,
+        `env ${env}; args ${args}`,
+        `evidence ${data.out}: ${files}`,
+        verdictOf(data, timeoutMs),
+        `container ${data.container} ${data.removed ? "removed" : "STILL PRESENT (docker rm --force it)"}`,
+    ]
+}
+
 /** `starci uat run <script>`: runs a Playwright script in the pinned Playwright image, with host ports forwarded on 127.0.0.1 and an evidence folder. */
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
@@ -104,19 +146,15 @@ export const uatRunVerb = defineVerb({
         const scriptDir = mountable(dirname(script), "script folder")
         const container = containerName()
         const root = await repositoryOrCwd(context.cwd)
-        const outFlag = flags.out ?? `uat-evidence/${container}`
-        if (isAbsolute(outFlag)) throw new Refusal("UAT_OUT_OUTSIDE", `--out is relative to the repository root ${root}, not absolute: ${outFlag}`)
-        const out = mountable(resolve(root, outFlag), "evidence")
-        const fromRoot = relative(root, out)
-        if (fromRoot === "" || fromRoot.startsWith("..") || isAbsolute(fromRoot)) throw new Refusal("UAT_OUT_OUTSIDE", `--out ${outFlag} must name a folder inside the repository root ${root}`)
+        const { out, fromRoot } = evidenceFolder(root, flags.out ?? `uat-evidence/${container}`)
         const docker = await dockerServer(context.cwd)
         const prepared = await prepareImage(config, image, context.cwd, context.progress)
         mkdirSync(out, { recursive: true })
         const before = fileStamps(out)
-        context.progress(`running ${basename(script)} as ${container} in ${prepared.runImage}${forwards.length === 0 ? "" : `, forwarding ${forwards.join(", ")} to the host`}`)
+        context.progress(`running ${basename(script)} as ${container} in ${prepared.runImage}${forwardNote(forwards)}`)
         const run = await runContainer({ container, runImage: prepared.runImage, scriptDir, scriptName: basename(script), outDir: out, forwards, timeoutMs, shmSize: config.shmSize, env, args: flags.args }, context.cwd)
-        const files = [...fileStamps(out)].filter(([path, stamp]) => before.get(path) !== stamp).map(([path]) => path).sort()
-        const outPath = fromRoot.split("\\").join("/")
+        const files = [...fileStamps(out)].filter(([path, stamp]) => before.get(path) !== stamp).map(([path]) => path).sort((left, right) => Number(left > right) - Number(left < right))
+        const outPath = fromRoot.replaceAll("\\", "/")
         const data: UatRunData = {
             image,
             prepared,
@@ -135,15 +173,7 @@ export const uatRunVerb = defineVerb({
             stdoutTail: tailOf(run.stdout, config.tailLines),
             stderrTail: tailOf(run.stderr, config.tailLines),
         }
-        const verdict = run.timedOut ? `timed out after ${String(timeoutMs)} ms; ${container} was killed` : `exit ${String(run.exitCode)} (${run.exitCode === 0 ? "green" : "red"}) in ${(run.durationMs / 1000).toFixed(1)} s`
-        const lines = [
-            `image ${image} (${prepared.state === "cached" ? `cached as ${prepared.runImage}` : `built ${prepared.runImage}${prepared.pulledBase ? " after pulling the base" : ""} in ${(prepared.durationMs / 1000).toFixed(1)} s`})`,
-            `forwards ${forwards.length === 0 ? "none" : forwards.map((port) => `127.0.0.1:${String(port)}`).join(", ")}`,
-            `env ${env.length === 0 ? "none" : `${env.join(", ")} (by name)`}; args ${flags.args.length === 0 ? "none" : JSON.stringify(flags.args)}`,
-            `evidence ${outPath}: ${files.length === 0 ? "no files written" : files.join(", ")}`,
-            verdict,
-            `container ${container} ${run.removed ? "removed" : "STILL PRESENT (docker rm --force it)"}`,
-        ]
+        const lines = describeRun(data, timeoutMs)
         if (data.stdoutTail !== "") lines.push("--- stdout (tail)", data.stdoutTail)
         if (data.stderrTail !== "") lines.push("--- stderr (tail)", data.stderrTail)
         return { data, message: lines.join("\n"), ...(run.exitCode === 0 && run.removed ? {} : { exitCode: 1 }) }

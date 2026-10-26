@@ -17,10 +17,13 @@ interface SeatPingData {
 }
 
 const answerLine = (answer: PingAnswer): string => {
-    if (answer.kind === "pong") return `pong: worker ${answer.state}${answer.lastOutputAt === null ? "" : `, last output ${answer.lastOutputAt}`}`
+    if (answer.kind === "pong") return `pong: worker ${answer.state}${answer.lastOutputAt === null ? "" : ", last output " + answer.lastOutputAt}`
     if (answer.kind === "gone") return `gone: ${answer.evidence}`
     return `no answer: ${answer.why}; unknown is not dead`
 }
+
+/** The idle clause of the liveness line, empty when the last pong named no output time. */
+const idleNote = (idleSeconds: number | null): string => (idleSeconds === null ? "" : ", no output for " + String(idleSeconds) + " s at the last pong")
 
 /**
  * `starci seat ping <seat>`: asks Orca (worker-show, under the ping deadline of ops/liveness.yaml) about one open seat and
@@ -52,7 +55,7 @@ export const seatPingVerb = defineVerb({
             const data: SeatPingData = { seat: recorded.seat, answer, liveness, lostTask: recorded.lostTask }
             const lines = [
                 `seat ${seat.id} (dispatch ${handle}): ${answerLine(answer)}`,
-                `liveness: ${liveness.verdict}, quiet ${String(liveness.quietSeconds)} s${liveness.idleSeconds === null ? "" : `, no output for ${String(liveness.idleSeconds)} s at the last pong`}`,
+                `liveness: ${liveness.verdict}, quiet ${String(liveness.quietSeconds)} s${idleNote(liveness.idleSeconds)}`,
                 ...(recorded.lostTask === null ? [] : [`task ${recorded.lostTask} is effect_unknown and keeps its leases; cancel it (starci task cancel ${recorded.lostTask}) and retry it`]),
             ]
             return { data, message: lines.join("\n"), ...(answer.kind === "gone" ? { exitCode: 1 } : {}) }

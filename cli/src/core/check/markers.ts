@@ -66,7 +66,9 @@ const DETECTORS: readonly Detector[] = [
 ]
 
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue|svelte|css|scss|less)$/
-const SPEC_FILE = /(?:\.(?:spec|test|e2e-spec|integration-spec)\.[cm]?[jt]sx?$|(?:^|\/)(?:__tests__|tests?|e2e)\/.+\.[cm]?[jt]sx?$)/
+const SPEC_NAME = /\.(?:spec|test|e2e-spec|integration-spec)\.[cm]?[jt]sx?$/
+const SPEC_DIR = /(?:^|\/)(?:__tests__|tests?|e2e)\/.+\.[cm]?[jt]sx?$/
+const isSpecFile = (file: string): boolean => SPEC_NAME.test(file) || SPEC_DIR.test(file)
 const SHELL_FILE = /(?:^|\/)(?:\.(?:husky|githooks)\/(?!_\/)[^/]+|[^/]+\.(?:sh|bash))$/
 const WORKFLOW_FILE = /(?:^|\/)(?:\.github\/(?:workflows|actions)\/.+\.ya?ml|\.gitlab-ci\.ya?ml|lefthook\.ya?ml)$/
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[\w-]+)?$/
@@ -80,7 +82,7 @@ export const markerFileKind = (file: string, firstLine: string): MarkerFileKind 
     if (DOCKERFILE.test(file)) return "dockerfile"
     if (MANIFEST_FILE.test(file)) return "manifest"
     if (file.endsWith(".properties")) return "properties"
-    if (CODE_FILE.test(file)) return SPEC_FILE.test(file) ? "spec" : "code"
+    if (CODE_FILE.test(file)) return isSpecFile(file) ? "spec" : "code"
     const name = file.slice(file.lastIndexOf("/") + 1)
     return !name.includes(".") && SHEBANG.test(firstLine) ? "shell" : undefined
 }

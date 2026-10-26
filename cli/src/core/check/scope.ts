@@ -93,9 +93,15 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
     return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 ${paths.join(" ")}`, status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
 }
 
+/** The parenthesised reason of a step, empty when it has none. */
+const reasonSuffix = (reason: string): string => (reason === "" ? "" : " (" + reason + ")")
+
 /** One line per step for human output. */
-export const describeStep = (step: StepResult): string => `${step.status.padEnd(7)} ${step.step.padEnd(9)} ${step.package}${step.reason === "" ? "" : ` (${step.reason})`}`
+export const describeStep = (step: StepResult): string => `${step.status.padEnd(7)} ${step.step.padEnd(9)} ${step.package}${reasonSuffix(step.reason)}`
 
 /** One line naming the scope decision for human output. */
-export const describeScope = (scope: Scope): string =>
-    `scope: ${scope.all ? "all packages" : `${String(scope.targets.length)} package(s)`} vs ${scope.base}; ${String(scope.changed.length)} changed file(s)${scope.skipped.length === 0 ? "" : `, ${String(scope.skipped.length)} outside any package`}`
+export const describeScope = (scope: Scope): string => {
+    const packages = scope.all ? "all packages" : String(scope.targets.length) + " package(s)"
+    const outside = scope.skipped.length === 0 ? "" : ", " + String(scope.skipped.length) + " outside any package"
+    return `scope: ${packages} vs ${scope.base}; ${String(scope.changed.length)} changed file(s)${outside}`
+}
