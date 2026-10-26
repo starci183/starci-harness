@@ -1,5 +1,10 @@
 # Changelog
 
+## 9.1.9 - 2026-10-26
+
+- Added: starci-fe/control-height (R320 FE_CONTROL_HEIGHT), selection-fill-no-check and no-grammar-internal-selector.
+- Changed: the bundled runtime copies carry the light push gate and the owner rulings of 2026-10-26.
+
 ## 9.1.8 - 2026-10-26
 
 - Added: the `divider-full-bleed` rule (a Grammar `Divider` between full-bleed regions is itself full bleed), the SegmentedControl `size="control"` carve-out and the `@starci/event-stream` registration in the fe-stack concern.
