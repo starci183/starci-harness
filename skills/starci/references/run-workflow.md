@@ -23,6 +23,8 @@ starci workflow step <id>
 ```
 
 - **Inline**: call it after each `task result`; it settles that task and prints the next one. No timer.
+- **A terminal you watch**: `starci workflow run <id> --interval 60` repeats the step in the foreground, one line per
+  change, and exits 0 when done, 1 when blocked; it honours pause and stop.
 - **Orca, Claude Code**: `/loop <interval> Run "starci workflow step <id> --cwd <repo>"; on exit 1 run "starci workflow status <id> --cwd <repo>" and handle the block as references/run-workflow.md says; stop when the status is done or stopped.`
   Use a few minutes as the interval.
 - **Orca, Codex**: if the running Codex accepts `/loop`, use it with the same sentence; otherwise create a
@@ -30,6 +32,9 @@ starci workflow step <id>
   one you used, and never claim a loop the host did not confirm.
 
 One loop per workflow per chat. End it when the workflow is done or stopped.
+
+`starci workflow pause <id>` holds dispatch while live tasks still settle; `starci workflow resume <id>` dispatches
+again. Pause and resume are the owner's or the Kernel's.
 
 ## Watch
 

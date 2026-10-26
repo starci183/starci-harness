@@ -25,7 +25,8 @@ the filed result, leases, check runs and preserved work. `seat list --live` asks
 | `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, or died | if none lives: `starci task verify <task> --recover`, then step again |
 | `HEAD_MOVED`, `SETTLE_BUSY` | the branch moved or another settle runs | no try spent: step or verify again |
 | `LEASE_CONFLICT` | a live task holds an overlapping path | wait for it; never widen or steal the lease |
-| `running` with no result | the worker is working or lost | `seat list --live`; when Orca says the worker ended, `starci task cancel <task> --reason "<why>"` and retry by an amend; unknown is never dead |
+| `running` with no result | the worker is working or lost | `starci seat ping <seat>`; `seat list` shows live, stale, quiet, unknown or lost. Unknown is never dead |
+| seat `worker-lost`, node `lost` | Orca reported the worker gone; the task is `effect_unknown` and keeps its leases | `starci task cancel <task> --reason "<why>"`, then retry by an amend |
 | a dispatch refused (`ROUTE_NO_MEMBER`, `POOLS_FULL`, `PROVIDERS_UNAVAILABLE`, `TOKENS_OUT`) | no member can take it now | the task stays queued and the next step routes it again; read `route explain` and `provider status` |
 | a circuit open | a provider failed (rate, quota, capacity, auth) | wait for the cooldown; recover only after a passing probe and the owner's OK |
 | `BUDGET_EXHAUSTED`, `TRIES_EXHAUSTED` | a ceiling is reached | ask the owner |
