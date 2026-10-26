@@ -1,0 +1,302 @@
+# What every grammar implements. Read by the grammar contract gate and by generators; reasoning is contract.md.
+# Values never appear here: each grammar's package path owns them. Vendor part names come from ../vendor/parity.yaml.
+schema: starci/grammar-contract@1
+grammars: [core, offset-pop]          # the implementations; each has knowledge/grammars/<id>.md
+base: common                          # shared renderers, anatomy, spacing and mechanics under every grammar
+
+package:
+  name: "@starci/grammar"
+  entry: "@starci/grammar/<id>"
+  stylesheet: "@starci/grammar/<id>/styles.css"   # imports the Common sheet first, then the grammar's own rules
+  dna: "src/<id>/dna.ts"
+  cssLayer: "starci-grammar-<id>"                 # ordered after starci-grammar-common
+  scope: ".grammar-common-root[data-grammar-family=\"<id>\"]"
+  imports:
+    mayImport: [common]
+    mustNotImport: [another grammar]              # Common imports no grammar either
+
+root:
+  component: GrammarRoot                          # the only Common renderer a grammar replaces
+  stamps: { data-grammar-family: "<id>", data-grammar-theme: [system, light, dark] }
+  themes: [light, dark-explicit, dark-system, forced-colors, reduced-motion]
+  overlays: portal into the nearest root           # Common mechanics; a grammar never re-portals
+  toaster: one, rendered in place inside the root
+  unknownGrammar: refuse                          # no default grammar, no silent fallback
+
+registry:
+  components: common                              # every grammar publishes exactly Common's registry
+  replacements: [GrammarRoot]
+  extensions: { allowed: true, collideWithCommon: refuse, needs: [role, vendorParity, lintCoverage] }
+  conformance: every ui rule id is inherited or carries family evidence naming the mechanism
+
+tokens:
+  # Bound by the grammar on its root (HeroUI semantic variables). A role left unbound falls to HeroUI's default
+  # and must be declared as such in the grammar's dna.
+  colour: [background, foreground, surface, surface-foreground, surface-secondary, surface-secondary-foreground,
+           surface-tertiary, default, default-foreground, muted, border, separator,
+           accent, accent-foreground, accent-soft, accent-soft-foreground, link, focus,
+           success, success-foreground, success-soft-foreground, warning, warning-foreground, warning-soft-foreground,
+           danger, danger-foreground, danger-soft-foreground, info, info-foreground,
+           field-background, field-foreground, field-placeholder, field-border, field-shadow]
+  shape: [radius, field-radius]                   # every vendor corner derives from these
+  corner: [--grammar-radius-tiny, --grammar-radius-compact, --grammar-radius-control, --grammar-radius-surface,
+           --grammar-radius-hero, --grammar-radius-pill]   # roles an app names; the grammar sets them from its base radius
+  elevation: [shadow-surface]
+  type: [font-sans]                               # body family; sizes and ranks are Common's
+  ownedByCommon:                                  # a grammar never sets these
+    spacing: [--grammar-inline-gap, --grammar-row-gap, --grammar-section-gap, --grammar-region-gap, --grammar-page-inset]
+    controlHeight: [--grammar-control-height-sm, --grammar-control-height-md, --grammar-control-height-lg]
+    target: [--grammar-target-coarse, --grammar-target-fine]
+
+dna:
+  required:
+    id: string
+    vendor: { name: heroui, parity: [strict, custom] }      # meaning in ../vendor/parity.yaml
+    color:
+      keys: [accent, accentForeground, focus]
+      perTheme: [canvas, surface, surfaceSecondary, surfaceTertiary, foreground, muted, border, separator,
+                 success, successForeground, warning, warningForeground, danger, dangerForeground,
+                 info, infoForeground, accentText, accentSoft]
+      themes: [light, dark]
+    geometry: [pageMeasure, readingMeasure, tinyRadius, compactRadius, controlRadius, surfaceRadius, heroRadius, pillRadius]
+    elevation: { surface: string, surfaceLayers: { top: string, nested: string } }
+    motion: [duration, easing]
+  optionalGroups: true                            # a grammar may add named groups (offset-pop: offset)
+  ownedByCommon: [intent, arrangement, collectionItem, avatar, rhythm, spacingScale]
+
+intent:
+  owner: common
+  intents: [commit, alternative, dismiss, neutral, destructive]
+  steps: { destructive: [entry, confirm] }
+  placements: [decision, item, chrome]
+  iconButtonPlacements: [decision, item, chrome, navbar]
+  shape:
+    commit: { decision: variant, item: variant, chrome: variant }
+    alternative: variant
+    dismiss: variant
+    neutral: { button: { decision: variant, item: variant, chrome: variant }, iconButton: { decision: variant, item: variant, chrome: variant, navbar: variant } }
+    destructive: { entry: variant, confirm: variant }
+  variantDomain: vendor Button variants          # ../vendor/parity.yaml roles.button
+
+sizes:
+  owner: common
+  steps:
+    sm: a control nested in a collection item or a dense toolbar
+    md: the default of every standalone control
+    lg: a landing hero call to action only
+  increments: equal                               # reference 32 / 40 / 48 px, held at every breakpoint
+  control: a control inside a bar row; set only by the bar composition, rendered at md height, never passed by an app
+  rule: controls in one row share one height
+  labels: badges and glyphs keep their own smaller scales
+  target:                                         # drawn height and hit area are separate facts
+    floors: [coarse, fine]                        # values: ../ui/proof/thresholds.yaml target.coarse, target.fine
+    rule: every pressable part extends its hit area to the floor without redrawing its box
+    crowded: a row of sm controls whose extensions would overlap takes md on a coarse pointer
+
+lint:
+  required: true                                  # a grammar with no factory fails closed
+  package: "@starci/eslint-grammar-<id>"
+  factory: "<id>GrammarConfig"
+  extends: "@starci/eslint-grammar-common"        # Common API checks every grammar inherits
+
+doc: knowledge/grammars/<id>.md                   # how the grammar fills each role below
+
+roles:
+  - id: card
+    ui: ui/components/card.md
+    renderers: [SurfaceCard, SurfaceListCard, SurfaceAccordionCard]
+    vendorParity: [card, accordion]
+    slots: [label, fact, labelEnd, content, footer, wholeAction]
+    variants:
+      composition: { values: [single, joined], chosenBy: app }
+      measure: { values: [content, form, formCompact], chosenBy: app }
+      depth: { values: [top, nested], chosenBy: context }
+      highlight: { values: [false, true], chosenBy: app, limit: one per view }
+    sizes: none
+    states: [neutral, pending, PresentationState]
+    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material]
+    mustKeep: [one card is one subject, depth from context, nested depth never raised, slots and heading level]
+
+  - id: button
+    ui: ui/components/button.md
+    renderers: [Button, IconButton, TextAction]
+    vendorParity: [button, link, spinner]
+    slots: [label, startContent, endContent]
+    variants:
+      variant: { values: vendor Button variants, chosenBy: intent x placement }
+      width: { values: [content, fill], chosenBy: app }
+      kind: { values: [command (onPress), destination (href)], chosenBy: app }
+    intent: intent
+    sizes: { steps: [sm, md, lg], default: md, bar: control }
+    states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
+    grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
+    mustKeep: [vendor variant names, one height per size, pending keeps label and box, skeleton takes the button corner, icon-only is square or circle at the size]
+
+  - id: button-group
+    ui: ui/components/action-group.md
+    renderers: [ButtonGroup]
+    vendorParity: [button-group]
+    slots: [buttons]
+    variants:
+      orientation: { values: [horizontal, vertical], chosenBy: app }
+      width: { values: [content, fill], chosenBy: app }
+    sizes: inherits its buttons
+    states: [disabled]
+    grammarMayChange: [separator paint]
+    mustKeep: ["joined vendor arrangement: inner corners square, borders collapsed, no press scale", "only peers of one intent", "a decision and its way out are separate buttons at the inline gap, never a group"]
+
+  - id: tabs
+    ui: ui/components/tabs.md
+    renderers: [Tabs]
+    vendorParity: [tabs]
+    slots: ["items: label, leading", panels]
+    variants:
+      variant: { values: [primary, secondary], meaning: { primary: "region tabs: pill segment, inside a painted surface", secondary: "page tabs: underline, outside a painted surface" }, chosenBy: context }
+      inset: { values: [page, none], chosenBy: app }
+    sizes: { steps: none, bar: md }
+    states: [selected, focus-visible, disabled]
+    grammarMayChange: [track, indicator and label paint; current label reads accent text]
+    mustKeep: [vendor names one to one, required Indicator, each tab owns its panel, keyboard roving]
+
+  - id: segmented-control
+    ui: ui/components/segmented-control.md
+    renderers: [SegmentedControl]
+    vendorParity: [toggle-button-group, toggle-button]
+    slots: [options]
+    variants:
+      width: { values: [content, fill], chosenBy: app }
+    sizes: { steps: [sm, md], default: md }
+    states: [selected, focus-visible, disabled, skeleton]
+    grammarMayChange: [selected paint (soft accent with accent border)]
+    mustKeep: [one value, radio semantics, same height as the md control]
+
+  - id: chip
+    ui: ui/components/chip.md
+    renderers: [Badge, TagGroup]
+    vendorParity: [chip, tag-group, tag]
+    slots: [label, startContent]
+    variants:
+      tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from a settled fact }
+      emphasis: { values: [soft], chosenBy: grammar }
+      selectable: { values: [TagGroup selection], chosenBy: app }
+    sizes: { badge: below the ramp, tagGroup: { steps: [sm, md], default: sm } }
+    states: [selected (TagGroup), disabled]
+    grammarMayChange: [tone paint through tokens]
+    mustKeep: [a label not a target (Badge), tone x emphasis axes, interactive chip is a Tag with its remove button]
+
+  - id: input
+    ui: ui/components/text-field.md
+    renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput]
+    vendorParity: [textfield, input, input-group, textarea, search-field, number-field, date-field, time-field, input-otp]
+    slots: [label, description, errorMessage, prefix, suffix]
+    variants:
+      variant: { values: [primary, secondary], meaning: { primary: on the canvas, secondary: inside a surface }, chosenBy: context }
+    sizes: { steps: [md], default: md }
+    states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
+    grammarMayChange: [fill, border, focus treatment, corner via field-radius]
+    mustKeep: [label is the accessible name (placeholder never is), error in the field's own slot, single-line height equals the md control]
+
+  - id: select
+    ui: ui/components/select.md
+    renderers: [Select, ComboBox, DatePicker, DateRangePicker]
+    vendorParity: [select, combo-box, list-box, date-picker, date-range-picker]
+    slots: [label, description, errorMessage, "options: label, description, leading"]
+    variants:
+      variant: { values: [primary, secondary], chosenBy: context }
+    sizes: { steps: [md], default: md }
+    states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
+    grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
+    mustKeep: [required Trigger and Popover, popover portals into the root, option rows match the list row]
+
+  - id: dialog
+    ui: ui/components/dialog-drawer.md
+    renderers: [Dialog, AlertDialog, Drawer, Popover, Tooltip]
+    vendorParity: [modal, alert-dialog, drawer, popover, tooltip]
+    slots: [title, description, body, footer, trigger, closeLabel]
+    variants:
+      dialogSize: { values: [sm, md, lg, full], chosenBy: app }
+      drawerPlacement: { values: [left, right, top, bottom], chosenBy: app }
+      alertTone: { values: PresentationState, chosenBy: app }
+    sizes: dialogSize is a max inline size, not a control size
+    states: [open, closed, confirm-pending]
+    grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
+    mustKeep: ["named and closable: Heading and CloseTrigger", focus trapped and restored, Escape closes, alert dialog dismiss first and focused, portal into the root]
+
+  - id: menu
+    ui: ui/components/menu.md
+    renderers: [DropdownMenu]
+    vendorParity: [dropdown]
+    slots: [trigger, sections, "items: label, description, shortcut, iconSource or mark, submenu"]
+    variants:
+      itemTone: { values: [neutral, danger], chosenBy: app from the consequence }
+    sizes: none
+    states: [open, focused, selected, disabled]
+    grammarMayChange: [item paint, "arrangement: indicator side, leading glyph size, separators"]
+    mustKeep: [menu roles, sections separated by the vendor separator, destructive items carry the danger tone]
+
+  - id: list
+    ui: ui/components/list-table.md
+    renderers: [ListBox, SurfaceListCard, ListRow, StaticStateRow, DataTable]
+    vendorParity: [list-box, table, checkbox]
+    slots: ["items: label, description, leading, trailing", columns, rows, emptyContent]
+    variants:
+      leadingSize: { values: [sm, md, lg], chosenBy: app from the leading content }
+      selectionIndicator: { values: [check, none], chosenBy: app }
+      inset: { values: [default, panel], chosenBy: context }
+      emphasis: { values: [unread], chosenBy: app from the fact }
+    sizes: leading slot sm/md/lg match the control ladder
+    states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
+    grammarMayChange: [row state paint, seam paint]
+    mustKeep: [n rows have n-1 seams, separators full bleed, one content edge for rows and captions, description one line by default]
+
+  - id: alert
+    ui: ui/components/toast-alert.md
+    renderers: [Alert, Toaster, toastQueue]
+    vendorParity: [alert, spinner]
+    slots: [title, description, action, dismissLabel]
+    variants:
+      tone: { values: PresentationState, chosenBy: app from a settled fact }
+      appearance: { values: [surface, soft], chosenBy: app }
+      urgency: { values: [polite, assertive], chosenBy: tone }
+    sizes: none
+    states: [persistent (action or negative), timed, paused on hover or focus]
+    grammarMayChange: [tone paint, toast spacing]
+    mustKeep: [tone on indicator and title only, one live owner per urgency, one Toaster]
+
+  - id: empty-state
+    ui: ui/components/empty-state.md
+    renderers: [EmptyNotice]
+    vendorParity: [button]
+    slots: [message, description, iconSource, "action: label, pending"]
+    variants:
+      action: { values: [none, one], chosenBy: app when a real next step exists }
+    sizes: none
+    states: [action-pending]
+    grammarMayChange: [glyph and text paint]
+    mustKeep: [renders in the region's place inside the unchanged surface, at most one action]
+
+  - id: avatar
+    ui: ui/components/identity-mark.md
+    renderers: [Avatar, AvatarButton, AvatarGroup, IconTile]
+    vendorParity: [avatar, avatar-group]
+    slots: [src, name, seed, kind]
+    variants:
+      kind: { values: [person, agent], chosenBy: app from the fact }
+      groupLayout: { values: [row, grid], chosenBy: app }
+    sizes: { steps: [sm, md, lg], default: md, bar: control }
+    states: [image, initials fallback, skeleton]
+    grammarMayChange: [ring, fallback paint]
+    mustKeep: ["fallback is generated initials from name, coloured by seed", "an agent carries a badge and an accessible name saying so", "one size inside a group"]
+
+  - id: shell
+    ui: ui/composition.md
+    renderers: [WorkspaceShell, TopBar, NavigationFeatureNav, Sidebar, PageContainer, PrimaryRailLayout]
+    vendorParity: [drawer, list-box]
+    slots: ["header: identity, navigation, actions", navigation, compactHeader, primary, floatingLayer]
+    variants:
+      viewport: { values: [fixed, flow], chosenBy: app kind (workspace or public site) }
+      sidebarPresentation: { values: [rail, drawer], chosenBy: viewport width }
+    sizes: every bar control is size control
+    states: [sidebar expanded, sidebar collapsed, drawer open]
+    grammarMayChange: [bar and sidebar paint]
+    mustKeep: ["one shell owns the frame, the bar and the mobile drawer", no bottom tab bar, one scroll owner per axis]

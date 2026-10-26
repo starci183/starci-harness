@@ -1,0 +1,216 @@
+# What a grammar must keep of HeroUI and what it may change. Read by the parity gate and cited by
+# ../grammars/contract.yaml (roles[].vendorParity). Reasoning: heroui.md and ../grammars/contract.md.
+schema: starci/vendor-parity@1
+vendor: heroui
+reference: generated cache vendor/heroui@<pinned version> (README.md)
+ruling: grammar-vendor-parity
+
+# Kept by every grammar, in every mode, for every component.
+always:
+  keep: [parts, requiredParts, embeddedComponents, roles, keyboard, focusManagement, props, closedValues, defaults]
+  findings: [role, anatomy, undeclared]
+
+# What a part's vendor CSS decides, as the generator names it.
+paintFamilies: [background, border, radius, shadow, block-size, inline-size, padding, gap, font, color, opacity,
+                transform, transition-duration, transition-property, transition-timing-function, z-index]
+# Declared per grammar in Common's DNA defaults, never inferred from CSS.
+arrangement: [indicatorSide, separators, iconSize, density]
+tokens: [semantic variables of ../grammars/contract.yaml tokens]
+
+modes:
+  strict:
+    meaning: keeps HeroUI's paint and arrangement; changes tokens only; every other deviation is a ruled override in wrappers.yaml
+    mayChange: [tokens]
+    findings: [slot, style, default, stale]
+    grammars: [core]
+  custom:
+    meaning: may re-skin and re-arrange inside its own scope; anatomy, roles and behaviour stay
+    mayChange: [tokens, paintFamilies, arrangement]
+    findings: []
+    grammars: [offset-pop]
+  common:
+    meaning: Common's wrappers and sheets are judged strict for every grammar; a size or layout deviation shared by all grammars is a ruled override
+    mayChange: [tokens]
+    findings: [slot, style, default, stale]
+
+sizeLadder:
+  ruling: control-height-40
+  steps: [sm, md, lg]
+  heldAtEveryBreakpoint: true          # the vendor's desktop step-down is removed
+  owner: "@starci/grammar src/common/styles.css"
+  components: [button, toggle-button, toggle-button-group, input, input-group, select, combo-box, search-field,
+               number-field, date-field, time-field, switch, avatar, tabs]
+
+# Per vendor component: what is specific to keep, and what a custom grammar typically re-skins.
+components:
+  - id: button
+    keep: [variant names and the emphasis ladder, sizes sm md lg, isIconOnly square, embedded Spinner for pending, pressed and focus-visible states]
+    customMayChange: [fill, border, shadow, font weight, press transform]
+  - id: button-group
+    keep: [joined arrangement, separator part, no press scale inside a group, focused button raised]
+    customMayChange: [separator paint, outer edge]
+  - id: toggle-button
+    keep: [variants default ghost, the Button size scale, selected state]
+    customMayChange: [selected paint]
+  - id: toggle-button-group
+    keep: [joined arrangement, isDetached, radio-like single selection]
+    customMayChange: [track and segment paint]
+  - id: tabs
+    keep: [variant names primary=pill secondary=underline, required Indicator, panels owned by tabs, keyboard roving]
+    customMayChange: [track, indicator and label paint]
+  - id: chip
+    keep: [tone x emphasis axes, sizes below the control scale]
+    customMayChange: [tone paint]
+  - id: badge
+    keep: [anchor placement, tone x emphasis]
+    customMayChange: [tone paint, outline]
+  - id: tag-group
+    keep: [grid roles, required RemoveButton on removable tags, selection modes]
+    customMayChange: [tag paint, selected paint]
+  - id: tag
+    keep: [variants default surface]
+    customMayChange: [paint]
+  - id: textfield
+    keep: ["frame: Label, control, Description, FieldError", label is the accessible name]
+    customMayChange: []
+  - id: input
+    keep: [variants primary (on the canvas) and secondary (inside a surface), 16px text on touch]
+    customMayChange: [fill, border, focus treatment, corner via field-radius]
+  - id: input-group
+    keep: [Prefix and Suffix parts, inner corners squared beside them]
+    customMayChange: [fill, border]
+  - id: textarea
+    keep: [the field frame]
+    customMayChange: [fill, border]
+  - id: search-field
+    keep: [clear button, field frame]
+    customMayChange: [fill, border]
+  - id: number-field
+    keep: [increment and decrement buttons, field frame]
+    customMayChange: [fill, border]
+  - id: date-field
+    keep: [segments, field frame]
+    customMayChange: [fill, border]
+  - id: time-field
+    keep: [segments, field frame]
+    customMayChange: [fill, border]
+  - id: input-otp
+    keep: [one slot per character]
+    customMayChange: [slot paint]
+  - id: select
+    keep: [required Trigger and Popover, Value, Indicator, embedded ListBox Label Description, field variants]
+    customMayChange: [trigger paint, popover edge, indicator side]
+  - id: combo-box
+    keep: [InputGroup trigger, required Popover, embedded ListBox]
+    customMayChange: [popover edge]
+  - id: list-box
+    keep: [Item ItemIndicator Section, variants default danger, row height equal to the menu item]
+    customMayChange: [row state paint, indicator side]
+  - id: card
+    keep: [Header Title Description Content Footer, surface-level variants]
+    customMayChange: [fill, edge, radius, shadow]
+  - id: accordion
+    keep: [Item Heading Trigger Indicator Panel Body, heading semantics]
+    customMayChange: [surface paint, indicator]
+  - id: disclosure
+    keep: [trigger and panel, expanded state]
+    customMayChange: [paint]
+  - id: modal
+    keep: [required Trigger Dialog Heading CloseTrigger, backdrop variants, size as max width, scroll modes, focus trap and restore, Escape]
+    customMayChange: [dialog surface, backdrop paint]
+  - id: alert-dialog
+    keep: [the modal anatomy, status, no full size]
+    customMayChange: [dialog surface, backdrop paint]
+  - id: drawer
+    keep: [the modal anatomy plus Handle, placement from an edge]
+    customMayChange: [surface, shadow direction, handle bar paint]
+  - id: popover
+    keep: [Trigger Content Dialog, optional Arrow, placement]
+    customMayChange: [surface, edge]
+  - id: tooltip
+    keep: [Trigger Content, describes its trigger]
+    customMayChange: [surface]
+  - id: dropdown
+    keep: [menu roles, Section with embedded Separator, per-item danger, submenu parts]
+    customMayChange: [item paint, indicator side, leading glyph size]
+  - id: table
+    keep: [required Content Column Row Cell ColumnResizer, variants primary (tray) and secondary (inside a surface), sortable header semantics]
+    customMayChange: [tray, header and row paint]
+  - id: checkbox
+    keep: [control and label, indeterminate]
+    customMayChange: [checked paint]
+  - id: radio-group
+    keep: [radio roles, group label]
+    customMayChange: [checked paint]
+  - id: radio
+    keep: [control and label]
+    customMayChange: [checked paint]
+  - id: switch
+    keep: [Control Thumb Content Icon, sizes]
+    customMayChange: [track and thumb paint]
+  - id: slider
+    keep: [track, fill, thumb, value semantics]
+    customMayChange: [paint]
+  - id: alert
+    keep: [Indicator Content Title Description, status only, tone on indicator and title]
+    customMayChange: [surface, tone paint]
+  - id: spinner
+    keep: [sizes sm md lg xl, colours]
+    customMayChange: []
+  - id: skeleton
+    keep: [shape follows the content it stands for]
+    customMayChange: [paint]
+  - id: avatar
+    keep: [Image and Fallback, sizes sm md lg]
+    customMayChange: [ring, fallback paint]
+  - id: avatar-group
+    keep: [members and count]
+    customMayChange: [ring]
+  - id: pagination
+    keep: [Previous Next Item Link Ellipsis, current page semantics, sizes]
+    customMayChange: [current paint]
+  - id: breadcrumbs
+    keep: [current page semantics]
+    customMayChange: [separator, paint]
+  - id: link
+    keep: [anchor semantics]
+    customMayChange: [colour, underline]
+  - id: progress-bar
+    keep: [value semantics and label]
+    customMayChange: [track and fill paint]
+  - id: progress-circle
+    keep: [value semantics and label]
+    customMayChange: [paint]
+  - id: meter
+    keep: [value semantics and label]
+    customMayChange: [track and fill paint]
+  - id: calendar
+    keep: [grid roles, selected and today states]
+    customMayChange: [cell paint]
+  - id: date-picker
+    keep: [DateField plus popover Calendar]
+    customMayChange: [popover edge]
+  - id: date-range-picker
+    keep: [two DateFields plus RangeCalendar]
+    customMayChange: [popover edge]
+  - id: separator
+    keep: [orientation, decorative role]
+    customMayChange: [colour, thickness]
+  - id: kbd
+    keep: [keyboard semantics]
+    customMayChange: [paint]
+  - id: scroll-shadow
+    keep: [orientation, edge fade]
+    customMayChange: []
+  - id: form
+    keep: [validation errors by field name]
+    customMayChange: []
+  - id: fieldset
+    keep: [legend semantics]
+    customMayChange: [paint]
+  - id: typography
+    keep: [heading levels]
+    customMayChange: [font family, display weight]
+  - id: close-button
+    keep: [accessible name]
+    customMayChange: [paint]
