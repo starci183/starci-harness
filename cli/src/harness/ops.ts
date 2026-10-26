@@ -5,12 +5,15 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 
+// A list of names may be written as one name: `contract new --check result-json:keys=summary` gives a string, not a list.
+const namesSchema = z.union([z.string().min(1).transform((name) => [name]), z.array(z.string())])
+
 /** A primitive check: the only kinds `task verify` knows how to run. */
 export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("starci"), args: z.array(z.string()).min(1) }),
     z.object({ kind: z.literal("command"), run: z.union([z.string().min(1), z.array(z.string()).min(1)]) }),
-    z.object({ kind: z.literal("files"), onlyAllowPaths: z.boolean().optional(), mustExist: z.array(z.string()).optional() }),
-    z.object({ kind: z.literal("json"), file: z.string().min(1), requiredKeys: z.array(z.string()) }),
+    z.object({ kind: z.literal("files"), onlyAllowPaths: z.boolean().optional(), mustExist: namesSchema.optional() }),
+    z.object({ kind: z.literal("json"), file: z.string().min(1), requiredKeys: namesSchema }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
 ])
 
