@@ -69,3 +69,15 @@ the knowledge to be true.
   alpha20-secrets-by-consumer, and the draw-loop rulings (draw-shapes-only, draw-content-region-only, draw-token-render,
   draw-rationale-evidence, draw-devin-brand-claude, one-version-owner-review, drawing-owner-parts, drawing-light-device-matrix).
 - **Product records** not logged: `nivo-main-colour-ink` belongs to that product's `.starciwork`.
+
+## Shared coding standard (patterns/shared)
+
+| Id | Decision | Alternative | Reason | Follow-up |
+|---|---|---|---|---|
+| S-1 | `Array<T>` / `ReadonlyArray<T>` is one shared rule (SHARED-TYPING-3), although the reference front end writes `T[]` in route props | keep it back-end only | both side topics already stated it; the back-end lint holds it; the front-end canon's own doc says consumers get `@typescript-eslint/array-type`, which its `BORROWED` set does not include | add `@typescript-eslint/array-type` (generic) to `eslint-canon-fe` `BORROWED` |
+| S-2 | The only type assertion is `as const` on both sides (SHARED-TYPING-2) | the front-end lint's allowance of a single `x as unknown` | an `as unknown` is a widening nobody needs where the value is already typed; the back-end lint refuses it | front-end `no-type-assertion` refuses `as unknown` too, or adopts `consistent-type-assertions` never |
+| S-3 | Named exports everywhere; a default only in a file the framework loads by default (Next route files, the test world's global setup and teardown) (SHARED-NAMING-2) | FE-IMPORTS-7's "no default export from a reusable component" | that wording left non-component modules open; both lints already refuse every other default | none |
+| S-4 | Module-level functions are arrow constants on both sides, with a back-end overload set as the one exception (SHARED-NAMING-3) | front-end only | BE-NAMING-5 already asked for arrow function values; the reference back end declares an overload set with `function`, which an arrow cannot express | a back-end `prefer-arrow-export` that admits overload sets |
+| S-5 | A repository tsconfig sets only `paths`, `include`, `exclude`, `outDir` and restates no preset flag (SHARED-TYPING-1) | allow restating | the reference front-end app restates `plugins` and `incremental` already in `next.json`; a second owner of a flag drifts | an `hfs` check beside R22 that refuses a restated preset flag |
+| S-6 | Nothing checks format before CI, so the op runs Prettier on its changed files (SHARED-FORMAT-1); the harness commit (`commit-tree`) runs no hook (SHARED-SCRIPTS-4) | rely on the app's pre-commit hook | the hook never runs on a harness commit | a `format` gate in the runtime tier of the app profiles |
+| S-7 | Source language: English and no emoji on both sides, ASCII only on the back end (SHARED-COMMENT-3) | ASCII on both | the front-end lint judges a second language structurally (`no-vietnamese-in-source`) and admits typographic punctuation; the lint wins for what it enforces | none |
