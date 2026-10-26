@@ -6,7 +6,6 @@ so it is the closest grammar to the vendor and the reference the contract is che
 
 Owners: values `@starci/grammar src/core/dna.ts` (`STARCI_CORE_DNA`, token names and light/dark defaults),
 bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`).
-Legacy names for this grammar (`starci`, `starci-core`) map here (decision D-1).
 
 ## Material and why
 
