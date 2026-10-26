@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process"
-import type { ChildProcess } from "node:child_process"
+import type { ChildProcess, ChildProcessByStdio } from "node:child_process"
+import type { Readable } from "node:stream"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { Refusal } from "./errors.js"
@@ -15,9 +16,10 @@ export interface ToolOutput {
     readonly stderr: string
 }
 
-/** The full result of a tool run whose failure is an answer, not an error (a red lint, a red typecheck). */
+/** The full result of a tool run whose failure is an answer, not an error (a red lint, a red typecheck); `timedOut` when its deadline killed it. */
 export interface ToolRun extends ToolOutput {
     readonly exitCode: number
+    readonly timedOut: boolean
 }
 
 /** How one tool runs: a deadline after which its whole process tree is killed, and extra environment variables. */
@@ -27,8 +29,8 @@ export interface RunOptions {
 }
 
 interface Finished extends ToolRun {
-    readonly missing: boolean
-    readonly timedOut: boolean
+    /** Why the process never started (ENOENT, EINVAL, EACCES ...), or undefined when it ran. */
+    readonly notStarted: string | undefined
 }
 
 const errorCode = (error: unknown): unknown => (typeof error === "object" && error !== null && "code" in error ? error.code : undefined)
@@ -82,13 +84,21 @@ const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: (
 const execute = (tool: string, args: readonly string[], cwd: string, options: RunOptions): Promise<Finished> =>
     new Promise((settle) => {
         let timedOut = false
-        let missing = false
+        let notStarted: string | undefined
         let timer: NodeJS.Timeout | undefined
         const stdout = collector()
         const stderr = collector()
         const env = options.env === undefined ? process.env : { ...process.env, ...options.env }
         const detached = options.timeoutMs !== undefined && process.platform !== "win32"
-        const child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["ignore", "pipe", "pipe"] })
+        let child: ChildProcessByStdio<null, Readable, Readable>
+        try {
+            child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["ignore", "pipe", "pipe"] })
+        } catch (error: unknown) {
+            // Windows refuses a .cmd or .bat synchronously (spawn EINVAL), before any process exists.
+            const code = errorCode(error)
+            settle({ exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : String(error), notStarted: typeof code === "string" ? code : "spawn failed", timedOut: false })
+            return
+        }
         child.stdout.on("data", stdout.push)
         child.stderr.on("data", stderr.push)
         let done = false
@@ -98,13 +108,14 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             if (timer !== undefined) clearTimeout(timer)
             const errors = stderr.text()
             const note = timedOut ? `${errors === "" ? "" : "\n"}timed out after ${String(Math.round((options.timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
-            settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, missing, timedOut })
+            settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, notStarted, timedOut })
         }
         child.on("error", (error: Error) => {
             stderr.push(Buffer.from(error.message))
-            // A process that never started emits no close.
-            if (errorCode(error) === "ENOENT") {
-                missing = true
+            // A process that never started (it has no pid) emits no close; a kill error of a running one waits for its close.
+            if (child.pid === undefined) {
+                const code = errorCode(error)
+                notStarted = typeof code === "string" ? code : "spawn failed"
                 finish(null)
             }
         })
@@ -117,27 +128,45 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         }
     })
 
+/**
+ * The refusal of a process that never started: CLI_TOOL_MISSING for ENOENT, CLI_TOOL_NOT_STARTED otherwise (EINVAL is what
+ * Windows answers for a .cmd or .bat, which cannot run without a shell). Nothing ran, so the call had no effect.
+ */
+export class ToolNotStarted extends Refusal {
+    public readonly reason: string
+
+    public constructor(tool: string, cause: string) {
+        const hint = cause === "EINVAL" ? "; a .cmd or .bat cannot run without a shell, name the .exe (or node.exe and its script) instead" : ""
+        super(cause === "ENOENT" ? "CLI_TOOL_MISSING" : "CLI_TOOL_NOT_STARTED", cause === "ENOENT" ? `${tool} is not installed or not on PATH` : `${tool} could not be started: ${cause}${hint}`)
+        this.name = "ToolNotStarted"
+        this.reason = cause
+    }
+}
+
 /** Runs a host tool without a shell (no quoting surprises) and refuses with a named code when it is missing, fails or times out. */
 export const runTool = async (tool: string, args: readonly string[], cwd: string, options: RunOptions = {}): Promise<ToolOutput> => {
     const run = await execute(tool, args, cwd, options)
-    if (run.missing) throw new Refusal("CLI_TOOL_MISSING", `${tool} is not installed or not on PATH`)
+    if (run.notStarted !== undefined) throw new ToolNotStarted(tool, run.notStarted)
     if (run.timedOut) throw new Refusal("CLI_TOOL_TIMEOUT", `${tool} ${args.join(" ")} ${headline(run.stderr)}`)
     if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `${tool} ${args.join(" ")} failed: ${headline(run.stderr) || `exit ${String(run.exitCode)}`}`)
     return { stdout: run.stdout, stderr: run.stderr }
 }
 
-/** Runs a host tool and returns its exit code and output instead of throwing on a non-zero exit; a timeout exits EXIT_TIMEOUT. */
+/**
+ * Runs a host tool and returns its exit code and output instead of throwing on a non-zero exit; a timeout exits EXIT_TIMEOUT with
+ * `timedOut`. A process that never started is refused with ToolNotStarted.
+ */
 export const captureTool = async (tool: string, args: readonly string[], cwd: string, options: RunOptions = {}): Promise<ToolRun> => {
     const run = await execute(tool, args, cwd, options)
-    if (run.missing) throw new Refusal("CLI_TOOL_MISSING", `${tool} is not installed or not on PATH`)
-    return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr }
+    if (run.notStarted !== undefined) throw new ToolNotStarted(tool, run.notStarted)
+    return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr, timedOut: run.timedOut }
 }
 
 /** Runs a short host tool synchronously (for code that cannot await, such as opening the ledger); never throws. */
 export const captureToolSync = (tool: string, args: readonly string[], cwd: string): ToolRun => {
     const run = spawnSync(tool, [...args], { cwd, windowsHide: true, encoding: "utf8", maxBuffer: MAX_BUFFER })
-    if (run.error !== undefined) return { exitCode: 1, stdout: "", stderr: run.error.message }
-    return { exitCode: run.status ?? 1, stdout: run.stdout.trim(), stderr: run.stderr.trim() }
+    if (run.error !== undefined) return { exitCode: 1, stdout: "", stderr: run.error.message, timedOut: false }
+    return { exitCode: run.status ?? 1, stdout: run.stdout.trim(), stderr: run.stderr.trim(), timedOut: false }
 }
 
 /** npm's own entry script next to this Node (npm.cmd cannot run without a shell on Windows); undefined when Node ships without npm. */

@@ -1,10 +1,10 @@
-import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
-import { probeTool } from "../../shared/exec.js"
+import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
+import type { ToolRun } from "../../shared/exec.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -37,8 +37,6 @@ export class OrcaFailure extends Refusal {
 }
 
 const TAIL_LINES = 10
-
-const MAX_BUFFER = 64 * 1024 * 1024
 
 /** The process deadline of an orca read or quick mutation. */
 export const ORCA_TIMEOUT_MS = 30_000
@@ -107,54 +105,20 @@ export const orcaArgv = (command: string, flags: OrcaFlags): string[] => [
     "--json",
 ]
 
-/** One finished (or killed) orca process. */
-interface OrcaRun {
-    readonly exitCode: number
-    readonly stdout: string
-    readonly stderr: string
-    readonly timedOut: boolean
-}
-
-const field = (error: unknown, key: string): unknown => (typeof error === "object" && error !== null && key in error ? (error as Record<string, unknown>)[key] : undefined)
-
-const textField = (error: unknown, key: string): string => {
-    const value = field(error, key)
-    return typeof value === "string" ? value.trim() : ""
-}
-
 /**
- * Runs orca without a shell under a process deadline (shared/exec's captureTool has no timeout yet, so the process is run
- * here). A process that could not be spawned is a refusal naming the cause: ORCA_MISSING for ENOENT, ORCA_FAILED otherwise
- * (EINVAL is what Windows answers for a .cmd or .bat, which cannot run without a shell).
+ * Runs orca without a shell under a process deadline that kills its whole tree. A process that could not be spawned had no
+ * effect and is a refusal naming the cause: ORCA_MISSING for ENOENT, ORCA_FAILED otherwise (EINVAL is what Windows answers for
+ * a .cmd or .bat, which cannot run without a shell).
  */
-const spawnOrca = async (binary: OrcaBinary, args: readonly string[], cwd: string, timeoutMs: number): Promise<OrcaRun> =>
-    new Promise((resolve, reject) => {
-        const notStarted = (error: unknown): Refusal => {
-            const code = field(error, "code")
-            const name = typeof code === "string" ? code : error instanceof Error ? error.message : String(error)
-            const hint = code === "EINVAL" ? "; a .cmd or .bat cannot run without a shell, point STARCI_ORCA_BIN at orca.exe or node.exe" : ""
-            return new Refusal(code === "ENOENT" ? "ORCA_MISSING" : "ORCA_FAILED", `${binary.path} (${binary.source}) could not be started: ${name}${hint}`)
-        }
-        try {
-            execFile(binary.path, [...args], { cwd, windowsHide: true, maxBuffer: MAX_BUFFER, timeout: timeoutMs, killSignal: "SIGKILL" }, (error, stdout, stderr) => {
-                if (error === null) {
-                    resolve({ exitCode: 0, stdout: stdout.trim(), stderr: stderr.trim(), timedOut: false })
-                    return
-                }
-                const code = field(error, "code")
-                // A process that ran but overflowed its buffer left an unreadable answer (unknown), not a refusal to start.
-                if (typeof code === "string" && code !== "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
-                    reject(notStarted(error))
-                    return
-                }
-                const killed = field(error, "killed") === true || field(error, "signal") !== null
-                resolve({ exitCode: typeof code === "number" ? code : 1, stdout: textField(error, "stdout") || stdout.trim(), stderr: textField(error, "stderr") || stderr.trim(), timedOut: killed })
-            })
-        } catch (error: unknown) {
-            // Windows refuses a .cmd synchronously (spawn EINVAL), before any process exists.
-            reject(notStarted(error))
-        }
-    })
+const spawnOrca = async (binary: OrcaBinary, args: readonly string[], cwd: string, timeoutMs: number): Promise<ToolRun> => {
+    try {
+        return await captureTool(binary.path, args, cwd, { timeoutMs })
+    } catch (error: unknown) {
+        if (!(error instanceof ToolNotStarted)) throw error
+        const hint = error.reason === "EINVAL" ? "; a .cmd or .bat cannot run without a shell, point STARCI_ORCA_BIN at orca.exe or node.exe" : ""
+        throw new Refusal(error.reason === "ENOENT" ? "ORCA_MISSING" : "ORCA_FAILED", `${binary.path} (${binary.source}) could not be started: ${error.reason}${hint}`)
+    }
+}
 
 const errorSchema = z.union([z.string(), z.looseObject({ code: z.string().optional(), message: z.string().optional() })])
 
@@ -197,7 +161,7 @@ const effectOfRefusal = (reply: z.infer<typeof replySchema>): OrcaEffect => {
     return named || staged ? "none" : "unknown"
 }
 
-const stderrNote = (run: OrcaRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
+const stderrNote = (run: ToolRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
 
 /** Runs one orca orchestration call without a shell under a deadline and returns its validated result; anything else is an OrcaFailure saying whether it had an effect. */
 const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<T> => {
