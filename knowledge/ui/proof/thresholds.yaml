@@ -1,0 +1,92 @@
+# Every numeric threshold of knowledge/ui, as data. Prose cites a key; gates and briefs read the value here.
+# One key per number: a composition rule and the proof criterion that measures it share the key.
+# Units: count, pct (of the named area), px (CSS px at the observed root size), ratio (contrast x:1), ms, chars, steps.
+schema: starci/ui-thresholds@1
+surfaceClasses: [console, form, landing, catalog, reader]
+
+budgets:
+  focal: {max: 1, min: 1, unit: count, rules: [HIERARCHY-6, TASTE-1]}
+  secondary: {min: 2, max: 3, unit: count, rules: [HIERARCHY-6, TASTE-1]}
+  commitPerView: {max: 1, byClass: {landing: 2}, unit: count, rules: [CTA-1, TASTE-5],
+    note: "landing repeats its one conversion command, never twice in one viewport"}
+  accentArea: {max: 10, unit: pct, of: content capture without chrome, rules: [ACCENT-6, TASTE-5]}
+  badgesPerEntity: {max: 2, unit: count, rules: [DISCIPLINE-1, TASTE-5]}
+  hairlinesPerCard: {max: 3, unit: count, rules: [DISCIPLINE-1, TASTE-7]}
+  linesUnderTitle: {supporting: 1, meta: 1, unit: count, rules: [DISCIPLINE-1]}
+  ribbonCells: {max: 4, unit: count, rules: [DISCIPLINE-2]}
+  skeletonRows: {default: 3, unit: count, rules: [STATE-8]}
+  cardDepth: {max: 2, unit: levels, rules: [COLLECTION-2, TASTE-7]}
+  decorativeImages: {max: 1, unit: count, per: view, rules: [TASTE-8]}
+  signatureMoments: {max: 1, unit: count, per: page, rules: [DISCIPLINE-3, TASTE-8]}
+
+type:
+  region: {maxSizes: 3, maxWeights: 2, rules: [DISCIPLINE-2, TASTE-6], note: "a region is one card, section or stat cell; badges and chips excluded"}
+  view: {maxSizes: 4, maxWeights: 2, rules: [DISCIPLINE-2, TASTE-6], note: "display type on a landing hero adds one size"}
+  measureChars: {min: 45, max: 80, unit: chars, rules: [TASTE-6]}
+
+contrast:
+  text: {min: 4.5, unit: ratio, rules: [COLOR-5]}
+  largeText: {min: 3, unit: ratio, appliesFromPx: 24, appliesFromPxBold: 18.66, rules: [COLOR-5]}
+  statusSoft: {min: 3, unit: ratio, rules: [COLOR-5], note: "soft status pair and bare status glyph or title"}
+  nonText: {min: 3, unit: ratio, rules: [COLOR-3, COLOR-5]}
+
+target:
+  coarse: {min: 44, unit: px, both: true, when: "pointer coarse or viewport at most 40rem", measures: hit area, rules: [A11Y-4, TASTE-11, UX-9]}
+  fine: {min: 24, unit: px, both: true, measures: "hit area including spacing", rules: [A11Y-4, TASTE-11]}
+
+taste:
+  focal: {weightMarginPct: 10, squintBlurPx: 8, rules: [TASTE-1]}
+  voidMax: {max: 64, unit: px, rules: [TASTE-2]}
+  edgeTolerance: {max: 1, unit: px, rules: [TASTE-3]}
+
+density:
+  console: {min: 60, unit: pct, rules: [TASTE-9]}
+  catalog: {min: 50, unit: pct, rules: [TASTE-9]}
+  reader: {min: 40, max: 70, unit: pct, rules: [TASTE-9]}
+  form: {min: 25, max: 50, unit: pct, rules: [TASTE-9]}
+  landing: {max: 40, unit: pct, rules: [TASTE-9]}
+  reproducibility: {max: 10, unit: pct, rules: [TASTE-9]}
+
+steps:
+  console: {max: 3, unit: steps, from: entry to any owned action, rules: [UX-2]}
+  form: {single: 3, multiStep: 7, unit: steps, rules: [UX-2]}
+  landing: {max: 2, unit: steps, to: conversion, rules: [UX-2]}
+  catalog: {listToDetail: 1, back: 1, unit: steps, rules: [UX-2]}
+  reader: {backToList: 1, unit: steps, rules: [UX-2]}
+  correction: {max: 2, unit: steps, rules: [UX-3]}
+
+latency:
+  feedback: {max: 100, unit: ms, rules: [UX-4]}
+  progress: {max: 1000, unit: ms, rules: [UX-4]}
+  escape: {max: 10000, unit: ms, rules: [UX-4]}
+
+navigationDepth:
+  console: {max: 2, rules: [UX-5]}
+  catalog: {max: 2, rules: [UX-5]}
+  reader: {max: 2, rules: [UX-5]}
+  form: {max: 1, rules: [UX-5]}
+  landing: {max: 1, rules: [UX-5]}
+
+motion:
+  flashesPerSecond: {max: 3, rules: [MOTION-4]}
+
+verdict:
+  scale: [1, 5]
+  shipMean: 4
+  gates:
+    taste: [TASTE-1, TASTE-2, TASTE-5, TASTE-8, TASTE-12]
+    ux: [UX-1, UX-3, UX-4, UX-6, UX-7]
+
+calibration:
+  tolerance: 1
+  lenses: {taste: TASTE-13, ux: UX-12}
+  anchors:
+    - file: anchor-low.html
+      bands: {taste: [1, 2], ux: [1, 2]}
+      why: no single largest element, a tall band holding only an ornament, four filled accents, drifting edges, five type sizes, a half-empty grid row, module names as labels, bare numbers
+    - file: anchor-mid.html
+      bands: {taste: [3, 3], ux: [3, 3]}
+      why: edges aligned, one corner family, three sizes, warnings marked; but the title barely outranks its sections, two filled accents compete, one number has no unit, the empty state explains without the action
+    - file: anchor-high.html
+      bands: {taste: [4, 5], ux: [4, 5]}
+      why: one focal point a step above every section, monotonic rhythm, one accent on one action, units on every number, distinct warnings, a designed empty state with its action, the commit pinned in reach when narrow
