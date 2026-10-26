@@ -34,6 +34,8 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npm run build
+      - name: Anatomy drift (knowledge/project/anatomy.md)
+        run: node cli/dist/main.js knowledge anatomy --check
       - name: Loosening gate (policy/loosening.yaml)
         run: node cli/dist/main.js check loosening
       - name: Secret scan of the whole tree (policy/security.yaml)
