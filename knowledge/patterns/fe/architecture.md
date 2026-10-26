@@ -3,82 +3,71 @@ slots: [fe.app, fe.route, fe.route.callback, fe.source-root-pinned]
 ---
 # Front-end architecture
 
-The responsibility graph of a Next.js app: who adapts the framework, who owns product scenarios, who owns
-reusable capabilities, and which way imports point. The tiers and the direction matrix are data in
-[hfs/slots.yaml](../../hfs/slots.yaml) (`tiers.fe`); the architecture machine judges them.
+The responsibility graph of a Next.js app: who adapts the framework, who owns a scenario, who owns a world, and which
+way imports point. The tiers and the direction matrix are data in [hfs/slots.yaml](../../hfs/slots.yaml) (`tiers.fe`);
+the architecture machine judges them.
 
-## FE-ARCHITECTURE-1 A route adapts framework inputs to one visual owner
+## FE-ARCHITECTURE-1 A route adapts the framework to one feature owner
 
-A visual route resolves framework-owned inputs (params, searchParams, headers, cookies, a session read) and mounts
-one page-level owner from `features/{pages,layouts,overlays}`; a route whose whole job is a redirect or `notFound`
-mounts none. Shell composition lives in a layout or the page owner, never beside the page in the route. Every owner
-is mounted by some route, no owner renders `null` as its whole body, and every href comes from `modules/routes`
-and resolves to a real route.
+A route file turns framework inputs (awaited `params`, `searchParams`) into atoms and mounts exactly one owner of
+`features/pages` (an `error.tsx` its `*ErrorPage`, a `loading.tsx` its `*LoadingPage`, a `layout.tsx` its
+`features/layouts` owner), and every owner is mounted by some route.
 
-Why: one visual responsibility per route; an unmounted owner is dead code and an href with no route is a broken link.
+Why: one visual responsibility per route keeps the route tree a table of contents; an unmounted owner is dead code.
 
-Enforced by: R54 FE_ROUTE_FILES_THIN, R57 FE_OWNER_REACHABLE.
+Enforced by: R54 (`route-files-thin`, `route-adapter`), R57 (`owner-reachable`), R91 (`route-tree-holds-routes-only`).
 
-## FE-ARCHITECTURE-2 Responsibilities point inward and downward, without cycles
+## FE-ARCHITECTURE-2 Imports point down the tiers, through owner entries, without cycles
 
-Route → features, modules, packages. Features → components, hooks, modules, packages; the only feature-to-feature
-edge is a page or layout owner importing an overlay entry (a layout never imports a page, an overlay never another
-overlay). Components descend blocks → composites → branches → leaves, never block to block, and may import hooks
-and packages, never app or features. Hooks import modules and packages; modules import modules and packages,
-acyclic. A framework-pinned root file is a thin adapter into modules or a feature entry. Type-only edges, aliases,
-barrels and dynamic literals obey the same direction; every cross-owner import enters the owner's `index.ts(x)`.
+Route → features, modules; features → components, hooks, modules, and a page or layout owner → an overlay; blocks →
+composites → branches → leaves, never block to block and never up; components → hooks only for intrinsic or
+domain view hooks; hooks → hooks, modules, and `hooks/swr` alone → `modules/api`; modules → modules, acyclic.
 
-Why: a one-way graph lets each unit be reasoned about alone, and holds for one app or several.
+Why: a one-way graph lets each unit be read alone, and a cycle makes two owners one.
 
-- When a reusable unit needs product state → pass it a resolved contract, or move the orchestration to the feature.
-- When a client list renders connected blocks → the overlay passes identities and a `renderItem` prop down; the
-  branch maps identities with stable keys and never imports a block.
+- When a reusable unit needs product state → hand it the resolved values, or move the orchestration up to the block.
 
-Enforced by: R26 (FE_TIER_DIRECTION), R27 ARCH_OWNER_CYCLE, R30.
+Enforced by: R26 (`tier-direction`), R27 (`owner-cycle`), R30 (`owner-export-bypass`).
 
-## FE-ARCHITECTURE-3 Split world ownership only where there is a world to own
+## FE-ARCHITECTURE-3 A world is owned by a connected block, never by a page or a lower tier
 
-A block that reads product data, session, locale, router or transport state owns that in its `index.tsx` and renders
-its exact sibling `XBase` from `component.tsx` on every non-empty path. Pure blocks, composites, branches and leaves
-need no twin and may keep intrinsic browser interaction (refs, focus, disclosure, measurement, drag, reduced motion).
-Pages and layouts stay server components and read no data; a client overlay may read list identities for
-composition, and each connected block owns its own reads. A connected unit stays within the hook and state budgets
-of its slot ([hfs/slots.yaml](../../hfs/slots.yaml)).
+A block that reads data, session, store, locale or the router owns that in its `"use client"` `index.tsx` and renders
+its sibling `XBase`; pages and layouts are server components that resolve copy with `getTranslations` and compose
+blocks, reading no data; composites, branches and leaves take resolved fields and own at most intrinsic interaction.
 
-Why: the split isolates real world dependencies without forwarding components around ordinary interaction.
+Why: each region reads its own data and fails alone, and every pure half can be drawn from a fixture.
 
-Enforced by: R55 FE_CLIENT_BOUNDARY, R56 FE_HOOKS_ARE_HOOKS, R65 FE_SIZE_AND_STATE_BUDGET, R92 FE_COMPONENT_API.
+Enforced by: R55 (`use-client-only-at-boundary`), R92 (`connected-block-has-presentational-twin`,
+`presentational-purity`, `component-purity`), R58 (`no-copy-resolution-below-block`), R65 (`unit-hook-budget`).
 
-## FE-ARCHITECTURE-4 Apps stay independent; packages expose owned APIs
+## FE-ARCHITECTURE-4 Apps never import each other; shared code is a built package
 
-Each app is independent ([folder.md](folder.md) FE-APPS-1). An app never imports another app; code two apps need is
-a package under `fe/packages/<pkg>` consumed through its declared exports, and a package never imports app
-internals. A second consumer or a `packages/` path does not by itself make code shared.
+Each app is independent; code two apps need is a workspace package under `fe/packages/<pkg>` imported through its
+declared exports, and a package never imports an app.
 
-Why: apps that import each other cannot build or deploy separately, and a package boundary is a distribution contract.
+Why: apps that import each other cannot build or deploy separately, and a package export is a distribution contract.
 
-Enforced by: R63 FE_PACKAGE_SHAPE, R64 FE_APP_ISOLATION.
-
-## FE-ARCHITECTURE-5 Features own scenarios; modules own capabilities
-
-`features/{pages,layouts,overlays}` own product composition; `hooks/<domain>` own React lifecycle and map module
-results to the product contract; a module owns one cohesive technical or domain capability behind a public entry.
-Wire types generated from `be/contracts/` stay inside `modules/api` and are mapped before presentation; the grammar
-receives only product-agnostic visual contracts.
-
-Why: a transport revision then changes its mapper, not every render contract.
-
-Enforced by: R50 FE_TRANSPORT_OWNER, R52 FE_WIRE_GENERATED.
+Enforced by: R64 (`app-isolation`), R21 (`cross-app-duplicate`), R30 (`package-export-bypass`), R26
+(`package-imports-app`).
 
 ## FE-ROUTE The front end serves no API
 
-The front end is a Next App Router app with thin routes. No file carries `"use server"`, and the only route handlers
-are `app/health/live/route.ts` and, when the auth flow truly needs a server code exchange, the auth callback slot
-(prefer the client-side PKCE exchange in `modules/auth`). The callback only exchanges the code (or verifies an email
-link token), validates the next path with pure helpers of `modules/routes`/`modules/auth`, and redirects. A webhook,
-cron, public API or third-party callback is a back-end feature. The pages router is not used.
+No file carries `"use server"`, and the only route handlers are `app/health/live/route.ts` and the auth callback
+`app/auth/callback/route.ts`, which exchanges the provider code or verifies the email-link token through
+`modules/auth/server` and redirects to a validated path.
 
-Why: a Server Action or route handler is a second back end hidden in the front end; it bypasses the API contract,
-back-end authorization and the job pipeline.
+Why: a Server Action or a route handler is a second back end hidden in the front end, outside the API contract and
+back-end authorization; a webhook, cron or public API is a back-end feature.
 
-Enforced by: R243 FE_SERVER_ACTION_FORBIDDEN, R287 FE_CALLBACK_SHAPE.
+```ts
+export const GET = async (request: NextRequest): Promise<NextResponse> => {
+    const origin = requestOrigin(request)
+    const next = callbackNext(request.nextUrl.searchParams.get("next"), origin) ?? AUTH_ROUTES.home
+    const code = request.nextUrl.searchParams.get("code")
+    if (code === null) return NextResponse.redirect(new URL(`${APP_ROUTES.login}?error=missing_code`, origin))
+    const result = await exchangeAuthCode(code)
+    return NextResponse.redirect(new URL(result.success ? next : APP_ROUTES.login, origin))
+}
+```
+
+Enforced by: R243 (`no-server-action`; machine `server-action-forbidden`), R287 (`callback-shape`).

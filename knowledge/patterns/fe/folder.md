@@ -12,128 +12,108 @@ frameworkPinnedRootExports:
 ---
 # Folders, units, apps and packages
 
-Which directory and which file a piece of front-end code gets. The paths are owned by the slots of
+Which directory and which file a piece of front-end code gets. The paths are the slots of
 [hfs/slots.yaml](../../hfs/slots.yaml); this topic gives the reasons and the choices the slots leave.
 
-## FE-FOLDER-1 Responsibility directories
+## FE-FOLDER-1 Every source file sits in its tier folder
 
-Every front end is `fe/apps/<app>/` even with one app, each app declared in `hfs.json` `sides.fe.apps`, and all
-product source lives under `fe/apps/<app>/src`. In a source root: `app/` holds framework adapters;
-`features/{pages,layouts,overlays}` route-facing product composition; `components/{blocks,composites,branches,leaves}`
-product units and `components/providers` the client providers the root layout mounts; `hooks/` React hooks; `redux/`
-the app-wide store; `modules/<capability>` cohesive technical and domain capabilities. Each concern's library and home
-is [stack/fe.yaml](../../stack/fe.yaml). Only the framework-pinned files (front matter) sit directly in the source root,
-each a thin adapter; locale routing uses `proxy.ts`, never `middleware.*`.
+All product source is `fe/apps/<app>/src/` with `app/` (route files, `[locale]/providers.tsx`, `globals.css`),
+`features/{pages,layouts,overlays}/<Name>/`, `components/{blocks,composites,branches,leaves}/<Name>/`, `hooks/`,
+`redux/` and `modules/<capability>/`; only the framework-pinned files (front matter) sit beside them, and the request
+interceptor is `proxy.ts`, never `middleware.ts`.
 
-Why: one fixed shape per app keeps every front end alike and leaves no undeclared owner for helpers and buckets.
+Why: one fixed shape per app leaves no undeclared home for a helper, so nothing is written twice.
 
-- When a file such as `i18n/request.ts` or `config.ts` sits in the source root → move it to its module and point
+- When a file such as `config.ts` or `i18n/request.ts` sits in the source root → move it into its module and point
   `next.config.ts` at the new path.
 
-Enforced by: R01 HFS_SLOT_UNDECLARED, R02, R59, R91 FE_SOURCE_FORM, R94 FE_SLOT_FILE_ROLE.
+Enforced by: R01 (`slot-undeclared`), R91 (`frontend-source-layout`, `route-tree-holds-routes-only`), R54
+(`no-middleware-file`), R94 (machine `fe-slot-allows`).
 
-## FE-FOLDER-2 The file set of one unit
+## FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts`
 
-A split unit (a connected block, a feature page, layout or overlay) has `index.tsx` for the connected `X` and a
-sibling `component.tsx` for the pure `XBase`, its `XBaseProps` and `xDefaultState`; only that `index.tsx` imports
-`component.tsx`. Pure blocks, composites, branches and leaves have `index.tsx` only and never an empty twin.
-`classNames.ts` exists only when the unit owns layout classes. A composition-only feature may render an existing
-public pure component directly instead of a forwarding `component.tsx`. Sizes stay within the slot budgets.
+A connected block, page, layout or overlay keeps the connected `X` in `index.tsx` and the pure `XBase` with its
+`XBaseProps` in `component.tsx`; a composite, branch or leaf is `index.tsx` alone; `classNames.ts` exists when the unit
+writes layout classes; nothing else lives in the folder, and each file stays within its slot budget.
 
-Why: stable basenames make the connected and pure halves discoverable without forwarding twins.
+Why: stable basenames make both halves findable without opening a file, and a helper in a component folder is
+invisible to the next author who needs it.
 
-Enforced by: R02, R20 HFS_SIZE_GROWTH, R65, R92 FE_COMPONENT_API.
+Enforced by: R91 (`surface-folder-two-files-only`, `no-helper-folder-in-components`, `export-matches-folder`),
+R92 (`base-import-pair`), R65 (`component-line-budget`), R20 (`file-size-growth`).
 
-## FE-FOLDER-3 Every app has its boundaries
+## FE-FOLDER-3 `hooks/` holds hooks; everything else is a module
 
-Every app has `app/global-error.tsx`, `app/[locale]/layout.tsx`, `app/[locale]/error.tsx`,
-`app/[locale]/not-found.tsx` and a `loading.tsx` for each route group that reads data ([boundaries.md](boundaries.md)).
-A redirect from an old URL lives in `next.config` `redirects()`, never in a page.
+`hooks/` holds one hook per `use*.ts` file in its families (`swr`, `rhf`, `zustand/<store>`, `effects` with its
+`*SideEffect.tsx`, `reuseables`, `socketio`) and in `hooks/<domain>/` with an `index.ts` and at most one
+`<domain>.shared.ts` for that domain's constants, view types and pure helpers; the transport, session, toast,
+environment, routes, i18n, storage and brand each live in their `modules/<capability>`.
 
-Enforced by: R53 FE_ERROR_BOUNDARY_MISSING.
+Why: saying what a hooks folder is also says where everything else goes, so no transport hides in a hook and no helper
+is copied.
 
-## FE-FOLDER-4 Hooks are hooks; transport and capabilities live in modules
+Enforced by: R56 (`hooks-folder-holds-hooks-only`, `hooks-are-hooks`, `hook-location`), R49 (`no-env-outside-config`),
+R21 (`duplicate-code`, `duplicate-symbol`).
 
-`hooks/` holds React hooks only, one per file: `hooks/swr` (one wrapper per `modules/api` operation, plus
-`SwrSideEffects.tsx`), `hooks/rhf` (forms), `hooks/zustand/<store>`, `hooks/socketio`, `hooks/effects` (app-wide
-side effects), `hooks/reuseables` (generic hooks) and `hooks/<domain>` with at most one `<domain>.shared.ts` for that
-domain's non-hook helpers. The Apollo clients and operations, generated wire types and the axios calls live in
-`modules/api`; the session in `modules/auth`; mutation feedback in `modules/toast`; environment reads in
-`modules/config`; href builders in `modules/routes`; locale routing in `modules/i18n`; colour in `modules/brand`.
+## FE-FOLDER-4 Every app has its boundary files
 
-Why: saying what a hooks folder is also says where everything else goes, so no helper is copied and no transport
-hides in a hook.
+Every app has `app/global-error.tsx` and, under `app/[locale]/`, `layout.tsx`, `error.tsx`, `not-found.tsx` and
+`loading.tsx`, plus an `error.tsx` and a `loading.tsx` for each route group whose regions fail or wait on their own
+([boundaries.md](boundaries.md)); a redirect from an old URL lives in `next.config.ts` `redirects()`.
 
-Enforced by: R49 FE_ENV_OWNER, R56 FE_HOOKS_ARE_HOOKS, R21 HFS_DUPLICATE_CODE.
+Why: without a boundary a render error blanks the page and a slow segment shows nothing.
 
-## FE-FOLDER-6 Keep units cohesive
-
-A unit folder holds files that change for one responsibility. No `helpers/` or `utils/` bucket inside components,
-no deployment configuration read in presentation, no file split only to meet a count. A private subordinate render
-stays local; one with a stable public responsibility gets its own owner.
-
-Why: cohesion prevents helper sprawl without one-component-per-folder ceremony.
-
-Enforced by: R21, R49.
+Enforced by: R53 (machine `error-boundary-missing`), R02.
 
 ## FE-APPS-1 One independent app per audience
 
-Each app is `fe/apps/<app>/`, an npm workspace of the app root named `@<project>/<app>`, declared in `hfs.json`
-`sides.fe.apps`. It carries the required module instances of slot `fe.modules`, its own `modules/api` unless a shared
-api package owns transport, and its own default locale in `modules/i18n`.
+Each app is `fe/apps/<app>/`, a private npm workspace declared in `hfs.json` `sides.fe.apps`, with its own required
+modules (`config`, `i18n`, `routes`) and catalogs; a draft or preview of an app is a branch or a preview deployment,
+never a second app folder with the same routes.
 
-Why: independent apps build, deploy and fail separately.
+Why: independent apps build, deploy and fail separately, and a copied route tree diverges byte by byte.
 
-Enforced by: R64 FE_APP_ISOLATION.
+Enforced by: R64 (`app-isolation`), R144 (hfs `monorepo`); a draft app folder is review only.
 
-## FE-APPS-2 A draft is a branch, not an app
+## FE-PACKAGES-1 A shared package builds to `dist` and exports named symbols
 
-A design draft or preview of an app is a branch or a preview deployment, never a second app folder with the same
-routes. Two apps serving the same routes with the same files are one app.
+A shared package is `fe/packages/<pkg>/` with `package.json` whose `exports` point at `dist/*.js` and `.d.ts`, a
+`build` script (`tsc -p tsconfig.build.json`) and `src/index.ts` plus one source file per declared subpath export.
 
-Why: a copied route tree diverges byte by byte and doubles every change.
+Why: a package that ships source depends on its consumer's compiler, and a declared export with no file breaks the
+first consumer that reaches for it.
 
-## FE-APPS-3 A screen record names its app
+```json
+{
+  "name": "@<project>/i18n",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./proxy": { "types": "./dist/proxy.d.ts", "default": "./dist/proxy.js" }
+  },
+  "scripts": { "build": "tsc -p tsconfig.build.json" }
+}
+```
 
-Every UI screen record in `.starciwork` declares `app`, a name from `sides.fe.apps`, and its implementation points at
-`fe/apps/<app>`. Drawing and implementing read the app from the record, never from the screen name or route.
+Enforced by: R63 (machine `package-shape`), R30 (`package-export-bypass`), R25 (`dead-exports`).
 
-Enforced by: R64.
+## FE-PACKAGES-2 A shared package holds no visual
 
-## FE-PACKAGES-1 A package builds to `dist`
+A shared front-end package holds transport, the i18n stack, catalogs, types or pure data and logic, never a component,
+a class string, a colour or a world lifecycle; visuals two apps share belong to the grammar.
 
-A shared package is `fe/packages/<pkg>/`, declared in the root `workspaces`, with `package.json` whose `exports`
-point at `dist`, `src/index.ts` and `tsconfig.json`. Its `build` script produces `dist`; consumers import the built
-output.
+Why: a second visual owner beside the grammar is a fork of the design system.
 
-Why: a package that ships source depends on the consumer's compiler and cannot be versioned or cached as a unit.
+Enforced by: R91 (`monorepo-tier-belongs-to-its-side`), R63 (machine `package-shape`).
 
-Enforced by: R63 FE_PACKAGE_SHAPE.
-
-## FE-PACKAGES-2 Named exports, no dead unit, no visuals
-
-`src/index.ts` re-exports named symbols only; every export has a consumer. A shared package holds transport, i18n
-catalogs, types or pure logic, never a visual component, colour or world lifecycle: visuals two apps share belong to
-the grammar.
-
-Why: explicit exports keep the surface reviewable, and a second visual owner beside the grammar is a fork.
-
-Enforced by: R25 HFS_UNUSED_EXPORT, R63.
-
-## FE-PACKAGES-3 One version of every dependency
-
-A dependency has one exact version across the root and workspace manifests, equal to [stack/pins.yaml](../../stack/pins.yaml),
-with root `overrides` for the framework and the grammar; no nested copy of the grammar exists. A version is raised in
-the pins first, then each app moves in its own upgrade.
-
-Why: two versions of one design system in one bundle give one component two behaviours.
-
-## FE-PACKAGES-4 Dependencies follow the declared stack
+## FE-PACKAGES-3 One version of every dependency, from the declared stack
 
 Every front-end dependency is a package of [stack/fe.yaml](../../stack/fe.yaml) or is declared in `hfs.json`
-`fe.extraPackages` with a reason, and every product Next app declares the stack's `core` runtime packages. Build tools
-may be installed once at the app root.
+`sides.fe.extraPackages` with a reason, at the one exact version of [stack/pins.yaml](../../stack/pins.yaml) across the
+root and workspace manifests.
 
-Why: a declared stack keeps each concern on one library and makes an extra dependency an explicit decision.
+Why: two versions of one library in one bundle give one component two behaviours, and an undeclared dependency is a
+second library for a concern that already has one.
 
-Enforced by: R244 FE_STACK_FORBIDDEN, R288 FE_STACK_UNLISTED.
+Enforced by: R244 (`fe-stack-import`), R288 (hfs `fe-stack-allowlist`); the pins are review only.

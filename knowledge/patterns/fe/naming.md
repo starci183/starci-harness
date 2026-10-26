@@ -3,67 +3,73 @@ slots: []
 ---
 # Naming
 
-What a front-end folder, export, type, constant or file is called. A name carries its slot and its role, so a reader
-finds a part without opening the file and a duplicate shows up by name.
+What a front-end folder, export, contract, constant or file is called. Identifier case, named exports and the route
+file's `export default Page` are [shared naming](../shared/naming.md) SHARED-NAMING-1..3.
 
 ## FE-NAMING-1 The folder is the export
 
-A unit's folder name is its public export. A split unit exports `X` from `index.tsx` and `XBase` from `component.tsx`;
-only `X` leaves the folder. A lower tier without a world owner exports `X` alone. A route file declares a local
-`const Page` (or `Layout`, `Loading`, `NotFound`, `ErrorBoundary`) and ends `export default Page`; every other export
-is a named `export const`.
+A unit folder `X` exports `X` from `index.tsx` and, when split, `XBase` from `component.tsx`; only `X` leaves the
+folder, and a route file's local component is named after its slot (`Page`, `Layout`, `Template`, `Loading`,
+`ErrorBoundary`, `GlobalError`, `NotFound`).
 
-Why: matching names make ownership discoverable, and `Base` marks the pure half only its own `index.tsx` imports.
+Why: the path predicts the name, and `Base` marks the pure half that only its own `index.tsx` imports.
 
-Enforced by: R91 FE_SOURCE_FORM.
+Enforced by: R91 (`export-matches-folder`, `route-slot-fixed-name`, `no-runtime-namespace`), R92 (`base-import-pair`).
 
-## FE-NAMING-2 Contracts and their parts
+## FE-NAMING-2 A unit's contract has fixed part names
 
-`XProps` is the connected input; `XBaseProps` is `{ state, props, on }`; `XState` the union of drawn shapes; `XData`,
-`XActions` and `XLabels` its parts; `xDefaultState` the skeleton's shape; `X_STATES` the exported inventory. One
-public entry never exports two shapes under one `XProps` name. No `XState` member names a data status (pending,
-loading, failed, empty, forbidden, closed).
+`XProps` is the connected input; `XBaseProps` is `{ state?, props, on? }`; `XState` names the drawn shapes; a pure
+half's actions are bare verbs inside `on` (`on.retry`, `on.select`), while a flat prop or a local handler that a
+reader triggers is `onX`, never `handleX`; a boolean field starts with `is` or `has`.
 
-Why: a predictable vocabulary lets a reader find the part they need.
+Why: a predictable vocabulary lets a reader find the part they need, and `onX` keeps one name from the declaration to
+the call site.
 
-Enforced by: R92 FE_COMPONENT_API.
+Enforced by: R92 (`base-props-atom`, `no-data-status-shape`), R91 (`handler-on-prefix`); the `is`/`has` prefix is review
+only.
 
-## FE-NAMING-3 Class-name exports
+## FE-NAMING-3 Class-name exports are UPPER_SNAKE constants built with `cn`
 
-`classNames.ts` exports one role as `xClassName`, a map of roles as `xClassNames` (`as const`) and a call-time
-variant as `getXClassName(...)`. The strings hold layout classes only ([ui.md](ui.md) FE-CSS-1).
+`classNames.ts` exports one constant per layout role, `<ROLE>_CLASS_NAME` built with `cn` from single utility
+tokens, a map of roles as `<ROLE>_CLASS_NAMES` (`as const`), and a call-time variant as `<role>ClassNameOf(...)`.
 
-Why: a named export per role keeps class strings in one place and out of the component body.
+Why: a named constant per role keeps class strings out of the markup and lets a reader find every box a unit owns in
+one file.
 
-## FE-NAMING-4 Hooks, operations and cache keys
+```ts
+import { cn } from "@heroui/react"
 
-Every authored hook lives under `hooks/`, starts with `use`, names the lifecycle it owns and is the only export of a
-file named after it. Data hooks: `hooks/swr/api/graphql/queries/useQuery<X>Swr.ts`,
-`.../mutations/useMutate<X>Swr.ts`, `.../subscriptions/useSubscribe<X>Swr.ts`, REST
-`useGet|usePost|usePut|usePatch|useDelete<X>Swr`; keys `QUERY_<X>_SWR_KEY`, `MUTATE_<X>_SWR_KEY`,
-`SUBSCRIBE_<X>_SWR_KEY`. Forms: `hooks/rhf/use<X>Form.ts`. Operations: `modules/api/graphql/queries/query-<x>.ts`
-exporting `query<X>`, `.../mutations/mutation-<x>.ts` exporting `mutate<X>`. Generated names stay the generator's.
+/** The form column, capped to the form measure. */
+export const FORM_CLASS_NAME = cn("flex", "max-w-md", "flex-col", "gap-4")
 
-Why: the name says whether a file is a hook, an operation or a shared helper.
+/** The action row under a form. */
+export const ACTIONS_CLASS_NAME = cn("flex", "flex-wrap", "items-center", "gap-3")
+```
 
-Enforced by: R56, R285 FE_SWR_OUTSIDE_FAMILY.
+Enforced by: R92 (`class-names-in-colocated-file`, `no-inline-class-name`, `cn-arguments-are-single-tokens`); the
+export names are review only.
 
-## FE-NAMING-5 Constants and vocabularies
+## FE-NAMING-4 Hooks, operations and cache keys name their family
 
-Frozen module values are `UPPER_SNAKE`. Component vocabulary is a string-literal union, never an enum; wire and
-provider enums stay in the transport adapter. A name a framework mandates in a pinned file keeps the framework's
-spelling ([folder.md](folder.md) front matter).
+A query is `modules/api/graphql/queries/query-<x>.ts` exporting `query<X>`, a mutation `mutations/mutation-<x>.ts`
+exporting `mutate<X>`, a stream `sse/<area>/stream-<channel>.ts` exporting `stream<Channel>`; their hooks are
+`hooks/swr/api/graphql/queries/useQuery<X>Swr.ts`, `.../mutations/useMutate<X>Swr.ts`, REST
+`use{Get,Post,Put,Patch,Delete}<X>Swr` and `.../subscriptions/useSubscribe<X>Swr.ts`, each exporting its key
+`QUERY_<X>_SWR_KEY = "QUERY_<X>_SWR"` (`MUTATE_`, `SUBSCRIBE_`); a form hook is `hooks/rhf/use<X>Form.ts`.
 
-## FE-NAMING-6 Handlers, booleans, local helpers
+Why: the name says whether a file is an operation, a cache owner or a form, and which operation a hook wraps.
 
-Actions on the pure half are bare verbs inside `on` (`on.send`, never `onSend`). Boolean props start with `is` or
-`has`. Local helpers are camelCase; local sub-renders are PascalCase with their own props type.
+Enforced by: R56 (`hooks-folder-holds-hooks-only`), R285 (`swr-only-in-family`, `operations-only-in-swr-hooks`);
+the operation and key names are review only.
 
-Why: the pure half describes what can happen, not how the owner names its callbacks.
+## FE-NAMING-5 File and folder case follows the folder kind
 
-## FE-NAMING-7 File names outside component folders
+Component and feature folders are PascalCase; hook files equal their export (`useActiveWorkspace.ts`); a hook domain
+folder is camelCase (`hooks/bookingDesk/` with `bookingDesk.shared.ts`); module folders and files are kebab-case
+(`modules/work-threads/`, `auth-routes.ts`, `put-presigned.ts`); generated names stay the generator's.
 
-Hook files are camelCase equal to the export (`useSessionToken.ts`); module files are kebab-case
-(`create-client.ts`, `sales-summary.mapper.ts`).
+Why: the case tells a reader the kind of file before they open it, and one spelling per kind stops two folders for
+one domain.
 
-Enforced by: R91.
+Enforced by: R91 (`export-matches-folder`, `no-second-language-in-path`), R56; the domain and module case is review
+only.

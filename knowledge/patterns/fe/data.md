@@ -3,40 +3,91 @@ slots: [fe.hooks.swr, fe.hooks.zustand, fe.redux, fe.hooks.effects, fe.component
 ---
 # Data and state
 
-How a component reads and writes data and which store owns which state. Libraries are [stack/fe.yaml](../../stack/fe.yaml).
+How a unit reads and writes server data and which store owns which state. Libraries are
+[stack/fe.yaml](../../stack/fe.yaml).
 
-## FE-DATA-SWR One SWR hook per operation; components call hooks only
+## FE-DATA-SWR One SWR hook per operation, and it returns the feature's data
 
-Each `modules/api` operation has one `hooks/swr` hook ([naming.md](naming.md) FE-NAMING-4, [function.md](function.md)
-FE-FUNCTION-6). A query hook may put its result into a store slice; a mutation revalidates the keys it changes on
-success. App-wide queries with no component consumer run once in `SwrSideEffects.tsx`, mounted by
-`components/providers`. A status that changes on the server is refreshed by exactly one door: SWR `refreshInterval`,
-a push ([realtime.md](realtime.md)), never both and never a hand-written timer. Heavy work is a mutation that enqueues
-a back-end job, followed through a status query or a push. Components, features and forms never call `modules/api`,
-never fetch in an effect.
+Each `modules/api` operation has one `hooks/swr` wrapper: a query uses `useSWR` (an on-demand read `useSWRMutation`),
+passes SWR's abort `signal` to the operation, throws when the answer has no data and returns the field the feature
+reads; a status that changes on the server refreshes by exactly one door, an SWR `refreshInterval` that returns `0`
+once settled or a push ([realtime.md](realtime.md)); no unit fetches in an effect or runs its own timer.
 
-Why: cache identity, deduplication and revalidation are one decision per resource; a component that calls the
-transport repeats it and drifts.
+Why: cache identity, deduplication and revalidation are one decision per resource; a unit that calls the transport
+repeats it and drifts.
 
-Enforced by: R50, R65, R285 FE_SWR_OUTSIDE_FAMILY.
+```ts
+/** Cache identity of the knowledge read; the workspace id is part of the key. */
+export const QUERY_KNOWLEDGE_SWR_KEY = "QUERY_KNOWLEDGE_SWR"
+
+/** Reads the knowledge sources, polling only while one is still being read. */
+export const useQueryKnowledgeSwr = () => {
+    const key = useWorkspaceKey(QUERY_KNOWLEDGE_SWR_KEY, [])
+    return useSWR(key, async ({ signal }: { signal?: AbortSignal } = {}) => {
+        const result = await queryKnowledge({ signal })
+        if (!result.data) throw new Error("knowledge answered no data")
+        return result.data.knowledge
+    }, { refreshInterval: (data) => (data?.some((one) => one.status === "reading") ? 4_000 : 0) })
+}
+```
+
+Enforced by: R285 (`swr-only-in-family`, `operations-only-in-swr-hooks`), R50 (`no-data-fetch-in-effect`), R65
+(`no-hand-rolled-polling`).
+
+## FE-DATA-KEY A key carries every identity that changes the answer
+
+A key is `[NAME, ...identities]` built by the app's key helpers (the tenant id read from the store, then the
+request's own arguments), `null` while an input is missing; the viewer is isolated by the SWR cache the providers key
+by viewer id ([boundaries.md](boundaries.md) FE-BOUNDARY-3), and a stream key also carries the viewer id.
+
+Why: cache identity is product behaviour; a key without the tenant or the viewer shows one workspace's or one user's
+data to the next.
+
+Enforced by: R50 (`swr-data-lifecycle`); the use of the key helpers is review only.
+
+## FE-DATA-COMMAND A user-started write runs through a domain command hook
+
+A block calls a domain hook (`hooks/<domain>/use<X>Commands.ts`) that triggers the `useMutate<X>Swr` wrappers through
+`useGraphQLWithToast`, returns `undefined` on failure, and on success revalidates exactly the reads the write changed
+(the bound `mutate` of their query hooks, or a key matcher on the shared name and tenant id).
+
+Why: one place per write owns its feedback and the reads it makes stale, so no screen shows old data after a save.
+
+```ts
+const runGraphQL = useGraphQLWithToast()
+const saveProfile = useCallback(async (name: string) => {
+    const saved = await runGraphQL(() => profile.trigger({ name }), { successMessage: t("profileSaved") })
+    if (saved === undefined) return false
+    await Promise.all([refreshAccount(), refreshWorkspaces()])
+    return true
+}, [runGraphQL, profile, t, refreshAccount, refreshWorkspaces])
+```
+
+Enforced by: R50 (`swr-data-lifecycle`), R286 (`no-copy-in-call`); calling a mutation wrapper from a block is review
+only.
 
 ## FE-STATE-1 Each kind of state has one owner
 
 | State | Owner |
 |---|---|
 | server data | its SWR hook (the cache) |
-| shared by several features (the signed-in user, the entity selected from the route, entities pushed by a socket) | a slice of `redux/slices`, read with the typed `useAppSelector` |
-| one feature's UI, wizard or editor state read by several of its components | one store in `hooks/zustand/<store>` |
-| one component's own state | `useState` in that component |
+| app-wide identity (the viewer id, the active tenant id) | a slice of `redux/slices`, read with `useAppSelector`, written by a `hooks/effects` side effect |
+| one feature's UI, wizard or editor state shared by several of its units | one store `hooks/zustand/<store>/store.ts` |
+| one unit's own state | `useState` in that unit |
 
-React context is not a store. A zustand store holds no server data and no app-wide state; redux holds no
-feature-local state.
+React context is not a store; zustand holds no server data and no app-wide state; redux holds no feature-local state.
 
 Why: one owner per kind keeps shared state traceable and the global store small.
 
-## FE-STORAGE Browser storage has one owner
+Enforced by: R65 (`unit-hook-budget`); the owner per kind is review only.
 
-Browser persistence goes through `modules/storage/{local,session}` with an enum of keys and typed values, serialized
-by `modules/superjson`. No component, hook or store touches `localStorage`, `sessionStorage` or `document.cookie`.
+## FE-STORAGE Browser storage goes through `modules/storage`
 
-Why: keys, types and serialization live in one place.
+Persistence uses the typed `LocalStorage` of `modules/storage` (an enum of keys, values serialized by
+`modules/superjson`, every access guarded for the server and a full quota), the only file that touches `localStorage` or
+`sessionStorage`; a cookie is read only by the module that owns it (the locale cookie by the locale link and the
+proxy, the session by `modules/auth`).
+
+Why: keys, types, serialization and the server guard live in one place.
+
+Enforced by: R55 (`web-storage-only-in-modules`) for code outside `modules/`; inside `modules/` review only.

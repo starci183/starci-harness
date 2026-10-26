@@ -3,65 +3,79 @@ slots: [fe.app, fe.route, fe.feature, fe.components, fe.hooks]
 ---
 # Boundaries
 
-Which boundary handles a render failure, where the client boundary sits, who writes a cookie, and how a persistent
-layout hosts overlays chosen by the URL.
+Which boundary handles a render failure or a wait, where the client boundary sits, where the client providers live,
+and who writes a cookie.
 
-## FE-BOUNDARY-1 Error, not-found and loading boundaries
+## FE-BOUNDARY-1 Error, not-found and loading files mount a feature owner
 
-Every app has `app/global-error.tsx`, `app/[locale]/error.tsx`, `app/[locale]/not-found.tsx` and
-`app/[locale]/layout.tsx`, and a `loading.tsx` for every route group that reads data, drawing that group's skeleton.
-The error boundaries are client components (Next requires it), follow the installed Next props contract, and their
-retry re-runs the failed read. `Suspense` never has a `null` fallback.
+`app/global-error.tsx` and every `error.tsx` are `"use client"` and render one `*ErrorPage` feature owner with
+`onRetry={props.reset}`; every `loading.tsx` renders one `*LoadingPage` that draws that segment's skeleton; every
+`not-found.tsx` renders one `*NotFoundPage`; a `Suspense` always has a visible fallback.
 
-Why: without a boundary a render error blanks the page, and a group with no loading file shows nothing while it waits.
+Why: without a boundary a render error blanks the page; a boundary that writes its own markup is a second look of the
+same failure.
 
-Enforced by: R53 FE_ERROR_BOUNDARY_MISSING.
+```tsx
+"use client"
 
-## FE-BOUNDARY-2 A boundary renders a status, never an error code
+import { AppErrorPage } from "@/features/pages/AppErrorPage"
 
-A boundary and a connected block turn a read or a caught error into a resource with `toSlot` and render it by the
-status recipe ([README](README.md#data-status-of-a-region)); they never read `error.status`.
+type ErrorProps = { readonly reset: () => void }
 
-Enforced by: R51, R92.
+/** Catches a render failure below the locale layout and offers to render the segment again. */
+const ErrorBoundary = (props: ErrorProps) => <AppErrorPage onRetry={props.reset} />
 
-## FE-BOUNDARY-3 Server first
+export default ErrorBoundary
+```
 
-Route files and layouts are server components. `"use client"` appears only in the `index.tsx` of a block or overlay
-with interaction or client data hooks, in a leaf with intrinsic interaction, and in the error boundaries. A server
-page or feature owner renders a client block or overlay entry without becoming a client component. Catalogs are split
-by namespace, and a client component receives only its picked namespaces. `force-dynamic` is never set on a client page.
+Enforced by: R53 (`no-null-suspense-fallback`; machine `error-boundary-missing`), R54 (`route-files-thin`), R91
+(`route-slot-fixed-name`).
 
-Why: a client layout ships the whole subtree and catalog to every page.
+## FE-BOUNDARY-2 Server first; `"use client"` only where a slot allows it
 
-Enforced by: R55 FE_CLIENT_BOUNDARY, R60.
+Route files, page and layout owners and pure halves are server components; `"use client"` sits on a connected block's
+`index.tsx`, an overlay entry, a leaf with intrinsic interaction, an error boundary, `app/[locale]/providers.tsx`,
+`redux/ReduxProvider.tsx`, `modules/toast/toast.tsx` and a `hooks/effects/*SideEffect.tsx`; a client file never imports
+`next/headers`, `server-only` or a Node built-in, and a module that does starts with `import "server-only"`.
 
-## FE-BOUNDARY-4 Cookies are written by the server, with stated attributes
+Why: a client layout ships its whole subtree and catalog to every page, and a server module reached from the client
+breaks the build or leaks a secret.
 
-The session cookie is written by the back end only (an HttpOnly cookie of its auth endpoint) or held by the identity
-client in `modules/auth`. A cookie the front end writes itself (a locale preference in `proxy.ts`) uses one `as const`
-options constant in the owning module, stating `httpOnly` literally, `secure` from `modules/config` and `sameSite`
-`lax` or `strict`. A session token never reaches page script outside `modules/auth`.
+Enforced by: R55 (`use-client-only-at-boundary`, `client-no-server-import`, `server-module-marks-server-only`,
+`client-reaches-server`).
+
+## FE-BOUNDARY-3 The client providers are one file under the locale layout
+
+`app/[locale]/providers.tsx` nests, once, the next-intl client provider, the redux provider, the vendor i18n and
+router providers, the theme provider, the grammar root, the SWR configuration keyed by the viewer, the toast region and
+the app-wide side effects (`features/layouts/SideEffectsLayout`, which mounts the `hooks/effects` components); the
+locale layout renders it around its children.
+
+Why: one provider stack per app makes the client runtime readable in one file, and keying the SWR cache by the viewer
+drops one user's cached data when another signs in.
+
+```tsx
+<NextIntlClientProvider locale={props.locale} messages={props.messages} timeZone={props.timeZone}>
+    <ReduxProvider>
+        <GrammarProviders>
+            <SWRConfig key={viewerId ?? "signed-out"} value={{ ...READ_DEFAULTS, provider: () => new Map() }}>
+                {props.children}
+                <ToastProvider />
+                <SideEffectsLayout />
+            </SWRConfig>
+        </GrammarProviders>
+    </ReduxProvider>
+</NextIntlClientProvider>
+```
+
+Enforced by: R55 (`use-client-only-at-boundary`); the composition is review only.
+
+## FE-BOUNDARY-4 A cookie the front end writes states its attributes
+
+The session cookie is written by the identity client of `modules/auth` or by the back end; a cookie the front end
+writes itself (the locale in `proxy.ts`, a remembered workspace) passes one `as const` options constant of its owning
+module with a literal `httpOnly`, `secure` from `modules/config` and `sameSite` `lax` or `strict`.
 
 Why: a cookie left to defaults is readable by any script and rides cross-site requests.
 
-Enforced by: R107 FE_COOKIE_ATTRIBUTES.
-
-## FE-BOUNDARY-5 The layout overlay host
-
-A server layout that hosts overlays chosen by the URL imports its candidate overlay entries and a client
-`OverlayRouteHost` overlay, and passes the candidates to it as rendered nodes, never as server-created callbacks. The
-host owns `"use client"`, reads the route state through a `hooks/overlays` hook (locale-aware pathname and search
-params) and renders the pure `components/branches/OverlayHost`, which receives the scalar selection and the nodes and
-imports nothing from features. The search-parameter reader sits in `Suspense` with a visible, translated fallback.
-
-```
-features/layouts/<Shell>/index.tsx        imports OverlayRouteHost and each candidate overlay
-  -> features/overlays/OverlayRouteHost   "use client"; useOverlayRouteState()
-    -> components/branches/OverlayHost     pure; mounts the selected node
-      -> features/overlays/<Name>          rendered composition, not an import
-```
-
-Why: a persistent layout mounts URL-selected overlays without turning every page into a client component, and
-passing rendered nodes keeps the component graph pointing down.
-
-Enforced by: R26, R55, R92.
+Enforced by: R107 (`response-cookie-attributes`).
