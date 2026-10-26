@@ -127,6 +127,25 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
 
 The rights are enforced from each verb's `effect` and `roles`. The seat runner tells the CLI its role, and a verb refuses a role it does not list.
 
+### Changing a running workflow (amend)
+
+Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edited or trimmed through the Supervisor. Each change rebuilds the graph and decides what keeps running.
+- **Entry:** `starci workflow amend <workflow> --change <file.json>`.
+  - The change is a list of entries, each `stop` (`graceful` or `hard`), `pause`, `resume`, `add`, `edit` or `remove`, written against the goal's requirements.
+  - The change goes to the Supervisor as a task contract, and the Supervisor hands it to that workflow's Kernel.
+- **Kernel replan:**
+  1. Freeze: it sends no new task, and running tasks keep running.
+  2. It applies the change to the goal, which becomes goal version n+1.
+  3. It builds the new graph and diffs it against the old one by each task's **contract hash** (context, input, expectedOutput and the hashes of its dependencies). Each old task is classified:
+     - keep: done and unchanged, so its result is reused;
+     - continue: running and unchanged;
+     - redo: its contract or a dependency changed, so it is cancelled and queued again;
+     - add: new in the goal;
+     - drop: no longer in the goal, so it is cancelled and its history kept.
+  4. It records the graph version and the classification, then resumes dispatch from the new graph.
+- **Owner gate:** when a replan drops or redoes more than the owner's threshold, the Kernel returns the plan to the Supervisor, which asks the owner before resuming.
+- **Stop:** `graceful` dispatches nothing new and waits for running tasks. `hard` cancels every seat at once with the `cancel` command.
+
 ### Storage: one SQLite file per project
 There are four tables, instead of about 50 runtime tables and 90 machine tables:
 - `seats`: who runs where, plus the last pong;
