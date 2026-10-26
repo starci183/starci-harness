@@ -259,55 +259,59 @@ const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched:
     }
 }
 
-/** Records how a launch ended and moves the task: ready runs, a certain failure goes back to the queue, unknown waits for a resume. */
-const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
+type LaunchOf<Kind extends Launched["kind"]> = Extract<Launched, { readonly kind: Kind }>
+
+/** A launch Orca certainly did not start: the worker is closed, the attempt ends and the task goes back to the queue. */
+const settleFailed = async (at: Launching, launched: LaunchOf<"failed">): Promise<never> => {
+    const { db, binary, cwd, task, seat } = at
+    const attemptId = launched.record.attempt
+    const closed = launched.dispatchId === null ? null : await closeWorker(binary, launched.dispatchId, cwd, launched.terminal)
+    const ours = inTransaction(db, () => {
+        endAttempt(db, attemptId, "launch-failed")
+        if (closed !== null) noteTab(db, seat.id, closed)
+        recordSeat(db, seat.id, {
+            status: closed === null || closed.settled ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNSETTLED,
+            ...(launched.dispatchId === null ? {} : { handle: launched.dispatchId }),
+            terminal: launched.terminal,
+            facts: { error: launched.error.message, cleanup: closed },
+        })
+        recordEvent(db, "seat-launch-failed", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, cleanup: closed })
+        return stillOurs(db, task.id, attemptId)
+    })
+    const after = ours ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
+    throw new Refusal(launched.error.code, `${launched.error.message}${closeNote(closed)}\nattempt ${attemptId} closed as launch-failed; ${after}`)
+}
+
+/** A launch whose outcome Orca did not tell: the task waits as effect_unknown for a resume, unless it left the attempt meanwhile. */
+const settleUnknown = async (at: Launching, launched: LaunchOf<"unknown">): Promise<never> => {
     const { db, binary, cwd, task, seat } = at
     const { record } = launched
     const attemptId = record.attempt
-    reportLaunch(db, task.id, record.start.agent, launched)
-    const base = { task: task.id, dryRun: false, resumed: at.resumed, brief: at.files.brief, contract: at.files.contract, orca: binary, argv: argvOf(binary, record, launched.runId), attempt: attemptId, runId: launched.runId, requestId: record.start.retryRequest, kernel: at.kernel }
-
-    if (launched.kind === "failed") {
-        const closed = launched.dispatchId === null ? null : await closeWorker(binary, launched.dispatchId, cwd, launched.terminal)
-        const ours = inTransaction(db, () => {
-            endAttempt(db, attemptId, "launch-failed")
-            if (closed !== null) noteTab(db, seat.id, closed)
-            recordSeat(db, seat.id, {
-                status: closed === null || closed.settled ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNSETTLED,
-                ...(launched.dispatchId === null ? {} : { handle: launched.dispatchId }),
-                terminal: launched.terminal,
-                facts: { error: launched.error.message, cleanup: closed },
-            })
-            recordEvent(db, "seat-launch-failed", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, cleanup: closed })
-            return stillOurs(db, task.id, attemptId)
-        })
-        const after = ours ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
-        throw new Refusal(launched.error.code, `${launched.error.message}${closeNote(closed)}\nattempt ${attemptId} closed as launch-failed; ${after}`)
+    const handle = launched.dispatchId === null ? {} : { handle: launched.dispatchId }
+    const ours = inTransaction(db, () => {
+        recordSeat(db, seat.id, { status: SEAT_LAUNCH_UNKNOWN, ...handle, terminal: launched.terminal, facts: { error: launched.error.message } })
+        recordEvent(db, "seat-launch-unknown", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, dispatchId: launched.dispatchId, request: record.start.retryRequest })
+        const mine = stillOurs(db, task.id, attemptId)
+        if (mine && getTask(db, task.id).status === "running") setStatus(db, task.id, "effect_unknown")
+        return mine
+    })
+    if (!ours && launched.dispatchId !== null) {
+        const terminal = launched.terminal ?? (await workerShow(binary, launched.dispatchId, cwd).then((shown) => shown.terminal, () => null))
+        const closed = await closeWorker(binary, launched.dispatchId, cwd, terminal)
+        noteTab(db, seat.id, closed)
+        recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNKNOWN, facts: { closed, orphaned: true } })
     }
+    const next = ours
+        ? `task ${task.id} is effect_unknown and keeps its leases; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
+        : `task ${task.id} is ${getTask(db, task.id).status}; seat ${seat.id} is left ${getSeat(db, seat.id).status}`
+    throw new Refusal("ORCA_OUTCOME_UNKNOWN", `${launched.error.message}\nthe launch of ${task.id} may or may not have started a worker; unknown is not dead. ${next}`)
+}
 
-    if (launched.kind === "unknown") {
-        const handle = launched.dispatchId === null ? {} : { handle: launched.dispatchId }
-        const ours = inTransaction(db, () => {
-            recordSeat(db, seat.id, { status: SEAT_LAUNCH_UNKNOWN, ...handle, terminal: launched.terminal, facts: { error: launched.error.message } })
-            recordEvent(db, "seat-launch-unknown", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, dispatchId: launched.dispatchId, request: record.start.retryRequest })
-            const mine = stillOurs(db, task.id, attemptId)
-            if (mine && getTask(db, task.id).status === "running") setStatus(db, task.id, "effect_unknown")
-            return mine
-        })
-        if (!ours && launched.dispatchId !== null) {
-            const terminal = launched.terminal ?? (await workerShow(binary, launched.dispatchId, cwd).then((shown) => shown.terminal, () => null))
-            const closed = await closeWorker(binary, launched.dispatchId, cwd, terminal)
-            noteTab(db, seat.id, closed)
-            recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNKNOWN, facts: { closed, orphaned: true } })
-        }
-        const next = ours
-            ? `task ${task.id} is effect_unknown and keeps its leases; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
-            : `task ${task.id} is ${getTask(db, task.id).status}; seat ${seat.id} is left ${getSeat(db, seat.id).status}`
-        throw new Refusal("ORCA_OUTCOME_UNKNOWN", `${launched.error.message}\nthe launch of ${task.id} may or may not have started a worker; unknown is not dead. ${next}`)
-    }
-
-    const { started, runId } = launched
-    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, terminal: started.terminal, runId, facts: { orcaTask: started.taskId, parent: record.start.parent ?? null, effective: started.effective } })
+/** What worker-show attested of a started worker, against what the launch asked for. */
+const attestLaunch = async (at: Launching, launched: LaunchOf<"ready">) => {
+    const { db, binary, cwd, task } = at
+    const { started, record } = launched
+    const attemptId = record.attempt
     // Attest the launch from worker-show; an Orca that does not answer proves nothing about the worker, so it is only noted.
     const shown: WorkerShown | string = await workerShow(binary, started.dispatchId, cwd).catch((error: unknown) => messageOf(error))
     const effective = typeof shown === "string" ? started.effective : (shown.effective ?? started.effective)
@@ -317,28 +321,44 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     const ours = stillOurs(db, task.id, attemptId)
     // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
     const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
+    return { shown, effective, attested, requested, mismatch, ours, terminal }
+}
 
-    if (mismatch || !ours) {
-        const closed = await closeWorker(binary, started.dispatchId, cwd, terminal)
-        noteTab(db, seat.id, closed)
-        const outcome = mismatch ? "model-mismatch" : "orphaned"
-        const rolled = inTransaction(db, () => {
-            db.prepare("UPDATE attempts SET agent = COALESCE(?, agent), model = COALESCE(?, model) WHERE id = ?").run(attested.agent, attested.model, attemptId)
-            endAttempt(db, attemptId, outcome)
-            recordSeat(db, seat.id, { status: seatAfterClose(closed), facts: { closed, attested, reason: outcome } })
-            recordEvent(db, `seat-${outcome}`, task.id, { seat: seat.id, attempt: attemptId, requested: { agent: requested.agent, model: requested.model }, attested, closed })
-            return stillOurs(db, task.id, attemptId)
-        })
-        if (mismatch) {
-            const after = rolled ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
-            throw new Refusal(
-                "MODEL_MISMATCH",
-                `requested ${requested.agent} ${requested.model}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
-            )
-        }
-        throw new Refusal("TASK_LEFT_DURING_LAUNCH", `task ${task.id} became ${getTask(db, task.id).status} while its worker was launching; the worker was closed${closeNote(closed)}`)
+/** A worker that launched wrong or whose task moved on: it is closed and the launch is refused. */
+const abandonReady = async (at: Launching, launched: LaunchOf<"ready">, attestation: Awaited<ReturnType<typeof attestLaunch>>): Promise<never> => {
+    const { db, binary, cwd, task, seat } = at
+    const { started } = launched
+    const attemptId = launched.record.attempt
+    const { attested, requested, mismatch, terminal } = attestation
+    const closed = await closeWorker(binary, started.dispatchId, cwd, terminal)
+    noteTab(db, seat.id, closed)
+    const outcome = mismatch ? "model-mismatch" : "orphaned"
+    const rolled = inTransaction(db, () => {
+        db.prepare("UPDATE attempts SET agent = COALESCE(?, agent), model = COALESCE(?, model) WHERE id = ?").run(attested.agent, attested.model, attemptId)
+        endAttempt(db, attemptId, outcome)
+        recordSeat(db, seat.id, { status: seatAfterClose(closed), facts: { closed, attested, reason: outcome } })
+        recordEvent(db, `seat-${outcome}`, task.id, { seat: seat.id, attempt: attemptId, requested: { agent: requested.agent, model: requested.model }, attested, closed })
+        return stillOurs(db, task.id, attemptId)
+    })
+    if (mismatch) {
+        const after = rolled ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
+        throw new Refusal(
+            "MODEL_MISMATCH",
+            `requested ${requested.agent} ${requested.model}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
+        )
     }
+    throw new Refusal("TASK_LEFT_DURING_LAUNCH", `task ${task.id} became ${getTask(db, task.id).status} while its worker was launching; the worker was closed${closeNote(closed)}`)
+}
 
+/** A worker that launched as asked: the attempt is attested, the seat records the worker and its tab is titled. */
+const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omit<SeatStartData, "seat" | "dispatchId" | "effective" | "attested">): Promise<VerbResult<SeatStartData>> => {
+    const { db, binary, cwd, task, seat } = at
+    const { started, runId, record } = launched
+    const attemptId = record.attempt
+    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, terminal: started.terminal, runId, facts: { orcaTask: started.taskId, parent: record.start.parent ?? null, effective: started.effective } })
+    const attestation = await attestLaunch(at, launched)
+    if (attestation.mismatch || !attestation.ours) return abandonReady(at, launched, attestation)
+    const { shown, effective, attested, requested, terminal } = attestation
     const seatRow = inTransaction(db, () => {
         db.prepare("UPDATE attempts SET agent = COALESCE(?, agent), model = COALESCE(?, model) WHERE id = ?").run(attested.agent, attested.model, attemptId)
         recordEvent(db, "attempt-attested", attemptId, { requested: { agent: requested.agent, model: requested.model, effort: requested.effort ?? null }, attested, attestation: typeof shown === "string" ? shown : "worker-show" })
@@ -353,6 +373,23 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     const model = attested.model ?? `${requested.model} (not attested)`
     const under = requested.parent === undefined ? "" : ` under the Kernel task ${requested.parent}`
     return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}${under}; brief ${at.files.brief}` }
+}
+
+/** Records how a launch ended and moves the task: ready runs, a certain failure goes back to the queue, unknown waits for a resume. */
+const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
+    const { db, binary } = at
+    const { record } = launched
+    reportLaunch(db, at.task.id, record.start.agent, launched)
+    switch (launched.kind) {
+        case "failed":
+            return settleFailed(at, launched)
+        case "unknown":
+            return settleUnknown(at, launched)
+        case "ready": {
+            const base = { task: at.task.id, dryRun: false, resumed: at.resumed, brief: at.files.brief, contract: at.files.contract, orca: binary, argv: argvOf(binary, record, launched.runId), attempt: record.attempt, runId: launched.runId, requestId: record.start.retryRequest, kernel: at.kernel }
+            return settleReady(at, launched, base)
+        }
+    }
 }
 
 /**
@@ -422,7 +459,7 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
 }
 
 /** The statuses from which a launch may be resumed: unknown, or a running task whose launch process died before Orca answered. */
-const RESUMABLE: readonly TaskStatus[] = ["effect_unknown", "running"]
+const RESUMABLE: ReadonlySet<TaskStatus> = new Set<TaskStatus>(["effect_unknown", "running"])
 
 /**
  * Replays the recorded launch of a task whose outcome is unknown, under the same request ids: Orca applies a request id at most
@@ -439,11 +476,11 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             const attempt = latestAttempt(db, task.id)
             const seat = seatsOfTask(db, task.id).find(isSeatOpen)
             const resumable =
-                RESUMABLE.includes(task.status) &&
+                RESUMABLE.has(task.status) &&
                 seat !== undefined &&
                 (seat.status === SEAT_LAUNCH_UNKNOWN || (seat.status === SEAT_STARTING && seat.handle === null)) &&
                 (task.status === "effect_unknown" || seat.status === SEAT_STARTING)
-            if (!resumable || attempt === undefined) throw new Refusal("SEAT_NOT_RESUMABLE", `task ${task.id} is ${task.status} with ${seat === undefined ? "no open seat" : `seat ${seat.id} ${seat.status}`}; only a launch whose outcome is unknown resumes`)
+            if (!resumable || attempt === undefined) throw new Refusal("SEAT_NOT_RESUMABLE", `task ${task.id} is ${task.status} with ${seat === undefined ? "no open seat" : "seat " + seat.id + " " + seat.status}; only a launch whose outcome is unknown resumes`)
             const parsed = launchRecordSchema.safeParse(seat.launch)
             if (!parsed.success || parsed.data.attempt !== attempt.id) throw new Refusal("SEAT_NOT_RESUMABLE", `seat ${seat.id} carries no launch record of attempt ${attempt.id}; it cannot be replayed`)
             assertLeasesHeld(db, task)
@@ -517,7 +554,8 @@ export const seatStartVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         if (flags.resume) {
             const given = (["agent", "model", "effort", "worktree", "run", "timeout-ms"] as const).filter((name) => flags[name] !== undefined)
-            if (given.length > 0 || flags["dry-run"]) throw new Refusal("CLI_USAGE", `--resume replays the recorded launch as it was; drop ${[...given.map((name) => `--${name}`), ...(flags["dry-run"] ? ["--dry-run"] : [])].join(", ")}`, EXIT_USAGE)
+            const dropped = [...given.map((name) => "--" + name), ...(flags["dry-run"] ? ["--dry-run"] : [])]
+            if (given.length > 0 || flags["dry-run"]) throw new Refusal("CLI_USAGE", `--resume replays the recorded launch as it was; drop ${dropped.join(", ")}`, EXIT_USAGE)
             const resumed = await resumeSeat({ root, cwd: context.cwd, task: flags.task })
             return { ...resumed, data: { ...resumed.data, route: null } }
         }

@@ -1,3 +1,5 @@
+import type { Policy } from "../../harness/policy.js"
+import type { RunOptions } from "../../shared/exec.js"
 import { canonOf, loadPolicy, resolveProfile } from "../../harness/policy.js"
 import type { RuntimeGate } from "../../harness/policy.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
@@ -5,7 +7,7 @@ import { canonPackage } from "./canon.js"
 import type { CanonByTool } from "./canon.js"
 import { describeLoosening, scanLoosening } from "./loosening-scan.js"
 import { describeScope, describeStep, lintPackage, resolveScope, typecheckPackage } from "./scope.js"
-import type { Scope, StepResult } from "./scope.js"
+import type { Scope, ScopeTarget, StepResult } from "./scope.js"
 import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import { treeFiles } from "./tree-files.js"
 
@@ -29,7 +31,44 @@ interface RunData {
 }
 
 /** The repository gates, run once per check; the package gates run once per package of the scope. */
-const REPOSITORY_GATES: readonly RuntimeGate[] = ["secrets", "loosening"]
+const REPOSITORY_GATES: ReadonlySet<RuntimeGate> = new Set<RuntimeGate>(["secrets", "loosening"])
+
+/** Runs the tasks one after another and keeps their order: a gate that spawns a tool never overlaps the next one. */
+const inOrder = async <T>(tasks: readonly (() => Promise<T>)[]): Promise<T[]> => {
+    const [head, ...rest] = tasks
+    if (head === undefined) return []
+    const first = await head()
+    return [first, ...(await inOrder(rest))]
+}
+
+/** One repository gate over the tree (loosening) or the changed files (secrets). */
+const repositoryGate = async (gate: RuntimeGate, scope: Scope, policy: Policy, profile: string, all: boolean): Promise<GateResult> => {
+    if (gate === "secrets") {
+        const files = all ? await treeFiles(scope.root) : scope.changed
+        const report = scanSecrets(scope.root, files, policy, profile, all)
+        return { gate, status: report.verdict, findings: report.findings.length + report.stale.length + report.unjudged.length, output: describeSecrets(report).join("\n") }
+    }
+    const report = await scanLoosening(scope.root, policy)
+    return { gate, status: report.verdict, findings: report.findings.length + report.stale.length + report.unjudged.length, output: describeLoosening(report).join("\n") }
+}
+
+/** The package step a gate of the tier runs on one target, as a task; the repository gates run no package step. */
+const packageStep = (gate: RuntimeGate, scope: Scope, target: ScopeTarget, canon: CanonByTool, options: RunOptions): (() => Promise<StepResult>)[] => {
+    switch (gate) {
+        case "canon":
+            return [() => Promise.resolve(canonPackage(scope, target, canon))]
+        case "typecheck":
+            return [() => typecheckPackage(scope, target, options)]
+        case "lint":
+            return [() => lintPackage(scope, target, options)]
+        case "secrets":
+        case "loosening":
+            return []
+    }
+}
+
+/** The finding count of a gate as the suffix of its line. */
+const findingSuffix = (gate: GateResult): string => (gate.findings === 0 ? "" : ` ${String(gate.findings)} finding(s)`)
 
 /** A red repository gate as a step, so a verify that reads only steps still shows why it is red. */
 const asStep = (gate: GateResult): StepResult => ({ package: "(repository)", step: gate.gate, command: `starci check ${gate.gate}`, status: gate.status, reason: "", output: gate.output })
@@ -53,36 +92,8 @@ export const checkRunVerb = defineVerb({
         const tier = choice.profile.runtime
         const canon = canonOf(policy, choice.profile)
         const options = { timeoutMs: policy.quality.runtime.stepTimeoutSeconds * 1000 }
-        const gates: GateResult[] = []
-        for (const gate of tier.filter((name) => REPOSITORY_GATES.includes(name))) {
-            if (gate === "secrets") {
-                const files = flags.all ? await treeFiles(scope.root) : scope.changed
-                const report = scanSecrets(scope.root, files, policy, choice.name, flags.all)
-                gates.push({ gate, status: report.verdict, findings: report.findings.length + report.stale.length + report.unjudged.length, output: describeSecrets(report).join("\n") })
-            } else {
-                const report = await scanLoosening(scope.root, policy)
-                gates.push({ gate, status: report.verdict, findings: report.findings.length + report.stale.length + report.unjudged.length, output: describeLoosening(report).join("\n") })
-            }
-        }
-        const steps: StepResult[] = []
-        for (const target of scope.targets) {
-            for (const gate of tier) {
-                switch (gate) {
-                    case "canon":
-                        steps.push(canonPackage(scope, target, canon))
-                        break
-                    case "typecheck":
-                        steps.push(await typecheckPackage(scope, target, options))
-                        break
-                    case "lint":
-                        steps.push(await lintPackage(scope, target, options))
-                        break
-                    case "secrets":
-                    case "loosening":
-                        break
-                }
-            }
-        }
+        const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)).map((gate) => () => repositoryGate(gate, scope, policy, choice.name, flags.all)))
+        const steps = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, options))))
         const red = [...gates, ...steps].some((result) => result.status === "red")
         const verdict = red ? "red" : "green"
         const data: RunData = {
@@ -98,7 +109,7 @@ export const checkRunVerb = defineVerb({
         const message = [
             `profile: ${choice.name} (${choice.source}); runtime tier: ${tier.join(", ")}; CI tier after the push: ${choice.profile.ci.join(", ") || "none"}`,
             describeScope(scope),
-            ...gates.map((gate) => `${gate.status.padEnd(7)} ${gate.gate.padEnd(9)} (repository)${gate.findings === 0 ? "" : ` ${String(gate.findings)} finding(s)`}`),
+            ...gates.map((gate) => `${gate.status.padEnd(7)} ${gate.gate.padEnd(9)} (repository)${findingSuffix(gate)}`),
             ...steps.map(describeStep),
             `verdict: ${verdict}`,
             ...gates.filter((gate) => gate.status === "red").map((gate) => `--- ${gate.gate}\n${gate.output}`),

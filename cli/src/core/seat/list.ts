@@ -55,20 +55,18 @@ export const seatListVerb = defineVerb({
         const open = rows.filter((seat) => seat.handle !== null && !CLOSED_SEAT_STATUSES.includes(seat.status))
         const rules = loadLiveness()
         const binary = flags.live && open.length > 0 ? await locateOrca(context.cwd) : undefined
-        const seats: SeatView[] = []
-        for (const seat of rows) {
-            const liveness = livenessOf(seat, rules)
-            if (binary === undefined || seat.handle === null || !open.includes(seat)) {
-                seats.push({ ...seat, liveness })
-                continue
-            }
-            // Only Orca's own answer is per seat; an orca that cannot even be started is refused for the whole listing.
-            const live: LiveView = await workerShow(binary, seat.handle, context.cwd).catch((error: unknown) => {
-                if (error instanceof OrcaFailure) return { error: error.message }
-                throw error
-            })
-            seats.push({ ...seat, liveness, live })
-        }
+        const seats: SeatView[] = await Promise.all(
+            rows.map(async (seat): Promise<SeatView> => {
+                const liveness = livenessOf(seat, rules)
+                if (binary === undefined || seat.handle === null || !open.includes(seat)) return { ...seat, liveness }
+                // Only Orca's own answer is per seat; an orca that cannot even be started is refused for the whole listing.
+                const live: LiveView = await workerShow(binary, seat.handle, context.cwd).catch((error: unknown) => {
+                    if (error instanceof OrcaFailure) return { error: error.message }
+                    throw error
+                })
+                return { ...seat, liveness, live }
+            }),
+        )
         const data: SeatListData = { ledger, seats }
         if (seats.length === 0) return { data, message: "no seats" }
         const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", "LIVENESS", "LAST PONG", ...(flags.live ? ["ORCA"] : [])]

@@ -30,6 +30,19 @@ export interface LooseningReport {
     readonly verdict: "green" | "red"
 }
 
+/** The findings of one file, `unjudged` when a file of a scanned kind is too large to read, or nothing when the file is not scanned. */
+const judgeFile = (root: string, policy: Policy, file: string, banned: ReadonlySet<LooseningMarker>): LooseningFinding[] | "unjudged" | undefined => {
+    if (neverRead(policy, file)) return undefined
+    const named = markerFileKind(file, "")
+    // An extensionless file may still be a shell script: its first line decides, so it is read before its kind is known.
+    if (named === undefined && file.slice(file.lastIndexOf("/") + 1).includes(".")) return undefined
+    const read = readTreeFile(root, file, policy.loosening.scan.maxFileBytes)
+    if ("unread" in read) return read.unread === "too-large" && named !== undefined ? "unjudged" : undefined
+    const kind = named ?? markerFileKind(file, read.text.split("\n", 1)[0] ?? "")
+    if (kind === undefined) return undefined
+    return markersIn(kind, read.text, banned).map((hit) => ({ file, ...hit }))
+}
+
 /**
  * Reads every file of the tree as it stands and reports each banned marker, by file and line. A declared exception covers
  * its one file and marker; an exception nothing matches is stale, and a file of a scanned kind too large to read is
@@ -41,19 +54,13 @@ export const scanLoosening = async (root: string, policy: Policy): Promise<Loose
     const unjudged: string[] = []
     let scanned = 0
     for (const file of await treeFiles(root)) {
-        if (neverRead(policy, file)) continue
-        const named = markerFileKind(file, "")
-        // An extensionless file may still be a shell script: its first line decides, so it is read before its kind is known.
-        if (named === undefined && file.slice(file.lastIndexOf("/") + 1).includes(".")) continue
-        const read = readTreeFile(root, file, policy.loosening.scan.maxFileBytes)
-        if ("unread" in read) {
-            if (read.unread === "too-large" && named !== undefined) unjudged.push(file)
-            continue
+        const judged = judgeFile(root, policy, file, banned)
+        if (judged === undefined) continue
+        if (judged === "unjudged") unjudged.push(file)
+        else {
+            scanned += 1
+            findings.push(...judged)
         }
-        const kind = named ?? markerFileKind(file, read.text.split("\n", 1)[0] ?? "")
-        if (kind === undefined) continue
-        scanned += 1
-        for (const hit of markersIn(kind, read.text, banned)) findings.push({ file, ...hit })
     }
     const excepted: ExceptedFinding[] = []
     const open: LooseningFinding[] = []

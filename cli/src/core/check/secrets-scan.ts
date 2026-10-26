@@ -29,6 +29,16 @@ const asAddedFile = (file: string, text: string): string => {
     return [`+++ b/${file}`, `@@ -0,0 +1,${String(lines.length)} @@`, ...lines.map((line) => `+${line}`)].join("\n")
 }
 
+/** Every finding of the lines of one readable file. */
+const lineHits = (file: string, text: string): SecretFinding[] =>
+    text.split(/\r?\n/).flatMap((line, index) => lineFindings(file, line).map((pattern) => ({ file, line: index + 1, pattern })))
+
+/** Judges one readable file: a sops envelope as a whole, any other file line by line. */
+const judgeFile = (file: string, text: string): SecretFinding[] => (file.endsWith(".enc") ? scanDiff(asAddedFile(file, text), [], () => text) : lineHits(file, text))
+
+/** The `:line` of a finding, empty for a finding of a whole file. */
+const lineSuffix = (line: number | null): string => (line === null ? "" : ":" + String(line))
+
 /**
  * Scans `files` (repository-relative) with the rules of shared/secrets.ts as the files stand: forbidden paths by name, every
  * line of every readable file by content. A neverRead file is judged by its name alone. `complete` says the files are the
@@ -54,13 +64,7 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
             unread += 1
             continue
         }
-        if (file.endsWith(".enc")) {
-            raw.push(...scanDiff(asAddedFile(file, read.text), [], () => read.text))
-            continue
-        }
-        read.text.split(/\r?\n/).forEach((line, index) => {
-            for (const pattern of lineFindings(file, line)) raw.push({ file, line: index + 1, pattern })
-        })
+        raw.push(...judgeFile(file, read.text))
     }
     const findings: SecretFinding[] = []
     const excepted: ExceptedSecret[] = []
@@ -81,7 +85,7 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
 /** The human lines of a secret report: where and which rule, never a value. */
 export const describeSecrets = (report: SecretReport): string[] => [
     `secrets: ${report.verdict}; ${String(report.files)} file(s), ${String(report.unread)} judged by name only, ${String(report.findings.length)} finding(s), ${String(report.excepted.length)} excepted`,
-    ...report.findings.map((finding) => `${finding.file}${finding.line === null ? "" : `:${String(finding.line)}`} ${finding.pattern}`),
+    ...report.findings.map((finding) => `${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
     ...report.stale.map((exception) => `stale exception: ${exception.path} ${exception.rule} matches nothing; remove it from policy/security.yaml`),
     ...report.unjudged.map((file) => `unjudged: ${file} is larger than scan.maxFileBytes; the scan cannot read it`),
 ]

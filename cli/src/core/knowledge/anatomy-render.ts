@@ -95,18 +95,25 @@ const parsed = <T>(file: string, value: unknown, schema: z.ZodType<T>): T => {
     return result.data
 }
 
+/** Code-unit order, so a generated block does not depend on the locale of the machine that renders it. */
+const byCodeUnit = (left: string, right: string): number => Number(left > right) - Number(left < right)
+
+/** The front matter of one pattern topic file, or undefined when the file has none. */
+const readFrontMatter = (file: string) => {
+    const text = readFileSync(file, "utf8").replaceAll("\r\n", "\n")
+    const match = /^---\n([\s\S]*?)\n---\n/.exec(text)
+    return match?.[1] === undefined ? undefined : parsed(file, parseYaml(file, match[1]), frontMatterSchema)
+}
+
 /** Reads the front matter of every pattern topic into the slot ids (or family prefixes) it declares and the slots its files land in. */
 const readPatterns = (knowledge: string): Topics => {
     const declared = new Map<string, string[]>()
     const files = new Map<string, string[]>()
     for (const side of ["be", "fe"]) {
         const folder = join(knowledge, "patterns", side)
-        for (const name of readdirSync(folder).filter((file) => file.endsWith(".md")).sort()) {
-            const text = readFileSync(join(folder, name), "utf8").replaceAll("\r\n", "\n")
-            const match = /^---\n([\s\S]*?)\n---\n/.exec(text)
-            if (match?.[1] === undefined) continue
-            const file = join(folder, name)
-            const front = parsed(file, parseYaml(file, match[1]), frontMatterSchema)
+        for (const name of readdirSync(folder).filter((file) => file.endsWith(".md")).sort(byCodeUnit)) {
+            const front = readFrontMatter(join(folder, name))
+            if (front === undefined) continue
             for (const id of front.slots ?? []) addTo(declared, id, `${side}/${name}`)
             for (const entry of front.files ?? []) if (entry.slot !== undefined) addTo(files, entry.slot, `${side}/${name}`)
         }
@@ -177,7 +184,7 @@ const collapse = (node: Node): Node => {
     return node
 }
 
-const codeMatcher = (code: string): RegExp => new RegExp(`^${code.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`)
+const codeMatcher = (code: string): RegExp => new RegExp(`^${code.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)).join(".*")}$`)
 
 const rulesOf = (slot: Slot, rules: readonly Rule[], dangling: Set<string>): Rule[] => {
     const found: Rule[] = []
@@ -213,7 +220,8 @@ const patternsOf = (slot: Slot, side: Side, sources: Sources): string[] => {
     }
     if (files.length === 0) files.push(...(sources.patterns.files.get(slot.id) ?? []))
     const ofSide = side === "app" ? files : files.filter((file) => file.startsWith(`${side}/`))
-    return ofSide.sort().map((file) => `[${file.replace(/\.md$/, "")}](../patterns/${file})`)
+    ofSide.sort(byCodeUnit)
+    return ofSide.map((file) => `[${file.replace(/\.md$/, "")}](../patterns/${file})`)
 }
 
 const renderSlot = (slot: Slot, presence: Presence, side: Side, sources: Sources, dangling: Set<string>): string => {
@@ -242,7 +250,8 @@ const renderTree = (edition: AnatomyEdition, side: Side, sources: Sources, dangl
     })
     const shown = present.filter((entry) => entry.presence !== "forbidden" && entry.slot.tracked === "tracked")
     const presenceOf = new Map(shown.map((entry) => [entry.slot.id, entry.presence]))
-    const lines = [`### ${edition} · ${side === "app" ? "app root" : `${side}/`}`, ""]
+    const where = side === "app" ? "app root" : side + "/"
+    const lines = [`### ${edition} · ${where}`, ""]
     const root = collapse(buildTree(shown.map((entry) => entry.slot)))
     const line = (slot: Slot): string => renderSlot(slot, presenceOf.get(slot.id) ?? slot.presence, side, sources, dangling)
     for (const child of root.children.values()) renderNode(child, 0, { lines, line })
@@ -263,7 +272,7 @@ export const renderAnatomy = (knowledge: string): AnatomyRender => {
     const lines = [BEGIN_MARKER, ""]
     for (const edition of EDITIONS) for (const side of SIDES) lines.push(...renderTree(edition, side, sources, dangling))
     lines.push(END_MARKER)
-    return { block: lines.join("\n"), dangling: [...dangling].sort() }
+    return { block: lines.join("\n"), dangling: [...dangling].sort(byCodeUnit) }
 }
 
 /** Replaces the block between the markers of `text`; refuses when the markers are missing or out of order. */

@@ -12,7 +12,7 @@ const VENDORED = /(?:^|\/)node_modules\//
 export const treeFiles = async (root: string): Promise<string[]> => {
     const listed = await git(root, ["ls-files", "--cached", "--others", "--exclude-standard", "--full-name"])
     const files = listed.split("\n").map((file) => file.trim()).filter((file) => file !== "" && !VENDORED.test(file))
-    return [...new Set(files)].sort()
+    return [...new Set(files)].sort((left, right) => Number(left > right) - Number(left < right))
 }
 
 const SNIFF_BYTES = 8000
