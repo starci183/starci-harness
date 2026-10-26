@@ -202,9 +202,9 @@ const renderRule = (rule: Rule, side: Side): string => {
 
 /**
  * The topics of a slot: those declaring its id or a family prefix that is no slot itself (`be.app` for `be.app.api`); a slot
- * no topic declares falls back to the topics whose `files` land in it.
+ * no topic declares falls back to the topics whose `files` land in it. A side tree keeps the topics of its own side.
  */
-const patternsOf = (slot: Slot, sources: Sources): string[] => {
+const patternsOf = (slot: Slot, side: Side, sources: Sources): string[] => {
     const files: string[] = []
     for (const [prefix, owners] of sources.patterns.declared) {
         const family = !sources.slots.some((other) => other.id === prefix) && slot.id.startsWith(`${prefix}.`)
@@ -212,12 +212,13 @@ const patternsOf = (slot: Slot, sources: Sources): string[] => {
         for (const owner of owners) if (!files.includes(owner)) files.push(owner)
     }
     if (files.length === 0) files.push(...(sources.patterns.files.get(slot.id) ?? []))
-    return files.sort().map((file) => `[${file.replace(/\.md$/, "")}](../patterns/${file})`)
+    const ofSide = side === "app" ? files : files.filter((file) => file.startsWith(`${side}/`))
+    return ofSide.sort().map((file) => `[${file.replace(/.md$/, "")}](../patterns/${file})`)
 }
 
 const renderSlot = (slot: Slot, presence: Presence, side: Side, sources: Sources, dangling: Set<string>): string => {
     const parts = [`**${slot.id}** ${presence}`]
-    const patterns = patternsOf(slot, sources)
+    const patterns = patternsOf(slot, side, sources)
     if (patterns.length > 0) parts.push(patterns.join(", "))
     const rules = rulesOf(slot, sources.rules, dangling).map((rule) => renderRule(rule, side))
     const unresolved = (slot.rules ?? []).filter((code) => dangling.has(code)).map((code) => `${code} (no rule)`)

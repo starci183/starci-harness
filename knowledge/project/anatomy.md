@@ -185,7 +185,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
       - `types.ts` — **fe.package.api.outcome** optional · [fe/folder](../patterns/fe/folder.md) · R51 (eslint-fe `client-maps-auth-to-refused` `no-failure-collapse` `outcome-kinds-exhaustive` `one-outcome-union`)
   - `<family>-i18n/` — **fe.package.i18n** opt-in · [fe/folder](../patterns/fe/folder.md), [fe/i18n](../patterns/fe/i18n.md) · R59 (eslint-fe `locale-segment-is-locale` `no-second-i18n-stack` `i18n-stack-in-one-module` `navigation-from-intl` `no-native-anchor` `use-intl-formatter`; hfs `i18n-placement`), R63 (machine `package-shape`), R25 (eslint-fe `dead-exports`)
 - `apps/<app>/`
-  - `Dockerfile` — **repo.app-image** optional · [be/cli](../patterns/be/cli.md) · R187 (hfs `docker`), R188 (hfs `docker`), R189 (hfs `docker`), R190 (hfs `docker`), R191 (hfs `docker`)
+  - `Dockerfile` — **repo.app-image** optional · R187 (hfs `docker`), R188 (hfs `docker`), R189 (hfs `docker`), R190 (hfs `docker`), R191 (hfs `docker`)
   - `{package.json,next.config.ts,tsconfig.json,postcss.config.mjs}` — **fe.app.next** required · [fe/architecture](../patterns/fe/architecture.md), [fe/boundaries](../patterns/fe/boundaries.md), [fe/folder](../patterns/fe/folder.md) · R64 (eslint-fe `app-isolation`), R53 (eslint-fe `no-null-suspense-fallback`; machine `error-boundary-missing`), R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`), R144 (hfs `monorepo`), R146 (hfs `monorepo`)
   - `public/` — **fe.app-optional** optional
   - `src/`
@@ -367,7 +367,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `be.tool-config-loc
       - `types.ts` — **fe.package.api.outcome** optional · [fe/folder](../patterns/fe/folder.md) · R51 (eslint-fe `client-maps-auth-to-refused` `no-failure-collapse` `outcome-kinds-exhaustive` `one-outcome-union`)
   - `<family>-i18n/` — **fe.package.i18n** opt-in · [fe/folder](../patterns/fe/folder.md), [fe/i18n](../patterns/fe/i18n.md) · R59 (eslint-fe `locale-segment-is-locale` `no-second-i18n-stack` `i18n-stack-in-one-module` `navigation-from-intl` `no-native-anchor` `use-intl-formatter`; hfs `i18n-placement`), R63 (machine `package-shape`), R25 (eslint-fe `dead-exports`)
 - `apps/<app>/`
-  - `Dockerfile` — **repo.app-image** required · [be/cli](../patterns/be/cli.md) · R187 (hfs `docker`), R188 (hfs `docker`), R189 (hfs `docker`), R190 (hfs `docker`), R191 (hfs `docker`)
+  - `Dockerfile` — **repo.app-image** required · R187 (hfs `docker`), R188 (hfs `docker`), R189 (hfs `docker`), R190 (hfs `docker`), R191 (hfs `docker`)
   - `{package.json,next.config.ts,tsconfig.json,postcss.config.mjs}` — **fe.app.next** required · [fe/architecture](../patterns/fe/architecture.md), [fe/boundaries](../patterns/fe/boundaries.md), [fe/folder](../patterns/fe/folder.md) · R64 (eslint-fe `app-isolation`), R53 (eslint-fe `no-null-suspense-fallback`; machine `error-boundary-missing`), R54 (eslint-fe `no-middleware-file` `page-exports-metadata` `route-files-thin` `route-adapter`), R144 (hfs `monorepo`), R146 (hfs `monorepo`)
   - `public/` — **fe.app-optional** optional
   - `src/`
