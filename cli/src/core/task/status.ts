@@ -3,6 +3,8 @@ import type { DatabaseSync } from "node:sqlite"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
 import { listLeases } from "../../harness/leases.js"
 import type { LeaseRow } from "../../harness/leases.js"
+import { seatsOfTask } from "../../harness/seats.js"
+import type { SeatRow } from "../../harness/seats.js"
 import { getTask, listTasks, resultOf } from "../../harness/tasks.js"
 import type { AttemptRow, ResultRow, TaskRow } from "../../harness/tasks.js"
 import { Refusal } from "../../shared/errors.js"
@@ -29,6 +31,8 @@ interface TaskDetail {
     readonly result: ResultRow | null
     readonly leases: readonly LeaseRow[]
     readonly checkRuns: readonly CheckRunRow[]
+    readonly seats: readonly SeatRow[]
+    readonly preserved: readonly string[]
 }
 
 interface TaskSummary {
@@ -84,15 +88,26 @@ const checkRunsOf = (db: DatabaseSync, taskId: string): CheckRunRow[] =>
             ranAt: text(row.ran_at),
         }))
 
-const detailOf = (db: DatabaseSync, id: string): TaskDetail => {
+/** The folders a task's dirty work was preserved into, oldest first. */
+const preservedOf = (db: DatabaseSync, taskId: string): string[] =>
+    db
+        .prepare("SELECT data_json FROM events WHERE kind = 'task-preserved' AND subject = ? ORDER BY id")
+        .all(taskId)
+        .map((row) => {
+            const data: unknown = JSON.parse(text(row.data_json))
+            return typeof data === "object" && data !== null && "dir" in data ? text(data.dir) : ""
+        })
+        .filter((dir) => dir !== "")
+
+const detailOf =(db: DatabaseSync, id: string): TaskDetail => {
     const task = getTask(db, id)
     const attempts = attemptsOf(db, id)
     const filed = attempts.map((attempt) => resultOf(db, attempt.id)).filter((result): result is ResultRow => result !== undefined)
-    return { task, attempts, result: filed.at(-1) ?? null, leases: listLeases(db, id), checkRuns: checkRunsOf(db, id) }
+    return { task, attempts, result: filed.at(-1) ?? null, leases: listLeases(db, id), checkRuns: checkRunsOf(db, id), seats: seatsOfTask(db, id), preserved: preservedOf(db, id) }
 }
 
 const describe = (detail: TaskDetail): string => {
-    const { task, attempts, result, leases, checkRuns } = detail
+    const { task, attempts, result, leases, checkRuns, seats, preserved } = detail
     const lines = [
         `${task.id}  ${task.label}  ${task.status}  try ${String(task.tryNo)}${task.retryOf === null ? "" : ` (retry of ${task.retryOf})`}${task.workflowId === null ? "" : `  workflow ${task.workflowId}`}`,
         `input: ${task.contract.input.summary}`,
@@ -101,7 +116,9 @@ const describe = (detail: TaskDetail): string => {
     ]
     if (attempts.length > 0) lines.push("", formatTable([["ATTEMPT", "AGENT", "OUTCOME", "VERDICT", "STARTED"], ...attempts.map((attempt) => [attempt.id, attempt.agent ?? "-", attempt.outcome ?? "-", attempt.verdict ?? "-", attempt.startedAt])]))
     if (result !== null) lines.push("", `result: ${result.status} on ${result.attemptId} at ${result.filedAt}`)
-    if (leases.length > 0) lines.push("", formatTable([["LEASE", "EXPIRES", "LIVE"], ...leases.map((lease) => [lease.path, lease.expiresAt, lease.live ? "yes" : "no"])]))
+    if (seats.length > 0) lines.push("", formatTable([["SEAT", "AGENT", "STATUS", "DISPATCH", "STARTED"], ...seats.map((seat) => [seat.id, seat.agent ?? "-", seat.status, seat.handle ?? "-", seat.startedAt])]))
+    if (leases.length > 0) lines.push("", formatTable([["LEASE", "DUE", "HELD"], ...leases.map((lease) => [lease.path, `${lease.expiresAt}${lease.overdue ? " (overdue)" : ""}`, lease.live ? "yes" : "no"])]))
+    for (const dir of preserved) lines.push(`preserved: ${dir}`)
     if (checkRuns.length > 0) lines.push("", formatTable([["CHECK", "RUNNER", "STATUS", "RAN"], ...checkRuns.map((run) => [run.name, run.runner, run.status, run.ranAt])]))
     return lines.join("\n")
 }
