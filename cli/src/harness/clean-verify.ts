@@ -54,7 +54,19 @@ interface Built {
 
 const lines = (text: string): string[] => text.split("\n").map((line) => line.trim()).filter((line) => line !== "")
 
-const listed = (files: readonly string[]): string => `${files.slice(0, LIST_SHOWN).join(", ")}${files.length > LIST_SHOWN ? ` and ${String(files.length - LIST_SHOWN)} more` : ""}`
+const listed = (files: readonly string[]): string => {
+    const shown = files.slice(0, LIST_SHOWN).join(", ")
+    const more = files.length > LIST_SHOWN ? ` and ${String(files.length - LIST_SHOWN)} more` : ""
+    return shown + more
+}
+
+/** Runs the step for each item one after another (each depends on the git state the last left), collecting the results in order. */
+const inOrder = <T, R>(items: readonly T[], step: (item: T) => Promise<R>): Promise<R[]> =>
+    items.reduce<Promise<R[]>>(async (done, item) => {
+        const results = await done
+        results.push(await step(item))
+        return results
+    }, Promise.resolve([]))
 
 const literal = (path: string): string => `:(top,literal)${path}`
 
@@ -63,7 +75,10 @@ const gitIndexed = (cwd: string, index: string, args: readonly string[]): Promis
 
 const gitIndexedOk = async (cwd: string, index: string, args: readonly string[]): Promise<string> => {
     const run = await gitIndexed(cwd, index, args)
-    if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${headline(run.stderr) || `exit ${String(run.exitCode)}`}`)
+    if (run.exitCode !== 0) {
+        const reason = headline(run.stderr) || `exit ${String(run.exitCode)}`
+        throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${reason}`)
+    }
     return run.stdout
 }
 
@@ -81,11 +96,16 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
     const whole: string[] = []
     const trackedOnly: string[] = []
     const notes: string[] = []
-    for (const path of allowPaths) {
+    const found = await inOrder(allowPaths, async (path) => {
         const tracked = (await gitIndexedOk(root, index, ["ls-files", "--", literal(path)])) !== ""
-        if (!existsSync(join(root, path)) && !tracked) continue
+        if (!existsSync(join(root, path)) && !tracked) return undefined
         // --no-index: `git add` refuses a named path its ignore rules match even when files below it are tracked.
         const ignored = (await gitIndexed(root, index, ["check-ignore", "-q", "--no-index", "--", path])).exitCode === 0
+        return { path, tracked, ignored }
+    })
+    for (const entry of found) {
+        if (entry === undefined) continue
+        const { path, tracked, ignored } = entry
         if (!ignored) whole.push(path)
         else if (tracked) {
             trackedOnly.push(path)
@@ -93,6 +113,12 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
         } else notes.push(`${path} is gitignored and untracked: skipped, nothing of it lands`)
     }
     return { whole, trackedOnly, notes }
+}
+
+const landsDetail = (changed: readonly string[], missing: readonly string[]): string => {
+    if (missing.length > 0) return `changed under allowPaths but not in the candidate, so they would never land: ${listed(missing)}`
+    if (changed.length === 0) return "nothing changed under allowPaths; nothing lands"
+    return `${String(changed.length)} file(s) land: ${listed(changed)}`
 }
 
 /**
@@ -120,11 +146,7 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
             status: missing.length === 0 ? "green" : "red",
             exitCode: null,
             detail: [
-                missing.length === 0
-                    ? changed.length === 0
-                        ? "nothing changed under allowPaths; nothing lands"
-                        : `${String(changed.length)} file(s) land: ${listed(changed)}`
-                    : `changed under allowPaths but not in the candidate, so they would never land: ${listed(missing)}`,
+                landsDetail(changed, missing),
                 ...plan.notes,
             ].join("\n"),
         }
@@ -197,13 +219,11 @@ const verifierPid = (dir: string): number | undefined => {
 export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
     const listing = await captureTool("git", ["worktree", "list", "--porcelain"], root)
     const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => basename(dir).startsWith(VERIFY_PREFIX))
-    const pruned: string[] = []
-    for (const dir of dirs) {
+    const pruned = dirs.filter((dir) => {
         const pid = verifierPid(dir)
-        if (pid !== undefined && (pid === process.pid || pidAlive(pid))) continue
-        await removeWorktree(root, dir)
-        pruned.push(dir)
-    }
+        return pid === undefined || (pid !== process.pid && !pidAlive(pid))
+    })
+    await inOrder(pruned, (dir) => removeWorktree(root, dir))
     await captureTool("git", ["worktree", "prune"], root)
     return pruned
 }
@@ -232,7 +252,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         const prepared = installed?.status === "red" ? undefined : await setUp(contract.context.setup ?? [], place)
         if (prepared !== undefined) checks.push(prepared)
         if (installed?.status !== "red" && prepared?.status !== "red") {
-            for (const check of input.checks) checks.push(await checkCandidate(check, { ...input, contract: resolved }, place, built))
+            checks.push(...(await inOrder(input.checks, (check) => checkCandidate(check, { ...input, contract: resolved }, place, built))))
         }
         const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
         return { ...built.facts, base, checks, verdict }

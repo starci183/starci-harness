@@ -11,8 +11,11 @@ import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveC
  * The one normaliser of contract paths; a lease, a candidate and a files check all see the same spelling.
  */
 export const normaliseRepoPath = (path: string): string => {
-    const slashed = posix.normalize(path.trim().replace(/\\/g, "/"))
-    return slashed === "/" ? slashed : slashed.replace(/\/+$/, "")
+    const slashed = posix.normalize(path.trim().replaceAll("\\", "/"))
+    if (slashed === "/") return slashed
+    let end = slashed.length
+    while (end > 0 && slashed[end - 1] === "/") end -= 1
+    return slashed.slice(0, end)
 }
 
 /** True when `file` is one of `prefixes` or lies below one of them, compared on whole segments. */
@@ -146,12 +149,17 @@ export const readContract = (file: string): Contract => {
 export const presetForm = (name: string, args: readonly string[]): string =>
     JSON.stringify(args.length === 0 ? { preset: name } : { preset: name, args: Object.fromEntries(args.map((arg) => [arg, "..."])) })
 
-const canonical = (value: unknown): unknown =>
-    Array.isArray(value)
-        ? value.map(canonical)
-        : typeof value === "object" && value !== null
-          ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical((value as Record<string, unknown>)[key])]))
-          : value
+/** The default order of strings (by UTF-16 code unit), spelled out so hashes and listings stay the same on every locale. */
+export const byCodeUnit = (left: string, right: string): number => {
+    if (left < right) return -1
+    return left > right ? 1 : 0
+}
+
+const canonical = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonical)
+    if (typeof value !== "object" || value === null) return value
+    return Object.fromEntries(Object.keys(value).sort(byCodeUnit).map((key) => [key, canonical((value as Record<string, unknown>)[key])]))
+}
 
 const sameEntry = (left: CheckEntry, right: CheckEntry): boolean => JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
 
@@ -199,7 +207,7 @@ export const opOf = (contract: Contract, ops: Ops): Op => {
     return op
 }
 
-const fill = (entry: string, values: Readonly<Record<string, string>>): string => entry.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (match: string, key: string) => values[key] ?? match)
+const fill = (entry: string, values: Readonly<Record<string, string>>): string => entry.replace(/\{([A-Za-z]\w*)\}/g, (match: string, key: string) => values[key] ?? match)
 
 /** True when `entry` is not looser than `base`: same type, no fewer items, no new condition, the same trace. */
 const notLooser = (spec: OutputSpec, base: OutputSpec): boolean =>
@@ -210,12 +218,9 @@ const notLooser = (spec: OutputSpec, base: OutputSpec): boolean =>
 
 const minItemsOf = (spec: OutputSpec): number => ("minItems" in spec ? (spec.minItems ?? 0) : 0)
 
-/** Resolves base ∪ extend of every part of a contract against its op, noting each item it drops or loosens. */
-export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract => {
-    const op = opOf(contract, ops)
-    const problems: string[] = []
+/** Inputs: the op names its base inputs, the contract gives their values in input.base and adds its own in input.extend. */
+const resolveInputs = (contract: Contract, op: Op, problems: string[]): ResolvedInput[] => {
     const { label } = contract
-    // Inputs: the op names its base inputs, the contract gives their values in input.base and adds its own in input.extend.
     const given = contract.input.base ?? {}
     const extra = contract.input.extend ?? {}
     const inputs: ResolvedInput[] = []
@@ -229,8 +234,12 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
         if (name in op.input.base) problems.push(`input.extend names ${name}, a base input of ${label}; give it in input.base`)
         else inputs.push({ name, value, source: "extend" })
     }
-    const values: Record<string, string> = { label, ...Object.fromEntries(inputs.map((input) => [input.name, input.value])) }
-    // Context: the op's files, then the contract's. A pinned base must keep every file of the op's base.
+    return inputs
+}
+
+/** Context: the op's files, then the contract's. A pinned base must keep every file of the op's base. */
+const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<string, string>>, problems: string[]): ContextFile[] => {
+    const { label } = contract
     const context: ContextFile[] = []
     const add = (entry: string, source: Source): void => {
         const filled = normaliseContextEntry(fill(entry, values))
@@ -245,22 +254,32 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
         for (const entry of contract.context.base) add(entry, "base")
     }
     for (const entry of contract.context.extend ?? []) add(entry, "extend")
-    // Output: the op's keys, then the contract's; a key the op owns may be made stricter, never looser.
+    return context
+}
+
+/** Output: the op's keys, then the contract's; a key the op owns may be made stricter, never looser. */
+const resolveOutput = (contract: Contract, op: Op, problems: string[]): Map<string, ResolvedOutput> => {
+    const { label } = contract
     const output = new Map<string, ResolvedOutput>(Object.entries(op.output.base).map(([key, spec]) => [key, { key, spec, source: "base" }]))
     const pinnedOutput = contract.output?.base
-    if (pinnedOutput !== undefined) for (const key of Object.keys(op.output.base).filter((key) => !(key in pinnedOutput))) problems.push(`output.base drops ${key}, a key of the ${label} op's base`)
+    if (pinnedOutput !== undefined) {
+        for (const key of Object.keys(op.output.base).filter((key) => !(key in pinnedOutput))) problems.push(`output.base drops ${key}, a key of the ${label} op's base`)
+    }
     for (const [part, keys] of [["base", pinnedOutput ?? {}], ["extend", contract.output?.extend ?? {}]] as const) {
         for (const [key, spec] of Object.entries(keys)) {
             const owned = op.output.base[key]
             if (owned === undefined) {
                 if (!output.has(key)) output.set(key, { key, spec, source: "extend" })
-                continue
-            }
-            if (!notLooser(spec, owned)) problems.push(`output.${part}.${key} loosens the ${label} op's base (${JSON.stringify(owned)}): ${JSON.stringify(spec)}`)
-            else output.set(key, { key, spec, source: "base" })
+            } else if (notLooser(spec, owned)) output.set(key, { key, spec, source: "base" })
+            else problems.push(`output.${part}.${key} loosens the ${label} op's base (${JSON.stringify(owned)}): ${JSON.stringify(spec)}`)
         }
     }
-    // Checks: the op's, then the contract's, each once. A pinned base must keep every check of the op's base.
+    return output
+}
+
+/** Checks: the op's, then the contract's, each once. A pinned base must keep every check of the op's base. */
+const resolveCheckEntries = (contract: Contract, op: Op, problems: string[]): { entry: CheckEntry; source: Source }[] => {
+    const { label } = contract
     const checks: { entry: CheckEntry; source: Source }[] = []
     const addCheck = (entry: CheckEntry, source: Source): void => {
         if (!checks.some((check) => sameEntry(check.entry, entry))) checks.push({ entry, source })
@@ -272,6 +291,18 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
         for (const entry of pinnedChecks) addCheck(entry, "base")
     }
     for (const entry of contract.checks?.extend ?? []) addCheck(entry, "extend")
+    return checks
+}
+
+/** Resolves base ∪ extend of every part of a contract against its op, noting each item it drops or loosens. */
+export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract => {
+    const op = opOf(contract, ops)
+    const problems: string[] = []
+    const inputs = resolveInputs(contract, op, problems)
+    const values: Record<string, string> = { label: contract.label, ...Object.fromEntries(inputs.map((input) => [input.name, input.value])) }
+    const context = resolveContext(contract, op, values, problems)
+    const output = resolveOutput(contract, op, problems)
+    const checks = resolveCheckEntries(contract, op, problems)
     const workDriven = context.some((file) => !file.harness && underPaths(file.path, [WORK_TREE]))
     const required = [...output.values()].filter((item) => !("when" in item.spec) || item.spec.when === undefined || workDriven)
     return { op, context, inputs, output: required, checks, workDriven, problems }
@@ -289,8 +320,8 @@ export const isRuleId = (id: string): boolean => RULE_ID.test(id)
 /** The ids a file names literally: a token of a Markdown heading, or the value of a yaml `id:` line. */
 export const ruleIdsIn = (text: string): Set<string> => {
     const ids = new Set<string>()
-    for (const line of text.replace(/\r\n/g, "\n").split("\n")) {
-        const heading = /^ {0,3}#{1,6}\s+(.*)$/.exec(line)
+    for (const line of text.replaceAll("\r\n", "\n").split("\n")) {
+        const heading = /^ {0,3}#{1,6}\s(.*)$/.exec(line)
         if (heading?.[1] !== undefined) for (const token of heading[1].split(/[^A-Za-z0-9._-]+/)) if (isRuleId(token)) ids.add(token)
         const keyed = /^\s*(?:-\s+)?id:\s*["']?([^"'\s#]+)/.exec(line)
         if (keyed?.[1] !== undefined) ids.add(keyed[1])
@@ -305,7 +336,8 @@ const substitute = (value: unknown, args: CheckArgs): unknown => {
         if (whole?.[1] !== undefined) return args[whole[1]] ?? value
         return value.replace(/\{([A-Za-z0-9_-]+)\}/g, (match: string, key: string) => {
             const arg = args[key]
-            return arg === undefined ? match : Array.isArray(arg) ? arg.join(" ") : String(arg)
+            if (arg === undefined) return match
+            return Array.isArray(arg) ? arg.join(" ") : String(arg)
         })
     }
     if (Array.isArray(value)) return value.map((item) => substitute(item, args))
@@ -384,6 +416,36 @@ const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
     return problems
 }
 
+/** Problems of the context files: an unfilled placeholder, a path that is no repository place, a harness file that is missing. */
+const contextProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
+    const problems: string[] = []
+    for (const file of resolved.context) {
+        const unfilled = placeholdersOf(file.entry)
+        if (unfilled.length > 0) {
+            const names = unfilled.map((name) => "{" + name + "}").join(", ")
+            problems.push(`context file ${file.entry} names ${names}, which no input gives`)
+            continue
+        }
+        problems.push(...placeProblems(`context file ${file.harness ? HARNESS_PREFIX : ""}`, file.path))
+        if (file.harness && !existsSync(join(ops.root, file.path))) problems.push(`context file ${file.entry} does not exist in the harness checkout ${ops.root}`)
+    }
+    return problems
+}
+
+/** Problems of the expanded checks: there must be one, and a behavioural label needs a behavioural check (resolving may refuse). */
+const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops): string[] => {
+    const problems: string[] = []
+    const checks = resolveChecks(contract, ops)
+    if (checks.length === 0) problems.push("the contract has no check; add one to checks.extend")
+    if (resolved.op.checks.behavioural && !checks.some((check) => check.behavioural)) {
+        const forms = Object.entries(ops.presets)
+            .filter(([, preset]) => preset.behavioural)
+            .map(([name, preset]) => presetForm(name, preset.args ?? []))
+        problems.push(`label ${contract.label} needs at least one behavioural check; lint and typecheck alone prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`)
+    }
+    return problems
+}
+
 /** Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files and the behavioural rule. */
 export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     const problems: string[] = []
@@ -403,26 +465,9 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     } catch (error: unknown) {
         return [...problems, error instanceof Error ? error.message : String(error)]
     }
-    problems.push(...resolved.problems)
-    for (const file of resolved.context) {
-        const unfilled = placeholdersOf(file.entry)
-        if (unfilled.length > 0) {
-            problems.push(`context file ${file.entry} names ${unfilled.map((name) => `{${name}}`).join(", ")}, which no input gives`)
-            continue
-        }
-        problems.push(...placeProblems(`context file ${file.harness ? HARNESS_PREFIX : ""}`, file.path))
-        if (file.harness && !existsSync(join(ops.root, file.path))) problems.push(`context file ${file.entry} does not exist in the harness checkout ${ops.root}`)
-    }
-    problems.push(...traceProblems(resolved, ops))
+    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops))
     try {
-        const checks = resolveChecks(contract, ops)
-        if (checks.length === 0) problems.push(`the contract has no check; add one to checks.extend`)
-        if (resolved.op.checks.behavioural && !checks.some((check) => check.behavioural)) {
-            const forms = Object.entries(ops.presets)
-                .filter(([, preset]) => preset.behavioural)
-                .map(([name, preset]) => presetForm(name, preset.args ?? []))
-            problems.push(`label ${contract.label} needs at least one behavioural check; lint and typecheck alone prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`)
-        }
+        problems.push(...checkProblems(contract, resolved, ops))
     } catch (error: unknown) {
         problems.push(error instanceof Error ? error.message : String(error))
     }
