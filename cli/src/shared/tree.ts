@@ -25,7 +25,10 @@ const readDeclaration = (file: string): HfsDeclaration => {
     }
 }
 
-/** Walks up from `cwd` to the nearest hfs.json; an app without `edition` is full, `kind: runtime` is the runtime itself. */
+/**
+ * Walks up from `cwd` to the nearest hfs.json, stopping at the repository root (a `.git` entry) so a stray hfs.json
+ * above the project never decides its edition. An app without `edition` is full; `kind: runtime` is the runtime itself.
+ */
 export const locateTree = (cwd: string): TreeLocation => {
     let directory = cwd
     for (;;) {
@@ -36,7 +39,7 @@ export const locateTree = (cwd: string): TreeLocation => {
             return { tree: declaration.edition === "lite" ? "lite" : "full", root: directory }
         }
         const parent = dirname(directory)
-        if (parent === directory) return { tree: "none", root: undefined }
+        if (parent === directory || existsSync(join(directory, ".git"))) return { tree: "none", root: undefined }
         directory = parent
     }
 }
