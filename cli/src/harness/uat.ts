@@ -141,7 +141,10 @@ export interface UatRun {
 /** A fresh container name, `starci-uat-<random>`; `docker ps -a --filter name=starci-uat-` lists any left behind. */
 export const containerName = (): string => `starci-uat-${randomBytes(4).toString("hex")}`
 
-/** One container run of a script: its name, its folder, its evidence folder, the ports to forward and the deadline. */
+/**
+ * One container run of a script: its name, its folder, its evidence folder, the ports to forward, the deadline, the names of
+ * the harness environment variables handed in (`env`) and the script's own arguments (`args`).
+ */
 export interface UatRunSpec {
     readonly container: string
     readonly runImage: string
@@ -151,7 +154,12 @@ export interface UatRunSpec {
     readonly forwards: readonly number[]
     readonly timeoutMs: number
     readonly shmSize: string
+    readonly env: readonly string[]
+    readonly args: readonly string[]
 }
+
+/** The prefix of the variables the harness itself sets in the container; a script's --env may not name one. */
+export const RESERVED_ENV_PREFIX = "STARCI_UAT_"
 
 // Docker answers 125 when the run itself could not start (a bad mount, a missing image): that is the harness's failure,
 // not the script's verdict.
@@ -159,8 +167,10 @@ const DOCKER_RUN_FAILED = 125
 
 /**
  * Runs the script in a fresh container (`--rm`) with its folder read-only at /uat and the evidence
- * folder read-write at /evidence (the working directory). At the deadline the docker client is killed and the container
- * force-removed; the container is removed in every case.
+ * folder read-write at /evidence (the working directory). Each `env` variable is passed by name only (`--env NAME`): docker
+ * reads its value from its own environment, which is this process's, so a secret never reaches argv. `args` follow the image
+ * and reach the script as process.argv. At the deadline the docker client is killed and the container force-removed; the
+ * container is removed in every case.
  */
 export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRun> => {
     const container = spec.container
@@ -189,7 +199,9 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
         `STARCI_UAT_FORWARD=${spec.forwards.join(",")}`,
         "--env",
         `STARCI_UAT_EVIDENCE=${EVIDENCE_DIR}`,
+        ...spec.env.flatMap((name) => ["--env", name]),
         spec.runImage,
+        ...spec.args,
     ]
     const started = Date.now()
     let run: ToolRun

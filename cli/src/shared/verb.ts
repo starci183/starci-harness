@@ -10,9 +10,12 @@ export type Effect = "read" | "local-write" | "host" | "remote" | "publish"
 /** Who may run a verb. */
 export type Role = "owner" | "release" | "coordinator" | "lead" | "worker" | "agent" | "kernel" | "supervisor" | "op" | "debug"
 
-/** One flag of a verb: its spelling, kind and help line. */
+/**
+ * One flag of a verb: its spelling, kind and help line. A `rest` flag is the verb's last operands, typed after its positional
+ * (`starci uat run <script> -- <args...>`), handed over as they were.
+ */
 export interface FlagSpec extends PositionalFlag {
-    readonly kind: "boolean" | "string"
+    readonly kind: "boolean" | "string" | "rest"
     readonly summary: string
     readonly required?: boolean
 }
@@ -26,7 +29,9 @@ export interface PositionalFlag {
 export type FlagValues<F extends Readonly<Record<string, FlagSpec>>> = {
     readonly [K in keyof F]: F[K]["kind"] extends "boolean"
         ? boolean
-        : F[K]["required"] extends true
+        : F[K]["kind"] extends "rest"
+          ? readonly string[]
+          : F[K]["required"] extends true
           ? string
           : string | undefined
 }
@@ -61,7 +66,7 @@ export interface VerbDefinition<T, F extends Readonly<Record<string, FlagSpec>>>
 }
 
 /** The flag values the command line hands an erased verb. */
-export type RawFlagValues = Readonly<Record<string, string | boolean | undefined>>
+export type RawFlagValues = Readonly<Record<string, string | boolean | readonly string[] | undefined>>
 
 /** Any verb, erased for the registry and the catalog: its handler takes the raw flag values main parsed. */
 export interface AnyVerb extends Omit<VerbDefinition<unknown, Readonly<Record<string, FlagSpec>>>, "run"> {

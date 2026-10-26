@@ -40,7 +40,20 @@ export const DISPATCHING: readonly WorkflowStatus[] = ["running", "blocked"]
 /** The workflow statuses in which a step still settles live tasks: every one that is started and not ended. */
 export const SETTLING: readonly WorkflowStatus[] = ["running", "blocked", "paused", "stopping"]
 
-/** A workflow as the ledger stores it: its goal and defaults (the workflow file without its tasks), versions and status. */
+/**
+ * The Kernel of an orca workflow in Orca, so its seats read as a tree: the coordinator terminal `[Kernel] <workflow>`
+ * (`owned` when the harness created it, so it may close it; an ORCA_TERMINAL_HANDLE it adopted is not its own), the Run that
+ * terminal coordinates, and the orchestration task every op's worker nests under. `closedAt` is set once its terminal is closed.
+ */
+export interface KernelRecord {
+    readonly terminal: string | null
+    readonly owned: boolean
+    readonly runId: string | null
+    readonly taskId: string | null
+    readonly closedAt: string | null
+}
+
+/** A workflow as the ledger stores it: its goal and defaults (the workflow file without its tasks), versions, status and its Kernel in Orca. */
 export interface WorkflowRow {
     readonly id: string
     readonly header: WorkflowHeader
@@ -48,6 +61,7 @@ export interface WorkflowRow {
     readonly graphVersion: number
     readonly status: WorkflowStatus
     readonly reason: string | null
+    readonly kernel: KernelRecord
     readonly createdAt: string
     readonly updatedAt: string | null
 }
@@ -96,6 +110,14 @@ const toWorkflow = (row: Record<string, unknown>): WorkflowRow => {
         graphVersion: Number(row.graph_version),
         status,
         reason: optText(row.reason),
+        // A ledger opened read-only may predate the version 6 columns; a missing column reads as no Kernel.
+        kernel: {
+            terminal: optText(row.kernel_terminal),
+            owned: Number(row.kernel_terminal_owned ?? 0) === 1,
+            runId: optText(row.kernel_run_id),
+            taskId: optText(row.kernel_task_id),
+            closedAt: optText(row.kernel_closed_at),
+        },
         createdAt: text(row.created_at),
         updatedAt: optText(row.updated_at),
     }
@@ -211,6 +233,26 @@ export const setWorkflowStatus = (db: DatabaseSync, id: string, status: Workflow
     }
     db.prepare("UPDATE workflows SET status = ?, reason = ?, updated_at = ? WHERE id = ?").run(status, reason, now(), id)
     if (before.status !== status) recordEvent(db, "workflow-status", id, { from: before.status, to: status, reason })
+    return getWorkflow(db, id)
+}
+
+/** What changed of a workflow's Kernel in Orca; a field left out keeps its value. */
+export type KernelUpdate = Partial<KernelRecord>
+
+/** Records what Orca made of a workflow's Kernel (an event records each change) and returns the row. */
+export const recordKernel = (db: DatabaseSync, id: string, update: KernelUpdate): WorkflowRow => {
+    const before = getWorkflow(db, id).kernel
+    const after: KernelRecord = { ...before, ...update }
+    db.prepare("UPDATE workflows SET kernel_terminal = ?, kernel_terminal_owned = ?, kernel_run_id = ?, kernel_task_id = ?, kernel_closed_at = ?, updated_at = ? WHERE id = ?").run(
+        after.terminal,
+        after.owned ? 1 : 0,
+        after.runId,
+        after.taskId,
+        after.closedAt,
+        now(),
+        id,
+    )
+    recordEvent(db, "workflow-kernel", id, { before, after })
     return getWorkflow(db, id)
 }
 

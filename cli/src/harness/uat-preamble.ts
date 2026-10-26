@@ -1,7 +1,8 @@
 // The entrypoint of the uat container, never imported by the CLI: `starci uat run` copies the built file into the uat
 // image. It opens each forwarded port on the container's own loopback (127.0.0.1, and ::1 where the kernel has it) and
 // pipes every connection to the same port on the host, so the browser sees the app on 127.0.0.1 exactly as the host
-// does: secure-context cookies, CSRF origins and OIDC redirect URIs hold. Then it imports the worker's script. Every
+// does: secure-context cookies, CSRF origins and OIDC redirect URIs hold. Then it imports the worker's script, with
+// process.argv[1] set to the script, so the script reads its arguments (after `--` on starci uat run) as if run directly. Every
 // listener and socket is unref'd, so the process ends when the script's own work ends, with the script's exit code.
 import { createConnection, createServer } from "node:net"
 import type { Server, Socket } from "node:net"
@@ -56,4 +57,5 @@ for (const port of ports) {
     })
 }
 
+process.argv[1] = script
 await import(pathToFileURL(script).href)
