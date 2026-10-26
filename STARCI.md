@@ -34,20 +34,20 @@ cli/
 
 | command | edition | effect | what it does |
 |---|---|---|---|
-|  | core | read | CLI and Node versions |
-|  | core | read | the verbs available here, from their definitions |
-|  | core | read | node, git, npm and gh on the host; the StarCi tree of the folder |
-|  | core | read | the scope decision from the diff, then typecheck and lint of exactly that scope |
-|  /  | core | read | one step of the same scope, using each package's own ESLint or tsconfig |
-|  | core | remote | the light gate (on main, clean, fast-forward, no secret in the pushed range), then git push with hooks |
-|  | core | remote | tag v<version> on a commit already on origin/main with its CHANGELOG section; pushes the tag alone |
-|  | core | publish | the plan of package versions missing from npm; --publish publishes them from main and reads each back |
-|  | core | read | the GitHub Actions verdict of a commit |
-|  | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
+| `starci version` | core | read | CLI and Node versions |
+| `starci explain [--term t]` | core | read | the verbs available here, from their definitions |
+| `starci doctor` | core | read | node, git, npm and gh on the host; the StarCi tree of the folder |
+| `starci check run [--base ref] [--all]` | core | read | the scope decision from the diff, then typecheck and lint of exactly that scope |
+| `starci check lint` / `check typecheck` | core | read | one step of the same scope, using each package's own ESLint or tsconfig |
+| `starci release push [--dry-run]` | core | remote | the light gate (on main, clean, fast-forward, no secret in the pushed range), then git push with hooks |
+| `starci release cut [--package p] [--dry-run]` | core | remote | tag v<version> on a commit already on origin/main with its CHANGELOG section; pushes the tag alone |
+| `starci release publish [--publish]` | core | publish | the plan of package versions missing from npm; --publish publishes them from main and reads each back |
+| `starci release ci-status [--sha]` | core | read | the GitHub Actions verdict of a commit |
+| `starci app info` | lite | read | the lite app's be/fe apps, canonical patterns and backing services |
 
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
--  has no clean-install proof, canon rebind or example re-pin. Those belong to the runtime's canon packages, not to a product.
+- `release publish` has no clean-install proof, canon rebind or example re-pin. Those belong to the runtime's canon packages, not to a product.
 - Roles are declared on every verb but not yet enforced. Enforcement needs the caller's role, from the seat or an env var.
 
 ## Proposed verb set (for the owner's review)
