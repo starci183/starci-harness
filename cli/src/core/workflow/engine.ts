@@ -21,7 +21,7 @@ import { taskVerifyVerb } from "../task/verify.js"
 export interface StepAction {
     readonly key: string | null
     readonly task: string | null
-    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "wait" | "problem"
+    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "lost" | "wait" | "problem"
     readonly detail: string
 }
 

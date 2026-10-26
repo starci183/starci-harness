@@ -24,7 +24,10 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
     try {
         const cwd = resolve(options.cwd ?? process.cwd())
         const location = locateTree(cwd)
-        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs }
+        const progress = (line: string): void => {
+            if (mode === "human") process.stdout.write(`${line}\n`)
+        }
+        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs, progress }
         const flags = command.opts<Record<string, string | boolean | undefined>>()
         const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true)
         const given = command.processedArgs as unknown[]
