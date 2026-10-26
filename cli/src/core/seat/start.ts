@@ -1,4 +1,3 @@
-import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
@@ -16,21 +15,29 @@ import {
     closeWorker,
     dispatchOfFailure,
     effectiveLaunch,
+    isSelectorNotFound,
     locateOrca,
     orcaArgv,
+    repoAdd,
+    repositoryOfSelector,
     requestIdOf,
     runCreate,
     runCreateFlags,
+    terminalOfFailure,
     terminalRename,
     workerShow,
     workerStart,
     workerStartFlags,
+    worktreeSelector,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, openSeat, recordSeat, seatsOfTask } from "../../harness/seats.js"
+import { ensureKernel, launchableKernel } from "../../harness/kernel.js"
+import type { KernelLaunch } from "../../harness/kernel.js"
+import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { getTask, latestAttempt, openAttempt, recordEvent, setStatus } from "../../harness/tasks.js"
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
+import { getWorkflow } from "../../harness/workflow.js"
 import { asRefusal, EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -52,6 +59,8 @@ export interface SeatStartData {
     readonly requestId: string | null
     readonly effective: unknown
     readonly attested: EffectiveLaunch | null
+    /** The Kernel the worker nests under (its Run, task and coordinator terminal), or null when it launched flat. */
+    readonly kernel: KernelLaunch | null
 }
 
 /** What launching a worker on a queued task needs; the module function `seat start` and `task send --launch` share. */
@@ -78,15 +87,7 @@ const RUN_PLACEHOLDER = "<result.run.id of run-create>"
 /** Stands in for the request id in a dry run, which opens no attempt to derive it from. */
 const REQUEST_PLACEHOLDER = "<derived from the attempt id>"
 
-/** Orca's worktree selectors; anything else is a filesystem path and becomes `path:<absolute path>`. */
-const SELECTOR = /^(?:(?:identity|id|name|branch|issue|path):|(?:current|active|new-child|new-top-level)$)/
-
 const clip = (text: string): string => (text.length <= TITLE_CHARS ? text : `${text.slice(0, TITLE_CHARS - 1)}…`)
-
-const worktreeSelector = (value: string | undefined, cwd: string, root: string): string => {
-    if (value !== undefined && SELECTOR.test(value)) return value
-    return `path:${resolve(cwd, value ?? root).replace(/\\/g, "/")}`
-}
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
@@ -103,6 +104,7 @@ const launchRecordSchema = z.object({
         agent: z.string(),
         model: z.string(),
         effort: z.string().optional(),
+        parent: z.string().optional(),
         from: z.string().optional(),
         timeoutMs: z.number().int().positive(),
         retryRequest: z.string(),
@@ -119,13 +121,23 @@ const argvOf = (binary: OrcaBinary, record: LaunchRecord, runId: string | null):
     workerStart: [binary.path, ...orcaArgv("worker-start", workerStartFlags(startInput(record, runId ?? RUN_PLACEHOLDER)))],
 })
 
-/** The launch record of a new attempt: request ids come from the attempt id, so a resume derives and sends the same ones. */
-const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOptions, attempt: string): LaunchRecord => {
-    const from = process.env.ORCA_TERMINAL_HANDLE
+/**
+ * The Kernel a launch nests its worker under: the workflow's, unless --run names another Run (Orca refuses a parent from
+ * another Run). Null launches flat, in a Run of its own.
+ */
+const nestingOf = (kernel: KernelLaunch | null, options: SeatStartOptions): KernelLaunch | null => (kernel !== null && (options.run === undefined || options.run === kernel.runId) ? kernel : null)
+
+/**
+ * The launch record of a new attempt: request ids come from the attempt id, so a resume derives and sends the same ones. A
+ * workflow task nests under its Kernel: the Kernel's Run, `--parent` its task and `--from` its coordinator terminal, the one
+ * caller Orca accepts for that Run. A task without one is launched from ORCA_TERMINAL_HANDLE when this process runs in Orca.
+ */
+const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOptions, attempt: string, kernel: KernelLaunch | null): LaunchRecord => {
+    const from = kernel?.terminal ?? process.env.ORCA_TERMINAL_HANDLE
     return {
         attempt,
         objective: clip(`StarCi task ${task.id}: ${task.contract.input.summary}`),
-        run: options.run ?? null,
+        run: kernel?.runId ?? options.run ?? null,
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
@@ -135,40 +147,64 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
             agent: options.agent,
             model: options.model,
             ...(options.effort === undefined ? {} : { effort: options.effort }),
-            ...(from === undefined ? {} : { from }),
+            ...(kernel === null ? {} : { parent: kernel.taskId }),
+            ...(from === undefined || from === "" ? {} : { from }),
             timeoutMs: options.timeoutMs ?? LAUNCH_TIMEOUT_MS,
             retryRequest: requestIdOf("worker-start", attempt),
         },
     }
 }
 
-/** How a launch ended: a ready worker, a certain failure (no worker can be running), or an unknown outcome. */
+/** How a launch ended, with the record it ran under: a ready worker, a certain failure (no worker can be running), or an unknown outcome. */
 type Launched =
-    | { readonly kind: "ready"; readonly runId: string; readonly started: WorkerStarted }
-    | { readonly kind: "failed"; readonly runId: string | null; readonly dispatchId: string | null; readonly error: Refusal }
-    | { readonly kind: "unknown"; readonly runId: string | null; readonly dispatchId: string | null; readonly error: Refusal }
+    | { readonly kind: "ready"; readonly record: LaunchRecord; readonly runId: string; readonly started: WorkerStarted }
+    | { readonly kind: "failed"; readonly record: LaunchRecord; readonly runId: string | null; readonly dispatchId: string | null; readonly terminal: string | null; readonly error: Refusal }
+    | { readonly kind: "unknown"; readonly record: LaunchRecord; readonly runId: string | null; readonly dispatchId: string | null; readonly terminal: string | null; readonly error: Refusal }
+
+/**
+ * Runs worker-start; when Orca answers selector_not_found (it does not know the repository yet) the repository is registered
+ * (`orca repo add`) and the start tried once more under a request id of its own, recorded on the seat first so a resume
+ * replays the retry. Returns the record the launch ran under.
+ */
+const startWorker = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, record: LaunchRecord, runId: string, root: string, cwd: string): Promise<{ readonly record: LaunchRecord; readonly started: WorkerStarted }> => {
+    try {
+        return { record, started: await workerStart(binary, startInput(record, runId), cwd) }
+    } catch (error: unknown) {
+        if (!isSelectorNotFound(error) || record.start.retryRequest === requestIdOf("worker-start-after-repo-add", record.attempt)) throw error
+        const repository = repositoryOfSelector(record.start.worktree, root)
+        await repoAdd(binary, repository, cwd)
+        const retried: LaunchRecord = { ...record, start: { ...record.start, retryRequest: requestIdOf("worker-start-after-repo-add", record.attempt) } }
+        recordSeatLaunch(db, seat.id, retried, retried.start.retryRequest)
+        recordEvent(db, "seat-repo-added", seat.taskId, { seat: seat.id, repository, request: retried.start.retryRequest })
+        return { record: retried, started: await workerStart(binary, startInput(retried, runId), cwd) }
+    }
+}
 
 /** Issues run-create (unless the Run is known) and worker-start under the record's request ids; never throws for an Orca answer. */
-const launch = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, record: LaunchRecord, knownRun: string | null, cwd: string): Promise<Launched> => {
+const launch = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, given: LaunchRecord, knownRun: string | null, root: string, cwd: string): Promise<Launched> => {
+    let record = given
     let runId = knownRun
     if (runId === null) {
         try {
             runId = await runCreate(binary, { objective: record.objective, from: record.start.from, retryRequest: record.runRequest }, cwd)
         } catch (error: unknown) {
             // No worker-start was issued, so whatever happened to the Run, no worker can be running.
-            return { kind: "failed", runId: null, dispatchId: null, error: asRefusal(error) }
+            return { kind: "failed", record, runId: null, dispatchId: null, terminal: null, error: asRefusal(error) }
         }
         recordSeat(db, seat.id, { status: SEAT_STARTING, runId })
     }
     try {
-        return { kind: "ready", runId, started: await workerStart(binary, startInput(record, runId), cwd) }
+        const ran = await startWorker(db, binary, seat, record, runId, root, cwd)
+        return { kind: "ready", record: ran.record, runId, started: ran.started }
     } catch (error: unknown) {
+        record = launchRecordSchema.safeParse(getSeat(db, seat.id).launch).data ?? record
         if (error instanceof OrcaFailure) {
             const dispatchId = dispatchOfFailure(error) ?? null
-            return error.effect === "unknown" ? { kind: "unknown", runId, dispatchId, error } : { kind: "failed", runId, dispatchId, error }
+            const terminal = terminalOfFailure(error) ?? null
+            return error.effect === "unknown" ? { kind: "unknown", record, runId, dispatchId, terminal, error } : { kind: "failed", record, runId, dispatchId, terminal, error }
         }
         // A refusal before Orca ran (it could not be spawned) had no effect; anything else is not known to have had none.
-        return error instanceof Refusal ? { kind: "failed", runId, dispatchId: null, error } : { kind: "unknown", runId, dispatchId: null, error: asRefusal(error) }
+        return error instanceof Refusal ? { kind: "failed", record, runId, dispatchId: null, terminal: null, error } : { kind: "unknown", record, runId, dispatchId: null, terminal: null, error: asRefusal(error) }
     }
 }
 
@@ -188,7 +224,7 @@ const rollBack = (db: DatabaseSync, taskId: string): string => {
     return `task ${taskId} is queued again`
 }
 
-const closeNote = (closed: WorkerClosed | null): string => (closed === null ? "" : `; worker ${closed.dispatchId}: stop ${closed.stop}, release ${closed.release}`)
+const closeNote = (closed: WorkerClosed | null): string => (closed === null ? "" : `; worker ${closed.dispatchId}: stop ${closed.stop}, release ${closed.release}, tab ${closed.tab}`)
 
 const seatAfterClose = (closed: WorkerClosed | null): string => (closed === null || closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNSETTLED)
 
@@ -198,9 +234,9 @@ interface Launching {
     readonly cwd: string
     readonly task: TaskRow
     readonly seat: SeatRow
-    readonly record: LaunchRecord
     readonly files: BriefFiles
     readonly resumed: boolean
+    readonly kernel: KernelLaunch | null
 }
 
 /**
@@ -225,18 +261,21 @@ const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched:
 
 /** Records how a launch ended and moves the task: ready runs, a certain failure goes back to the queue, unknown waits for a resume. */
 const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
-    const { db, binary, cwd, task, seat, record } = at
+    const { db, binary, cwd, task, seat } = at
+    const { record } = launched
     const attemptId = record.attempt
     reportLaunch(db, task.id, record.start.agent, launched)
-    const base = { task: task.id, dryRun: false, resumed: at.resumed, brief: at.files.brief, contract: at.files.contract, orca: binary, argv: argvOf(binary, record, launched.runId), attempt: attemptId, runId: launched.runId, requestId: record.start.retryRequest }
+    const base = { task: task.id, dryRun: false, resumed: at.resumed, brief: at.files.brief, contract: at.files.contract, orca: binary, argv: argvOf(binary, record, launched.runId), attempt: attemptId, runId: launched.runId, requestId: record.start.retryRequest, kernel: at.kernel }
 
     if (launched.kind === "failed") {
-        const closed = launched.dispatchId === null ? null : await closeWorker(binary, launched.dispatchId, cwd)
+        const closed = launched.dispatchId === null ? null : await closeWorker(binary, launched.dispatchId, cwd, launched.terminal)
         const ours = inTransaction(db, () => {
             endAttempt(db, attemptId, "launch-failed")
+            if (closed !== null) noteTab(db, seat.id, closed)
             recordSeat(db, seat.id, {
                 status: closed === null || closed.settled ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNSETTLED,
                 ...(launched.dispatchId === null ? {} : { handle: launched.dispatchId }),
+                terminal: launched.terminal,
                 facts: { error: launched.error.message, cleanup: closed },
             })
             recordEvent(db, "seat-launch-failed", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, cleanup: closed })
@@ -249,14 +288,16 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     if (launched.kind === "unknown") {
         const handle = launched.dispatchId === null ? {} : { handle: launched.dispatchId }
         const ours = inTransaction(db, () => {
-            recordSeat(db, seat.id, { status: SEAT_LAUNCH_UNKNOWN, ...handle, facts: { error: launched.error.message } })
+            recordSeat(db, seat.id, { status: SEAT_LAUNCH_UNKNOWN, ...handle, terminal: launched.terminal, facts: { error: launched.error.message } })
             recordEvent(db, "seat-launch-unknown", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, dispatchId: launched.dispatchId, request: record.start.retryRequest })
             const mine = stillOurs(db, task.id, attemptId)
             if (mine && getTask(db, task.id).status === "running") setStatus(db, task.id, "effect_unknown")
             return mine
         })
         if (!ours && launched.dispatchId !== null) {
-            const closed = await closeWorker(binary, launched.dispatchId, cwd)
+            const terminal = launched.terminal ?? (await workerShow(binary, launched.dispatchId, cwd).then((shown) => shown.terminal, () => null))
+            const closed = await closeWorker(binary, launched.dispatchId, cwd, terminal)
+            noteTab(db, seat.id, closed)
             recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNKNOWN, facts: { closed, orphaned: true } })
         }
         const next = ours
@@ -266,7 +307,7 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     }
 
     const { started, runId } = launched
-    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, runId, facts: { orcaTask: started.taskId, terminal: started.terminal, effective: started.effective } })
+    recordSeat(db, seat.id, { status: started.state, handle: started.dispatchId, terminal: started.terminal, runId, facts: { orcaTask: started.taskId, parent: record.start.parent ?? null, effective: started.effective } })
     // Attest the launch from worker-show; an Orca that does not answer proves nothing about the worker, so it is only noted.
     const shown: WorkerShown | string = await workerShow(binary, started.dispatchId, cwd).catch((error: unknown) => messageOf(error))
     const effective = typeof shown === "string" ? started.effective : (shown.effective ?? started.effective)
@@ -274,9 +315,12 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
     const requested = record.start
     const mismatch = (attested.model !== null && attested.model !== requested.model) || (attested.agent !== null && attested.agent !== requested.agent)
     const ours = stillOurs(db, task.id, attemptId)
+    // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
+    const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
 
     if (mismatch || !ours) {
-        const closed = await closeWorker(binary, started.dispatchId, cwd)
+        const closed = await closeWorker(binary, started.dispatchId, cwd, terminal)
+        noteTab(db, seat.id, closed)
         const outcome = mismatch ? "model-mismatch" : "orphaned"
         const rolled = inTransaction(db, () => {
             db.prepare("UPDATE attempts SET agent = COALESCE(?, agent), model = COALESCE(?, model) WHERE id = ?").run(attested.agent, attested.model, attemptId)
@@ -301,15 +345,33 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
         if (getTask(db, task.id).status === "effect_unknown") setStatus(db, task.id, "running")
         return typeof shown === "string"
             ? recordSeat(db, seat.id, { status: started.state, facts: { attestation: shown } })
-            : recordSeat(db, seat.id, { status: shown.state ?? started.state, facts: { terminal: shown.terminal, effective: shown.effective } })
+            : recordSeat(db, seat.id, { status: shown.state ?? started.state, terminal: shown.terminal, facts: { effective: shown.effective } })
     })
-    // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
-    const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
     const titled = terminal === null ? "no terminal handle to title" : await terminalRename(binary, terminal, requested.taskTitle, cwd)
     if (titled !== undefined) recordEvent(db, "seat-title-skipped", task.id, { seat: seat.id, reason: titled })
     const data: SeatStartData = { ...base, seat: seatRow, dispatchId: started.dispatchId, effective, attested }
     const model = attested.model ?? `${requested.model} (not attested)`
-    return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}; brief ${at.files.brief}` }
+    const under = requested.parent === undefined ? "" : ` under the Kernel task ${requested.parent}`
+    return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}${under}; brief ${at.files.brief}` }
+}
+
+/**
+ * The Kernel a workflow task's worker nests under. A real launch first makes sure it exists in Orca (created once, recreated
+ * when its terminal is gone); a dry run only reads what is recorded. A Kernel Orca cannot make is an event and the worker
+ * launches flat: the tree is how seats read, never a reason not to run a task.
+ */
+const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, options: SeatStartOptions): Promise<KernelLaunch | null> => {
+    if (task.workflowId === null) return null
+    const workflowId = task.workflowId
+    if (options.dryRun !== true && getWorkflow(db, workflowId).header.runner === "orca") {
+        try {
+            const ensured = await ensureKernel(options.root, options.cwd, workflowId, binary)
+            if (ensured.notes.length > 0) recordEvent(db, "workflow-kernel-ensured", workflowId, { task: task.id, notes: ensured.notes })
+        } catch (error: unknown) {
+            recordEvent(db, "workflow-kernel-unavailable", workflowId, { task: task.id, error: messageOf(error) })
+        }
+    }
+    return launchableKernel(getWorkflow(db, workflowId))
 }
 
 /**
@@ -324,12 +386,13 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
         const task = getTask(db, options.task)
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
         const binary = await locateOrca(cwd)
+        const kernel = nestingOf(await kernelOf(db, task, binary, options), options)
         if (options.dryRun === true) {
             const files = writeBrief(task, ops, root)
-            const record = launchRecord(task, files, options, "dry-run")
+            const record = launchRecord(task, files, options, "dry-run", kernel)
             const shown: LaunchRecord = { ...record, runRequest: REQUEST_PLACEHOLDER, start: { ...record.start, retryRequest: REQUEST_PLACEHOLDER } }
-            const argv = argvOf(binary, shown, options.run ?? null)
-            const data: SeatStartData = { task: task.id, dryRun: true, resumed: false, brief: files.brief, contract: files.contract, orca: binary, argv, seat: null, attempt: null, runId: options.run ?? null, dispatchId: null, requestId: null, effective: null, attested: null }
+            const argv = argvOf(binary, shown, record.run)
+            const data: SeatStartData = { task: task.id, dryRun: true, resumed: false, brief: files.brief, contract: files.contract, orca: binary, argv, seat: null, attempt: null, runId: record.run, dispatchId: null, requestId: null, effective: null, attested: null, kernel }
             const lines = [
                 "dry run: nothing launched, the ledger is unchanged",
                 `brief: ${files.brief}`,
@@ -347,12 +410,12 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
             const attempt = openAttempt(db, current.id, { agent: options.agent, model: options.model, ...(options.pick === undefined ? {} : { pick: options.pick }) })
             renewLeases(db, current)
             const files = writeBrief(running, ops, root)
-            const record = launchRecord(running, files, options, attempt.id)
+            const record = launchRecord(running, files, options, attempt.id, kernel)
             const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
             return { task: running, seat, record, files }
         })
-        const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, cwd)
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, record: claim.record, files: claim.files, resumed: false }, launched)
+        const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
+        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files: claim.files, resumed: false, kernel }, launched)
     } finally {
         db.close()
     }
@@ -390,8 +453,10 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             return { task, seat, record: parsed.data, runId }
         })
         const files = writeBrief(claim.task, loadOps(), root)
-        const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, cwd)
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, record: claim.record, files, resumed: true }, launched)
+        const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
+        const parent = claim.record.start.parent
+        const kernel = parent === undefined || claim.runId === null || claim.record.start.from === undefined ? null : { terminal: claim.record.start.from, runId: claim.runId, taskId: parent }
+        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: true, kernel }, launched)
     } finally {
         db.close()
     }

@@ -3,15 +3,17 @@ import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { exitOf, reportMessage, stepWorkflow } from "./engine.js"
+import { exitOf, kernelActions, reportMessage, stepWorkflow } from "./engine.js"
 
 /**
- * `starci workflow start <id>`: a defined workflow starts running and takes its first step: orca dispatches every ready task
- * up to maxParallel and launches their seats; inline queues the first ready task and prints it for the chat agent.
+ * `starci workflow start <id>`: a defined workflow starts running and takes its first step. orca first makes the workflow's
+ * Kernel in Orca once (a `[Kernel] <workflow>` coordinator terminal, its Run and its orchestration task), then dispatches every
+ * ready task up to maxParallel and launches their seats nested under that task; inline makes nothing in Orca, queues the first
+ * ready task and prints it for the chat agent.
  */
 export const workflowStartVerb = defineVerb({
     path: ["workflow", "start"],
-    summary: "start a defined workflow: orca dispatches its ready tasks to worker seats, inline prints the next task for the chat agent",
+    summary: "start a defined workflow: orca makes its [Kernel] terminal, Run and task in Orca and dispatches its ready tasks to worker seats under it, inline prints the next task for the chat agent",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
@@ -22,14 +24,19 @@ export const workflowStartVerb = defineVerb({
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         const db = openLedger(root)
-        try {
-            const workflow = getWorkflow(db, flags.workflow)
-            if (workflow.status !== "defined") throw new Refusal("WORKFLOW_STARTED", `workflow ${workflow.id} is ${workflow.status}; a started workflow moves with starci workflow step ${workflow.id}`)
-            setWorkflowStatus(db, workflow.id, "running", null)
-        } finally {
-            db.close()
-        }
-        const report = await stepWorkflow(context, root, flags.workflow)
+        const runner = (() => {
+            try {
+                const workflow = getWorkflow(db, flags.workflow)
+                if (workflow.status !== "defined") throw new Refusal("WORKFLOW_STARTED", `workflow ${workflow.id} is ${workflow.status}; a started workflow moves with starci workflow step ${workflow.id}`)
+                setWorkflowStatus(db, workflow.id, "running", null)
+                return workflow.header.runner
+            } finally {
+                db.close()
+            }
+        })()
+        const kernel = runner === "orca" ? await kernelActions(context, root, flags.workflow) : []
+        const stepped = await stepWorkflow(context, root, flags.workflow)
+        const report = { ...stepped, actions: [...kernel, ...stepped.actions] }
         return { data: report, message: reportMessage(report), exitCode: exitOf(report) }
     },
 })

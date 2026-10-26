@@ -8,15 +8,19 @@ The workflow is defined and the owner's OK covers starting it. You hold its id a
 starci workflow start <id>
 ```
 
-- `orca`: dispatches the ready tasks to worker seats, up to `maxParallel`, each pinned or routed.
+- `orca`: makes the workflow's Kernel in Orca once (a `[Kernel] <id>` terminal, its Run and its task; the terminal
+  you run in when `ORCA_TERMINAL_HANDLE` names one), then dispatches the ready tasks to worker seats nested under it as
+  `[Op] <id> › <task>`, up to `maxParallel`, each pinned or routed. If Orca does not know the repository yet, the harness
+  registers it (`orca repo add`); if the Kernel cannot be made, the report says so and ops launch flat.
 - `inline`: queues one task and prints it with its brief and the commands to finish it. Work it as
   [inline-task.md](inline-task.md) says.
 
 ## The step loop
 
 `workflow step` is one idempotent tick: it cancels live tasks no node carries any more, settles reported
-tasks through `task verify`, dispatches newly ready tasks within `maxParallel` and the budget, and updates
-the status. Exit 1 means the workflow is blocked.
+tasks through `task verify`, closes the seat and tab of every task whose result is settled (done, failed, returned,
+cancelled), dispatches newly ready tasks within `maxParallel` and the budget, and updates the status. A Kernel
+terminal that is gone is made again at the next launch. Exit 1 means the workflow is blocked.
 
 ```text
 starci workflow step <id>
@@ -102,4 +106,5 @@ starci workflow stop <id> --hard
 
 `--graceful` sends nothing new and lets live tasks settle; the workflow reads `stopping` until none is live.
 In an inline run, finish the current task or cancel it (`starci task cancel <task> --reason "<why>"`),
-then step once. `--hard` cancels every live task and its seats now.
+then step once. `--hard` cancels every live task and its seats now. Once the workflow is stopped, after its ops,
+the harness closes the Kernel terminal it made (one it adopted from `ORCA_TERMINAL_HANDLE` stays open).
