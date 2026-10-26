@@ -144,6 +144,17 @@ const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => 
     return { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: tail(run.stdout, run.stderr) }
 }
 
+/** Runs the contract's setup commands in cwd (npm through the running Node), one outcome for all; undefined when none. */
+const setUp = async (commands: readonly (readonly string[])[], place: CheckPlace): Promise<CheckOutcome | undefined> => {
+    if (commands.length === 0) return undefined
+    const options = place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }
+    for (const [tool = "", ...args] of commands) {
+        const run = tool === "npm" ? await captureNpm(args, place.cwd, options) : await captureTool(tool, args, place.cwd, options)
+        if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${tail(run.stdout, run.stderr)}` }
+    }
+    return { name: "setup", kind: "setup", status: "green", exitCode: 0, detail: commands.map((command) => command.join(" ")).join("\n") }
+}
+
 /**
  * Runs one check against the candidate. The paths-only check judges two things: what would land (the candidate against its
  * parent, never against a pinned base that other settled tasks moved past), and what the task may have written outside its
@@ -217,7 +228,9 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         const checks: CheckOutcome[] = [built.lands]
         const installed = await install(place)
         if (installed !== undefined) checks.push(installed)
-        if (installed?.status !== "red") {
+        const prepared = installed?.status === "red" ? undefined : await setUp(contract.context.setup ?? [], place)
+        if (prepared !== undefined) checks.push(prepared)
+        if (installed?.status !== "red" && prepared?.status !== "red") {
             for (const check of input.checks) checks.push(await checkCandidate(check, { ...input, contract: resolved }, place, built))
         }
         const verdict = checks.every((check) => check.status === "green") ? "green" : "red"

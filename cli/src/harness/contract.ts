@@ -46,6 +46,8 @@ export const contractSchema = z.object({
         allowPaths: z.array(repoPathSchema).min(1),
         readPaths: z.array(repoPathSchema).optional(),
         cwd: repoPathSchema.optional(),
+        /** Commands (argv) the clean checkout runs in cwd after install and before the checks, e.g. code generation. */
+        setup: z.array(z.array(z.string().min(1)).min(1)).optional(),
     }),
     input: z.object({ summary: z.string().min(1), details: z.string().optional() }),
     expectedOutput: z.object({ checks: z.array(expectedCheckSchema).min(1) }),

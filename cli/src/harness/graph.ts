@@ -50,6 +50,7 @@ const taskFieldsShape = {
     allowPaths: z.array(z.string().min(1)).min(1).optional(),
     readPaths: z.array(z.string().min(1)).optional(),
     cwd: z.string().min(1).optional(),
+    setup: contractSchema.shape.context.shape.setup,
     checks: z.array(checkEntrySchema).min(1).optional(),
     budget: contractSchema.shape.budget.optional(),
     dependsOn: z.array(keySchema).optional(),
@@ -157,7 +158,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "readPaths", "cwd", "checks", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "readPaths", "cwd", "setup", "checks", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -184,12 +185,19 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
     }
     const readPaths = fields.readPaths ?? previous?.context.readPaths
     const cwd = fields.cwd ?? previous?.context.cwd
+    const setup = fields.setup ?? previous?.context.setup
     const details = fields.details ?? previous?.input.details
     const checks = fields.checks === undefined ? (previous?.expectedOutput.checks ?? composeChecks(label, [], ops)) : composeChecks(label, fields.checks, ops)
     return parseContract({
         schema: "starci/contract@1",
         label,
-        context: { base: previous?.context.base ?? base, allowPaths, ...(readPaths === undefined ? {} : { readPaths }), ...(cwd === undefined ? {} : { cwd }) },
+        context: {
+            base: previous?.context.base ?? base,
+            allowPaths,
+            ...(readPaths === undefined ? {} : { readPaths }),
+            ...(cwd === undefined ? {} : { cwd }),
+            ...(setup === undefined ? {} : { setup }),
+        },
         input: { summary, ...(details === undefined ? {} : { details }) },
         expectedOutput: { checks },
         budget: fields.budget ?? previous?.budget ?? { minutes: DEFAULT_MINUTES, tries: DEFAULT_TRIES },
