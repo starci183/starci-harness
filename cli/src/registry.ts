@@ -19,6 +19,9 @@ import { appInfoVerb } from "./lite/app/info.js"
 import { seatListVerb } from "./core/seat/list.js"
 import { seatStartVerb } from "./core/seat/start.js"
 import { seatStopVerb } from "./core/seat/stop.js"
+import { checkLooseningVerb } from "./core/check/loosening.js"
+import { checkSecretsVerb } from "./core/check/secrets.js"
+import { checkCiVerb } from "./core/check/ci.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -47,6 +50,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     seatStartVerb,
     seatListVerb,
     seatStopVerb,
+    checkLooseningVerb,
+    checkSecretsVerb,
+    checkCiVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
