@@ -29,13 +29,23 @@ presets:
     check:
       kind: files
       mustExist: "{files}"
+  # A json check reads a file of the candidate (the clean checkout, where .starciwork never is), relative to the
+  # contract's cwd; the file name @result reads the worker's filed result output from the ledger instead.
   json-required:
-    summary: an output json file exists and carries the required keys
+    summary: a json file the task lands (under allowPaths) exists and carries the required keys
     behavioural: true
     args: [file, keys]
     check:
       kind: json
       file: "{file}"
+      requiredKeys: "{keys}"
+  result-json:
+    summary: the worker's filed result output (task result --output) carries the required keys
+    behavioural: true
+    args: [keys]
+    check:
+      kind: json
+      file: "@result"
       requiredKeys: "{keys}"
   probe:
     summary: an http endpoint answers with the expected status

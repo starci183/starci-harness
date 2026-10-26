@@ -1,6 +1,7 @@
-import { mkdirSync } from "node:fs"
-import { join } from "node:path"
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
+import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
 export const LEDGER_VERSION = 1
@@ -49,18 +50,87 @@ CREATE TABLE IF NOT EXISTS events (
 /** The project's work folder, which holds its ledger. */
 export const WORK_DIR = ".starciwork"
 
-/** The ledger of a project: <root>/.starciwork/runtime.sqlite, one per project, never committed. */
-export const ledgerPath = (root: string): string => join(root, WORK_DIR, "runtime.sqlite")
+interface Project {
+    readonly root: string
+    readonly commonDir: string | undefined
+}
 
-/** Opens (and creates or migrates) the ledger of a project, with WAL and a busy timeout for concurrent seats. */
-export const openLedger = (root: string): DatabaseSync => {
-    mkdirSync(join(root, WORK_DIR), { recursive: true })
+const projects = new Map<string, Project>()
+
+// Every linked worktree shares the main checkout's git common dir, so it shares that checkout's work folder too;
+// a worktree opening a ledger of its own would see none of the project's tasks.
+const projectOf = (root: string): Project => {
+    const key = resolve(root)
+    const known = projects.get(key)
+    if (known !== undefined) return known
+    let project: Project = { root: key, commonDir: undefined }
+    const dirs = captureToolSync("git", ["rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"], key)
+    const [gitDir, commonDir] = dirs.stdout.split("\n").map((line) => line.trim())
+    if (dirs.exitCode === 0 && gitDir !== undefined && commonDir !== undefined && commonDir !== "") {
+        if (resolve(gitDir) === resolve(commonDir)) {
+            project = { root: key, commonDir: resolve(commonDir) }
+        } else {
+            // The first entry of the worktree list is the main checkout (the repository itself when it is bare).
+            const main = /^worktree (.+)$/m.exec(captureToolSync("git", ["worktree", "list", "--porcelain"], key).stdout)?.[1]
+            project = { root: main === undefined ? dirname(resolve(commonDir)) : resolve(main.trim()), commonDir: resolve(commonDir) }
+        }
+    }
+    projects.set(key, project)
+    return project
+}
+
+/** The project a repository checkout belongs to: the main checkout for a linked worktree, else the checkout itself. */
+export const projectRoot = (root: string): string => projectOf(root).root
+
+/** The ledger of a project: <project>/.starciwork/runtime.sqlite, one per project and shared by its linked worktrees, never committed. */
+export const ledgerPath = (root: string): string => join(projectRoot(root), WORK_DIR, "runtime.sqlite")
+
+const WORK_DIR_LINES = [WORK_DIR, `${WORK_DIR}/`, `/${WORK_DIR}`, `/${WORK_DIR}/`]
+
+// The work folder holds briefs, contract copies, outputs and the ledger; untracked, it would turn every files check red,
+// so it is excluded locally (info/exclude is never committed) unless the repository already ignores it.
+const excluded = new Set<string>()
+
+const excludeWorkDir = (project: Project): void => {
+    if (project.commonDir === undefined || excluded.has(project.root)) return
+    excluded.add(project.root)
+    if (captureToolSync("git", ["check-ignore", "-q", "--no-index", `${WORK_DIR}/`], project.root).exitCode === 0) return
+    const exclude = join(project.commonDir, "info", "exclude")
+    const current = existsSync(exclude) ? readFileSync(exclude, "utf8") : ""
+    if (current.split(/\r?\n/).some((line) => WORK_DIR_LINES.includes(line.trim()))) return
+    mkdirSync(dirname(exclude), { recursive: true })
+    appendFileSync(exclude, `${current === "" || current.endsWith("\n") ? "" : "\n"}/${WORK_DIR}/\n`)
+}
+
+/** Creates the project's work folder, excluded from git locally, and returns its path. */
+export const ensureWorkDir = (root: string): string => {
+    const project = projectOf(root)
+    const dir = join(project.root, WORK_DIR)
+    mkdirSync(dir, { recursive: true })
+    excludeWorkDir(project)
+    return dir
+}
+
+const connect = (file: string): DatabaseSync => {
     // The busy timeout must hold before the WAL switch, or a concurrent open fails with "database is locked".
-    const db = new DatabaseSync(ledgerPath(root), { timeout: 5000 })
+    const db = new DatabaseSync(file, { timeout: 5000 })
     db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")
+    return db
+}
+
+/** Opens (and creates or migrates) the project's ledger, with WAL and a busy timeout for concurrent seats. */
+export const openLedger = (root: string): DatabaseSync => {
+    ensureWorkDir(root)
+    const db = connect(ledgerPath(root))
     db.exec(SCHEMA)
     db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
     return db
+}
+
+/** Opens the project's ledger only when it exists, creating and migrating nothing; for reads that must leave no ledger behind. */
+export const openExistingLedger = (root: string): DatabaseSync | undefined => {
+    const file = ledgerPath(root)
+    return existsSync(file) ? connect(file) : undefined
 }
 
 /** The current time as the ledger stores it. */

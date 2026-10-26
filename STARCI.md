@@ -218,7 +218,7 @@ Who runs each verb is enforced from its `roles`. `hidden` verbs are called by th
 | `contract check <file>` | everyone | read | validate the contract: schema, machine-runnable checks, `allowPaths` |
 | `task send --to worker\|supervisor [--agent claude\|codex\|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |
 | `task wait <id> [--timeout]` | kernel, supervisor | read | block until the result arrives or the deadline passes |
-| `task result <id> --status <s> --output <file>` | op, supervisor | local-write | the receiver returns done, blocked, mismatch or failed with its output |
+| `task result <id> --status <s> --output @<file>` | op, supervisor | local-write | the receiver returns done, blocked, mismatch or failed with its output |
 | `task verify <id>` | kernel, supervisor, op | read | replay every check of `expectedOutput` against the result; only green settles |
 | `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts and verdicts |
 | `task cancel <id>` | kernel, supervisor | host | send `cancel` to the task's seat |
@@ -253,7 +253,7 @@ Owner: the Kernel writes each op's contract itself, so an op is only a worker. T
   - `check-run-green`: `starci check run` exits 0 in the lane;
   - `paths-only`: only `allowPaths` changed;
   - `tests-pass <names>`;
-  - `json-schema <file> <schema>`;
+  - `json-schema <file> <schema>`: the file is one the task lands, read from the clean checkout; `@result` names the worker's filed result output instead (preset `result-json`);
   - `renders <viewports>`;
   - `probe <url> <status>`.
   `contract new` writes an empty contract, and `contract check` refuses a check that no machine can run.
