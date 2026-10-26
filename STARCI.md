@@ -257,8 +257,141 @@ Owner: "tránh vết xe đổ là quá nhiều test nên test trong phạm vi n�
 - The worker labels (code, test, ui, verify, uat, docs, deliver) are not manifests. They are a routing hint the Kernel puts on a contract so it can pick the agent and model.
 - When a plan or a decision is too large for the Kernel's own turn, the Kernel may still send it to a worker as a contract whose `expectedOutput` is a json record. It then judges that record itself.
 
+## Harness plan (alpha.40): ops/, verbs, routing, failures
+
+Based on three readings of the legacy runtime (2026-10-27): its routing (`scripts/agent/op-pick.mjs`, `lib/tier-pick.mjs`, `modules/models/*`), its failure handling (`failure-codes.yaml`, `op-incident-policy.yaml`, provider circuit, pool backoff, liveness, budgets), and its job lifecycle (`driver-loop.yaml`, dispatch, settle, leases, Orca launch). Each section keeps the legacy core and drops its accretion.
+
+### 1. Repository layout
+
+```
+cli/                       the starci CLI (exists)
+  src/harness/             ledger, contracts, tasks, router, failure policy, liveness, seat launch
+ops/                       everything that describes work, as data validated by the CLI
+  worker.md                the one worker brief (prompt template)
+  labels.yaml              code, test, ui, verify, uat, docs, deliver: difficulty floor, host tools, default checks
+  checks.yaml              the named check presets (check-run-green, paths-only, tests-pass, json-schema, renders, probe)
+  models.yaml              tiers, pools and agents (launch command, host tools, maxParallel)
+  policy.yaml              failure routes, cooldowns, liveness thresholds, budgets
+```
+`ops/` is data, not code. Every tunable number lives there once, and the CLI reads it. Nothing is restated in prose.
+
+### 2. Worktree model (decision for the owner)
+- **Legacy (proven):** one worktree per workflow (`wf-<id>`).
+  - Parallel workers share it, and path leases keep their `allowPaths` disjoint.
+  - The harness, never the worker, commits a task's own paths when its verify is green, and preserves and resets them when it is red.
+- **Lane per task:** isolation, but each lane needs its own `npm ci`, and every lane must be merged back. The legacy runtime never did this for product work.
+- **Proposal:** keep the legacy model. One workflow worktree, path leases, and a harness commit per green task. The scoped check of a task filters the diff by its `allowPaths`.
+
+### 3. Model and agent selection (router)
+The legacy minimal core, kept as is:
+1. `tier = labelTier ?? difficultyTier[max(difficulty, labelFloor)]`, where difficulty is easy, medium, hard or insane, mapped to the low, medium, high and frontier tiers.
+2. The tier is an ordered chain of `{agent, model, effort}`.
+3. A member is dropped when:
+   - its pool does not serve the label;
+   - a host tool the label needs is missing;
+   - this task's lineage excluded the pool (1 attributable failure demotes it, 2 exclude it);
+   - the provider circuit is open;
+   - `running >= min(maxParallel, backoffCap)`.
+4. Owner bias: `only`, `avoid` or `prefer`. A bias that empties the chain is a refusal, never a silent fallback.
+5. Balance: a member picked 3 times in a row, or holding more than 70% of the tier's running seats, yields to the next member.
+6. Quota: a member at 90% or more of its quota window is skipped. A biased member may go to 95%. At 100% it is never used. When every member is out, the result is `tokens-out` with the earliest reset.
+7. The first remaining member is chosen. The pick record (chain, dropped members with reasons, chosen member, chosen-by) is stored on the attempt, and dispatch reuses it.
+8. A retry re-picks with lineage penalties. There is no tier escalation. An exhausted chain is escalated to the Supervisor.
+9. Estimate: `W = Σ weight·count` (file 4, assertion 3, component 12, record 2). The size class gives the worker count, clamped by the disjoint path prefixes.
+
+Dropped from the legacy router: the qualification and probation store (empty), 37 admission reason codes, fenced reservations with proofs, reviewer independence, prices in the decision, and the `route model` what-if.
+
+### 4. Failures: classes, actions and bounds
+
+| class | detector | action | bound | then |
+|---|---|---|---|---|
+| provider-unavailable (rate-limited, quota, capacity, auth) | typed launch or worker error | open the provider circuit for its kind, re-pick another pool, **no try spent** | cooldown: rate 10 min, quota 1 h or reset, capacity 10 min, auth 24 h; ×5 on reopen within 1 h, cap 1 h; launch kinds need 2 strikes | Supervisor |
+| worker-lost | no pong before the deadline, or the seat is gone | one ping retry, then settle `no-report` and retry on another pool; an unknown effect is fenced and reconciled first | 2 | Supervisor, then owner |
+| worker-hung | pong ok but no progress for `activeStale` | the same as worker-lost | 2 | Supervisor |
+| contract-red | `task verify` red | rerun with the red checks fed back; the next attempt goes to another member | 2 | Kernel replans, then Supervisor |
+| mismatch | the worker shows the contract is wrong | the Kernel rewrites the contract, **no try spent** | 1 | Supervisor |
+| blocked (env, authority, gap) | typed result | env goes to the Supervisor, authority to the owner, a gap to the Kernel's plan | 1 to 2 | owner |
+| contract-invalid | `contract check` | refuse before dispatch, no try spent | - | - |
+| budget-exhausted | try, token or workflow cap | hold dispatch and raise a gate | - | the Supervisor or owner raises it, with who and why logged |
+| resource-throttle | free RAM or pool capacity | queue with a named wait, never kill a running worker | - | - |
+
+Accounting rules:
+- A no-effect failure is free.
+- An unknown or partial effect costs a try and is reconciled before the retry.
+- `awaiting_owner` costs nothing.
+- The task try budget is 5. Only the Supervisor or the owner raises it.
+- A periodic sweep re-routes any failed task that has no recorded next step, so nothing fails silently.
+
+Provider health keeps one row per provider, with its strikes, `circuit_open_until` and events. A cheap probe closes it early.
+
+Pool concurrency is AIMD:
+- halve it on a rate limit (floor 2, at most once per 2 min);
+- add 1 every 5 min after 15 quiet minutes.
+
+Dropped from the legacy: the 2,235-code catalog (about 95% are lint findings), terminal-screen scraping with per-card regexes, about 60 hold reasons and the conditions table. Codes stay, but only for runtime failures: a closed set, each with a handler and a next handler.
+
+### 5. Liveness
+- **Who answers.** The **seat runner** answers a `ping` for its seat, not the model. It is one host process, the harness daemon. It answers from Orca's own worker state (terminal alive, last output time) and from the task's ledger state.
+- **Thresholds** (`ops/policy.yaml`):
+
+| threshold | value |
+|---|---|
+| `launchGrace` | 90 s |
+| `pingDeadline` | 15 s |
+| `activeStale` | 10 min |
+| `quiet` | 20 min |
+| nudges | at most 2 |
+| Kernel turn budget | 20 min |
+| Supervisor turn budget | 30 min |
+
+- **Seat rotation.** The Kernel and Supervisor seats are rotated after a wake or token budget. They keep no memory, because the ledger is the state.
+
+### 6. Ledger (one SQLite per project)
+The ledger has ten tables:
+- `workflows` (goal version, graph version);
+- `tasks` (contract, label, try number, retry-of, status);
+- `attempts` (one per dispatch: pick record, agent, model, outcome, verdict);
+- `results` (immutable, unique per attempt);
+- `check_runs` (raw exit codes; a worker's own runs are evidence only);
+- `leases` (path prefixes, mandatory TTL, fencing token);
+- `seats` (role, agent, Orca handle, last pong);
+- `messages` (commands with a correlation id and a deadline);
+- `provider_health`;
+- `events` (append-only).
+
+Status transitions are enforced in code with one state machine, not duplicated in triggers. Task states are:
+`queued → ready → leased → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown`.
+
+### 7. Seat launch (Orca)
+- An agent starts through `orca orchestration worker-start --spec <short spec> --worktree <wf tree> --agent claude|codex|devin [--model --effort]`.
+- A brief longer than the inline limit goes into a prompt file, and the spec points at it. This works around the Windows argv cap.
+- After the start, the effective agent and model are attested from `worker-show`. A failed start is cleaned up with stop and release, so nothing is left half-launched.
+
+### 8. Verbs added to the harness set
+
+| verb | does |
+|---|---|
+| `route explain <task>` | dry-run the router: the chain, the dropped members and their reasons, the chosen member |
+| `provider status` / `provider recover <p>` | circuits, strikes and quota windows; close a circuit after a passing probe |
+| `budget show` / `budget raise <task\|workflow> --by --reason` | budgets; raising one is owner or Supervisor only |
+| `lease list` | path leases and their holders |
+| `sweep` | the periodic re-route of failed tasks with no next step (the daemon runs it; hidden) |
+| `daemon start\|stop\|status` | the host process that runs seat liveness, pongs, SLA clocks and sweeps |
+
+### 9. Phases
+
+| phase | delivers | usable by |
+|---|---|---|
+| P0 | ledger, `ops/` schemas, `contract new\|check`, `task verify` | lite agents prove their own work |
+| P1 | `task send\|result\|status`, the worker brief, Orca seat launch, harness commit per green task | the owner sends single tasks by hand |
+| P2 | router, provider circuit, AIMD, budgets, failure routes, daemon liveness and sweep | unattended retries |
+| P3 | Kernel loop: `plan show\|diff\|apply`, `workflow define\|start\|status\|amend\|stop` | full workflows |
+| P4 | Supervisor: owner channel, land, `release push`, CI red becomes a fix task, Debug seats | host-wide operation |
+| P5 | parity run against the legacy on one real project, then cut over | alpha.40 |
+
 ## Open questions
 
-1. Is the kernel slim list above right, or should the full kernel be audited verb by verb?
-2. Does `pattern` become its own group, or stay inside `app`?
-3. Package naming: keep `@starci/cli` at 2.0.0, or a new name while both CLIs coexist?
+1. Worktree model: keep the legacy shared workflow worktree with path leases (proposed), or a lane per task?
+2. `ops/` data format: YAML validated by the CLI (proposed), or TypeScript objects?
+3. Does `pattern` become its own group, or stay inside `app`?
+4. Package naming: keep `@starci/cli` at 2.0.0, or a new name while both CLIs coexist?
