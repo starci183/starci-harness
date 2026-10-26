@@ -5,11 +5,25 @@ floor: medium
 hostTools: [git, node]
 context:
   base:
-    - harness:knowledge/README.md
+    - harness:knowledge/project/README.md
     - harness:knowledge/project/anatomy.md
     - harness:knowledge/project/lint.md
+    - harness:knowledge/project/{edition}.md
+    - harness:knowledge/patterns/README.md
+    - harness:knowledge/patterns/shared/README.md
+    - harness:knowledge/patterns/shared/typing.md
+    - harness:knowledge/patterns/shared/format.md
+    - harness:knowledge/patterns/shared/loosening.md
+    - harness:knowledge/patterns/shared/comment.md
+    - harness:knowledge/patterns/shared/naming.md
+    - harness:knowledge/patterns/shared/imports.md
+    - harness:knowledge/patterns/shared/test.md
+    - harness:knowledge/patterns/shared/scripts.md
+    - harness:knowledge/patterns/{side}/README.md
 input:
-  base: {}
+  base:
+    side: the side the task writes, be (the NestJS back end) or fe (the Next.js front end)
+    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent)
 output:
   base:
     summary: {type: string, summary: "what you changed and why"}

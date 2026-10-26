@@ -5,6 +5,20 @@ floor: hard
 hostTools: [git, node, browser]
 context:
   base:
+    - harness:knowledge/project/README.md
+    - harness:knowledge/project/anatomy.md
+    - harness:knowledge/project/lint.md
+    - harness:knowledge/project/{edition}.md
+    - harness:knowledge/patterns/README.md
+    - harness:knowledge/patterns/shared/README.md
+    - harness:knowledge/patterns/shared/typing.md
+    - harness:knowledge/patterns/shared/format.md
+    - harness:knowledge/patterns/shared/loosening.md
+    - harness:knowledge/patterns/shared/comment.md
+    - harness:knowledge/patterns/shared/naming.md
+    - harness:knowledge/patterns/shared/imports.md
+    - harness:knowledge/patterns/shared/test.md
+    - harness:knowledge/patterns/shared/scripts.md
     - harness:knowledge/ui/README.md
     - harness:knowledge/ui/composition.md
     - harness:knowledge/ui/scale.md
@@ -14,6 +28,7 @@ context:
     - harness:knowledge/patterns/fe/ui.md
 input:
   base:
+    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent)
     grammar: the grammar the app composes, `sides.fe.grammar` of its hfs.json (core or offset-pop)
 output:
   base:
