@@ -213,7 +213,7 @@ const patternsOf = (slot: Slot, side: Side, sources: Sources): string[] => {
     }
     if (files.length === 0) files.push(...(sources.patterns.files.get(slot.id) ?? []))
     const ofSide = side === "app" ? files : files.filter((file) => file.startsWith(`${side}/`))
-    return ofSide.sort().map((file) => `[${file.replace(/.md$/, "")}](../patterns/${file})`)
+    return ofSide.sort().map((file) => `[${file.replace(/\.md$/, "")}](../patterns/${file})`)
 }
 
 const renderSlot = (slot: Slot, presence: Presence, side: Side, sources: Sources, dangling: Set<string>): string => {
