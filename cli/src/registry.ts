@@ -1,6 +1,10 @@
 import { contractCheckVerb } from "./core/contract/check.js"
 import { contractNewVerb } from "./core/contract/new.js"
 import { taskVerifyVerb } from "./core/task/verify.js"
+import { taskSendVerb } from "./core/task/send.js"
+import { taskStatusVerb } from "./core/task/status.js"
+import { taskResultVerb } from "./core/task/result.js"
+import { taskCancelVerb } from "./core/task/cancel.js"
 import { checkLintVerb } from "./core/check/lint.js"
 import { checkRunVerb } from "./core/check/run.js"
 import { checkTypecheckVerb } from "./core/check/typecheck.js"
@@ -32,6 +36,10 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     contractNewVerb,
     contractCheckVerb,
     taskVerifyVerb,
+    taskSendVerb,
+    taskStatusVerb,
+    taskResultVerb,
+    taskCancelVerb,
     appInfoVerb,
 ].map(widen)
 
