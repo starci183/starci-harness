@@ -16,8 +16,8 @@ import { runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
-import { asVerifier, settle, settleBranch, settleMessage, thisVerifier, verifierAlive, withSettleLock } from "../../harness/settle.js"
-import type { Settlement, Verifier } from "../../harness/settle.js"
+import { asVerifier, blockWork, settle, settleBranch, settleMessage, thisVerifier, verifierAlive, withSettleLock, workLine } from "../../harness/settle.js"
+import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
 import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus, setVerdict } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -50,6 +50,7 @@ interface TaskVerifyData {
     readonly verdict: "green" | "red"
     readonly checks: readonly CheckOutcome[]
     readonly settlement: Settlement | null
+    readonly work: WorkWrite | null
     readonly status: TaskStatus
     readonly preserved: Preserved | null
     readonly leasesReleased: number
@@ -178,6 +179,7 @@ const noVerdict = (db: DatabaseSync, taskId: string, kind: string, error: unknow
 interface Ending {
     readonly status: TaskStatus
     readonly settlement: Settlement | null
+    readonly work: WorkWrite | null
     readonly preserved: Preserved | null
     readonly leasesReleased: number
     readonly seats: readonly SeatClosing[]
@@ -204,6 +206,7 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
         verdict: built.verdict,
         checks: built.checks,
         settlement,
+        work: ending.work,
         status,
         preserved,
         leasesReleased,
@@ -221,6 +224,7 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
     const released = commit ? `; released ${String(leasesReleased)} lease(s)` : ""
     const extra = [
         `task ${taskId}: ${status}; ${landed}${released}`,
+        ...(ending.work === null ? [] : [workLine(ending.work)]),
         ...seatLine(ending),
         ...(settlement?.warnings ?? []).map((warning) => `warning: ${warning}`),
         ...built.notes.map((note) => `note: ${note}`),
@@ -255,7 +259,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             result: resultSource(db, root, task, attempt, false),
             timeoutMs: task.contract.budget.minutes * MINUTE_MS,
         }
-        const unsettled: Ending = { status: task.status, settlement: null, preserved: null, leasesReleased: 0, seats: [] }
+        const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, leasesReleased: 0, seats: [] }
         if (!commit) {
             const built = await cleanVerify(input)
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
@@ -288,11 +292,14 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
                 }
                 setVerdict(db, attempt.id, "red")
                 setStatus(db, taskId, "failed")
-                return { built, ending: { ...unsettled, status: "failed", preserved, leasesReleased: releaseLeases(db, taskId) } }
+                // A uat task's record turns blocked in a Work commit of its own, still under the settle lock.
+                const work = await blockWork(root, fresh, input.result, built.checks.filter((check) => check.status === "red").map((check) => check.name))
+                if (work !== null) recordEvent(db, "work-written", taskId, work)
+                return { built, ending: { ...unsettled, status: "failed", work, preserved, leasesReleased: releaseLeases(db, taskId) } }
             }
             let settlement: Settlement
             try {
-                settlement = await settle(root, built)
+                settlement = await settle(root, built, fresh)
             } catch (error: unknown) {
                 throw noVerdict(db, taskId, "settle-refused", error)
             }
@@ -300,7 +307,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             setVerdict(db, attempt.id, "green")
             recordEvent(db, "task-settled", taskId, settlement)
             setStatus(db, taskId, "done")
-            return { built, ending: { ...unsettled, status: "done", settlement, leasesReleased: releaseLeases(db, taskId) } }
+            return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work, leasesReleased: releaseLeases(db, taskId) } }
         })
         // The task ended; its worker has nothing left to do. Closing talks to Orca, so it runs outside the settle lock and any transaction.
         const closing = await closeSeatsOfTask(root, taskId).then(
