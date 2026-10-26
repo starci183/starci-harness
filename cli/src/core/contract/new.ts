@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { contractProblems, parseContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
-import { ensureWorkDir } from "../../harness/ledger.js"
+import { projectDir } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot, resolveSha } from "../../shared/git.js"
@@ -20,7 +20,7 @@ type ArgValue = string | number | string[]
 
 const list = (value: string | undefined): string[] => (value ?? "").split(",").map((path) => path.trim()).filter((path) => path !== "")
 
-/** A file name from the task summary, so contracts of one project sit side by side under .starciwork/contracts. */
+/** A file name from the task summary, so contracts of one project sit side by side in contracts/ of its state folder. */
 const slugOf = (summary: string): string =>
     summary
         .toLowerCase()
@@ -73,7 +73,7 @@ export const contractNewVerb = defineVerb({
         },
         details: { kind: "string", summary: "more words on the input, beyond the summary" },
         base: { kind: "string", summary: "the base revision (default: HEAD)" },
-        out: { kind: "string", summary: "the file to write (default: .starciwork/contracts/<summary>.json of the project)" },
+        out: { kind: "string", summary: "the file to write (default: contracts/<summary>.json in the project's state folder under the state base)" },
         force: { kind: "boolean", summary: "overwrite an existing file" },
     },
     run: async (context, flags) => {
@@ -99,7 +99,7 @@ export const contractNewVerb = defineVerb({
         }
         // Through the schema, so the file holds the same normalised paths every reader will see.
         const contract = parseContract(raw)
-        const out = flags.out === undefined ? join(ensureWorkDir(root), "contracts", `${slugOf(flags.summary)}.json`) : resolve(context.cwd, flags.out)
+        const out = flags.out === undefined ? join(projectDir(root), "contracts", `${slugOf(flags.summary)}.json`) : resolve(context.cwd, flags.out)
         if (existsSync(out) && !flags.force) throw new Refusal("CONTRACT_EXISTS", `${out} exists; pass --force to overwrite, or --out <file>`)
         mkdirSync(dirname(out), { recursive: true })
         writeFileSync(out, `${JSON.stringify(contract, null, 2)}\n`)

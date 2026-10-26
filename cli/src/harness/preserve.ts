@@ -4,7 +4,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { git } from "../shared/git.js"
 import { leasePaths } from "./leases.js"
-import { WORK_DIR } from "./ledger.js"
+import { projectDir } from "./ledger.js"
 import type { TaskRow } from "./tasks.js"
 import { recordEvent } from "./tasks.js"
 
@@ -26,20 +26,20 @@ const fields = (text: string): string[] => text.split("\0").filter((field) => fi
 
 const chunks = <T>(items: readonly T[]): T[][] => Array.from({ length: Math.ceil(items.length / CHUNK) }, (_, index) => items.slice(index * CHUNK, (index + 1) * CHUNK))
 
-/** The task's allowPaths as pathspecs, never the harness's own work folder. */
-const pathspecs = (task: TaskRow): string[] => leasePaths(task).filter((path) => path !== WORK_DIR && !path.startsWith(`${WORK_DIR}/`)).map(literal)
+/** The task's allowPaths as pathspecs. */
+const pathspecs = (task: TaskRow): string[] => leasePaths(task).map(literal)
 
-/** A folder no earlier preserve of the task used: preserved/<task>, then preserved/<task>.2, .3 ... */
+/** A folder no earlier preserve of the task used, in the project's state folder: preserved/<task>, then preserved/<task>.2, .3 ... */
 const freshDir = (root: string, taskId: string): string => {
-    const base = join(root, WORK_DIR, "preserved", taskId)
+    const base = join(projectDir(root), "preserved", taskId)
     let dir = base
     for (let n = 2; existsSync(dir); n += 1) dir = `${base}.${String(n)}`
     return dir
 }
 
 /**
- * Saves a task's dirty work under its allowPaths into `.starciwork/preserved/<task>/` (a binary patch of the tracked
- * changes against HEAD plus copies of its untracked files), records a `task-preserved` event, then puts those paths back to
+ * Saves a task's dirty work under its allowPaths into `preserved/<task>/` of the project's state folder, outside the repository
+ * (a binary patch of the tracked changes against HEAD plus copies of its untracked files), records a `task-preserved` event, then puts those paths back to
  * HEAD: tracked files in the patch are checked out from HEAD (or dropped when HEAD has none), copied untracked files are
  * deleted. Nothing outside the allowPaths is read or touched. Call it while the task still holds its leases, before it
  * ends, so no overlapping task can commit the half-done work in between.
