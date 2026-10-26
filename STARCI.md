@@ -287,6 +287,21 @@ Owner: "tránh vết xe đổ là quá nhiều test nên test trong phạm vi n�
 - **Landing:** when a task's verify is green, the Kernel merges the lane. The Supervisor lands and runs `starci release push`. CI runs the full suite on main.
 - **CI red:** the Supervisor reads `starci release ci-status`. A red verdict becomes a `code` contract for a worker, scoped to the red checks, and never blocks the next push.
 
+### Source-code policy (owner, 2026-10-27)
+
+`policy/` beside `ops/` holds four files. Policy selects and configures. It never restates a rule: the rules live in the CLI and in the canon packages, and each fact has one owner.
+
+- **`quality.yaml`**: the two gate tiers, the profiles and `requireCi`.
+  - The **runtime tier** runs in `starci check run` before a push and in `task verify` on the clean checkout, scoped to the diff, each process bounded by `stepTimeoutSeconds`. Its gates are `secrets`, `loosening`, `canon`, `typecheck` and `lint`.
+  - The **CI tier** (`unit`, `e2e`, `build`, `sonar-new-code`) runs on main after the push. Nobody waits for it unless `requireCi` lists the action: today `release.cut`, `release.publish` and `deploy.prod`, which refuse `CI_NOT_GREEN` unless `release ci-status` of their commit is green.
+  - A gate name the CLI does not implement is refused when the file is read.
+- **`canon.yaml`**: the canon package of each stack and tool, by npm name: fe → `@starci/eslint-canon-fe`, be → `@starci/eslint-canon-be`, css → `@starci/stylelint-canon`, plus `@starci/tsconfig`, `@starci/prettier-config` and `@starci/jest-preset`. The `canon` gate requires every changed package to depend on its profile's canon package for each tool it configures, and that tool's config to name it.
+- **`loosening.yaml`**: the banned markers (inline disables, ts escapes, NOSONAR, skipped or focused tests, swallowed failures, `--no-verify`, gate-widening allowlists). `starci check loosening` reads the tree as it stands, not a diff, and reports `file:line`. Exceptions are declared only in policy, each with one file, one marker and the reason, never inline; an exception that matches nothing is red.
+- **`security.yaml`**: configures the secret scan (`starci check secrets`, and `release push` on the pushed range). Sops envelopes are allowed, except under the `runtime` profile; `neverRead` lists the files the CLI never opens.
+- **Profiles:** a project picks its profile in `hfs.json` (`"policy": "be" | "fe" | "app" | "lib" | "runtime"`). Without one, `defaults` chooses: `lib` for no hfs.json, `app` for an app, `runtime` for the runtime.
+- **Project overlays:** a project may carry `policy/loosening.yaml` and `policy/security.yaml` to ban more and declare its exceptions. It can never unban, and never carries `quality.yaml` or `canon.yaml`.
+- **Verbs:** `check loosening`, `check secrets` and `check ci` are core read verbs. The `ci-green` preset (`check ci --ref origin/main`) lets a deliver contract wait for CI.
+
 ### Who does what now (owner, 2026-10-27)
 
 | party | work | from the old ops |

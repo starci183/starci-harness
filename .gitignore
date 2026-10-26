@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .runtime/
 .claude/worktrees/
+cli/ops/
+cli/policy/
