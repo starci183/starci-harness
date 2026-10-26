@@ -113,9 +113,9 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)
-        fixture.tester.run("injection-token-exported", graphRules["injection-token-exported"], {
+        assert.doesNotThrow(() => { fixture.tester.run("injection-token-exported", graphRules["injection-token-exported"], {
             valid: [{ filename: fixture.at(goodDecorator), code: files[goodDecorator] }],
             invalid: [{ filename: fixture.at(badDecorator), code: files[badDecorator], errors: [{ message: /BE_RAW_INJECT/ }] }],
-        })
+        }) })
     })
 }

@@ -39,7 +39,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("spec-builds-with-testing-module: the subject comes out of a compiled Nest testing module", () => {
-    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+    assert.doesNotThrow(() => { tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
         valid: [
             { filename: SPEC, code: `${NEST}it("x", async () => {\n  const moduleRef = await Test.createTestingModule({ providers: [OrderService] }).compile()\n  const service = moduleRef.get(OrderService)\n  expect(service).toBeDefined()\n})` },
             // a builder held in a variable is still the testing module
@@ -58,11 +58,11 @@ test("spec-builds-with-testing-module: the subject comes out of a compiled Nest 
             // `get` on something that is not the compiled module
             { filename: SPEC, code: `${NEST}declare const bag: { get(key: unknown): unknown }\nit("x", async () => {\n  await Test.createTestingModule({ providers: [OrderService] }).compile()\n  bag.get(OrderService)\n})`, errors: [{ messageId: "noGet" }] },
         ],
-    })
+    }) })
 })
 
 test("spec-no-new-subject: the service under test is never built with new", () => {
-    tester.run("spec-no-new-subject", specNoNewSubject, {
+    assert.doesNotThrow(() => { tester.run("spec-no-new-subject", specNoNewSubject, {
         valid: [
             { filename: SPEC, code: `${NEST}it("x", async () => {\n  const moduleRef = await Test.createTestingModule({ providers: [OrderService] }).compile()\n  moduleRef.get(OrderService)\n})` },
             // a class of another module may be built: a value object, an error, a plain fixture
@@ -76,11 +76,11 @@ test("spec-no-new-subject: the service under test is never built with new", () =
             { filename: SPEC, code: 'import { OrderService as Subject } from "./order.service.js"\nexport const s = new Subject()', errors: [{ messageId: "construct" }] },
             { filename: SPEC, code: 'import * as order from "./order.service"\nexport const s = new order.OrderService()', errors: [{ messageId: "construct" }] },
         ],
-    })
+    }) })
 })
 
 test("spec-module-definition-only-providers: no imports key and no override in the testing module", () => {
-    tester.run("spec-module-definition-only-providers", specModuleDefinitionOnlyProviders, {
+    assert.doesNotThrow(() => { tester.run("spec-module-definition-only-providers", specModuleDefinitionOnlyProviders, {
         valid: [
             { filename: SPEC, code: `${NEST}Test.createTestingModule({ providers: [OrderService, { provide: "X", useValue: 1 }] })` },
             // feature handler specs and e2e modules are other rules' business
@@ -93,12 +93,12 @@ test("spec-module-definition-only-providers: no imports key and no override in t
             { filename: SPEC, code: `${NEST}Test.createTestingModule({ providers: [] }).overrideGuard("X").useValue(1)`, errors: [{ messageId: "override" }] },
             { filename: SPEC, code: "declare const b: { overrideModule(x: unknown): void; overrideFilter(x: unknown): void; overridePipe(x: unknown): void; overrideInterceptor(x: unknown): void }\nb.overrideModule(1)\nb.overrideFilter(1)\nb.overridePipe(1)\nb.overrideInterceptor(1)", errors: [{ messageId: "override" }, { messageId: "override" }, { messageId: "override" }, { messageId: "override" }] },
         ],
-    })
+    }) })
 })
 
 test("spec-no-module-mock: a unit spec replaces no module, its own or a library's", () => {
     const JEST = "declare const jest: { mock(m: string): void; doMock(m: string): void; unstable_mockModule(m: string): void; requireMock(m: string): unknown; setMock(m: string, v: unknown): void; fn(): void }\n"
-    tester.run("spec-no-module-mock", specNoModuleMock, {
+    assert.doesNotThrow(() => { tester.run("spec-no-module-mock", specNoModuleMock, {
         valid: [
             { filename: SPEC, code: `${JEST}jest.fn()` },
             // a local object that merely has that name is not the jest object
@@ -118,11 +118,11 @@ test("spec-no-module-mock: a unit spec replaces no module, its own or a library'
             // a handler spec is a finding elsewhere, and here too if it mocks a module
             { filename: HANDLER_SPEC, code: `${JEST}jest.mock("./a")`, errors: [{ messageId: "moduleMock" }] },
         ],
-    })
+    }) })
 })
 
 test("no-return-only-generic: a helper of a spec or a fixture is not a cast with a name", () => {
-    tester.run("no-return-only-generic", noReturnOnlyGeneric, {
+    assert.doesNotThrow(() => { tester.run("no-return-only-generic", noReturnOnlyGeneric, {
         valid: [
             // the parameter drives the type argument
             { filename: SPEC, code: "export const first = <T>(items: ReadonlyArray<T>): T => items[0]" },
@@ -154,14 +154,14 @@ test("no-return-only-generic: a helper of a spec or a fixture is not a cast with
             // an object of one class returned as another
             { filename: FIXTURE, code: "class Order { id = 0 }\nclass Invoice { total = 0 }\nexport const invoice = (): Invoice => Object.assign(new Order(), { total: 1 })", errors: [{ messageId: "assign" }] },
         ],
-    })
+    }) })
 })
 
 /** A service spec that provides one token with one value. */
 const provide = (token, value, head = "") => `import { mock, mockEntityManager, fakeTransaction, FakeClock, fakeIds, fakeCache, fakeLock, recordingEventBus, recordingQueueOutbox, fakeInbox, builder } from "@starci/jest-preset"\n${head}\nexport const provider = { provide: ${token}, useValue: ${value} }`
 
 test("spec-infra-double-from-kit: a provider takes its value from the kit double the token calls for", () => {
-    tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+    assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename: SPEC, code: provide("PRIMARY_ENTITY_MANAGER", "mockEntityManager()") },
             { filename: SPEC, code: provide("InjectBillingEntityManager", "mockEntityManager({ findOne: [Order, null] })", "class Order {}") },
@@ -229,7 +229,7 @@ test("spec-infra-double-from-kit: a provider takes its value from the kit double
             // a typed parameter is judged by its type: the wrong kit type for the token, or no kit type at all\n            { filename: SPEC, code: provide("CLOCK", "em", "export const build = (em: ReturnType<typeof mockEntityManager>) => em"), errors: [{ messageId: "wrong" }] },\n            { filename: SPEC, code: provide("PRIMARY_ENTITY_MANAGER", "em", "interface Loose { find(): void }\nexport const build = (em: Loose) => em"), errors: [{ messageId: "unknown" }] },\n            // a value that cannot be traced to a double
             { filename: SPEC, code: provide("CLOCK", "harness.clock", "declare const harness: { clock: object }"), errors: [{ messageId: "unknown" }] },
         ],
-    })
+    }) })
 })
 
 test("the token table is the manifest's, not the rule's", () => {
@@ -245,7 +245,7 @@ for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edit
     const filename = at("src/modules/domain/order/function-subject.mapper.spec.ts")
     const functions = 'import { doubled, total as sum } from "./function-subject.mapper"\n'
     const subject = (value) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
-    tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+    assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename, settings, code: subject("doubled") },
             { filename, settings, code: subject("{ doubled, total: sum }") },
@@ -258,14 +258,14 @@ for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edit
             { filename: SPEC, settings, code: subject("{ doubled, total: sum }"), errors: [{ messageId: "wrong" }] },
             { filename: SPEC, settings, code: 'import { OrderService } from "./order.service"\nconst provider = { provide: SUBJECT, useValue: OrderService }', errors: [{ messageId: "unknown" }] },
         ],
-    })
+    }) })
 })
 
 test("spec-infra-double-from-kit: a function subject beside constants, enums, re-exports and overloads is judged by its callable subset (A1)", () => {
     const filename = at("src/modules/domain/order/mixed-subject.mapper.spec.ts")
     const functions = 'import { pad, shout } from "./mixed-subject.mapper"\n'
     const subject = (value) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
-    tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+    assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename, code: subject("pad") },
             { filename, code: subject("{ pad, shout }") },
@@ -277,7 +277,7 @@ test("spec-infra-double-from-kit: a function subject beside constants, enums, re
             // a constant is not a callable subject function
             { filename, code: 'import { LIMIT } from "./mixed-subject.mapper"\nconst provider = { provide: SUBJECT, useValue: LIMIT }', errors: [{ messageId: "unknown" }] },
         ],
-    })
+    }) })
 })
 
 test("a value-object subject is built with new, a decorated or token-injected subject is not (A2)", () => {
@@ -285,7 +285,7 @@ test("a value-object subject is built with new, a decorated or token-injected su
     const injected = at("src/modules/domain/order/injected-subject.mapper.spec.ts")
     const window = 'import { Window } from "./value-object.mapper"\nexport const subject = new Window(1, 2)'
     const gate = 'import { Gate } from "./injected-subject.mapper"\nexport const subject = new Gate(1)'
-    tester.run("spec-no-new-subject", specNoNewSubject, {
+    assert.doesNotThrow(() => { tester.run("spec-no-new-subject", specNoNewSubject, {
         valid: [
             { filename: valueObject, code: window },
             { filename: valueObject, code: 'import { Window as Span } from "./value-object.mapper"\nexport const subject = new Span(1, 2)' },
@@ -294,21 +294,21 @@ test("a value-object subject is built with new, a decorated or token-injected su
             { filename: injected, code: gate, errors: [{ messageId: "construct" }] },
             { filename: injected, code: 'import { Tokened } from "./injected-subject.mapper"\nexport const subject = new Tokened(1)', errors: [{ messageId: "construct" }] },
         ],
-    })
-    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+    }) })
+    assert.doesNotThrow(() => { tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
         valid: [{ filename: valueObject, code: window }],
         invalid: [{ filename: injected, code: gate, errors: [{ messageId: "noModule" }] }],
-    })
-    tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+    }) })
+    assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [{ filename: valueObject, code: 'import { Window } from "./value-object.mapper"\nconst provider = { provide: SPAN, useValue: new Window(1, 2) }' }],
         invalid: [{ filename: injected, code: 'import { Gate } from "./injected-subject.mapper"\nconst provider = { provide: GATE, useValue: new Gate(1) }', errors: [{ messageId: "wrong" }] }],
-    })
+    }) })
 })
 
 test("a value-role spec parses a real boundary schema without a testing module; a misnamed logic file keeps the rule", () => {
     const parse = (name) => [`import { subject } from "./${name}.schema"`, 'it("rejects an empty input", () => expect(subject.safeParse({}).success).toBe(false))'].join("\n")
     const noModule = { messageId: "noModule" }
-    tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+    assert.doesNotThrow(() => { tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
         // the sibling is a zod schema file of the domain tier holding values and types only
         valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
         invalid: [
@@ -323,17 +323,17 @@ test("a value-role spec parses a real boundary schema without a testing module; 
             // no sibling file at all
             { filename: at("src/modules/domain/order/missing.schema.spec.ts"), code: parse("missing"), errors: [noModule] },
         ],
-    })
-    tester.run("spec-no-new-subject", specNoNewSubject, {
+    }) })
+    assert.doesNotThrow(() => { tester.run("spec-no-new-subject", specNoNewSubject, {
         valid: [{ filename: at("src/modules/domain/order/order.schema.spec.ts"), code: parse("order") }],
         invalid: [],
-    })
+    }) })
 })
 
 test("spec-infra-double-from-kit: a member of a kit mock object is a kit double (A3)", () => {
     const base = 'import { mock, mockEntityManager } from "@starci/jest-preset"\ntype Open = (url: string) => void\n'
     const provide = (token, value) => `${base}const provider = { provide: ${token}, useValue: ${value} }`
-    tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+    assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename: SPEC, code: provide("GATEWAY_SOCKET_FACTORY", "mock<{ open: Open }>().open") },
             { filename: SPEC, code: `${base}const sockets = mock<{ open: Open }>()\nconst provider = { provide: GATEWAY_SOCKET_FACTORY, useValue: sockets.open }` },
@@ -345,12 +345,12 @@ test("spec-infra-double-from-kit: a member of a kit mock object is a kit double 
             { filename: SPEC, code: provide("GATEWAY_SOCKET_FACTORY", "mockEntityManager().find"), errors: [{ messageId: "unknown" }] },
             { filename: SPEC, code: 'import { mock } from "./local-mock"\nconst provider = { provide: GATEWAY_SOCKET_FACTORY, useValue: mock<{ open: () => void }>().open }', errors: [{ messageId: "notKit" }] },
         ],
-    })
+    }) })
 })
 
 test("spec-exact-values: a unit spec asserts the exact id and the exact date, never expect.any(String|Number|Date)", () => {
     const kit = 'import { FakeClock, fakeIds } from "@starci/jest-preset"\n'
-    tester.run("spec-exact-values", specExactValues, {
+    assert.doesNotThrow(() => { tester.run("spec-exact-values", specExactValues, {
         valid: [
             // the exact id from fakeIds and the exact date from FakeClock
             { filename: SPEC, code: `${kit}const ids = fakeIds("order")\nconst clock = new FakeClock("2026-01-01T00:00:00Z")\nexpect({ id: ids.next(), at: clock.now() }).toEqual({ id: "order-1", at: new Date("2026-01-01T00:00:00Z") })` },
@@ -372,7 +372,7 @@ test("spec-exact-values: a unit spec asserts the exact id and the exact date, ne
             // nested in a matcher
             { filename: SPEC, code: "expect(rows).toEqual([expect.objectContaining({ id: expect.any(String) })])", errors: [{ messageId: "loose" }] },
         ],
-    })
+    }) })
 })
 
 const LOGIC_SPECS = [
@@ -390,15 +390,15 @@ for (const edition of ["lite", "full"]) {
             const filename = at(path)
             const head = `import { Test } from "@nestjs/testing"\nimport { Subject } from "./${stem}"\n`
             const built = `${head}it("returns the exact result", async () => {\nconst moduleRef = await Test.createTestingModule({ providers: [Subject] }).compile()\nconst subject = moduleRef.get(Subject)\nexpect(subject.run()).toEqual({ accepted: true })\n})`
-            tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
+            assert.doesNotThrow(() => { tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
                 valid: [{ filename, settings, code: built }],
                 invalid: [
                     { filename, settings, code: `${head}const subject = new Subject()`, errors: [{ messageId: "noModule" }] },
                     { filename, settings, code: `${head}Test.createTestingModule({ providers: [Subject] })`, errors: [{ messageId: "noCompile" }] },
                     { filename, settings, code: `${head}await Test.createTestingModule({ providers: [Subject] }).compile()`, errors: [{ messageId: "noGet" }] },
                 ],
-            })
-            tester.run("spec-no-new-subject", specNoNewSubject, {
+            }) })
+            assert.doesNotThrow(() => { tester.run("spec-no-new-subject", specNoNewSubject, {
                 valid: [
                     { filename, settings, code: built },
                     { filename, settings, code: `${head}class Row {}\nexport const row = new Row()` },
@@ -407,33 +407,33 @@ for (const edition of ["lite", "full"]) {
                     { filename, settings, code: `${head}export const subject = new Subject()`, errors: [{ messageId: "construct" }] },
                     { filename, settings, code: `import * as subject from "./${stem}.js"\nnew subject.Subject()`, errors: [{ messageId: "construct" }] },
                 ],
-            })
-            tester.run("spec-module-definition-only-providers", specModuleDefinitionOnlyProviders, {
+            }) })
+            assert.doesNotThrow(() => { tester.run("spec-module-definition-only-providers", specModuleDefinitionOnlyProviders, {
                 valid: [{ filename, settings, code: built }],
                 invalid: [
                     { filename, settings, code: `${head}Test.createTestingModule({ imports: [Subject], providers: [] })`, errors: [{ messageId: "imports" }] },
                     { filename, settings, code: `${head}Test.createTestingModule({ providers: [Subject] }).overrideProvider("PORT")`, errors: [{ messageId: "override" }] },
                 ],
-            })
-            tester.run("spec-no-module-mock", specNoModuleMock, {
+            }) })
+            assert.doesNotThrow(() => { tester.run("spec-no-module-mock", specNoModuleMock, {
                 valid: [{ filename, settings, code: 'import { jest } from "@jest/globals"\njest.fn()' }],
                 invalid: [
                     { filename, settings, code: `import { jest } from "@jest/globals"\njest.mock("./${stem}")`, errors: [{ messageId: "moduleMock" }] },
                     { filename, settings, code: 'import { jest } from "@jest/globals"\njest.doMock("openai")', errors: [{ messageId: "moduleMock" }] },
                 ],
-            })
-            tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
+            }) })
+            assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
                 valid: [{ filename, settings, code: provide("CLOCK", "new FakeClock(0)") }],
                 invalid: [{ filename, settings, code: provide("CLOCK", "{ now: () => new Date(0) }"), errors: [{ messageId: "wrong" }] }],
-            })
-            tester.run("spec-exact-values", specExactValues, {
+            }) })
+            assert.doesNotThrow(() => { tester.run("spec-exact-values", specExactValues, {
                 valid: [{ filename, settings, code: 'expect(saved).toEqual({ id: "order-1" })' }],
                 invalid: [{ filename, settings, code: "expect(saved).toEqual({ id: expect.any(String) })", errors: [{ messageId: "loose" }] }],
-            })
+            }) })
         })
     }
     test(`R281 ${edition}: presence-only assertions are refused and a behavior assertion passes`, () => {
-        tester.run("spec-behavior-assertion", specBehaviorAssertion, {
+        assert.doesNotThrow(() => { tester.run("spec-behavior-assertion", specBehaviorAssertion, {
             valid: [
                 { filename: SPEC, settings, code: 'expect(subject).toBeDefined()\nexpect(subject.run()).toEqual({ accepted: true })' },
                 { filename: SPEC, settings, code: "await expect(subject.run()).rejects.toThrow('invalid')" },
@@ -455,17 +455,17 @@ for (const edition of ["lite", "full"]) {
                 { filename: SPEC, settings, code: "it('x', () => subject.run())", errors: [{ messageId: "zeroAssertions" }] },
                 ...LOGIC_SPECS.map(({ path }) => ({ filename: at(path), settings, code: "expect(subject).toBeDefined()", errors: [{ messageId: "presenceOnly" }] })),
             ],
-        })
+        }) })
     })
     test(`R281 ${edition}: every logic role refuses a test with zero assertions even beside an asserted test`, () => {
         const filenames = [SPEC, at("src/features/cli/migrate/subs/run.cli.spec.ts"), ...hfs.ruleParams.logicRoles.map((role) => at(`src/modules/platform/checks/subject.${role}.spec.ts`))]
-        tester.run("spec-behavior-assertion", specBehaviorAssertion, {
+        assert.doesNotThrow(() => { tester.run("spec-behavior-assertion", specBehaviorAssertion, {
             valid: filenames.map((filename) => ({ filename, settings, code: 'it("returns a result", () => expect(subject.run()).toEqual({ accepted: true }))\ntest("rejects invalid input", async () => { await expect(subject.run("invalid")).rejects.toThrow("invalid") })' })),
             invalid: filenames.map((filename) => ({ filename, settings, code: 'it("runs without assertions", () => { subject.run() })\ntest("returns a result", () => expect(subject.run()).toEqual({ accepted: true }))', errors: [{ messageId: "zeroAssertions" }] })),
-        })
+        }) })
     })
     test(`R281 ${edition}: each Jest it/test callback must assert, including aliases and parameterized tests`, () => {
-        tester.run("spec-behavior-assertion", specBehaviorAssertion, {
+        assert.doesNotThrow(() => { tester.run("spec-behavior-assertion", specBehaviorAssertion, {
             valid: [
                 { filename: SPEC, settings, code: 'it("returns a result", function () { expect(subject.run()).toEqual({ accepted: true }) })' },
                 { filename: SPEC, settings, code: 'test.only("returns a result", () => expect(subject.run()).toEqual({ accepted: true }))' },
@@ -506,6 +506,6 @@ for (const edition of ["lite", "full"]) {
                 { filename: SPEC, settings, code: 'it("zero assertions", () => { it("nested assertions", () => expect(subject.run()).toEqual({ accepted: true })) })', errors: [{ messageId: "zeroAssertions" }] },
                 { filename: SPEC, settings, code: 'function run() { run() }\nit("zero assertions", () => run())', errors: [{ messageId: "zeroAssertions" }] },
             ],
-        })
+        }) })
     })
 }

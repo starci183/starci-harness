@@ -35,7 +35,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("R85: a provider's constructor parameter is a class token or carries an Inject<Thing>()", () => {
-    tester.run("provider-param-token", providerParamToken, {
+    assert.doesNotThrow(() => { tester.run("provider-param-token", providerParamToken, {
         valid: [
             { filename: SERVICE, code: provider("private readonly clock: Clock") },
             // an abstract class is the token of a port
@@ -65,12 +65,12 @@ test("R85: a provider's constructor parameter is a class token or carries an Inj
             // a spec is not exempt
             { filename: SERVICE_SPEC, code: provider("private readonly timeoutMs: number"), errors: [{ messageId: "untokened" }] },
         ],
-    })
+    }) })
 })
 
 test("R83: a persistence class lives only where the manager may be held", () => {
     const wrapper = `${TYPEORM}export class OrderRepository { find(manager: EntityManager, id: string): Promise<unknown> { return manager.query(id) } }`
-    tester.run("no-repository-class", noRepositoryClass, {
+    assert.doesNotThrow(() => { tester.run("no-repository-class", noRepositoryClass, {
         valid: [
             // the roles that may hold the manager
             { filename: HANDLER, code: wrapper },
@@ -123,11 +123,11 @@ export const x = load` },
             { filename: at("src/modules/domain/order/persistence/order.statements.ts"), code: `${TYPEORM}export function insertOrder(em: EntityManager, id: string) { return em.query(id) }`, errors: [{ messageId: "statements" }] },
             { filename: at("src/modules/domain/order/persistence/order.statements.ts"), code: `${TYPEORM}export const insertOrder = async (em: EntityManager, id: string) => em.query(id)`, errors: [{ messageId: "statements" }] },
         ],
-    })
+    }) })
 })
 
 test("R89: production source names no test double", () => {
-    tester.run("no-test-double-in-source", noTestDoubleInSource, {
+    assert.doesNotThrow(() => { tester.run("no-test-double-in-source", noTestDoubleInSource, {
         valid: [
             // whole words only
             { filename: SERVICE, code: "export class FakerAdapter {}" },
@@ -152,7 +152,7 @@ test("R89: production source names no test double", () => {
             { filename: SERVICE, code: "export function makeFakeCatalog() { return {} }", errors: [{ messageId: "double" }] },
             { filename: HANDLER, code: "export class MockPlaceOrderHandler {}", errors: [{ messageId: "double" }] },
         ],
-    })
+    }) })
 })
 
 test("the double marker is a whole word of the identifier, never a substring", () => {

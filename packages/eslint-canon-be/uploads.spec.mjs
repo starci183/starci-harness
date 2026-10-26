@@ -13,7 +13,7 @@ const ERROR = [{ messageId: "buffered" }]
 for (const edition of ["lite", "full"]) {
     test(`${edition} accepts actual streams and storage metadata and rejects buffered multipart uploads`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        ruleTester({ root: TYPED_ROOT, hfs }).run("no-buffered-upload", noBufferedUpload, {
+        assert.doesNotThrow(() => { ruleTester({ root: TYPED_ROOT, hfs }).run("no-buffered-upload", noBufferedUpload, {
             valid: [
                 { filename: FILE, code: 'import { StreamableFile, Get, Body } from "@nestjs/common"\nexport { StreamableFile, Get, Body }' },
                 { filename: FILE, code: 'import { ExpressAdapter } from "@nestjs/platform-express"\nexport { ExpressAdapter }' },
@@ -62,7 +62,7 @@ for (const edition of ["lite", "full"]) {
                 { filename: FILE, code: 'import { FileInterceptor } from "@nestjs/platform-express/multer"', errors: ERROR },
                 { filename: FILE, code: 'import { UploadedFile } from "@nestjs/common/decorators/http/route-params.decorator"', errors: ERROR },
             ],
-        })
+        }) })
     })
 
 }

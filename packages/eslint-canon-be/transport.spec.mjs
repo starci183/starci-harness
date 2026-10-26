@@ -56,7 +56,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("transport-is-thin: a door injects only the bus, dispatches exactly once and holds no logic", () => {
-    tester.run("transport-is-thin", transportIsThin, {
+    assert.doesNotThrow(() => { tester.run("transport-is-thin", transportIsThin, {
         valid: [
             { filename: RESOLVER, code: `${BUS}@Resolver() export class R { constructor(@InjectCommandBus() private readonly commandBus: CommandBus) {} @Mutation(() => String, { name: "place" }) async place() { return this.commandBus.execute(new Place()) } }` },
             // a renamed receiver and a query bus
@@ -115,11 +115,11 @@ export class PlanMessageModule { constructor(private readonly registry: Registry
             // an action that dispatches and returns nothing
             { filename: CONTROLLER, code: `${BUS}@Controller() export class C { constructor(private readonly bus: CommandBus) {} @Post() async pay() { await this.bus.execute(new Place()) } }`, errors: [{ messageId: "noReturn" }] },
         ],
-    })
+    }) })
 })
 
 test("no-response-envelope: no envelope class, decorator, mapping interceptor or { success, data } literal", () => {
-    tester.run("no-response-envelope", noResponseEnvelope, {
+    assert.doesNotThrow(() => { tester.run("no-response-envelope", noResponseEnvelope, {
         valid: [
             { filename: RESOLVER, code: `${BUS}@Resolver() export class R { @Mutation(() => String) place() { return { id: 1 } } }` },
             { filename: RESOLVER, code: `import { UseInterceptors } from "@nestjs/common"\nimport { PlainInterceptor } from "./plain.interceptor"\n@UseInterceptors(PlainInterceptor) export class R {}` },
@@ -143,11 +143,11 @@ test("no-response-envelope: no envelope class, decorator, mapping interceptor or
             // an import under a rename is still the envelope name
             { filename: RESOLVER, code: `import { GraphQLSuccessMessage as Msg } from "@modules/platform/graphql"\n@Msg("ok") export class R {}`, errors: [{ messageId: "named" }] },
         ],
-    })
+    }) })
 })
 
 test("no-graphql-json: no GraphQLJSON, no unknown body, no switch on operation", () => {
-    tester.run("no-graphql-json", noGraphqlJson, {
+    assert.doesNotThrow(() => { tester.run("no-graphql-json", noGraphqlJson, {
         valid: [
             { filename: RESOLVER, code: `import { GraphQLDateTime } from "graphql-scalars"\nexport const x = GraphQLDateTime` },
             { filename: CONTROLLER, code: `import { Body, Post } from "@nestjs/common"\nclass PayRequest { id!: string }\nexport class C { @Post() pay(@Body() body: PayRequest) { return body } }` },
@@ -168,12 +168,12 @@ test("no-graphql-json: no GraphQLJSON, no unknown body, no switch on operation",
             { filename: RESOLVER, code: `export function f(input: { operation: string }) { switch (input.operation) { case "a": return 1 } return 2 }`, errors: [{ messageId: "operation" }] },
             { filename: RESOLVER, code: `export function f(input: { operation: string }) { switch (input["operation"]) { case "a": return 1 } return 2 }`, errors: [{ messageId: "operation" }] },
         ],
-    })
+    }) })
 })
 
 test("door-lives-in-features: a @Controller is declared in the transport/http slot", () => {
     const head = `import { Controller } from "@nestjs/common"\n`
-    tester.run("door-lives-in-features", doorLivesInFeatures, {
+    assert.doesNotThrow(() => { tester.run("door-lives-in-features", doorLivesInFeatures, {
         valid: [
             { filename: CONTROLLER, code: `${head}@Controller() export class C {}` },
             // a decorator of the same name that is not Nest's
@@ -187,39 +187,39 @@ test("door-lives-in-features: a @Controller is declared in the transport/http sl
             { filename: RESOLVER, code: `${head}@Controller() export class C {}`, errors: [{ messageId: "wrongSlot" }] },
             { filename: DOMAIN, code: `import { Controller as Door } from "@nestjs/common"\n@Door() export class C {}`, errors: [{ messageId: "wrongSlot" }] },
         ],
-    })
+    }) })
 })
 
 test("door-lives-in-features: a provider webhook door lives in the webhooks slot of its kind", () => {
     const head = `import { Controller } from "@nestjs/common"
 `
-    kinds.run("door-lives-in-features", doorLivesInFeatures, {
+    assert.doesNotThrow(() => { kinds.run("door-lives-in-features", doorLivesInFeatures, {
         valid: [{ filename: WEBHOOK, code: `${head}@Controller() export class C {}` }],
         invalid: [{ filename: at("src/features/realtime/orders/transport/websocket/orders.gateway.ts"), code: `${head}@Controller() export class C {}`, errors: [{ messageId: "wrongSlot" }] }],
-    })
+    }) })
 })
 
 test("door-lives-in-features: an SSE stream door lives in the sse slot of the realtime kind", () => {
     const head = `import { Controller } from "@nestjs/common"
 `
-    kinds.run("door-lives-in-features", doorLivesInFeatures, {
+    assert.doesNotThrow(() => { kinds.run("door-lives-in-features", doorLivesInFeatures, {
         valid: [{ filename: SSE, code: `${head}@Controller() export class C {}` }],
         invalid: [{ filename: at("src/features/realtime/orders/transport/graphql/orders.subscription.ts"), code: `${head}@Controller() export class C {}`, errors: [{ messageId: "wrongSlot" }] }],
-    })
+    }) })
 })
 
 test("transport-is-thin: the doors of the webhook and realtime kinds answer to their own kind laws, not to the one-dispatch shape", () => {
-    kinds.run("transport-is-thin", transportIsThin, {
+    assert.doesNotThrow(() => { kinds.run("transport-is-thin", transportIsThin, {
         valid: [
             { filename: WEBHOOK, code: `import { Controller, Post } from "@nestjs/common"
 @Controller() export class C { @Post() receive() { this.payments.accept(1) } }` },
         ],
         invalid: [],
-    })
+    }) })
 })
 
 test("no-capability-imports-features: a capability never imports a feature", () => {
-    tester.run("no-capability-imports-features", noCapabilityImportsFeatures, {
+    assert.doesNotThrow(() => { tester.run("no-capability-imports-features", noCapabilityImportsFeatures, {
         valid: [
             // a capability importing another capability
             { filename: DOMAIN, code: `import { x } from "@modules/platform/cqrs"\nexport { x }` },
@@ -236,12 +236,12 @@ test("no-capability-imports-features: a capability never imports a feature", () 
             { filename: INTEGRATION, code: `export const load = () => import("@features/api/plan")`, errors: [{ messageId: "reversed" }] },
             { filename: DOMAIN, code: `const plan = require("@features/api/plan")\nexport { plan }`, errors: [{ messageId: "reversed" }] },
         ],
-    })
+    }) })
 })
 
 test("rest-door-needs-a-reason: a controller shows a public reason, a byte stream or a redirect", () => {
     const head = `import { Controller, Get, Redirect, StreamableFile } from "@nestjs/common"\nimport { Public, PublicReason } from "@modules/domain/identity"\n`
-    tester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+    assert.doesNotThrow(() => { tester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
         valid: [
             { filename: CONTROLLER, code: `${head}@Controller("health") export class C { @Public({ reason: PublicReason.Health }) @Get() ok() { return 1 } }` },
             { filename: CONTROLLER, code: `${head}@Controller("hooks") export class C { @Public({ reason: PublicReason.SignedWebhook }) @Get() hook() { return 1 } }` },
@@ -263,7 +263,7 @@ test("rest-door-needs-a-reason: a controller shows a public reason, a byte strea
             // a class of the same name is not the stream
             { filename: CONTROLLER, code: `import { Controller, Get } from "@nestjs/common"\nclass StreamableFile {}\n@Controller("orders") export class C { @Get() list() { return new StreamableFile() } }`, errors: [{ messageId: "unjustified" }] },
         ],
-    })
+    }) })
 })
 
 for (const edition of ["lite", "full"]) {
@@ -273,7 +273,7 @@ for (const edition of ["lite", "full"]) {
         const head = `import { Controller, Get, Post, Body, Redirect, StreamableFile } from "@nestjs/common"\nimport { Public as Open, PublicReason as Reason } from "@modules/domain/identity"\n`
         const operations = `import { defineOperations as register, query } from "@modules/platform/operations"\nimport type { OperationRequest, OperationReply } from "@modules/platform/operations"\nconst OPERATIONS = register({ "plan.read@1": query<{ readonly id: string }, { readonly ok: boolean }>() })\ntype Table = typeof OPERATIONS\n`
         const cred = head.replace("{ Public as Open, PublicReason as Reason }", "{ Credential, Public, PublicReason }")
-        editionTester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+        assert.doesNotThrow(() => { editionTester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
             valid: [
                 { filename: CONTROLLER, code: `${cred}@Controller("loyalty") class C { @Credential({ kind: "api-key" }) @Post() earn() { return { ok: true } } }` },
                 { filename: CONTROLLER, code: `${cred}@Credential({ kind: "run-token" }) @Controller("n8n") class C { @Post("a") a() { return 1 } @Credential({ kind: "run-token", workflow: "x" }) @Post("b") b() { return 1 } }` },
@@ -313,7 +313,7 @@ class PlainGuard { canActivate() { return true } }
                 { filename: CONTROLLER, code: `${head}const Other = (_options: unknown): MethodDecorator => () => undefined\n@Controller("orders") class C { @Other({ reason: Reason.Health }) @Get() list() { return { items: [] } } }`, errors: [{ messageId: "unjustified" }] },
                 { filename: CONTROLLER, code: `${head}${operations}@Controller("api/v1") class C { @Post() list(@Body() body: { id: string }) { return body } }`, errors: [{ messageId: "unjustified" }] },
             ],
-        })
+        }) })
     })
 
     test(`BE_REST_DOOR_EVIDENCE: ${edition} accepts an event stream only as the @Sse method of the sse slot`, () => {
@@ -322,7 +322,7 @@ class PlainGuard { canActivate() { return true } }
         const head = `import { Controller, Get, Sse } from "@nestjs/common"
 import { Sse as Stream } from "@nestjs/common"
 `
-        editionTester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+        assert.doesNotThrow(() => { editionTester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
             valid: [
                 { filename: SSE, code: `${head}@Controller("orders") class C { @Sse("stream") stream() { return [] as never } }` },
                 // a renamed import is the same export
@@ -338,7 +338,7 @@ const Sse = (_path: string): MethodDecorator => () => undefined
                 // a plain GET inside the sse slot is not an event stream
                 { filename: SSE, code: `${head}@Controller("orders") class C { @Get() list() { return 1 } }`, errors: [{ messageId: "unjustified" }] },
             ],
-        })
+        }) })
     })
 }
 
@@ -349,7 +349,7 @@ test(`${edition} accepts GraphQL presigning and streamed downloads and rejects R
         const controller = at("src/features/api/assets/transport/http/assets.controller.ts")
         const http = 'import { Controller, Get, Post, StreamableFile } from "@nestjs/common"\n'
         const metadata = '{ url: "https://storage.invalid/uploads", objectKey: "principals/p/avatar", expiresAt: "2026-10-24T01:02:00Z" }'
-        ruleTester({ root: TYPED_ROOT, hfs }).run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+        assert.doesNotThrow(() => { ruleTester({ root: TYPED_ROOT, hfs }).run("rest-door-needs-a-reason", restDoorNeedsAReason, {
             valid: [
                 {
                     filename: FILE,
@@ -379,6 +379,6 @@ test(`${edition} accepts GraphQL presigning and streamed downloads and rejects R
                     errors: [{ messageId: "unjustified" }],
                 },
             ],
-        })
+        }) })
     })
 }

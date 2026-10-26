@@ -32,7 +32,7 @@ test("the rule is published under its name at error", () => {
 })
 
 test("R168: a service app imports no sibling service app", () => {
-  tester.run("service-isolation", serviceIsolation, {
+  assert.doesNotThrow(() => { tester.run("service-isolation", serviceIsolation, {
   valid: [
     { name: "a service app imports its own files", filename: IN_ORDER, code: 'import { options } from "./order.options"\nexport const x = options\n' },
     { name: "a service app imports a shared library", filename: IN_ORDER, code: 'import { PlanModule } from "../../../src/modules/domain/plan"\nexport const x = PlanModule\n' },
@@ -53,5 +53,5 @@ test("R168: a service app imports no sibling service app", () => {
       errors: [{ messageId: "sibling" }],
     },
   ],
-})
+}) })
 })

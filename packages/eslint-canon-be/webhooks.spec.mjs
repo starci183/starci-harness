@@ -130,7 +130,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("webhook-shape: a signed door with a shared or domain proof and one intake passes, everything else is refused", () => {
-    tester.run("webhook-shape", webhookShape, {
+    assert.doesNotThrow(() => { tester.run("webhook-shape", webhookShape, {
         valid: [
             { filename: DOOR, code: door() },
             // the proof may be awaited when it is async, and the intake takes any argument
@@ -219,11 +219,11 @@ export class W {
             { filename: DOOR, code: "export class NotADoor {}", errors: [{ messageId: "noDoor" }] },
             { filename: DOOR, code: `${door()}\n@Controller("second")\nexport class Second {}`, errors: [{ messageId: "noDoor" }] },
         ],
-    })
+    }) })
 })
 
 test("webhook-verify-first: the first statement is an unconditional, completed shared or declared domain proof", () => {
-    tester.run("webhook-verify-first", webhookVerifyFirst, {
+    assert.doesNotThrow(() => { tester.run("webhook-verify-first", webhookVerifyFirst, {
         valid: [
             { filename: DOOR, code: door() },
             { filename: DOOR, code: door({ body: `await ${PROVEN}\n        await this.payments.acceptNotification(body)` }) },
@@ -286,5 +286,5 @@ test("webhook-verify-first: the first statement is an unconditional, completed s
             { filename: at("src/features/webhooks/other/transport/http/other.webhook.ts"), code: door({ imports: `import "../../../payment/transport/http/payment-http.module"\n`, ctor: "private readonly payments: PaymentService", body: "await this.payments.acceptVerifiedNotification(body)" }), errors: [{ messageId: "first" }] },
             { filename: DOOR, code: door({ body: "" }), errors: [{ messageId: "first" }] },
         ],
-    })
+    }) })
 })

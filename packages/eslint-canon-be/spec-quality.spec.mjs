@@ -14,7 +14,7 @@ const E2E = at("src/tests/e2e/checkout/checkout.e2e-spec.ts")
 const SERVICE = at("src/modules/domain/plan/plan.service.ts")
 
 test("a spec does not read the repository's source files", () => {
-    tester.run("spec-no-source-read", specNoSourceRead, {
+    assert.doesNotThrow(() => { tester.run("spec-no-source-read", specNoSourceRead, {
         valid: [
             { filename: SPEC, code: "import { readFileSync } from 'node:fs'\nconst x = 1" },
             { filename: SPEC, code: "import { writeFileSync } from 'node:fs'\nwriteFileSync('a', 'b')" },
@@ -39,19 +39,19 @@ test("a spec does not read the repository's source files", () => {
                 errors: [{ messageId: "read" }],
             },
         ],
-    })
+    }) })
 })
 
 
 test("a spec is judged the same whether it is a unit spec or an e2e spec", () => {
-    tester.run("spec-no-source-read", specNoSourceRead, {
+    assert.doesNotThrow(() => { tester.run("spec-no-source-read", specNoSourceRead, {
         valid: [{ filename: E2E, code: "import { readFileSync } from 'node:fs'\nreadFileSync(join(outputDir, 'receipt.json'))" }],
         invalid: [{ filename: E2E, code: "import { readFileSync } from 'node:fs'\nreadFileSync('src/modules/domain/plan/plan.service.ts')", errors: [{ messageId: "read" }] }],
-    })
+    }) })
 })
 
 test("a path the slot manifest places in the repository is source, whatever it is called", () => {
-    tester.run("spec-no-source-read", specNoSourceRead, {
+    assert.doesNotThrow(() => { tester.run("spec-no-source-read", specNoSourceRead, {
         valid: [{ filename: SPEC, code: "import { readdirSync } from 'node:fs'\nreaddirSync('tmp/out')" }],
         invalid: [
             { filename: SPEC, code: "import { readdirSync } from 'node:fs'\nreaddirSync('src/modules/domain')", errors: [{ messageId: "read" }] },
@@ -59,7 +59,7 @@ test("a path the slot manifest places in the repository is source, whatever it i
             { filename: SPEC, code: "import { readFileSync } from 'node:fs'\nreadFileSync('apps/api/src/main.ts')", errors: [{ messageId: "read" }] },
             { filename: SPEC, code: "import { readFileSync } from 'node:fs'\nreadFileSync('anywhere/config.mjs')", errors: [{ messageId: "read" }] },
         ],
-    })
+    }) })
 })
 
 test("the cast rules are the factory's borrowed set, not a second copy here", () => {

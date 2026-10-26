@@ -49,7 +49,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("TESTING-6: a spec whose every assertion is a call restates the source", () => {
-  tester.run("no-call-only-spec", noCallOnlySpec, {
+  assert.doesNotThrow(() => { tester.run("no-call-only-spec", noCallOnlySpec, {
     valid: [
       // asserts a result
       { filename: UNIT, code: "it('x', () => { expect(result.total).toBe(5000) })" },
@@ -79,11 +79,11 @@ test("TESTING-6: a spec whose every assertion is a call restates the source", ()
         errors: [{ messageId: "callOnly" }],
       },
     ],
-  })
+  }) })
 })
 
 test("R47: only a service is unit-tested, its spec sits beside it, and there are only the sanctioned kinds of test file", () => {
-  tester.run("unit-test-colocated", unitTestColocated, {
+  assert.doesNotThrow(() => { tester.run("unit-test-colocated", unitTestColocated, {
     valid: [
       // the real service with its real spec on disk
       { filename: at("src/modules/domain/order/covered.service.ts"), code: "export class CoveredService {}" },
@@ -146,11 +146,11 @@ test("R47: only a service is unit-tested, its spec sits beside it, and there are
       { filename: at("src/modules/domain/order/order.int-spec.ts"), code: "export {}", errors: [{ messageId: "suffix" }] },
       { filename: at("src/tests/e2e/checkout/order.harness-spec.ts"), code: "export {}", errors: [{ messageId: "suffix" }] },
     ],
-  })
+  }) })
 })
 
 test("R47: a webhook or realtime door carries its own spec beside it, and only in the slot of its kind", () => {
-  kinds.run("unit-test-colocated", unitTestColocated, {
+  assert.doesNotThrow(() => { kinds.run("unit-test-colocated", unitTestColocated, {
     valid: [
       // the door's spec beside its real door
       { filename: at("src/features/webhooks/payment/transport/http/payment.webhook.spec.ts"), code: "export {}" },
@@ -170,13 +170,13 @@ test("R47: a webhook or realtime door carries its own spec beside it, and only i
       // the kind's slot holds door specs only: a controller spec of another role is still refused
       { filename: at("src/features/webhooks/payment/payment.controller.spec.ts"), code: "export {}", errors: [{ messageId: "notService" }] },
     ],
-  })
+  }) })
 })
 
 test("TESTING-2: an e2e that never reads state back only proves the server replied", () => {
   const READER = "import { EntityManager, DataSource, QueryRunner } from 'typeorm'\n"
   const WORLD = "import { useTestWorld } from '../../world/test-world.contracts'\n"
-  typed.run("e2e-asserts-persisted-state", e2eAssertsPersistedState, {
+  assert.doesNotThrow(() => { typed.run("e2e-asserts-persisted-state", e2eAssertsPersistedState, {
     valid: [
       // the flow reads a row back through the entity manager, whatever it calls it
       { filename: E2E, code: READER + "declare const store: EntityManager\nit('x', async () => { expect(await store.query('select 1')).toBe(1) })" },
@@ -201,11 +201,11 @@ test("TESTING-2: an e2e that never reads state back only proves the server repli
       // importing the type is not reading state
       { filename: E2E, code: READER + "it('x', async () => { expect(response.status).toBe(200) })", errors: [{ messageId: "noState" }] },
     ],
-  })
+  }) })
 })
 
 test("TESTING-9: an e2e reaches a model only through the world's network fake; only a contract spec reaches a provider", () => {
-  tester.run("no-model-call-in-e2e", noModelCallInE2e, {
+  assert.doesNotThrow(() => { tester.run("no-model-call-in-e2e", noModelCallInE2e, {
     valid: [
       { filename: E2E, code: "import { useTestWorld } from '../../world/use-test-world'" },
       // a contract spec is the one place a provider is reachable
@@ -219,11 +219,11 @@ test("TESTING-9: an e2e reaches a model only through the world's network fake; o
       { filename: E2E, code: "import OpenAI from 'openai'", errors: [{ messageId: "provider" }] },
       { filename: E2E, code: "import { GoogleGenAI } from '@google/genai'", errors: [{ messageId: "provider" }] },
     ],
-  })
+  }) })
 })
 
 test("TESTING-1 / E2E-1: an e2e filename is the business sentence, not an API-shape noun", () => {
-  tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
+  assert.doesNotThrow(() => { tester.run("no-api-shaped-e2e-filename", noApiShapedE2eFilename, {
     valid: [
       // a business sentence
       { filename: E2E, code: "it('x', () => {})" },
@@ -239,12 +239,12 @@ test("TESTING-1 / E2E-1: an e2e filename is the business sentence, not an API-sh
       { filename: at("src/tests/e2e/plans/installment-plan-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
       { filename: at("src/tests/e2e/courses/course-resolvers.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
     ],
-  })
+  }) })
 })
 
 test("TESTING-7: a model stub returns a payload the production parser can parse, not a marker", () => {
   const FIXTURE = at("src/tests/fixtures/model.ts")
-  tester.run("no-marker-model-stub", noMarkerModelStub, {
+  assert.doesNotThrow(() => { tester.run("no-marker-model-stub", noMarkerModelStub, {
     valid: [
       // the real shape: JSON.stringify(...) is a CallExpression, not a bare marker Literal
       { filename: FIXTURE, code: "model.run = jest.fn().mockResolvedValue({ text: JSON.stringify({ answer: 'x' }) })" },
@@ -264,5 +264,5 @@ test("TESTING-7: a model stub returns a payload the production parser can parse,
       // the e2e setup is test infrastructure too
       { filename: at("src/tests/world/use-test-world.ts"), code: "model.run = jest.fn().mockResolvedValue('stubbed')", errors: [{ messageId: "marker" }] },
     ],
-  })
+  }) })
 })
