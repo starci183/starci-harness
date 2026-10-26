@@ -5,10 +5,14 @@ floor: medium
 hostTools: [git, node]
 context:
   base:
-    - harness:knowledge/project/README.md
-    - harness:knowledge/project/anatomy.md
-    - harness:knowledge/project/lint.md
-    - harness:knowledge/project/{edition}.md
+    - file: "harness:knowledge/project/README.md"
+      when: {side: [be, fe]}
+    - file: "harness:knowledge/project/anatomy.md"
+      when: {side: [be, fe]}
+    - file: "harness:knowledge/project/lint.md"
+      when: {side: [be, fe]}
+    - file: "harness:knowledge/project/{edition}.md"
+      when: {side: [be, fe]}
     - harness:knowledge/patterns/README.md
     - harness:knowledge/patterns/shared/README.md
     - harness:knowledge/patterns/shared/typing.md
@@ -19,11 +23,16 @@ context:
     - harness:knowledge/patterns/shared/imports.md
     - harness:knowledge/patterns/shared/test.md
     - harness:knowledge/patterns/shared/scripts.md
-    - harness:knowledge/patterns/{side}/README.md
+    - file: "harness:knowledge/patterns/{side}/README.md"
+      when: {side: [be, fe]}
+    - file: "harness:CONTRIBUTING.md"
+      when: {side: harness}
+    - file: "harness:cli/README.md"
+      when: {side: harness}
 input:
   base:
-    side: the side the task writes, be (the NestJS back end) or fe (the Next.js front end)
-    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent)
+    side: the side the task writes, be (the NestJS back end), fe (the Next.js front end) or harness (this harness repository itself)
+    edition: the app's edition, `edition` of its hfs.json (lite or full; full when absent); harness for a harness task
 output:
   base:
     summary: {type: string, summary: "what you changed and why"}

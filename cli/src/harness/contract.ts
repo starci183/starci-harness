@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { checkEntrySchema, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema } from "./ops.js"
+import { checkEntrySchema, entryApplies, entryFile, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema } from "./ops.js"
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck } from "./ops.js"
 
 /**
@@ -238,7 +238,7 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
         const harness = filled.startsWith(HARNESS_PREFIX)
         context.push({ entry: filled, source, harness, path: harness ? filled.slice(HARNESS_PREFIX.length) : filled })
     }
-    for (const entry of op.context.base) add(entry, "base")
+    for (const entry of op.context.base) if (entryApplies(entry, values)) add(entryFile(entry), "base")
     if (contract.context.base !== undefined) {
         const pinned = new Set(contract.context.base.map((entry) => normaliseContextEntry(fill(entry, values))))
         for (const file of context.filter((item) => !pinned.has(item.entry))) problems.push(`context.base drops ${file.entry}, a file of the ${label} op's base`)

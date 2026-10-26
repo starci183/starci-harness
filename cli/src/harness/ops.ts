@@ -89,6 +89,22 @@ const presetsFileSchema = z.object({ schema: z.literal("starci/check-presets@1")
 /** The inputs every contract carries itself; an op never declares them. */
 export const CONTRACT_INPUTS = ["summary", "details"] as const
 
+/** One file an op reads: a path, or a path that applies only when the named inputs hold one of the listed values. */
+const contextEntrySchema = z.union([
+    z.string().min(1),
+    z.strictObject({ file: z.string().min(1), when: z.record(keyNameSchema, z.union([z.string().min(1), z.array(z.string().min(1)).min(1)])) }),
+])
+
+/** One context entry of an op file. */
+export type ContextEntry = z.infer<typeof contextEntrySchema>
+
+/** The path of a context entry. */
+export const entryFile = (entry: ContextEntry): string => (typeof entry === "string" ? entry : entry.file)
+
+/** Whether a context entry applies to a contract with these input values. */
+export const entryApplies = (entry: ContextEntry, values: Readonly<Record<string, string>>): boolean =>
+    typeof entry === "string" || Object.entries(entry.when).every(([name, allowed]) => (Array.isArray(allowed) ? allowed : [allowed]).includes(values[name] ?? ""))
+
 /** The frontmatter of an op file (`ops/ops/<label>.md`): the base of each part of a contract of that label. */
 const opFrontmatterSchema = z.strictObject({
     schema: z.literal("starci/op@1"),
@@ -96,7 +112,8 @@ const opFrontmatterSchema = z.strictObject({
     floor: z.enum(["easy", "medium", "hard", "insane"]),
     hostTools: z.array(z.string().min(1)),
     // `harness:<path>` is a file of the harness checkout, anything else a repository path; `{name}` is an input or `label`.
-    context: z.strictObject({ base: z.array(z.string().min(1)) }),
+    // An entry with `when` applies only when every named input holds one of its values (e.g. `side: harness`).
+    context: z.strictObject({ base: z.array(contextEntrySchema) }),
     input: z.strictObject({ base: z.record(keyNameSchema, z.string().min(1)) }),
     // behavioural: the generated output check proves behaviour (the output is a suite or flow report), not only its shape.
     output: z.strictObject({ base: z.record(keyNameSchema, outputSpecSchema), behavioural: z.boolean() }),
@@ -178,7 +195,9 @@ const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): O
     const reserved = Object.keys(op.input.base).filter((name) => (CONTRACT_INPUTS as readonly string[]).includes(name))
     if (reserved.length > 0) throw invalid(file, `input.base names ${reserved.join(", ")}, which every contract carries itself`)
     const known = new Set(["label", ...Object.keys(op.input.base)])
-    const unknown = op.context.base.flatMap(placeholdersOf).filter((name) => !known.has(name))
+    const unknown = op.context.base
+        .flatMap((entry) => [...placeholdersOf(entryFile(entry)), ...(typeof entry === "string" ? [] : Object.keys(entry.when))])
+        .filter((name) => !known.has(name))
     if (unknown.length > 0) throw invalid(file, `context.base names placeholders no input declares: ${[...new Set(unknown)].join(", ")}`)
     const named = op.checks.base.map((entry) => ("preset" in entry ? entry.preset : undefined)).filter((name): name is string => name !== undefined)
     const missing = named.filter((preset) => !(preset in presets))
