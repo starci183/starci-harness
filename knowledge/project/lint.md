@@ -35,7 +35,7 @@ app's (both sides), `lib` and `runtime` carry no canon. An npm workspace root is
 | `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
 | app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`hfs check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
 | gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication and issues of new code |
-| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build |
+| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; a lite app has no e2e world although the `app` profile lists `e2e` ([lite.md](lite.md) "What CI runs") |
 
 ## Facts no machine checks yet
 
@@ -58,7 +58,9 @@ Each leaves this list the day a machine checks it.
 - **Pins.** That an app's `@starci/*` and shared dependencies sit at the versions of [stack/pins.yaml](../stack/pins.yaml):
   no harness gate compares them.
 - **The setup commands of a contract.** That a project whose clean checkout lacks generated code declares them in
-  `context.setup` is the contract author's duty; the clean verify only shows its absence as a red check.
+  `context.setup` is the contract author's duty; the clean verify only shows its absence as a red check. The project
+  keeps no persistent list of them yet, so each contract restates them (the `prepare` operation of
+  [stacks.md](stacks.md) runs the same commands).
 
 ## Moving a fact to a machine
 

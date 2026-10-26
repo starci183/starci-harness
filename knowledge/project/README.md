@@ -74,7 +74,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 | [README.md](README.md) | this map: what a project is, the life cycle, where to read |
 | [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |
-| [stacks.md](stacks.md) | `.starcistacks`: environments, how a project runs locally and is deployed |
+| [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [work.md](work.md) | the `.starciwork` record families, their state, who writes what, UAT flows and evidence |
-| [lite.md](lite.md) | what the lite edition changes for a project |
-| [full.md](full.md) | what the full edition adds for a project |
+| [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |
+| [full.md](full.md) | only what the full edition does differently, in the same sections, each linked to its owner |
