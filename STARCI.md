@@ -162,15 +162,44 @@ There are four tables, instead of about 50 runtime tables and 90 machine tables:
 - `tasks`: the contract, the sender, the receiver, the status and the attempts;
 - `results`: the output, the evidence and the verify verdict.
 
-### CLI
-- `starci task send --to <seat|op-kind> --contract <file.json>` returns a task id.
-- `starci task wait <id>` blocks until a result.
-- `starci task verify <id>` replays the checks and sets the verdict.
-- `starci task status [<id>]` reports the task or tasks.
-- `starci task result <id> --status ... --output <file>` is what the receiver runs to return its result.
-- `starci msg send <seat> ping|status|cancel|pause|resume` and `starci msg recv` (the seat runner's loop).
-- `starci seat start|stop|list` launches a seat, which is an agent plus its runner, in Orca or headless.
-- Lite has no Kernel. The chat agent can still write a contract for its own work and run `starci task verify` on it, so the edition shares the same checks.
+### CLI of the harness (full edition)
+
+Who runs each verb is enforced from its `roles`. `hidden` verbs are called by the seat runner, not typed by people or agents.
+
+| verb | who runs it | effect | what it does |
+|---|---|---|---|
+| `workflow define <goal.json>` | owner | local-write | record a goal (its requirements) and queue its workflow |
+| `workflow start <id>` | owner, supervisor | host | boot the workflow's Kernel seat |
+| `workflow list` / `workflow status <id>` | everyone | read | the workflows and their graph version, progress and waits |
+| `workflow amend <id> --change <file>` | owner | local-write | stop, pause, resume, add, edit or remove scope; sent to the Supervisor |
+| `workflow stop <id> --graceful\|--hard` | owner, supervisor | host | the stop entry of amend as a shorthand |
+| `plan show <workflow>` | everyone | read | the current graph: tasks, edges, contract hashes and states |
+| `plan diff <workflow> --to <goal-version>` | kernel, supervisor | read | the keep, continue, redo, add and drop classification of a replan |
+| `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
+| `contract new --kind <op-kind>` | kernel, supervisor | local-write | write a contract skeleton for an op kind |
+| `contract check <file>` | everyone | read | validate the contract: schema, machine-runnable checks, `allowPaths` |
+| `task send --to <op-kind\|seat\|supervisor> --contract <file>` | kernel, supervisor | host | queue the task and start or assign its seat; returns the task id |
+| `task wait <id> [--timeout]` | kernel, supervisor | read | block until the result arrives or the deadline passes |
+| `task result <id> --status <s> --output <file>` | op, supervisor | local-write | the receiver returns done, blocked, mismatch or failed with its output |
+| `task verify <id>` | kernel, supervisor, op | read | replay every check of `expectedOutput` against the result; only green settles |
+| `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts and verdicts |
+| `task cancel <id>` | kernel, supervisor | host | send `cancel` to the task's seat |
+| `msg send <seat> ping\|status\|cancel\|pause\|resume` | kernel, supervisor | host | one command; the seat runner answers within the deadline |
+| `msg recv` / `msg reply` | hidden (seat runner) | local-write | the runner's command loop |
+| `seat start --role <r> --agent <claude\|codex\|devin> [--task <id>]` | kernel, supervisor | host | launch an agent plus its runner in Orca or headless |
+| `seat list` / `seat stop <id>` | supervisor (list: everyone) | host | the seats and their last pong; stop one |
+| `seat run` | hidden | host | the seat runner process itself |
+| `supervisor start\|stop\|status` | owner | host | the one host Supervisor seat |
+| `supervisor tell "<text>"` | owner | local-write | an owner message; the Supervisor turns it into a task or an amend |
+| `supervisor decide <item> --choice <c>` | owner | local-write | answer one owner decision the Supervisor raised |
+| `debug open --incident <id>` | supervisor | host | start a Debug seat on a harness or environment failure |
+| `debug report --diagnosis <file> --repair <contract>` | debug | local-write | return the diagnosis and the repair contract to the Supervisor |
+
+Core verbs that every role uses: `check run|lint|typecheck`, `release push|cut|publish|ci-status`, `git commit|sync`, `explain` and `doctor`.
+
+That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today.
+
+Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task verify`, so a chat agent can state the contract of its own work and prove it with the same checks.
 
 ## Open questions
 
