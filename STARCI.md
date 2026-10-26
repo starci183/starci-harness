@@ -48,7 +48,7 @@ cli/
 Parity gaps with the old CLI, by design for now:
 - The secret scan carries the provider shapes, forbidden paths and the quoted keyword assignment. It does not carry the unquoted dotenv form, SQL role passwords or badge-token exemptions.
 - `release publish` has no clean-install proof, canon rebind or example re-pin. Those belong to the runtime's canon packages, not to a product.
-- Roles are declared on every verb but not yet enforced. Enforcement needs the caller's role, from the | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | or an env var.
+- Roles are declared on every verb but not yet enforced. Enforcement needs the caller's role, from the seat or an env var.
 
 ## Proposed verb set (for the owner's review)
 
@@ -70,7 +70,7 @@ The old CLI has 268 verbs in 30 groups (see the inventory in `starci-academy-bac
 
 ### Full (workflows in Orca)
 - `workflow` holds define, start, status, stop and archive.
-- `task`, `msg` and `| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |` replace the old kernel's watching verbs. See "Harness core" below. Without observe, nudge, critic or redesign, the Kernel needs only plan, send, wait, verify, escalate and status.
+- `task`, `msg` and `seat` replace the old kernel's watching verbs. See "Harness core" below. Without observe, nudge, critic or redesign, the Kernel needs only plan, send, wait, verify, escalate and status.
 - `lane` holds workers and worktrees (old worker, machine worktrees and supervisor gc).
 - `supervisor` takes the same task protocol, plus the owner channel: status, decide and tell.
 - `work` collects the drawing steps under one `work draw <step>`, plus brand, graph and validate.
@@ -82,18 +82,18 @@ The old CLI has 268 verbs in 30 groups (see the inventory in `starci-academy-bac
 - Removed:
   - `supervisor push`, which still says "run full suites then push", against ruling push-main-after-scoped-check;
   - the 21 verbs nothing references, unless the owner keeps one.
-- Hidden, still callable by hooks and | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |s: `guard *`, `orca terminal-*`, `reconciler once`, `supervisor watchdog`.
+- Hidden, still callable by hooks and seats: `guard *`, `orca terminal-*`, `reconciler once`, `supervisor watchdog`.
 
 ## Harness core (owner model, 2026-10-27)
 
 Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(context, input, expectedOutput)`, and waits for the output and an exit code. The Supervisor is reached the same way. Liveness is a ping-pong. This replaces the critic, debug, observe and nudge model.
 
 ### Three parties, one protocol
-- **Op:** a short-lived agent (Claude, Codex or Devin) in an Orca | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |. It receives one task, works until its own output meets `expectedOutput`, and returns the output.
-- **Kernel:** one long-lived | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | per workflow.
+- **Op:** a short-lived agent (Claude, Codex or Devin) in an Orca seat. It receives one task, works until its own output meets `expectedOutput`, and returns the output.
+- **Kernel:** one long-lived seat per workflow.
   - It splits the goal into tasks, sends them, waits and verifies each output by machine.
   - It escalates a `blocked` or `mismatch` result to the Supervisor as a new task.
-- **Supervisor:** one | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | per host.
+- **Supervisor:** one seat per host.
   - It receives the tasks no op can finish: cross-workflow work, runtime repair, owner decisions.
   - It returns an output the same way, asking the owner when the contract needs a person.
 
@@ -101,8 +101,8 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
 1. **Command, a short request and response.**
    - A closed set: `ping`, `status`, `cancel`, `pause`, `resume`.
    - The answer is due within seconds.
-   - The answer comes from the **| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | runner**, the harness process that hosts the agent, not from the model. A model in the middle of a long tool call cannot answer promptly, and liveness must not depend on it.
-   - No pong before the deadline means the | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | is dead. The sender relaunches the task with its next attempt, or escalates.
+   - The answer comes from the **seat runner**, the harness process that hosts the agent, not from the model. A model in the middle of a long tool call cannot answer promptly, and liveness must not depend on it.
+   - No pong before the deadline means the seat is dead. The sender relaunches the task with its next attempt, or escalates.
 2. **Task, an asynchronous contract and its result.**
    - `context`: what the receiver may read and where it works: repository, base commit, worktree, rulings, the paths it may write.
    - `input`: what to do, in words plus structured fields (op kind, target).
@@ -121,11 +121,11 @@ Owner: the Kernel never reads an op's terminal. It sends work as a contract, `(c
 | role | job | lives | reads | writes | effects | never | escalates to |
 |---|---|---|---|---|---|---|---|
 | op | one task, until its output meets `expectedOutput` | one task | the task's `context` only | its lane worktree, inside `allowPaths` | read, local-write | push, merge into main, change its contract, ask the owner | Kernel: `blocked` or `mismatch` |
-| kernel | split the goal into tasks, send, wait, verify | one workflow | its goal and its workflow's ledger | tasks and messages of its workflow; merges lanes into the workflow branch | read, local-write, host (its own | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |s) | write code itself, read an op's terminal, push main | Supervisor: a task beyond an op |
-| supervisor | run the host, take tasks beyond an op, carry the owner channel | always, one per host | every workflow, | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | and ruling | land on main, the light push, seats, budgets, rulings the owner decides | + remote (push); publish only with the owner's approval | write product code (it sends a task to an op), bend a gate | Owner: decisions, publish, rulings |
+| kernel | split the goal into tasks, send, wait, verify | one workflow | its goal and its workflow's ledger | tasks and messages of its workflow; merges lanes into the workflow branch | read, local-write, host (its own seats) | write code itself, read an op's terminal, push main | Supervisor: a task beyond an op |
+| supervisor | run the host, take tasks beyond an op, carry the owner channel | always, one per host | every workflow, seat and ruling | land on main, the light push, seats, budgets, rulings the owner decides | + remote (push); publish only with the owner's approval | write product code (it sends a task to an op), bend a gate | Owner: decisions, publish, rulings |
 | debug | diagnose a harness or environment failure, never task content | one incident | everything, read-only (ledgers, logs, transcripts) | a diagnosis and a repair task only | read | edit code, change rules, run any writing verb | Supervisor: the diagnosis plus the repair task |
 
-The rights are enforced from each verb's `effect` and `roles`. The | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | runner tells the CLI its role, and a verb refuses a role it does not list.
+The rights are enforced from each verb's `effect` and `roles`. The seat runner tells the CLI its role, and a verb refuses a role it does not list.
 
 ### Changing a running workflow (amend)
 
@@ -144,7 +144,7 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
      - drop: no longer in the goal, so it is cancelled and its history kept.
   4. It records the graph version and the classification, then resumes dispatch from the new graph.
 - **Owner gate:** when a replan drops or redoes more than the owner's threshold, the Kernel returns the plan to the Supervisor, which asks the owner before resuming.
-- **Stop:** `graceful` dispatches nothing new and waits for running tasks. `hard` cancels every | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | at once with the `cancel` command.
+- **Stop:** `graceful` dispatches nothing new and waits for running tasks. `hard` cancels every seat at once with the `cancel` command.
 - **A feature added while several workflows run.** The Supervisor first maps the impact: which workflow owns the paths and outputs the feature touches.
   - It amends only the owners. A workflow the feature does not touch keeps running unfrozen.
   - When the feature spans owners, each owner gets its part, and the cross-workflow dependency is declared on the other owner's output (its contract hash). If no owner fits, it starts a new workflow.
@@ -157,19 +157,19 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
 
 ### Storage: one SQLite file per project
 There are four tables, instead of about 50 runtime tables and 90 machine tables:
-- `| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |s`: who runs where, plus the last pong;
+- `seats`: who runs where, plus the last pong;
 - `messages`: commands and their replies, with a correlation id and a deadline;
 - `tasks`: the contract, the sender, the receiver, the status and the attempts;
 - `results`: the output, the evidence and the verify verdict.
 
 ### CLI of the harness (full edition)
 
-Who runs each verb is enforced from its `roles`. `hidden` verbs are called by the | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | runner, not typed by people or agents.
+Who runs each verb is enforced from its `roles`. `hidden` verbs are called by the seat runner, not typed by people or agents.
 
 | verb | who runs it | effect | what it does |
 |---|---|---|---|
 | `workflow define <goal.json>` | owner | local-write | record a goal (its requirements) and queue its workflow |
-| `workflow start <id>` | owner, supervisor | host | boot the workflow's Kernel | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | |
+| `workflow start <id>` | owner, supervisor | host | boot the workflow's Kernel seat |
 | `workflow list` / `workflow status <id>` | everyone | read | the workflows and their graph version, progress and waits |
 | `workflow amend <id> --change <file>` | owner | local-write | stop, pause, resume, add, edit or remove scope; sent to the Supervisor |
 | `workflow stop <id> --graceful\|--hard` | owner, supervisor | host | the stop entry of amend as a shorthand |
@@ -178,28 +178,28 @@ Who runs each verb is enforced from its `roles`. `hidden` verbs are called by th
 | `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
 | `contract new [--check <preset>...]` | kernel, supervisor | local-write | write a contract, composing `expectedOutput` from named check presets |
 | `contract check <file>` | everyone | read | validate the contract: schema, machine-runnable checks, `allowPaths` |
-| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |\|seat\|supervisor> --contract <file>` | kernel, supervisor | host | queue the task and start or assign its seat; returns the task id |
+| `task send --to worker\|supervisor [--agent claude\|codex\|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |
 | `task wait <id> [--timeout]` | kernel, supervisor | read | block until the result arrives or the deadline passes |
 | `task result <id> --status <s> --output <file>` | op, supervisor | local-write | the receiver returns done, blocked, mismatch or failed with its output |
 | `task verify <id>` | kernel, supervisor, op | read | replay every check of `expectedOutput` against the result; only green settles |
 | `task status [<id>\|--workflow <w>]` | everyone | read | task states, attempts and verdicts |
-| `task cancel <id>` | kernel, supervisor | host | send `cancel` to the task's | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | |
-| `msg send <| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |> ping\|status\|cancel\|pause\|resume` | kernel, supervisor | host | one command; the seat runner answers within the deadline |
-| `msg recv` / `msg reply` | hidden (| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | runner) | local-write | the runner's command loop |
-| `| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | start --role <r> --agent <claude\|codex\|devin> [--task <id>]` | kernel, supervisor | host | launch an agent plus its runner in Orca or headless |
-| `| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | list` / `seat stop <id>` | supervisor (list: everyone) | host | the seats and their last pong; stop one |
-| `| `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | run` | hidden | host | the seat runner process itself |
-| `supervisor start\|stop\|status` | owner | host | the one host Supervisor | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | |
+| `task cancel <id>` | kernel, supervisor | host | send `cancel` to the task's seat |
+| `msg send <seat> ping\|status\|cancel\|pause\|resume` | kernel, supervisor | host | one command; the seat runner answers within the deadline |
+| `msg recv` / `msg reply` | hidden (seat runner) | local-write | the runner's command loop |
+| `seat start --role <r> --agent <claude\|codex\|devin> [--task <id>]` | kernel, supervisor | host | launch an agent plus its runner in Orca or headless |
+| `seat list` / `seat stop <id>` | supervisor (list: everyone) | host | the seats and their last pong; stop one |
+| `seat run` | hidden | host | the seat runner process itself |
+| `supervisor start\|stop\|status` | owner | host | the one host Supervisor seat |
 | `supervisor tell "<text>"` | owner | local-write | an owner message; the Supervisor turns it into a task or an amend |
 | `supervisor decide <item> --choice <c>` | owner | local-write | answer one owner decision the Supervisor raised |
-| `debug open --incident <id>` | supervisor | host | start a Debug | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id | on a harness or environment failure |
+| `debug open --incident <id>` | supervisor | host | start a Debug seat on a harness or environment failure |
 | `debug report --diagnosis <file> --repair <contract>` | debug | local-write | return the diagnosis and the repair contract to the Supervisor |
 
 Core verbs that every role uses: `check run|lint|typecheck`, `release push|cut|publish|ci-status`, `git commit|sync`, `explain` and `doctor`.
 
 That makes about 30 harness verbs plus about 15 core verbs, instead of 268 today.
 
-Lite has no Kernel, Supervisor or | `task send --to worker|supervisor [--agent claude|codex|devin] --contract <file>` | kernel, supervisor | host | queue the task and start a worker seat (or hand it to the Supervisor); returns the task id |s. It keeps `contract new|check` and `task verify`, so a chat agent can state the contract of its own work and prove it with the same checks.
+Lite has no Kernel, Supervisor or seats. It keeps `contract new|check` and `task verify`, so a chat agent can state the contract of its own work and prove it with the same checks.
 
 ## Ops are plain workers (owner, 2026-10-27)
 
