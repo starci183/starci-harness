@@ -3,7 +3,9 @@
 How the code of a Next.js front end is written: where a unit lives, what its files are called, how a component
 function is shaped, where data, text and colour come from, how a failure travels. A pattern never chooses a
 visual; [ui](../../ui/README.md) and the [grammar](../../grammars/README.md) do. Libraries are chosen once in
-[stack/fe.yaml](../../stack/fe.yaml); a topic here exists only where using a library still leaves a decision.
+[stack/fe.yaml](../../stack/fe.yaml); a topic here exists only where using a library still leaves a decision. The
+rules both sides share (strict tsconfig, no type escape, docblocks, identifier case, named and arrow exports, owner
+entries, Prettier, no suppression, no front-end tests) are [shared](../shared/README.md) and are not repeated here.
 
 Read by: an agent before it writes or reviews front-end code (the topic of each slot it touches); a generator
 reads each file's front matter (`slots`, the slot ids it teaches) to map a slot to its topics.
@@ -14,75 +16,81 @@ Every requirement and its check is placed by four questions, asked in order:
 
 1. Would it hold for any design system? The meaning belongs to universal knowledge: [ui](../../ui/README.md) for
    interface semantics, [hfs](../../hfs/README.md) and these patterns for code law.
-2. Is it one grammar's visual choice (a value, token, shape, effect)? That grammar owns it in code (`dna.ts`, its
-   stylesheet), explained in [grammars](../../grammars/README.md).
+2. Is it one grammar's visual choice (a value, token, shape, effect)? That grammar owns it in code, explained in
+   [grammars](../../grammars/README.md).
 3. Is it about calling the grammar's components (names, props, variants, sizes)? The grammar lint package owns the
-   check (`@starci/eslint-grammar-common`, plus `@starci/eslint-grammar-<id>`).
+   check (`@starci/eslint-grammar-<family>`).
 4. Is it checkable on any code whatever the grammar? The universal canon `@starci/eslint-canon-fe` owns the check;
    it names no grammar component, prop, variant or size.
 
-One owner for meaning, one for values, one for checks: a grammar change never rewrites universal law, and the
-universal canon never couples to one component API.
-
 ## What the app decides
 
-The app supplies product facts, copy keys, routes, data and **layout on the boundaries it owns**. It never makes
-a visual choice: a component, its variant, size, tone, paint, radius or depth is either decided by a rule in
-[ui](../../ui/README.md) or resolved by the grammar from context. If a screen seems to need a visual choice the
-app could make two ways, the grammar is missing an API or ui is missing a rule; record the gap
-(`COMMON_CAPABILITY_MISSING`) and add it there first ([ui.md](ui.md) FE-UI-1).
+The app supplies product facts, copy keys, routes, data and layout classes on the boxes it owns. It never makes a
+visual choice: a component, its variant, size, tone, paint, radius or depth is decided by a rule in
+[ui](../../ui/README.md) or resolved by the grammar from context ([ui.md](ui.md) FE-UI-1).
 
 ## Data status of a region
 
-A region that reads data renders its status by one recipe, in every app and grammar:
+FE-ERROR-1: a region that reads data shows its status through the one status view, in its own place, by one recipe
+in every app and grammar. A read is folded into a
+`DataSlot<T>` (`items`, `isLoading`, `isError`, `isForbidden`; none set means empty) by `slotOfSwr`, and `mapSlot`
+carries the status over to the view made of its items. The pure half renders the region through the one status view
+`components/composites/SlotView` in the region's place, inside the unchanged surface: while loading it draws the
+ready tree from a `placeholder` value of the same shape with `isSkeleton`; on error the failure notice with a retry
+that re-runs exactly that read; on forbidden the notice for a primary region (`forbidden="notice"`) or nothing for a
+secondary one (`"hide"`); empty shows the region's empty sentence. A part that only waits passes its flag down
+(`isSkeleton`, `isLoading`) and rests as itself; a pure block never branches on a status flag. The copy comes from the
+shared status namespace through `useSlotLabels`. A signed-out viewer never reaches a region: the proxy and the session
+gate send them to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
 
-- The connected half folds each read into a resource with `toSlot` (`Slot<T>`: value, `isLoading`, `isError`,
-  `isUnauthorized`, `isForbidden`, empty). 401 stays unauthorized and 403 forbidden, never error; any other
-  failure is error.
-- The pure half renders the region through the product's one status view (`components/composites/SlotView`) in
-  the region's own place, inside the unchanged surface: loading draws the region's skeleton from
-  `xDefaultState`; error shows the failure notice with a retry that re-runs exactly that read; a primary
-  unauthorized region shows one sign-in prompt that returns to this address, a primary forbidden region the
-  forbidden notice, and a secondary region unmounts for either; empty shows the region's empty notice.
-- Copy comes from the shared status namespace (`useSlotLabels`); `XState` never holds a data status
-  ([function.md](function.md) FE-FUNCTION-2).
-- A missing resource behind a route is `notFound()` in the route file, never a region status.
+```tsx
+<SlotView slot={props.props.leads} placeholder={LEADS_PLACEHOLDER} labels={props.props.slotLabels} onRetry={props.on.retry}>
+    {(leads, isSkeleton) => <LeadRows rows={leads} isSkeleton={isSkeleton} />}
+</SlotView>
+```
 
-Owner of the recipe files: one copy each of `components/composites/SlotView`, `modules/slot` (`Slot`, `toSlot`)
-and `hooks/slot/useSlotLabels`. The look of each notice and skeleton is the grammar's
-([common](../../grammars/common.md)).
+Owners, one copy each: `DataSlot` and `SlotLabels` in `modules/types`, `slotOfSwr`/`mapSlot`/`loadingSlot` in
+`hooks/slot/slot.shared.ts`, `useSlotLabels` in `hooks/slot`, the view in `components/composites/SlotView`. The look
+of each notice and skeleton is the grammar's.
+
+Why: a region that draws its own loading, error or empty branch is one more variant somebody has to draw, and it
+drifts from every other region's.
+
+Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-resting-branch-at-call-site`,
+`no-resting-twin-component`, `no-data-status-shape`).
 
 ## Topics
 
 | Topic | Decides | Rules |
 |---|---|---|
-| [architecture.md](architecture.md) | route adapters, responsibility direction, world ownership, apps and packages, the front end serves no API | FE-ARCHITECTURE-1..5, FE-ROUTE |
-| [folder.md](folder.md) | tier directories, the file set of a unit, framework-pinned root files, hooks and modules, apps and packages | FE-FOLDER-1..4, 6, FE-APPS-1..3, FE-PACKAGES-1..4 |
-| [naming.md](naming.md) | unit, export, contract, class-name, hook, operation and file names | FE-NAMING-1..7 |
-| [function.md](function.md) | component shape, the `{ state, props, on }` drawing law, connected and pure halves, route files, function budget | FE-FUNCTION-1..9 |
-| [imports.md](imports.md) | paths, direction, vendor boundaries, re-exports, forbidden imports | FE-IMPORTS-1, 3, 5-7 |
-| [typing.md](typing.md) | strict flags, readonly, literal unions, wire vs feature vs view contracts | FE-TYPING-1..8 |
-| [comment.md](comment.md) | docblocks, decision prose, what a comment never holds | FE-COMMENT-1..5 |
-| [boundaries.md](boundaries.md) | error, not-found and loading boundaries, server first, cookies, the layout overlay host | FE-BOUNDARY-1..5 |
-| [error.md](error.md) | the response envelope, hard stops, propagation | FE-ERROR-2..4 |
+| [architecture.md](architecture.md) | tiers and their direction, who owns a world, apps and packages, the front end serves no API | FE-ARCHITECTURE-1..4, FE-ROUTE |
+| [folder.md](folder.md) | the source root, the file set of a unit, hooks and modules folders, apps and packages | FE-FOLDER-1..4, FE-APPS-1, FE-PACKAGES-1..3 |
+| [naming.md](naming.md) | unit, contract, class-name, hook, operation, key and file names | FE-NAMING-1..5 |
+| [function.md](function.md) | the connected and pure halves, `{ state, props, on }`, lower tiers, route files, page owners | FE-FUNCTION-1..6 |
+| [imports.md](imports.md) | the grammar entry, data through hooks, vendor imports | FE-IMPORTS-1..3 |
+| [typing.md](typing.md) | readonly props, literal unions, wire vs feature vs view | FE-TYPING-1..3 |
+| [comment.md](comment.md) | field and decision comments | FE-COMMENT-1 |
+| [boundaries.md](boundaries.md) | error, not-found and loading files, server first, providers, cookies | FE-BOUNDARY-1..4 |
+| [error.md](error.md) | the outcome vocabulary, hard stops, where a failure goes | FE-ERROR-2..4 |
 | [transport.md](transport.md) | Apollo clients and operations, generated wire types, REST and uploads, the auth client | FE-API-GRAPHQL, FE-WIRE-GENERATED, FE-API-REST, FE-UPLOAD, FE-AUTH |
-| [data.md](data.md) | SWR hooks, which store owns which state, browser storage | FE-DATA-SWR, FE-STATE-1, FE-STORAGE |
-| [form.md](form.md) | forms, contract-derived input bounds, mutation feedback | FE-FORM, FE-TOAST |
-| [i18n.md](i18n.md) | next-intl placement, no literal copy, catalog parity, navigation, formatting owners | FE-I18N, FE-I18N-1..5 |
-| [realtime.md](realtime.md) | the three push doors and how the front end reads each | FE-REALTIME, FE-REALTIME-2 |
-| [ui.md](ui.md) | composing the grammar, app CSS (layout only), the brand file, glyphs | FE-UI-1, FE-CSS-1..4, FE-ICON |
+| [data.md](data.md) | SWR hooks and keys, commands, which store owns which state, browser storage | FE-DATA-SWR, FE-DATA-KEY, FE-DATA-COMMAND, FE-STATE-1, FE-STORAGE |
+| [form.md](form.md) | form hooks, contract input bounds, mutation feedback | FE-FORM, FE-TOAST |
+| [i18n.md](i18n.md) | next-intl placement, no literal copy, catalogs, navigation, formatting owners | FE-I18N-1..5 |
+| [realtime.md](realtime.md) | the push doors and how a push reaches the cache | FE-REALTIME-2, FE-REALTIME |
+| [ui.md](ui.md) | composing the grammar, app CSS (layout only), the brand file, glyphs | FE-UI-1, FE-CSS-1..3, FE-ICON |
 
 ## Reading order
 
-- **A screen on a grammar:** [ui](../../ui/README.md) for the decisions, the [grammar contract](../../grammars/contract.md)
-  for the API, then [ui.md](ui.md), [function.md](function.md), this file's status recipe, [folder.md](folder.md),
-  [naming.md](naming.md), [data.md](data.md), [i18n.md](i18n.md); lint proves the rest.
-- **A new data read or write:** [transport.md](transport.md), [data.md](data.md), [error.md](error.md), [form.md](form.md).
-- **A new route:** [architecture.md](architecture.md), [boundaries.md](boundaries.md), [function.md](function.md) FE-FUNCTION-7.
+- **A screen:** [ui](../../ui/README.md) for the decisions, the [grammar contract](../../grammars/contract.md) for the
+  API, then [function.md](function.md), this file's status recipe, [ui.md](ui.md), [folder.md](folder.md),
+  [naming.md](naming.md), [data.md](data.md), [i18n.md](i18n.md).
+- **A new read or write:** [transport.md](transport.md), [data.md](data.md), [form.md](form.md), [error.md](error.md).
+- **A new route:** [architecture.md](architecture.md), [function.md](function.md) FE-FUNCTION-5,
+  [boundaries.md](boundaries.md).
 
 ## House rules
 
-One place per rule: each rule lives in exactly one file under one id, and every other file links to it. Feedback
-hardens the rule in that place (a stricter sentence, a grammar API that removes the choice, or a lint rule);
-it is never a case note added beside it. Rule ids cite the HFS catalog ([hfs/rules.yaml](../../hfs/rules.yaml));
-what a lint rule flags is the rule's own documentation, not repeated here.
+One place per rule: each rule lives in one file under one id, and every other file links to it. Every rule states its
+law in one sentence, why, and what enforces it (a lint rule id with its HFS rule, or "review only"); what a lint rule
+flags is the rule's own documentation, not repeated here. Feedback hardens the rule in its place, or turns it into a
+lint rule.

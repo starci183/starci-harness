@@ -4,47 +4,46 @@ slots: [fe.hooks.socketio, fe.hooks.swr, fe.components.providers, fe.modules.api
 # Realtime
 
 How the front end receives pushes. The back end decides which door serves a channel
-([patterns/be/realtime.md](../be/realtime.md)); the front end uses that door, in both editions.
+([patterns/be/realtime.md](../be/realtime.md)); the front end reads that door, in both editions.
 
 ## FE-REALTIME-2 The door follows what is pushed and which way
 
 | Channel | Door | Front-end reader |
 |---|---|---|
-| one-way push (a changing status, job progress, streamed tokens) | server-sent events, the default | the event-stream instance |
-| two-way messages (chat, presence, collaborative input) | socket.io | the socket singletons of `hooks/socketio` |
+| one-way push (a changing status, job progress, activity, streamed tokens) | server-sent events, the default | a stream operation on the app's one `@starci/event-stream` instance |
+| two-way messages (presence, collaborative input) | socket.io | the sockets of `hooks/socketio` and its one side-effect component |
 | a typed push of a schema type the client already reads through GraphQL | GraphQL subscription | the Apollo clients folder (graphql-ws) |
 
-Every door is opened by the transport client layer, exposed as an operation and consumed through an SWR subscription
-hook (a socket through the one side-effect component); nothing loads data inside an effect. A resource is refreshed
-by one door only: a pushed resource's query hook does not poll.
+Why: the stream is cheaper and resumable; the choice follows what is pushed and which way, not the API's default.
 
-Why: the stream is cheaper and resumable; the choice is made by what is pushed and which way, not by the API default.
+Enforced by: R50 (`fetch-only-in-api-client`: `EventSource` and native WebSocket are refused, socket.io lives only in
+`hooks/socketio`); the choice of door is review only.
 
-Enforced by: R65.
+## FE-REALTIME A push is read by a subscription hook and makes the snapshot stale
 
-## FE-REALTIME The readers
+`modules/api/sse/clients/event-stream.ts` creates the one instance over the identity client's token and refresh;
+a stream operation `modules/api/sse/<area>/stream-<channel>.ts` follows a channel with `{ signal, onOpen, onPush,
+report }` and narrows each frame with a guard; `hooks/swr/api/sse/subscriptions/useSubscribe<Channel>Swr.ts` starts it
+in `useSWRSubscription` under a key holding the tenant and viewer ids, revalidates every read the channel feeds on
+(re)open, revalidates the reads a push makes stale, and aborts in its cleanup; a token never travels in the URL.
 
-- **Server-sent events.** The app creates one `@starci/event-stream` instance in
-  `modules/api/sse/clients/event-stream.ts` over the identity client's token (`createEventStream`); it resolves the
-  back-end URL at the first connect. A stream operation `modules/api/sse/<area>/stream-<channel>.ts` follows a stream
-  on it, and `hooks/swr/api/sse/subscriptions/useSubscribe<Channel>Swr.ts` (`useSWRSubscription`, keyed
-  `SUBSCRIBE_<CHANNEL>_SWR_KEY` plus the stream's identity) starts it and returns the abort. Each push is written to the
-  query's key with `mutate(key, data, { revalidate: false })`. No app keeps a hand-written stream reader; a token never
-  travels in the URL.
-- **GraphQL subscription.** Only the Apollo clients folder imports graphql-ws (the bearer token as a connection
-  parameter). The operation is `modules/api/graphql/subscriptions/subscription-<name>.ts`; its hook is a
-  `useSubscribe<Name>Swr` like the stream hook.
-- **Snapshot on (re)open.** Every subscription hook passes its operation an `onOpen` that revalidates the snapshot
-  query: the query carries the state, the subscription only the changes after it.
-- **socket.io.** `hooks/socketio/sockets.ts` creates one socket per back-end namespace from one Manager (no
-  auto-connect, websocket transport only, backoff, the token supplied per attempt through `socket.auth`).
-  `SocketIoSideEffects.tsx`, mounted once in `components/providers`, connects on sign-in, disconnects on sign-out,
-  registers listeners and writes each event to the store or the SWR keys it changes; `enums/` name the events and
-  `types/` their payloads. A consumer gets a socket through a `use<X>SocketIo` hook only to emit.
+Why: the query carries the state and the stream only its changes, so revalidating on open closes the gap a reconnect
+leaves, and one subscription per channel avoids duplicate listeners and leaked connections.
 
-A domain hook composes the query hook and the subscription hook.
+```ts
+return useSWRSubscription<ActivityPush, Error, ActivityKey>(key, ([, workspaceId], { next }) => {
+    const controller = new AbortController()
+    const staleIn = (names: ReadonlyArray<string>) => (read: unknown) =>
+        Array.isArray(read) && read[1] === workspaceId && names.includes(String(read[0]))
+    void streamActivity({
+        signal: controller.signal,
+        onOpen: () => void mutate(staleIn(ALL_READS)),
+        onPush: (push) => { next(null, push); void mutate(staleIn(STALE_READS[push.kind])) },
+        report: (line) => next(new Error(line)),
+    })
+    return () => controller.abort()
+})
+```
 
-Why: one connection per channel and one place that turns events into state avoid duplicate listeners, leaked
-connections and gaps after a reconnect.
-
-Enforced by: R50, R65.
+Enforced by: R285 (`subscription-refetches-snapshot`, `swr-only-in-family`), R65 (`effect-subscription-needs-cleanup`),
+R52 (`no-hand-typed-wire`).

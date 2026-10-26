@@ -4,63 +4,75 @@ slots: [fe.modules.api, fe.modules.auth, fe.transport, fe.transport.client, fe.t
 # Transport
 
 Which code calls the back end, what it returns and where its types come from. The browser calls the back end
-directly; the front end itself serves nothing ([architecture.md](architecture.md) FE-ROUTE). The same in both editions.
+directly; the front end serves nothing ([architecture.md](architecture.md) FE-ROUTE). The same in both editions.
 
 ## FE-API-GRAPHQL One link chain, one file per operation
 
-`modules/api/graphql/clients/` holds the auth and no-auth Apollo clients built from one link chain (`links/`): retry,
-error, timeout, token refresh, attach access token, attach device id when the app uses one, then the http link. Each
-operation is one file, `queries/query-<x>.ts` exporting `query<X>` or `mutations/mutation-<x>.ts` exporting
-`mutate<X>`, with its document and typed request and response, returning `GraphQLResponse<T>`
-([error.md](error.md) FE-ERROR-2). Nothing else in the app calls `fetch`, another HTTP or GraphQL client, a Server
-Action or a front-end route handler. The locale travels as `Accept-Language`.
+`modules/api/graphql/clients/` builds the auth and no-auth Apollo clients from one link chain in `links/` (retry,
+error, timeout, refresh on unauthenticated, attach access token, attach the tenant header when the app has one,
+attach locale, then the http link with the caller's signal), with `fetchPolicy: "no-cache"` so SWR is the only cache;
+each operation is one file holding its typed document and one exported async function that runs it on a client.
 
-Why: one chain makes timeout, retry, refresh and headers a single decision, and one file per operation keeps every
-back-end call discoverable.
+Why: one chain makes timeout, retry, refresh and headers a single decision, the locale travels on every call as
+`Accept-Language`, and one file per operation keeps every back-end call findable.
 
-Enforced by: R50 FE_TRANSPORT_OWNER, R51.
+```ts
+type MutateUpdateProfileRequest = WireInput<UpdateProfileMutationVariables["input"]>
+type Document = TypedDocumentNode<UpdateProfileMutation, InputVariables<MutateUpdateProfileRequest>>
+
+const mutation1: Document = gql`
+    mutation UpdateProfile($input: UpdateProfileInput!) { updateProfile(input: $input) }
+`
+
+/** Saves the viewer's profile; the back end authorizes and validates the input. */
+export const mutateUpdateProfile = async ({ request, signal }: MutateUpdateProfileParams) =>
+    createAuthApolloClient({ signal }).mutate({ mutation: mutation1, variables: { input: request } })
+```
+
+Enforced by: R50 (`transport-owner`, `fetch-only-in-api-client`, `client-fetch-has-signal`, `no-shared-transport-state`,
+`api-client-attaches-the-locale`, `locale-header-belongs-to-the-link`).
 
 ## FE-WIRE-GENERATED Wire types come from the back-end contract
 
-The back end commits `be/contracts/<app>/schema.graphql` (written by the app emit). The front end reads it in place
-(`hfs.json` `sides.fe.reads`), keeps no copy, and generates `modules/api/graphql/__generated__/` with graphql-codegen
-before lint, typecheck and build. Request and response types re-export or narrow generated types; every document,
-including an embedded `gql` template, validates against the contract.
+The front end reads `be/contracts/<app>/schema.graphql` in place (`hfs.json` `sides.fe.reads`), keeps no copy, and
+`npm run codegen` generates `modules/api/graphql/__generated__/` (ignored) before typecheck, lint and build; every
+document is a `TypedDocumentNode` of the generated result and variables, and no response is typed by hand.
+
+Why: a hand-written type drifts from the back end without a signal; the committed contract makes the interface a
+reviewable artefact in the commit that moved it.
 
 - When an operation is added → add the resolver, emit the contract, run codegen, then write the operation file.
 
-Why: a hand-written type drifts from the back end without a signal; the committed snapshot makes the interface a
-reviewable artefact in the commit that moved it.
-
-Enforced by: R52 FE_WIRE_GENERATED, R113 FE_GRAPHQL_CONTRACT.
+Enforced by: R52 (`no-hand-typed-wire`; hfs `wire-generated`), R113 (hfs `fe-contract-documents`).
 
 ## FE-API-REST REST only for what GraphQL cannot carry
 
 A binary upload, a presigned-URL request or an identity-provider endpoint is one file under
-`modules/api/rest/<area>/` using the one axios instance (base URL from `modules/config`, credentials only when the
-auth flow needs the HttpOnly cookie), wrapped by a `hooks/swr/api/rest` hook and reported through the toast.
+`modules/api/rest/<area>/` on the one axios instance, wrapped by a `hooks/swr/api/rest` hook and reported through the
+toast owner.
 
-Why: one HTTP client keeps headers, credentials and failure handling in one place, and one contract carries the rest.
+Why: one HTTP client keeps headers, credentials and failure handling in one place.
 
-Enforced by: R50.
+Enforced by: R50 (`fetch-only-in-api-client`).
 
 ## FE-UPLOAD Files go straight to storage
 
-A mutation returns an authorized presigned storage request; the client PUTs the file with the signed headers through
-`modules/api/rest` (no application bearer, cookie or credential on the storage request), then calls the completion
-mutation, and the API verifies what storage holds. The client checks type and size only for feedback; the back end
-and storage enforce them. Downloads use a short-lived authorized link. File bytes never pass through a front-end
-server or the API.
+A mutation returns an authorized presigned request; the client PUTs the bytes with the signed headers through
+`modules/api/rest` (no bearer, cookie or credential on the storage request), then calls the completion mutation, and
+the back end verifies what storage holds.
 
-Why: media stays out of the front end and the API process.
+Why: media stays out of the front end and the API process, and the client's type and size checks are feedback only.
+
+Enforced by: review only.
 
 ## FE-AUTH The auth client yields identity, never data
 
-`modules/auth` is the identity-provider client: sign-in, sign-out, the session, the signed-in state and an
-access-token getter that the Apollo link and the realtime clients read. It is the only importer of the provider SDK,
-uses only its auth API, and holds no service key. Data always goes through `modules/api` to the back end, which
-verifies the token. An auth bootstrap effect (`hooks/effects`) puts the signed-in user in the store.
+`modules/auth` is the only importer of the identity-provider SDK and uses only its auth API: the client entry exports
+the sign-in, sign-up, sign-out and password actions (each returning `GraphQLResponse<T>`), the session, the
+access-token getter the Apollo links and the event stream read, and an auth-change subscription; `modules/auth/server`
+holds the code exchange and session refresh for the callback and the proxy.
 
-Why: the back end authorizes every read and write; the front end only proves who the user is.
+Why: the back end authorizes every read and write; the front end only proves who the user is, and holds no service key.
 
-Enforced by: R217 FE_SUPABASE_CLIENT_OWNER, R287 FE_CALLBACK_SHAPE.
+Enforced by: R217 (machine `supabase-client-owner`, `supabase-service-role`), R244 (`fe-stack-import`), R287
+(`callback-shape`).

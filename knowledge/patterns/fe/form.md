@@ -3,33 +3,44 @@ slots: [fe.hooks.rhf, fe.modules.toast, fe.components.providers]
 ---
 # Forms and mutation feedback
 
-How a form is built and submitted, and how the outcome of a write reaches the user.
+How a form is validated and submitted, and how the outcome of a write reaches the user.
 
-## FE-FORM One form hook, bounds from the contract
+## FE-FORM One form hook per form, with translated messages and contract bounds
 
-A form is `hooks/rhf/use<X>Form.ts`: `useForm` with `zodResolver` over a zod schema built in `useMemo` with
-translated messages, default values, and an `onSubmit` from `form.handleSubmit` that triggers the `useMutate<X>Swr`
-hook through the toast runner. The connected half calls the hook and hands `XBase` resolved values and errors; the
-pure half renders the grammar's fields.
+A form is `hooks/rhf/use<X>Form.ts`: `useForm` with `zodResolver` over a zod schema built in `useMemo` from the
+translator, with `values` or `defaultValues` from its caller; the connected half calls it, submits through
+`form.handleSubmit` into a domain command hook, and hands `XBase` the watched values, the pending flag and the first
+error message; the input bounds come from the generated `INPUT_BOUNDS` through `inputBoundsIssues` in `superRefine`,
+never from a copied number.
 
-Input bounds come from the back-end contract, never from copied numbers: codegen emits `INPUT_BOUNDS` (GraphQL input
-directives) or `REST_INPUT_BOUNDS` (the OpenAPI DTO schema) with an `inputBoundsIssues` reader, exported by the API
-owner. Each input object's schema calls `inputBoundsIssues` from `superRefine` and turns every returned path into a
-translated issue; nested inputs compose their own refinement. Required fields, types and formats stay zod's; a
-client rule may be stricter, never looser.
+Why: one form shape keeps messages translated and submission tied to the command that owns the write, and contract
+bounds change with the back end instead of drifting from it.
 
-Why: one form shape keeps messages translated, submission tied to the mutation cache, and the limits equal to what
-the back end enforces as soon as the contract changes.
+```ts
+/** The display-name form; the bounds are the back end's, read from the generated contract. */
+export const useProfileForm = (name: string) => {
+    const t = useTranslations("account")
+    const schema = useMemo(
+        () => z.object({ name: z.string().trim() }).superRefine((value, ctx) => {
+            for (const issue of inputBoundsIssues(INPUT_BOUNDS.UpdateProfileInput, value)) {
+                ctx.addIssue({ code: "custom", path: [...issue.path], message: t("errName") })
+            }
+        }),
+        [t],
+    )
+    return useForm<ProfileValues>({ resolver: zodResolver(schema), values: { name }, mode: "onSubmit" })
+}
+```
 
-Enforced by: R56, R286 FE_COPY_IN_CALL.
+Enforced by: R56 (`hooks-folder-holds-hooks-only`), R286 (`no-copy-in-call`); the contract bounds are review only.
 
-## FE-TOAST Every user-started write reports through the toast owner
+## FE-TOAST Every user-started write reports through `modules/toast`
 
-`modules/toast` holds the grammar toast adapter, pure helpers (`showGraphQLToast` on a response's success flag,
-`runGraphQLWithToast`, `runRestWithToast`) and the hooks `useGraphQLWithToast` and `useRestWithToast`, which inject the
-toast namespace's labels. Every write a user starts runs through one of them; the message is the response message or
-a catalog default. The grammar's toast region is mounted once in `components/providers`. Browser alerts are never used.
+`modules/toast` holds the grammar toast adapter (`toast.tsx`), the pure runners (`api.ts`: `runGraphQLWithToast`,
+`runRestWithToast`, `showGraphQLToast`) and the hooks that inject the toast namespace's copy (`hooks.ts`:
+`useGraphQLWithToast`, `useRestWithToast`); every write a user starts runs through one of the hooks, the region is
+mounted once by the providers, and `alert()` is never used.
 
-Why: one feedback path makes every success and failure visible the same way and keeps copy in the catalog.
+Why: one feedback path makes every success and failure visible the same way and keeps its copy in the catalog.
 
-Enforced by: R58, R286.
+Enforced by: R286 (`no-alert`, `no-copy-in-call`), R55 (`use-client-only-at-boundary`).
