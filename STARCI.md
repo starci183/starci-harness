@@ -12,6 +12,15 @@ Owner: the owner. This is the working design of the rewritten CLI in this reposi
   - Exit codes: 0 done, 1 refused (nothing moved), 2 bad usage.
   - Host tools run without a shell (`runTool`, and `runNpm` goes through the running Node), so no quoting breaks on Windows.
   - `locateTree` reads the nearest `hfs.json`. A lite app sees core plus lite verbs, a full app sees core plus full verbs, and the runtime or a bare folder sees everything.
+- **Op pattern: `base` and `extend`.** Each label has one op file (`ops/ops/<label>.md`) whose frontmatter states the
+  `base` of its `context` (files the op reads), `input`, `output` and `checks`. A task's contract adds an `extend` to each:
+  it may only add (files, inputs, output keys, checks), never drop or loosen the base, and the harness refuses a
+  contract that does. An op reads exactly `context.base` plus `context.extend`; its output carries the trace of what it
+  read (rule ids applied, Work record ids), which a check verifies against those files. The Kernel loads the full
+  context (CONTEXT.md, knowledge, knowledge/project, the project's Work, the op files) to write each task's `extend`.
+- **Project pattern:** `knowledge/project/` is the map of a StarCi project (app root owning `.starciwork`, sides,
+  `hfs.json` choices, Work life cycle, anatomy generated from slots, where lint applies, `.starcistacks` shape, the
+  lite and full differences). It links each fact to its owner and restates none.
 - **Two independent axes, edition and runner:**
   - The **edition** (`lite` or `full`, fixed in `hfs.json` at scaffold) says what the app is: its stack, how it scales and its `app` verbs. Lite is stateless on Postgres and puts the canonical patterns first; full adds the reactor, saga and projection patterns and its own infra.
   - The **runner** (`orca` or `inline`) says how the harness runs a task, and is chosen per workflow or per task, never by edition. `orca` launches a worker seat through Orca (`seat start`, `task send --launch`), so tasks run in parallel. `inline` means the Claude or Codex session that is open does the task itself: it sends the task, files the result inline and has it verified, one task at a time.
