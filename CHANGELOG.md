@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.4.47 - 2026-10-26
+- Changed: the bundled runtime copies (canon pins, rules, slots and the declaration shape) follow the hfs 4.7.39 and cli 1.7.39 sources (R258 cron outbox, the integration scripts slot). No rule changes.
+
 ## 3.4.46 - 2026-10-26
 - Changed: the bundled runtime copies (canon pins) follow the stylelint 2.0.13, hfs 4.7.38 and cli 1.7.38 pins. No rule changes.
 
