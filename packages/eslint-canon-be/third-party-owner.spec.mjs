@@ -33,7 +33,7 @@ for (const edition of ["lite", "full"]) {
     test(`R279 ${edition}: declared SDKs cannot be imported outside an integration; pure libraries pass`, () => {
         const fixture = fixtureFor({ edition })
         try {
-            fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
                     { filename: fixture.at(DOMAIN), code: 'import { IsString } from "class-validator"; import { map } from "rxjs/operators"; export { IsString, map }' },
                     { filename: fixture.at(DOMAIN), code: 'import { Injectable } from "@nestjs/common"; import type { EntityManager } from "typeorm"; export { Injectable }; export type { EntityManager }' },
@@ -57,7 +57,7 @@ for (const edition of ["lite", "full"]) {
                     { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import sdk from "openai"; export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("apps/core/src/main.ts"), code: 'import sdk from "@new-vendor/io-sdk"; export { sdk }', errors: [{ messageId: "foreign" }] },
                 ],
-            })
+            }) })
         } finally { fixture.cleanup() }
     })
 
@@ -67,14 +67,14 @@ for (const edition of ["lite", "full"]) {
             "src/modules/integrations/mailer/mail.model.ts": 'export type { SendMailOptions } from "nodemailer/lib/mailer"',
         } })
         try {
-            fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
                     { filename: fixture.at(MAILER), code: 'import mail from "nodemailer"; export { mail }' },
                     { filename: fixture.at("src/modules/integrations/mailer/mailer.client.spec.ts"), code: 'import type { SendMailOptions } from "nodemailer/lib/mailer"; export type { SendMailOptions }' },
                     { filename: fixture.at("src/modules/integrations/supabase/supabase.client.ts"), code: 'import { createClient } from "@supabase/supabase-js"; import { createRemoteJWKSet } from "jose"; export { createClient, createRemoteJWKSet }' },
                 ],
                 invalid: [{ filename: fixture.at(OTHER), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "multiple" }] }],
-            })
+            }) })
         } finally { fixture.cleanup() }
     })
 
@@ -85,14 +85,14 @@ for (const edition of ["lite", "full"]) {
             "src/modules/integrations/new/new.client.ts": 'export * from "@new-vendor/io-sdk"',
         } })
         try {
-            fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [{ filename: fixture.at(MAILER), code: 'import sdk from "openai-alias"; export { sdk }' }],
                 invalid: [
                     { filename: fixture.at(OTHER), code: 'import sdk from "openai-alias"; export { sdk }', errors: [{ messageId: "multiple" }] },
                     { filename: fixture.at(OTHER), code: 'import sdk from "googleapis"; export { sdk }', errors: [{ messageId: "multiple" }] },
                     { filename: fixture.at(OTHER), code: 'import sdk from "@new-vendor/io-sdk/client"; export { sdk }', errors: [{ messageId: "multiple" }] },
                 ],
-            })
+            }) })
         } finally { fixture.cleanup() }
     })
 
@@ -103,7 +103,7 @@ for (const edition of ["lite", "full"]) {
             dependencies: { "@fixture/core": "workspace:*", "local-domain": "file:../core" },
         } })
         try {
-            fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
                     { filename: fixture.at(DOMAIN), code: 'import core from "@fixture/core"; import local from "local-domain"; export { core, local }' },
                     { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import { mock } from "@starci/jest-preset"; export { mock }' },
@@ -116,7 +116,7 @@ for (const edition of ["lite", "full"]) {
                     { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import sdk from "dev-sdk"; export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import { PostgreSqlContainer } from "@testcontainers/postgresql"; export { PostgreSqlContainer }', errors: [{ messageId: "foreign" }] },
                 ],
-            })
+            }) })
         } finally { fixture.cleanup() }
     })
 

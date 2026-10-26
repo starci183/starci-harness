@@ -24,7 +24,7 @@ test("the law publishes spec-no-skip", () => {
 })
 
 test("R48: no spec skips, focuses, marks todo or selects its runner; the test-world library's sandbox.describe stays", () => {
-    tester.run("spec-no-skip", specNoSkip, {
+    assert.doesNotThrow(() => { tester.run("spec-no-skip", specNoSkip, {
         valid: [
             ...[UNIT, INTEGRATION, E2E, CONTRACT].map((filename) => ({ filename, code: `${RUNNERS}describe("x", () => { it("y", () => {}); it.each([1])("z", () => {}); it.concurrent("c", () => {}) })` })),
             { filename: CONTRACT, code: `${SANDBOX}sandbox.describe("sepay sandbox contract", () => { it("works", () => {}) })` },
@@ -50,5 +50,5 @@ test("R48: no spec skips, focuses, marks todo or selects its runner; the test-wo
             { filename: UNIT, code: `${RUNNERS}declare const mode: "skip"\nit[mode]("x", () => {})`, errors: [{ messageId: "select" }] },
             { filename: UNIT, code: `import { describe } from "@jest/globals"\ndescribe.skip("x", () => {})`, errors: [{ messageId: "skip" }] },
         ],
-    })
+    }) })
 })

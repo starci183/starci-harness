@@ -38,7 +38,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("R36: `.query` takes a SqlText, and only a persistence <name>.sql.ts calls the sql tag", () => {
-    tester.run("sql-text-only", sqlTextOnly, {
+    assert.doesNotThrow(() => { tester.run("sql-text-only", sqlTextOnly, {
         valid: [
             { filename: HANDLER, code: code("await manager.query(FIND_ORDERS, [owner])") },
             { filename: HANDLER, code: code("await source.query(FIND_ORDERS)") },
@@ -74,22 +74,22 @@ test("R36: `.query` takes a SqlText, and only a persistence <name>.sql.ts calls 
             { filename: HANDLER, code: 'import { sql as q } from "@modules/platform/database/database.sql"\nconst text = q`SELECT 1`', errors: [{ messageId: "tagOutsideSqlFile" }] },
             { filename: HANDLER_SPEC, code: code("const text = sql`SELECT 1`"), errors: [{ messageId: "tagOutsideSqlFile" }] },
         ],
-    })
+    }) })
 })
 
 test("R36: no query builder", () => {
-    tester.run("no-query-builder", noQueryBuilder, {
+    assert.doesNotThrow(() => { tester.run("no-query-builder", noQueryBuilder, {
         valid: [{ filename: HANDLER, code: code("await manager.find(OrderEntity, { take: 10 })") }],
         invalid: [
             { filename: HANDLER, code: code("manager.createQueryBuilder()"), errors: [{ messageId: "builder" }] },
             { filename: HANDLER, code: code("const builder = createQueryBuilder()"), errors: [{ messageId: "builder" }] },
             { filename: HANDLER_SPEC, code: code("manager.createQueryBuilder()"), errors: [{ messageId: "builder" }] },
         ],
-    })
+    }) })
 })
 
 test("R68: a substitution in the sql tag is a SqlIdent; a .query string is never built", () => {
-    tester.run("no-interpolated-sql", noInterpolatedSql, {
+    assert.doesNotThrow(() => { tester.run("no-interpolated-sql", noInterpolatedSql, {
         valid: [
             { filename: SQL_FILE, code: code("export const A = sql`SELECT id FROM orders WHERE owner = $1`") },
             { filename: SQL_FILE, code: code("export const B = sql`SELECT ${ident('id', ['id'])} FROM orders`") },
@@ -111,11 +111,11 @@ test("R68: a substitution in the sql tag is a SqlIdent; a .query string is never
             { filename: HANDLER, code: code("const db = manager\nawait db.query(`SELECT ${owner}`)"), errors: [{ messageId: "built" }] },
             { filename: HANDLER_SPEC, code: code("await runner.query(`SELECT ${owner}`)"), errors: [{ messageId: "built" }] },
         ],
-    })
+    }) })
 })
 
 test("R69: find, findBy and findAndCount on an EntityManager state take", () => {
-    tester.run("query-needs-limit", queryNeedsLimit, {
+    assert.doesNotThrow(() => { tester.run("query-needs-limit", queryNeedsLimit, {
         valid: [
             { filename: HANDLER, code: code("await manager.find(OrderEntity, { where: { owner }, take: 50 })") },
             { filename: HANDLER, code: code("await manager.findAndCount(OrderEntity, { take: 50, skip: 0 })") },
@@ -136,11 +136,11 @@ test("R69: find, findBy and findAndCount on an EntityManager state take", () => 
             { filename: HANDLER, code: code("const db = manager\nawait db.find(OrderEntity, { where: { owner } })"), errors: [{ messageId: "find" }] },
             { filename: HANDLER_SPEC, code: code("await manager.find(OrderEntity, { where: { owner } })"), errors: [{ messageId: "find" }] },
         ],
-    })
+    }) })
 })
 
 test("R77: an EntityManager read does not run once per element of a loop", () => {
-    tester.run("no-query-in-loop", noQueryInLoop, {
+    assert.doesNotThrow(() => { tester.run("no-query-in-loop", noQueryInLoop, {
         valid: [
             // one read before the loop
             { filename: HANDLER, code: code("declare const ids: Array<string>\nconst rows = await manager.find(OrderEntity, { take: 50 })\nfor (const id of ids) { use(rows, id) }") },
@@ -161,5 +161,5 @@ test("R77: an EntityManager read does not run once per element of a loop", () =>
             { filename: HANDLER, code: code("declare const ids: Array<string>\nconst db = manager\nfor (const id of ids) { await db.findOne(OrderEntity, { where: { id } }) }"), errors: [{ messageId: "inLoop" }] },
             { filename: HANDLER_SPEC, code: code("declare const ids: Array<string>\nfor (const id of ids) { await manager.findOne(OrderEntity, { where: { id } }) }"), errors: [{ messageId: "inLoop" }] },
         ],
-    })
+    }) })
 })

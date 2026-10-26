@@ -43,9 +43,9 @@ for (const edition of ["lite", "full"]) {
             ] },
         })
         t.after(fixture.cleanup)
-        fixture.tester.run("connection-map", rules["connection-map"], {
+        assert.doesNotThrow(() => { fixture.tester.run("connection-map", rules["connection-map"], {
             valid: [{ filename: fixture.at(PRIMARY), code: FILES[PRIMARY] }],
             invalid: [{ filename: fixture.at(BILLING), code: FILES[BILLING], errors: [{ message: /BE_CONNECTION_DUPLICATE/ }] }],
-        })
+        }) })
     })
 }

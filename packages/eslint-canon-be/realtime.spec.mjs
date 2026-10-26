@@ -96,7 +96,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("realtime-shape: a file is the one door its role names, with no route, query or mutation", () => {
-    tester.run("realtime-shape", realtimeShape, {
+    assert.doesNotThrow(() => { tester.run("realtime-shape", realtimeShape, {
         valid: [
             { filename: GATEWAY, code: gateway() },
             { filename: SUBSCRIPTION, code: subscription() },
@@ -129,11 +129,11 @@ test("realtime-shape: a file is the one door its role names, with no route, quer
             // a subscription inside a gateway file is the other protocol
             { filename: GATEWAY, code: gateway({ head: `${SOCKET_HEAD}import { Subscription } from "@nestjs/graphql"\n`, extra: "@Subscription(() => Object)\n    other(): void {}" }), errors: [{ messageId: "foreign" }] },
         ],
-    })
+    }) })
 })
 
 test("realtime-read-only: the hub is the only injected value", () => {
-    tester.run("realtime-read-only", realtimeReadOnly, {
+    assert.doesNotThrow(() => { tester.run("realtime-read-only", realtimeReadOnly, {
         valid: [
             { filename: GATEWAY, code: gateway() },
             { filename: SUBSCRIPTION, code: subscription() },
@@ -154,11 +154,11 @@ test("realtime-read-only: the hub is the only injected value", () => {
             // a lookalike hub of another owner is not the platform hub
             { filename: SUBSCRIPTION, code: subscription({ head: GRAPHQL_HEAD.replace('import { RealtimeHub } from "@modules/platform/realtime"', 'import { PaymentService as RealtimeHub } from "@modules/domain/payment"') }), errors: [{ messageId: "injects" }] },
         ],
-    })
+    }) })
 })
 
 test("realtime-topic-scope: the topic is built from the principal parameter", () => {
-    tester.run("realtime-topic-scope", realtimeTopicScope, {
+    assert.doesNotThrow(() => { tester.run("realtime-topic-scope", realtimeTopicScope, {
         valid: [
             { filename: GATEWAY, code: gateway() },
             { filename: SUBSCRIPTION, code: subscription() },
@@ -187,12 +187,12 @@ test("realtime-topic-scope: the topic is built from the principal parameter", ()
             // a name that merely looks like the parameter: the parameter of an inner function is not the principal
             { filename: SUBSCRIPTION, code: subscription({ body: "return ((principal: { id: string }) => this.hub.subscribe(`orders:${principal.id}`))({ id: 'x' })" }), errors: [{ messageId: "scope" }] },
         ],
-    })
+    }) })
 })
 
 for (const edition of ["lite", "full"]) {
     test(`realtime-shape: ${edition} permits a principal-typed server push stream`, () => {
-        editionTester(edition).run("realtime-shape", realtimeShape, {
+        assert.doesNotThrow(() => { editionTester(edition).run("realtime-shape", realtimeShape, {
             valid: [
                 { filename: GATEWAY, code: pushGateway() },
                 { filename: GATEWAY, code: gateway() },
@@ -207,11 +207,11 @@ for (const edition of ["lite", "full"]) {
                 { filename: GATEWAY, code: pushGateway({ head: PUSH_HEAD + 'import { Controller } from "@nestjs/common"\n' }).replace("@WebSocketGateway()", "@Controller()\n@WebSocketGateway()"), errors: [{ messageId: "foreign" }] },
                 { filename: GATEWAY, code: pushGateway({ head: PUSH_HEAD + 'import { Subscription } from "@nestjs/graphql"\n', extra: "@Subscription(() => Object)\n    other(): void {}" }), errors: [{ messageId: "foreign" }] },
             ],
-        })
+        }) })
     })
 
     test(`realtime-topic-scope: ${edition} push streams retain principal scope`, () => {
-        editionTester(edition).run("realtime-topic-scope", realtimeTopicScope, {
+        assert.doesNotThrow(() => { editionTester(edition).run("realtime-topic-scope", realtimeTopicScope, {
             valid: [
                 { filename: GATEWAY, code: pushGateway() },
                 { filename: GATEWAY, code: pushGateway({ params: "principal: Principal, verifiedId: string", body: "return this.hub.subscribe(['orders', principal.id, verifiedId].join(':'))" }) },
@@ -225,13 +225,13 @@ for (const edition of ["lite", "full"]) {
                 // An inbound handler still needs the identity decorator; a client argument's type proves no authentication.
                 { filename: GATEWAY, code: gateway({ head: SOCKET_HEAD + 'import type { Principal } from "@modules/platform/cqrs"\n', params: "principal: Principal" }), errors: [{ messageId: "scope" }] },
             ],
-        })
+        }) })
     })
 
     test(`realtime-read-only: ${edition} push streams inject only the platform hub`, () => {
-        editionTester(edition).run("realtime-read-only", realtimeReadOnly, {
+        assert.doesNotThrow(() => { editionTester(edition).run("realtime-read-only", realtimeReadOnly, {
             valid: [{ filename: GATEWAY, code: pushGateway() }],
             invalid: [{ filename: GATEWAY, code: pushGateway({ head: PUSH_HEAD + 'import { OrderService } from "@modules/domain/order"\n', ctor: "private readonly hub: RealtimeHub, private readonly orders: OrderService" }), errors: [{ messageId: "injects" }] }],
-        })
+        }) })
     })
 }

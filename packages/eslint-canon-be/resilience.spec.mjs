@@ -23,7 +23,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("R70: an outbound HTTP call states how long it may take", () => {
-  tester.run("http-needs-timeout", httpNeedsTimeout, {
+  assert.doesNotThrow(() => { tester.run("http-needs-timeout", httpNeedsTimeout, {
     valid: [...inBothEditions([
       { filename: SRC, code: "await fetch(url, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS) })" },
       { filename: SRC, code: "await fetch(url, { ['signal']: AbortSignal.timeout(1000) })" },
@@ -87,11 +87,11 @@ test("R70: an outbound HTTP call states how long it may take", () => {
       // specs are not exempt
       { filename: SPEC, code: "await fetch(url)", errors: [{ messageId: "fetchNoSignal" }] },
     ])],
-  })
+  }) })
 })
 
 test("R76: JSON.parse of outside text fails inside a guard", () => {
-  tester.run("json-parse-needs-guard", jsonParseNeedsGuard, {
+  assert.doesNotThrow(() => { tester.run("json-parse-needs-guard", jsonParseNeedsGuard, {
     valid: [
       { filename: SRC, code: "function read(text: string) { try { return JSON.parse(text) } catch (error) { return null } }" },
       { filename: SRC, code: "const read = (text: string) => { try { return JSON.parse(text) } catch { throw new ParseError() } }" },
@@ -107,14 +107,14 @@ test("R76: JSON.parse of outside text fails inside a guard", () => {
       // specs are not exempt
       { filename: SPEC, code: "const body = JSON.parse(text)", errors: [{ messageId: "unguarded" }] },
     ],
-  })
+  }) })
 })
 
 const RETRY_SRC = at("src/modules/platform/retry/retry.service.ts")
 const HELPER = 'import { hold, label, Napper } from "@modules/domain/order/order.pause.policy"\nimport { pause } from "@modules/platform/retry/retry.service"\n'
 
 test("R81: a loop that catches an error and waits goes through platform/retry", () => {
-  tester.run("no-hand-rolled-retry", noHandRolledRetry, {
+  assert.doesNotThrow(() => { tester.run("no-hand-rolled-retry", noHandRolledRetry, {
     valid: [
       // a polling loop with no catch is not a retry
       { name: "r81 1", filename: SRC, code: `${HELPER}while (!isReady()) { await hold(POLL_MS) }` },
@@ -174,5 +174,5 @@ test("R81: a loop that catches an error and waits goes through platform/retry", 
         errors: [{ messageId: "handRolled" }],
       },
     ],
-  })
+  }) })
 })

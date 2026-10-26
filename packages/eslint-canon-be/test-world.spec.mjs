@@ -24,7 +24,7 @@ test("the law publishes its three rules", () => {
 })
 
 test("R47: only src/tests/world starts infrastructure, migrates, holds a DataSource or writes process.env", () => {
-    tester.run("tests-infra-only-in-world", testsInfraOnlyInWorld, {
+    assert.doesNotThrow(() => { tester.run("tests-infra-only-in-world", testsInfraOnlyInWorld, {
         valid: [
             { filename: E2E, code: `${MANAGER}declare const world: { db: { primary: EntityManager } }\nexport const rows = world.db.primary.find(Object)` },
             { filename: WORLD, code: 'import { PostgreSqlContainer } from "@testcontainers/postgresql"\nimport { DataSource } from "typeorm"\nexport const db = new PostgreSqlContainer("postgres:16")\ndeclare const source: DataSource\nvoid source.runMigrations()\nprocess.env.PRIMARY_DB_HOST = "localhost"' },
@@ -42,12 +42,12 @@ test("R47: only src/tests/world starts infrastructure, migrates, holds a DataSou
             { filename: E2E, code: 'Object.assign(process.env, { A: "1" })', errors: [{ messageId: "env" }] },
             { filename: E2E, code: `import { orderMigrations } from ${LIST}\nexport const m = orderMigrations`, errors: [{ messageId: "migration" }] },
         ],
-    })
+    }) })
 })
 
 test("R47: nothing under src/tests overrides a provider", () => {
     const moduleRef = "declare const moduleRef: { overrideProvider(token: unknown): unknown; overrideGuard(guard: unknown): unknown }\n"
-    tester.run("tests-no-override", testsNoOverride, {
+    assert.doesNotThrow(() => { tester.run("tests-no-override", testsNoOverride, {
         valid: [
             { filename: USE_WORLD, code: "declare function startHttpFake(name: string): { url: string }\nexport const payos = startHttpFake('payos')" },
             // a colocated unit spec is not under src/tests
@@ -59,12 +59,12 @@ test("R47: nothing under src/tests overrides a provider", () => {
             { filename: INTEGRATION, code: "export const p = { provide: 1, useValue: 2 }", errors: [{ messageId: "override" }] },
             { filename: FIXTURE, code: "declare const jest: { mock(path: string): void }\njest.mock('axios')", errors: [{ messageId: "override" }] },
         ],
-    })
+    }) })
 })
 
 test("R47: integration asks for { modules } (peer apps may join as apps), e2e for { apps }", () => {
     const world = "declare function useTestWorld(options: object): object\n"
-    tester.run("test-world-shape", testWorldShape, {
+    assert.doesNotThrow(() => { tester.run("test-world-shape", testWorldShape, {
         valid: [
             { filename: INTEGRATION, code: `${world}export const world = useTestWorld({ modules: [] })` },
             { filename: E2E, code: `${world}export const world = useTestWorld({ apps: { order: {} } })` },
@@ -91,5 +91,5 @@ export const world = alias({ apps: {} })`, errors: [{ messageId: "missing" }] },
             { filename: E2E, code: `${world}export const world = useTestWorld({ modules: [] })`, errors: [{ messageId: "apps" }] },
             { filename: E2E, code: "export const nothing = 1", errors: [{ messageId: "missing" }] },
         ],
-    })
+    }) })
 })

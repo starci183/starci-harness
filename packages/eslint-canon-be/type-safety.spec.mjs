@@ -38,7 +38,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("R72: the Function type, eval and new Function are refused everywhere, specs included", () => {
-  tester.run("no-function-or-eval", noFunctionOrEval, {
+  assert.doesNotThrow(() => { tester.run("no-function-or-eval", noFunctionOrEval, {
     valid: [
       { filename: SRC, code: "const run = (task: () => void): void => task()" },
       { filename: SRC, code: "interface Function2 { call(): void }" },
@@ -53,11 +53,11 @@ test("R72: the Function type, eval and new Function are refused everywhere, spec
       { filename: SPEC, code: "const out = new Function('a', 'return a')", errors: [{ messageId: "evaluated" }] },
       { filename: SRC, code: "const out = Function('return 1')()", errors: [{ messageId: "evaluated" }] },
     ],
-  })
+  }) })
 })
 
 test("TYPE-3: a destructured parameter takes a named type", () => {
-  tester.run("no-inline-param-type", noInlineParamType, {
+  assert.doesNotThrow(() => { tester.run("no-inline-param-type", noInlineParamType, {
     valid: [
       "export const grantXp = ({ userId, amount }: GrantXpParams) => null",
       // a positional parameter with an inline type is a different (smaller) problem
@@ -75,11 +75,11 @@ test("TYPE-3: a destructured parameter takes a named type", () => {
         errors: [{ messageId: "inline" }],
       },
     ],
-  })
+  }) })
 })
 
 test("TYPE-3 (law 4, extended): every inline object type takes a named type, not only the destructured parameter", () => {
-  tester.run("no-inline-object-type", noInlineObjectType, {
+  assert.doesNotThrow(() => { tester.run("no-inline-object-type", noInlineObjectType, {
     valid: [
       // position 1, parameter: already named
       "export const grantXp = (input: GrantXpParams) => null",
@@ -136,11 +136,11 @@ test("TYPE-3 (law 4, extended): every inline object type takes a named type, not
         errors: [{ messageId: "inlineObjectType", data: { position: "variable" } }],
       },
     ],
-  })
+  }) })
 })
 
 test("TYPE-4: an enum keeps its runtime object", () => {
-  tester.run("no-const-enum", noConstEnum, {
+  assert.doesNotThrow(() => { tester.run("no-const-enum", noConstEnum, {
     valid: [
       "export enum Verdict { Pass, Fail }",
       "declare enum Ambient { A }",
@@ -148,11 +148,11 @@ test("TYPE-4: an enum keeps its runtime object", () => {
     invalid: [
       { code: "export const enum Verdict { Pass, Fail }", errors: [{ messageId: "constEnum" }] },
     ],
-  })
+  }) })
 })
 
 test("R75: handlers and public methods of an Injectable, Resolver or Controller declare a return type", () => {
-  tester.run("explicit-handler-return-type", explicitHandlerReturnType, {
+  assert.doesNotThrow(() => { tester.run("explicit-handler-return-type", explicitHandlerReturnType, {
     valid: [
       { filename: SRC, code: "@Resolver() export class PlanResolver { @Query(() => String) plan(): Promise<string> { return load() } }" },
       { filename: SRC, code: "@Injectable() export class PlanService { list(): Promise<Plan[]> { return this.rows } }" },
@@ -167,5 +167,5 @@ test("R75: handlers and public methods of an Injectable, Resolver or Controller 
       { filename: SRC, code: "@Controller() export class PlanController { @Get() list() { return [] } }", errors: [{ messageId: "handler" }] },
       { filename: SRC, code: "@Injectable() export class PlanService { list() { return this.rows } }", errors: [{ messageId: "publicMethod" }] },
     ],
-  })
+  }) })
 })
