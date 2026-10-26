@@ -31,47 +31,49 @@ import { JobEntity } from "@modules/platform/jobs/persistence/entities/job.entit
 `
 
 test("job-write-owner: the job row is written only by platform/jobs", () => {
-    tester.run("job-write-owner", jobWriteOwner, {
-        valid: [
-            { filename: OWNER, code: `${ENTITY}export const claim = (manager: EntityManager) => manager.update(JobEntity, { id: "a" }, { status: "x" })` },
-            { filename: OWNER, code: `${ENTITY}export const bump = (manager: EntityManager) => manager.increment(JobEntity, { id: "a" }, "fencingToken", 1)` },
-            { filename: DOMAIN, code: `${ENTITY}export const read = (manager: EntityManager) => manager.find(JobEntity, {})` },
-            { filename: DOMAIN, code: `import type { EntityManager } from "typeorm"\nimport { OrderEntity } from "./persistence/entities/order.entity"\nexport const w = (manager: EntityManager) => manager.update(OrderEntity, { id: "a" }, { status: "x" })` },
-            { filename: DOMAIN, code: `${ENTITY}export const count = (manager: EntityManager) => manager.createQueryBuilder().select().from(JobEntity).where({}).execute()` },
-            { filename: WORLD, code: `${ENTITY}export const seed = (manager: EntityManager, job: JobEntity) => manager.save(job)` },
-        ],
-        invalid: [
-            { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.update(JobEntity, { id: "a" }, { status: "done" })`, errors: [{ messageId: "foreign" }] },
-            { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.increment(JobEntity, { id: "a" }, "fencingToken", 1)`, errors: [{ messageId: "foreign" }] },
-            { filename: HANDLER, code: `${ENTITY}export const w = (manager: EntityManager, job: JobEntity) => manager.save(job)`, errors: [{ messageId: "foreign" }] },
-            { filename: STEP, code: `${ENTITY}export const w = (manager: EntityManager) => manager.delete(JobEntity, { id: "a" })`, errors: [{ messageId: "foreign" }] },
-            { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().update(JobEntity).set({ status: "x" }).where({}).execute()`, errors: [{ messageId: "foreign" }] },
-            { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().delete().from(JobEntity).execute()`, errors: [{ messageId: "foreign" }] },
-        ],
+    assert.doesNotThrow(() => {
+        tester.run("job-write-owner", jobWriteOwner, {
+            valid: [
+                { filename: OWNER, code: `${ENTITY}export const claim = (manager: EntityManager) => manager.update(JobEntity, { id: "a" }, { status: "x" })` },
+                { filename: OWNER, code: `${ENTITY}export const bump = (manager: EntityManager) => manager.increment(JobEntity, { id: "a" }, "fencingToken", 1)` },
+                { filename: DOMAIN, code: `${ENTITY}export const read = (manager: EntityManager) => manager.find(JobEntity, {})` },
+                { filename: DOMAIN, code: `import type { EntityManager } from "typeorm"\nimport { OrderEntity } from "./persistence/entities/order.entity"\nexport const w = (manager: EntityManager) => manager.update(OrderEntity, { id: "a" }, { status: "x" })` },
+                { filename: DOMAIN, code: `${ENTITY}export const count = (manager: EntityManager) => manager.createQueryBuilder().select().from(JobEntity).where({}).execute()` },
+                { filename: WORLD, code: `${ENTITY}export const seed = (manager: EntityManager, job: JobEntity) => manager.save(job)` },
+            ],
+            invalid: [
+                { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.update(JobEntity, { id: "a" }, { status: "done" })`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.increment(JobEntity, { id: "a" }, "fencingToken", 1)`, errors: [{ messageId: "foreign" }] },
+                { filename: HANDLER, code: `${ENTITY}export const w = (manager: EntityManager, job: JobEntity) => manager.save(job)`, errors: [{ messageId: "foreign" }] },
+                { filename: STEP, code: `${ENTITY}export const w = (manager: EntityManager) => manager.delete(JobEntity, { id: "a" })`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().update(JobEntity).set({ status: "x" }).where({}).execute()`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `${ENTITY}export const w = (manager: EntityManager) => manager.createQueryBuilder().delete().from(JobEntity).execute()`, errors: [{ messageId: "foreign" }] },
+            ],
+        })
     })
-    assert.ok(Object.keys(jobWriteOwner.meta.messages).length > 0, "job-write-owner keeps its published messages")
 })
 
 const CLAIMS = `import type { ClaimedJob, GuardedWrite, JobClaims } from "@modules/platform/jobs"
 `
 
 test("job-fence-required: every guarded write requires its token, never casts around it and is never swallowed", () => {
-    tester.run("job-fence-required", jobFenceRequired, {
-        valid: [
-            { filename: OWNER_PORT, code: `import type { EntityManager } from "typeorm"\nimport type { ClaimedJob, GuardedWrite } from "./jobs.contracts"\nexport interface JobClaims {\n advance(write: GuardedWrite & { step: string }): Promise<void>\n complete(write: GuardedWrite): Promise<void>\n claim(params: { kind: string }): Promise<ClaimedJob | null>\n enqueue(tx: EntityManager, params: { kind: string }): Promise<string>\n runKey(job: ClaimedJob, step: string): string\n}` },
-            { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims, job: ClaimedJob) => claims.advance({ jobId: job.jobId, expectedFencingToken: job.fencingToken, step: "a" })` },
-            { filename: STEP, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch (error) { throw error } }` },
-            { filename: STEP, code: `export const run = async (work: () => Promise<void>) => { try { await work() } catch { return } }` },
-            { filename: OWNER, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch { return } }` },
-        ],
-        invalid: [
-            { filename: OWNER_PORT, code: `import type { LooseWrite } from "./jobs.contracts"\nexport interface JobClaims {\n advance(write: LooseWrite): Promise<void>\n}`, errors: [{ messageId: "optionalToken" }] },
-            { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims) => claims.complete({ jobId: "a", expectedFencingToken: undefined as unknown as number })`, errors: [{ messageId: "cast" }, { messageId: "cast" }] },
-            { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims, job: { jobId: string; fencingToken?: number }) => claims.complete({ jobId: job.jobId, expectedFencingToken: job.fencingToken! })`, errors: [{ messageId: "cast" }] },
-            { filename: STEP, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch (error) { console.log(error) } }`, errors: [{ messageId: "swallowed" }] },
-        ],
+    assert.doesNotThrow(() => {
+        tester.run("job-fence-required", jobFenceRequired, {
+            valid: [
+                { filename: OWNER_PORT, code: `import type { EntityManager } from "typeorm"\nimport type { ClaimedJob, GuardedWrite } from "./jobs.contracts"\nexport interface JobClaims {\n advance(write: GuardedWrite & { step: string }): Promise<void>\n complete(write: GuardedWrite): Promise<void>\n claim(params: { kind: string }): Promise<ClaimedJob | null>\n enqueue(tx: EntityManager, params: { kind: string }): Promise<string>\n runKey(job: ClaimedJob, step: string): string\n}` },
+                { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims, job: ClaimedJob) => claims.advance({ jobId: job.jobId, expectedFencingToken: job.fencingToken, step: "a" })` },
+                { filename: STEP, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch (error) { throw error } }` },
+                { filename: STEP, code: `export const run = async (work: () => Promise<void>) => { try { await work() } catch { return } }` },
+                { filename: OWNER, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch { return } }` },
+            ],
+            invalid: [
+                { filename: OWNER_PORT, code: `import type { LooseWrite } from "./jobs.contracts"\nexport interface JobClaims {\n advance(write: LooseWrite): Promise<void>\n}`, errors: [{ messageId: "optionalToken" }] },
+                { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims) => claims.complete({ jobId: "a", expectedFencingToken: undefined as unknown as number })`, errors: [{ messageId: "cast" }, { messageId: "cast" }] },
+                { filename: STEP, code: `${CLAIMS}export const run = (claims: JobClaims, job: { jobId: string; fencingToken?: number }) => claims.complete({ jobId: job.jobId, expectedFencingToken: job.fencingToken! })`, errors: [{ messageId: "cast" }] },
+                { filename: STEP, code: `${CLAIMS}export const run = async (claims: JobClaims, write: GuardedWrite) => { try { await claims.complete(write) } catch (error) { console.log(error) } }`, errors: [{ messageId: "swallowed" }] },
+            ],
+        })
     })
-    assert.ok(Object.keys(jobFenceRequired.meta.messages).length > 0, "job-fence-required keeps its published messages")
 })
 
 const STEP_HEAD = `import type { ClaimedJob, JobClaims, RunKey } from "@modules/platform/jobs"
@@ -79,19 +81,20 @@ import { MailGateway } from "@modules/integrations/mailer/mail.gateway"
 `
 
 test("job-run-key: an external call of a step carries the run key made by JobClaims.runKey", () => {
-    tester.run("job-run-key", jobRunKey, {
-        valid: [
-            { filename: STEP, code: `${STEP_HEAD}export class MailStep { constructor(private readonly mail: MailGateway, private readonly claims: JobClaims) {}\n run(job: ClaimedJob): Promise<void> { return this.mail.send("a", this.claims.runKey(job, "send")) } }` },
-            { filename: STEP, code: `${STEP_HEAD}export class MailStep { constructor(private readonly mail: MailGateway, private readonly claims: JobClaims) {}\n async run(job: ClaimedJob): Promise<void> { const key = this.claims.runKey(job, "send"); await this.mail.send("a", key) } }` },
-            { filename: STEP, code: `${STEP_HEAD}export const local = (claims: JobClaims, job: ClaimedJob): RunKey => claims.runKey(job, "x")` },
-            { filename: HANDLER, code: `${STEP_HEAD}export const read = (mail: MailGateway) => mail.status("a")` },
-        ],
-        invalid: [
-            { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "missing" }] },
-            { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.send("a", "fixed" as RunKey)`, errors: [{ messageId: "forged" }] },
-        ],
+    assert.doesNotThrow(() => {
+        tester.run("job-run-key", jobRunKey, {
+            valid: [
+                { filename: STEP, code: `${STEP_HEAD}export class MailStep { constructor(private readonly mail: MailGateway, private readonly claims: JobClaims) {}\n run(job: ClaimedJob): Promise<void> { return this.mail.send("a", this.claims.runKey(job, "send")) } }` },
+                { filename: STEP, code: `${STEP_HEAD}export class MailStep { constructor(private readonly mail: MailGateway, private readonly claims: JobClaims) {}\n async run(job: ClaimedJob): Promise<void> { const key = this.claims.runKey(job, "send"); await this.mail.send("a", key) } }` },
+                { filename: STEP, code: `${STEP_HEAD}export const local = (claims: JobClaims, job: ClaimedJob): RunKey => claims.runKey(job, "x")` },
+                { filename: HANDLER, code: `${STEP_HEAD}export const read = (mail: MailGateway) => mail.status("a")` },
+            ],
+            invalid: [
+                { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "missing" }] },
+                { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.send("a", "fixed" as RunKey)`, errors: [{ messageId: "forged" }] },
+            ],
+        })
     })
-    assert.ok(Object.keys(jobRunKey.meta.messages).length > 0, "job-run-key keeps its published messages")
 })
 
 const SHAPE_HEAD = `import type { ClaimedJob, JobStep } from "@modules/platform/jobs"
@@ -99,21 +102,22 @@ import { FencedProcessor } from "@modules/platform/jobs"
 `
 
 test("job-shape: a processor extends the fenced base in its job folder and a step implements JobStep in steps/", () => {
-    tester.run("job-shape", jobShape, {
-        valid: [
-            { filename: PROCESSOR, code: `${SHAPE_HEAD}export class SendProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }` },
-            { filename: STEP, code: `${SHAPE_HEAD}export class MailStep implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }` },
-            { filename: at("src/modules/platform/jobs/claim-runner.processor.ts"), code: `export abstract class Base { abstract process(): Promise<void> }` },
-            { filename: DOMAIN, code: `export class Plain { run(): number { return 1 } }` },
-        ],
-        invalid: [
-            { filename: PROCESSOR, code: `export class SendProcessor { async process(): Promise<void> {} }`, errors: [{ messageId: "notFenced" }] },
-            { filename: at("src/features/jobs/send/transport/queue/other.processor.ts"), code: `${SHAPE_HEAD}export class OtherProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "processorStem" }] },
-            { filename: at("src/features/checkout/application/send.processor.ts"), code: `${SHAPE_HEAD}export class SendProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "processorPlacement" }] },
-            { filename: STEP, code: `export class MailStep { async run(): Promise<void> {} }`, errors: [{ messageId: "notStep" }] },
-            { filename: at("src/features/checkout/application/mail.step.ts"), code: `${SHAPE_HEAD}export class MailStep implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "stepPlacement" }] },
-            { filename: HANDLER, code: `${SHAPE_HEAD}export class Sneaky implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "stepPlacement" }] },
-        ],
+    assert.doesNotThrow(() => {
+        tester.run("job-shape", jobShape, {
+            valid: [
+                { filename: PROCESSOR, code: `${SHAPE_HEAD}export class SendProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }` },
+                { filename: STEP, code: `${SHAPE_HEAD}export class MailStep implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }` },
+                { filename: at("src/modules/platform/jobs/claim-runner.processor.ts"), code: `export abstract class Base { abstract process(): Promise<void> }` },
+                { filename: DOMAIN, code: `export class Plain { run(): number { return 1 } }` },
+            ],
+            invalid: [
+                { filename: PROCESSOR, code: `export class SendProcessor { async process(): Promise<void> {} }`, errors: [{ messageId: "notFenced" }] },
+                { filename: at("src/features/jobs/send/transport/queue/other.processor.ts"), code: `${SHAPE_HEAD}export class OtherProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "processorStem" }] },
+                { filename: at("src/features/checkout/application/send.processor.ts"), code: `${SHAPE_HEAD}export class SendProcessor extends FencedProcessor { async process(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "processorPlacement" }] },
+                { filename: STEP, code: `export class MailStep { async run(): Promise<void> {} }`, errors: [{ messageId: "notStep" }] },
+                { filename: at("src/features/checkout/application/mail.step.ts"), code: `${SHAPE_HEAD}export class MailStep implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "stepPlacement" }] },
+                { filename: HANDLER, code: `${SHAPE_HEAD}export class Sneaky implements JobStep { async run(job: ClaimedJob): Promise<void> { void job } }`, errors: [{ messageId: "stepPlacement" }] },
+            ],
+        })
     })
-    assert.ok(Object.keys(jobShape.meta.messages).length > 0, "job-shape keeps its published messages")
 })

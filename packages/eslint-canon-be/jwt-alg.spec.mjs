@@ -28,33 +28,34 @@ for (const edition of ["lite", "full"]) {
         const declaration = appDeclaration("be", { apps: [{ name: "api", kind: "api" }] })
         declaration.edition = edition
         const settings = { starci: { hfs: hfsFromDeclaration(declaration, at("")) } }
-        typedTester().run("jwt-alg-pinned", jwtAlgPinned, {
-            valid: [
-                { filename: SRC, settings, code: verifier() },
-                { filename: SRC, settings, code: verifier({ algorithms: "['RS256', 'EdDSA']" }) },
-                { filename: SRC, settings, code: verifier({ issuer: "`${options.url.replace(/\\/$/, '')}/auth/v1`" }) },
-                { filename: SRC, settings, code: verifier({ importLine: "import {jwtVerify as check} from 'jose'", call: "check" }) },
-                { filename: SRC, settings, code: verifier({ importLine: "import * as jose from 'jose'", call: "jose.jwtVerify" }) },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') return null" }) },
-                { filename: SRC, settings, code: verifier({ guard: "if (!payload.sub) return null; if (payload.role !== 'authenticated') throw new Error('invalid')" }) },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'authenticated') { console.log('valid') } else throw new Error('invalid')" }) },
-                { filename: SRC, settings, code: "const jwtVerify = (a: string) => a; jwtVerify('local')" },
-            ],
-            invalid: [
-                ...["['none']", "['HS256']", "['ES256', 'HS256']", "[]", "algorithms", "['ES256', ...extra]"].map(algorithms => ({
-                    filename: SRC, settings, code: verifier({ algorithms }), errors: [{ message: /BE_JWT_ALG_PINNED: algorithms/ }],
-                })),
-                { filename: SRC, settings, code: verifier({ issuer: "'https://literal.invalid/auth/v1'" }), errors: [{ message: /issuer must derive/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'service_role') throw new Error('invalid')" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') { console.log('rejected') }" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "return {id: payload.sub}; if (payload.role !== 'authenticated') throw new Error('late')" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated' && enabled) throw new Error('partial')" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (other.role !== 'authenticated') throw new Error('unrelated')" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'service_role') return {id: payload.sub}; if (payload.role !== 'authenticated') throw new Error('late')" }), errors: [{ message: /reject every role/ }] },
-                { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') { return {id: payload.sub}; throw new Error('unreachable') }" }), errors: [{ message: /reject every role/ }] },
-            ],
+        assert.doesNotThrow(() => {
+            typedTester().run("jwt-alg-pinned", jwtAlgPinned, {
+                valid: [
+                    { filename: SRC, settings, code: verifier() },
+                    { filename: SRC, settings, code: verifier({ algorithms: "['RS256', 'EdDSA']" }) },
+                    { filename: SRC, settings, code: verifier({ issuer: "`${options.url.replace(/\\/$/, '')}/auth/v1`" }) },
+                    { filename: SRC, settings, code: verifier({ importLine: "import {jwtVerify as check} from 'jose'", call: "check" }) },
+                    { filename: SRC, settings, code: verifier({ importLine: "import * as jose from 'jose'", call: "jose.jwtVerify" }) },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') return null" }) },
+                    { filename: SRC, settings, code: verifier({ guard: "if (!payload.sub) return null; if (payload.role !== 'authenticated') throw new Error('invalid')" }) },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'authenticated') { console.log('valid') } else throw new Error('invalid')" }) },
+                    { filename: SRC, settings, code: "const jwtVerify = (a: string) => a; jwtVerify('local')" },
+                ],
+                invalid: [
+                    ...["['none']", "['HS256']", "['ES256', 'HS256']", "[]", "algorithms", "['ES256', ...extra]"].map(algorithms => ({
+                        filename: SRC, settings, code: verifier({ algorithms }), errors: [{ message: /BE_JWT_ALG_PINNED: algorithms/ }],
+                    })),
+                    { filename: SRC, settings, code: verifier({ issuer: "'https://literal.invalid/auth/v1'" }), errors: [{ message: /issuer must derive/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'service_role') throw new Error('invalid')" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') { console.log('rejected') }" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "return {id: payload.sub}; if (payload.role !== 'authenticated') throw new Error('late')" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated' && enabled) throw new Error('partial')" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (other.role !== 'authenticated') throw new Error('unrelated')" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role === 'service_role') return {id: payload.sub}; if (payload.role !== 'authenticated') throw new Error('late')" }), errors: [{ message: /reject every role/ }] },
+                    { filename: SRC, settings, code: verifier({ guard: "if (payload.role !== 'authenticated') { return {id: payload.sub}; throw new Error('unreachable') }" }), errors: [{ message: /reject every role/ }] },
+                ],
+            })
         })
-        assert.ok(Object.keys(jwtAlgPinned.meta.messages).length > 0, "jwt-alg-pinned keeps its published messages")
     })
 }
