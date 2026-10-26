@@ -49,6 +49,8 @@ const describeCheck = (check: PrimitiveCheck): string => {
             return `${check.file} is json carrying the keys ${check.requiredKeys.join(", ")}`
         case "probe":
             return `${check.url} answers ${String(check.status)}`
+        case "uat-flow":
+            return `your result walks every step of ${check.record}, each check at its expected value, with report.md and a screenshot per step in ${check.run}`
     }
 }
 
