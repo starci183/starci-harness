@@ -11,7 +11,9 @@
   "files": [
     "dist",
     "ops",
-    "policy"
+    "policy",
+    "knowledge",
+    "packages/jest-preset/README.md"
   ],
   "engines": {
     "node": ">=24"
@@ -23,8 +25,8 @@
     "start": "node dist/main.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run build",
-    "prepack": "node -e \"for (const d of ['ops','policy']) require('node:fs').cpSync('../'+d, d, {recursive: true})\"",
-    "postpack": "node -e \"for (const d of ['ops','policy']) require('node:fs').rmSync(d, {recursive: true, force: true})\""
+    "prepack": "node -e \"for (const d of ['ops','policy','knowledge','packages/jest-preset/README.md']) require('node:fs').cpSync('../'+d, d, {recursive: true})\"",
+    "postpack": "node -e \"for (const d of ['ops','policy','knowledge','packages']) require('node:fs').rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
     "commander": "15.0.0",
