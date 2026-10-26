@@ -72,6 +72,7 @@ const skipped = (pkg: WorkspacePackage, step: StepResult["step"], reason: string
 export const typecheckPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
     const { pkg } = target
     if (!pkg.hasTsconfig) return skipped(pkg, "typecheck", "no tsconfig.json")
+    if (pkg.workspaceRoot) return skipped(pkg, "typecheck", "workspace root: its members are typechecked")
     const tsc = localBin(scope, pkg, join("typescript", "bin", "tsc"))
     if (tsc === undefined) return skipped(pkg, "typecheck", "typescript is not installed (run npm ci)")
     const run = await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], pkg.dir, options)

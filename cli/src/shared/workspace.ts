@@ -11,6 +11,8 @@ export interface WorkspacePackage {
     readonly scripts: Readonly<Record<string, string>>
     readonly hasTsconfig: boolean
     readonly hasEslintConfig: boolean
+    /** An npm workspace root: its members carry the code, so the root is not typechecked as one project. */
+    readonly workspaceRoot: boolean
 }
 
 const SKIPPED_DIRECTORIES = new Set(["node_modules", "dist", ".git", ".next", "coverage", ".turbo"])
@@ -36,6 +38,7 @@ const readPackage = (root: string, dir: string): WorkspacePackage | undefined =>
         scripts: stringRecord(parsed.scripts),
         hasTsconfig: existsSync(join(dir, "tsconfig.json")),
         hasEslintConfig: ESLINT_CONFIGS.some((file) => existsSync(join(dir, file))),
+        workspaceRoot: Array.isArray(parsed.workspaces) || isRecord(parsed.workspaces),
     }
 }
 
