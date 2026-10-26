@@ -1,5 +1,8 @@
 # Changelog
 
+## 9.1.3 - 2026-10-26
+- Changed: the bundled runtime copies (canon pins) follow the hfs 4.7.41 and cli 1.7.41 pins and the lint family versions. No rule changes.
+
 ## 9.1.2 - 2026-10-26
 - Changed: the bundled runtime copies (canon pins, slots and the declaration shape) follow the hfs 4.7.39 and cli 1.7.39 sources. No rule changes.
 
