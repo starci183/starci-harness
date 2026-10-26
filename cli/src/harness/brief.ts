@@ -1,13 +1,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
 import { resolveChecks } from "./contract.js"
-import { WORK_DIR, projectRoot } from "./ledger.js"
+import { projectDir } from "./ledger.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 import type { TaskRow } from "./tasks.js"
 
-/** The files one worker brief is made of, all under <project>/.starciwork/briefs. */
+/** The files one worker brief is made of, all in the project's state folder outside the repository (see briefsDir). */
 export interface BriefFiles {
     readonly brief: string
     readonly contract: string
@@ -15,15 +15,15 @@ export interface BriefFiles {
 }
 
 /**
- * Where the brief, the contract copy the worker verifies against and the worker's output file of a task live: the project's
- * shared work folder, so a worker in a linked worktree and the verifier in the main checkout read the same files.
+ * Where the brief and the contract copy the worker verifies against live: briefs/ of the project's state folder under the state
+ * base, shared by every linked worktree and never inside a product repository. The worker's output file sits in outputs/ beside it.
  */
-export const briefsDir = (root: string): string => join(projectRoot(root), WORK_DIR, "briefs")
+export const briefsDir = (root: string): string => join(projectDir(root), "briefs")
 
 /** The brief files of one task (see briefsDir). */
 export const briefFiles = (root: string, taskId: string): BriefFiles => {
     const dir = briefsDir(root)
-    return { brief: join(dir, `${taskId}.md`), contract: join(dir, `${taskId}.contract.json`), output: join(dir, `${taskId}.output.json`) }
+    return { brief: join(dir, `${taskId}.md`), contract: join(dir, `${taskId}.contract.json`), output: join(dirname(dir), "outputs", `${taskId}.json`) }
 }
 
 // Paths go into the brief with forward slashes, so a command copied from it runs the same in every shell.
@@ -120,7 +120,8 @@ export const pointerSpec = (taskId: string, files: BriefFiles): string =>
 export const writeBrief = (task: TaskRow, ops: Ops, root: string): BriefFiles => {
     const files = briefFiles(root, task.id)
     const brief = renderBrief(task, ops, root, files)
-    mkdirSync(briefsDir(root), { recursive: true })
+    mkdirSync(dirname(files.brief), { recursive: true })
+    mkdirSync(dirname(files.output), { recursive: true })
     writeFileSync(files.contract, `${JSON.stringify(task.contract, null, 2)}\n`)
     writeFileSync(files.brief, brief)
     return files

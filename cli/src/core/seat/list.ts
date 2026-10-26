@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
 import { OrcaFailure, locateOrca, workerShow } from "../../harness/orca/client.js"
 import type { WorkerShown } from "../../harness/orca/client.js"
@@ -16,7 +15,7 @@ interface SeatView extends SeatRow {
 }
 
 interface SeatListData {
-    readonly ledger: string
+    readonly ledger: string | null
     readonly seats: readonly SeatView[]
 }
 
@@ -40,7 +39,7 @@ export const seatListVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         const ledger = ledgerPath(root)
         // A read verb never creates the ledger: no ledger is simply no seats.
-        if (!existsSync(ledger)) return { data: { ledger, seats: [] } satisfies SeatListData, message: "no seats (no ledger yet)" }
+        if (ledger === undefined) return { data: { ledger: null, seats: [] } satisfies SeatListData, message: "no seats (no ledger yet)" }
         const db = openLedger(root)
         let rows: SeatRow[]
         try {

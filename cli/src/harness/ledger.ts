@@ -1,14 +1,18 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { createHash } from "node:crypto"
+import { existsSync, mkdirSync, realpathSync } from "node:fs"
+import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
+import { fileURLToPath } from "node:url"
+import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 2
+export const LEDGER_VERSION = 3
 
 /**
- * The ten tables of the harness ledger. Status rules live in the code's one state machine, not in triggers;
- * the tables only keep facts (contracts and results are immutable once written).
+ * The nine tables of a project ledger. Status rules live in the code's one state machine, not in triggers;
+ * the tables only keep facts (contracts and results are immutable once written). Provider health is host-wide and lives in
+ * machine.sqlite since version 3; a ledger from before keeps its unused provider_health table, since a migration never drops.
  */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -39,9 +43,6 @@ CREATE TABLE IF NOT EXISTS seats (
 CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, seat_id TEXT NOT NULL, command TEXT NOT NULL, correlation_id TEXT,
   deadline_at TEXT NOT NULL, sent_at TEXT NOT NULL, answered_at TEXT, answer_json TEXT);
-CREATE TABLE IF NOT EXISTS provider_health (
-  provider TEXT PRIMARY KEY, status TEXT NOT NULL, strikes INTEGER NOT NULL DEFAULT 0,
-  failure_kind TEXT, circuit_open_until TEXT, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL,
   subject TEXT, data_json TEXT NOT NULL);
@@ -83,68 +84,83 @@ const migrate = (db: DatabaseSync): void => {
     }
 }
 
-/** The project's work folder, which holds its ledger. */
-export const WORK_DIR = ".starciwork"
+/** Replaces the whole state base (`<runtime root>/.runtime`): tests and probes point it at a temp directory. */
+export const LOCAL_ROOT_ENV = "STARCI_LOCAL_ROOT"
+
+/** Replaces only the projects directory of the state base, the one holding `<ledger_id>/runtime.sqlite`. */
+export const PROJECTS_ROOT_ENV = "STARCI_PROJECTS_ROOT"
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
+
+/** The runtime root, found like ops/: the harness checkout holding cli/ and ops/, else the installed package carrying ops/ itself. */
+export const runtimeRoot = (): string => {
+    const checkout = resolve(packageRoot, "..")
+    return existsSync(join(checkout, "ops", "labels.yaml")) && existsSync(join(checkout, "cli")) ? checkout : resolve(packageRoot)
+}
+
+/** The host's harness state, outside every product repository: STARCI_LOCAL_ROOT, else `<runtime root>/.runtime` (git-ignored). */
+export const stateBase = (): string => {
+    const local = process.env[LOCAL_ROOT_ENV]
+    return local === undefined || local === "" ? join(runtimeRoot(), ".runtime") : resolve(local)
+}
+
+const projectsRoot = (): string => {
+    const projects = process.env[PROJECTS_ROOT_ENV]
+    return projects === undefined || projects === "" ? join(stateBase(), "projects") : resolve(projects)
+}
+
+/** The host store, `<state base>/machine.sqlite`. */
+export const machinePath = (): string => join(stateBase(), "machine.sqlite")
+
+/**
+ * The host store keeps only host-wide state: the registry of project ledgers (the legacy `ledgers` columns plus
+ * repo_common_dir, the lookup key) and provider health, since a provider's rate limit or circuit is the same for every project.
+ */
+const MACHINE_SCHEMA = `
+CREATE TABLE IF NOT EXISTS ledgers (
+  ledger_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, repo_common_dir TEXT NOT NULL UNIQUE, repo_root TEXT NOT NULL,
+  file TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'idle', 'retired')),
+  schema_version INTEGER, registered_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS provider_health (
+  provider TEXT PRIMARY KEY, status TEXT NOT NULL, strikes INTEGER NOT NULL DEFAULT 0,
+  failure_kind TEXT, circuit_open_until TEXT, updated_at TEXT NOT NULL);
+`
 
 interface Project {
     readonly root: string
-    readonly commonDir: string | undefined
+    readonly key: string
 }
 
 const projects = new Map<string, Project>()
 
-// Every linked worktree shares the main checkout's git common dir, so it shares that checkout's work folder too;
-// a worktree opening a ledger of its own would see none of the project's tasks.
-const projectOf = (root: string): Project => {
-    const key = resolve(root)
-    const known = projects.get(key)
-    if (known !== undefined) return known
-    let project: Project = { root: key, commonDir: undefined }
-    const dirs = captureToolSync("git", ["rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"], key)
-    const [gitDir, commonDir] = dirs.stdout.split("\n").map((line) => line.trim())
-    if (dirs.exitCode === 0 && gitDir !== undefined && commonDir !== undefined && commonDir !== "") {
-        if (resolve(gitDir) === resolve(commonDir)) {
-            project = { root: key, commonDir: resolve(commonDir) }
-        } else {
-            // The first entry of the worktree list is the main checkout (the repository itself when it is bare).
-            const main = /^worktree (.+)$/m.exec(captureToolSync("git", ["worktree", "list", "--porcelain"], key).stdout)?.[1]
-            project = { root: main === undefined ? dirname(resolve(commonDir)) : resolve(main.trim()), commonDir: resolve(commonDir) }
-        }
+// One spelling per directory, so the registry matches it however git or the caller wrote the path.
+const pathKey = (path: string): string => {
+    let real = resolve(path)
+    try {
+        real = realpathSync.native(real)
+    } catch {
+        // A path that does not resolve keeps its resolved spelling.
     }
-    projects.set(key, project)
+    const slashed = real.replace(/\\/g, "/")
+    return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+// A project is its git common dir, so every linked worktree of a repository is the same project with the same ledger.
+// A folder outside git is a project of its own, keyed by its path.
+const projectOf = (root: string): Project => {
+    const at = resolve(root)
+    const known = projects.get(at)
+    if (known !== undefined) return known
+    let project: Project = { root: at, key: pathKey(at) }
+    const dirs = captureToolSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], at)
+    const commonDir = dirs.stdout.trim()
+    if (dirs.exitCode === 0 && commonDir !== "") {
+        // The first entry of the worktree list is the main checkout (the repository itself when it is bare).
+        const main = /^worktree (.+)$/m.exec(captureToolSync("git", ["worktree", "list", "--porcelain"], at).stdout)?.[1]
+        project = { root: main === undefined ? dirname(resolve(commonDir)) : resolve(main.trim()), key: pathKey(commonDir) }
+    }
+    projects.set(at, project)
     return project
-}
-
-/** The project a repository checkout belongs to: the main checkout for a linked worktree, else the checkout itself. */
-export const projectRoot = (root: string): string => projectOf(root).root
-
-/** The ledger of a project: <project>/.starciwork/runtime.sqlite, one per project and shared by its linked worktrees, never committed. */
-export const ledgerPath = (root: string): string => join(projectRoot(root), WORK_DIR, "runtime.sqlite")
-
-const WORK_DIR_LINES = [WORK_DIR, `${WORK_DIR}/`, `/${WORK_DIR}`, `/${WORK_DIR}/`]
-
-// The work folder holds briefs, contract copies, outputs and the ledger; untracked, it would turn every files check red,
-// so it is excluded locally (info/exclude is never committed) unless the repository already ignores it.
-const excluded = new Set<string>()
-
-const excludeWorkDir = (project: Project): void => {
-    if (project.commonDir === undefined || excluded.has(project.root)) return
-    excluded.add(project.root)
-    if (captureToolSync("git", ["check-ignore", "-q", "--no-index", `${WORK_DIR}/`], project.root).exitCode === 0) return
-    const exclude = join(project.commonDir, "info", "exclude")
-    const current = existsSync(exclude) ? readFileSync(exclude, "utf8") : ""
-    if (current.split(/\r?\n/).some((line) => WORK_DIR_LINES.includes(line.trim()))) return
-    mkdirSync(dirname(exclude), { recursive: true })
-    appendFileSync(exclude, `${current === "" || current.endsWith("\n") ? "" : "\n"}/${WORK_DIR}/\n`)
-}
-
-/** Creates the project's work folder, excluded from git locally, and returns its path. */
-export const ensureWorkDir = (root: string): string => {
-    const project = projectOf(root)
-    const dir = join(project.root, WORK_DIR)
-    mkdirSync(dir, { recursive: true })
-    excludeWorkDir(project)
-    return dir
 }
 
 const connect = (file: string): DatabaseSync => {
@@ -154,20 +170,109 @@ const connect = (file: string): DatabaseSync => {
     return db
 }
 
-/** Opens (and creates or migrates) the project's ledger, with WAL and a busy timeout for concurrent seats. */
+const registered = (db: DatabaseSync, project: Project): string | undefined => {
+    const row = db.prepare("SELECT ledger_id FROM ledgers WHERE repo_common_dir = ?").get(project.key)
+    return row === undefined ? undefined : String(row.ledger_id)
+}
+
+// The main checkout's folder name, readable in listings; the id adds a hash of the common dir so it is stable and unique.
+const nameOf = (project: Project): string => basename(project.root).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|-+$/g, "") || "project"
+
+const mintLedgerId = (project: Project): string => `${nameOf(project)}-${createHash("sha256").update(project.key).digest("hex").slice(0, 10)}`
+
+const ledgerFile = (id: string): string => join(projectsRoot(), id, "runtime.sqlite")
+
+/** The ledger id the host registry holds for a repository, without creating anything; undefined when it has none. */
+export const findLedgerId = (root: string): string | undefined => {
+    const file = machinePath()
+    if (!existsSync(file)) return undefined
+    const db = connect(file)
+    try {
+        db.exec(MACHINE_SCHEMA)
+        return registered(db, projectOf(root))
+    } finally {
+        db.close()
+    }
+}
+
+/** The repository's ledger id, registered in the host registry on first use; this module is the one writer of `machine.sqlite`. */
+export const ensureLedgerId = (root: string): string => {
+    const project = projectOf(root)
+    mkdirSync(stateBase(), { recursive: true })
+    const db = connect(machinePath())
+    try {
+        db.exec(MACHINE_SCHEMA)
+        db.exec("BEGIN IMMEDIATE")
+        try {
+            let id = registered(db, project)
+            if (id === undefined) {
+                id = mintLedgerId(project)
+                // Two repositories may share a folder name; the second is listed under its id instead.
+                const taken = db.prepare("SELECT 1 FROM ledgers WHERE name = ?").get(nameOf(project)) !== undefined
+                db.prepare("INSERT INTO ledgers (ledger_id, name, repo_common_dir, repo_root, file, schema_version, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+                    id,
+                    taken ? id : nameOf(project),
+                    project.key,
+                    project.root,
+                    ledgerFile(id),
+                    LEDGER_VERSION,
+                    now(),
+                )
+            } else {
+                db.prepare("UPDATE ledgers SET schema_version = ? WHERE ledger_id = ? AND schema_version IS NOT ?").run(LEDGER_VERSION, id, LEDGER_VERSION)
+            }
+            db.exec("COMMIT")
+            return id
+        } catch (error: unknown) {
+            db.exec("ROLLBACK")
+            throw error
+        }
+    } finally {
+        db.close()
+    }
+}
+
+/** A project's state folder under the state base: its ledger plus briefs/, contracts/, preserved/ and outputs/. Created on first use. */
+export const projectDir = (root: string): string => {
+    const dir = dirname(ledgerFile(ensureLedgerId(root)))
+    mkdirSync(dir, { recursive: true })
+    return dir
+}
+
+/** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
+export const ledgerPath = (root: string): string | undefined => {
+    const id = findLedgerId(root)
+    const file = id === undefined ? undefined : ledgerFile(id)
+    return file !== undefined && existsSync(file) ? file : undefined
+}
+
+/**
+ * Opens (and creates or migrates) the project's ledger, `<state base>/projects/<ledger_id>/runtime.sqlite`, shared by every
+ * linked worktree of the repository; with WAL and a busy timeout for concurrent seats.
+ */
 export const openLedger = (root: string): DatabaseSync => {
-    ensureWorkDir(root)
-    const db = connect(ledgerPath(root))
-    db.exec(SCHEMA)
-    migrate(db)
-    db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
+    const dir = projectDir(root)
+    const id = basename(dir)
+    const file = join(dir, "runtime.sqlite")
+    const db = connect(file)
+    try {
+        db.exec(SCHEMA)
+        migrate(db)
+        db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
+        db.prepare("INSERT INTO meta (key, value) VALUES ('ledger_id', ?) ON CONFLICT(key) DO NOTHING").run(id)
+        const own = db.prepare("SELECT value FROM meta WHERE key = 'ledger_id'").get()?.value
+        if (own !== id) throw new Refusal("LEDGER_MISMATCH", `${file} carries ledger id ${String(own)}, not ${id}; keep the file and fix the registry`)
+    } catch (error: unknown) {
+        db.close()
+        throw error
+    }
     return db
 }
 
 /** Opens the project's ledger only when it exists, creating and migrating nothing; for reads that must leave no ledger behind. */
 export const openExistingLedger = (root: string): DatabaseSync | undefined => {
     const file = ledgerPath(root)
-    return existsSync(file) ? connect(file) : undefined
+    return file === undefined ? undefined : connect(file)
 }
 
 /** The current time as the ledger stores it. */

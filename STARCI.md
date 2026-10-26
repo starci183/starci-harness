@@ -17,6 +17,7 @@ Owner: the owner. This is the working design of the rewritten CLI in `D:\.claude
   - The **runner** (`orca` or `inline`) says how the harness runs a task, and is chosen per workflow or per task, never by edition. `orca` launches a worker seat through Orca (`seat start`, `task send --launch`), so tasks run in parallel. `inline` means the Claude or Codex session that is open does the task itself: it sends the task, files the result inline and has it verified, one task at a time.
   - Both editions get both runners. Contracts, leases, the clean verify and the harness commit are the same for either runner.
   - Inline guards: the agent is both Kernel and worker, so its contract must be sent (and its hash fixed) before it edits code, and the harness verify on a clean checkout is what decides green. Liveness (ping and pong) applies only to the `orca` runner.
+- **Harness state never lives in a product repository** (owner correction of the alpha layout, as the legacy had it). A product's `.starciwork/` is product content only and is committed; the harness writes its ledger, briefs and scratch under the runtime root (see Storage).
 
 ## Layout
 
@@ -197,8 +198,19 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
     - The agent-pages workflow owns `approval-requests`. It adds the event that the topic waits on.
     - The billing workflow is untouched.
 
-### Storage: one SQLite file per project (`.starciwork/runtime.sqlite`)
-One ledger per project, shared by its linked worktrees, instead of about 50 runtime tables and 90 machine tables. Its tables are listed in the harness plan, §6.
+### Storage: harness state under the runtime root, product Work in the repository
+
+```text
+<state base>/machine.sqlite                                  one per host: the ledger registry and host-wide state (§6)
+<state base>/projects/<ledger_id>/runtime.sqlite             one per project: its ledger (§6)
+<state base>/projects/<ledger_id>/briefs/ contracts/ preserved/ outputs/   that project's harness files
+<app>/.starciwork/                                           product content only, in git
+```
+
+- `<state base>` is `<runtime root>/.runtime`, where the runtime root is the harness checkout holding `cli/` and `ops/` (or the installed package carrying `ops/`), found the way `ops/` is found. `.runtime/` is git-ignored there. `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`; tests and probes set `STARCI_LOCAL_ROOT` to a temp directory. `harness/ledger.ts` owns every one of these paths.
+- A ledger is found through the host registry, never by walking a repository: the project is the repository's git common dir (`git rev-parse --git-common-dir`), so its linked worktrees share one ledger, and `machine.sqlite` `ledgers` maps it to a `ledger_id` (`<checkout name>-<hash of the common dir>`), minted on the first write and kept in the ledger as `meta.ledger_id`. Read verbs (`task status`, `seat list`) create nothing.
+- `<app>/.starciwork/` holds the product's Work (Business/SRS, Architecture/SDS, `features/…`, `workspace.yaml`). The harness never writes its state there, never ignores or excludes it, and never strips it from a candidate: a docs task leases a scope inside it (`.starciwork/features/<f>`) and its edit lands like any other. Only the whole tree as an `allowPaths` entry is refused, as `.` is.
+- A ledger an alpha build left at `<app>/.starciwork/runtime.sqlite` is not read, copied or migrated; the new location starts empty.
 
 ### CLI of the harness (both editions)
 
@@ -214,8 +226,8 @@ Who runs each verb is declared in its `roles` (enforcement comes later, see "Ver
 | `plan show <workflow>` | everyone | read | the current graph: tasks, edges, contract hashes and states |
 | `plan diff <workflow> --to <goal-version>` | kernel, supervisor | read | the keep, continue, redo, add and drop classification of a replan |
 | `plan apply <workflow>` | kernel | local-write | record the new graph version and resume dispatch |
-| `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `.starciwork/contracts/<summary>.json`), composing `expectedOutput` from the label's default checks and named presets |
-| `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository, never `.starciwork`, never named twice (`./src/a` is `src/a`) |
+| `contract new --label <l> --summary <s> --allow <p,...> [--read <p,...>] [--cwd-path <p>] [--check "<preset>[:arg=v,...];..."] [--details <t>] [--base <rev>] [--out <file>] [--force]` | owner, kernel, supervisor, agent | local-write | write a fit contract (default `contracts/<summary>.json` in the project's state folder, see Storage), composing `expectedOutput` from the label's default checks and named presets |
+| `contract check <file>` | everyone | read | validate the contract: schema, labels, presets, machine-runnable checks, a behavioural check; `allowPaths` are literal (no glob), not the whole repository nor the whole `.starciwork` Work tree, never named twice (`./src/a` is `src/a`) |
 | `task send <contract> [--workflow <w>] [--retry-of <task>] [--launch --agent <a> --model <m> [--effort <e>] [--worktree <path\|selector>] [--run <id>] [--timeout-ms <ms>]]` | owner, kernel, supervisor, coordinator | host | queue a fit contract and lease its `allowPaths` (`LEASE_CONFLICT` on an overlap with a live task); a retry repeats the same label and paths within the try budget; `--launch` starts a worker seat as `seat start` does; prints the task id. Handing a task to the Supervisor (`--to`) comes later |
 | `task wait <id> [--timeout]` (later) | kernel, supervisor | read | block until the result arrives or the deadline passes |
 | `task result <id> --status done\|blocked\|mismatch\|failed --output <json>\|@<file>` | worker, op, kernel, supervisor | local-write | file the one immutable result of the open attempt; a queued task is worked inline (lite); `failed` preserves and resets the task's dirty `allowPaths`, then releases its leases |
@@ -384,8 +396,8 @@ Dropped from the legacy: the 2,235-code catalog (about 95% are lint findings), t
 
 - **Seat rotation.** The Kernel and Supervisor seats are rotated after a wake or token budget. They keep no memory, because the ledger is the state.
 
-### 6. Ledger (one SQLite per project, at `<project>/.starciwork/runtime.sqlite`, never committed)
-The ledger has ten tables:
+### 6. Ledger and host store (where they live: Storage)
+A project ledger has nine tables:
 - `workflows` (goal version, graph version);
 - `tasks` (contract, label, try number, retry-of, status);
 - `attempts` (one per dispatch: pick record, agent, model, outcome, verdict);
@@ -394,8 +406,9 @@ The ledger has ten tables:
 - `leases` (path prefixes held until the task ends, a fencing token, and a due time that is information only and never frees a path);
 - `seats` (role, agent, model, attempt, Orca dispatch handle, worker-start request id, Run, the launch record a resume replays, status, last pong, end time);
 - `messages` (commands with a correlation id and a deadline);
-- `provider_health`;
 - `events` (append-only).
+
+`machine.sqlite` keeps only host-wide state: `ledgers` (the legacy registry columns plus `repo_common_dir`, the lookup key) and `provider_health` (a provider's rate limit or circuit is the same for every project, so it moved out of the project ledger; an older ledger keeps its unused table, since migrations never drop). P2 adds the provider circuit and quota, pool concurrency (AIMD), shared budgets and host locks there. Seats and leases stay in the project ledger. The legacy's other machine tables are not carried over.
 
 Status transitions are enforced in code with one state machine (`TRANSITIONS` in `harness/tasks.ts`), not duplicated in triggers. Task states are:
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a launch Orca could not confirm or deny). A launch that certainly failed returns `running` or `effect_unknown` to `queued`; a verify with no verdict returns `verifying` to `reported`. A new column comes by an additive migration that bumps the ledger version.
@@ -403,7 +416,7 @@ Status transitions are enforced in code with one state machine (`TRANSITIONS` in
 ### 7. Seat launch (Orca)
 - The claim comes first, in one transaction: the queued task goes to running, and an attempt and a `starting` seat carrying the launch record are opened. Only then is Orca called, so two starts never both launch.
 - An agent starts through `orca orchestration run-create` (unless `--run` names a Run) and `worker-start --spec <short spec> --worktree <path|selector> --agent <a> --model <m> [--effort]`, each under a `--retry-request` id derived from the attempt id.
-- The brief always goes to `<project>/.starciwork/briefs/<task>.md`, shared by every worktree, and the spec only points at it. This works around the Windows argv cap.
+- The brief always goes to `briefs/<task>.md` in the project's state folder (see Storage), with the contract copy beside it and the worker's output file in `outputs/<task>.json`. Every worktree of the project reads the same files, nothing lands in the product repository, and the spec only points at the brief. This works around the Windows argv cap.
 - After the start, the effective agent and model are attested from `worker-show`. A model mismatch, or a task cancelled during the launch, closes the worker (stop and release); a mismatch rolls the task back to queued.
 - A certain failure closes what was left and rolls the task back to queued, with no try spent. An unknown outcome (outcome_unknown, an unreadable answer, a timeout) leaves the task `effect_unknown` with its leases and its seat open; `seat start <task> --resume` replays the same requests.
 - A cancel stops and releases the task's seats. A launch whose outcome is unknown and that named no dispatch refuses the cancel until a resume learns the dispatch.

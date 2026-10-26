@@ -346,7 +346,7 @@ export const taskVerifyVerb = defineVerb({
     flags: {
         task: { kind: "string", summary: "the ledger task to verify and settle (with --contract: the task whose files and @result the replay judges)", positional: true },
         contract: { kind: "string", summary: "dry-replay this contract json file in the working tree instead (no task status change)" },
-        record: { kind: "boolean", summary: "with --contract: file every check run in the ledger (.starciwork/runtime.sqlite)" },
+        record: { kind: "boolean", summary: "with --contract: file every check run in the project's ledger" },
         "no-commit": { kind: "boolean", summary: "verify the task on a clean checkout without settling it or changing its status" },
         recover: { kind: "boolean", summary: "put a task stuck in verifying (its verifier died) back to reported; refused while the verifier lives" },
     },
