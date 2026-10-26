@@ -52,20 +52,22 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition} kind isolation lint accepts valid owners and rejects cross-kind imports`, t => {
-    const files = { ...passingFiles, ...violatingFiles };
-    const fixture = projectFixture({ edition, declaration, files });
-    t.after(fixture.cleanup);
-    fixture.tester.run('kind-isolation', rules['kind-isolation'], {
-      valid: [
-        { filename: fixture.at('src/features/jobs/clean/index.ts'), code: passingFiles['src/features/jobs/clean/index.ts'] },
-        { filename: fixture.at('src/features/reactors/stock/index.ts'), code: passingFiles['src/features/reactors/stock/index.ts'] },
-      ],
-      invalid: [
-        { filename: fixture.at('src/features/jobs/static/index.ts'), code: violatingFiles['src/features/jobs/static/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
-        { filename: fixture.at('src/features/jobs/dynamic/index.ts'), code: violatingFiles['src/features/jobs/dynamic/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
-        { filename: fixture.at('src/features/jobs/exporting/index.ts'), code: violatingFiles['src/features/jobs/exporting/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
-        { filename: fixture.at('src/features/jobs/typed/index.ts'), code: violatingFiles['src/features/jobs/typed/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
-      ],
-    });
+    assert.doesNotThrow(() => {
+      const files = { ...passingFiles, ...violatingFiles };
+      const fixture = projectFixture({ edition, declaration, files });
+      t.after(fixture.cleanup);
+      fixture.tester.run('kind-isolation', rules['kind-isolation'], {
+        valid: [
+          { filename: fixture.at('src/features/jobs/clean/index.ts'), code: passingFiles['src/features/jobs/clean/index.ts'] },
+          { filename: fixture.at('src/features/reactors/stock/index.ts'), code: passingFiles['src/features/reactors/stock/index.ts'] },
+        ],
+        invalid: [
+          { filename: fixture.at('src/features/jobs/static/index.ts'), code: violatingFiles['src/features/jobs/static/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
+          { filename: fixture.at('src/features/jobs/dynamic/index.ts'), code: violatingFiles['src/features/jobs/dynamic/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
+          { filename: fixture.at('src/features/jobs/exporting/index.ts'), code: violatingFiles['src/features/jobs/exporting/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
+          { filename: fixture.at('src/features/jobs/typed/index.ts'), code: violatingFiles['src/features/jobs/typed/index.ts'], errors: [{ message: /BE_KIND_ISOLATION/, line: 1 }] },
+        ],
+      });
+    })
   });
 }
