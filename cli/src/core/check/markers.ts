@@ -31,6 +31,9 @@ const SCRIPTS: readonly MarkerFileKind[] = ["shell", "workflow", "manifest", "do
 
 const RUNNER = "(?:it|test|describe|suite)"
 
+/** Folders that hold dependencies or build output, never source: excluding them from Sonar widens no gate. */
+const NON_SOURCE_DIRS = String.raw`node_modules|\.next|dist|build|out|coverage|\.turbo|__generated__`
+
 const DETECTORS: readonly Detector[] = [
     { marker: "eslint-disable", label: "an inline ESLint disable", kinds: CODE, pattern: directive(word("eslint", "-disable")) },
     { marker: "eslint-disable", label: "inline ESLint configuration", kinds: CODE, pattern: directive(String.raw`(?:${word("eslint", "-env")}\b|${word("esl", "int")}\s+[@\w/.-]+\s*:)`) },
@@ -52,7 +55,13 @@ const DETECTORS: readonly Detector[] = [
     { marker: "gate-widening", label: "a step allowed to fail", kinds: ["workflow"], pattern: new RegExp(String.raw`\b${word("continue", "-on-error")}\s*:\s*(?!false\b)\S`) },
     { marker: "gate-widening", label: "a test run that passes with no test", kinds: SCRIPTS, pattern: new RegExp(String.raw`--(?:${word("passWith", "NoTests")}|${word("pass-with", "-no-tests")})\b`) },
     { marker: "gate-widening", label: "a check narrowed on the command line", kinds: SCRIPTS, pattern: new RegExp(String.raw`--(?:${word("testPath", "IgnorePatterns")}|${word("coveragePath", "IgnorePatterns")}|${word("no-error-on", "-unmatched-pattern")})\b|--rule\s+['"]?[@\w/-]+\s*:\s*['"]?(?:off|0)\b|\beslint\b[^\n|;&]*--quiet\b`) },
-    { marker: "gate-widening", label: "a Sonar scope exclusion", kinds: [...SCRIPTS, "properties"], pattern: new RegExp(String.raw`\bsonar\.(?:\w+\.)*${word("exclu", "sions")}\b`) },
+    // Excluding dependencies and build output narrows nothing a gate judges; any other entry on the line hides source.
+    {
+        marker: "gate-widening",
+        label: "a Sonar scope exclusion",
+        kinds: [...SCRIPTS, "properties"],
+        pattern: new RegExp(String.raw`\bsonar\.(?:\w+\.)*${word("exclu", "sions")}\s*[=:]\s*(?!(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*(?:\s*,\s*(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*)*\s*$)`),
+    },
     { marker: "gate-widening", label: "a gate not waited for or not failing", kinds: [...SCRIPTS, "properties"], pattern: new RegExp(String.raw`sonar\.qualitygate\.wait\s*=\s*false|\bfail_ci_if_error\s*:\s*false\b`) },
 ]
 
