@@ -13,6 +13,7 @@ import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { recommended as brandValuesRecommended, rules as brandValuesRules } from "./brand-values.mjs"
 import { recommended as buttonIntentRecommended, rules as buttonIntentRules } from "./button-intent.mjs"
+import { recommended as controlHeightRecommended, rules as controlHeightRules } from "./control-height.mjs"
 import { recommended as clientBoundaryRecommended, rules as clientBoundaryRules } from "./client-boundary.mjs"
 import { recommended as commentsRecommended, rules as commentsRules } from "./comments.mjs"
 import { recommended as classNamesRecommended, rules as classNamesRules } from "./class-names.mjs"
@@ -50,6 +51,7 @@ const CONTRIBUTIONS = [
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
   { law: "button-intent", rules: buttonIntentRules, recommended: buttonIntentRecommended },
+  { law: "control-height", rules: controlHeightRules, recommended: controlHeightRecommended },
   { law: "client-boundary", rules: clientBoundaryRules, recommended: clientBoundaryRecommended },
   { law: "comments", rules: commentsRules, recommended: commentsRecommended },
   {
