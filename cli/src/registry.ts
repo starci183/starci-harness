@@ -16,6 +16,9 @@ import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./lite/app/info.js"
+import { seatListVerb } from "./core/seat/list.js"
+import { seatStartVerb } from "./core/seat/start.js"
+import { seatStopVerb } from "./core/seat/stop.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -41,6 +44,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskResultVerb,
     taskCancelVerb,
     appInfoVerb,
+    seatStartVerb,
+    seatListVerb,
+    seatStopVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
