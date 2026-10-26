@@ -226,6 +226,17 @@ Owner: the Kernel writes each op's contract itself, so an op is only a worker. T
   - Everything else (implement, fix, refactor, test, scaffold, draw, verify suites, UAT, docs, deliver) is a contract the Kernel writes for a worker.
 - **Lite:** the chat agent is the worker. It can write its own contract with the same presets and prove its work with `task verify`.
 
+### Tests stay inside the task; CI judges the rest (owner, 2026-10-27)
+
+Owner: "tránh vết xe đổ là quá nhiều test nên test trong phạm vi nó làm thôi!!! và push main để ci tự xử". In English: learn from the past, where too many tests ran; test only within the task's own scope, push main, and let CI handle the rest.
+- **A contract's checks cover only what the task changed:**
+  - `check-run-green` runs `starci check run` against the lane's own diff;
+  - `tests-pass` names the tests related to the changed files, the `jest --findRelatedTests` reach, and never a whole suite;
+  - `paths-only` keeps the change inside `allowPaths`.
+- **No contract asks for a full suite**, whether unit-all, e2e-all or the example rows. A `verify` worker runs a heavy suite only when the goal itself is that suite, for example a performance measurement the owner asked for.
+- **Landing:** when a task's verify is green, the Kernel merges the lane. The Supervisor lands and runs `starci release push`. CI runs the full suite on main.
+- **CI red:** the Supervisor reads `starci release ci-status`. A red verdict becomes a `code` contract for a worker, scoped to the red checks, and never blocks the next push.
+
 ### Who does what now (owner, 2026-10-27)
 
 | party | work | from the old ops |
