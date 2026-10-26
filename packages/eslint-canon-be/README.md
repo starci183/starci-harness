@@ -147,3 +147,11 @@ ESLint 9+ (flat config), Node 20.9+.
 Every rule of this plugin is an enforcer of one HFS rule. The relation (rule id -> HFS rule -> catalogued Vietnamese why code)
 lives in exactly one place, `knowledge/hfs/rules.yaml` (`enforcers`), and `scripts/checks/check-hfs-rules.mjs` refuses a
 rule of this plugin that no catalog entry names. There is no second table here.
+
+## The runtime copy
+
+`runtime/` holds the StarCi runtime files the rules import (the slot manifest and view, the project graph and the
+architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. In this repository it is a
+committed snapshot taken from the legacy runtime (starci-academy-backend/.claude at 7424b89ca), where
+`scripts/hfs/sync-runtime.mjs` generates it; refresh it by running that generator there and copying
+`packages/eslint/be/runtime/` over this folder. Nothing in this package edits it.
