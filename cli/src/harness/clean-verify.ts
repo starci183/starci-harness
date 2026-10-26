@@ -10,6 +10,7 @@ import { underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { runCheck, strayFiles } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
+import { inOrder } from "./sequential.js"
 
 const DETAIL_LINES = 30
 
@@ -59,14 +60,6 @@ const listed = (files: readonly string[]): string => {
     const more = files.length > LIST_SHOWN ? ` and ${String(files.length - LIST_SHOWN)} more` : ""
     return shown + more
 }
-
-/** Runs the step for each item one after another (each depends on the git state the last left), collecting the results in order. */
-const inOrder = <T, R>(items: readonly T[], step: (item: T) => Promise<R>): Promise<R[]> =>
-    items.reduce<Promise<R[]>>(async (done, item) => {
-        const results = await done
-        results.push(await step(item))
-        return results
-    }, Promise.resolve([]))
 
 const literal = (path: string): string => `:(top,literal)${path}`
 

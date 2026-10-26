@@ -10,6 +10,7 @@ import { describeScope, describeStep, lintPackage, resolveScope, typecheckPackag
 import type { Scope, ScopeTarget, StepResult } from "./scope.js"
 import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import { treeFiles } from "./tree-files.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** The verdict of one repository gate: it judges the tree (loosening) or the changed files (secrets), not one package. */
 interface GateResult {
@@ -32,14 +33,6 @@ interface RunData {
 
 /** The repository gates, run once per check; the package gates run once per package of the scope. */
 const REPOSITORY_GATES: ReadonlySet<RuntimeGate> = new Set<RuntimeGate>(["secrets", "loosening"])
-
-/** Runs the tasks one after another and keeps their order: a gate that spawns a tool never overlaps the next one. */
-const inOrder = async <T>(tasks: readonly (() => Promise<T>)[]): Promise<T[]> => {
-    const [head, ...rest] = tasks
-    if (head === undefined) return []
-    const first = await head()
-    return [first, ...(await inOrder(rest))]
-}
 
 /** One repository gate over the tree (loosening) or the changed files (secrets). */
 const repositoryGate = async (gate: RuntimeGate, scope: Scope, policy: Policy, profile: string, all: boolean): Promise<GateResult> => {
@@ -92,8 +85,8 @@ export const checkRunVerb = defineVerb({
         const tier = choice.profile.runtime
         const canon = canonOf(policy, choice.profile)
         const options = { timeoutMs: policy.quality.runtime.stepTimeoutSeconds * 1000 }
-        const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)).map((gate) => () => repositoryGate(gate, scope, policy, choice.name, flags.all)))
-        const steps = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, options))))
+        const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)), (gate) => repositoryGate(gate, scope, policy, choice.name, flags.all))
+        const steps = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, options))), (step) => step())
         const red = [...gates, ...steps].some((result) => result.status === "red")
         const verdict = red ? "red" : "green"
         const data: RunData = {

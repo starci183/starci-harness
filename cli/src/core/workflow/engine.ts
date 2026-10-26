@@ -20,7 +20,7 @@ import { formatTable } from "../../shared/output.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { startSeat } from "../seat/start.js"
 import { taskCancelVerb } from "../task/cancel.js"
-import { mapInSequence } from "../task/sequence.js"
+import { inOrder } from "../../harness/sequential.js"
 import { taskVerifyVerb } from "../task/verify.js"
 
 /**
@@ -84,7 +84,7 @@ export const reconcile = (root: string, id: string): Snapshot =>
  * (a verify in flight, a worker Orca did not stop) is reported and the task stays live; the next step tries again.
  */
 export const cancelTasks = async (context: VerbContext, tasks: readonly { readonly key: string | null; readonly task: string }[], reason: string): Promise<StepAction[]> => {
-    return mapInSequence(tasks, async ({ key, task }): Promise<StepAction> => {
+    return inOrder(tasks, async ({ key, task }): Promise<StepAction> => {
         try {
             const done = await taskCancelVerb.run(context, { task, reason })
             return { key, task, action: "cancelled", detail: done.message }
@@ -120,7 +120,7 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
         const refusal = asRefusal(error)
         return [{ key: null, task: null, action: "problem", detail: `liveness not checked (${refusal.code}): ${refusal.message}` }]
     }
-    const found = await mapInSequence(targets, async (target): Promise<StepAction | null> => {
+    const found = await inOrder(targets, async (target): Promise<StepAction | null> => {
         const answer = await askOrca(binary, target.handle, context.cwd, rules)
         const recorded = withLedger(root, (db) => recordPing(db, target.seat, answer))
         const verdict = livenessOf(recorded.seat, rules).verdict
@@ -143,7 +143,7 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
 /** Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. */
 const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
     const reported = snapshot.views.flatMap((view) => (view.state === "reported" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
-    return mapInSequence(reported, async ({ key, task }): Promise<StepAction> => {
+    return inOrder(reported, async ({ key, task }): Promise<StepAction> => {
         try {
             const verified = await taskVerifyVerb.run(context, { task, contract: undefined, record: false, "no-commit": false, recover: false })
             const data = verified.data as { readonly verdict?: string; readonly status?: string; readonly checks?: readonly { readonly name: string; readonly status: string }[] }
@@ -172,7 +172,7 @@ const isSweepable = (seat: SeatRow): boolean => isSeatOpen(seat) && seat.handle 
  */
 const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const settled = withLedger(root, (db) => snapshot.tasks.filter((task) => isSettled(task) && seatsOfTask(db, task.id).some(isSweepable)))
-    const closed = await mapInSequence(settled, async (task): Promise<StepAction[]> => {
+    const closed = await inOrder(settled, async (task): Promise<StepAction[]> => {
         try {
             const closings = await closeSeatsOfTask(root, task.id)
             return closings.map((closing) => {
@@ -313,7 +313,7 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
         return view.state === "queued" && view.task !== null && node !== undefined ? [{ node, task: view.task.id }] : []
     })
-    actions.push(...(await mapInSequence(launches, ({ node, task }) => launchTask(context, root, workflow, node, task))))
+    actions.push(...(await inOrder(launches, ({ node, task }) => launchTask(context, root, workflow, node, task))))
     return actions
 }
 

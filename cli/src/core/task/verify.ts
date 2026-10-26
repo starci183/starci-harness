@@ -22,7 +22,7 @@ import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus, se
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { mapInSequence } from "./sequence.js"
+import { inOrder } from "../../harness/sequential.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -126,7 +126,7 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
             db.close()
         }
     }
-    const checks = await mapInSequence(resolveChecks(contract, ops), (check) => runCheck(check, contract, place))
+    const checks = await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place))
     const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
     const hash = contractHash(contract)
     if (record) {
