@@ -2,3 +2,4 @@ node_modules/
 dist/
 *.tsbuildinfo
 .starciwork/runtime.sqlite*
+.claude/worktrees/
