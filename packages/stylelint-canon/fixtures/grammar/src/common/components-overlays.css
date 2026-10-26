@@ -1,0 +1,887 @@
+/*
+ * Common overlay and feedback anatomy: Dialog, AlertDialog, Drawer, Popover, DropdownMenu, Toast,
+ * Toaster, Alert, Spinner, Skeleton, ProgressCircle, Meter, CloseButton, Kbd.
+ *
+ * Structure only, from Common semantic variables (with `--starci-core-*` geometry hooks a family may
+ * set). Every overlay surface is portalled INTO the nearest `.grammar-common-root` (see
+ * `src/core/overlayScope.tsx`), so these rules and every family's scoped rules reach it.
+ */
+@layer starci-grammar-common {
+    /* ---------------------------------------------------------------- shared overlay tone */
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog) {
+        --starci-core-overlay-tone: var(--muted, GrayText);
+    }
+
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
+        --starci-core-overlay-tone: var(--info, var(--accent, Highlight));
+    }
+
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="affirmative"] {
+        --starci-core-overlay-tone: var(--success, CanvasText);
+    }
+
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="cautionary"] {
+        --starci-core-overlay-tone: var(--warning, CanvasText);
+    }
+
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="negative"] {
+        --starci-core-overlay-tone: var(--danger, CanvasText);
+    }
+
+    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="pending"],
+    .starci-core-meter[data-grammar-tone="neutral"] {
+        --starci-core-overlay-tone: var(--accent, Highlight);
+    }
+
+    /* ---------------------------------------------------------------- modal backdrop */
+    .starci-core-overlay-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--grammar-page-inset, 1rem);
+        background: color-mix(in srgb, var(--foreground, CanvasText) 40%, transparent);
+        overscroll-behavior: contain;
+    }
+
+    .starci-core-overlay-backdrop[data-entering] {
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-overlay-backdrop[data-exiting] {
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1)) reverse;
+    }
+
+    @keyframes starci-core-overlay-fade {
+        from {
+            opacity: 0;
+        }
+    }
+
+    @keyframes starci-core-overlay-rise {
+        from {
+            opacity: 0;
+            transform: translateY(0.5rem) scale(0.98);
+        }
+    }
+
+    /* ---------------------------------------------------------------- dialog + alert dialog */
+    /* The container is sized to the dialog so a press on the empty backdrop counts as "outside". */
+    /* The vendor container is a full-height column: the dialog is centred in it and stays as tall as its content. */
+    .starci-core-dialog-container {
+        display: flex;
+        justify-content: center;
+        width: min(100%, 32rem);
+        max-height: 100%;
+        min-width: 0;
+        outline: none;
+    }
+
+    .starci-core-dialog-container > .starci-core-dialog {
+        flex: 0 1 auto;
+    }
+
+    .starci-core-dialog-container[data-size="sm"] {
+        width: min(100%, 24rem);
+    }
+
+    .starci-core-dialog-container[data-size="lg"] {
+        width: min(100%, 48rem);
+    }
+
+    .starci-core-dialog-container[data-size="full"] {
+        width: 100%;
+        height: 100%;
+    }
+
+    .starci-core-dialog-container[data-entering] {
+        animation: starci-core-overlay-rise var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-dialog,
+    .starci-core-drawer {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--grammar-section-gap, 1rem);
+        overflow: hidden;
+        color: var(--surface-foreground, CanvasText);
+    }
+
+    /* The vendor header is `flex flex-col`; the title group and the close action share one row, the action at the end. */
+    .starci-core-overlay-header {
+        display: flex !important;
+        min-width: 0;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        justify-content: space-between !important;
+        gap: var(--grammar-row-gap, 0.75rem) !important;
+    }
+
+    .starci-core-overlay-header > .starci-core-close-button {
+        flex: none;
+        margin-inline-start: auto;
+    }
+
+    .starci-core-overlay-heading-group {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .starci-core-overlay-title {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-overlay-description {
+        margin: 0;
+        color: var(--muted, GrayText);
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .starci-core-overlay-body {
+        flex: 1;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .starci-core-overlay-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--grammar-inline-gap, 0.5rem);
+    }
+
+    [data-grammar-overlay-action] {
+        display: contents;
+    }
+
+    /* A destructive confirm paints the Common danger pair, never the decision accent. */
+    [data-grammar-overlay-action="confirm"][data-grammar-tone="negative"] > [data-component="Button"] {
+        background: var(--danger, CanvasText);
+        color: var(--danger-foreground, Canvas);
+    }
+
+    .starci-core-alert-dialog-icon {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        background: color-mix(in srgb, var(--starci-core-overlay-tone) 16%, transparent);
+        color: var(--starci-core-overlay-tone);
+    }
+
+    .starci-core-alert-dialog-icon > svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    @media (max-width: 30rem) {
+        .starci-core-overlay-footer {
+            flex-direction: column-reverse;
+            align-items: stretch;
+        }
+
+        .starci-core-overlay-footer > [data-component="Button"],
+        .starci-core-overlay-footer > [data-grammar-overlay-action] > [data-component="Button"] {
+            width: 100%;
+        }
+    }
+
+    /* ---------------------------------------------------------------- drawer / bottom sheet */
+    .starci-core-drawer-backdrop {
+        align-items: stretch;
+        justify-content: stretch;
+        padding: 0;
+    }
+
+    .starci-core-drawer-content {
+        position: fixed;
+        display: flex;
+        min-width: 0;
+        max-height: 100dvh;
+        outline: none;
+    }
+
+    .starci-core-drawer-content[data-placement="right"],
+    .starci-core-drawer-content[data-placement="left"] {
+        inset-block: 0;
+        width: min(100%, 24rem);
+    }
+
+    /* The vendor content is `inset: 0`; each placement releases the opposite edge so the sized panel sits on its own side. */
+    .starci-core-drawer-content[data-placement="right"] {
+        inset-inline-start: auto;
+        inset-inline-end: 0;
+    }
+
+    .starci-core-drawer-content[data-placement="left"] {
+        inset-inline-start: 0;
+        inset-inline-end: auto;
+    }
+
+    .starci-core-drawer-content[data-placement="top"],
+    .starci-core-drawer-content[data-placement="bottom"] {
+        inset-inline: 0;
+        max-height: 85dvh;
+    }
+
+    .starci-core-drawer-content[data-placement="top"] {
+        top: 0;
+        bottom: auto;
+    }
+
+    .starci-core-drawer-content[data-placement="bottom"] {
+        top: auto;
+        bottom: 0;
+    }
+
+    .starci-core-drawer-handle {
+        display: flex;
+        justify-content: center;
+        margin-block: -0.75rem -0.25rem;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .starci-core-drawer-handle > [data-slot="drawer-handle-bar"] {
+        width: 2.5rem;
+        height: 0.3125rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--muted, GrayText) 55%, transparent);
+    }
+
+    .starci-core-drawer-content[data-entering][data-placement="right"] {
+        animation: starci-core-drawer-from-end var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-drawer-content[data-entering][data-placement="left"] {
+        animation: starci-core-drawer-from-start var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-drawer-content[data-entering][data-placement="bottom"] {
+        animation: starci-core-drawer-from-bottom var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-drawer-content[data-entering][data-placement="top"] {
+        animation: starci-core-drawer-from-top var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    @keyframes starci-core-drawer-from-end {
+        from {
+            transform: translateX(100%);
+        }
+    }
+
+    @keyframes starci-core-drawer-from-start {
+        from {
+            transform: translateX(-100%);
+        }
+    }
+
+    @keyframes starci-core-drawer-from-bottom {
+        from {
+            transform: translateY(100%);
+        }
+    }
+
+    @keyframes starci-core-drawer-from-top {
+        from {
+            transform: translateY(-100%);
+        }
+    }
+
+    /* ---------------------------------------------------------------- popover */
+    .starci-core-popover {
+        max-width: min(20rem, calc(100vw - 2rem));
+        overflow: auto;
+        color: var(--surface-foreground, CanvasText);
+        outline: none;
+    }
+
+    .starci-core-popover[data-entering] {
+        animation: starci-core-overlay-fade var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-popover-dialog {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap, 0.5rem);
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    /* The body is one flex item of the dialog stack; long content wraps inside the 20rem surface. */
+    .starci-core-popover-body {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-popover-arrow svg {
+        display: block;
+        fill: var(--surface, Canvas);
+    }
+
+    .starci-core-popover-arrow[data-placement="bottom"] svg {
+        transform: rotate(180deg);
+    }
+
+    /* ---------------------------------------------------------------- dropdown menu */
+    /*
+     * DropdownMenu renders HeroUI's own Dropdown anatomy and default look: popover, menu, section header, item, label, description,
+     * keyboard slot and item indicator are all the vendor's (`.dropdown__*`, `.menu-item*`). Grammar adds only what the vendor look does
+     * not cover, each keyed on a stamp:
+     *  - the icon colour. The vendor example colours the glyph with Tailwind utilities (`text-muted`, `text-danger`) that a consumer
+     *    build which does not scan this package never generates, so the same two colours are stamped here.
+     *  - the two layout wrappers of the description layout (icon aligned to the first line, label and description stacked), which the
+     *    vendor example also builds from utilities.
+     *  - the keyboard slot's inline-end push (the example's `ms-auto`).
+     */
+    [data-grammar-menu-item] .starci-core-icon {
+        flex: none;
+        color: var(--muted, GrayText);
+    }
+
+    [data-grammar-menu-item][data-grammar-tone="danger"] .starci-core-icon {
+        color: var(--danger, CanvasText);
+    }
+
+    /* Marks reuse Icon's leading box; artwork fits that box without a second size rule. */
+    [data-grammar-menu-mark] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    [data-grammar-menu-mark] > * {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    [data-grammar-menu-icon-slot] {
+        display: flex;
+        block-size: 2rem;
+        align-items: flex-start;
+        justify-content: center;
+        padding-block-start: 1px;
+    }
+
+    [data-grammar-menu-copy] {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    [data-grammar-menu-shortcut] {
+        margin-inline-start: auto;
+    }
+
+    /* ---------------------------------------------------------------- toaster + toast */
+    .starci-core-toaster {
+        position: fixed;
+        z-index: 60;
+        display: flex;
+        width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset, 1rem)));
+        flex-direction: column;
+        pointer-events: none;
+    }
+
+    .starci-core-toaster:is([data-placement="top-start"], [data-placement="top"], [data-placement="top-end"]) {
+        top: var(--grammar-page-inset, 1rem);
+    }
+
+    .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) {
+        bottom: max(var(--grammar-page-inset, 1rem), env(safe-area-inset-bottom));
+    }
+
+    .starci-core-toaster:is([data-placement="top-start"], [data-placement="bottom-start"]) {
+        inset-inline-start: var(--grammar-page-inset, 1rem);
+    }
+
+    .starci-core-toaster:is([data-placement="top-end"], [data-placement="bottom-end"]) {
+        inset-inline-end: var(--grammar-page-inset, 1rem);
+    }
+
+    .starci-core-toaster:is([data-placement="top"], [data-placement="bottom"]) {
+        inset-inline: 0;
+        margin-inline: auto;
+    }
+
+    .starci-core-toaster-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-inline-gap, 0.5rem);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    /* Newest toast (first in the queue) sits nearest the screen edge. */
+    .starci-core-toaster:is([data-placement="bottom-start"], [data-placement="bottom"], [data-placement="bottom-end"]) > .starci-core-toaster-list {
+        flex-direction: column-reverse;
+    }
+
+    .starci-core-toaster-item {
+        pointer-events: auto;
+    }
+
+    .starci-core-toast {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        align-items: start;
+        gap: 0.5rem 0.75rem;
+        padding: 0.75rem 0.5rem 0.75rem 1rem;
+        border-radius: var(--starci-core-surface-radius, 1rem);
+        background: var(--surface, Canvas);
+        color: var(--surface-foreground, CanvasText);
+        box-shadow: var(--starci-core-surface-shadow, var(--shadow-surface, 0 8px 28px color-mix(in srgb, var(--foreground, CanvasText) 12%, transparent)));
+        animation: starci-core-overlay-rise var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-toast-indicator {
+        display: inline-flex;
+        margin-block-start: 0.125rem;
+        color: var(--starci-core-overlay-tone);
+    }
+
+    .starci-core-toast-indicator[data-grammar-toast-indicator] {
+        width: 0.625rem;
+        height: 0.625rem;
+        margin-block-start: 0.375rem;
+        border-radius: 999px;
+        background: var(--starci-core-overlay-tone);
+    }
+
+    .starci-core-toast-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.125rem;
+        align-self: center;
+    }
+
+    .starci-core-toast-title {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-toast-description {
+        margin: 0;
+        color: var(--muted, GrayText);
+        font-size: 0.8125rem;
+        line-height: 1.45;
+    }
+
+    .starci-core-toast-action {
+        align-self: center;
+    }
+
+    @media (max-width: 40rem) {
+        .starci-core-toaster {
+            inset-inline: var(--grammar-page-inset, 1rem);
+            width: auto;
+            margin-inline: 0;
+        }
+    }
+
+    /* ---------------------------------------------------------------- alert banner */
+    /*
+     * The Alert IS the HeroUI Alert (owner ruling 2026-09-27 alert-white-surface; @heroui/styles alert.css): a white
+     * bg-surface row with shadow-surface, px-4 py-3, radius min(32px, --radius-3xl), gap-4; the indicator a size-4
+     * glyph with p-1 and the title text-sm/6 medium, both in the tone's soft-foreground; a muted description. Grammar
+     * paints nothing over it (0.5.4: the tone tint, tone border, 12px radius, 20px indicator and overlay-tone indicator
+     * colour are gone). It only lets the row wrap at a narrow width so the action stays inside the surface.
+     */
+    .starci-core-alert {
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    /*
+     * appearance="soft" (owner ruling 2026-10-11): the tone's soft tint at half strength under the same anatomy, no shadow.
+     * The title keeps the tone's soft-foreground, which clears 3:1 on the lighter half tint (COLOR-5 case-1a).
+     */
+    .starci-core-alert[data-grammar-appearance="soft"] {
+        --starci-core-alert-soft: var(--default-soft, var(--default, transparent));
+    }
+
+    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="informative"] {
+        --starci-core-alert-soft: var(--accent-soft, var(--default, transparent));
+    }
+
+    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="affirmative"] {
+        --starci-core-alert-soft: var(--success-soft, var(--default, transparent));
+    }
+
+    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="cautionary"] {
+        --starci-core-alert-soft: var(--warning-soft, var(--default, transparent));
+    }
+
+    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="negative"] {
+        --starci-core-alert-soft: var(--danger-soft, var(--default, transparent));
+    }
+
+    /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
+       surface, so the content takes its own height. */
+    .starci-core-alert-content {
+        min-width: min(100%, 12rem);
+        flex: 1;
+    }
+
+    .starci-core-alert-indicator {
+        flex: none;
+    }
+
+    .starci-core-alert-title {
+        margin: 0;
+    }
+
+    .starci-core-alert-description {
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-alert-actions {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: var(--grammar-inline-gap, 0.5rem);
+        margin-inline-start: auto;
+    }
+
+    /* ---------------------------------------------------------------- close button */
+    .starci-core-close-button {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: var(--starci-core-control-min-size, 2.75rem);
+        height: var(--starci-core-control-min-size, 2.75rem);
+        margin: -0.5rem -0.5rem 0 0;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--muted, GrayText);
+        cursor: pointer;
+    }
+
+    .starci-core-close-button[data-size="sm"] {
+        width: 2rem;
+        height: 2rem;
+        margin: 0;
+    }
+
+    .starci-core-close-button > svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .starci-core-close-button:is([data-hovered], [data-pressed]) {
+        background: var(--surface-secondary, Canvas);
+        color: var(--surface-foreground, CanvasText);
+    }
+
+    .starci-core-close-button[data-focus-visible] {
+        outline: 2px solid var(--focus, Highlight);
+        outline-offset: 2px;
+    }
+
+    .starci-core-close-button[data-disabled] {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* ---------------------------------------------------------------- kbd */
+    .starci-core-kbd {
+        display: inline-flex;
+        min-width: 1.5rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.125rem;
+        border: 1px solid var(--border, CanvasText);
+        white-space: nowrap;
+    }
+
+    .starci-core-kbd abbr {
+        text-decoration: none;
+    }
+
+    /* ---------------------------------------------------------------- spinner */
+    .starci-core-spinner {
+        display: inline-flex;
+        flex: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        color: var(--accent, Highlight);
+    }
+
+    .starci-core-spinner[data-tone="current"] {
+        color: inherit;
+    }
+
+    .starci-core-spinner[data-size="sm"] {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .starci-core-spinner[data-size="lg"] {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .starci-core-spinner > svg {
+        width: 100%;
+        height: 100%;
+        animation: starci-core-spin 0.8s linear infinite;
+    }
+
+    @keyframes starci-core-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes starci-core-pulse {
+        50% {
+            opacity: 0.4;
+        }
+    }
+
+    /* ---------------------------------------------------------------- skeleton */
+    .starci-core-skeleton-group {
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .starci-core-skeleton {
+        position: relative;
+        display: block;
+        overflow: hidden;
+    }
+
+    .starci-core-skeleton-group > .starci-core-skeleton {
+        width: 100%;
+        height: 0.875em;
+    }
+
+    .starci-core-skeleton[data-grammar-skeleton-line="last"] {
+        width: 60%;
+    }
+
+    .starci-core-skeleton[data-shape="rect"] {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+    }
+
+    .starci-core-skeleton[data-shape="rect"][data-ratio="square"] {
+        aspect-ratio: 1;
+    }
+
+    .starci-core-skeleton[data-shape="rect"][data-ratio="wide"] {
+        aspect-ratio: 3 / 1;
+    }
+
+    .starci-core-skeleton[data-shape="circle"] {
+        flex: none;
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .starci-core-skeleton[data-shape="circle"][data-size="sm"] {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .starci-core-skeleton[data-shape="circle"][data-size="lg"] {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    /* ---------------------------------------------------------------- progress circle */
+    .starci-core-progress-circle {
+        display: inline-flex;
+        flex: none;
+        width: 2rem;
+        height: 2rem;
+        color: var(--accent, Highlight);
+    }
+
+    .starci-core-progress-circle[data-size="sm"] {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .starci-core-progress-circle[data-size="lg"] {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .starci-core-progress-circle svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .starci-core-progress-circle [data-slot="progress-circle-track-circle"] {
+        stroke: color-mix(in srgb, var(--foreground, CanvasText) 12%, transparent);
+    }
+
+    .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
+        stroke: currentColor;
+        transition: stroke-dashoffset var(--starci-core-motion-duration, 180ms) var(--starci-core-motion-easing, cubic-bezier(0.2, 0, 0, 1));
+    }
+
+    .starci-core-progress-circle[data-indeterminate="true"] svg {
+        animation: starci-core-spin 1s linear infinite;
+    }
+
+    /* ---------------------------------------------------------------- meter */
+    .starci-core-meter {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .starci-core-meter-header {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap, 0.5rem);
+    }
+
+    .starci-core-meter-label {
+        color: var(--foreground, CanvasText);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .starci-core-meter-output {
+        color: var(--muted, GrayText);
+    }
+
+    .starci-core-meter-track {
+        overflow: hidden;
+    }
+
+    /* The loading meter root keeps the meter's column (label above the bar) and is inert. */
+    .starci-core-meter-skeleton {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        pointer-events: none;
+    }
+
+    /* Loading meter (knowledge STATE-8, `isSkeleton`): the label stays real, the bar is a static Skeleton bar of the track height. */
+    .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: 999px; }
+
+    .starci-core-meter-skeleton-bar > .starci-core-skeleton {
+        block-size: 100%;
+        aspect-ratio: auto;
+    }
+
+    /*
+     * Segmented meter (owner ruling 2026-09-27): the track spans the full width of its container,
+     * like a Progress track, at HeroUI's h-1 (0.25rem, 4px) - thinner than the plain meter's h-2 -
+     * laid out as equal pill segments 0.25rem apart. The track itself goes transparent so the gaps
+     * read as gaps; each empty segment wears the track colour and each filled one the tone fill. The
+     * track is HeroUI's `.meter__track` (a `components`-layer rule declared after this layer:
+     * `h-2`, `bg-default`, `overflow-hidden`), and consumers import this sheet before or after
+     * the vendor's, so the four properties the segmented track re-cuts are `!important`; its width
+     * stays the vendor's full grid track. The segments are the package's own nodes.
+     */
+    .starci-core-meter-segments {
+        display: flex !important;
+        overflow: visible !important;
+        height: 0.25rem !important;
+        gap: 0.25rem;
+        border-radius: 999px;
+        background: transparent !important;
+    }
+
+    .starci-core-meter-segment {
+        min-width: 0;
+        height: 100%;
+        flex: 1 1 0;
+        border-radius: inherit;
+        background: color-mix(in srgb, var(--foreground, CanvasText) 10%, transparent);
+    }
+
+    .starci-core-meter-segment[data-grammar-meter-segment="filled"] {
+        background: var(--starci-core-overlay-tone);
+    }
+
+    /* ---------------------------------------------------------------- reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-overlay-backdrop,
+        .starci-core-dialog-container,
+        .starci-core-drawer-content,
+        .starci-core-popover,
+        .starci-core-toast,
+        .starci-core-skeleton,
+        .starci-core-skeleton::before,
+        .starci-core-skeleton::after {
+            animation: none;
+        }
+
+        .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
+            transition: none;
+        }
+
+        /* Busy stays perceivable without rotation: a slow opacity pulse replaces the spin. */
+        .starci-core-spinner > svg,
+        .starci-core-progress-circle[data-indeterminate="true"] svg {
+            animation: starci-core-pulse 1.6s ease-in-out infinite;
+        }
+    }
+
+    /* ---------------------------------------------------------------- forced colors */
+    @media (forced-colors: active) {
+        [data-grammar-overlay-surface],
+        .starci-core-alert,
+        .starci-core-kbd {
+            border: 1px solid CanvasText;
+        }
+
+        [data-grammar-menu-item]:is([data-focused], [data-hovered]) {
+            forced-color-adjust: none;
+            background: Highlight;
+            color: HighlightText;
+        }
+
+        .starci-core-meter-fill,
+        .starci-core-toast-indicator[data-grammar-toast-indicator] {
+            forced-color-adjust: none;
+            background: CanvasText;
+        }
+
+        .starci-core-meter-segment {
+            forced-color-adjust: none;
+            outline: 1px solid CanvasText;
+            outline-offset: -1px;
+            background: Canvas;
+        }
+
+        .starci-core-meter-segment[data-grammar-meter-segment="filled"] {
+            background: CanvasText;
+        }
+    }
+}

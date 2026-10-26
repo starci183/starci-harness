@@ -1,0 +1,50 @@
+{
+  "name": "@starci/eslint-canon-be",
+  "version": "3.4.55",
+  "description": "The StarCi back-end lint canon: every rule its laws publish, gathered as one flat-config plugin.",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "main": "./index.mjs",
+  "files": [
+    "LICENSE",
+    "*.mjs",
+    "lib/*.mjs",
+    "runtime/**",
+    "!*.spec.mjs",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "peerDependencies": {
+    "eslint": ">=9",
+    "typescript": ">=5.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test \"*.spec.mjs\""
+  },
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "starci",
+    "canon"
+  ],
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint-plugin-sonarjs": "4.2.1",
+    "eslint-plugin-unicorn": "65.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "typescript": "^6.0.3"
+  }
+}
