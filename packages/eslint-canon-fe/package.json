@@ -1,0 +1,52 @@
+{
+  "name": "@starci/eslint-canon-fe",
+  "version": "9.1.9",
+  "description": "Universal front-end lint laws for TypeScript and Next.js, independent of the selected Grammar family.",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "exports": {
+    ".": "./index.mjs",
+    "./lib/*": "./lib/*"
+  },
+  "main": "./index.mjs",
+  "files": [
+    "LICENSE",
+    "*.mjs",
+    "lib/*.mjs",
+    "runtime/**",
+    "docs/*.md",
+    "*.ts",
+    "!*.spec.mjs",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "peerDependencies": {
+    "eslint": ">=9",
+    "eslint-plugin-react-hooks": ">=7",
+    "typescript": ">=5.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "node ../../hfs/prep-runtime.mjs",
+    "pretest": "node ../../hfs/prep-runtime.mjs",
+    "test": "node --test \"*.spec.mjs\""
+  },
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "starci",
+    "canon"
+  ],
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint-plugin-sonarjs": "4.2.1",
+    "eslint-plugin-unicorn": "65.0.0"
+  }
+}
