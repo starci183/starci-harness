@@ -26,7 +26,12 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         const location = locateTree(cwd)
         const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs }
         const flags = command.opts<Record<string, string | boolean | undefined>>()
-        const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.kind === "boolean" ? flags[name] === true : flags[name]]))
+        const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true)
+        const given = command.processedArgs as unknown[]
+        const positionalValues = Object.fromEntries(positionals.map((name, index) => [name, typeof given[index] === "string" ? given[index] : undefined]))
+        const values = Object.fromEntries(
+            Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true ? positionalValues[name] : spec.kind === "boolean" ? flags[name] === true : flags[name]]),
+        )
         const result = await verb.run(context, values)
         printResult(mode, verb.schema, result)
         if (result.exitCode !== undefined) process.exitCode = result.exitCode
@@ -48,12 +53,17 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
     }
     const command = parent.command(name).description(verb.summary)
     for (const [flag, spec] of Object.entries(verb.flags)) {
+        if (spec.positional === true) {
+            command.argument(spec.required === true ? `<${flag}>` : `[${flag}]`, spec.summary)
+            continue
+        }
         const spelling = spec.kind === "boolean" ? `--${flag}` : `--${flag} <value>`
         if (spec.required === true) command.requiredOption(spelling, spec.summary)
         else command.option(spelling, spec.summary)
     }
-    command.action(async (_options: unknown, self: Command) => {
-        await execute(verb, self, verbs)
+    command.action(async (...received: unknown[]) => {
+        const self = received.at(-1)
+        if (self instanceof Command) await execute(verb, self, verbs)
     })
 }
 

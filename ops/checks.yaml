@@ -1,0 +1,47 @@
+# Named check presets a contract composes into its expectedOutput.
+# Each preset expands into one primitive check: command, starci, files, json or probe.
+# Arguments a preset needs are named in `args`; `{name}` in a value is replaced by the contract's argument.
+schema: starci/check-presets@1
+presets:
+  check-run-green:
+    summary: the scoped starci check (typecheck and lint of the changed packages) exits 0
+    behavioural: false
+    check:
+      kind: starci
+      args: [check, run]
+  paths-only:
+    summary: the change touches only the contract's allowPaths
+    behavioural: false
+    check:
+      kind: files
+      onlyAllowPaths: true
+  tests-pass:
+    summary: the named tests (or the tests related to the change) pass
+    behavioural: true
+    args: [command]
+    check:
+      kind: command
+      run: "{command}"
+  files-exist:
+    summary: every listed file exists after the task
+    behavioural: false
+    args: [files]
+    check:
+      kind: files
+      mustExist: "{files}"
+  json-required:
+    summary: an output json file exists and carries the required keys
+    behavioural: true
+    args: [file, keys]
+    check:
+      kind: json
+      file: "{file}"
+      requiredKeys: "{keys}"
+  probe:
+    summary: an http endpoint answers with the expected status
+    behavioural: true
+    args: [url, status]
+    check:
+      kind: probe
+      url: "{url}"
+      status: "{status}"

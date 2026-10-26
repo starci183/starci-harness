@@ -1,3 +1,6 @@
+import { contractCheckVerb } from "./core/contract/check.js"
+import { contractNewVerb } from "./core/contract/new.js"
+import { taskVerifyVerb } from "./core/task/verify.js"
 import { checkLintVerb } from "./core/check/lint.js"
 import { checkRunVerb } from "./core/check/run.js"
 import { checkTypecheckVerb } from "./core/check/typecheck.js"
@@ -26,6 +29,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     releaseCutVerb,
     releasePublishVerb,
     ciStatusVerb,
+    contractNewVerb,
+    contractCheckVerb,
+    taskVerifyVerb,
     appInfoVerb,
 ].map(widen)
 

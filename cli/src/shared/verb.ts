@@ -8,13 +8,18 @@ export type TreeKind = Edition | "runtime" | "none"
 export type Effect = "read" | "local-write" | "host" | "remote" | "publish"
 
 /** Who may run a verb. */
-export type Role = "owner" | "release" | "coordinator" | "lead" | "worker" | "agent"
+export type Role = "owner" | "release" | "coordinator" | "lead" | "worker" | "agent" | "kernel" | "supervisor" | "op" | "debug"
 
 /** One flag of a verb: its spelling, kind and help line. */
-export interface FlagSpec {
+export interface FlagSpec extends PositionalFlag {
     readonly kind: "boolean" | "string"
     readonly summary: string
     readonly required?: boolean
+}
+
+/** A flag that is given as the verb's positional argument (`starci contract check <file>`) instead of `--file`. */
+export interface PositionalFlag {
+    readonly positional?: true
 }
 
 /** The typed values of a verb's flags, derived from its flag specs. */

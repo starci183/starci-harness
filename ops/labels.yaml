@@ -1,0 +1,48 @@
+# The seven worker labels. A label is a routing hint plus the default checks of a new contract;
+# the Kernel writes every contract itself, and the label only helps it pick the agent and the presets.
+# requireBehavioural: contract check refuses a contract of this label without a behavioural check
+# (tests-pass, json-required, probe or a command), so green cannot mean only "it compiles".
+schema: starci/labels@1
+labels:
+  code:
+    summary: scaffold, implement, fix, refactor or remove a feature
+    floor: medium
+    hostTools: [git, node]
+    defaultChecks: [check-run-green, paths-only]
+    requireBehavioural: true
+  test:
+    summary: write the tests of one slice, inside test paths only
+    floor: medium
+    hostTools: [git, node]
+    defaultChecks: [paths-only]
+    requireBehavioural: true
+  ui:
+    summary: draw screens, generate assets, grow the Grammar
+    floor: hard
+    hostTools: [git, node, browser]
+    defaultChecks: [check-run-green, paths-only]
+    requireBehavioural: false
+  verify:
+    summary: run one heavy suite the goal asks for and report it as json
+    floor: medium
+    hostTools: [git, node, docker]
+    defaultChecks: []
+    requireBehavioural: true
+  uat:
+    summary: walk the flows in a browser with evidence
+    floor: medium
+    hostTools: [browser]
+    defaultChecks: []
+    requireBehavioural: true
+  docs:
+    summary: documentation and product content
+    floor: easy
+    hostTools: [git]
+    defaultChecks: [paths-only]
+    requireBehavioural: false
+  deliver:
+    summary: publish, deploy or migrate one target and probe it live
+    floor: hard
+    hostTools: [git, node, docker]
+    defaultChecks: []
+    requireBehavioural: true

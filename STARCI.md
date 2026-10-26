@@ -193,7 +193,7 @@ Owner, 2026-10-27: the scope of a running workflow can be stopped, extended, edi
     - The agent-pages workflow owns `approval-requests`. It adds the event that the topic waits on.
     - The billing workflow is untouched.
 
-### Storage: one SQLite file per project
+### Storage: one SQLite file per project (`.starciwork/runtime.sqlite`)
 There are four tables, instead of about 50 runtime tables and 90 machine tables:
 - `seats`: who runs where, plus the last pong;
 - `messages`: commands and their replies, with a correlation id and a deadline;
@@ -384,7 +384,7 @@ Dropped from the legacy: the 2,235-code catalog (about 95% are lint findings), t
 
 - **Seat rotation.** The Kernel and Supervisor seats are rotated after a wake or token budget. They keep no memory, because the ledger is the state.
 
-### 6. Ledger (one SQLite per project)
+### 6. Ledger (one SQLite per project, at `<project>/.starciwork/runtime.sqlite`, never committed)
 The ledger has ten tables:
 - `workflows` (goal version, graph version);
 - `tasks` (contract, label, try number, retry-of, status);

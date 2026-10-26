@@ -72,6 +72,20 @@ export const captureNpm = async (args: readonly string[], cwd: string): Promise<
     return captureTool(process.execPath, [entry, ...args], cwd)
 }
 
+/** Runs one argv without a shell; `npm` and `npx` go through the current Node's own scripts, so Windows .cmd shims are never needed. */
+export const captureCommand = async (argv: readonly string[], cwd: string): Promise<ToolRun> => {
+    const [tool, ...args] = argv
+    if (tool === undefined) throw new Refusal("CLI_USAGE", "an empty command cannot run")
+    if (tool === "npm" || tool === "npx") {
+        const entry = npmEntry()
+        if (entry === undefined) throw new Refusal("CLI_TOOL_MISSING", "npm is not bundled with this Node.js")
+        const script = tool === "npm" ? entry : join(dirname(entry), "npx-cli.js")
+        return captureTool(process.execPath, [script, ...args], cwd)
+    }
+    if (tool === "node") return captureTool(process.execPath, args, cwd)
+    return captureTool(tool, args, cwd)
+}
+
 /** Runs a host tool and reports whether it succeeded, never throwing; for probes such as doctor. */
 export const probeTool = async (tool: string, args: readonly string[], cwd: string): Promise<string | undefined> => {
     try {
