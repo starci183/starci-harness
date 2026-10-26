@@ -34,10 +34,11 @@ export interface VerbContext {
     readonly verbs: readonly AnyVerb[]
 }
 
-/** A handler's answer: the json data and the one-line human message. */
+/** A handler's answer: the json data, the human message, and a non-zero exit when the verb's own verdict is red (a failed lint) while its report is still printed. */
 export interface VerbResult<T> {
     readonly data: T
     readonly message: string
+    readonly exitCode?: number
 }
 
 /** The single definition of a verb: catalog metadata and handler in one object, so help, docs and json never drift. */

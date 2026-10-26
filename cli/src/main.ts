@@ -29,6 +29,7 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.kind === "boolean" ? flags[name] === true : flags[name]]))
         const result = await verb.run(context, values)
         printResult(mode, verb.schema, result)
+        if (result.exitCode !== undefined) process.exitCode = result.exitCode
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         printRefusal(mode, refusal)
