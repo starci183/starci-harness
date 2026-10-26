@@ -58,7 +58,7 @@ id. A family folder exists only when the feature has a record for it.
   and is still the source of truth downstream; `done` is set only when the proof its `requiresProof` names has run
   green on the delivered revision.
 - **`activity`** says whether work on a `todo` record is running: `idle`, or `investigating`, `implementing`,
-  `verifying` while a task holds it. There is no in-progress state.
+  `verifying` while a task holds it, and `blocked` after a settle saw its proof red. There is no in-progress state.
 - **Blocking** is `blockedBy` (ids) or `blockers` (words), never a state.
 - **Proof cannot outrun its target.** An `impl` is `done` only when every record in its `proves` is; a `gap` only
   when every id in `closedBy` is; a `ui` only when the screen's approved direction exists. A change to a record
@@ -71,12 +71,13 @@ id. A family folder exists only when the feature has a record for it.
 | the Kernel (its own reasoning) or a `docs` task it sends | every record's content: new records, revisions, `change`, `refs`, `blockers`, `requiresProof` |
 | a `code`, `ui` or `test` task | code, never a record; what it learned goes into its result for the Kernel to record |
 | a `uat` task | the run's evidence beside the flow (below), never the flow's steps or expectations |
-| the harness, at settle | only `state`, `activity` and evidence links of the records the settled task proves |
+| the harness, at settle | only `state`, `activity` and the flow's `evidence.yaml` of the uat record the settled task walked |
 | the owner | decisions (`decision` outcomes) and taste; the Kernel records them |
 
-A settle today moves only the branch ([cli/src/harness/settle.ts](../../cli/src/harness/settle.ts)); no harness code
-writes a record yet, so the state, activity and evidence change of a settled task is a `docs` task's edit inside a
-leased scope (`.starciwork/features/<f>`), held by review until settle writes it.
+The harness writes a uat record at settle ([cli/src/harness/settle.ts](../../cli/src/harness/settle.ts)): green sets
+`state: done` and `activity: idle` inside the task's harness commit, red sets `activity: blocked` in a Work commit of its
+own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside a
+leased scope (`.starciwork/features/<f>`), held by review.
 
 ## UAT flows
 
@@ -94,8 +95,9 @@ read from Work, never retyped in a script.
 - **A run** is a `uat` task: the worker writes a short Playwright script from the flow and calls `starci uat run`
   (the pinned image, [ops/uat.yaml](../../ops/uat.yaml)) with `--out` set to `.starciwork/features/<f>/uat/<flow>/runs/<runId>`.
   Its screenshots, videos and step results land there, beside the record; `runs/` is git-ignored by the Work tree's
-  `.gitignore`, so raw output is never committed. The flow's `evidence.yaml` (tracked) cites the run by id and
-  digest, and that link is what lets the flow reach `done`.
+  `.gitignore`, so raw output is never committed. The flow's `evidence.yaml` (`work/evidence@1`, tracked, written
+  only by the settle) cites each run by id, task, verdict and the sha256 of every file, and that link is what lets
+  the flow reach `done`.
 - A step that needs a person or an owner authorization (a live charge, a provider's manual check) says so in its
   `action`; a run without that authorization records the step as not walked, never as passed.
 
