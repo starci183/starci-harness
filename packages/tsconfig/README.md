@@ -1,6 +1,6 @@
 # @starci/tsconfig
 
-Five TypeScript configs, all strict, all with `noImplicitAny`, and every strictness flag in `base.json` so that no preset (back end, front end, overlay) is looser than another. Install it from the npm registry at the exact version in [`knowledge/hfs/canon-pins.yaml`](../../knowledge/hfs/canon-pins.yaml) (see [`packages/README.md`](../README.md)).
+Five TypeScript configs, all strict, all with `noImplicitAny`, and every strictness flag in `base.json` so that no preset (back end, front end, overlay) is looser than another. Install it from the npm registry at the exact version in the StarCi runtime's `knowledge/hfs/canon-pins.yaml` (see [`packages/README.md`](../README.md)).
 
 | File | For | Adds to `base.json` |
 |---|---|---|
