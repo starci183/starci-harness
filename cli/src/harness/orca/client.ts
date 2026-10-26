@@ -182,6 +182,21 @@ const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags
     return parsed.data
 }
 
+/**
+ * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Worker] <task>` instead of Orca's generated name.
+ * Best effort: the title is presentation, so a failure is returned as text and never fails the caller.
+ */
+export const terminalRename = async (binary: OrcaBinary, handle: string, title: string, cwd: string): Promise<string | undefined> => {
+    try {
+        const run = await spawnOrca(binary, ["terminal", "rename", "--terminal", handle, "--title", title, "--json"], cwd, ORCA_TIMEOUT_MS)
+        const reply = parseReply(run.stdout)
+        if (run.exitCode === 0 && reply?.ok === true) return undefined
+        return `orca terminal rename failed (exit ${String(run.exitCode)}): ${errorParts(reply?.error).text}`
+    } catch (error: unknown) {
+        return error instanceof Error ? error.message : String(error)
+    }
+}
+
 /** What run-create needs: the Run's objective, inside an Orca terminal the coordinator handle, and the replay id. */
 export interface RunCreateInput {
     readonly objective: string

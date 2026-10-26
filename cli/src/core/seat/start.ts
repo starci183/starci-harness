@@ -21,6 +21,7 @@ import {
     requestIdOf,
     runCreate,
     runCreateFlags,
+    terminalRename,
     workerShow,
     workerStart,
     workerStartFlags,
@@ -301,6 +302,10 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
             ? recordSeat(db, seat.id, { status: started.state, facts: { attestation: shown } })
             : recordSeat(db, seat.id, { status: shown.state ?? started.state, facts: { terminal: shown.terminal, effective: shown.effective } })
     })
+    // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
+    const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
+    const titled = terminal === null ? "no terminal handle to title" : await terminalRename(binary, terminal, requested.taskTitle, cwd)
+    if (titled !== undefined) recordEvent(db, "seat-title-skipped", task.id, { seat: seat.id, reason: titled })
     const data: SeatStartData = { ...base, seat: seatRow, dispatchId: started.dispatchId, effective, attested }
     const model = attested.model ?? `${requested.model} (not attested)`
     return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}; brief ${at.files.brief}` }
