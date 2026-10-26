@@ -3,65 +3,66 @@ slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.platform]
 ---
 # Configuration and secrets
 
-Decides who reads the environment, who parses it and how values reach code: one `EnvSource`, a typed reader per app, a parser per
-capability, options through injectors, no default for a secret or an address. The app files themselves are BE-ARCHITECTURE-2.
-Agents never read, print, generate or rotate a secret value.
+Who reads the environment, who parses it and how values reach code: one `EnvSource`, a typed reader per app, a parser
+per capability, options through injectors, no default for a secret or an address. Agents never read, print or
+generate a secret value.
 
-## BE-CONFIG-1 One reader of the environment
-`platform/config` owns `EnvSource`, the standard reader of `process.env`, with typed readers (`string`, `int`, `bool`, `url`,
-`secret`, `enum`, `duration`, `optional(...)`, `anyDeclared(keys)`). `env.secret("<NAME>")` reads the exact contents of the file
-`<NAME>_FILE` names first; an empty or unreadable path stops boot with no fallback or trimming, and plain `<NAME>` is read only
-when `<NAME>_FILE` is absent. Each app has `<app>.env.ts` (never `env.ts`) exporting an explicit `<App>Env` interface of readonly
-parsed members, typed from the capability parsers and structurally compatible with the app's options, and
-`read<App>Env(env: EnvSource): <App>Env`. It holds fail-fast parsing only: no localhost or default host fallback, logic, module
-composition, business code or feature import. `main.ts` builds `EnvSource` once and calls it. Only `EnvSource`, `main.ts`,
-`<app>.env.ts` and the test world read the environment; module factories, compose groups and the options file receive values.
-No config service, dotenv, preload file or module-level config read exists, and `platform/config` imports no domain or
-integration type.
+## BE-CONFIG-1 One reader of the environment, one reader per app
 
-Why: a single reader makes every dependency on the environment visible and keeps platform independent of domain.
+`EnvSource` of `platform/config` is the only reader of `process.env`: `EnvSource.fromProcess()` reads it once, a
+declared `<KEY>_FILE` supplies the exact contents of `<KEY>` (an unreadable path stops boot), and typed readers
+(`string`, `int`, `bool`, `url`, `enum`, `duration`, `secret`, `optional`, `has`, `anyDeclared`) name the missing or
+malformed key in a `ConfigError`. Each app has `<app>.env.ts` exporting the `<App>Options` interface (members typed
+`ReturnType<typeof parse<C>Config>`) and `read<App>Env(env: EnvSource): <App>Options`, which only calls parsers; only
+`main.ts` calls it. Nothing else reads the environment: no config service, dotenv or module-level read.
 
-- Shape:
-  ```ts
-  export interface ApiEnv {
-      readonly server: ReturnType<typeof parseServerConfig>
-      readonly database: ReturnType<typeof parsePrimaryDatabaseConfig>
-  }
-  export const readApiEnv = (env: EnvSource): ApiEnv => ({ server: parseServerConfig(env), database: parsePrimaryDatabaseConfig(env) })
-  ```
+Why: one reader makes every dependency on the environment visible and fails boot on the first bad key, by name.
 
-Enforced by: R43 BE_CONFIG_OWNER, R289 BE_APP_ENV_REQUIRED.
+```ts
+/** Everything the API needs from its environment, parsed once and handed to `AppModule.register`. */
+export interface ApiOptions {
+    /** The HTTP listener. */
+    readonly server: ReturnType<typeof parseServerConfig>
+    /** The least-privilege connection to the primary database. */
+    readonly database: ReturnType<typeof parsePrimaryDatabaseConfig>
+}
 
-## BE-CONFIG-2 Config per capability, options through the injector
-Each configured capability or provider has `<c>.config.ts` exporting `parse<C>Config(env: EnvSource): <C>Options` (or
-`<C>Options | null` for an optional integration) and `<c>.options.ts` exporting the type; `read<App>Env` calls the parsers once.
-The module receives its options through `register()`, and classes read them with `Inject<C>Options()`. No central config file
-knowing every provider, no second config path and no schema library: the typed readers are the parser and already name the
-missing key. A dynamic option never substitutes for provider identity or lifetime design.
+/** Parses every capability's options; a missing key stops boot naming the key. */
+export const readApiEnv = (env: EnvSource): ApiOptions => ({
+    server: parseServerConfig(env),
+    database: parsePrimaryDatabaseConfig(env),
+})
+```
 
-Why: a central config file imports every domain and integration type, causes cycles and grows without an owner; an environment
-read inside a factory moves the config boundary out of the app.
+Enforced by: `no-direct-env-read`, `config-parsed-in-main` (R43), `app-env-required` (R289).
 
-- `PurchaseModule.register({ isGlobal: true, ...options.purchase })`, then `@InjectPurchaseOptions() private readonly options: PurchaseOptions`.
+## BE-CONFIG-2 A capability parses its own config; classes read it through the injector
 
-Enforced by: R43 BE_CONFIG_OWNER, R85 BE_RAW_INJECT, R45 BE_MODULE_SHAPE.
+A configured capability or provider has `<c>.config.ts` exporting `parse<C>Config(env: EnvSource): <C>Options` (or
+`| null` for an optional integration) and `<c>.options.ts` with the type. The app hands the value to
+`X.register({ isGlobal: true, ...options.x })`; the module definition uses the capability's options token as its
+`optionsInjectionToken`, and a class reads it with `@Inject<C>Options()`. No central config file knows every provider.
 
-## BE-CONFIG-3 No default for a secret or an address; an optional integration is all-or-nothing
-A secret, credential, token, key, host, URL, remote port, bucket or database name has no default of any kind (no `""`,
-`"localhost"` or `?? "http://..."`); secrets are typed `Secret` by `env.secret`. Tunables (timeouts, concurrency, TTLs, page sizes)
-may default, inside `<c>.config.ts` only. An optional integration with none of its keys set parses to `null` and the app composes
-its disabled variant or nothing; with some set, boot stops naming the missing keys, never the values. Local values live in the
-local stack's env files, never in code; no `process.cwd()` is joined with a source or stack path.
+Why: a central config imports every domain and integration type and grows without an owner.
+
+Enforced by: `config-parsed-in-main` (R43), `infra-needs-injector` (R85).
+
+## BE-CONFIG-3 No default for a secret or an address
+
+A secret, token, key, host, URL, bucket or database name has no default of any kind; a secret is typed `Secret`
+(`env.secret(KEY)`, masked when serialized, `reveal()` only where a library needs it). A tunable (a timeout, a size, a
+public provider origin) may default, inside its `<c>.config.ts` only. An optional integration with none of its keys set
+parses to `null` and the app composes nothing for it; with some set, boot stops naming the missing ones.
 
 Why: a default secret ships to production silently, and a default address points a process at the wrong system.
 
-Enforced by: R44 BE_SECRET_DEFAULT, R248 ENV_REQUIRED_UNSET.
+Enforced by: `no-secret-default` (R44), R248.
 
 ## BE-CONFIG-4 Secrets live only sealed in the stack
-Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members. A decrypted value never enters the app tree,
-ignored or not; it reaches the process at runtime through `*_FILE` from host-local custody or memory. Key lists name slugs only, and
-an identity or provider record points at its slug and holds no value.
 
-Why: one sealed location makes custody auditable and keeps plaintext out of history, caches and agent context.
+A secret exists only as a sealed `.starcistacks/<env>/secrets/<slug>.enc` member and reaches the process at runtime
+through `<KEY>_FILE`; a decrypted value never enters the app tree, ignored or not. Key lists name slugs, never values.
 
-Enforced by: R06 HFS_PLAINTEXT_SECRET, R277 HFS_SECRET_PLAINTEXT_FILE, R253 HFS_AGE_KEY_CUSTODY.
+Why: one sealed location makes custody auditable and keeps plaintext out of history and agent context.
+
+Enforced by: R06, R277, R253 (hfs).

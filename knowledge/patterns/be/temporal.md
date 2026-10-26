@@ -1,20 +1,20 @@
 ---
 slots: [be.platform]
 ---
-# The injected clock
+# The injected clock and ids
 
-Decides where code reads "now" and how a spec drives it: business code asks the injected `Clock` port, and only `platform/clock`
-reads the ambient clock. Random ids follow the same rule through the `Ids` port of `platform/ids` (R142).
+Where code reads "now" or mints an id, and how a spec drives both.
 
-## BE-TEMPORAL-1 The Clock port is the only reader of the ambient clock
-`platform/clock` exports `Clock { now(): Date }`, `SystemClock` (the only ambient reader), `InjectClock()` and the app timezone
-constant. Outside it, ambient time sources are neither called nor referenced (`Date.now`, a zero-argument `new Date()`,
-`performance.now`, `process.hrtime`, `Temporal.Now`); date libraries and timers stay with their owners in `ruleParams.be.infraOwners`,
-and date arithmetic helpers live in `platform/primitives`. Everything else takes `@InjectClock() private readonly clock: Clock`; the
-domain service stamps `clock.now()` once per operation and passes it down. `new Date(value)` from a value already in hand is not an
-ambient read. Specs follow the same rule and drive `FakeClock` (`clock.advance(ms)`) instead of sleeping.
+## BE-TEMPORAL-1 The Clock and Ids ports are the only ambient readers
 
-Why: an ambient read cannot be replaced in a spec, so the test sleeps or races the wall clock and an "expires after N minutes" rule
-cannot be driven to a chosen instant; one injected port makes time an ordinary, fakeable dependency.
+`platform/clock` exports `Clock { now(): Date }`, `SystemClockService` (the one ambient reader) and `InjectClock()`;
+`platform/ids` exports `Ids { next(): string }` and `InjectIds()`. Outside them, `Date.now`, an argument-less
+`new Date()`, `performance.now`, `process.hrtime`, `Temporal.Now`, `randomUUID` and the uuid, nanoid and ulid
+generators are never referenced, specs included. A service stamps `this.clock.now()` once per operation and passes it
+down (or writes it as a `$n::timestamptz` parameter); `new Date(value)` from a value in hand is not ambient. Specs drive
+`FakeClock` and `fakeIds()`.
 
-Enforced by: R79 BE_AMBIENT_CLOCK, R90 BE_INFRA_OWNER.
+Why: an ambient read cannot be replaced in a spec, so "expires after thirty minutes" cannot be driven to a chosen
+instant and an id cannot be asserted exactly.
+
+Enforced by: `no-ambient-clock` (R79), `no-ambient-id` (R142).

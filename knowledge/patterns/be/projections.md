@@ -1,59 +1,14 @@
 ---
 slots: [be.projections]
-files:
-  - path: src/modules/projections/<name>/index.ts
-    slot: be.projections
-    template: projections/projection.index.ts.tpl
-    role: Exports the projection class and its contracts, never the entity.
-    rules: [BE_PROJECTION_SHAPE]
-  - path: src/modules/projections/<name>/<name>.options.ts
-    slot: be.projections
-    template: projections/projection.options.ts.tpl
-    role: The empty options of the projection (the configurable module base needs a type).
-  - path: src/modules/projections/<name>/<name>.module-definition.ts
-    slot: be.projections
-    template: projections/projection.module-definition.ts.tpl
-    role: The configurable-module base; isGlobal is the app root's decision.
-  - path: src/modules/projections/<name>/<name>.module.ts
-    slot: be.projections
-    template: projections/projection.module.ts.tpl
-  - path: src/modules/projections/<name>/<name>.projection.ts
-    slot: be.projections
-    template: projections/projection.projection.ts.tpl
-    role: recompute* and get* only.
-    rules: [BE_PROJECTION_SHAPE, BE_PROJECTION_WRITE_OWNER]
-  - path: src/modules/projections/<name>/<name>.projection.spec.ts
-    slot: be.projections
-    template: projections/projection.projection.spec.ts.tpl
-  - path: src/modules/projections/<name>/<name>.projection-entity.ts
-    slot: be.projections
-    template: projections/projection.entity.ts.tpl
-    role: The read-model table; written only by the projection.
-    rules: [BE_PROJECTION_WRITE_OWNER]
-  - path: src/modules/projections/<name>/<name>.contracts.ts
-    slot: be.projections
-    optional: true
-  - path: src/modules/projections/<name>/persistence/connection.ts
-    slot: be.persistence
-    template: projections/persistence.connection.ts.tpl
-  - path: src/modules/projections/<name>/persistence/migrations/<epochMs13>-create-<name>.ts
-    slot: be.persistence
-    template: projections/migration.ts.tpl
-  - path: src/features/reactors/<name>-projection/transport/message/<event>.consumer.ts
-    slot: be.transport.message
-    role: The reactor door that triggers a recompute.
-    rules: [BE_EVENT_CONSUMER_SHAPE]
-  - path: src/tests/e2e/<area>/<name>.e2e-spec.ts
-    slot: be.tests.e2e
-    role: "Titles projection/<scenario>: ... prove the pattern."
-    spec: projection/recompute-is-idempotent, projection/replay-rebuilds
-    rules: [BE_PATTERN_SPEC_MISSING]
 ---
 # Projections (read models)
 
 Decides where a read that needs another context's data comes from: never a cross-context join, but a read model on the reading
-context's connection, recomputed from source events. That nothing crosses a context is BE-PERSISTENCE-12. In lite the table is a
+context's connection, recomputed from source events. That nothing crosses a context is BE-PERSISTENCE-11. In lite the table is a
 migration with a rows type instead of an entity; behaviour is unchanged.
+
+Edition: written from the full edition; the lite reference app declares none of these patterns, and whether lite
+admits them is open ([project/lite.md](../../project/lite.md) "Patterns").
 
 ## BE-PROJECTIONS-1 Only the projection writes its table
 The entity (`<name>.projection-entity.ts`) is written only by `<name>.projection.ts` of the same folder; no domain service, handler,

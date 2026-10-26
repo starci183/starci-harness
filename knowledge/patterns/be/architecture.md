@@ -3,119 +3,120 @@ slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.feature]
 ---
 # Architecture
 
-Decides the tiers, the one dependency direction between them, what an app may hold, the one module shape and how trigger kinds
-meet. Folder placement is folder.md; the env reader is config.md; boot proof by test is test.md (BE-TEST-12).
+The tiers and the one direction between them, what an app holds, the one module shape and how trigger kinds meet.
+Placement is folder.md, the env reader config.md, the boot proof test.md (BE-TEST-12).
 
-## BE-ARCHITECTURE-1 Dependency direction follows the tier matrix
-An app may import features, domain, platform, integrations and packages. A feature imports domain, platform, integrations and
-packages, never another feature. A domain capability imports other domain capabilities (acyclic), platform, integrations and
-packages. An integration imports platform and packages only. A platform capability imports platform (acyclic) and packages only.
-An `import type`, a re-export, a literal dynamic import and a package export count exactly like a value import. Cross-owner
-imports go through the owner's public entry (BE-IMPORTS-1).
+## BE-ARCHITECTURE-1 Dependencies follow the tier matrix
 
-Why: domain owns invariants, platform is technical runtime, integrations translate providers; an upward edge makes an owner
-impossible to test or split, and a type-only edge hides a real cycle.
+An app imports features and modules; a feature imports modules, never another feature; a domain capability imports
+domain (acyclic), platform and integrations; an integration imports platform only; platform imports platform only.
+`import type`, re-exports and dynamic imports count like value imports.
 
-- When a platform module needs a domain enum or entity list → receive it through `register(options)` composed by the app, or move
-  the neutral type down to platform.
-- When a domain capability needs a provider → import the integration's public API; the integration owns its contract, errors and
-  config and never imports the domain.
-- When an alias, relative path or package export does not resolve → it is a configuration failure, never a pass.
+Why: domain owns invariants, platform is technical runtime and integrations translate providers; an upward edge makes
+an owner impossible to test or split.
 
-Enforced by: R26 BE_TIER_DIRECTION, R27 ARCH_OWNER_CYCLE, R28 BE_FEATURE_IMPORTS_FEATURE, R30 BE_PUBLIC_SURFACE.
+- When platform needs a domain value → the app passes it through `register(options)` (as the error-kind and message
+  bundles are), never an import.
+- When a domain capability needs a provider → it imports the integration's public entry; the integration never imports
+  the domain.
+
+Enforced by: `tier-direction`, `package-imports-app`, `owner-cycle`, `feature-imports-feature` (R26, R27, R28).
 
 ## BE-ARCHITECTURE-2 An app owns bootstrap and composition only
-`be/apps/<app>/src` holds five roles, each within the line budget of its `be.app.*` slot (`hfs/slots.yaml`):
-- `main.ts` builds `EnvSource` once, calls `read<App>Env` from `<app>.env.ts`, builds `AppOptions`, boots
-  `AppModule.register(options)` and reports a startup failure with the failing key or module name. The cli app boots through
-  `CommandFactory.run` instead (BE-CLI-1).
-- `<app>.env.ts` is the typed environment reader (BE-CONFIG-1).
-- `<app>.options.ts` holds env-derived values and port bindings (provider maps such as `{ approvalGate: ApprovalGateAdapter }`),
-  with no parsing.
-- `compose/<area>.ts` exports explicitly typed module, provider, queue or scheduler lists for one area (platform, background, a
-  product area), as a function of the options when needed. Its `X.register({ isGlobal: true, ...options.x })` calls count as root
-  registrations.
-- `app.module.ts` spreads the groups into `imports` (`...platformModules(options)`); its own providers bind only the app-wide
-  guards and filter (`APP_GUARD`, `APP_FILTER`).
 
-Neither the env nor the options file holds a module list, a `register`/`forRoot`/`registerQueue` call or a scheduler entry; no
-compose group or options file reads the environment; no app file holds a business arrow, branch, handler, service, resolver or
-entity. Roles are judged by resolved types, so an aliased import or a registration saved to a constant is still composition.
-An app root that outgrows its budget moves an area into a new group, never into the env or options file. An app has no spec of
-its own; the e2e world (full) or the wiring check (lite) proves it (BE-TEST-12). A process entrypoint exists only under
-`be/apps/*/src`.
+`be/apps/<app>/src` holds `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each
+within its slot budget. `main.ts` builds `EnvSource` once, calls `read<App>Env`, boots `AppModule.register(options)`,
+applies the edge settings and logs a startup failure with the failing key. `<app>.env.ts` declares the `<App>Options`
+interface of parsed members and `read<App>Env` (BE-CONFIG-1). `<app>.options.ts` holds port maps (`{ notifier:
+NotifierService }`) and re-exports the options type, with no parsing. A `compose/<area>.ts` returns a typed
+`Array<DynamicModule>` for one area; `app.module.ts` spreads the groups and provides only `APP_FILTER` and the
+`APP_GUARD` chain.
 
-Why: a thin root makes startup explicit and keeps behaviour testable below it; one group per area keeps the options pure data and
-the root a table of contents.
+Why: a thin root makes startup explicit and keeps behaviour testable below it; one group per area keeps options pure
+data and the root a table of contents.
 
-- When a second process kind is needed → add a `be.app.worker` app (background scaled apart) or a command of the one cli app;
-  never grow the api app with either.
-- When `api.options.ts` exports `modules: [...]` or `schedulers: [...]` → keep only parsed values and the port map there; the list
-  goes into `compose/<area>.ts`.
+```ts
+static register(options: ApiOptions): DynamicModule {
+    return {
+        module: AppModule,
+        imports: [...platformModules(options), ...salesModules(), ...jobModules()],
+        providers: [
+            { provide: APP_FILTER, useClass: ErrorsFilter },
+            { provide: APP_GUARD, useClass: RateLimitGuard },
+            { provide: APP_GUARD, useClass: OriginGuard },
+            { provide: APP_GUARD, useClass: CredentialGuard },
+            { provide: APP_GUARD, useClass: AuthGuard },
+        ],
+    }
+}
+```
 
-Enforced by: R32 BE_APP_COMPOSITION_ONLY, R33 BE_ENTRYPOINT_ONLY_IN_APPS, R245 BE_APP_OPTIONS_COMPOSITION, R246
-BE_APP_COMPOSITION_BUDGET, R265 BE_COMPOSITION_UNTYPED, R289 BE_APP_ENV_REQUIRED.
+Enforced by: `app-composition-only`, `entrypoint-only-in-apps`, `app-options-composition-free`, `app-file-budget`,
+`app-composition-typed`, `app-env-required`, `app-module-list-inline` (R32, R33, R245, R246, R265, R289).
 
-## BE-ARCHITECTURE-3 One module shape; one representative module per capability, registered once per app
-Every Nest module (capability, sub-module, feature application module, transport module, cli group) has
-`<x>.module-definition.ts` (`new ConfigurableModuleBuilder<XOptions>().setClassMethodName("register").build()`), `<x>.options.ts`
-and `<x>.module.ts` extending `ConfigurableModuleClass` with only its `@Module` metadata, and is listed only as
-`XModule.register({...})` (`{}` without options). A capability module definition adds the `isGlobal` extra:
-`.setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))`. `XOptions` is required;
-a capability without options declares `export type XOptions = Record<string, never>`. `register` is the only method name; a
-module that adds providers overrides `static register(options: typeof OPTIONS_TYPE): DynamicModule`.
+## BE-ARCHITECTURE-3 One module shape; a capability is registered once, at the app root
 
-Each capability has one representative module, registered exactly once per app at the root as
-`X.register({ isGlobal: true, ...options.x })`. It may split into sub-modules (`PetModule.register({})`) that are never global,
-never registered by an app and have exactly one importer, their parent. Other owners reach a capability only through its injectors
-or public classes and never import its module; the one legal cross-module import is a transport module importing its own
-feature's application module. `isGlobal: true` appears only in app roots and `@Global()` nowhere. No `new` of an `@Injectable`,
-no module-level `let`, no two modules in one file, no composition helper. Each owner exposes one `index.ts` of named exports
-within its slot's `budget.indexExports` (`hfs/slots.yaml`).
+Every Nest module has `<x>.module-definition.ts` (`new ConfigurableModuleBuilder<XOptions>()...build()`),
+`<x>.options.ts` (`Record<string, never>` until it takes options) and `<x>.module.ts` extending
+`ConfigurableModuleClass`, and is listed only as `X.register({...})`. A capability's definition adds the `isGlobal`
+extra and its module overrides `static register` to add providers and exports; the app root registers it once as
+`X.register({ isGlobal: true, ...options.x })`. A feature or transport module carries only `@Module` metadata, and the
+one legal cross-module import is a transport module importing its own feature's application module. No `@Global()`,
+no `new` of a provider, no module-level `let`, one module per file.
 
-Why: a stateful module imported by two consumers is two instances (two pools, two clients); registering the representative once
-at the root removes that failure class and makes globality a composition decision.
+Why: a stateful module imported by two consumers is two instances (two pools, two clients); registering it once at the
+root makes globality a composition decision.
 
-- When providers differ by connection → one connection per database with its own injector and one
-  `DatabaseModule.register({ isGlobal: true, connections })` at the root (BE-PERSISTENCE-8).
+```ts
+export const { ConfigurableModuleClass, OPTIONS_TYPE } = new ConfigurableModuleBuilder<OrdersOptions>()
+    .setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))
+    .build()
 
-Enforced by: R45 BE_MODULE_SHAPE, R295 BE_MODULE_DEFINITION_MISSING, R30 BE_PUBLIC_SURFACE, R25 HFS_UNUSED_EXPORT.
+@Module({})
+/** The orders of a workspace: the only writer of the orders table. */
+export class OrdersModule extends ConfigurableModuleClass {
+    /** Registers the capability once in the app root. */
+    static register(options: typeof OPTIONS_TYPE): DynamicModule {
+        const base = super.register(options)
+        return { ...base, providers: [...(base.providers ?? []), OrdersService], exports: [OrdersService] }
+    }
+}
+```
 
-## BE-ARCHITECTURE-4 Application contracts do not depend on transport
-Messages, handlers and contracts in `application/` import no transport DTO, request or session context, generated GraphQL type
-or protocol decorator (a namespace alias does not hide one), and no ORM entity appears in a contract. Nest injection alone is
-allowed there. Transport adapters import application messages and project results.
+Enforced by: `module-definition-required`, `capability-module-shape`, `typed-module-definition`,
+`static-module-register`, `no-global-decorator`, `is-global-only-in-app`, `no-cross-owner-module-import`,
+`register-once`, `module-per-transport`, `module-registration`, `no-new-injectable`, `no-module-let`,
+`one-module-per-file` (R45, R295).
+
+## BE-ARCHITECTURE-4 Application contracts know no transport
+
+`application/` imports no transport DTO, GraphQL type, request object or protocol decorator, and no persistence row or
+entity travels in a message. Transports import application messages, never the reverse.
 
 Why: several protocols reuse one operation only when its contract depends on none of their shapes.
 
-Enforced by: R29 BE_FEATURE_SHAPE, R37 BE_ENTITY_IN_CONTRACT.
+Enforced by: `application-never-imports-transport`, `feature-layout`, `no-entity-in-contract` (R29, R37).
 
-## BE-ARCHITECTURE-5 Owners form an acyclic graph and every feature is composed
-No cycle exists between owners at any tier, `import type` included. Every feature, transport module and capability module is
-composed by at least one app, added in the same change as the feature; code no app composes never runs, so it is a finding even
-when its specs pass. Api feature modules are static: `<feature>.module.ts` for the handlers and one `<feature>-<protocol>.module.ts`
-per transport folder, never a module per operation. The edition's boot proof (BE-TEST-12) fails when a module or provider is
-missing.
+## BE-ARCHITECTURE-5 Every feature is composed; owners form no cycle
 
-Why: a cycle prevents separate testing and splitting, and an uncomposed feature is dead code that still looks finished; import
-syntax and unit specs do not establish a working container.
+Every feature, transport and capability module is composed by an app in the same change that adds it, and no cycle
+exists between owners. Api features are static: one `<feature>.module.ts` for the handlers and one
+`<feature>-<protocol>.module.ts` per transport folder.
 
-- When two capabilities need each other → extract the shared contract into a third capability or platform.
+Why: code no app composes never runs even when its specs pass, and a cycle prevents splitting and separate testing.
 
-Enforced by: R27 ARCH_OWNER_CYCLE, R31 BE_FEATURE_NOT_COMPOSED, R272 BE_APP_BOOT_PROOF_MISSING.
+Enforced by: `feature-not-composed`, `owner-cycle` (R31, R27); the boot proof of BE-TEST-12 (R272).
 
-## BE-ARCHITECTURE-6 No trigger kind imports another; kinds meet through the event bus
-Features are grouped by what starts their work (`api`, `webhooks`, `realtime`, `saga`, `reactors`, `jobs`, `cli`; the `trigger` of
-the kind's slot). Business logic stays in `modules/`; a feature is a thin door. A kind imports only `modules/*`, never another
-kind (type-only imports count; imports inside one owner are fine), and only `be/apps/*` compose features. Every cross-kind call is
-an event: a domain service publishes in its transaction and the other kind consumes it.
+## BE-ARCHITECTURE-6 Trigger kinds never import each other
 
-Why: a direct import couples two failure domains and runs the callee inside the caller's process and transaction; an event is
-durable, retried and observable, so kinds deploy and scale apart.
+Features are grouped by what starts them (`api`, `webhooks`, `realtime`, `jobs`, `cli`; `reactors` and `saga` in full).
+A kind imports only `modules/*`; work that crosses kinds goes through durable state: a domain service enqueues a job
+in its transaction (BE-QUEUES-1) or publishes to the realtime hub (BE-REALTIME-2); in full an event (event-bus.md).
 
-- When a request must start a background job → the domain service the handler calls enqueues it in its transaction
-  (BE-QUEUES-1); the jobs feature never appears in an api import.
-- When a saga step needs a job's result → the job's domain service publishes a completion event that a saga consumer takes.
-- When an api feature wants rows a cli seed builds → both import the domain capability that owns them.
+Why: a direct import runs the callee inside the caller's process and transaction; a durable hand-over is retried and
+observable, and kinds scale apart.
 
-Enforced by: R156 BE_KIND_ISOLATION, R28 BE_FEATURE_IMPORTS_FEATURE.
+- When a request must start background work → the domain service the handler calls enqueues the job; the jobs feature
+  never appears in an api import.
+
+Enforced by: `kind-isolation` (R156), `feature-imports-feature` (R28).

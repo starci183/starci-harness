@@ -3,72 +3,72 @@ slots: []
 ---
 # Naming
 
-Decides what a back-end file, class, enum, constant, method, type and GraphQL field is called, so a reader and the slot check can
-tell where a unit belongs from its name. Error identity is error.md (BE-ERROR-2).
+What a back-end file, class, constant, method and type is called, so the reader and the slot check know where a unit
+belongs from its name. Identifier case, named exports and arrow constants are shared:
+[SHARED-NAMING-1 … 3](../shared/naming.md). Error codes are BE-ERROR-2.
 
 ## BE-NAMING-1 Files are kebab-case with a role suffix from the closed list
-A file basename is kebab-case with a role suffix from `ruleParams.be.suffixes`; an unlisted suffix or a segment of
-`ruleParams.be.bannedSuffixes` is a finding. The manifest also owns the names outside the role vocabulary (owner `index.ts`, the
-`be.app.*` root files, migrations).
 
-Why: the slot check derives what a file is from where it sits and what it is called; an unlisted suffix is an undeclared file.
+A basename is `<kebab-name>.<role>.ts` with a role of `ruleParams.be.suffixes` (`service`, `policy`, `mapper`,
+`contracts`, `port`, `client`, `decorators`, `config`, `options`, `module`, `module-definition`, `sql`, `rows`,
+`error`, `messages`, `log-events`, `schema`, `command`, `query`, `handler`, `resolver`, `controller`, `input`, `type`,
+`request`, `response`, `queue`, `processor`, `step`, `webhook`, `cli`, ...); `ruleParams.be.bannedSuffixes`
+(`repository`, `use-case`, `util`, `helper`, `types`, `constants`, `dto`, ...) do not exist. A cli command is `.cli.ts`
+because `.command.ts` is the CQRS message; a pure decision is a `.policy.ts`, a pure shape change a `.mapper.ts`.
 
-- When it is a cli command → `.cli.ts`, because `.command.ts` is the CQRS message.
-- When it is a typed realtime topic builder → `<name>.policy.ts` of the domain (BE-REALTIME-3).
+Why: the slot check derives what a file is from where it sits and what it is called; an unlisted suffix is an
+undeclared file.
 
-Enforced by: R89 BE_SOURCE_FORM, R01 HFS_SLOT_UNDECLARED.
+Enforced by: `source-suffix` (R89), `slot-undeclared` (R01).
 
-## BE-NAMING-2 Classes are PascalCase subject plus role
-A class name is the PascalCase file name plus its role: `StartCheckoutCommand`, `StartCheckoutHandler`, `StartCheckoutResolver`,
-`PaymentCapturedConsumer`, `SendReceiptProcessor`, `PurchaseModule` (capability), `CheckoutModule` (feature application module),
-`CheckoutGraphqlModule` (per transport), `PurchaseService`, `PurchaseEntity`, `PurchaseError`. No `I` prefix except `ICQRSHandler`.
-Arrays are `Array<T>`; `interface` is for shapes and `type` for unions.
+## BE-NAMING-2 Classes are the subject plus the role
 
-Why: one role vocabulary keeps search and DI error messages readable.
+A class is the PascalCase file subject plus its role: `GetOrderQuery`, `GetOrderHandler`, `GetOrderResolver`,
+`OrdersService`, `OrdersReadService`, `OrdersModule` (capability), `OrdersApiModule` (feature application module),
+`OrdersGraphqlModule` (transport), `OrdersError`, `TelegramClient`, `SendReceiptProcessor`, `SendReceiptStep`,
+`MigrateCli`. No `I` prefix except `ICQRSHandler`.
 
-Enforced by: R89 BE_SOURCE_FORM.
+Why: one role vocabulary keeps search and dependency-injection errors readable.
 
-## BE-NAMING-4 Enums
-Enums are PascalCase with PascalCase members and string values. Log identities are members of `<Owner>LogEvent` in
-`<owner>.log-events.ts` (BE-LOGGING-2). Storage and GraphQL exposure of an enum are BE-TYPING-4; member docs BE-COMMENT-4.
+Enforced by: `source-names` (R89).
 
-Why: string values are stable on the wire, and an enum member is a searchable identity.
+## BE-NAMING-5 Tokens, injectors and connection names have one form
 
-Enforced by: R89 BE_SOURCE_FORM, R40 BE_LOGGER_REQUIRED.
+An injection token is `export const <THING>: unique symbol = Symbol("<tier>.<owner>.<thing>")`; its injector is
+`Inject<Thing>` (BE-INJECTION-2). A log event enum is `<Owner>LogEvent` with values `<owner>.<event>`. A connection name
+is `<CONN>_CONNECTION` in `platform/database/<conn>.connection.ts`, equal to a name in `sides.be.connections`; a queue
+name is `<QUEUE>_QUEUE` in its `<queue>.contracts.ts`.
 
-## BE-NAMING-5 Constants and connection names
-Module-level constants are UPPER_SNAKE, SQL constants included; exported function values are camelCase arrows; decorator
-factories are PascalCase; an injector is `Inject<Thing>` over a `unique symbol` (BE-INJECTION-2). A connection name is
-`export const <CONN>_CONNECTION = "<conn>"` in `platform/database/<conn>.connection.ts`, equal to a name in
-`sides.be.connections`; a capability's `persistence/connection.ts` declares no connection constant.
+Why: one spelling per kind of identity makes every token, event and queue findable by one search.
 
-Why: constants are visible at a glance, and a connection name has exactly one definition.
+Enforced by: `injector-shape`, `no-string-token` (R85), `one-connection-per-database` (R84).
 
-Enforced by: R84 BE_CONNECTION_DUPLICATE, R85 BE_RAW_INJECT.
+## BE-NAMING-6 Methods say what they promise
 
-## BE-NAMING-6 Methods
-A handler implements `process`. A service uses meaningful verbs (`open`, `assertWithinCreditLimit`, `reserveStock`). A resolver or
-controller method is named after the operation. A name never carries a version to hide an incompatible change (`placeOrderV2`,
-`run2`) and is never a bare verb export (`get`).
+A handler implements `process`. A service method is a business verb (`require`, `draft`, `confirm`, `ship`,
+`listPage`), a door method is named after its operation, a producer `enqueue<Job>`, a read that may miss answers `null`
+and says so in its docblock. No version in a name (`placeOrderV2`), no bare verb export (`get`).
 
-Why: the public name tells a caller what the unit promises, and versioned names accumulate incompatible forks.
+Why: the public name tells a caller what the unit promises, and versioned names accumulate forks.
 
-Enforced by: R89 BE_SOURCE_FORM.
+Enforced by: `no-version-in-name`, `no-bare-verb-export` (R89).
 
 ## BE-NAMING-7 Type names carry their layer
-`<Action>Request` and `<Action>Result` for application contracts (only a handler's result is `<Action>Result`), `<Name>Options` for
-configuration, `<Name>Params` for object parameters, `<Name>Row` for SQL rows (snake_case keys, mapped by `to<Name>(row)` in
-`<name>.rows.ts`), `<Action>Input`, `<Action>Type`, `<Action>Args` for GraphQL DTOs and `<Action>Request`, `<Action>Response`
-for HTTP DTOs. No contract name ends in `Entity`.
 
-Why: the suffix says which layer owns the type and keeps ORM entities out of contracts.
+`<Action>Request` for an application request; `<Name>View` (and a named `<Name>Lookup` or `Optional<Name>` for the
+nullable form) for what a service answers; `<Name>Options` for configuration; `<Name>Params` for an object parameter;
+`<Name>Row` for a SQL row (snake_case members); `<Name>Input`, `<Name>Type`, `<Name>Args` for GraphQL DTOs and
+`<Name>Request`, `<Name>Response` for HTTP DTOs; `<Name>Payload` for a job payload. No contract name ends in `Entity`.
 
-Enforced by: R37 BE_ENTITY_IN_CONTRACT, R89 BE_SOURCE_FORM.
+Why: the suffix says which layer owns the type and keeps storage shapes out of contracts.
 
-## BE-NAMING-8 GraphQL surface
-Field names are camelCase and equal the resolver method name (`@Mutation(() => StartCheckoutType, { name: "startCheckout" })`).
-Each operation is one typed field (BE-AUTH-4). The argument holding the input object is named `input`.
+Enforced by: `no-entity-in-contract` (R37); the suffixes are review only.
 
-Why: a typed field per operation lets the contract, the guard and the input bounds be checked per operation.
+## BE-NAMING-8 GraphQL fields are camelCase operation names
 
-Enforced by: R88 BE_TRANSPORT_SHAPE, R42 BE_INPUT_BOUNDED.
+A field is named in its decorator and equals the resolver method (`@Query(() => OrderType, { name: "order" })`); each
+operation is one field, and the argument holding the input object is `input`.
+
+Why: a typed field per operation lets the contract, the guard and the bounds be checked per operation.
+
+Enforced by: `transport-is-thin`, `input-bounded` (R88, R42); the name equality is review only.

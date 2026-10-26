@@ -3,53 +3,67 @@ slots: [be.app, be.app.api, be.feature, be.feature.application]
 ---
 # Dependency injection
 
-Decides how a dependency arrives in a class: infrastructure through a zero-argument `Inject<Thing>()` injector over a
-`unique symbol` token, a domain service by class. Module registration is architecture.md (BE-ARCHITECTURE-3); the transaction a
-manager joins is persistence.md (BE-PERSISTENCE-10).
+How a dependency reaches a class: infrastructure through a zero-argument `Inject<Thing>()` injector over a
+`unique symbol` token, a domain service by its class. Module registration is BE-ARCHITECTURE-3.
 
-## BE-INJECTION-1 Infrastructure arrives through an injector
-A constructor parameter whose declared type is infrastructure (declared under `platform/**`, `integrations/**` or a package:
-EntityManager, buses, cache, clock, logger, SDK clients, module options) carries its `Inject<Thing>()` decorator. Undecorated class
-injection is allowed only for a domain service. Parameters are `private readonly` and named as `ruleParams.be.paramNames` gives
-(`<conn>EntityManager` when a class injects two connections). The check reads the parameter's type and where it is declared,
-never the variable name.
+## BE-INJECTION-1 Infrastructure arrives through an injector; a domain service by class
 
-Why: a raw token at each call site lets `@Inject(CLOCK) x: Cache` compile, and class injection of a platform class couples every
-consumer to its implementation.
+A constructor parameter whose type is declared under `platform/**`, `integrations/**`, `queues/**` or a package (the
+manager, a bus, the clock, the logger, a client, a port, an options type) carries its `Inject<Thing>()` decorator. Only
+a domain service (or a class of the same owner) is injected undecorated by its class. Parameters are
+`private readonly`; one whose type is in `ruleParams.be.paramNames` takes that name (`clock`, `logger`, `commandBus`,
+`queryBus`, `entityManager`, `options`).
 
-Enforced by: R85 BE_RAW_INJECT.
+Why: a raw token at each call site lets a mismatched type compile, and class injection of a platform class couples
+every consumer to one implementation.
 
-## BE-INJECTION-2 An injector is one shape in one file
-An injector is exported from `<owner>.decorators.ts` at the owner root, the only file kind that may call `Inject(`,
-`InjectEntityManager(`, `InjectDataSource(`, `InjectQueue(` or any third-party `Inject*`. It is `Inject<Thing>` in PascalCase,
-takes no argument (a keyed variant is its own injector, never `InjectS3(key)`), is typed `(): TypedParameterDecorator<T>`, is built
-with `injector<T>(token)` of `platform/composition` and its JSDoc names `T`. The token is
-`export const THING: unique symbol = Symbol("<owner>.<thing>")` in the same file; `provide:` is a class or such a symbol, never a
-string. Every token is exported so a spec can provide it (BE-TEST-3).
+```ts
+constructor(
+    @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
+    @InjectClock() private readonly clock: Clock,
+    @InjectAgentsQueue() private readonly queue: AgentsQueue,
+    private readonly members: WorkspaceMembersService,
+) {}
+```
 
-Why: one declaration ties the token to its type, keeps token choice out of call sites and makes "who uses the cache" a search for
-one function name.
+Enforced by: `infra-needs-injector`, `provider-param-token`, `injected-param-name`, `injector-type-match` (R85).
 
-Enforced by: R85 BE_RAW_INJECT.
+## BE-INJECTION-2 An injector is one shape in its owner's decorators file
 
-## BE-INJECTION-3 The injector catalog has fixed names
-When the capability exists its injector has this name: `Inject<Conn>EntityManager` and `InjectAdvisoryLock` (platform/database),
-`InjectClock`, `InjectLogger`, `InjectHttpClient`, `InjectEventBus`, `InjectEventConsumerRegistry`, `InjectQueueOutbox`,
-`InjectInbox`, `InjectMessageCatalog`, `InjectRequestLocale`, `InjectCommandBus`, `InjectQueryBus` (their platform owners),
-`InjectCache` (integrations/cache), `Inject<Cap>Options` for each configured capability and `Inject<Provider>` for each
-integration SDK client.
+`<owner>.decorators.ts` at the owner root is the only file that calls `Inject(` or any third-party `Inject*`. It
+exports the token and a zero-argument injector built with `injector<T>(token)` of `platform/composition`, typed
+`(): TypedParameterDecorator<T>`, whose docblock names the parameter type. A keyed variant is its own injector. The
+module binds the token (`{ provide: TOKEN, useClass: X }` or `useExisting`); an options token is the
+`optionsInjectionToken` of the module definition.
 
-Why: fixed names let a reader find the port of any dependency without opening the module, and let e2e override exactly the
-integration tokens.
+Why: one declaration ties the token to its type and makes "who uses this port" a search for one name.
 
-Enforced by: R85 BE_RAW_INJECT, R84 BE_CONNECTION_DUPLICATE.
+```ts
+/** Token of the Telegram client. */
+export const TELEGRAM: unique symbol = Symbol("integrations.telegram")
 
-## BE-INJECTION-4 No service locator, forward reference or property injection
-`ModuleRef` is not used in product code, `forwardRef` is not used (a cycle is an R27 finding, not a DI trick), and `@Inject()` is
-never written on a field. Receivers are identified by type, so a renamed variable or a lookalike injector outside its home is
-judged the same.
+/** Injects the Telegram client. Parameter type: TelegramClient. */
+export const InjectTelegram = (): TypedParameterDecorator<TelegramClient> => injector<TelegramClient>(TELEGRAM)
+```
 
-Why: a locator or a forward reference hides the dependency graph the machine checks, and property injection escapes the
-constructor rules.
+Enforced by: `injector-only`, `injector-shape`, `injection-token-exported`, `no-string-token` (R85).
 
-Enforced by: R85 BE_RAW_INJECT, R45 BE_MODULE_SHAPE.
+## BE-INJECTION-3 A port has one injector name per capability
+
+When the capability exists its injector is `Inject<Conn>EntityManager`, `InjectAfterCommit` (platform/database),
+`InjectClock`, `InjectIds`, `InjectLogger`, `InjectHttpClient`, `InjectQueueOutbox`, `InjectJobClaims`,
+`InjectJobProcessorRegistry`, `InjectInbox`, `InjectRealtimeHub`, `InjectMessageCatalog`, `InjectRequestLocale`,
+`InjectCommandBus`, `InjectQueryBus` (their platform owners), `Inject<Queue>Queue` per queue, `Inject<Cap>Options` per
+configured capability and `Inject<Provider>` per integration client.
+
+Why: fixed names let a reader find the port of any dependency without opening the module.
+
+Enforced by: `injector-shape` (R85); the names are review only.
+
+## BE-INJECTION-4 No locator, forward reference or property injection
+
+No `ModuleRef` in product code, no `forwardRef` (a cycle is a finding, not a trick), no `@Inject()` on a field.
+
+Why: a locator or a forward reference hides the dependency graph the lint checks.
+
+Enforced by: `no-module-ref`, `no-forward-ref` (R85).

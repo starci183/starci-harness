@@ -40,8 +40,8 @@ Enforced by: back end R89 (placement and form); front end review only.
 ## SHARED-COMMENT-3 Source text is English, with no emoji
 
 Identifiers, comments, docblocks, string literals, test titles and file names are English; text in another language
-lives only in the message catalogs and i18n fixtures. No emoji or pictograph appears anywhere in source. The back end
-is stricter: its source is ASCII.
+lives only in the message catalogs and i18n fixtures. No emoji or pictograph appears anywhere in source; typographic
+punctuation is allowed on both sides.
 
 Why: one language keeps every file readable by every reader and every search, and copy in source escapes translation.
 

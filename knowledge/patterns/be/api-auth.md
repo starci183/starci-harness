@@ -3,95 +3,100 @@ slots: [be.transport]
 ---
 # API authentication and input bounds
 
-Decides which operations are open, who verifies the caller, how state-changing traffic and input are bounded, and what the API edge
-trusts. Every operation is denied by default; opening one is a written reason from a closed vocabulary. Signed webhook doors are
-webhooks.md; realtime doors are BE-REALTIME-3.
+Which operations are open, who verifies the caller, how input and traffic are bounded and what the API edge trusts.
+Every operation is denied by default. Signed webhooks are webhooks.md; realtime topics BE-REALTIME-3.
 
-## BE-AUTH-1 Default deny with APP_GUARD, @Public and @Credential
-`domain/identity` exports `AuthGuard`, `CredentialGuard`, `@Public({ reason })`, `@Credential({ kind })`, the
-`CREDENTIAL_AUTHENTICATOR` port, `@Roles(...)` and `@CurrentPrincipal()`. Guards are only global `APP_GUARD` bindings of the api
-root, each registered once in this order: `RateLimitGuard`, `OriginGuard`, `CredentialGuard`, `AuthGuard`. `CredentialGuard` acts
-only on a handler marked `@Credential({ kind })` (the closed kind set of `domain/identity`), authenticates through the port the app
-binds and sets the credential principal; elsewhere it passes through. `AuthGuard` passes a credential-marked handler only when that
-principal is set, passes `@Public({ reason })`, and otherwise requires a session principal; its constructor takes the reflector and
-the token verifier only. No guard injects another guard and no guard-dispatch layer exists. `PublicReason` is the closed set of
-R290; api-key and token routes use `@Credential`, never a public reason. `@UseGuards` is not used for authentication or
-authorization. A worker or cli app exposes no route.
+## BE-AUTH-1 Default deny through the global guard chain
 
-Why: with allow-by-default a forgotten decorator publishes an operation unnoticed; with default deny it fails closed, and every
-exception carries a reason a reviewer can read.
+The api root binds, as `APP_GUARD` in this order, `RateLimitGuard` and `OriginGuard` (`platform/http-security`), then
+`CredentialGuard` and `AuthGuard` (`domain/identity`). `AuthGuard` admits a verified session principal, a handler marked
+`@Credential({ kind })` whose credential the `CredentialGuard` authenticated, or a handler marked
+`@Public({ reason: PublicReason.X })` from the closed `PublicReason` enum of `domain/identity`. No `@UseGuards`, no guard
+injected into another guard; a worker or cli app exposes no route.
 
-Enforced by: R41 BE_DEFAULT_DENY, R290 BE_PUBLIC_REASON_CLOSED.
+Why: with default deny a forgotten decorator fails closed, and every open door carries a reason a reviewer can read.
 
-## BE-AUTH-2 Identity owns verification
-Verifying a token or session belongs to `domain/identity`, using `integrations/<idp>` for the identity provider; platform never
-verifies a caller and a GraphQL context factory never authenticates. A JWT verifier pins a literal subset of asymmetric algorithms,
-reads the issuer from configuration and checks the intended audience; decoding is not verification. A principal from a hosted
-auth provider is built only after verification and refusal of every role but the authenticated one. A workspace or tenant header
-is a selector, never proof of access; resource authorization stays in the domain service so jobs and other entry points cannot
-bypass a guard.
+Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-closed`, `no-auth-use-guards`,
+`no-guard-injects-guard`, `no-untyped-body` (R41, R290).
 
-Why: authentication is a business capability with its own state and errors; placing it in platform reverses the tier direction.
+## BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource
 
-Enforced by: R260 BE_JWT_ALG_PINNED, R219 BE_SUPABASE_JWT_VERIFIED, R26 BE_TIER_DIRECTION.
+Token verification belongs to `domain/identity` over the provider integration (in lite, Supabase Auth through its
+JWKS): the verifier pins a literal asymmetric algorithm list, checks issuer and audience, and builds the principal
+only after verification. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
+proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
-## BE-AUTH-3 Origin guard and constant-time comparison
-`platform/http-security` owns the origin and referer allowlist guard every state-changing request passes; only signed webhooks are
-exempt, and they prove origin by signature (BE-WEBHOOK-2). Every comparison of a secret, signature or token uses
-`timingSafeEqual` on equal-length buffers, never `===`.
+Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for
+every entry point.
 
-Why: a public door is safe only when the request proves its origin, and a variable-time comparison leaks the secret.
+```ts
+/** Proves membership before reading a single order. */
+async find(userId: string, workspaceId: string, orderId: string): Promise<OrderViewLookup> {
+    await this.members.require(userId, workspaceId)
+    const order = await this.orders.find(workspaceId, orderId)
+    return order === null ? null : toOrderView(order)
+}
+```
 
-Enforced by: R41 BE_DEFAULT_DENY.
+Enforced by: `jwt-alg-pinned` (R260), `tier-direction` (R26); resource authorization in the service is review only.
 
-## BE-AUTH-4 Typed operations, no generic tunnels
-Each operation is its own typed field or route. No `@Body() x: unknown`, `Record<string, unknown>` body, `GraphQLJSON` parameter,
-generic `execute` field or `switch (input.operation)` in transport: a name that fans out to many behaviours becomes one operation
-per behaviour. The versioned operation table (BE-OPERATIONS-1) is typed per entry and is not a tunnel.
+## BE-AUTH-3 Constant-time comparison and safe cookies
 
-Why: a tunnel defeats the contract, the guard and the input bounds, because the checker sees one operation where there are many.
+A secret, signature or token is compared with `timingSafeEqual` on equal-length buffers. A cookie a door writes states
+`httpOnly`, `secure` and `sameSite` `lax` or `strict`.
 
-Enforced by: R41 BE_DEFAULT_DENY, R88 BE_TRANSPORT_SHAPE.
+Why: a variable-time comparison leaks the secret, and a loose cookie is readable or replayable cross-site.
 
-## BE-AUTH-5 Validated, bounded input and rate-limited doors
-The global `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })` is registered. Every input property
-carries class-validator decorators: each string `@MaxLength` (or a bounded format), each enum `@IsEnum`, each array `@IsArray()`
-with `@ArrayMaxSize`, each nested object `@ValidateNested()` with `@Type(...)`. GraphQL depth and complexity limits are set in
-`platform/graphql`. A default rate tier applies everywhere and the strict tier is on every auth-handshake and signed-webhook door.
-The throttler counts in the store its `ThrottlerStorage` port is bound to: the in-process default only while the app runs one
-replica, a store every replica shares (the declared Redis, else a Postgres table) before a second replica starts.
+Enforced by: `secret-compare-timing-safe` (R41), `response-cookie-attributes` (R141).
 
-Why: unbounded input and unthrottled doors are the cheapest denial-of-service and brute-force paths, and a per-process counter
-multiplies each limit by the replica count.
+## BE-AUTH-4 Every input is validated and bounded; doors are rate-limited
 
-Enforced by: R42 BE_INPUT_BOUNDED.
+The global validation pipe of `platform/http-security` (`whitelist`, `forbidNonWhitelisted`, `transform`, failures as
+its capability error) validates every DTO. Each property carries its class-validator bounds: a string `@MaxLength` (or
+a bounded format such as `@IsUUID`), an enum `@IsEnum`/`@IsIn`, an array `@ArrayMaxSize`, a nested object
+`@ValidateNested()` with `@Type`, a number `@Min`/`@Max`. Each operation is its own typed field or route: no `unknown`
+body, generic `execute` field or `switch (input.operation)`. Auth handshakes and signed webhooks carry
+`@RateLimit(RateTier.Strict)`; the rate counter lives in a store every replica shares.
 
-## BE-AUTH-6 Pagination is by cursor
-A list operation takes `PageArgs { first, after? }` (`first` bounded by the platform page-size constant) and returns
-`<X>Connection { items, pageInfo { endCursor, hasNextPage } }`, GraphQL DTOs of the feature's `transport/graphql/dto/`. Cursors are
-opaque and HMAC-signed by `platform/primitives` (`pageOf`, `decodeCursor`) with a key every replica shares. The domain service reads
-`first + 1` keyset rows ordered by a total sort (a sort value and the id), refuses an out-of-range size and a cursor it did not
-sign, and answers a `Page`. No `skip`, `offset` or page number.
+Why: unbounded input and unthrottled doors are the cheapest denial-of-service and brute-force paths.
 
-Why: offset pages are unstable under concurrent writes and their cost grows with the offset.
+```ts
+/** The opaque cursor returned by the preceding page, or null for the first page. */
+@Field(() => String, { nullable: true })
+@IsOptional()
+@IsString()
+@MaxLength(2048)
+after: string | null = null
+```
 
-Enforced by: R42 BE_INPUT_BOUNDED, R69 BE_QUERY_UNBOUNDED.
+Enforced by: `input-bounded`, `auth-door-strict-rate-tier`, `no-untyped-body` (R42, R41).
 
-## BE-AUTH-7 The API edge states its trust boundaries
-Every API, in both editions, declares an exact browser-origin CORS allowlist, applies the response middleware of
-`platform/http-security`, disables `x-powered-by` and declares a non-negative integer proxy-hop count, all from typed app
-configuration rather than inferred from the request. A missing or wildcard CORS policy and blanket proxy trust are refused.
+## BE-AUTH-6 Lists page by opaque cursor
 
-Why: the app must state which origins and proxy hops it trusts before a request reaches an authenticated door.
+A list takes `PageRequest { first, after }` (`first` bounded by `MAX_PAGE_SIZE` of `platform/pagination`) and answers
+`Connection<T> { nodes, pageInfo { endCursor, hasNextPage } }`. The service reads `first + 1` keyset rows ordered by a
+total order (`created_at DESC, id DESC`) through `readConnection`, which decodes and refuses a foreign cursor. No `skip`,
+`offset` or page number.
 
-Enforced by: R261 BE_CORS_ALLOWLIST.
+Why: offset pages shift under concurrent writes and cost more the deeper they go.
+
+Enforced by: `no-offset-pagination`, `query-needs-limit` (R42, R69).
+
+## BE-AUTH-7 The API edge states what it trusts
+
+`main.ts` sets an exact CORS origin list from typed config, the security headers of `platform/http-security`,
+`x-powered-by` off and a fixed proxy hop count; never a wildcard origin or blanket proxy trust.
+
+Why: the app must state which origins and hops it trusts before a request reaches a door.
+
+Enforced by: `cors-allowlist`, `security-headers`, `trust-proxy` (R261).
 
 ## BE-AUTH-8 Liveness and readiness are different signals
-Every API exposes distinct live and ready signals. Readiness probes a required dependency with a bounded timeout and answers
-unavailable when it fails; it never aliases the live response. The Docker HEALTHCHECK calls the live route, never an
-always-successful command.
 
-Why: a live process may be unable to serve; separate signals let the runtime tell restarting a process from withholding traffic
-while a dependency recovers.
+`GET /health/live` answers while the process serves; `GET /health/ready` probes the required dependencies with a
+bounded timeout and answers unavailable when one fails. Both are `@Public({ reason: PublicReason.Health })` and
+dispatch a query; the image HEALTHCHECK calls the live route.
 
-Enforced by: R262 BE_READY_REAL.
+Why: a live process may be unable to serve; separate signals let the runtime tell a restart from withholding traffic.
+
+Enforced by: `ready-real`, `health-signals` (R262).

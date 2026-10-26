@@ -120,7 +120,7 @@ the first-statement proof.
 A subscription provider may have one GET handler beside the one POST. Its first statement calls a declared domain verifier
 and it echoes exactly that result, for example `const challenge = this.verifier.challenge(query); return challenge`.
 The awaited form is required for an async verifier. GET has no intake and no other computed response. Both handlers carry
-the signed-webhook public reason and strict rate tier. See `knowledge/patterns/be/webhooks.yaml` for the full Meta-style
+the signed-webhook public reason and strict rate tier. See `knowledge/patterns/be/webhooks.md` for the full Meta-style
 door, receipt and reactor file tree.
 
 ## Companion

@@ -101,3 +101,25 @@ the knowledge to be true.
 | F-13 | Hook domain folders are camelCase, module folders and files kebab-case (FE-NAMING-5) | one case for both | the reference has 63 camelCase and 18 kebab-case hook domains, and kebab-case modules | rename the 18 kebab-case hook domains |
 | F-14 | Glyph sets are imported only by `components/leaves/Icon` (FE-ICON) | allow `modules/toast` | the reference toast imports `@heroicons/react` directly; the toast should take its glyphs from the Icon map | move the toast glyphs |
 | F-15 | Socket.io and GraphQL subscription doors stay in FE-REALTIME-2 | drop them | the reference uses SSE only, but the back-end realtime pattern keeps the doors and the lint names their homes | none |
+
+## Back-end coding standard (patterns/be)
+
+Decisions taken while making [patterns/be](../patterns/be/README.md) match the lite reference app and
+`@starci/eslint-canon-be`; the lint wins for what it enforces, the reference app for the rest.
+
+| Id | Decision | Alternative | Reason | Follow-up |
+|---|---|---|---|---|
+| B-1 | Errors are `DomainError` families per capability (BE-ERROR-1) | an `AbstractException` base | the lint (`throw-domain-error`, `error-family-shape`) and the reference app both use `DomainError`; `AbstractException` is a legacy product's base | none |
+| B-2 | A refusal is thrown as the capability error; an `Outcome` only where a caller in the modules branches on it (BE-ERROR-3) | every expected refusal returned as an `Outcome` | the reference throws in about 230 service files and returns `Outcome` in about 25; the lint enforces only the error type | none |
+| B-3 | A method that joins a caller's transaction takes the manager as its last parameter, defaulting to the injected one; a producer takes a required `tx` (BE-PERSISTENCE-10) | a required `manager` field of a params object | the reference shape; the lint judges only which manager is used inside a callback | none |
+| B-4 | Queue producers are `enqueue<Job>(payload, tx)` with a dedupe key and no correlation id; correlation (BE-LOGGING-4) applies only to an app declaring the `logging` pattern | a required `correlationId` on every producer, `HttpClient` call and job | the reference has no correlation id anywhere and its `HttpClient` port has no such field; no lint requires it | decide whether lite declares `logging` |
+| B-5 | A flat job or queue payload is narrowed by a hand-written `is<Payload>` guard; zod is for deep shapes (BE-TYPING-5, BE-TYPING-8) | zod for every non-DTO boundary | the reference guards queue payloads by hand and keeps six schema files; the lint only places and bounds zod | none |
+| B-6 | Retries are job attempts; an in-process wait uses the `Timer` port of `platform/retry` (BE-RESILIENCE-1) | a `retry(fn, bounds)` helper | the reference `platform/retry` exports only `Timer`; `no-hand-rolled-retry` holds either way | none |
+| B-7 | A pure policy or mapper may carry its own spec (BE-TEST-1); the rule that helpers are covered only through their service is removed | keep BE-TEST-8 | the lint makes a spec optional beside every logic-role file and the reference has many | none |
+| B-8 | A builder used by one spec may live in it; only a shared or row-writing builder lives in `fixtures/builders` (BE-TEST-16) | every builder in `fixtures/builders` | the reference defines one-spec builders inline; the lint homes only persisting builders | none |
+| B-9 | The back-end line-comment casing rule (lowercase first letter) is removed; SHARED-COMMENT-2 governs | keep BE-COMMENT-5 casing | the reference writes 125 of 137 line comments as capitalised sentences and no lint checks casing | the shared example may keep either casing |
+| B-10 | A `@Credential({ kind })` public API route counts as REST evidence (BE-TRANSPORT-1) | only the listed public reasons | the reference serves its public API as credential routes and passes `rest-door-needs-a-reason` | name the credential case in the rule's message |
+| B-11 | Lite schedules are `pg_cron` ticks in migrations that enqueue through the declared outbox function; the app scheduler list stays empty (BE-QUEUES-3) | BullMQ job schedulers | the reference does so; R258 covers the tick | none |
+| B-12 | Lite composition is proved by the wiring check and services; no e2e per operation (BE-API-3) | an e2e flow per operation in both editions | lite forbids the e2e world (R212) | R32 and R47 scoping (contradiction above) |
+| B-13 | Event-bus, reactors, saga, projections and services topics are marked full-edition and were not re-verified | rewrite them against lite | the reference declares none of them | owner ruling on lite patterns ([project/lite.md](../project/lite.md)) |
+| B-14 | The `files` front matter (legacy scaffold trees naming entities, TypeORM migrations and templates that do not exist) is removed from every be topic; the slots it fed into the anatomy are now declared in `slots` | keep the trees | nothing in this harness reads them but the anatomy, and they described the full edition's legacy layout as if it were lite's | none (anatomy unchanged) |

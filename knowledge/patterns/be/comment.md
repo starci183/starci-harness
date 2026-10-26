@@ -3,64 +3,40 @@ slots: []
 ---
 # Comment
 
-Decides whether a back-end declaration or statement carries a comment, where it sits and what it says: responsibility and
-consequence, never the name, and never a switch that turns a rule off.
+The back-end specifics of comments. The export docblock, line comments that say why, English source and no
+suppression are shared: [SHARED-COMMENT-1 … 3](../shared/comment.md), [SHARED-LOOSENING-1](../shared/loosening.md).
 
-## BE-COMMENT-1 Every export has a docblock, placed after the decorators
-Every export carries an English docblock. On a decorated class the block sits between the class decorators and `export class`.
+## BE-COMMENT-1 On a decorated class the docblock sits after the decorators
 
-Why: the docblock is what an editor shows at every call site.
+A class decorator (`@Injectable()`, `@Module(...)`, `@Resolver()`, `@Controller(...)`, `@QueryHandler(...)`) comes
+first, then the docblock, then `export class`. A decorated method keeps its docblock above its decorators.
 
-Enforced by: R89 BE_SOURCE_FORM.
+Why: the editor attaches the block to the declaration it precedes, so it shows at every reference to the class.
 
-## BE-COMMENT-2 The docblock states responsibility and invariant, not the name
-A docblock explains why the declaration exists, what must not happen, who throws it or why a field is nullable; it never restates
-the name.
+```ts
+@Injectable()
+/** The authenticated read side of workspace orders. */
+export class OrdersReadService {
+```
 
-Why: a restated name adds noise and hides the missing reason.
+Enforced by: `require-export-jsdoc` (R89).
 
-- "Thrown by `QuotaService.consume` when no allowance remains in any sliding window."
-- "`order` is null when the credit check refuses, because the result carries the refusal in `reason` instead of throwing."
+## BE-COMMENT-3 Members are documented, not only exports
 
-Enforced by: R89 BE_SOURCE_FORM (restated-name check); whether it says something the name does not is review.
+Every public method and every declared field of a class, interface or type, and every enum member, carries a non-empty
+docblock: what it holds, when it is absent, what it refuses (`/** The carrier's tracking code, or null before
+shipment. */`). A `persistence/*.sql.ts` constant names its numbered parameters (`($1 workspace, $2 order)`).
 
-## BE-COMMENT-3 Methods and fields
-Methods and declared class, interface and type fields carry non-empty responsibility docblocks; generic parameters have named
-`@template` docs. Parameter, return and cross-reference notes are added where useful.
+Why: a field's meaning (its unit, its nullability, its owner) is not in its name, and a parameter list is unreadable
+without its numbering.
 
-Why: public surface without a stated responsibility cannot be reviewed.
+Enforced by: `require-public-member-jsdoc` (R109), `require-enum-member-jsdoc`, `no-restated-name-jsdoc` (R89).
 
-Enforced by: R109 BE_MEMBER_DOC_MISSING, R89 BE_SOURCE_FORM.
+## BE-COMMENT-7 Back-end source holds no second language outside the catalogs
 
-## BE-COMMENT-4 Enum members are each documented
-Every enum member has a docblock.
+Back-end source, specs and fixtures included, holds no second language: Vietnamese text lives only in
+`messages/<owner>.messages.ts` catalogs and the `src/tests/fixtures/i18n/` slot.
 
-Why: a serialized value needs its meaning stated where it is defined.
+Why: the catalog is the one place translations are reviewed and resolved by locale.
 
-Enforced by: R89 BE_SOURCE_FORM.
-
-## BE-COMMENT-5 Line comments are prose about why
-Prose line comments sit above the code and start with a lowercase ASCII letter; they state the reason or consequence
-(`// idempotent add, because a second row would violate UQ_order_lines_order_sku`). Triple-slash compiler references are
-metadata.
-
-Why: a comment that says what the next line does adds nothing; the reason is what the code cannot say.
-
-Enforced by: R89 BE_SOURCE_FORM.
-
-## BE-COMMENT-6 Block comments carry multi-paragraph reasoning
-Reasoning inside a body that needs more than a line is a block comment starting with a capital ASCII letter: the claim, its
-evidence and, where it helps, the corrected earlier reading.
-
-Why: a claim with its evidence lets the next reader trust or replace the code.
-
-Enforced by: R89 BE_SOURCE_FORM.
-
-## BE-COMMENT-7 What a comment never contains
-Comments are ASCII English with no emoji or AI symbols; text in another language lives only in `messages/` catalogs and the
-i18n fixtures slot. No inline suppression of any kind (`eslint-disable`, `@ts-ignore`, `@ts-expect-error`, escape annotations): a
-wrong rule is changed in the harness, never switched off in a file.
-
-Why: an inline switch turns a rule into a convention; with no exception mechanism, the only fix is the code or the rule.
-
-Enforced by: R18 HFS_INLINE_SUPPRESSION, R89 BE_SOURCE_FORM, R96 HFS_DOC_NOT_ENGLISH, R303 HFS_BYPASS_MARKER.
+Enforced by: `no-non-ascii-source` (R89).

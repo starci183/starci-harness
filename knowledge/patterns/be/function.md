@@ -3,51 +3,55 @@ slots: []
 ---
 # Function
 
-Decides the small forms every back-end unit follows: invariants enforced at the store, helper ownership and budgets, function
-forms, and the smells the scan measures. Who executes an operation is api.md (BE-CQRS-3) and domain.md.
+The small forms every back-end unit follows: invariants held by the store, helper ownership, budgets and the smells
+the scan measures. Who executes an operation is BE-CQRS-3.
 
-## BE-FUNCTION-6 Validate authority and enforce concurrent invariants at the store
-Validate input, principal and resource scope before any effect. Read-before-write is an optimization, not concurrency safety:
-enforce uniqueness, conditional transitions and locks at the owning store, define the conflict behaviour, and bind request
-idempotency to the principal, the operation and the request (BE-IDEMPOTENCY-3). Keep local transaction completion apart from
-remote acknowledgement and unknown effects.
+## BE-FUNCTION-6 Invariants under concurrency are held by the store
 
-Why: two simultaneous callers or a crash expose invariants that serial mocks cannot prove.
+Validate the principal and the resource scope before any effect. Uniqueness, conditional transitions and claims are
+enforced by the statement itself (`ON CONFLICT ... DO NOTHING`, `WHERE status = 'draft'`, `FOR UPDATE`), and the method
+defines what a lost race answers (`null`, a refusal code, a retry with a new candidate). A read before a write is an
+optimization, never the guard.
 
-- When a business key must be unique → a unique index in the migration and an insert that answers the conflict as a refused
-  outcome with the capability code.
+Why: two simultaneous callers or a retried job expose invariants that serial mocks cannot.
 
-Enforced by: R41 BE_DEFAULT_DENY; competing attempts against the real store are an integration spec.
+- When a business key must be unique → a unique index in the migration and an insert that answers no row on conflict,
+  which the service turns into its next attempt or its refusal.
 
-## BE-FUNCTION-7 Helpers have one owner; files and functions stay within budget
-A pure helper lives with its owning capability or handler; an ownerless one goes to `platform/primitives`. A helper defined twice
-is a finding: delete the second and import the first. Prefer a plain function over a provider class when no lifecycle or
-injection is needed. Public contracts use named params and result types; a single primitive may stay positional. File, function
-and duplicate-block budgets are `hfs/slots.yaml` (`ruleParams.common.functionLines`, the slot size budgets); an over-budget file
-never grows, and a long body splits by responsibility.
+Enforced by: review only; races against the real store are an integration spec.
 
-Why: copies drift, and a budget that ratchets keeps units reviewable.
+## BE-FUNCTION-7 A helper has one owner; units stay within budget
 
-Enforced by: R20 HFS_SIZE_GROWTH, R21 HFS_DUPLICATE_CODE, R25 HFS_UNUSED_EXPORT, R291 HFS_FUNCTION_BUDGET.
+A pure decision is a `<name>.policy.ts` and a pure shape change a `<name>.mapper.ts` beside the service that uses it;
+an ownerless pure helper goes to `platform/primitives`. A helper defined twice is a finding: import the first. Prefer a
+plain arrow function over a provider class when nothing is injected. A function has at most
+`ruleParams.common.functionLines` lines and seven parameters (an injected constructor excepted; past that, pass a
+named `<Name>Params` object); a file never grows past its slot budget.
+
+Why: copies drift, and a ratcheting budget keeps units reviewable.
+
+Enforced by: `function-line-budget` (R291), `max-params` (R235), `file-size-growth` (R20), `duplicate-code`,
+`duplicate-symbol` (R21), `dead-exports` (R25).
 
 ## BE-FUNCTION-9 Small function forms
-An `async` function awaits something, otherwise it is not `async`. A handler and every public method of an Injectable, Resolver or
-Controller declares its return type. `JSON.parse` of outside text sits inside a `try` in its own function and fails as a
-capability error that keeps the cause.
 
-Why: a declared return type keeps a contract from drifting silently, and an unguarded parse turns hostile input into a crash.
+An `async` function awaits; a method that only forwards a promise is not `async` and returns it. A handler and every
+public method of a provider or door declares its return type. `JSON.parse` of outside text sits in a `try` (or a
+guarded reader such as `parseJsonText` of `platform/primitives`) and fails as the owner's error with the cause.
 
-- `const parseBody = (text: string): unknown => { try { return JSON.parse(text) } catch (error) { throw new ProviderError({ code: ProviderErrorCode.BodyMalformed, cause: error }) } }`
+Why: a declared return type keeps a contract from drifting silently, and an unguarded parse turns hostile input into a
+crash.
 
-Enforced by: R73 BE_ASYNC_NO_AWAIT, R75 BE_RETURN_TYPE, R76 BE_JSON_PARSE_UNGUARDED.
+Enforced by: `async-needs-await` (R73), `explicit-handler-return-type` (R75), `json-parse-needs-guard` (R76).
 
-## BE-FUNCTION-10 Code clear of the smells the scan measures
-Sequential steps are named, never an `await` inside a loop: `eachInOrder` of `platform/primitives` states the sequence (an endless
-polling or paging loop is the one loop that keeps its `await`), and independent steps run together with `Promise.all`. A method a
-base class fixes as async but that awaits nothing returns the promise it holds. The rest is refused where written: `codePointAt`
-over `charCodeAt`, `String.raw` for a string that only escapes backslashes, no nested conditional expression, `void` only on a
-call, no unused import, `export ... from` for a pass-through import, no deprecated API, no object turned into text.
+## BE-FUNCTION-10 Clear of the smells the scan measures
 
-Why: the scan measures these on every commit; a lint rule says the same thing earlier, on the line, with the fix.
+No `await` inside a loop: independent steps run with `Promise.all`, a sequence goes through `eachInOrder` of `platform/primitives`,
+and an endless polling loop (`for (;;)`) is the one loop that keeps its `await`. Also `codePointAt` over
+`charCodeAt`, `String.raw` for a backslash-only string, no nested conditional expression, `void` only on a call, no
+unused import, `export ... from` for a pass-through import.
 
-Enforced by: R235 SCAN_SMELL.
+Why: the scan measures these on every commit; the lint says the same thing earlier, on the line.
+
+Enforced by: `no-await-in-loop`, `prefer-code-point`, `prefer-string-raw`, `no-nested-conditional`, `no-void-operator`,
+`no-unused-import`, `prefer-export-from` (R235).

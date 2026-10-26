@@ -3,29 +3,28 @@ slots: [be.app.worker, be.transport.message, be.feature.jobs]
 ---
 # Background work
 
-Decides which process runs work no request triggers: every consumer, processor, schedule and sweep has a runner composed by an app.
-Events travel per event-bus.md, jobs per queues.md and jobs.md, schedules per BE-QUEUES-3.
+Which process runs work no request triggers. Jobs are jobs.md and queues.md, schedules BE-QUEUES-3.
 
-## BE-BACKGROUND-1 The owning api app runs it; a worker app only scales it apart
-An app of kind `api` or `worker` composes the message transports, reactor modules and job queue modules of its own service, in its
-`compose/background.ts` group; a separate worker app is opt-in for a service that must scale its consumers apart. Each is composed
-by at least one app in the same change it is added, and an e2e run boots that app's real AppModule and drives the event or job
-through it. Recurring work is application-owned (a queue job scheduler, a migration-owned database tick or a declared replicated job
-running a cli command, BE-QUEUES-3), declared with its overlap policy in the application stacks, never a host crontab.
+## BE-BACKGROUND-1 The owning api app runs its background work; a worker app only scales it apart
 
-Why: a consumer or job no process composes never runs; a schedule owned by the application fires once per deployment whatever the
-replica count.
+An api app composes the queue modules of its jobs (and in full its message transports and reactors) in a compose group
+(`compose/jobs.ts`), in the same change that adds them. A separate worker app is opt-in, for a service whose jobs must
+scale apart from requests. Recurring work is application-owned (BE-QUEUES-3), never a host crontab.
 
-Enforced by: R46 BE_BACKGROUND_UNOWNED, R31 BE_FEATURE_NOT_COMPOSED, R250 HFS_HOST_CRON, R268 HFS_SCHEDULE_UNDECLARED.
+Why: a processor no process composes never runs, and a schedule the application owns fires once whatever the replica
+count.
 
-## BE-BACKGROUND-2 Every background task has a runner
-A job processor, scheduler, saga or event consumer, and every method it calls directly or transitively, is background work, and its
-runner is composed by an api or worker app. Resolvers and controllers are never background; a `retry*` or `replay*` name alone does
-not make a method background. A background method with no runner is a finding even when tested.
+Enforced by: `background-unowned`, `feature-not-composed` (R46, R31), R250, R268.
 
-Why: a built and unit-tested sweep or reconcile that nothing schedules gives a false impression of durable recovery.
+## BE-BACKGROUND-2 Every background method has a runner
 
-- When adding a sweep → add a scheduler to the queue and a processor that delegates the sweep, and compose the processor in the
-  owning app in the same change.
+A processor, step, scheduler tick or sweep, and every method it reaches, is background work whose runner an app
+composes. A sweep or reconcile method that no job calls is a finding even when tested; a `retry*` or `replay*` name does
+not make a method background.
 
-Enforced by: R46 BE_BACKGROUND_UNOWNED.
+Why: a unit-tested sweep that nothing schedules gives a false impression of durable recovery.
+
+- When adding a sweep → a database tick or scheduler, a job whose step delegates the sweep, and its queue module in the
+  app's jobs group, in one change.
+
+Enforced by: `background-unowned` (R46).
