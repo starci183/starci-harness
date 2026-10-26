@@ -4,9 +4,10 @@ import { dirname, resolve } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
+import { CONTRACT_SCHEMA, contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { pathsOverlap } from "./leases.js"
+import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
 import type { Ops } from "./ops.js"
 import type { ResultStatus, TaskStatus } from "./tasks.js"
 
@@ -31,24 +32,26 @@ const MAX_PARALLEL = 16
 
 const keySchema = z.string().regex(KEY, "a key is lower-case letters, digits, '.', '_' or '-', at most 63, starting with a letter or digit")
 
-type CheckEntry = Contract["expectedOutput"]["checks"][number]
-
-// A bare preset name is the short form of `{preset: name}`.
-const checkEntrySchema = z.union([z.string().min(1).transform((preset): CheckEntry => ({ preset })), contractSchema.shape.expectedOutput.shape.checks.element])
-
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 
 /** How hard a task is, as the router reads it. */
 export type Difficulty = z.infer<typeof difficultySchema>
 
-/** The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and routing pins. */
+/**
+ * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and routing pins.
+ * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base. `readPaths`
+ * is the earlier spelling of `context`.
+ */
 const taskFieldsShape = {
     contract: z.string().min(1).optional(),
     label: z.string().min(1).optional(),
     summary: z.string().min(1).optional(),
     details: z.string().optional(),
     allowPaths: z.array(z.string().min(1)).min(1).optional(),
+    context: z.array(z.string().min(1)).optional(),
     readPaths: z.array(z.string().min(1)).optional(),
+    inputs: z.record(keyNameSchema, z.string().min(1)).optional(),
+    output: z.record(keyNameSchema, outputSpecSchema).optional(),
     cwd: z.string().min(1).optional(),
     setup: contractSchema.shape.context.shape.setup,
     checks: z.array(checkEntrySchema).min(1).optional(),
@@ -158,7 +161,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "readPaths", "cwd", "setup", "checks", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "checks", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -168,13 +171,6 @@ const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...(fields.effort === undefined ? {} : { effort: fields.effort }),
 })
 
-// The label's default checks the entries do not name, then the entries: the composition `contract new` uses.
-const composeChecks = (label: string, given: readonly CheckEntry[], ops: Ops): CheckEntry[] => {
-    const named = new Set(given.map((entry) => ("preset" in entry ? entry.preset : "")))
-    const defaults = (ops.labels[label]?.defaultChecks ?? []).filter((preset) => !named.has(preset)).map((preset): CheckEntry => ({ preset }))
-    return [...defaults, ...given]
-}
-
 /** Builds the contract of a task written inline, or merges inline fields onto a contract it already has. */
 const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: Contract): Contract => {
     const label = fields.label ?? previous?.label
@@ -183,23 +179,35 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
     if (label === undefined || summary === undefined || allowPaths === undefined) {
         throw new Refusal("WORKFLOW_INVALID", "a task needs a contract file, or label, summary and allowPaths written inline")
     }
-    const readPaths = fields.readPaths ?? previous?.context.readPaths
+    if (fields.context !== undefined && fields.readPaths !== undefined) throw new Refusal("WORKFLOW_INVALID", "a task names context or readPaths (its earlier spelling), not both")
+    const read = fields.context ?? fields.readPaths ?? previous?.context.extend
     const cwd = fields.cwd ?? previous?.context.cwd
     const setup = fields.setup ?? previous?.context.setup
     const details = fields.details ?? previous?.input.details
-    const checks = fields.checks === undefined ? (previous?.expectedOutput.checks ?? composeChecks(label, [], ops)) : composeChecks(label, fields.checks, ops)
+    // A named input the op declares is a base input; the rest extend.
+    const declared = ops.labels[label]?.input.base ?? {}
+    const named = fields.inputs === undefined ? undefined : Object.entries(fields.inputs)
+    const inputBase = named === undefined ? previous?.input.base : Object.fromEntries(named.filter(([name]) => name in declared))
+    const inputExtend = named === undefined ? previous?.input.extend : Object.fromEntries(named.filter(([name]) => !(name in declared)))
+    const outputExtend = fields.output ?? previous?.output?.extend
+    const checksExtend = fields.checks ?? previous?.checks?.extend
+    const nonEmpty = <T extends object>(value: T | undefined): value is T => value !== undefined && Object.keys(value).length > 0
     return parseContract({
-        schema: "starci/contract@1",
+        schema: CONTRACT_SCHEMA,
         label,
         context: {
-            base: previous?.context.base ?? base,
+            revision: previous?.context.revision ?? base,
             allowPaths,
-            ...(readPaths === undefined ? {} : { readPaths }),
             ...(cwd === undefined ? {} : { cwd }),
             ...(setup === undefined ? {} : { setup }),
+            ...(previous?.context.base === undefined ? {} : { base: previous.context.base }),
+            ...(read === undefined || read.length === 0 ? {} : { extend: read }),
         },
-        input: { summary, ...(details === undefined ? {} : { details }) },
-        expectedOutput: { checks },
+        input: { summary, ...(details === undefined ? {} : { details }), ...(nonEmpty(inputBase) ? { base: inputBase } : {}), ...(nonEmpty(inputExtend) ? { extend: inputExtend } : {}) },
+        ...(previous?.output?.base === undefined && !nonEmpty(outputExtend) ? {} : { output: { ...(previous?.output?.base === undefined ? {} : { base: previous.output.base }), ...(nonEmpty(outputExtend) ? { extend: outputExtend } : {}) } }),
+        ...(previous?.checks?.base === undefined && (checksExtend === undefined || checksExtend.length === 0)
+            ? {}
+            : { checks: { ...(previous?.checks?.base === undefined ? {} : { base: previous.checks.base }), ...(checksExtend === undefined || checksExtend.length === 0 ? {} : { extend: checksExtend }) } }),
         budget: fields.budget ?? previous?.budget ?? { minutes: DEFAULT_MINUTES, tries: DEFAULT_TRIES },
     })
 }

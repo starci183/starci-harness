@@ -1,11 +1,13 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
 import { ROLE_ENV } from "../shared/role.js"
 import type { Role } from "../shared/verb.js"
-import { resolveChecks } from "./contract.js"
+import { contextPath, resolveChecks, resolveContract } from "./contract.js"
+import type { ResolvedOutput } from "./contract.js"
 import { projectDir } from "./ledger.js"
+import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 import type { TaskRow } from "./tasks.js"
 
@@ -31,59 +33,84 @@ export const briefFiles = (root: string, taskId: string): BriefFiles => {
 // Paths go into the brief with forward slashes, so a command copied from it runs the same in every shell.
 const slashed = (path: string): string => path.replace(/\\/g, "/")
 
+const code = (text: string): string => `\`${text}\``
+
 /** What one primitive check runs, in words a worker can act on. */
 const describeCheck = (check: PrimitiveCheck): string => {
     switch (check.kind) {
         case "starci":
-            return `\`starci ${check.args.join(" ")}\` exits 0`
+            return `${code(`starci ${check.args.join(" ")}`)} exits 0`
         case "command":
-            return `\`${Array.isArray(check.run) ? check.run.join(" ") : check.run}\` exits 0`
+            return `${code(Array.isArray(check.run) ? check.run.join(" ") : check.run)} exits 0`
         case "files": {
             const parts = [
-                ...(check.onlyAllowPaths === true ? ["nothing outside allowPaths changed since the base"] : []),
+                ...(check.onlyAllowPaths === true ? ["nothing outside allowPaths changed since the revision"] : []),
                 ...(check.mustExist === undefined || check.mustExist.length === 0 ? [] : [`these exist: ${check.mustExist.join(", ")}`]),
             ]
             return parts.length === 0 ? "files as expected" : parts.join("; ")
         }
-        case "json":
-            return `${check.file} is json carrying the keys ${check.requiredKeys.join(", ")}`
+        case "json": {
+            const keys = check.requiredKeys.map((key) => {
+                const type = check.types?.[key]
+                return type === undefined ? key : `${key} (${type})`
+            })
+            return `${check.file} is json carrying the keys ${keys.join(", ")}`
+        }
         case "probe":
             return `${check.url} answers ${String(check.status)}`
+        case "cited": {
+            const keys = (check.trace ?? []).map((trace) => trace.key)
+            return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})`
+        }
     }
 }
 
 const bullets = (items: readonly string[], none: string): string => (items.length === 0 ? `- ${none}` : items.map((item) => `- ${item}`).join("\n"))
 
-/** The worker template of ops/worker.md with the task's ids and files filled in; every placeholder must be known. */
-const renderTemplate = (ops: Ops, values: Readonly<Record<string, string>>): string => {
-    const file = join(ops.dir, "worker.md")
-    let template: string
-    try {
-        template = readFileSync(file, "utf8")
-    } catch {
-        throw new Refusal("OPS_INVALID", `the worker brief ${file} is missing`)
-    }
+/** Fills a brief text's placeholders with the task's ids and files; every placeholder must be known. */
+const fillTemplate = (template: string, where: string, values: Readonly<Record<string, string>>): string => {
     const filled = template.replace(/\{([A-Za-z]+)\}/g, (match: string, key: string) => values[key] ?? match)
     const unknown = [...filled.matchAll(/\{([A-Za-z]+)\}/g)].map((found) => found[0])
-    if (unknown.length > 0) throw new Refusal("OPS_INVALID", `${file} names placeholders the harness does not fill: ${[...new Set(unknown)].join(", ")}`)
+    if (unknown.length > 0) throw new Refusal("OPS_INVALID", `${where} names placeholders the harness does not fill: ${[...new Set(unknown)].join(", ")}`)
     return filled.trimEnd()
 }
 
-/** Renders the brief a worker reads: ops/worker.md, then the task's own contract in plain words; `role` is who works it (an Orca worker, or the inline chat agent). */
+/** One output key in words: its name, type, bounds, where it comes from and what it holds. */
+const describeOutput = (item: ResolvedOutput): string => {
+    const { spec } = item
+    const facts = [
+        spec.type,
+        ...("minItems" in spec && spec.minItems !== undefined && spec.minItems > 0 ? [`at least ${String(spec.minItems)}`] : []),
+        ...("cites" in spec && spec.cites === "context" ? ["ids named by the files you read"] : []),
+        ...("cites" in spec && spec.cites === "work" ? ["ids named by the Work files you read"] : []),
+        item.source,
+    ]
+    const summary = "summary" in spec && spec.summary !== undefined ? `: ${spec.summary}` : ""
+    return `${code(item.key)} (${facts.join(", ")})${summary}`
+}
+
+/**
+ * Renders the brief a worker reads: the common procedure of ops/ops/README.md, then the task's op and its resolved contract
+ * (base then extend) in plain words; `role` is who works it (an Orca worker, or the inline chat agent).
+ */
 export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefFiles, role: Role = "worker"): string => {
     const { contract } = task
-    const label = ops.labels[contract.label]
+    const resolved = resolveContract(contract, ops)
+    const { op } = resolved
     const checks = resolveChecks(contract, ops)
     const cli = slashed(fileURLToPath(new URL("../main.js", import.meta.url)))
-    const template = renderTemplate(ops, { taskId: task.id, contractFile: slashed(files.contract), outputFile: slashed(files.output) })
+    const values = { taskId: task.id, contractFile: slashed(files.contract), outputFile: slashed(files.output) }
+    const template = fillTemplate(workerProcedure(ops), join(ops.dir, OP_FILES, OPS_README), values)
+    const procedure = fillTemplate(op.procedure, op.file, values)
+    const inputs = resolved.inputs.map((input) => `${input.name} (${input.source}${input.summary === undefined ? "" : `: ${input.summary}`}): ${input.value}`)
     const sections = [
-        template,
+        `# Worker brief\n\n${template}`,
         `## Task ${task.id}`,
         [
-            `Label: ${contract.label}${label === undefined ? "" : ` (${label.summary})`}`,
+            `Label: ${contract.label} (${op.summary})`,
             `Try: ${String(task.tryNo)} of ${String(contract.budget.tries)}`,
             `Repository: ${slashed(root)}`,
-            `Base: ${contract.context.base}`,
+            `Revision: ${contract.context.revision}`,
             `Working folder: ${contract.context.cwd ?? "the repository root"}`,
             `CLI: \`starci\`; when it is not on PATH, run \`node ${cli}\` in its place`,
             // Orca's worker-start has no flag to set the worker's environment, so the role travels in the brief.
@@ -91,12 +118,21 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         ]
             .map((fact) => `- ${fact}`)
             .join("\n"),
+        `### The ${contract.label} op`,
+        procedure,
         "### Input",
-        [contract.input.summary, contract.input.details].filter((part) => part !== undefined && part !== "").join("\n\n"),
+        [contract.input.summary, contract.input.details, inputs.length === 0 ? undefined : bullets(inputs, "none")].filter((part) => part !== undefined && part !== "").join("\n\n"),
         "### Write only under",
         bullets(contract.context.allowPaths, "nothing"),
-        "### Read",
-        bullets(contract.context.readPaths ?? [], "what the input and allowPaths need; nothing else is named"),
+        "### Read exactly these files",
+        bullets(
+            resolved.context.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source})`),
+            "none: the input and the files under allowPaths are the whole context",
+        ),
+        "### Output",
+        resolved.output.length === 0
+            ? `Write ${code(values.outputFile)} as one json object; no key is required.`
+            : `Write ${code(values.outputFile)} as one json object with these keys:\n\n${bullets(resolved.output.map(describeOutput), "none")}`,
         "### Checks your result must pass",
         bullets(
             checks.map((check) => `${check.name}: ${describeCheck(check.check)}${check.behavioural ? " (behaviour)" : ""}`),

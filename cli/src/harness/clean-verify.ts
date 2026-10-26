@@ -211,12 +211,12 @@ export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
 /** Verifies a task on a clean checkout of HEAD plus its allowPaths, so a dirty or lucky work tree can never turn a check green. */
 export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify> => {
     const { root, contract } = input
-    const base = await resolveSha(root, contract.context.base)
+    const base = await resolveSha(root, contract.context.revision)
     const built = await buildCandidate(input)
     const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${input.name}-p${String(process.pid)}-`))
     try {
         await git(root, ["worktree", "add", "--detach", dir, built.facts.candidate])
-        const resolved: Contract = { ...contract, context: { ...contract.context, base } }
+        const resolved: Contract = { ...contract, context: { ...contract.context, revision: base } }
         // Scoped starci checks diff the candidate against its parent: in the detached checkout HEAD is the candidate itself.
         const place: CheckPlace = {
             root: dir,
