@@ -70,9 +70,9 @@ Every op is the same worker running `ops/worker.md`. A label is a routing hint p
 
 The Kernel's own work is plan, decide and finish. The Supervisor's is the owner channel, operations, land and push, and CI-red routing. The Owner's is taste and acceptance.
 
-### CLI: 79 verbs in 4 sets
+### CLI: 78 verbs in 4 sets, plus 5 hidden
 
-**Core: both editions, every role (26)**
+**Core: both editions, every role (28)**
 
 | group | verbs |
 |---|---|
@@ -93,7 +93,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `deploy`, `verify`, `rollback` |
 | `docker` | `build`, `up`, `down` |
 
-**Full apps (2 + full stack infra)**
+**Full apps (6)**
 
 | group | verbs |
 |---|---|
@@ -101,7 +101,7 @@ The Kernel's own work is plan, decide and finish. The Supervisor's is the owner 
 | `stack` | `up`, `down` for the full infra (Kafka, Keycloak, test world), plus the lite `deploy`, `verify` and `rollback` |
 | `uat` | `record` (the browser recorder a `uat` worker uses) |
 
-**Harness: full edition, Orca workflows (41)**
+**Harness: full edition, Orca workflows (34)**
 
 | group | verbs | who |
 |---|---|---|
