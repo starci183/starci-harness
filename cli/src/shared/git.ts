@@ -34,6 +34,15 @@ export const repositoryRoot = async (cwd: string): Promise<string> => {
 /** The repository's common git dir, absolute: the same for every linked worktree of one repository. */
 export const gitCommonDir = async (cwd: string): Promise<string> => git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"])
 
+/**
+ * The main checkout of the repository a folder belongs to, the one Orca registers as the repository: a linked worktree
+ * (a workflow's) is listed under it instead of becoming a project of its own. A bare common dir answers the folder itself.
+ */
+export const mainCheckout = async (cwd: string): Promise<string> => {
+    const common = (await gitCommonDir(cwd)).trim()
+    return /[\\/]\.git$/.test(common) ? common.slice(0, -".git".length - 1) : cwd
+}
+
 /** True when two paths name the same folder, however they are spelled (slashes; case on Windows). */
 export const samePath = (left: string, right: string): boolean => {
     const spell = (path: string): string => {

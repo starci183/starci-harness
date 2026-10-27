@@ -32,7 +32,7 @@ import {
     worktreeSelector,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { ensureKernel, launchableKernel, workflowWorktreeOf } from "../../harness/kernel.js"
+import { ensureKernel, launchableKernel, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { applyPriorWork } from "../../harness/prior.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
@@ -150,7 +150,7 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
-            taskTitle: `[Op] ${task.id}`,
+            taskTitle: opTitle(task),
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
             // An agent that takes no launch-time model (modelSelection: false) runs its own; Orca refuses --model for it.
@@ -179,7 +179,7 @@ const startWorker = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, 
         return { record, started: await workerStart(binary, startInput(record, runId), cwd) }
     } catch (error: unknown) {
         if (!isSelectorNotFound(error) || record.start.retryRequest === requestIdOf("worker-start-after-repo-add", record.attempt)) throw error
-        const repository = repositoryOfSelector(record.start.worktree, root)
+        const repository = await repositoryOfSelector(record.start.worktree, root)
         await repoAdd(binary, repository, cwd)
         const retried: LaunchRecord = { ...record, start: { ...record.start, retryRequest: requestIdOf("worker-start-after-repo-add", record.attempt) } }
         recordSeatLaunch(db, seat.id, retried, retried.start.retryRequest)

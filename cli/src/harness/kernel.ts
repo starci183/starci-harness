@@ -9,7 +9,7 @@ import { coordinatorLaunch } from "./coordinator-launch.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { now, openLedger, projectDir } from "./ledger.js"
 import { inTransaction } from "./leases.js"
-import { closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
+import { closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
@@ -22,6 +22,14 @@ import type { KernelRecord, WorkflowRow } from "./workflow.js"
 
 /** The exact title of a workflow's Kernel seat and orchestration task. */
 export const kernelTitle = (workflowId: string): string => `[Kernel] ${workflowId}`
+
+const OP_TITLE_CHARS = 80
+
+/** An Op seat's title: `[Op] <label> (<task id>) - <summary>`, clipped; the Kernel above it names the workflow. */
+export const opTitle = (task: { readonly id: string; readonly contract: { readonly label: string; readonly input: { readonly summary: string } } }): string => {
+    const title = `[Op] ${task.contract.label} (${task.id}) - ${task.contract.input.summary}`
+    return title.length <= OP_TITLE_CHARS ? title : `${title.slice(0, OP_TITLE_CHARS - 1)}…`
+}
 
 /** The Kernel identity every Op launch supplies to Orca. */
 export interface KernelLaunch {
@@ -170,7 +178,7 @@ export const launchKernelSeat = async (root: string, cwd: string, seatId: string
                 return await workerStart(binary, input, cwd)
             } catch (error: unknown) {
                 if (!isSelectorNotFound(error)) throw error
-                await repoAdd(binary, input.worktree.slice("path:".length), cwd)
+                await repoAdd(binary, await repositoryOfSelector(input.worktree, root), cwd)
                 return workerStart(binary, input, cwd)
             }
         })

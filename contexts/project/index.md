@@ -152,7 +152,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/decisions.md](../harness/decisions.md) · 3 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 2 KB
-- [harness/roles.md](../harness/roles.md) · 3 KB — The owner talks to the host's `[Supervisor]`; each running orca workflow has a `[Kernel] <workflow>` under it, and each task attempt an `[Op] <task>` under its Kernel, all real ...
+- [harness/roles.md](../harness/roles.md) · 3 KB — The owner talks to the host's `[Supervisor]`; each running orca workflow has a `[Kernel] <workflow>` under it, and each task attempt an `[Op] <label> (<task id>) - <summary>` ...
 - [harness/rules.md](../harness/rules.md) · 2 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 3 KB
   - sections: Where state lives · How a project is found

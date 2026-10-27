@@ -10,7 +10,7 @@ starci workflow start <id>
 
 - `orca`: only from the Supervisor's terminal (elsewhere `SUPERVISOR_REQUIRED`). It makes the workflow's one worktree and
   launches its `[Kernel] <id>` agent into the Supervisor's Run; the Kernel attaches, and its `kernel next` dispatches the
-  ready tasks as `[Op] <task>` under it, up to `maxParallel`, each pinned or routed, all in that worktree. If Orca does
+  ready tasks as `[Op] <label> (<task id>) - <summary>` under it, up to `maxParallel`, each pinned or routed, all in that worktree. If Orca does
   not know the repository yet, the harness registers it (`orca repo add`).
 - `inline`: queues one task and prints it with its brief and the commands to finish it. Work it as
   [inline-task.md](inline-task.md) says.

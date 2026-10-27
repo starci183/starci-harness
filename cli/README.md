@@ -128,7 +128,7 @@ Windows argv cap). The effective agent and model are attested from `worker-show`
 requeues the task. An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
 `seat start <task> --resume` replays the same requests.
 
-**Seats as a tree.** `[Supervisor]` (one per host) > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <task>`
+**Seats as a tree.** `[Supervisor]` (one per host) > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <label> (<task id>) - <summary>`
 (one per attempt), each a real Orca agent. The owner runs `supervisor start` once: it reserves the host's one Supervisor
 in machine.sqlite and launches the router's coordinator member (`orca agent launch`, terminal surface) in the runtime
 checkout with a prompt naming its brief under `.runtime/` (rendered from `ops/coordinators/`). Its first command,
@@ -163,7 +163,7 @@ admitted before any side effect into `commands` with its sha256 (an `applying` i
 outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
 `decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca
 orchestration send|check`) only wakes: an Op mails only its Kernel, a Kernel only its Supervisor and its Ops, the
-Supervisor only the owner. A repository Orca does not know is registered (`orca repo add`) and the call retried once. A
+Supervisor only the owner. A repository Orca does not know is registered by its main checkout (`orca repo add`), so a workflow worktree is listed under its repository, and the call retried once. A
 seat's tab is closed after Orca reports its worker released. Inline workflows touch nothing in Orca: the chat agent is
 their Kernel, and `kernel next` returns `idle` naming its next task.
 

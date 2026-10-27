@@ -5,6 +5,7 @@ import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
 import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
+import { mainCheckout } from "../../shared/git.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -108,7 +109,7 @@ export const worktreeSelector = (value: string | undefined, cwd: string, root: s
 }
 
 /** The repository `orca repo add` registers for a selector: the folder a `path:` selector names, else the repository root. */
-export const repositoryOfSelector = (selector: string, root: string): string => (selector.startsWith("path:") ? selector.slice("path:".length) : root)
+export const repositoryOfSelector = async (selector: string, root: string): Promise<string> => mainCheckout(selector.startsWith("path:") ? selector.slice("path:".length) : root)
 
 /** The argv of `orca orchestration <command>` with its flags and --json, in the order given. */
 export const orcaArgv = (command: string, flags: OrcaFlags): string[] => [
@@ -261,7 +262,7 @@ export const agentLaunch = async (binary: OrcaBinary, input: AgentLaunchInput, c
 }
 
 /**
- * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Op] <task>` instead of Orca's generated name.
+ * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Op] <label> (<task id>) - <summary>` instead of Orca's generated name.
  * Best effort: the title is presentation, so a failure is returned as text and never fails the caller.
  */
 export const terminalRename = async (binary: OrcaBinary, handle: string, title: string, cwd: string): Promise<string | undefined> => {
