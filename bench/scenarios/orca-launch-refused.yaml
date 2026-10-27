@@ -19,8 +19,6 @@ steps:
         id: ref
         goal: bench workflow ref
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

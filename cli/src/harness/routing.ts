@@ -40,8 +40,16 @@ export type FailureKind = (typeof FAILURE_KINDS)[number]
 
 const kindRecord = <T extends z.ZodType>(value: T) => z.partialRecord(z.enum(FAILURE_KINDS), value)
 
+/** A member's standing for a label, lowest first: earned from verified evidence in the outcomes window. */
+export const QUALIFICATIONS = ["probation", "standard", "high"] as const
+
+/** A qualification level. */
+export type Qualification = (typeof QUALIFICATIONS)[number]
+
+const levelSchema = z.object({ verified: z.number().int().positive(), greenPercent: z.number().min(0).max(100) })
+
 const routingSchema = z.object({
-    schema: z.literal("starci/routing@1"),
+    schema: z.literal("starci/routing@2"),
     difficulties: z.tuple([z.literal("easy"), z.literal("medium"), z.literal("hard"), z.literal("insane")]),
     difficultyTier: z.record(difficultySchema, z.string().min(1)),
     labelTiers: z.record(z.string(), z.string().min(1)),
@@ -52,20 +60,38 @@ const routingSchema = z.object({
     pools: z.record(z.string(), poolSchema),
     hostProbes: z.record(z.string(), z.array(z.string().min(1)).min(1)),
     balance: z.object({ maxStreak: z.number().int().positive(), maxSharePercent: z.number().positive().max(100) }),
-    quota: z.object({ reservePercent: z.number(), biasPercent: z.number(), exhaustedPercent: z.number(), maxAgeMinutes: minutes }),
+    quota: z.object({ reservePercent: z.number(), exhaustedPercent: z.number(), maxAgeMinutes: minutes }),
+    usage: z.object({ refreshMinutes: minutes, windows: z.array(z.string().min(1)).min(1) }),
     circuit: z.object({
         cooldownMinutes: z.object({ rate: minutes, quota: minutes, capacity: minutes, auth: minutes, launch: minutes }),
         strikes: kindRecord(z.number().int().positive()),
         reopenFactor: z.number().min(1),
         reopenWindowMinutes: minutes,
         capMinutes: minutes,
+        probeEveryMinutes: minutes,
+        probeCapMinutes: minutes,
+        probeLeaseMinutes: minutes,
     }),
     failureSignals: kindRecord(z.array(z.string().min(1))),
+    outcomes: z.object({ windowDays: z.number().positive() }),
+    qualification: z.object({
+        standard: levelSchema,
+        high: levelSchema,
+        startStandard: z.array(z.string().min(1)),
+        riskMinimum: z.enum(QUALIFICATIONS),
+        riskTags: z.array(z.string().min(1)).min(1),
+    }),
+    scoring: z.object({
+        prior: z.object({ green: z.number().positive(), red: z.number().positive() }),
+        costMinutes: z.number().positive(),
+        paceWeight: z.number().nonnegative(),
+        exploreSharePercent: z.number().min(0).max(100),
+    }),
     concurrency: z.object({ floor: z.number().int().positive(), decreaseCooldownMinutes: minutes, quietMinutes: minutes, increaseStepMinutes: minutes }),
     budgets: z.object({ workflow: z.object({ minutes: z.number().int().positive(), tries: z.number().int().positive() }) }),
 })
 
-/** ops/routing.yaml, validated: tiers, pools, quota, circuit, concurrency and budgets. */
+/** ops/routing.yaml, validated: tiers, pools, quota, usage, circuit, outcomes, qualification, scoring, concurrency and budgets. */
 export type Routing = z.infer<typeof routingSchema>
 
 // Cross-field rules zod cannot state: every tier named exists, every member's agent has its pool (pools are keyed by agent,
@@ -80,8 +106,10 @@ const problemsOf = (routing: Routing): string[] => {
     for (const [tier, members] of Object.entries(routing.tiers)) {
         for (const member of members) if (!(member.agent in routing.pools)) problems.push(`tier ${tier} names agent ${member.agent}, which has no pool`)
     }
-    const { reservePercent, biasPercent, exhaustedPercent } = routing.quota
-    if (!(reservePercent <= biasPercent && biasPercent <= exhaustedPercent)) problems.push("quota needs reservePercent <= biasPercent <= exhaustedPercent")
+    if (!(routing.quota.reservePercent <= routing.quota.exhaustedPercent)) problems.push("quota needs reservePercent <= exhaustedPercent")
+    for (const tier of routing.qualification.startStandard) if (!tiers.has(tier)) problems.push(`qualification.startStandard names tier ${tier}, which is not defined`)
+    const { standard, high } = routing.qualification
+    if (!(standard.verified <= high.verified && standard.greenPercent <= high.greenPercent)) problems.push("qualification.high must ask at least what standard asks")
     problems.push(...signalProblems(routing))
     return problems
 }

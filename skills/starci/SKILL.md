@@ -57,10 +57,10 @@ Get the owner's OK on the exact artefact before each effect, and reuse it only w
 
 | Effect | The owner approves |
 | --- | --- |
-| `workflow define`, `workflow start` | the workflow file: goal, runner, tasks, allowPaths, checks, pins |
+| `workflow define`, `workflow start` | the workflow file: goal, runner, tasks, allowPaths, checks, risk |
 | `task send`, `seat start` outside a workflow | the contract |
 | `workflow amend` that adds, removes or widens work | the `plan diff` output |
-| `workflow stop`, `task cancel`, `budget raise`, `provider recover` | the target and the reason |
+| `workflow stop`, `task cancel`, `budget raise` | the target and the reason |
 | `release push`, `release cut` | the repository, commit and version |
 | `release publish --publish` | every package and version in the plan, each time (npm is public) |
 

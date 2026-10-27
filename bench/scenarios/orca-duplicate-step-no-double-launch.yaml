@@ -19,8 +19,6 @@ steps:
         id: race
         goal: bench workflow race
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 3
         tasks:
           - id: a

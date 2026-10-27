@@ -99,6 +99,17 @@ export const locateOrca = async (cwd: string): Promise<OrcaBinary> => {
     throw new Refusal("ORCA_MISSING", `no orca binary: set STARCI_ORCA_BIN, install the Orca app${where} or put ${name} on PATH`)
 }
 
+/** Finds orca like locateOrca without waiting: STARCI_ORCA_BIN (which must exist), else the desktop install, else the PATH name; undefined when the override names nothing. */
+export const orcaBinarySync = (): OrcaBinary | undefined => {
+    const override = process.env.STARCI_ORCA_BIN
+    if (override !== undefined && override !== "") {
+        const found = existing(override)
+        return found === undefined ? undefined : { path: found, source: "STARCI_ORCA_BIN" }
+    }
+    const installed = installPath()
+    return installed !== undefined && existsSync(installed) ? { path: installed, source: "install" } : { path: pathName(), source: "PATH" }
+}
+
 /** Orca's worktree selectors; anything else is a filesystem path and becomes `path:<absolute path>`. */
 const SELECTOR = /^(?:(?:identity|id|name|branch|issue|path):|(?:current|active|new-child|new-top-level)$)/
 
@@ -604,16 +615,17 @@ export const requestShow = async (binary: OrcaBinary, requestId: string, cwd: st
     return state === "completed" || state === "pending" || state === "absent" ? state : "unknown"
 }
 
-/** One message of an Orca delivery, read loosely: the harness acts on its type only, the ledger stays the state. */
+/** One message of an Orca delivery, read loosely: the harness acts on its type and its sender (the terminal handle that sent it, null when Orca names none), the ledger stays the state. */
 export interface MailMessage {
     readonly id: string
+    readonly from: string | null
     readonly type: string
     readonly subject: string
     readonly body: string
     readonly payload: unknown
 }
 
-const messageSchema = z.looseObject({ id: z.string(), type: z.string().nullish(), subject: z.string().nullish(), body: z.string().nullish(), payload: z.unknown().optional() })
+const messageSchema = z.looseObject({ id: z.string(), from: z.string().nullish(), type: z.string().nullish(), subject: z.string().nullish(), body: z.string().nullish(), payload: z.unknown().optional() })
 const checkSchema = z.looseObject({
     delivery: z.looseObject({ id: z.string().nullish(), messages: z.array(messageSchema).nullish() }).nullish(),
     deliveryId: z.string().nullish(),
@@ -637,7 +649,7 @@ export const mailCheck = async (binary: OrcaBinary, input: { readonly terminal: 
     const rows = result.delivery?.messages ?? result.messages ?? []
     return {
         deliveryId: result.delivery?.id ?? result.deliveryId ?? null,
-        messages: rows.map((row) => ({ id: row.id, type: row.type ?? "status", subject: row.subject ?? "", body: row.body ?? "", payload: row.payload ?? null })),
+        messages: rows.map((row) => ({ id: row.id, from: row.from ?? null, type: row.type ?? "status", subject: row.subject ?? "", body: row.body ?? "", payload: row.payload ?? null })),
     }
 }
 

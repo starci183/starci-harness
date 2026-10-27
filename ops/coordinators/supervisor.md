@@ -14,7 +14,8 @@ in this terminal) and your Kernels.
 2. An owner request: define the workflow in its repository (`starci workflow define`, runner `orca`), then from this
    terminal `starci workflow start <workflow>` (it makes the workflow's one worktree and launches its `[Kernel]` into your
    Run) and submit its `goal`. The Kernel plans.
-3. `starci supervisor next --json`. It relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
+3. `starci supervisor next --json`. For the workflows you started or adopted (`kernel start`), never another session's,
+   it relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
    resolves a lost Kernel launch, pauses a workflow and escalates to the owner after too many relaunches, and returns the
    oldest `escalation` or `handoff` with the workflow's digest, or `idle` (call it again).
 4. Decide, write one command file (`schema: starci/command@1`, fresh `cmdId`, `project: <repository>`, `basedOn.goal`

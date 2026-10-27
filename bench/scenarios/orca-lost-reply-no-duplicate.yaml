@@ -21,8 +21,6 @@ steps:
         id: lost
         goal: bench workflow lost
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

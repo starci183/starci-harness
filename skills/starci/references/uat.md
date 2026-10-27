@@ -13,7 +13,7 @@ starci task send --uat uat.<feature>.<flow>
 ```
 
 `--workflow`, `--retry-of` and `--launch` work as for any task. A workflow file walks a flow with a task that names
-only `uat: uat.<feature>.<flow>` (beside `dependsOn` and the routing pins); its run id is `<workflow>-<task key>`, so a
+only `uat: uat.<feature>.<flow>` (beside `dependsOn`, `difficulty` and `risk`); its run id is `<workflow>-<task key>`, so a
 replan builds the same contract, and `WORK_ROOT_ELSEWHERE` refuses a workflow defined outside the Work root.
 
 - **Work root.** The task is queued in the repository that owns `.starciwork`: the app's own, or the one its

@@ -19,11 +19,6 @@ pass:
   - no actor overstepping its role
   - no human intervention beyond the owner's request
 automation: automated
-finding: >-
-  the Supervisor stop that answers the handoff raises a Kernel decision (escalation-answer, subject the stop cmdId) for a
-  Kernel the same stop closes, and nothing ever answers or supersedes it: cli/src/core/supervisor/driver.ts:211 calls
-  raiseForKernel for a stop, which picks escalation-answer at :203; supersede() in cli/src/core/kernel/driver.ts:110 only
-  closes red, question and done decisions
 steps:
   - file:
       path: wf.yaml
@@ -32,8 +27,6 @@ steps:
         id: fresh
         goal: write the two bench docs
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         scope:
           paths: [docs/]
@@ -85,8 +78,6 @@ steps:
         id: fresh
         goal: write the two bench docs
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         scope:
           paths: [docs/]

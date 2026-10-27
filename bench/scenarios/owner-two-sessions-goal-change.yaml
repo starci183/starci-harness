@@ -20,8 +20,6 @@ steps:
         id: chats
         goal: write doc a
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

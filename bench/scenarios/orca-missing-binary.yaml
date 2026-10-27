@@ -22,8 +22,6 @@ steps:
         id: down
         goal: bench workflow down
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

@@ -1,7 +1,7 @@
-# Which agent and model takes a task, how a provider in trouble is set aside, and the workflow budgets.
-# The router reads this file and ops/ops/<label>.md (a label's difficulty floor and the host tools it needs); nothing here is
-# restated in code. A tier is an ordered chain of members; the first member that survives every step is picked.
-schema: starci/routing@1
+# Which agent and model takes a task, how a provider in trouble is set aside and probed back, how evidence qualifies and
+# scores a member, and the workflow budgets. The router reads this file and ops/ops/<label>.md (a label's difficulty floor and
+# the host tools it needs); nothing here is restated in code. The router alone picks: no workflow or task names an agent.
+schema: starci/routing@2
 
 # A difficulty is given by name or as 1..4 in this order.
 difficulties: [easy, medium, hard, insane]
@@ -9,12 +9,13 @@ difficulties: [easy, medium, hard, insane]
 difficultyTier: {easy: low, medium: medium, hard: high, insane: frontier}
 # A label named here takes that tier whatever its difficulty.
 labelTiers: {}
-# Coordinator seats use these tiers and the same pool, provider, quota and bias rules as Ops.
+# Coordinator seats use these tiers and the same pool, provider, quota, qualification and scoring rules as Ops.
 coordinators: {supervisor: high, kernel: high}
 # Lowest first: a second contract-red in a task's lineage raises the tier one step along this order.
 tierOrder: [low, medium, high, frontier]
 escalateAfterReds: 2
 
+# A tier is the set of members the router scores; the order breaks a tie only.
 tiers:
   frontier:
     - {agent: claude, model: claude-opus-5-5}
@@ -22,11 +23,12 @@ tiers:
   high:
     - {agent: claude, model: claude-sonnet-5-5}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
-  # Claude closes the medium chain, so a uat task always has a member whose pool takes the uat label.
+  # Claude is in the medium tier, so a uat task always has a member whose pool takes the uat label.
   medium:
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6.1-sol, effort: medium}
     - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: cursor, model: auto}
   low:
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6-luna, effort: low}
@@ -51,6 +53,12 @@ pools:
     tools: [git, node, docker]
     # Devin takes no launch-time model: worker-start names none and the attempt records the model Orca attests.
     modelSelection: false
+  # Orca's worker-start takes a Cursor model id (--model), so Cursor selects its model at launch.
+  cursor:
+    provider: cursor
+    maxParallel: 4
+    labels: [code, test, docs]
+    tools: [git, node]
 
 # Host tools the router checks on this machine (the command must exit 0); a tool without a probe is the pool's own.
 hostProbes:
@@ -61,30 +69,69 @@ hostProbes:
   # on its first run, whatever agent calls it.
   browser: [docker, info, --format, "{{.ServerVersion}}"]
 
-# A member picked maxStreak times in a row, or holding more than maxSharePercent of its tier's running seats, yields.
+# The scored head yields when it was picked maxStreak times in a row, or holds more than maxSharePercent of its tier's
+# running seats.
 balance: {maxStreak: 3, maxSharePercent: 70}
 
-# Quota use of a pool's window, in percent. A member at reservePercent is skipped; one the bias names may go to
-# biasPercent; exhaustedPercent is never used. No reading, or one older than maxAgeMinutes, is unknown and not blocked.
-quota: {reservePercent: 90, biasPercent: 95, exhaustedPercent: 100, maxAgeMinutes: 1440}
+# Quota use of a pool's binding window, in percent. A member at exhaustedPercent is never used until the window resets; one
+# at reservePercent is used only when no member below the reserve is left. No reading, or one older than maxAgeMinutes or
+# past its reset, is unknown and not blocked.
+quota: {reservePercent: 90, exhaustedPercent: 100, maxAgeMinutes: 1440}
+
+# Orca's account list (`orca account list --json`, its rateLimits per provider) is read before a recorded pick when the last
+# reading is older than refreshMinutes. The windows named here feed the pool's quota (the most-used one binds) and its pace;
+# a provider whose reading says ok proves its auth, which closes a circuit opened for auth. When Orca gives no Codex reading,
+# the rate_limits of Codex's newest session rollout (~/.codex/sessions) stand in, observed at that file's last write.
+usage: {refreshMinutes: 10, windows: [session, weekly, monthly]}
 
 # Provider circuit: a failure of a kind opens the provider for its cooldown once it has `strikes` of that kind in a row
 # (1 when not named). An open within reopenWindowMinutes of the last one waits reopenFactor times longer, capped at
 # capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
+# Half-open: an open provider is due one probe when its cooldown ends, or probeEveryMinutes after it opened (each failed probe
+# multiplies that by reopenFactor, capped at probeCapMinutes), whichever comes first; a quota circuit at its reset. One pick sends the probe; a success closes
+# the circuit, a failure re-opens it with the backoff. A probe whose outcome never arrives frees the slot after probeLeaseMinutes.
 circuit:
   cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2}
   strikes: {launch: 2}
   reopenFactor: 5
   reopenWindowMinutes: 60
   capMinutes: 60
+  probeEveryMinutes: 60
+  probeCapMinutes: 240
+  probeLeaseMinutes: 30
 
 # Typed launch errors are read for these signals (case-insensitive regular expressions); a certain launch failure with
 # none of them is a `launch` failure. Nothing else is read: no terminal screen is scraped.
 failureSignals:
-  rate: ["rate.?limit", "too many requests", "\\b429\\b"]
+  rate: ["rate.?limit", "too many requests", "\b429\b"]
   quota: ["quota", "usage limit", "credit", "out of tokens", "billing"]
-  capacity: ["overloaded", "capacity", "\\b529\\b", "\\b503\\b"]
-  auth: ["unauthori[sz]ed", "\\b401\\b", "forbidden", "not logged in", "login expired", "invalid api key"]
+  capacity: ["overloaded", "capacity", "\b529\b", "\b503\b"]
+  auth: ["unauthori[sz]ed", "\b401\b", "forbidden", "not logged in", "login expired", "invalid api key"]
+
+# Every ended attempt of every registered ledger is recorded per member and label (green or red verdict, timeout, lost,
+# launch failure, mismatch, minutes); the evidence of the last windowDays qualifies and scores a member.
+outcomes: {windowDays: 14}
+
+# Qualification of a member for a label, from its verdicts in the outcomes window: `high` and `standard` need at least
+# `verified` verdicts with at least `greenPercent` green; anything less is probation. A member of a tier named in
+# startStandard is standard before it has evidence. A task whose `risk` names any of riskTags refuses a member below
+# riskMinimum; when that leaves its tier empty the task looks one tier up.
+qualification:
+  standard: {verified: 3, greenPercent: 60}
+  high: {verified: 10, greenPercent: 80}
+  startStandard: [frontier]
+  riskMinimum: standard
+  riskTags: [external, prod, money, security]
+
+# Scoring inside the tier: expected success (the Beta posterior mean of green for member and label, from `prior`) over expected
+# cost (mean minutes of its attempts over costMinutes, times 1 + paceWeight x how far its quota burns ahead of its window's
+# clock). A pick explores by Thompson sampling with probability exploreSharePercent, and never while explore picks already
+# hold that share of the tier's recent picks.
+scoring:
+  prior: {green: 1, red: 1}
+  costMinutes: 30
+  paceWeight: 1
+  exploreSharePercent: 15
 
 # Pool concurrency (AIMD): a rate or capacity failure halves the pool's cap (never below floor, at most once per
 # decreaseCooldownMinutes); a success after quietMinutes without one adds 1, at most once per increaseStepMinutes.

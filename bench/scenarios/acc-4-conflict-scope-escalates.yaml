@@ -25,8 +25,6 @@ steps:
         id: ui
         goal: refresh the header doc
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: header
@@ -44,8 +42,6 @@ steps:
         id: nav
         goal: rework the navigation docs
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         scope:
           paths: [docs/]
@@ -137,8 +133,6 @@ steps:
         id: nav
         goal: rework the navigation docs
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: links
@@ -172,8 +166,6 @@ steps:
         id: nav
         goal: rework the navigation docs
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: links

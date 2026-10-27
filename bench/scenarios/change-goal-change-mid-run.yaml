@@ -24,8 +24,6 @@ steps:
         id: regoal
         goal: write docs a to d
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 3
         tasks:
           - id: a
@@ -127,8 +125,6 @@ steps:
         id: regoal
         goal: write docs a to d
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 3
         tasks:
           - id: a

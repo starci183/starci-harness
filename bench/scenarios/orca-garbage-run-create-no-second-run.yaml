@@ -19,8 +19,6 @@ steps:
         id: junk
         goal: bench workflow junk
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

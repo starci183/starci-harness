@@ -9,9 +9,11 @@ interface ProviderStatusData {
 
 const circuitCell = (view: ProviderView): string => {
     const { circuit } = view
-    if (circuit.open) return `open (${circuit.failureKind ?? "?"}) until ${circuit.openUntil ?? "?"}`
-    if (circuit.status === "striking") return `striking (${circuit.failureKind ?? "?"} ${String(circuit.strikes)})`
-    return circuit.status === "open" ? "closed (cooldown over)" : circuit.status
+    const kind = circuit.failureKind ?? "?"
+    if (circuit.open && circuit.probe === "due") return `half-open (${kind}): the next pick probes it`
+    if (circuit.open && circuit.probe === "in-flight") return `half-open (${kind}): probe in flight`
+    if (circuit.open) return `open (${kind}); next probe at ${circuit.probeDueAt ?? "?"}`
+    return circuit.status === "striking" ? `striking (${kind} ${String(circuit.strikes)})` : circuit.status
 }
 
 const quotaCell = (quota: ProviderView["pools"][number]["quota"]): string => {

@@ -24,8 +24,6 @@ steps:
         id: mind
         goal: write docs a, b and c
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 3
         tasks:
           - id: a
@@ -102,8 +100,6 @@ steps:
         id: mind
         goal: write docs a, b and c
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 3
         tasks:
           - id: a

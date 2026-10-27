@@ -223,28 +223,15 @@ export const closeKernelActions = async (context: VerbContext, root: string, sna
     }
 }
 
-/** A launch: a pinned agent and model (the task's pair, else the workflow file's), or the router's pick. */
-interface Launch {
-    readonly agent: string
-    readonly model: string
-    readonly effort?: string | undefined
-    readonly pick?: RoutePick | undefined
-}
-
 /**
- * The launch of a queued node task. A pin (the task's agent and model, else the workflow file's) is used as written; otherwise
- * the router picks from the task's label, the node's difficulty, its lineage (attempt number and contract-red members, through
- * the retry chain) and the workflow's bias. A refused pick is a wait: the task stays queued and the next step routes it again.
+ * The launch of a queued node task: the router's pick from the task's label, the node's difficulty and risk, and its lineage
+ * (attempt number and contract-red members, through the retry chain). A refused pick is a wait: the task stays queued and the
+ * next step routes it again.
  */
-const launchOf = (root: string, workflow: WorkflowRow, node: PlanNode, taskId: string): Launch | Refusal => {
-    const { header } = workflow
-    const effort = node.route.effort ?? header.effort
-    if (node.route.agent !== undefined && node.route.model !== undefined) return { agent: node.route.agent, model: node.route.model, effort }
-    if (header.agent !== undefined && header.model !== undefined) return { agent: header.agent, model: header.model, effort }
+const launchOf = (root: string, node: PlanNode, taskId: string): RoutePick | Refusal => {
     const lineage = withLedger(root, (db) => lineageOf(db, taskId))
-    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, workflowBias: header.bias })
-    if (pick instanceof RouteRefusal) return new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("; "))
-    return { agent: pick.agent, model: pick.model, effort: effort ?? pick.effort, pick }
+    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, risk: node.route.risk })
+    return pick instanceof RouteRefusal ? new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("; ")) : pick
 }
 
 /**
@@ -266,13 +253,12 @@ const applyRevert = async (root: string, checkout: string, workflowId: string, n
 }
 
 const launchTask = async (context: VerbContext, root: string, workflow: WorkflowRow, node: PlanNode, task: string): Promise<StepAction> => {
-    const chosen = launchOf(root, workflow, node, task)
+    const chosen = launchOf(root, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
         await applyRevert(root, withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root, workflow.id, node, task)
-        const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen.pick, worktree: workflow.header.worktree })
-        const by = chosen.pick === undefined ? "pinned" : `routed (tier ${chosen.pick.tier}, pool ${chosen.pick.pool})`
-        return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} ${by}: ${started.message.split("\n")[0] ?? "launched"}` }
+        const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen, worktree: workflow.header.worktree })
+        return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} routed (tier ${chosen.tier}, pool ${chosen.pool}, by ${chosen.record.chosen?.by ?? "?"}): ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         return { key: node.key, task, action: "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }

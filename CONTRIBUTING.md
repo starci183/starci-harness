@@ -159,7 +159,8 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | `define-goal`, `start-kernel` skills | `workflow define` and `workflow start` |
 | `runtime verify`, `gate run`, `release clean-test`, `scaffold-e2e` | `check run` before a push; CI runs the suites |
 | the edition decides who codes (lite by chat, full by ops) | the runner (`orca` or `inline`) is chosen per workflow or task |
-| the qualification and probation store, admission reason codes | the router of `ops/routing.yaml` |
+| the qualification and probation store, admission reason codes | qualification the router derives from member outcomes (`qualification` of `ops/routing.yaml`) |
+| a workflow or task pin (`agent`, `model`, `effort`), a routing bias (`only`, `avoid`, `prefer`), `ROUTE_BIAS_EMPTY` | the router alone picks, from a task's label, `difficulty` and `risk` |
 | `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in contexts/harness/decisions.md |
 
 ## Commit and push

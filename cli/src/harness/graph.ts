@@ -10,6 +10,7 @@ import type { Contract } from "./contract.js"
 import { pathsOverlap } from "./leases.js"
 import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
 import type { Ops } from "./ops.js"
+import { loadRouting } from "./routing.js"
 import type { ResultStatus, TaskStatus } from "./tasks.js"
 import { locateWorkRoot, readUatRecord, samePath, uatBinding, uatContract, uatPlace } from "./work.js"
 import type { UatBinding, WorkRoot } from "./work.js"
@@ -36,8 +37,12 @@ const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 /** How hard a task is, as the router reads it. */
 export type Difficulty = z.infer<typeof difficultySchema>
 
+/** A risk tag of a task, one of ops/routing.yaml qualification.riskTags: a tagged task is high-risk and refuses a probation member. */
+const riskTagSchema = z.string().refine((tag) => loadRouting().qualification.riskTags.includes(tag), { message: "a risk tag is one of ops/routing.yaml qualification.riskTags" })
+
 /**
- * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and routing pins.
+ * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and what the
+ * router reads of it (difficulty, risk); the router alone picks the agent and model.
  * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base. `readPaths`
  * is the earlier spelling of `context`. `uat: <flow id>` is a third form: the contract built from that Work record (uatContract).
  */
@@ -58,9 +63,7 @@ const taskFieldsShape = {
     budget: contractSchema.shape.budget.optional(),
     dependsOn: z.array(keySchema).optional(),
     difficulty: difficultySchema.optional(),
-    agent: z.string().min(1).optional(),
-    model: z.string().min(1).optional(),
-    effort: z.string().min(1).optional(),
+    risk: z.array(riskTagSchema).min(1).optional(),
 }
 
 const taskFieldsSchema = z.strictObject(taskFieldsShape)
@@ -78,11 +81,9 @@ export const scopeSchema = z.strictObject({ paths: z.array(z.string().min(1)).mi
 /** A goal's scope ceiling. */
 export type Scope = z.infer<typeof scopeSchema>
 
-const biasSchema = z.strictObject({ only: z.array(z.string().min(1)).optional(), avoid: z.array(z.string().min(1)).optional(), prefer: z.array(z.string().min(1)).optional() })
-
 /**
- * The workflow-wide fields of a workflow file, kept in the ledger as the workflow's goal. `agent` with `model` pins every
- * task of an orca run (a task's own pair wins); without a pin the router picks, steered by `bias` (only, avoid, prefer).
+ * The workflow-wide fields of a workflow file, kept in the ledger as the workflow's goal. No field names an agent, a model or a
+ * preference among them: the router of ops/routing.yaml alone picks every Op and Kernel.
  */
 export const headerSchema = z.strictObject({
     schema: z.literal(WORKFLOW_SCHEMA),
@@ -91,10 +92,6 @@ export const headerSchema = z.strictObject({
     acceptance: z.array(z.string().min(1)).optional(),
     scope: scopeSchema.optional(),
     runner: z.enum(["orca", "inline"]),
-    agent: z.string().min(1).optional(),
-    model: z.string().min(1).optional(),
-    effort: z.string().min(1).optional(),
-    bias: biasSchema.optional(),
     worktree: z.string().min(1).optional(),
     maxParallel: z.number().int().min(1).max(MAX_PARALLEL).default(DEFAULT_PARALLEL),
     base: z.string().min(1).default("HEAD"),
@@ -102,6 +99,13 @@ export const headerSchema = z.strictObject({
 
 /** A workflow's goal and defaults: everything of its file but the tasks. */
 export type WorkflowHeader = z.infer<typeof headerSchema>
+
+/** The routing overrides a ledger may still hold in a workflow's stored goal from before the router picked alone; reading drops them. */
+const DROPPED_HEADER_FIELDS: readonly string[] = ["agent", "model", "effort", "bias"]
+
+/** Reads a workflow header as the ledger stored it, without the routing overrides headerSchema no longer takes. */
+export const storedHeader = (value: unknown): WorkflowHeader =>
+    headerSchema.parse(typeof value === "object" && value !== null ? Object.fromEntries(Object.entries(value).filter(([key]) => !DROPPED_HEADER_FIELDS.includes(key))) : value)
 
 const workflowFileSchema = z.strictObject({ ...headerSchema.shape, tasks: z.array(fileTaskSchema).min(1) })
 
@@ -127,12 +131,10 @@ export const isGeneratedKey = (key: string): boolean => key.startsWith(REVERT_PR
 /** One entry of a change file. */
 export type ChangeEntry = z.infer<typeof changeEntrySchema>
 
-/** The routing hints of a task: what the router reads (difficulty) and the pins that bypass it (agent, model, effort). */
+/** What the router reads of a task beside its label: its difficulty and its risk tags. */
 export interface TaskRoute {
     readonly difficulty?: Difficulty
-    readonly agent?: string
-    readonly model?: string
-    readonly effort?: string
+    readonly risk?: readonly string[]
 }
 
 /**
@@ -191,9 +193,7 @@ const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
     ...(fields.difficulty === undefined ? {} : { difficulty: fields.difficulty }),
-    ...(fields.agent === undefined ? {} : { agent: fields.agent }),
-    ...(fields.model === undefined ? {} : { model: fields.model }),
-    ...(fields.effort === undefined ? {} : { effort: fields.effort }),
+    ...(fields.risk === undefined ? {} : { risk: fields.risk }),
 })
 
 /** Where the tasks of a workflow resolve: its repository, and the project's Work root or the refusal that says why it has none. */

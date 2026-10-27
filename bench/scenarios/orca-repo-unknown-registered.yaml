@@ -19,8 +19,6 @@ steps:
         id: repo
         goal: bench workflow repo
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

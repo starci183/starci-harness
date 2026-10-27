@@ -11,10 +11,6 @@ pass:
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-finding: >-
-  nothing counts repeated failures: kernelSubmit in cli/src/core/kernel/driver.ts:437 records each refused command failed
-  (:447) and rethrows; no backoff and no escalation follow, so a Kernel resubmitting the same unfit change under fresh cmdIds
-  is refused the same way forever
 steps:
   - file:
       path: wf.yaml
@@ -23,8 +19,6 @@ steps:
         id: poison
         goal: write doc a
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

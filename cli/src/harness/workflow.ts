@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
-import { headerSchema, LIVE_STATES, STUCK_STATES, viewNodes } from "./graph.js"
+import { LIVE_STATES, storedHeader, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { recordFirstGoal } from "./goal.js"
 import { now } from "./ledger.js"
@@ -106,7 +106,7 @@ const toWorkflow = (row: Record<string, unknown>): WorkflowRow => {
     if (!WORKFLOW_STATUSES.includes(status)) throw new Refusal("LEDGER_DRIFT", `workflow ${text(row.id)} has an unknown status ${status}`)
     return {
         id: text(row.id),
-        header: headerSchema.parse(JSON.parse(text(row.goal_json))),
+        header: storedHeader(JSON.parse(text(row.goal_json))),
         goalVersion: Number(row.goal_version),
         graphVersion: Number(row.graph_version),
         status,
@@ -139,14 +139,10 @@ const routeOf = (value: unknown): TaskRoute => {
     const route = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>
     const field = (name: string): string | undefined => (typeof route[name] === "string" ? route[name] : undefined)
     const difficulty = field("difficulty") as Difficulty | undefined
-    const agent = field("agent")
-    const model = field("model")
-    const effort = field("effort")
+    const risk = Array.isArray(route.risk) ? route.risk.filter((tag): tag is string => typeof tag === "string") : []
     return {
         ...(difficulty === undefined ? {} : { difficulty }),
-        ...(agent === undefined ? {} : { agent }),
-        ...(model === undefined ? {} : { model }),
-        ...(effort === undefined ? {} : { effort }),
+        ...(risk.length === 0 ? {} : { risk }),
     }
 }
 

@@ -58,7 +58,7 @@ design asks for.
 <!-- scoreboard:start -->
 | scenario | group | what | automation | result | recorded |
 |---|---|---|---|---|---|
-| [acc-1-fresh-run](scenarios/acc-1-fresh-run.yaml) | acceptance | owner acceptance 1: a fresh orca run from the owner's request to the Supervisor's stop, through every coordinator verb | automated | **FAIL** | 2026-10-27 |
+| [acc-1-fresh-run](scenarios/acc-1-fresh-run.yaml) | acceptance | owner acceptance 1: a fresh orca run from the owner's request to the Supervisor's stop, through every coordinator verb | automated | pass | 2026-10-27 |
 | [acc-2-crash-continue-same-worktree](scenarios/acc-2-crash-continue-same-worktree.yaml) | acceptance | owner acceptance 2: the Kernel crashes mid-run; the relaunched Kernel continues in the same worktree and Run, nothing redone | automated | pass | 2026-10-27 |
 | [acc-3-change-of-mind-keeps-done-work](scenarios/acc-3-change-of-mind-keeps-done-work.yaml) | acceptance | owner acceptance 3: the owner changes their mind mid-run; done work is kept, live unchanged work continues, the dropped task stops | automated | pass | 2026-10-27 |
 | [acc-4-conflict-scope-escalates](scenarios/acc-4-conflict-scope-escalates.yaml) | acceptance | owner acceptance 4: two workflows want one path; the conflict escalates, the Supervisor narrows one, its Kernel replans inside the new scope | automated | pass | 2026-10-27 |
@@ -73,7 +73,7 @@ design asks for.
 | [crash-after-commit-before-ledger](scenarios/crash-after-commit-before-ledger.yaml) | crash | killed between the harness commit and the ledger write: no second commit | automated | pass | 2026-10-27 |
 | [crash-kernel-during-replan](scenarios/crash-kernel-during-replan.yaml) | crash | the CLI dies halfway through applying a replan | automated | pending |  |
 | [crash-kernel-mid-step](scenarios/crash-kernel-mid-step.yaml) | crash | the CLI dies after the dispatch claim and before the Orca call | automated | pending |  |
-| [crash-kernel-relaunch-storm](scenarios/crash-kernel-relaunch-storm.yaml) | crash | a Kernel that dies right after every launch: the relaunch limit pauses the workflow and escalates to the owner | automated | **FAIL** | 2026-10-27 |
+| [crash-kernel-relaunch-storm](scenarios/crash-kernel-relaunch-storm.yaml) | crash | a Kernel that dies right after every launch: the relaunch limit pauses the workflow and escalates to the owner | automated | pass | 2026-10-27 |
 | [crash-machine-reboot](scenarios/crash-machine-reboot.yaml) | crash | the machine reboots mid-run | manual | pending |  |
 | [crash-op-dies-after-result](scenarios/crash-op-dies-after-result.yaml) | crash | the Op process dies right after filing its result: the result still settles | automated | pass | 2026-10-27 |
 | [crash-op-mid-edit](scenarios/crash-op-mid-edit.yaml) | crash | an Op dies with half its edit written | semi | pending |  |
@@ -94,7 +94,7 @@ design asks for.
 | [provider-all-down](scenarios/provider-all-down.yaml) | provider | every provider is down: dispatch holds with a named reason, no launch, no busy loop | automated | pass | 2026-10-27 |
 | [provider-auth-revoked](scenarios/provider-auth-revoked.yaml) | provider | a provider's auth is revoked (org disabled): its circuit opens and the router routes around it | automated | pass | 2026-10-27 |
 | [provider-launch-failure-strikes](scenarios/provider-launch-failure-strikes.yaml) | provider | repeated launch failures open the provider circuit | automated | pending |  |
-| [provider-model-downgraded](scenarios/provider-model-downgraded.yaml) | provider | Orca launches a different model than pinned: the worker is closed and the task requeued | automated | pass | 2026-10-27 |
+| [provider-model-downgraded](scenarios/provider-model-downgraded.yaml) | provider | Orca launches a different model than the router asked for: the worker is closed and the task requeued | automated | pass | 2026-10-27 |
 | [provider-quota-until-date](scenarios/provider-quota-until-date.yaml) | provider | a pool is exhausted until a reset date: rerouted, not stalled, until that date | automated | pass | 2026-10-27 |
 | [provider-rate-limit](scenarios/provider-rate-limit.yaml) | provider | a provider rate-limits: its pool's concurrency shrinks and new work routes elsewhere | automated | pending |  |
 | [change-drop-done-node-reverts](scenarios/change-drop-done-node-reverts.yaml) | change | the change removes a task that already landed | automated | pending |  |
@@ -143,7 +143,7 @@ design asks for.
 | [verify-red-preserves-and-resets](scenarios/verify-red-preserves-and-resets.yaml) | verify | a red verify preserves the work, resets the paths and commits nothing | automated | pass | 2026-10-27 |
 | [verify-slow-suite](scenarios/verify-slow-suite.yaml) | verify | a check runs past its deadline | automated | pending |  |
 | [messaging-duplicate](scenarios/messaging-duplicate.yaml) | messaging | the same command is delivered twice | automated | pass | 2026-10-27 |
-| [messaging-impostor-sender](scenarios/messaging-impostor-sender.yaml) | messaging | a command arrives from a dispatch that is not of this Run | automated | **FAIL** | 2026-10-27 |
+| [messaging-impostor-sender](scenarios/messaging-impostor-sender.yaml) | messaging | a command arrives from a dispatch that is not of this Run | automated | pass | 2026-10-27 |
 | [messaging-lost-wake](scenarios/messaging-lost-wake.yaml) | messaging | the wake mail is lost | automated | pass | 2026-10-27 |
 | [messaging-mailbox-backlog](scenarios/messaging-mailbox-backlog.yaml) | messaging | a dead Kernel leaves a backlog; the new one processes it exactly once | automated | pass | 2026-10-27 |
 | [messaging-op-flood](scenarios/messaging-op-flood.yaml) | messaging | an Op floods its Kernel with mail | automated | pending |  |
@@ -191,7 +191,7 @@ design asks for.
 | [model-cmdid-reuse-different-content](scenarios/model-cmdid-reuse-different-content.yaml) | model | a cmdId reused with different content | automated | pending |  |
 | [model-compaction-forgets-role](scenarios/model-compaction-forgets-role.yaml) | model | a coordinator's context compaction forgets it is the Kernel | semi | pending |  |
 | [model-extremely-slow](scenarios/model-extremely-slow.yaml) | model | a model takes an hour per step | semi | pending |  |
-| [model-poison-command](scenarios/model-poison-command.yaml) | model | the same invalid command is submitted again and again | automated | **FAIL** | 2026-10-27 |
+| [model-poison-command](scenarios/model-poison-command.yaml) | model | the same invalid command is submitted again and again | automated | pass | 2026-10-27 |
 | [model-worker-role-cannot-overstep](scenarios/model-worker-role-cannot-overstep.yaml) | model | a process running as worker cannot amend, raise budgets, stop or push | automated | pass | 2026-10-27 |
 | [worker-mismatch-no-try-spent](scenarios/worker-mismatch-no-try-spent.yaml) | model | the model refuses the task as specified: mismatch returns it without spending a try | automated | pass | 2026-10-27 |
 | [budget-task-always-over](scenarios/budget-task-always-over.yaml) | plan | a task blows its budget every try | automated | pending |  |

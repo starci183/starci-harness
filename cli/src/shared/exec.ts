@@ -164,10 +164,10 @@ export const captureTool = async (tool: string, args: readonly string[], cwd: st
     return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr, timedOut: run.timedOut }
 }
 
-/** Runs a short host tool synchronously (for code that cannot await, such as opening the ledger); never throws. */
-export const captureToolSync = (tool: string, args: readonly string[], cwd: string): ToolRun => {
-    const run = spawnSync(tool, [...args], { cwd, windowsHide: true, encoding: "utf8", maxBuffer: MAX_BUFFER })
-    if (run.error !== undefined) return { exitCode: 1, stdout: "", stderr: run.error.message, timedOut: false }
+/** Runs a short host tool synchronously (for code that cannot await, such as opening the ledger), killed after `timeoutMs` when given; never throws. */
+export const captureToolSync = (tool: string, args: readonly string[], cwd: string, timeoutMs?: number): ToolRun => {
+    const run = spawnSync(tool, [...args], { cwd, windowsHide: true, encoding: "utf8", maxBuffer: MAX_BUFFER, ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }) })
+    if (run.error !== undefined) return { exitCode: 1, stdout: "", stderr: run.error.message, timedOut: "code" in run.error && run.error.code === "ETIMEDOUT" }
     return { exitCode: run.status ?? 1, stdout: run.stdout.trim(), stderr: run.stderr.trim(), timedOut: false }
 }
 

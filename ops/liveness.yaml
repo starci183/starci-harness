@@ -26,18 +26,22 @@ settleNoVerdictMax: 3
 coordinators:
   # A seat's TTL lease: every harness call it makes (attach, next, submit, seat ping) renews it for this long.
   seatLeaseMinutes: 15
-  # A Kernel whose lease lapsed and whose workflow recorded no event for this long has made no progress; `supervisor next`
-  # asks Orca and relaunches it only on Orca's word (gone, or idle past this long). Unknown is not dead.
+  # A Kernel whose lease lapsed and whose workflow recorded no progress for this long (an event of its work, never one of the
+  # Supervisor relaunching it) is stalled; `supervisor next` asks Orca and relaunches it only on Orca's word (gone, or idle
+  # past this long). Unknown is not dead.
   kernelTtlMinutes: 20
   # The Supervisor's lease; `supervisor ensure` relaunches it only when Orca says its terminal is gone.
   supervisorTtlMinutes: 30
-  # More Kernel relaunches than this inside the window pause the workflow and escalate to the owner.
+  # After this many Kernel relaunches with no progress since the first, the next one pauses the workflow and escalates to the
+  # owner instead.
   kernelRelaunchMax: 3
-  kernelRelaunchWindowMinutes: 30
   # An effect_unknown launch Orca still holds no receipt for (request-show absent) after this long is stuck: a red decision.
   effectUnknownDeadlineMinutes: 15
   # A node waiting on another workflow's path lease for this long is a conflict decision (the Kernel escalates it).
   conflictMinutes: 10
+  # The same refused Kernel command (its content, whatever its cmdId) this many times escalates to the Supervisor (kind
+  # harness), and every later submit of it is refused at once.
+  poisonRefusals: 3
   # How long one `next` blocks before it returns idle, and how often it re-reads the ledger while it waits on mail.
   nextWaitSeconds: 900
   nextPollSeconds: 30
