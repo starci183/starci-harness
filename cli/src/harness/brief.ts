@@ -87,7 +87,7 @@ const describeOutput = (item: ResolvedOutput): string => {
     const facts = [
         spec.type,
         ...("minItems" in spec && spec.minItems !== undefined && spec.minItems > 0 ? [`at least ${String(spec.minItems)}`] : []),
-        ...("cites" in spec && spec.cites === "context" ? ["ids named by the files you read"] : []),
+        ...("cites" in spec && spec.cites === "context" ? ["ids named by the files you read that are not marked background"] : []),
         ...("cites" in spec && spec.cites === "work" ? ["ids named by the Work files you read or the records you wrote in your allowPaths"] : []),
         item.source,
     ]
@@ -138,7 +138,8 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         bullets(contract.context.allowPaths, "nothing"),
         "### Read exactly these files",
         bullets(
-            resolved.context.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source})`),
+            // A shared file is background every task of the label reads; its ids are never cited (citableContext).
+            resolved.context.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
         "### Output",
