@@ -1,0 +1,89 @@
+schema: starci/scenario@1
+id: owner-config-set-keeps-file
+group: owner
+title: "config list, get and set change a harness setting in the ops/ yaml that owns it; a refused value leaves the file byte-identical"
+inject: a copy of ops/ committed in the scratch repository (STARCI_OPS_DIR), then valid and invalid config set calls
+expect: "config list prints every setting as a dotted key with its owning file and get prints one value; set writes the value into its file keeping every comment and every other byte (setting it back leaves the tree clean); a value the file's loaders refuse is CONFIG_INVALID, a key they do not read or a file ops/ does not hold is CONFIG_KEY_UNKNOWN or CONFIG_FILE_UNKNOWN, and each refusal leaves the file byte-identical"
+pass:
+  - config list names routing.pools.claude.maxParallel and its file; --file narrows it
+  - config get prints the value the file writes
+  - a refused set leaves the committed copy clean
+  - a valid set changes the value and keeps the comments; setting the old value back leaves the copy clean
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - name: list every setting
+    starci: [config, list]
+    expect: { exit: 0, contains: '"key": "routing.pools.claude.maxParallel"' }
+  - name: list names the owning file
+    starci: [config, list]
+    expect: { exit: 0, contains: "routing.yaml" }
+  - name: list one file
+    starci: [config, list, --file, uat]
+    expect: { exit: 0, contains: '"key": "uat.timeoutMs"' }
+  - name: list an unknown file
+    starci: [config, list, --file, nope]
+    expect: { exit: 1, code: CONFIG_FILE_UNKNOWN }
+  - name: get one value
+    starci: [config, get, routing.pools.claude.maxParallel]
+    expect: { exit: 0, contains: '"value": 6' }
+  - name: get an indexed key
+    starci: [config, get, "routing.tiers.high[1].effort"]
+    expect: { exit: 0, contains: '"value": "high"' }
+  - name: get a key no file holds
+    starci: [config, get, routing.pools.claude.nope]
+    expect: { exit: 1, code: CONFIG_KEY_UNKNOWN }
+  - name: set a value the schema refuses
+    starci: [config, set, routing.pools.claude.maxParallel, "0"]
+    expect: { exit: 1, code: CONFIG_INVALID }
+  - assert: { gitClean: true }
+  - name: set a string where a number belongs
+    starci: [config, set, routing.pools.claude.maxParallel, many]
+    expect: { exit: 1, code: CONFIG_INVALID }
+  - assert: { gitClean: true }
+  - name: set a value the cross-field rules refuse
+    starci: [config, set, "routing.tiers.high[0].agent", ghost]
+    expect: { exit: 1, code: CONFIG_INVALID }
+  - assert: { gitClean: true }
+  - name: set a lane label with no op file
+    starci: [config, set, "lanes.lanes[0].steps[0].label", nolabel]
+    expect: { exit: 1, code: CONFIG_INVALID }
+  - assert: { gitClean: true }
+  - name: set a key the loader does not read
+    starci: [config, set, routing.balance.extra, "1"]
+    expect: { exit: 1, code: CONFIG_KEY_UNKNOWN }
+  - assert: { gitClean: true }
+  - name: set a key in no settings file
+    starci: [config, set, nope.key, "1"]
+    expect: { exit: 1, code: CONFIG_KEY_UNKNOWN }
+  - assert: { gitClean: true }
+  - name: set a valid value
+    starci: [config, set, routing.pools.claude.maxParallel, "7"]
+    expect: { exit: 0, contains: '"previous": 6' }
+  - assert: { gitClean: false }
+  - name: get reads the new value
+    starci: [config, get, routing.pools.claude.maxParallel]
+    expect: { exit: 0, contains: '"value": 7' }
+  - name: the comments are kept
+    git: [grep, -q, -F, "# One pool per agent: one provider quota window with real parallel slots.", --, ops/routing.yaml]
+  - name: set a value inside a flow map
+    starci: [config, set, routing.balance.maxStreak, "4"]
+    expect: { exit: 0 }
+  - name: set a list as JSON
+    starci: [config, set, routing.usage.windows, '["session"]']
+    expect: { exit: 0, contains: '"previous": [' }
+  - name: set the old values back
+    starci: [config, set, routing.pools.claude.maxParallel, "6"]
+    expect: { exit: 0 }
+  - starci: [config, set, routing.balance.maxStreak, "3"]
+    expect: { exit: 0 }
+  - starci: [config, set, routing.usage.windows, '["session","weekly","monthly"]']
+    expect: { exit: 0 }
+  - name: every other byte is as it was
+    assert: { gitClean: true }

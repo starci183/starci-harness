@@ -48,7 +48,8 @@ into a workflow of its project, starts it from its own terminal, and answers its
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
 
-A chat agent outside Orca is Debug: it diagnoses the harness read-only and hands the Supervisor a repair contract; it
+A chat agent outside Orca is Debug: it diagnoses the harness, changes nothing but a harness setting (`starci config set`),
+and hands the Supervisor a repair contract; it
 never starts an orca workflow (that refuses `SUPERVISOR_REQUIRED`). Under the `inline` runner the chat is the Kernel and
 the worker, one task at a time, without seats.
 
@@ -62,6 +63,7 @@ Get the owner's OK on the exact artefact before each effect, and reuse it only w
 | `task send`, `seat start` outside a workflow | the contract |
 | `workflow amend` that adds, removes or widens work | the `plan diff` output |
 | `workflow stop`, `task cancel`, `budget raise` | the target and the reason |
+| `config set` | the key and the value |
 | `release push`, `release cut` | the repository, commit and version |
 | `release publish --publish` | every package and version in the plan, each time (npm is public) |
 

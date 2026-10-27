@@ -17,22 +17,23 @@ escalateAfterReds: 2
 
 # A tier is the set of members the router scores; the order breaks a tie only.
 # The model follows the work: everyday work (low, medium) runs each provider's everyday model (Claude Sonnet, Devin
-# SWE-2 Max, Codex GPT-6 Luna); hard work (high, frontier) runs its strongest (Claude Opus, Codex GPT-6.1 Sol).
+# SWE-2 Max, Codex GPT-6 Luna); hard work (high, frontier) runs its strongest (Claude Opus, Codex GPT-6.1 Sol). A Claude or
+# Codex member's effort follows its tier (low, medium, high, max at frontier); the launch passes it to Orca with the model.
 tiers:
   frontier:
-    - {agent: claude, model: claude-opus-5-5}
+    - {agent: claude, model: claude-opus-5-5, effort: max}
     - {agent: codex, model: gpt-6.1-sol, effort: max}
   high:
-    - {agent: claude, model: claude-opus-5-5}
+    - {agent: claude, model: claude-opus-5-5, effort: high}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
   # Claude is in the everyday tiers, so a uat task always has a member whose pool takes the uat label.
   medium:
-    - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: claude, model: claude-sonnet-5-5, effort: medium}
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6-luna, effort: medium}
     - {agent: cursor, model: auto}
   low:
-    - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: claude, model: claude-sonnet-5-5, effort: low}
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6-luna, effort: low}
 

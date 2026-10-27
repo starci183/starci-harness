@@ -8,6 +8,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **`config list|get|set`.** One door to the harness settings, each kept in the ops/ yaml that owns it: `list` prints
+  every setting as a dotted key (`routing.tiers.high[0].effort`) with its value and file, `get` one, and `set` writes a
+  value with the file's comments and layout kept, after the file's own loaders accept the whole new file
+  (`CONFIG_INVALID` and `CONFIG_KEY_UNKNOWN` leave it untouched). The Claude members of `ops/routing.yaml` name the effort
+  of their tier, as Codex's do.
+
 - **Lanes and repair routes.** `ops/lanes.yaml` is the standard build flow each Work record walks; `workflow define`,
   `amend` and every replan refuse `FLOW_INCOMPLETE` while a covered record's step is neither satisfied by evidence nor
   carried by a task of its label in order (a front-end code step held until its feature's drawings and back-end code), and
