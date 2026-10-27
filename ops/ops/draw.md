@@ -23,8 +23,9 @@ output:
     direction: {type: string, summary: "the direction file you wrote, as the ui record's `direction` names it"}
     rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the ui and grammar rules the direction follows"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the ui records you drew"}
+    cites: {type: "string[]", minItems: 1, summary: "the anchor ids you decided by: the Choose anchor (<family>.choose[.<term>]) of every component family the direction composes, plus the DNA and rule ids you applied"}
 checks:
-  base: [paths-only, rules-cited]
+  base: [paths-only, rules-cited, anchors-cited]
   behavioural: false
 ---
 Draw the screen the ui record describes as one static HTML file beside the record, composed only of the grammar's
@@ -32,3 +33,9 @@ components and the brand's tokens, in every state the record names; write its pa
 list each artwork slot the drawing leaves for real art in the record's `assets` (`{slot, summary}`, no file yet). A colour,
 typeface or mark the brand record does not settle, or a shape the grammar cannot render, is `blocked` naming the gap,
 never invented in the drawing. The owner approves the direction; you never set the record's `state`.
+
+Before you place a component, search for and read its Choose section (`starci contexts search "<need>" --scope ui`) and
+pick the role, variant, intent and spacing step it gives; list under `cites` the Choose anchor of every component family
+the direction composes (`tabs.choose`, or a finer `tabs.choose.<term>`), the DNA and rule ids you applied, and every id the
+contract hands you. An id that resolves to nothing is red (`anchors-cited`); the code that builds the screen and its
+audit are graded against these cites.

@@ -39,7 +39,8 @@ const riskTagSchema = z.string().refine((tag) => loadRouting().qualification.ris
 /**
  * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and what the
  * router reads of it (difficulty, risk); the router alone picks the agent and model.
- * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base. `readPaths`
+ * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base; `cites` are the
+ * anchor ids the task answers for (harness/cite.ts). `readPaths`
  * is the earlier spelling of `context`. `uat: <flow id>` is a third form: the contract built from that Work record (uatContract).
  */
 const taskFieldsShape = {
@@ -56,6 +57,7 @@ const taskFieldsShape = {
     cwd: z.string().min(1).optional(),
     setup: contractSchema.shape.context.shape.setup,
     checks: z.array(checkEntrySchema).min(1).optional(),
+    cites: contractSchema.shape.cites,
     budget: contractSchema.shape.budget.optional(),
     dependsOn: z.array(keySchema).optional(),
     difficulty: difficultySchema.optional(),
@@ -187,7 +189,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "checks", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "checks", "cites", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -273,6 +275,7 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
         input: { summary, ...optional("details", fields.details ?? previous?.input.details), ...optional("base", filled(inputBase)), ...optional("extend", filled(inputExtend)) },
         ...optional("output", part(previous?.output?.base, filled(fields.output ?? previous?.output?.extend))),
         ...optional("checks", part(previous?.checks?.base, filled(fields.checks ?? previous?.checks?.extend))),
+        ...optional("cites", filled(fields.cites ?? previous?.cites)),
         budget: fields.budget ?? previous?.budget ?? { ...DEFAULT_BUDGET },
     })
 }

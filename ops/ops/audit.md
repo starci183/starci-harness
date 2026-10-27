@@ -24,8 +24,10 @@ output:
     findings: {type: array, summary: "one entry per drift: {screen, state, expected, observed, screenshot, rule}"}
     rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the ui and grammar rules a finding breaks"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the ui and impl records you audited"}
+    cites: {type: "string[]", minItems: 0, summary: "the anchor ids you judged by beyond the handed ones: Choose anchors (<family>.choose[.<term>]), DNA and rule ids"}
+    citeGrades: {type: array, minItems: 0, summary: "one entry per cite the contract hands you (the author's): {cite, grade: followed | violated | not-applicable, evidence: one line}"}
 checks:
-  base: [paths-only, result-passed, rules-cited]
+  base: [paths-only, result-passed, rules-cited, anchors-cited]
   behavioural: false
 ---
 Write a short Playwright script that opens each screen of the records in every state they name and saves a screenshot per
@@ -34,3 +36,8 @@ Compare each screenshot with the record's direction and the grammar's rules; eac
 screenshot and the rule it breaks, and any finding makes the verdict failed (file `failed`). Change nothing in the product.
 A direction that is missing, contradictory or too vague to audit against is no finding of the build: file `blocked`
 naming it, and the Kernel redraws.
+
+The contract's `cites` are the author's (the draw and code of the screen): the brief's "Cites" section quotes each with the
+text it resolves to. Grade every one under `citeGrades` against the screenshots: `followed`, `violated` or
+`not-applicable`, each with one line of evidence naming the screen, state and screenshot. A `violated` grade is a finding:
+your verdict is failed and the code repairs it (`audit-drift-repairs-code`); `anchors-cited` is red on any `violated`.

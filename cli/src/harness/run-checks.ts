@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
+import { judgeCites } from "./cite.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { now, openExistingLedger } from "./ledger.js"
@@ -356,5 +357,12 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return runUatFlowCheck({ ...check, check: primitive }, place)
         case "cited":
             return runCitedCheck({ ...check, check: primitive }, place)
+        case "cite": {
+            // The anchor cites (harness/cite.ts) of the filed result, against the change in the checkout the check runs in.
+            const document = readJsonDocument(RESULT_FILE, place)
+            if ("problem" in document) return outcome(check, [document.problem], "")
+            const judged = await judgeCites(primitive, document.value, { root: place.root, base: place.diffBase ?? "HEAD", allowPaths: contract.context.allowPaths })
+            return outcome(check, judged.problems, judged.detail)
+        }
     }
 }
