@@ -9,8 +9,8 @@ import { Linter } from "eslint"
 import type { Rule } from "eslint"
 import { parseYaml } from "../runtime/engine/yaml.mjs"
 import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.mjs"
-import { FE_DECLARATION, fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
-import { rules as universal } from "../../eslint-canon-fe/index.mjs"
+import { FE_DECLARATION, fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
+import { rules as universal } from "../../eslint-canon-fe/src/index.ts"
 import plugin, { lawOwners, recommended, ruleDeclarations, rules, coreGrammarConfig, why } from "./index.ts"
 import { RULE_OWNERSHIP } from "./lib/rule-contract.ts"
 
@@ -25,7 +25,9 @@ for (const name of readdirSync(SOURCE_DIR)) {
 }
 after(() => rmSync(lawFolder, { recursive: true, force: true }))
 
-gatheredPluginSpec({ side: "grammar", dir: lawFolder, plugin, lawOwners, recommended, ruleDeclarations, rules })
+const pluginRules = plugin.rules
+assert.ok(pluginRules, "the plugin publishes its rules")
+gatheredPluginSpec({ side: "grammar", dir: lawFolder, plugin: { ...plugin, rules: pluginRules }, lawOwners, recommended, ruleDeclarations, rules })
 
 /** The behavioral citations `defineFamilyRules` attaches to a rule's docs. */
 const citationsOf = (rule: Rule.RuleModule): { readonly url: unknown; readonly knowledge: unknown; readonly ownership: unknown } => {

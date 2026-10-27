@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { chipLabelStartsUppercase, recommended, rules, startsLowercase } from "./chip-label.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/RunStatus/component.tsx")

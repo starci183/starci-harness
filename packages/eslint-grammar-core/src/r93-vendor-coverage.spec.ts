@@ -3,7 +3,7 @@
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import { at, fixtureHfs } from '../../eslint-canon-fe/fixtures/typed/tester.mjs';
+import { at, fixtureHfs } from '../../eslint-canon-fe/fixtures/typed/tester.ts';
 import { noVendorIconOutsideIconLeaf, heroiconsIsTheGlyphVendor, noOffScaleGlyphSize, noIconSizeClass, noDecorativeIconInMetricCell } from './icon.ts';
 import { destructiveMenuEntryNeedsDangerTone } from './menu-entries.ts';
 import { vendorPrimitiveHasNamedOwner } from './vendor-boundary.ts';

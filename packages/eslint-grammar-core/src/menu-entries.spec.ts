@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { destructiveMenuEntryNeedsDangerTone, isDestructiveText, normalizeText, recommended, rules } from "./menu-entries.ts"
 
 // Vietnamese labels written as unicode escapes (sources are English): sign out, delete, delete account, leave workspace, revoke, deactivate.

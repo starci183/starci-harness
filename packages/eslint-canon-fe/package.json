@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-canon-fe",
-  "version": "9.3.0",
+  "version": "9.4.0",
   "description": "Universal front-end lint laws for TypeScript and Next.js, independent of the selected Grammar family.",
   "type": "module",
   "license": "MIT",
@@ -16,18 +16,34 @@
   },
   "private": false,
   "exports": {
-    ".": "./index.mjs",
-    "./lib/*": "./lib/*"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./lib/*.mjs": {
+      "types": "./dist/lib/*.d.ts",
+      "default": "./dist/lib/*.js"
+    },
+    "./lib/*.js": {
+      "types": "./dist/lib/*.d.ts",
+      "default": "./dist/lib/*.js"
+    },
+    "./package.json": "./package.json"
   },
-  "main": "./index.mjs",
+  "imports": {
+    "#runtime/*": {
+      "types": "./src/types/runtime/*",
+      "default": "./runtime/*"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "LICENSE",
-    "*.mjs",
-    "lib/*.mjs",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
     "runtime/**",
     "docs/*.md",
-    "*.ts",
-    "!*.spec.mjs",
     "CHANGELOG.md",
     "README.md"
   ],
@@ -43,7 +59,10 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test \"*.spec.mjs\""
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.spec.ts\"",
+    "prepack": "npm run typecheck && npm run build && npm test"
   },
   "keywords": [
     "eslint",
@@ -54,10 +73,13 @@
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
+    "@typescript-eslint/utils": "^8.72.1",
     "eslint-plugin-sonarjs": "4.2.1",
     "eslint-plugin-unicorn": "65.0.0"
   },
   "devDependencies": {
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "^24.19.2",
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "typescript": "^6.0.3"

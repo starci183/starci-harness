@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@starci/tsconfig/package-esm.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "fixtures/overlay-host-files.ts", "fixtures/typed/tester.ts"]
+}

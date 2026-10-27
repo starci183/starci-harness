@@ -15,7 +15,7 @@ import { solidTextClasses, rules, statusTextUsesSoftForeground } from "./status-
 import { STATUS_TONES } from "./lib/status-tones.generated.ts"
 // proves: FE_STYLE_TOKEN_ONLY@lite
 // proves: FE_STYLE_TOKEN_ONLY@full
-import { fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 
 const tester = new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },

@@ -24,7 +24,11 @@ bare IDs under the `starci-grammar` namespace. This package exports shared AST, 
 slot and configuration infrastructure through `@starci/eslint-canon-fe/lib/*`; family packages
 import those readers without copying them.
 
-Every universal law remains gathered by `index.mjs`; its recommendation enables every rule.
+Every universal law remains gathered by `src/index.ts`; its recommendation enables every rule.
+The package is TypeScript: `src/**/*.ts` builds to `dist/` (`npm run build`), the published entry and
+the `lib/*` readers are the built files, `npm run typecheck` holds the source and specs strict, and
+`npm test` runs the specs on the source. The bundled `runtime/` is read through the package import
+`#runtime/*`.
 The `docs/` directory carries the detailed behavior of the documented laws. `why` supplies
 failure codes and English guidance for the catalogued rules.
 

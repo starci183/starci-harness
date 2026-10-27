@@ -1,0 +1,174 @@
+/**
+ * Path predicates shared by the laws that scope themselves by where a file sits.
+ *
+ * ONE PLACE, because a scope written twice drifts: a rule that thinks `modules/config` is one
+ * spelling and a sibling that thinks it is another disagree about which file may read the
+ * environment, and the disagreement shows up as a finding nobody can satisfy.
+ */
+
+import { dirname, join, resolve } from "node:path"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import ts from "typescript"
+import { hfsOf, requiredRoot, requiredSlot } from "./hfs.ts"
+import type { HfsClassification } from "./hfs-view.ts"
+import { normalizePath } from "./path.ts"
+import type { AnyContext } from "./rule.ts"
+
+/**
+ * The HFS slot id of the file being linted, read from the slot view (`settings.starci.hfs`).
+ *
+ * @param {object} context - The ESLint rule context.
+ * @returns {string | null} The slot id, or null when no slot owns the file.
+ */
+export const slotOfFile = (context: AnyContext): string | null => hfsOf(context).slotOf(context.filename || context.getFilename())
+
+/**
+ * True when the file being linted sits in one of the given slots.
+ *
+ * @param {object} context - The ESLint rule context.
+ * @param {...string} ids - Slot ids.
+ * @returns {boolean} Whether the file's slot is one of them.
+ */
+export const inSlot = (context: AnyContext, ...ids: readonly string[]): boolean => {
+  const slot = slotOfFile(context)
+  return slot !== null && ids.includes(slot)
+}
+
+/** The filename a rule is linting. */
+export const fileOf = (context: AnyContext): string => context.filename || context.getFilename()
+
+/** The classification of the linted file from the slot view: `{ slot, root, bindings, kind?, role? }` or a no-slot status. */
+export const classOf = (context: AnyContext): HfsClassification => hfsOf(context).classify(fileOf(context))
+
+/** The tier of the linted file in the import direction matrix (`route`, `feature`, `components`, `hooks`, `foundation`, `modules`, `transport`, `package`, `none`), or null when no slot owns it. */
+export const tierOfFile = (context: AnyContext): string | null => hfsOf(context).tierOf(fileOf(context))
+
+/** The folder kind the slot reports for the linted file (a component layer, a feature kind), or null. */
+export const kindOfFile = (context: AnyContext): string | null => classOf(context).kind ?? null
+
+/** The role the slot reports for the linted file (`entry`, `drawing`, `styles`, `shared`, `page`, `layout`, ...), or null. */
+export const roleOfFile = (context: AnyContext): string | null => classOf(context).role ?? null
+
+/** The tiers of product source: everything a slot places in an app's route, feature, component, hook or module tiers and in a shared package. */
+const PRODUCT_TIERS = new Set<string | null>(["route", "feature", "components", "hooks", "foundation", "modules", "transport", "package"])
+
+/** Product source: a file of a product tier. */
+export const isProductSource = (context: AnyContext): boolean => PRODUCT_TIERS.has(tierOfFile(context))
+
+/** A file of a component tier: slot `fe.components` or `fe.package.ui`, inside one of its layer folders (blocks, composites, branches, leaves). */
+export const isComponentFile = (context: AnyContext): boolean => inSlot(context, "fe.components", "fe.package.ui") && kindOfFile(context) !== null
+
+/** True when the given file (an absolute or repo-relative name, e.g. where an import resolves to) sits in a component layer of slot `fe.components` or `fe.package.ui`. */
+export const isComponentPath = (context: AnyContext, file: string): boolean => {
+  const found = hfsOf(context).classify(file)
+  return (found.slot === "fe.components" || found.slot === "fe.package.ui") && found.kind !== undefined
+}
+
+/** The one place that may read the environment: slot `fe.modules.config`. */
+export const isConfigModule = (context: AnyContext): boolean => inSlot(context, "fe.modules.config")
+
+/**
+ * The transport owner: the folder of the auth and no-auth Apollo clients and their link chain, slot `fe.transport.client`
+ * (`modules/api/graphql/clients/`, one-app repository) or `fe.package.api.client` (`src/graphql/clients/` of the shared api package).
+ */
+export const isApiClient = (context: AnyContext): boolean => inSlot(context, "fe.transport.client", "fe.package.api.client")
+
+/** The slots of the API layer: the app's `modules/api` (with its clients folder, its stream reader and its GraphQLResponse file) and the shared api package. */
+const API_LAYER_SLOTS = Object.freeze(["fe.modules.api", "fe.transport.client", "fe.transport.stream", "fe.transport.outcome", "fe.package.api", "fe.package.api.client", "fe.package.api.outcome"])
+
+/** True when the linted file sits in the API layer: the only place that talks to the back end (Apollo, axios, `fetch`). */
+export const isApiLayer = (context: AnyContext): boolean => inSlot(context, ...API_LAYER_SLOTS)
+
+/**
+ * True when the linted file is a REST call of the API layer: `modules/api/rest/**` of an app (slot `fe.modules.api`) or
+ * `src/rest/**` of the shared api package (slot `fe.package.api`), the one home of axios.
+ */
+export const isApiRest = (context: AnyContext): boolean => {
+  if (!inSlot(context, "fe.modules.api", "fe.package.api")) return false
+  const hfs = hfsOf(context)
+  const file = fileOf(context)
+  const below = hfs.relative(file).slice(requiredRoot(hfs.classify(file)).length + 1).split("/")
+  return (below[0] === "src" ? below[1] : below[0]) === "rest"
+}
+
+/** The file that may declare the one result vocabulary (`GraphQLResponse`): the file of the slot the manifest marks `outcomeHome`. */
+export const isOutcomeModule = (context: AnyContext): boolean => {
+  const hfs = hfsOf(context)
+  const slot = slotOfFile(context)
+  return slot !== null && hfs.slot(slot)?.outcomeHome === true
+}
+
+/** The basename of a path without directories. */
+export const baseName = (filename: string): string => normalizePath(filename).split("/").pop() ?? ""
+
+/** The file name with its extension removed. */
+export const stem = (filename: string): string => baseName(filename).replace(/\.[cm]?[jt]sx?$/, "")
+
+/**
+ * The references in the file that resolve to no declaration of the file, i.e. to a global (`fetch`, `Request`, `window`).
+ * An import, a parameter, a local `const fetch` binds the name and is not one; a type-position use is not a value reference.
+ *
+ * @param {object} context - The ESLint rule context.
+ * @param {Set<string>} names - The global names to look for.
+ * @returns {Array<object>} The ESTree identifiers that reference such a global as a value.
+ */
+export const globalReferences = (context: AnyContext, names: ReadonlySet<string>): (TSESTree.Identifier | TSESTree.JSXIdentifier)[] => {
+  const sourceCode = context.sourceCode ?? context.getSourceCode()
+  const found: (TSESTree.Identifier | TSESTree.JSXIdentifier)[] = []
+  const visit = (scope: TSESLint.Scope.Scope): void => {
+    for (const reference of scope.references) {
+      if (!names.has(reference.identifier.name) || reference.isValueReference === false) continue
+      if ((!reference.resolved || reference.resolved.defs.length === 0)) found.push(reference.identifier)
+    }
+    scope.childScopes.forEach(visit)
+  }
+  const globalScope = sourceCode.scopeManager?.globalScope
+  if (!globalScope) throw new TypeError("the parser gave no scope manager")
+  visit(globalScope)
+  return found
+}
+
+/**
+ * Where an import specifier of the linted file points, as an absolute path without an extension: a relative specifier, or `@/`
+ * from the owning app's `src/` (the app directory is the directory part of slot `fe.app.next`). Null for a package or a file no app owns.
+ *
+ * @param {object} context - The ESLint rule context.
+ * @param {string} specifier - The module specifier.
+ * @returns {string | null} The absolute path, or null.
+ */
+export const resolveImport = (context: AnyContext, specifier: string): string | null => {
+  const hfs = hfsOf(context)
+  const file = fileOf(context)
+  if (specifier.startsWith(".")) return resolve(dirname(file), specifier)
+  if (!specifier.startsWith("@/")) return null
+  const app = hfs.classify(file).bindings?.app
+  if (app === undefined) return null
+  const appDirectory = requiredSlot(hfs.slot("fe.app.next"), "fe.app.next").path.split("/{")[0]?.replace("<app>", app) ?? ""
+  return join(hfs.repoRoot, appDirectory, "src", specifier.slice(2))
+}
+
+/**
+ * The classification of an existing module file, resolving explicit files before extension and directory-index candidates.
+ * Virtual rule inputs with no existing candidate retain the path-only slot classification.
+ *
+ * @param {object} context - The ESLint rule context.
+ * @param {string} specifier - The module specifier.
+ * @returns {object | null} The resolved file's owned slot classification, or the virtual-input classification when no file exists.
+ */
+export const classifyImport = (context: AnyContext, specifier: string): HfsClassification | null => {
+  const target = resolveImport(context, specifier)
+  if (target === null) return null
+  const hfs = hfsOf(context)
+  const candidates = [`${target}.ts`, `${target}.tsx`, `${target}/index.ts`, `${target}/index.tsx`, target]
+  // Match the owner helper's on-disk module order; a nonexistent auth.ts must not shadow auth/index.ts.
+  const existing = [target, ...candidates].find((candidate) => ts.sys.fileExists(candidate))
+  if (existing !== undefined) {
+    const found = hfs.classify(existing)
+    return found.slot && found.status === "owned" ? found : null
+  }
+  // RuleTester deliberately accepts virtual source paths; preserve its existing slot/role inference only without a real target.
+  const owned = candidates
+    .map((candidate) => hfs.classify(candidate))
+    .filter((found) => found.slot && found.status === "owned")
+  return owned.find((found) => found.role) ?? owned[0] ?? null
+}

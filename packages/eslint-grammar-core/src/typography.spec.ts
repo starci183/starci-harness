@@ -13,7 +13,7 @@ import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 // proves: FE_STYLE_TOKEN_ONLY@lite
 // proves: FE_STYLE_TOKEN_ONLY@full
-import { at, fixtureHfs, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, fixtureHfs, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { noHeadingTagOutsideHeadingComponent, rules } from "./typography.ts"
 
 const tester = slotTester()
