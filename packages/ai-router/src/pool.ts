@@ -60,6 +60,10 @@ export interface Blocked {
 }
 
 const FOREVER = Number.MAX_SAFE_INTEGER
+/** The latency samples a lane needs before its EWMA ranks it: one cold call (a JIT warm-up, a first TLS handshake) never decides. */
+const LATENCY_SAMPLES = 3
+/** How far a lane latency leaves out drifts toward the best EWMA per pick: a 2.5x-slow lane is retried about every tenth pick. */
+const LATENCY_DRIFT = 0.1
 
 interface LaneCounters {
     attempts: number
@@ -101,6 +105,7 @@ export class PoolState {
     readonly #inflightKey = new Map<string, number>()
     readonly #inflightProvider = new Map<string, number>()
     readonly #ewma = new Map<string, number>()
+    readonly #samples = new Map<string, number>()
     readonly #roundRobin = new Map<string, number>()
     readonly #counters = new Map<string, LaneCounters>()
     readonly #waiters = new Set<() => void>()
@@ -252,10 +257,16 @@ export class PoolState {
         const load = (lane: Lane): number => this.#inflightKey.get(lane.pair) ?? 0
         const least = Math.min(...group.map(load))
         let pool = group.filter((lane) => load(lane) === least)
-        const known = pool.map((lane) => this.#ewma.get(lane.id)).filter((value): value is number => value !== undefined)
+        // Latency ranks only lanes with LATENCY_SAMPLES samples, so one cold call never decides; a lane it leaves out drifts
+        // toward the best EWMA each time, so it is tried again instead of losing its turn for good on samples it can no longer add.
+        const measured = (lane: Lane): number | undefined => ((this.#samples.get(lane.id) ?? 0) >= LATENCY_SAMPLES ? this.#ewma.get(lane.id) : undefined)
+        const known = pool.map(measured).filter((value): value is number => value !== undefined)
         if (known.length > 0) {
-            const limit = Math.min(...known) * this.#settings.latencyTolerance + this.#settings.latencySlackMs
-            pool = pool.filter((lane) => (this.#ewma.get(lane.id) ?? 0) <= limit)
+            const best = Math.min(...known)
+            const limit = best * this.#settings.latencyTolerance + this.#settings.latencySlackMs
+            const fast = pool.filter((lane) => (measured(lane) ?? best) <= limit)
+            for (const lane of pool) if (!fast.includes(lane)) this.#ewma.set(lane.id, LATENCY_DRIFT * best + (1 - LATENCY_DRIFT) * (this.#ewma.get(lane.id) ?? best))
+            pool = fast
         }
         // Smooth weighted round-robin (nginx): each lane gains its weight, the leader is picked and pays the total.
         let total = 0
@@ -382,6 +393,7 @@ export class PoolState {
         const previous = this.#ewma.get(lane.id)
         const alpha = this.#settings.ewmaAlpha
         this.#ewma.set(lane.id, previous === undefined ? latencyMs : alpha * latencyMs + (1 - alpha) * previous)
+        this.#samples.set(lane.id, (this.#samples.get(lane.id) ?? 0) + 1)
         const counters = this.#count(lane)
         counters.successes++
         const cost = costOf(lane.model, usage)
@@ -483,7 +495,7 @@ export class PoolState {
             }
         }
         const local = target.provider === undefined ? "" : target.key === undefined ? `${target.provider}/` : `${target.provider}/${target.key}/`
-        for (const map of [this.#ewma, this.#roundRobin]) {
+        for (const map of [this.#ewma, this.#samples, this.#roundRobin]) {
             for (const id of [...map.keys()]) if (id.startsWith(local)) map.delete(id)
         }
     }

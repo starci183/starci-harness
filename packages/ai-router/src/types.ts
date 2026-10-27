@@ -110,7 +110,8 @@ export interface ResilienceConfig {
 export interface SelectionConfig {
     /**
      * A candidate whose latency EWMA exceeds `best * latencyTolerance + latencySlackMs` drops out of the tie.
-     * Defaults 1.5 and 50 ms; the slack keeps millisecond jitter from deciding between equally fast keys.
+     * Defaults 1.5 and 50 ms; the slack keeps millisecond jitter from deciding between equally fast keys. A lane is ranked
+     * by latency once it has three samples, and one left out drifts toward the best EWMA until it is tried again.
      */
     readonly latencyTolerance?: number
     readonly latencySlackMs?: number

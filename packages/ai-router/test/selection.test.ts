@@ -56,18 +56,19 @@ describe("selection", () => {
         assert.ok(Date.now() - started >= 28, "the second call waited for the first")
     })
 
-    test("a slow key loses its turn once its latency EWMA passes the tolerance", async () => {
+    test("a slow key loses most turns once its latency EWMA passes the tolerance, and is never starved", async () => {
         const { router, fake } = setup([provider("a", ["slow", "quick"], [{ id: "m1" }])])
         fake.on({ key: "sk-a-slow" }, { latencyMs: 120 })
         fake.on({ key: "sk-a-quick" }, { latencyMs: 1 })
-        await router.chat(ask())
-        await router.chat(ask())
+        // Three samples each before latency ranks a key: round-robin until then.
+        for (let index = 0; index < 6; index++) await router.chat(ask())
+        assert.deepEqual(tally(fake.calls.map((call) => call.key)), { "sk-a-slow": 3, "sk-a-quick": 3 })
         const before = fake.calls.length
-        for (let index = 0; index < 4; index++) await router.chat(ask())
-        assert.deepEqual(tally(fake.calls.slice(before).map((call) => call.key)), { "sk-a-quick": 4 })
-        const health = await router.health()
-        const slow = health.providers[0]?.keys.find((key) => key.alias === "slow")?.models[0]
-        assert.ok((slow?.latencyEwmaMs ?? 0) >= 100)
+        for (let index = 0; index < 12; index++) await router.chat(ask())
+        const after = tally(fake.calls.slice(before).map((call) => call.key))
+        assert.ok((after["sk-a-quick"] ?? 0) >= 10, JSON.stringify(after))
+        // Left out, its EWMA drifts toward the best, so it is tried again rather than dropped for good.
+        assert.ok((after["sk-a-slow"] ?? 0) >= 1, JSON.stringify(after))
     })
 
     test("capabilities, the context window and the budget filter models", async () => {
