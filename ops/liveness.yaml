@@ -1,6 +1,7 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; and the stall ladder. Read by `seat ping`,
-# `workflow step`, `task verify`, the coordinator drivers and `supervisor tick`; nothing here is restated in code.
+# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; owner feedback; and the stall ladder. Read
+# by `seat ping`, `workflow step`, `task verify`, the coordinator drivers, `feedback check` and `supervisor tick`; nothing here
+# is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -46,6 +47,11 @@ coordinators:
   # How long one `next` blocks before it returns idle, and how often it re-reads the ledger while it waits on mail.
   nextWaitSeconds: 900
   nextPollSeconds: 30
+
+# Owner feedback (`starci feedback`): an item the owner gave stays open at most this many days; `feedback check` is red past
+# it, and `supervisor tick` lists every open item.
+feedback:
+  openMaxDays: 3
 
 # The stall ladder (orca runner): a seat whose agent sits idle at its prompt while its ledger work is pending. A Supervisor
 # with an open decision it rules (not one awaiting the owner), a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,

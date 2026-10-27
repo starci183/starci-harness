@@ -138,8 +138,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 16 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet · Wrappers pin
 - [decisions/open-ui.md](../decisions/open-ui.md) · 7 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 31 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
-  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, auth-callback-shape, avatar-default-dicebear-initials, band-is-first-face and 69 more
+- [decisions/rulings.yaml](../decisions/rulings.yaml) · 32 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
+  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, auth-callback-shape, avatar-default-dicebear-initials, band-is-first-face and 70 more
 - [grammars/README.md](../grammars/README.md) · 6 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
@@ -161,8 +161,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 5 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · Editing
-- [hfs/rules.yaml](../hfs/rules.yaml) · 91 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 220 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 93 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 223 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 91 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta, app.gitattributes, app.github-meta, app.hooks, app.lockfile, app.package-manifest, app.plaintext-env, app.quality-config and 132 more
 - [project/README.md](../project/README.md) · 7 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
