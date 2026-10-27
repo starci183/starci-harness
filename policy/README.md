@@ -9,7 +9,7 @@ live in the canon packages ([packages/](../packages/README.md)). The CLI validat
 | [quality.yaml](quality.yaml) | the two gate tiers, the profiles, the default profile of each kind of tree, and `requireCi` | `check run`, `task verify`, the actions `requireCi` lists |
 | [canon.yaml](canon.yaml) | the canon package of each stack and tool, by npm name | the `canon` gate |
 | [loosening.yaml](loosening.yaml) | the banned loosening markers, the scan bounds and the declared exceptions | `check loosening` |
-| [security.yaml](security.yaml) | the secret scan's configuration: sops envelopes per profile, `neverRead`, exceptions | `check secrets`, `release push` |
+| [security.yaml](security.yaml) | the secret scan's configuration: sops envelopes per profile, `neverRead`, exceptions | `check secrets`, `task verify`, `release push` |
 
 ## Tiers
 
