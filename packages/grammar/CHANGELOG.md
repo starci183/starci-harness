@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: client-side navigation. Every Grammar root accepts `navigate` and `useHref` and mounts react-aria's `RouterProvider`, so links, `Button href`, `Breadcrumbs`, `ListBox`/`Menu` items and `FlowGraph` nodes navigate without a reload.
+- Added: `FlowGraph` `direction` (`TB` | `LR`), `layout="layered"`, `headers` (layer titles), `height` as a number or CSS length, and node `href`. The radial default is unchanged.
+
 ## 0.13.0 - 2026-10-27
 
 - Removed: the Heritage family (`@starci/grammar/heritage`, `heritage.css`, `HeritageGrammarRoot`, `HERITAGE_DNA`); the package ships two families, Core and Offset Pop, over Common. Migrate: select `core` or `offset-pop`.

@@ -1479,6 +1479,7 @@
 
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
+    .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height, 24rem); }
 
     .starci-core-flow-graph-loading > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
@@ -1567,6 +1568,36 @@
         font-size: 0.875rem;
         line-height: 1.25;
     }
+
+    .starci-core-flow-graph-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-inline-size: 0;
+        border-radius: inherit;
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .starci-core-flow-graph-node:has(.starci-core-flow-graph-link:focus-visible) {
+        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline-offset: 2px;
+    }
+
+    .starci-core-flow-graph-header {
+        padding: 0.125rem 0.625rem;
+        color: var(--muted, GrayText);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .starci-core-flow-graph-header[data-direction="TB"] { text-align: end; }
 
     .starci-core-flow-graph-node[data-size="sm"] { padding: 0.25rem 0.625rem; font-size: 0.75rem; }
     .starci-core-flow-graph-node[data-size="lg"] { padding: 0.625rem 1.25rem; font-size: 1rem; font-weight: 600; }

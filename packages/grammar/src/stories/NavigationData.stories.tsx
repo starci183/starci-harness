@@ -291,6 +291,51 @@ export const FlowGraph: Story = {
   },
 };
 
+const waveNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'schema', label: 'Schema', tone: 'accent', href: '#/tasks/schema' },
+  { id: 'auth', label: 'Auth', href: '#/tasks/auth' },
+  { id: 'api', label: 'API', href: '#/tasks/api' },
+  { id: 'jobs', label: 'Jobs', href: '#/tasks/jobs' },
+  { id: 'ui', label: 'UI', tone: 'success', href: '#/tasks/ui' },
+  { id: 'e2e', label: 'End to end', tone: 'warning', count: 3, href: '#/tasks/e2e' },
+];
+const waveEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'w1', source: 'schema', target: 'api' },
+  { id: 'w2', source: 'auth', target: 'api' },
+  { id: 'w3', source: 'schema', target: 'jobs' },
+  { id: 'w4', source: 'api', target: 'ui' },
+  { id: 'w5', source: 'jobs', target: 'e2e' },
+  { id: 'w6', source: 'ui', target: 'e2e' },
+];
+const waveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = [
+  { label: 'Wave 1', at: 0 },
+  { label: 'Wave 2', at: 1 },
+  { label: 'Wave 3', at: 2 },
+  { label: 'Wave 4', at: 3 },
+];
+
+/** A waves DAG: layered layout, handles on the layout axis, wave headers, nodes that link through the root's router, a custom height. */
+export const FlowGraphWaves: Story = {
+  render: () => {
+    const Demo = () => {
+      const [path, setPath] = useState<string>('(none)');
+      return (
+        <G.GrammarRoot navigate={setPath} useHref={(href: string) => href}>
+          <Matrix maxWidth={900}>
+            <State label={`Left to right, headers above (navigated: ${path})`} direction="column">
+              <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
+            </State>
+            <State label="Top to bottom, lane headers beside" direction="column">
+              <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
+            </State>
+          </Matrix>
+        </G.GrammarRoot>
+      );
+    };
+    return <Demo />;
+  },
+};
+
 const memberItems: ReadonlyArray<G.ListBoxItem> = [
   { id: 'alex', label: 'Alex Morgan', description: 'alex@example.com', leading: <G.Avatar name="Alex Morgan" size="sm" isDecorative /> },
   { id: 'sam', label: 'Sam Lee', description: 'sam@example.com', leading: <G.Avatar name="Sam Lee" size="sm" isDecorative /> },
