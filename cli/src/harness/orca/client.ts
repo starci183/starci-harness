@@ -104,7 +104,7 @@ const SELECTOR = /^(?:(?:identity|id|name|branch|issue|path):|(?:current|active|
 /** The Orca worktree selector of a `--worktree` value: a selector as given, else `path:` and the absolute path (default: the repository root). */
 export const worktreeSelector = (value: string | undefined, cwd: string, root: string): string => {
     if (value !== undefined && SELECTOR.test(value)) return value
-    return `path:${resolve(cwd, value ?? root).replace(/\\/g, "/")}`
+    return `path:${resolve(cwd, value ?? root).replaceAll("\\", "/")}`
 }
 
 /** The repository `orca repo add` registers for a selector: the folder a `path:` selector names, else the repository root. */

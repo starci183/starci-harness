@@ -51,7 +51,7 @@ const DETECTORS: readonly Detector[] = [
     { marker: "no-verify", label: "hooks skipped", kinds: SCRIPTS, pattern: new RegExp(String.raw`${word("--no", "-verify")}\b`) },
     { marker: "no-verify", label: "hooks skipped in a command a script runs", kinds: CODE, pattern: new RegExp(String.raw`(["'\x60])${word("--no", "-verify")}\1`) },
     { marker: "gate-widening", label: "a coverage or duplication ignore comment", kinds: CODE, pattern: directive(String.raw`(?:(?:istanbul|c8|v8)\s+${word("ign", "ore")}|${word("jscpd", ":ignore")})`) },
-    { marker: "gate-widening", label: "a warning budget", kinds: SCRIPTS, pattern: new RegExp(String.raw`--max-warnings(?:\s+|=)(?!0\b)\d`) },
+    { marker: "gate-widening", label: "a warning budget", kinds: SCRIPTS, pattern: /--max-warnings(?:\s+|=)(?!0\b)\d/ },
     { marker: "gate-widening", label: "a step allowed to fail", kinds: ["workflow"], pattern: new RegExp(String.raw`\b${word("continue", "-on-error")}\s*:\s*(?!false\b)\S`) },
     { marker: "gate-widening", label: "a test run that passes with no test", kinds: SCRIPTS, pattern: new RegExp(String.raw`--(?:${word("passWith", "NoTests")}|${word("pass-with", "-no-tests")})\b`) },
     { marker: "gate-widening", label: "a check narrowed on the command line", kinds: SCRIPTS, pattern: new RegExp(String.raw`--(?:${word("testPath", "IgnorePatterns")}|${word("coveragePath", "IgnorePatterns")}|${word("no-error-on", "-unmatched-pattern")})\b|--rule\s+['"]?[@\w/-]+\s*:\s*['"]?(?:off|0)\b|\beslint\b[^\n|;&]*--quiet\b`) },
@@ -62,7 +62,7 @@ const DETECTORS: readonly Detector[] = [
         kinds: [...SCRIPTS, "properties"],
         pattern: new RegExp(String.raw`\bsonar\.(?:\w+\.)*${word("exclu", "sions")}\s*[=:]\s*(?!(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*(?:\s*,\s*(?:\*\*\/)?(?:${NON_SOURCE_DIRS})\/\*\*)*\s*$)`),
     },
-    { marker: "gate-widening", label: "a gate not waited for or not failing", kinds: [...SCRIPTS, "properties"], pattern: new RegExp(String.raw`sonar\.qualitygate\.wait\s*=\s*false|\bfail_ci_if_error\s*:\s*false\b`) },
+    { marker: "gate-widening", label: "a gate not waited for or not failing", kinds: [...SCRIPTS, "properties"], pattern: /sonar\.qualitygate\.wait\s*=\s*false|\bfail_ci_if_error\s*:\s*false\b/ },
 ]
 
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue|svelte|css|scss|less)$/

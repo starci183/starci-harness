@@ -114,8 +114,9 @@ const readPatterns = (knowledge: string): Topics => {
         for (const name of readdirSync(folder).filter((file) => file.endsWith(".md")).sort(byCodeUnit)) {
             const front = readFrontMatter(join(folder, name))
             if (front === undefined) continue
-            for (const id of front.slots ?? []) addTo(declared, id, `${side}/${name}`)
-            for (const entry of front.files ?? []) if (entry.slot !== undefined) addTo(files, entry.slot, `${side}/${name}`)
+            const topic = `${side}/${name}`
+            for (const id of front.slots ?? []) addTo(declared, id, topic)
+            for (const slot of (front.files ?? []).map((entry) => entry.slot)) if (slot !== undefined) addTo(files, slot, topic)
         }
     }
     return { declared, files }
@@ -184,7 +185,12 @@ const collapse = (node: Node): Node => {
     return node
 }
 
-const codeMatcher = (code: string): RegExp => new RegExp(`^${code.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)).join(".*")}$`)
+const escapeRegex = (part: string): string => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+const codeMatcher = (code: string): RegExp => {
+    const body = code.split("*").map(escapeRegex).join(".*")
+    return new RegExp("^" + body + "$")
+}
 
 const rulesOf = (slot: Slot, rules: readonly Rule[], dangling: Set<string>): Rule[] => {
     const found: Rule[] = []
