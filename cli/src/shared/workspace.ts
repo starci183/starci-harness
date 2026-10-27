@@ -17,7 +17,7 @@ export interface WorkspacePackage {
 
 const SKIPPED_DIRECTORIES = new Set(["node_modules", "dist", ".git", ".next", "coverage", ".turbo"])
 
-const ESLINT_CONFIGS = ["eslint.config.ts", "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs"]
+export const ESLINT_CONFIGS = ["eslint.config.ts", "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs"]
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
