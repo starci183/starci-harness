@@ -76,6 +76,7 @@ import { feedbackAddVerb } from "./core/feedback/add.js"
 import { feedbackCloseVerb } from "./core/feedback/close.js"
 import { feedbackListVerb } from "./core/feedback/list.js"
 import { feedbackCheckVerb } from "./core/feedback/check.js"
+import { dnaCheckVerb } from "./core/dna/check.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -161,6 +162,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     feedbackCloseVerb,
     feedbackListVerb,
     feedbackCheckVerb,
+    dnaCheckVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
