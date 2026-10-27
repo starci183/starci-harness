@@ -28,12 +28,12 @@ const writeFormBounds = (roots, source) => {
 if (schemas.length === 0 || operationRoots.length === 0) {
     process.stdout.write("codegen: no GraphQL contract under be/contracts yet\n")
     if (schemas.length === 0 && operationRoots.length) {
-        const { emptyInputBoundsSource } = await import("@starci/cli/input-bounds")
+        const { emptyInputBoundsSource } = await import("starci-harness/input-bounds")
         writeFormBounds(operationRoots, emptyInputBoundsSource())
     }
 } else {
     const { buildSchema } = await import("graphql")
-    const { assertCompatibleInputBounds } = await import("@starci/cli/input-bounds")
+    const { assertCompatibleInputBounds } = await import("starci-harness/input-bounds")
     assertCompatibleInputBounds(
         Object.fromEntries(schemas.map((file) => [file, buildSchema(fs.readFileSync(file, "utf8"))])),
     )
@@ -49,7 +49,7 @@ if (schemas.length === 0 || operationRoots.length === 0) {
                     config: { useTypeImports: true, enumsAsTypes: true, avoidOptionals: true },
                 },
             ],
-            [`${root}/__generated__/input-bounds.ts`, { plugins: [{ "@starci/cli/input-bounds": {} }] }],
+            [`${root}/__generated__/input-bounds.ts`, { plugins: [{ "starci-harness/input-bounds": {} }] }],
         ]),
     )
     await generate(
@@ -80,7 +80,7 @@ const restRoots = frontendApps
     .filter((dir) => fs.existsSync(dir))
     .map(posix)
 if (restRoots.length) {
-    const { openApiBoundsSource } = await import("@starci/cli/input-bounds")
+    const { openApiBoundsSource } = await import("starci-harness/input-bounds")
     const contracts = Object.fromEntries(
         services
             .map((service) => [service, path.join(CONTRACTS, service, "openapi.json")])

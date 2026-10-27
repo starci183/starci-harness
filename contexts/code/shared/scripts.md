@@ -7,7 +7,7 @@ What an op runs in an app, what the app's CI runs after the push, and who commit
 
 The root `package.json` scripts, the CI workflow, the git hooks, the tool configs and the editor files are managed
 files: the app CLI
-the app pins (`@starci/cli`, `starci app sync`) renders them and an op never edits them. An op calls a script by its
+the app pins (`starci-harness`, `starci app sync`) renders them and an op never edits them. An op calls a script by its
 name instead of re-deriving the tool command: `typecheck`, `lint`, `format`, `format:check`, `test`,
 `typecheck:tests`, `test:integration`, `build:be`, `build:fe`, `codegen`, and in lite the `db:*` scripts. A command
 the app lacks is reported, never added by hand.

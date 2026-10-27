@@ -23,14 +23,14 @@ const writeLine = (text: string): void => {
     process.stdout.write(`${text}\n`)
 }
 
-/** Prints a successful result in the selected mode. */
+/** Prints a successful result in the selected mode; an empty human message prints nothing (a verb whose output already streamed). */
 export const printResult = <T>(mode: OutputMode, schema: string, result: VerbResult<T>): void => {
     if (mode === "json") {
         const envelope: SuccessEnvelope<T> = { schema, ok: true, data: result.data }
         writeLine(JSON.stringify(envelope, null, 2))
         return
     }
-    writeLine(result.message)
+    if (result.message !== "") writeLine(result.message)
 }
 
 /** Prints a refusal in the selected mode; human output goes to stderr so pipes stay clean. */

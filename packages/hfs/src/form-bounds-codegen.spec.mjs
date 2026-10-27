@@ -28,9 +28,9 @@ function codegenApp(t) {
     return file;
   };
   put('package.json', JSON.stringify({ type: 'module' }));
-  put('node_modules/@starci/cli/package.json', JSON.stringify({ type: 'module', exports: { './input-bounds': './input-bounds.mjs' } }));
+  put('node_modules/starci-harness/package.json', JSON.stringify({ type: 'module', exports: { './input-bounds': './input-bounds.mjs' } }));
   const helper = new URL('../emit/form-bounds.mjs', import.meta.url).href;
-  put('node_modules/@starci/cli/input-bounds.mjs', `export { inputBoundsPlugin as plugin, openApiBoundsSource, emptyInputBoundsSource, assertCompatibleInputBounds } from ${JSON.stringify(helper)};\n`);
+  put('node_modules/starci-harness/input-bounds.mjs', `export { inputBoundsPlugin as plugin, openApiBoundsSource, emptyInputBoundsSource, assertCompatibleInputBounds } from ${JSON.stringify(helper)};\n`);
   const template = fs.readFileSync(new URL('../templates/app/skeleton/scripts/codegen.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
   put('scripts/codegen.mjs', render(template, { appBinary: 'starci app' }));
   const exec = () => spawnSync(process.execPath, ['scripts/codegen.mjs'], { cwd: root, encoding: 'utf8' });
@@ -80,7 +80,7 @@ const SDL = fields => `type Query { ping: String } input CreateInput { ${fields}
 /** The snapshot a service emits: the SDL plus the versioned directive and the field bounds the back end carries. */
 const snapshot = (sdl, bounds) => print(withInputBounds(parse(sdl), new Map(Object.entries(bounds).map(([type, fields]) => [type, new Map(Object.entries(fields))]))));
 
-/** A front end whose GraphQL codegen runs for real: @graphql-codegen/cli with the client preset and the @starci/cli plugin. */
+/** A front end whose GraphQL codegen runs for real: @graphql-codegen/cli with the client preset and the starci-harness plugin. */
 function graphqlApp(t) {
   const app = codegenApp(t);
   for (const name of ['graphql', '@graphql-codegen/cli', '@graphql-codegen/client-preset']) {

@@ -391,7 +391,7 @@ const terminalTailOf = async (seat: SeatRow | undefined, cwd: string): Promise<r
 
 /** One task as the task status verb reads it (its contract, check runs and seats), through the verb itself. */
 const taskStatusOf = async (repo: string, taskId: string): Promise<{ readonly contract: Contract; readonly checkRuns: readonly { readonly name: string; readonly status: string; readonly runner: string; readonly ranAt: string }[]; readonly seats: readonly SeatRow[] }> => {
-    const context: VerbContext = { cwd: repo, tree: "none", treeRoot: undefined, verbs: [], progress: () => undefined }
+    const context: VerbContext = { cwd: repo, tree: "none", treeRoot: undefined, verbs: [], json: true, progress: () => undefined }
     const status = (await taskStatusVerb.run(context, { task: taskId, workflow: undefined })).data
     if (!("checkRuns" in status)) throw new Refusal("TASK_UNKNOWN", `no task ${taskId}`)
     return { contract: status.task.contract, checkRuns: status.checkRuns, seats: status.seats }

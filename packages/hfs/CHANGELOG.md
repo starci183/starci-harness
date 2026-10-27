@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 4.9.0 - 2026-10-28
 
 - Removed: 121 bundled runtime scripts that only served the legacy runtime and that no `starci app` verb, package entry or catalogued rule enforcer reaches: `scripts/agent/`, `scripts/reconciler/`, the legacy hook guards of `scripts/guards/` (command, seat, rights, install and launch verdicts), the op gate of `scripts/gates/` (`gate.mjs`, canon pins and digest, type impact), the drawing pipeline of `scripts/work/` other than the DNA judge (`draw-dna*`, `grammar-proposal`, `asset-slot`), the ledger of `engine/db/`, the machine helpers, and the `scripts/api` and `scripts/lib` helpers only they imported; with them the specs that exercised only that code. The `release-push-gate` and `hook-io` cases of `hook-input.spec.mjs` stay.
+- Changed: `starci app` is carried by the harness CLI `starci-harness`, which runs this package in-process; `@starci/cli` is retired. A new app's root devDependencies name `starci-harness` instead of `@starci/cli`, its GraphQL codegen loads the input-bounds plugin from `starci-harness/input-bounds`, the runtime resolves an app's `starci` bin and its @starci/hfs from its installed `starci-harness` (`package-at.mjs`), and HFS_CI_MISSING_CANON accepts `npx starci-harness[@<version>] app lint`, the version being the `starci-harness` pin; the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0).
+- Changed: the rendered `sonar-project.properties` takes the jest preset's test patterns as tests: `sonar.tests` names every source folder and `sonar.test.inclusions` those patterns, which `sonar.exclusions` moves out of the sources (Sonar refuses a file indexed as both), beside the build and dependency folders; `supabase/types/**` is no longer excluded, so a lite app's generated row types are analysed. `sonar.coverage.exclusions` sits between the `starci:sonar-scope` markers `starci app sonar --write` writes, so sync and the harness's Sonar scope check agree on one file.
 
 ## 4.8.0 - 2026-10-27
 

@@ -12,10 +12,11 @@ export type Role = "owner" | "release" | "coordinator" | "lead" | "worker" | "ag
 
 /**
  * One flag of a verb: its spelling, kind and help line. A `rest` flag is the verb's last operands, typed after its positional
- * (`starci uat run <script> -- <args...>`), handed over as they were.
+ * (`starci uat run <script> -- <args...>`), handed over as they were; a `list` flag may be given more than once and keeps every
+ * value in order (`--changed a --changed b`).
  */
 export interface FlagSpec extends PositionalFlag {
-    readonly kind: "boolean" | "string" | "rest"
+    readonly kind: "boolean" | "string" | "rest" | "list"
     readonly summary: string
     readonly required?: boolean
 }
@@ -29,7 +30,7 @@ export interface PositionalFlag {
 export type FlagValues<F extends Readonly<Record<string, FlagSpec>>> = {
     readonly [K in keyof F]: F[K]["kind"] extends "boolean"
         ? boolean
-        : F[K]["kind"] extends "rest"
+        : F[K]["kind"] extends "rest" | "list"
           ? readonly string[]
           : F[K]["required"] extends true
           ? string
@@ -42,6 +43,8 @@ export interface VerbContext {
     readonly tree: TreeKind
     readonly treeRoot: string | undefined
     readonly verbs: readonly AnyVerb[]
+    /** Whether the caller asked for the one json envelope (`--json`) instead of human text. */
+    readonly json: boolean
     /** Prints one progress line as it happens (a long-running verb's live log); silent under --json, whose one envelope comes at the end. */
     readonly progress: (line: string) => void
 }

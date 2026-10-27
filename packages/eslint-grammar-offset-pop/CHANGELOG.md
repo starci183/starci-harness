@@ -9,6 +9,7 @@
 ## 0.14.0 - 2026-10-27
 
 - Changed: versioned together with Grammar 0.14.0; `@starci/eslint-grammar-core` 0.14.0 is the peer dependency and the bundled canon pins name the 0.14.0 Grammar family. Offset Pop is unchanged.
+- Changed: the bundled canon pins name `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`) in place of the retired `@starci/cli`, the one command line a product installs for `starci app`, and follow hfs 4.9.0, canon-fe 9.3.0 and canon-be 3.5.0. No rule changes.
 
 ## 0.13.0 - 2026-10-27
 

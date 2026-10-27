@@ -1,0 +1,57 @@
+schema: starci/scenario@1
+id: release-app-sync-through-harness
+group: release
+title: a product runs `starci app` through the harness CLI, which runs @starci/hfs in-process
+inject: a scratch lite app (hfs.json and an installed jest preset stand-in), then a hand edit of a managed file and an unknown codemod
+expect: >-
+  `app sync --write` renders the managed files and `app sync --check` is green on them; a hand edit of sonar-project.properties
+  turns `app sync --check` red (exit 1) with HFS_SYNC_DRIFT carried in the envelope; `app explain` returns hfs's own report;
+  a value outside a verb's choices is refused CLI_USAGE before hfs loads
+pass:
+  - sync --write exits 0 and sync --check exits 0
+  - the hand edit makes sync --check exit 1 naming HFS_SYNC_DRIFT
+  - app explain carries the slot of hfs.json
+  - an unknown codemod migration is refused CLI_USAGE
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: hfs.json
+      content: |
+        {"hfs":3,"kind":"app","edition":"lite","project":"bench-app","sides":{"be":{"apps":[{"name":"api","kind":"api"}]},"fe":{"grammar":"core","apps":[{"name":"web","kind":"next"}],"reads":["be/contracts/"]}}}
+  - write:
+      path: node_modules/@starci/jest-preset/package.json
+      content: |
+        {"name":"@starci/jest-preset","version":"0.0.0","main":"index.cjs"}
+  - write:
+      path: node_modules/@starci/jest-preset/index.cjs
+      content: |
+        module.exports = { sonarExclusions: () => "**/*.spec.ts,**/*.e2e-spec.ts,**/dist/**,**/coverage/**" }
+  - name: sync writes the managed files
+    starci: [app, sync, --write]
+    expect:
+      exit: 0
+  - name: sync check is green on its own render
+    starci: [app, sync, --check]
+    expect:
+      exit: 0
+      contains: "in sync"
+  - write:
+      path: sonar-project.properties
+      content: |
+        sonar.projectKey=bench-app
+  - name: a hand edit of a managed file is drift
+    starci: [app, sync, --check]
+    expect:
+      exit: 1
+      contains: "HFS_SYNC_DRIFT sonar-project.properties"
+  - name: app explain carries hfs's report
+    starci: [app, explain, hfs.json]
+    expect:
+      exit: 0
+      contains: "\"slot\": \"app.declaration\""
+  - name: a value outside the verb's choices is usage
+    starci: [app, codemod, no-such-migration]
+    expect:
+      exit: 2
+      code: CLI_USAGE

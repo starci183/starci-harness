@@ -13,9 +13,9 @@ export const packageAt = (dir, name) => {
 /** This runtime's own `starci` bin (packages/cli is the only package that declares one). */
 const RUNTIME_STARCI_BIN = path.join(skillRoot, 'packages', 'cli', 'bin', 'starci.mjs');
 
-/** The `starci` bin of the @starci/cli that `dir` installs (a product runs its own pinned CLI), else this runtime's own. */
+/** The `starci` bin of the starci-harness that `dir` installs (a product runs its own pinned CLI), else this runtime's own. */
 function starciBin(dir) {
-  const packageFile = packageAt(dir, '@starci/cli');
+  const packageFile = packageAt(dir, 'starci-harness');
   if (packageFile) {
     try {
       const { bin } = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
@@ -50,12 +50,12 @@ export const loadTypescript = (...dirs) => {
 };
 
 /**
- * The app's command line and the app implementation behind it: `bin` the `starci` bin of the app's installed @starci/cli, else
+ * The app's command line and the app implementation behind it: `bin` the `starci` bin of the app's installed starci-harness, else
  * this runtime's packages/cli/bin/starci.mjs (starciBin); `dir` the @starci/hfs that answers
- * `starci app` - the app's own install, else the one beside its @starci/cli, else this runtime's packages/hfs.
+ * `starci app` - the app's own install, else the one beside its starci-harness, else this runtime's packages/hfs.
  */
 export function hfsEntry(root) {
-  const cli = packageAt(root, '@starci/cli');
+  const cli = packageAt(root, 'starci-harness');
   const manifest = packageAt(root, '@starci/hfs') ?? (cli && packageAt(path.dirname(cli), '@starci/hfs'));
   return { dir: manifest ? path.dirname(manifest) : path.join(skillRoot, 'packages', 'hfs'), bin: starciBin(root) };
 }

@@ -1,4 +1,4 @@
-// scaffold-standalone.spec.mjs - `npx @starci/cli app scaffold` works from the published packages alone: the Sonar exclusions come from the
+// scaffold-standalone.spec.mjs - `npx starci-harness app scaffold` works from the published packages alone: the Sonar exclusions come from the
 // jest preset copy @starci/hfs ships (bundledPresets), and a new path is git-initialised with an unborn main before any file is written.
 import { test } from 'node:test';
 import { createRequire } from 'node:module';

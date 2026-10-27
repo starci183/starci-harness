@@ -200,6 +200,18 @@ const LCOV_REPORT = 'be/coverage/lcov.info';
  */
 export const SONAR_CPD_EXCLUSIONS = Object.freeze(['**/messages/*.messages.ts', '**/messages/*.json']);
 
+/**
+ * The Sonar scope of the jest preset's exclusions (presets.sonarExclusions): its file patterns are the tests, which
+ * `sonar.test.inclusions` takes and `sonar.exclusions` moves out of the sources (`sonar.tests` names every source folder, so the
+ * two sets stay disjoint and each test is analysed as a test, never dropped); its folder patterns (`/**`) and the front end's
+ * build and dependency folders are no source at all. Nothing else is excluded: a generated file is analysed like any other.
+ */
+export function sonarScope(presets) {
+  const preset = String(presets?.sonarExclusions ?? '').split(',').map(glob => glob.trim()).filter(Boolean);
+  const tests = preset.filter(glob => !glob.endsWith('/**'));
+  return { tests, exclusions: [...new Set([...preset, '**/.next/**', '**/node_modules/**'])] };
+}
+
 const SOURCE_FILE = /\.[cm]?ts$/;
 const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
 
@@ -364,7 +376,8 @@ export function variables(app, scope, presets, sonarKey, manifest = loadSlotMani
     nodeMajor: String(NODE_MAJOR),
     sonarKey: sonarKey ?? app.project,
     sonarHostLine: sonarHostLine(quality.sonar),
-    sonarExclusions: [presets?.sonarExclusions, '**/.next/**', '**/node_modules/**', ...(lite ? ['supabase/types/**'] : [])].filter(Boolean).join(','),
+    sonarExclusions: sonarScope(presets).exclusions.join(','),
+    sonarTestInclusions: sonarScope(presets).tests.join(','),
     sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : [])].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),

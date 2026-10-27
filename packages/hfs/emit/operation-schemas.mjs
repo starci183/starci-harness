@@ -101,6 +101,9 @@ export function operationSchemaReader({ ts, program, repoRoot }) {
       if (!resolved?.endsWith('.schema.ts')) throw new Error(`schema modules may import only zod and *.schema.ts, found ${specifier} in ${file}`);
       return load(resolved);
     };
+    // zod is the app's dependency, not the schema's code: it loads before the timed run, so the 1000 ms budget bounds only the
+    // schema module itself (a cold zod load inside it ran past the budget on a loaded machine).
+    for (const [, specifier] of compiled.matchAll(/require\("(zod(?:\/[^"]*)?)"\)/g)) requireApp(specifier);
     new vm.Script(compiled, { filename: file }).runInNewContext({ module, exports: module.exports, require: requireSchema }, { timeout: 1000 });
     return module.exports;
   }

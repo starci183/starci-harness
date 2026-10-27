@@ -8,6 +8,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **The app commands.** The CLI carries `starci app scaffold|sync|check|lint|add|new|emit|explain|hygiene|coverage|codemod|ci|db|secret|stack|release|upgrade`,
+  each a verb with its typed flags, effect and roles that runs `@starci/hfs` (4.8.0, an exact dependency) in-process in
+  the app: in human mode its output streams as it prints, under `--json` the envelope carries its report and exit code. A
+  product pins `starci-harness` as its devDependency, its husky hooks and CI run `npx starci app ...`, and its codegen loads
+  `starci-harness/input-bounds`; `@starci/cli` is retired. A verb flag may now be a `list`, given once per value.
+
 - **`config list|get|set`.** One door to the harness settings, each kept in the ops/ yaml that owns it: `list` prints
   every setting as a dotted key (`routing.tiers.high[0].effort`) with its value and file, `get` one, and `set` writes a
   value with the file's comments and layout kept, after the file's own loaders accept the whole new file

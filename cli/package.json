@@ -28,6 +28,10 @@
     "starci": "dist/main.js",
     "starci-harness": "dist/main.js"
   },
+  "exports": {
+    "./input-bounds": "./dist/core/app/input-bounds.js",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "ops",
@@ -57,6 +61,7 @@
     "postpack": "node -e \"const fs = require('node:fs'); fs.cpSync('cli/README.md', 'README.md'); for (const d of ['ops','policy','contexts','skills','packages','cli','CONTRIBUTING.md','LICENSE']) fs.rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
+    "@starci/hfs": "4.8.0",
     "commander": "15.0.0",
     "yaml": "2.9.1",
     "zod": "4.6.7"
