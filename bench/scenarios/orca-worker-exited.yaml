@@ -33,31 +33,23 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - gone
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: gone
+  - name: kernel next dispatches
+    seat: kernel:gone
+    starci: [kernel, next, gone, --wait, "0"]
   - orca:
       worker:
         dispatch: "*"
         state: exited
   - sql:
       db: ledger
-      exec: UPDATE seats SET started_at = '2020-01-01T00:00:00.000Z'
-  - name: step
-    starci:
-      - workflow
-      - step
-      - gone
-    save: {}
-    expect: {}
+      exec: UPDATE seats SET started_at = '2020-01-01T00:00:00.000Z' WHERE role = 'worker'
+  - name: kernel next
+    seat: kernel:gone
+    starci: [kernel, next, gone, --wait, "0"]
   - assert:
       sql:
         db: ledger

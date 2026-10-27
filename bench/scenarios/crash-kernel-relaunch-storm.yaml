@@ -1,0 +1,92 @@
+schema: starci/scenario@1
+id: crash-kernel-relaunch-storm
+group: crash
+title: "a Kernel that dies right after every launch: the relaunch limit pauses the workflow and escalates to the owner"
+inject: "every relaunched Kernel exits at once and never attaches; the Supervisor sweeps at the earliest moment each relaunch is allowed (its lease lapsed, no progress for kernelTtlMinutes), five times"
+expect: >-
+  supervisor next relaunches the dead Kernel on Orca's word; once more relaunches than kernelRelaunchMax fall in
+  kernelRelaunchWindowMinutes it stops relaunching, pauses the workflow (kernel-relaunch-limit) and escalates (kind owner)
+  instead of relaunching forever
+pass:
+  - the workflow paused with reason kernel-relaunch-limit
+  - one owner escalation for the Supervisor
+  - no more Kernel launches than the limit allows
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+finding: >-
+  the relaunch limit can never fire for a Kernel that dies: cli/src/core/supervisor/driver.ts:76 (relaunchReason) relaunches only when the
+  workflow made no progress for kernelTtlMinutes (20 in ops/liveness.yaml), yet each relaunch records a kernel-relaunched
+  event on the workflow (:118), which lastProgress (:66) counts as progress; so relaunches are at least 20 minutes apart and
+  at most two fall in the 30-minute window, below kernelRelaunchMax (3) checked at :111; a crash-looping Kernel is relaunched
+  every 20 minutes forever
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: storm
+        goal: write doc a
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: storm
+  - &die
+    name: the Kernel dies
+    orca:
+      worker:
+        dispatch: kernel
+        state: exited
+  - &lapse
+    name: 21 minutes pass with no progress
+    sql:
+      db: ledger
+      exec: >-
+        UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel';
+        UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', started_at, '-21 minutes');
+        UPDATE events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-21 minutes')
+  - &sweep
+    name: supervisor next
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - *die
+  - *lapse
+  - *sweep
+  - *die
+  - *lapse
+  - *sweep
+  - *die
+  - *lapse
+  - *sweep
+  - *die
+  - *lapse
+  - *sweep
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        max: 4
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status || ':' || substr(reason, 1, 21) FROM workflows
+        equals: ["paused:kernel-relaunch-limit"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation' AND evidence_json LIKE '%\"kind\":\"owner\"%'"
+        equals: [1]

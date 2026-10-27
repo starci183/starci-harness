@@ -2,7 +2,7 @@ schema: starci/scenario@1
 id: provider-all-down
 group: provider
 title: "every provider is down: dispatch holds with a named reason, no launch, no busy loop"
-inject: auth outcome reported for every provider; an unpinned orca workflow starts
+inject: the tree boots, then an auth outcome is reported for every provider; the unpinned orca workflow Kernel steps it
 expect: route explain refuses; the workflow's task stays queued with the router's reason; Orca's worker-start is never called
 pass:
   - route explain exits 1
@@ -13,6 +13,28 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: dark
+        goal: bench
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree while the providers answer
+    boot:
+      file: ${run}/wf.yaml
+      workflow: dark
   - starci:
       - provider
       - report
@@ -62,39 +84,15 @@ steps:
       - docs
     expect:
       exit: 1
-  - file:
-      path: wf.yaml
-      yaml:
-        schema: starci/workflow@1
-        id: dark
-        goal: bench
-        runner: orca
-        tasks:
-          - id: a
-            label: docs
-            summary: write doc a
-            allowPaths:
-              - docs/a.md
-            checks:
-              - preset: files-exist
-                args:
-                  files:
-                    - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - dark
-    save: {}
+  - name: kernel next
+    seat: kernel:dark
+    starci: [kernel, next, dark, --wait, "0"]
     expect: {}
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 0
   - assert:
       sql:

@@ -2,7 +2,7 @@ schema: starci/scenario@1
 id: orca-duplicate-step-no-double-launch
 group: orca
 title: eight concurrent steps of one workflow launch each task once
-inject: workflow step run 8 times at once right after define+start held dispatch (paused)
+inject: kernel next run 8 times at once from the Kernel seat right after the tree booted, before anything was dispatched
 expect: the claim is a compare-and-swap before any Orca call, so each task gets exactly one worker-start and one attempt
 pass:
   - worker-start count equals the task count
@@ -53,27 +53,20 @@ steps:
                 args:
                   files:
                     - docs/c.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - race
-    expect: {}
-  - name: 8 steps at once
-    starci:
-      - workflow
-      - step
-      - race
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: race
+  - name: 8 kernel next at once
+    seat: kernel:race
+    starci: [kernel, next, race, --wait, "0"]
     parallel: 8
     expect: {}
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 3
         distinct: retry-request
   - assert:

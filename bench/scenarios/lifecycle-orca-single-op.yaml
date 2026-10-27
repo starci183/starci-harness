@@ -3,11 +3,12 @@ id: lifecycle-orca-single-op
 group: lifecycle
 title: "fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed"
 inject: "nothing: the orca reference run on the Orca stand-in"
-expect: a [Kernel] terminal, Run and task; the Op launches under the Kernel's Run; after its result the step verifies, commits, releases the worker and closes its tab; the done workflow's Kernel terminal is closed
+expect: the tree boots through real verbs (Supervisor launched and attached, the workflow started from its terminal, the [Kernel] launched into its Run and attached to a child Run); kernel next launches the Op under the Kernel's Run, task and terminal inside the workflow's worktree; after its result kernel next verifies, commits in the worktree, releases the worker, closes its tab and returns the done decision
 pass:
   - task done, workflow done
   - one task commit
-  - worker-start under --run and --parent
+  - the Op's worker-start under the Kernel's --run and --from
+  - kernel next returns done
   - worker-release and terminal close called
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -35,18 +36,17 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - one
-    save:
-      a: data.nodes.0.task.id
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: one
+  - name: kernel next dispatches
+    seat: kernel:one
+    starci: [kernel, next, one, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
   - name: worker files done
     worker:
       task: ${a}
@@ -54,12 +54,11 @@ steps:
       files:
         docs/a.md: |
           # a
-  - name: step
-    starci:
-      - workflow
-      - step
-      - one
-    save: {}
+  - name: kernel next verifies
+    seat: kernel:one
+    starci: [kernel, next, one, --wait, "0"]
+    save:
+      decision: data.kind
   - assert:
       sql:
         db: ledger
@@ -76,6 +75,21 @@ steps:
       gitLog:
         grep: "Starci-Task: ${a}"
         count: 1
+        in: ${worktree.one}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+          run: "${kernel.one.run}"
+          from: "${kernel.one.terminal}"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT kind FROM decisions WHERE scope = 'kernel'
+        equals:
+          - done
   - assert:
       orcaCalls:
         command: worker-release

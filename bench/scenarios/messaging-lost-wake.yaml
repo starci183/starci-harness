@@ -2,16 +2,68 @@ schema: starci/scenario@1
 id: messaging-lost-wake
 group: messaging
 title: the wake mail is lost
-inject: Orca send drops the wake
-expect: the command is in the ledger already; kernel next finds it on its own timer; nothing lost
+inject: Orca's send dies without an answer when the Kernel's escalation wakes the Supervisor
+expect: "the escalation is in the ledger already; the submit still applies it and says the mail was not sent; supervisor next finds the decision on its own read; nothing lost"
 pass:
+  - the escalation applied although the wake was lost
   - decision delivered without the mail
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
-manual:
-  - stand-in drops send
-  - kernel next
-  - assert decision
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: quiet
+        goal: write doc a
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: quiet
+  - orca:
+      rules:
+        - command: send
+          fault: crash
+  - file:
+      path: escalate.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-quiet-ask-1
+        kind: escalation
+        workflow: quiet
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the product?
+  - seat: kernel:quiet
+    starci: [kernel, submit, "${run}/escalate.yaml"]
+    expect:
+      contains: mail not sent
+  - assert:
+      orcaCalls:
+        command: send
+        count: 1
+  - name: supervisor next finds it without the mail
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "escalation"'
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM commands
+        equals: [applied]

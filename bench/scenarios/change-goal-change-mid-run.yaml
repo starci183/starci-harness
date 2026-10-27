@@ -2,20 +2,210 @@ schema: starci/scenario@1
 id: change-goal-change-mid-run
 group: change
 title: the owner changes the goal while tasks run
-inject: goal-change goal@2 arrives with two tasks running, one done, two queued
-expect: the Kernel writes the new desired graph; reconcile classifies by task key; untouched live tasks keep running; done unchanged keep
+inject: "goal-change goal@2 arrives with a, b and c done and d running; the Kernel's new desired graph keeps a, edits b's contract, drops c and leaves d"
+expect: >-
+  the Supervisor's goal-change becomes the Kernel's goal-change decision; the Kernel's desired graph answering it is reconciled
+  by task key: a keep (not redone), b rework (a new attempt from its commit with the contract diff), c drop of a done task
+  (a generated revert.c node undoes its commit), d continue (its running attempt untouched)
 pass:
   - goal_version 2
-  - untouched running tasks keep their attempt
-  - done tasks not redone
+  - classification a keep, b rework, c drop with revert.c, d continue
+  - a done with one attempt; d still on its first attempt
+  - b relaunched once, revert.c launched
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-pending: "S1 replan reconcile: goal@n, goal-change, desired-graph reconcile with keep/continue/stale/rework/redo-live/drop"
-manual:
-  - start a 5-task orca workflow
-  - supervisor submit goal-change
-  - kernel next returns replan
-  - kernel submit desired graph
-  - assert classifications
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: regoal
+        goal: write docs a to d
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 3
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths: [docs/b.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/b.md]
+          - id: c
+            label: docs
+            summary: write doc c
+            allowPaths: [docs/c.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/c.md]
+          - id: d
+            label: docs
+            summary: write doc d
+            dependsOn: [a]
+            allowPaths: [docs/d.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/d.md]
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: regoal
+  - name: kernel next launches a, b and c
+    seat: kernel:regoal
+    starci: [kernel, next, regoal, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a'"
+      as: a
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'b'"
+      as: b
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'c'"
+      as: c
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# a\n"
+  - worker:
+      task: ${b}
+      files:
+        docs/b.md: "# b\n"
+  - worker:
+      task: ${c}
+      files:
+        docs/c.md: "# c\n"
+  - name: kernel next settles a, b, c and launches d
+    seat: kernel:regoal
+    starci: [kernel, next, regoal, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT plan_key || ':' || status FROM tasks ORDER BY plan_key
+        equals: ["a:done", "b:done", "c:done", "d:running"]
+  - file:
+      path: goal-change.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-regoal-1
+        kind: goal-change
+        workflow: regoal
+        project: ${repo}
+        basedOn: {goal: 1}
+        goal: docs a, b (now a title and a body) and d; no doc c
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/goal-change.yaml"]
+  - name: kernel next returns the goal-change
+    seat: kernel:regoal
+    starci: [kernel, next, regoal, --wait, "0"]
+    expect:
+      contains: '"kind": "goal-change"'
+    save:
+      decision: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: desired.yaml
+      content: |
+        schema: starci/workflow@1
+        id: regoal
+        goal: write docs a to d
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 3
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+          - id: b
+            label: docs
+            summary: write doc b with a title and a body
+            allowPaths: [docs/b.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/b.md]
+          - id: d
+            label: docs
+            summary: write doc d
+            dependsOn: [a]
+            allowPaths: [docs/d.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/d.md]
+  - file:
+      path: cmd.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-regoal-1
+        kind: workflow-change
+        workflow: regoal
+        basedOn: {graph: ${graph}}
+        answers: [${decision}]
+        change: desired.yaml
+  - name: the Kernel submits the new desired graph
+    seat: kernel:regoal
+    starci: [kernel, submit, "${run}/cmd.yaml"]
+  - assert:
+      sql:
+        db: ledger
+        query: >-
+          SELECT instr(outcome_json, '"a:keep"') > 0, instr(outcome_json, '"b:rework"') > 0, instr(outcome_json, '"c:drop"') > 0,
+          instr(outcome_json, '"d:continue"') > 0 FROM commands WHERE cmd_id = 'k-regoal-1'
+        equals: [[1, 1, 1, 1]]
+  - name: kernel next launches the rework and the revert
+    seat: kernel:regoal
+    starci: [kernel, next, regoal, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT goal_version FROM workflows
+        equals: [2]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM attempts WHERE task_id IN (SELECT id FROM tasks WHERE plan_key = 'a')"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM attempts WHERE task_id IN (SELECT id FROM tasks WHERE plan_key = 'd')"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'b' AND status IN ('queued', 'running')"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'revert.c'"
+        equals: [1]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1
+        in: ${worktree.regoal}

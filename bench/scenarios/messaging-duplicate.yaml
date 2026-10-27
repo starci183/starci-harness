@@ -2,16 +2,86 @@ schema: starci/scenario@1
 id: messaging-duplicate
 group: messaging
 title: the same command is delivered twice
-inject: kernel submit of one file twice (same cmdId)
-expect: the second is deduplicated by cmdId; one effect
+inject: kernel submit of one escalation file twice (same cmdId, same bytes)
+expect: "the second submit replays the recorded outcome: one command row, one Supervisor decision, one wake mail; a third copy with other bytes under the same cmdId is refused CMD_CONFLICT"
 pass:
   - one command row
-  - second answer says duplicate
+  - second answer says replayed
+  - one Supervisor decision, one send
+  - same cmdId with other content refused CMD_CONFLICT
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
-manual:
-  - kernel submit x2
-  - assert dedupe
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: twice
+        goal: write doc a
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: twice
+  - file:
+      path: escalate.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-twice-ask-1
+        kind: escalation
+        workflow: twice
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the product?
+  - seat: kernel:twice
+    starci: [kernel, submit, "${run}/escalate.yaml"]
+    expect:
+      contains: '"replay": false'
+  - seat: kernel:twice
+    starci: [kernel, submit, "${run}/escalate.yaml"]
+    expect:
+      contains: '"replay": true'
+  - file:
+      path: other.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-twice-ask-1
+        kind: escalation
+        workflow: twice
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the competitor?
+  - seat: kernel:twice
+    starci: [kernel, submit, "${run}/other.yaml"]
+    expect:
+      exit: 1
+      code: CMD_CONFLICT
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM commands
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor'"
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: send
+        count: 1
