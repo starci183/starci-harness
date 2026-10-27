@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.6.0 - 2026-10-28
+
+- Changed: the package is TypeScript built to JavaScript. Source and specs live in `src/*.ts` (strict, no `any`, no
+  suppressions), `npm run build` emits `dist/` with declarations, and `exports`/`main`/`files` point at `dist/`. The
+  package specifier and every export (`starciBeConfig`, `loadHfs`, the plugin, `rules`, `recommended`, `ruleOwners`,
+  `lawOwners`, `ruleDeclarations`, `linterOptions`) are unchanged. No rule changed behaviour; the spec count is unchanged.
+- Added: `@typescript-eslint/utils` as a dependency for the rule and AST types (already installed with
+  `@typescript-eslint/eslint-plugin`).
+- Changed (specs): the front-end canon is loaded through its package entry (`fixtures/sibling-canon.mjs`), not a source
+  path; `fixtures/gathered-plugin.mjs` lists law modules by `.mjs` or `.ts`.
+
 ## 3.5.0 - 2026-10-27
 
 - Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`. No rule changes.

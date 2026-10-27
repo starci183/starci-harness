@@ -1,0 +1,51 @@
+import test, { after } from "node:test"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { runGit } from "../runtime/scripts/api/git/lib.mjs"
+import tsParser from "@typescript-eslint/parser"
+import { BE_DECLARATION } from "../fixtures/typed/tester.mjs"
+import { appDeclaration } from "../fixtures/app.mjs"
+import { hfsFromDeclaration } from "./lib/hfs.ts"
+import { fileSizeGrowth } from "./size-budget.ts"
+import { lines, sizeGrowthSharedSpec } from "../fixtures/size-growth.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
+
+// Probe paths of a throwaway git repository with one empty commit: no file of it has a recorded size, so a file over the budget is born over it.
+// (The rule reads the recorded size from git; a package tested from a copy without git history would answer "unavailable".)
+const probeRoot = mkdtempSync(join(tmpdir(), "starci-be-budget-probe-"))
+after(() => rmSync(probeRoot, { recursive: true, force: true }))
+const probeGit = (...args: string[]) => runGit(args, { dir: probeRoot, config: { "user.email": "t@example.com", "user.name": "t" } })
+probeGit("init", "-q", "-b", "main")
+probeGit("commit", "-q", "--allow-empty", "-m", "seed")
+const at = (relative: string) => join(probeRoot, relative)
+const fixtureHfs = () => hfsFromDeclaration(appDeclaration("be", BE_DECLARATION), probeRoot)
+
+const tester = canonRuleTester({
+    languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
+    settings: { starci: { hfs: fixtureHfs() } },
+})
+/** The budget is the manifest's (`ruleParams.be.fileLines`); the cases are sized against it. */
+const BUDGET = fixtureHfs().ruleParams.fileLines.soft
+
+test("be: a new file over the manifest budget is refused, in a product file and in a spec alike", () => {
+    tester.run("file-size-growth", fileSizeGrowth, {
+        valid: [
+            { filename: at("src/modules/domain/budget-probe/budget-probe.service.ts"), code: lines(BUDGET) },
+            // a declaration file carries no behaviour
+            { filename: at("src/modules/domain/budget-probe/types.d.ts"), code: lines(BUDGET + 40) },
+            // a migration is append-only
+            { filename: at("src/modules/domain/budget-probe/persistence/migrations/1700000000000-init.ts"), code: lines(BUDGET + 40) },
+        ],
+        invalid: [
+            { filename: at("src/modules/domain/budget-probe/budget-probe.service.ts"), code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
+            { filename: at("src/modules/domain/budget-probe/budget-probe.service.spec.ts"), code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
+            { filename: at("src/tests/e2e/budget-probe/budget-probe.e2e-spec.ts"), code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
+            { filename: at("src/tests/fixtures/budget-probe.ts"), code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
+            // a file of the persistence slot that is not a migration is a source file
+            { filename: at("src/modules/domain/budget-probe/persistence/budget-probe.sql.ts"), code: lines(BUDGET + 1), errors: [{ messageId: "born" }] },
+        ],
+    })
+})
+
+sizeGrowthSharedSpec({ side: "be", tester, fileSizeGrowth, budget: BUDGET, fileName: "big.ts" })

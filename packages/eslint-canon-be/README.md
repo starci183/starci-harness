@@ -25,7 +25,7 @@ manifest this package ships in `runtime/` (a byte copy of `knowledge/hfs/slots.y
 `scripts/hfs/sync-runtime.mjs`). `starciBeConfig` returns the flat config: typed linting
 (`parserOptions.projectService`) over every `.ts/.mts/.cts/.js/.mjs/.cjs`, ignores `dist/`, `coverage/` and
 `node_modules/` only, `noInlineConfig` with unused-disable reporting, the borrowed typescript-eslint rules, every canon
-rule at `error`, and `settings.starci.hfs` - the slot view each path-scoped rule asks (`lib/hfs.mjs`). The factory takes
+rule at `error`, and `settings.starci.hfs` - the slot view each path-scoped rule asks (`src/lib/hfs.ts`). The factory takes
 no globs, ignores or rule overrides, and refuses a recommendation with any rule not at `error`. A rule the standard no
 longer holds is deleted from the plugin; every rule that ships is on.
 
@@ -140,7 +140,16 @@ pointed at.
 
 ## Requirements
 
-ESLint 9+ (flat config), Node 20.9+.
+ESLint 9+ (flat config), Node 22.13+ (`engines`).
+
+## Source and build
+
+The package is TypeScript: `src/*.ts` (one module per law, `src/lib/` for the shared helpers, `src/*.spec.ts` beside the
+source) builds with `tsc -p tsconfig.build.json` into `dist/`, which is what `exports` and `files` publish, with `runtime/`.
+`npm run typecheck` checks source and specs strictly (no `any`); `npm test` runs the specs straight from the TypeScript
+(`node --test`, Node strips the types), so a spec needs no build. The bundled `runtime/` is untyped JavaScript; the parts
+this package imports are declared in `src/types/runtime/*.d.ts`. `fixtures/` is spec data and stays JavaScript with
+`.d.mts` contracts, because the front-end canon and the Grammar lint families import its helpers by path.
 
 ## HFS rules and their why codes
 
