@@ -6,7 +6,7 @@
 
 /** A database of the run (one per declared connection, named per repository). */
 export interface WiredDatabase {
-    /** `postgres://user:password@host:port/database`, through toxiproxy. */
+    /** The `postgres` connection URL of `user` (with its percent-encoded `password`) to `database` at `host`:`port`, through toxiproxy. */
     readonly url: string
     /** The host (through toxiproxy). */
     readonly host: string

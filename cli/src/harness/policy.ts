@@ -84,7 +84,21 @@ const literalPath = z
 
 const reason = z.string().trim().min(10, "an exception carries its reason")
 
-const looseningException = z.object({ path: literalPath, marker: z.enum(LOOSENING_MARKERS), reason })
+/** What a file must be for an exception to name it; `exceptionKindProblem` holds the test of each. */
+export const EXCEPTION_KINDS = ["fixture", "template", "detector"] as const
+
+/** One exception kind. */
+export type ExceptionKind = (typeof EXCEPTION_KINDS)[number]
+
+// The exact text of each finding the exception covers (its line, trimmed): one entry, or a list for several lines of the file.
+const match = z
+    .union([z.string().trim().min(1), z.array(z.string().trim().min(1)).min(1)])
+    .transform((value) => (typeof value === "string" ? [value] : value))
+    .refine((entries) => new Set(entries).size === entries.length, "an exception lists each match once")
+
+const exceptionFields = { path: literalPath, kind: z.enum(EXCEPTION_KINDS), match, reason }
+
+const looseningException = z.object({ ...exceptionFields, marker: z.enum(LOOSENING_MARKERS) })
 
 /** One declared loosening exception. */
 export type LooseningException = z.infer<typeof looseningException>
@@ -105,7 +119,7 @@ const looseningOverlay = z.object({
 /** loosening.yaml after the project's overlay: what is banned, how the scan is bounded, the declared exceptions. */
 export type LooseningPolicy = z.infer<typeof looseningSchema>
 
-const securityException = z.object({ path: literalPath, rule: z.string().min(1), reason })
+const securityException = z.object({ ...exceptionFields, rule: z.string().min(1) })
 
 /** One declared secret-scan exception. */
 export type SecurityException = z.infer<typeof securityException>
@@ -127,6 +141,39 @@ const securityOverlay = z.object({
 
 /** security.yaml after the project's overlay. */
 export type SecurityPolicy = z.infer<typeof securitySchema>
+
+// A string literal, or a regular-expression literal opened where an expression starts.
+const PATTERN_LITERAL = /(["'`]).+?\1|(?:^|[=(,:[!&|?{};]\s*)\/(?![/*])(?:\\.|[^/\\\n])+\/[dgimsuyv]*/
+
+/**
+ * Why an exception may not name its file, or undefined when it may. A `fixture` is a file of a `fixtures/` or `__fixtures__/`
+ * folder, or a spec (`*.spec.*`, `*.test.*`); a `template` is a file of a `templates/` folder; a `detector` is a scanner or
+ * rule implementation of a runtime that ships detectors (a file under a `runtime/` folder and, below it, a `rules/`,
+ * `guards/` or `lib/` folder) whose every `match` holds a string or regular-expression literal, the pattern it detects.
+ */
+export const exceptionKindProblem = (exception: Pick<LooseningException, "path" | "kind" | "match">): string | undefined => {
+    const dirs = exception.path.split("/").slice(0, -1)
+    const name = exception.path.slice(exception.path.lastIndexOf("/") + 1)
+    if (exception.kind === "fixture") {
+        return dirs.includes("fixtures") || dirs.includes("__fixtures__") || /\.(?:spec|test)\./.test(name) ? undefined : "a fixture sits in a fixtures/ or __fixtures__/ folder or is a *.spec.* or *.test.* file"
+    }
+    if (exception.kind === "template") return dirs.includes("templates") ? undefined : "a template sits in a templates/ folder"
+    const runtime = dirs.indexOf("runtime")
+    if (runtime === -1 || !dirs.slice(runtime + 1).some((dir) => dir === "rules" || dir === "guards" || dir === "lib")) {
+        return "a detector sits in a rules/, guards/ or lib/ folder under a runtime/ folder"
+    }
+    const bare = exception.match.find((entry) => !PATTERN_LITERAL.test(entry))
+    return bare === undefined ? undefined : `a detector's match holds the string or regular-expression literal it detects; ${JSON.stringify(bare)} holds none`
+}
+
+/** Refuses EXCEPTION_KIND_REFUSED when an exception of `file` names a file its kind does not qualify. */
+const refuseUnqualified = (file: string, exceptions: readonly Pick<LooseningException, "path" | "kind" | "match">[] | undefined): void => {
+    const problems = (exceptions ?? []).flatMap((exception) => {
+        const problem = exceptionKindProblem(exception)
+        return problem === undefined ? [] : [`${exception.path} (${exception.kind}): ${problem}`]
+    })
+    if (problems.length > 0) throw new Refusal("EXCEPTION_KIND_REFUSED", `${file}: only a fixture, template or detector file takes an exception; ${problems.join("; ")}`)
+}
 
 /** The runtime's policy files with a project's overlay applied. */
 export interface Policy {
@@ -210,6 +257,8 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     const canon = readYaml(join(dir, "canon.yaml"), canonSchema)
     let loosening = readYaml(join(dir, "loosening.yaml"), looseningSchema)
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
+    refuseUnqualified(join(dir, "loosening.yaml"), loosening.exceptions)
+    refuseUnqualified(join(dir, "security.yaml"), security.exceptions)
     checkCrossReferences(dir, quality, canon, security)
     // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
     if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {
@@ -230,11 +279,13 @@ const applyOverlay = (overlay: string, loosening: LooseningPolicy, security: Sec
     const looseningFile = join(overlay, "loosening.yaml")
     if (existsSync(looseningFile)) {
         const extra = readYaml(looseningFile, looseningOverlay)
+        refuseUnqualified(looseningFile, extra.exceptions)
         tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], exceptions: extra.exceptions ?? [] }
     }
     const securityFile = join(overlay, "security.yaml")
     if (existsSync(securityFile)) {
         const extra = readYaml(securityFile, securityOverlay)
+        refuseUnqualified(securityFile, extra.exceptions)
         guarded = { ...security, neverRead: [...new Set([...security.neverRead, ...(extra.neverRead ?? [])])], exceptions: extra.exceptions ?? [] }
     }
     return { loosening: tightened, security: guarded }

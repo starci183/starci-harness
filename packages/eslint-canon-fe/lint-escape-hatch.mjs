@@ -3,14 +3,10 @@
  *
  * NO LOCAL EXCEPTION, OF ANY SPELLING. A rule that a comment can switch off is a convention, and a
  * codebase learns which conventions are real by which ones it can suppress. The spellings this law
- * refuses are the ones an author actually reaches for:
- *
- *   eslint-disable / -next-line / -line / -enable / -env, and `/* eslint rule: "off" *\/`
- *   @ts-ignore, @ts-expect-error, @ts-nocheck
- *   the no-sonar word, @sonar-ignore              - Sonar's own switches
- *   istanbul ignore, c8 ignore, v8 ignore         - a line taken out of the coverage the gate reads
- *   prettier-ignore                               - a region taken out of the formatter
- *   stylelint-disable / -enable                   - a stylelint switch that reached a TS file
+ * refuses are the ones an author actually reaches for, and the three patterns below own them:
+ * ESLINT_DIRECTIVE (an ESLint switch or inline rule configuration), TS_DIRECTIVE (a TypeScript
+ * suppression) and TOOL_DIRECTIVE (Sonar's own switches, a line taken out of the coverage the gate
+ * reads, a region taken out of the formatter, a stylelint switch that reached a TS file).
  *
  * TWO LAYERS, BECAUSE ONE IS NOT ENOUGH. The flat-config fence (`noInlineConfig`) makes an ESLint
  * directive INEFFECTIVE; this rule makes it a FINDING, so the attempt is named in the log instead of

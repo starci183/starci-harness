@@ -45,6 +45,8 @@ interface RunState {
     readonly failures: string[]
     /** The long-lived verbs a `serve` step started, stopped when the scenario ends. */
     readonly served: Serving[]
+    /** The provider-shaped key of the run's generated secret fixture. */
+    readonly key: string
 }
 
 const VAR = /\$\{([A-Za-z0-9_.-]+)\}/g
@@ -83,6 +85,7 @@ const expand = (run: RunState, text: string): string =>
         if (name === "state") return run.state
         if (name === "project") return projectFolder(run) ?? whole
         if (name === "ops") return locateOps()
+        if (name === "key") return run.key
         return run.vars.get(name) ?? whole
     })
 
@@ -99,8 +102,9 @@ const inRepo = (run: RunState, path: string): string => {
 }
 
 // A fixture that must never be text in this public repository: a provider-shaped credential and a lint suppression, built here.
-const generated = (kind: "secret" | "loosening"): string => {
-    if (kind === "secret") return `const awsKey = "${["AK", "IA"].join("")}${randomBytes(8).toString("hex").toUpperCase()}"\n`
+// The run's credential is one key (`${key}` in a step's text), so a scenario can name the line it sits on.
+const generated = (run: RunState, kind: "secret" | "loosening"): string => {
+    if (kind === "secret") return `const awsKey = "${run.key}"\n`
     return `// ${["eslint", "disable"].join("-")}-next-line\nexport const value = 1\n`
 }
 
@@ -343,7 +347,7 @@ const writeFiles = (run: RunState, step: Step): void => {
     }
     if (step.write?.from !== undefined) cpSync(expand(run, step.write.from), inRepo(run, step.write.path), { recursive: true })
     else if (step.write !== undefined) {
-        const content = step.write.generated === undefined ? expand(run, step.write.content ?? "") : generated(step.write.generated)
+        const content = step.write.generated === undefined ? expand(run, step.write.content ?? "") : generated(run, step.write.generated)
         writeText(inRepo(run, step.write.path), content, step.write.crlf === true)
     }
 }
@@ -468,7 +472,7 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
         CODEX_HOME: join(dir, "codex"),
         NODE_OPTIONS: `--import=${stub}`,
     }
-    const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [], served: [] }
+    const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [], served: [], key: `${["AK", "IA"].join("")}${randomBytes(8).toString("hex").toUpperCase()}` }
     const withEnv: RunState = { ...run, env: { ...env, ...Object.fromEntries(Object.entries(scenario.env ?? {}).map(([key, value]) => [key, expand(run, value)])) } }
     const repos: readonly [string, Readonly<Record<string, string>> | undefined][] = [[repo, scenario.repo?.files], ...Object.entries(scenario.repos ?? {}).map(([name, files]): [string, Readonly<Record<string, string>> | undefined] => [join(dir, name), files.files])]
     for (const [path] of repos.slice(1)) mkdirSync(path, { recursive: true })

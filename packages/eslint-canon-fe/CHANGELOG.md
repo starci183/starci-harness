@@ -3,6 +3,7 @@
 ## 9.2.0 - 2026-10-27
 
 - Changed: owner ruling two-grammars: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).
+- Changed: the doc comment of `lint-escape-hatch.mjs` names the three patterns that own the refused spellings instead of spelling them again. No rule or behaviour changed.
 
 ## 9.1.11 - 2026-10-27
 

@@ -56,7 +56,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone, mail a seat sent. No real Orca is ever launched.
 - **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression) are
-  built by the runner at run time (`write.generated`).
+  built by the runner at run time (`write.generated`); the run's key is `${key}` in a step's text, so a scenario can pin its line.
 
 A `FAIL` on main is a finding against the harness, not against the bench: the scenario states the behaviour the owner's
 design asks for.

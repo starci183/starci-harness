@@ -5,6 +5,11 @@ export interface SecretFinding {
     readonly pattern: string
 }
 
+/** A finding with the text of its line, trimmed (empty for a finding of a whole file): only the exception check reads it, no report shows it. */
+export interface SecretHit extends SecretFinding {
+    readonly text: string
+}
+
 interface PathRule {
     readonly name: string
     readonly test: (file: string) => boolean
@@ -71,12 +76,12 @@ const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
 const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => file.endsWith(".enc") && isSopsEnvelope(readFile(file) ?? "")
 
-const forbiddenPathFindings = (files: readonly string[]): SecretFinding[] =>
-    files.flatMap((file) => FORBIDDEN_PATHS.filter((rule) => rule.test(file)).map((rule): SecretFinding => ({ file, line: null, pattern: rule.name })))
+const forbiddenPathFindings = (files: readonly string[]): SecretHit[] =>
+    files.flatMap((file) => FORBIDDEN_PATHS.filter((rule) => rule.test(file)).map((rule): SecretHit => ({ file, line: null, pattern: rule.name, text: "" })))
 
-/** Scans the added lines of a unified diff (git diff -U0) and its changed file list; returns findings without values. */
-export const scanDiff = (diff: string, files: readonly string[], readFile: (file: string) => string | undefined): SecretFinding[] => {
-    const findings: SecretFinding[] = forbiddenPathFindings(files)
+/** Scans the added lines of a unified diff (git diff -U0) and its changed file list; returns findings with the text of their line. */
+export const scanDiff = (diff: string, files: readonly string[], readFile: (file: string) => string | undefined): SecretHit[] => {
+    const findings: SecretHit[] = forbiddenPathFindings(files)
     let file = ""
     let line = 0
     for (const raw of diff.split(/\r?\n/)) {
@@ -90,7 +95,7 @@ export const scanDiff = (diff: string, files: readonly string[], readFile: (file
             continue
         }
         if (!raw.startsWith("+")) continue
-        if (!isEncryptedFile(file, readFile)) for (const pattern of lineFindings(file, raw.slice(1))) findings.push({ file, line, pattern })
+        if (!isEncryptedFile(file, readFile)) for (const pattern of lineFindings(file, raw.slice(1))) findings.push({ file, line, pattern, text: raw.slice(1).trim() })
         line += 1
     }
     return findings
