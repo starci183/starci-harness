@@ -5,7 +5,9 @@ and `embeddings` call, and the router picks a healthy key for each attempt, back
 limits, retries on a different key or provider, falls back to another model when you allow it, and tells you what it
 did without ever exposing a key or a prompt.
 
-- Zero runtime dependencies: `fetch`, `AbortController` and `ReadableStream`. ESM, typed, Node 20 or newer.
+- Zero runtime dependencies: `fetch`, `AbortController` and `ReadableStream`. ESM, typed, Node 20 or newer. The
+  optional [NestJS module](#nestjs) lives at `@starci/ai-router/nest`, with `@nestjs/common` and `@nestjs/core` as
+  optional peers; the root entry never loads them.
 - OpenAI chat-completions and embeddings shapes in and out, so any OpenAI-compatible endpoint (OpenAI, Azure OpenAI
   behind a compatible gateway, OpenRouter, Groq, Together, DeepSeek, vLLM, Ollama, LiteLLM...) is a provider.
 - Keys are references (an environment variable name or a resolver function), read at each attempt and named by alias
@@ -250,6 +252,79 @@ atomic `lease(key, ttlMs)` / `release(key)` pair for the half-open probe. Method
 Records are plain JSON (`HealthRecord`); a Redis adapter is a `GET`/`SET`, a `SCAN` and a `SET NX PX` lease. In-flight
 counts, latency EWMAs and round-robin positions stay per process. Updates are read-modify-write, so two processes
 failing at the same instant may count one failure between them: breakers are a health signal, not a ledger.
+
+## NestJS
+
+`@starci/ai-router/nest` registers the router as a Nest module (Nest 11 or 12, `@nestjs/common` and `@nestjs/core`
+installed by your app). The options are the pool config above plus `on` (one handler per event), and the extras
+`isGlobal` (default `false`) and `name` (for several pools in one app). Register it once, at the app root:
+
+```ts
+import { Module } from "@nestjs/common"
+import { AiRouterModule } from "@starci/ai-router/nest"
+
+@Module({
+    imports: [
+        AiRouterModule.register({
+            isGlobal: true,
+            providers: [{ id: "openai", baseUrl: "https://api.openai.com/v1", keys: [{ alias: "main", env: "OPENAI_KEY_MAIN" }], models: [{ id: "gpt-4o-mini" }] }],
+            profiles: { fast: { model: "gpt-4o-mini" } },
+            on: { request: (event) => metrics.observe(event.operation, event.latencyMs) },
+        }),
+    ],
+})
+export class AppModule {}
+```
+
+When the options come from another provider (an env or config module), use `registerAsync` with `useFactory` and
+`inject`, or `useClass` / `useExisting` with a class whose `createAiRouterOptions()` returns them:
+
+```ts
+AiRouterModule.registerAsync({
+    isGlobal: true,
+    imports: [AppConfigModule],
+    inject: [AppConfig],
+    useFactory: (config: AppConfig) => ({ providers: config.aiProviders, profiles: config.aiProfiles }),
+})
+```
+
+Each registration provides:
+
+| Token | Value | Inject with |
+| --- | --- | --- |
+| `AiRouterService` | the facade: `chat`, `stream`, `embeddings`, `health`, `stats`, `on`, `reset`, and `router` | the constructor type, or `@InjectAiRouterService()` |
+| `AI_ROUTER` | the raw `AiRouter` | `@InjectAiRouter()` |
+
+```ts
+@Injectable()
+export class SummaryService {
+    constructor(private readonly ai: AiRouterService<"fast">) {}
+
+    summarise(text: string) {
+        return this.ai.chat({ messages: [{ role: "user", content: `Summarise: ${text}` }] }, { profile: "fast" })
+    }
+}
+```
+
+The router is created, and its pool validated, when Nest instantiates the module, so a bad pool fails the bootstrap.
+On application shutdown (`app.close()`, or a signal after `enableShutdownHooks()`), the service aborts every call still
+in flight through it (a stream ends with `cancelled`), rejects later calls as `cancelled`, and releases the `on`
+handlers and every handler it subscribed. Calls made on the raw `AI_ROUTER` are the caller's to cancel.
+
+For several pools, give each registration a `name`; its tokens become `AI_ROUTER:<name>` and `AiRouterService:<name>`
+(`getAiRouterToken(name)`, `getAiRouterServiceToken(name)`):
+
+```ts
+imports: [
+    AiRouterModule.register({ name: "chat", isGlobal: true, ...chatPool }),
+    AiRouterModule.registerAsync({ name: "embed", isGlobal: true, inject: [AppConfig], useFactory: (config: AppConfig) => config.embedPool }),
+]
+
+constructor(@InjectAiRouterService("chat") private readonly chat: AiRouterService, @InjectAiRouter("embed") private readonly embed: AiRouter) {}
+```
+
+Keys stay references (`env` names or resolvers) and the module logs nothing. In tests, pass a fake provider's `fetch`
+in the options (below) and build the module with `@nestjs/testing`.
 
 ## Testing with the fake provider
 
