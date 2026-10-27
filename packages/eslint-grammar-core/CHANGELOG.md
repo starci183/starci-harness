@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased (0.15.0 with the Grammar family)
+## 0.15.0 - 2026-10-28
 
-- Unreleased: the Grammar family (`grammar`, `eslint-grammar-core`, `eslint-grammar-offset-pop`) keeps one version and `packages/grammar` is outside this lane, so the minor bump to 0.15.0 lands with the family's release; the package stays 0.14.0 until then.
+- Changed: versioned together with Grammar 0.15.0; `@starci/eslint-canon-fe` 9.4.0 is the peer dependency, and the bundled canon pins follow release C (Grammar family 0.15.0, hfs 4.9.1, canon-fe 9.4.0, canon-be 3.6.0, jest-preset 2.4.1, `@starci/ai-router` 0.2.1), so an app installs the released versions without pin drift.
 - Changed: the source is TypeScript in `src/`, built to `dist/` (`npm run build`; `prepack` builds); the package ships `dist/`, `runtime/` and `docs/` and no hand-written JavaScript or `index.d.ts` (the build emits the declarations, with the same public types). No rule or behaviour changed; the exports and specifiers (`.` and the default plugin) are unchanged.
 - Changed: the specs are `src/*.spec.ts`, typechecked first by `npm test`.
+- Fixed: the built declarations name `.js`, not the `.ts` sources (`tsc` keeps a relative `.ts` specifier in a `.d.ts`, which a consumer tsc cannot read).
 
 ## 0.14.0 - 2026-10-27
 

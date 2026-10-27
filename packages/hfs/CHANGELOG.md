@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.9.1 - 2026-10-28
+
+- Changed: the bundled canon pins follow release C (Grammar family 0.15.0, hfs 4.9.1, canon-fe 9.4.0, canon-be 3.6.0, jest-preset 2.4.1, stylelint-canon 2.2.1, tsconfig 2.1.0, prettier-config 1.1.0, and `@starci/ai-router` 0.2.1 pinned), so an app installs the released versions without pin drift.
+
 ## 4.9.0 - 2026-10-28
 
 - Removed: 121 bundled runtime scripts that only served the legacy runtime and that no `starci app` verb, package entry or catalogued rule enforcer reaches: `scripts/agent/`, `scripts/reconciler/`, the legacy hook guards of `scripts/guards/` (command, seat, rights, install and launch verdicts), the op gate of `scripts/gates/` (`gate.mjs`, canon pins and digest, type impact), the drawing pipeline of `scripts/work/` other than the DNA judge (`draw-dna*`, `grammar-proposal`, `asset-slot`), the ledger of `engine/db/`, the machine helpers, and the `scripts/api` and `scripts/lib` helpers only they imported; with them the specs that exercised only that code. The `release-push-gate` and `hook-io` cases of `hook-input.spec.mjs` stay.

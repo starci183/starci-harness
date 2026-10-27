@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-grammar-core",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "ESLint rules for the core Grammar's component, token and composition contracts.",
   "keywords": [
     "eslint",
@@ -52,7 +52,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist', {recursive: true}).filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/((?:from |import\\()['\\x22]\\.\\.?\\/[^'\\x22]+)\\.ts(['\\x22])/g, (all, head, quote) => head + '.js' + quote))\"",
     "typecheck": "tsc -p tsconfig.json",
     "prepack": "npm run build",
     "test": "npm run typecheck && node --test \"src/**/*.spec.ts\""
