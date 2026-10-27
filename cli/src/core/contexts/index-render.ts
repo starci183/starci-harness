@@ -26,12 +26,14 @@ const treeFiles = (dir: string): string[] =>
 
 const plain = (text: string): string =>
     text
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/\[([^\][]*)\]\([^()]*\)/g, "$1")
         .replace(/\s+/g, " ")
         .trim()
 
 const cut = (text: string): string => {
-    const sentence = /^(.+?[.!?])(\s|$)/.exec(text)?.[1] ?? text
+    // The first `.`, `!` or `?` past the first character that ends the text or comes before a blank closes the sentence.
+    const end = text.slice(1).search(/[.!?](?:\s|$)/)
+    const sentence = end === -1 ? text : text.slice(0, end + 2)
     if (sentence.length <= SUMMARY_CHARS) return sentence
     const head = sentence.slice(0, SUMMARY_CHARS)
     return `${head.slice(0, Math.max(head.lastIndexOf(" "), SUMMARY_CHARS / 2)).trimEnd()} ...`
@@ -76,8 +78,9 @@ const entryOf = (contexts: string, path: string): string[] => {
     // A heading's ids already show in its section; the ids line names the others (a yaml `id:`, a deeper heading).
     const headed = new Set(sections.flatMap((section) => section.split(/[^A-Za-z0-9._-]+/)))
     const ids = [...ruleIdsIn(lines.join("\n"))].filter((id) => !headed.has(id)).sort(byCodeUnit)
+    const summaryNote = summary === "" ? "" : " — " + summary
     return [
-        `- [${path}](../${path}) · ${String(kb)} KB${summary === "" ? "" : ` — ${summary}`}`,
+        `- [${path}](../${path}) · ${String(kb)} KB${summaryNote}`,
         ...(sections.length === 0 ? [] : [`  - sections: ${sections.join(" · ")}`]),
         ...(ids.length === 0 ? [] : [`  - ids: ${listed(ids)}`]),
     ]

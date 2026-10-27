@@ -94,6 +94,10 @@ const routingSchema = z.object({
 /** ops/routing.yaml, validated: tiers, pools, quota, usage, circuit, outcomes, qualification, scoring, concurrency and budgets. */
 export type Routing = z.infer<typeof routingSchema>
 
+/** Every tier member whose agent has no pool. */
+const poolProblems = (routing: Routing): string[] =>
+    Object.entries(routing.tiers).flatMap(([tier, members]) => members.filter((member) => !(member.agent in routing.pools)).map((member) => `tier ${tier} names agent ${member.agent}, which has no pool`))
+
 // Cross-field rules zod cannot state: every tier named exists, every member's agent has its pool (pools are keyed by agent,
 // so an agent has exactly one), the quota bands rise and every signal compiles.
 const problemsOf = (routing: Routing): string[] => {
@@ -103,10 +107,8 @@ const problemsOf = (routing: Routing): string[] => {
         if (!tiers.has(tier)) problems.push(`tier ${tier} is named but not defined under tiers`)
     }
     for (const tier of tiers) if (!routing.tierOrder.includes(tier)) problems.push(`tier ${tier} is missing from tierOrder`)
-    for (const [tier, members] of Object.entries(routing.tiers)) {
-        for (const member of members) if (!(member.agent in routing.pools)) problems.push(`tier ${tier} names agent ${member.agent}, which has no pool`)
-    }
-    if (!(routing.quota.reservePercent <= routing.quota.exhaustedPercent)) problems.push("quota needs reservePercent <= exhaustedPercent")
+    problems.push(...poolProblems(routing))
+    if (routing.quota.reservePercent > routing.quota.exhaustedPercent) problems.push("quota needs reservePercent <= exhaustedPercent")
     for (const tier of routing.qualification.startStandard) if (!tiers.has(tier)) problems.push(`qualification.startStandard names tier ${tier}, which is not defined`)
     const { standard, high } = routing.qualification
     if (!(standard.verified <= high.verified && standard.greenPercent <= high.greenPercent)) problems.push("qualification.high must ask at least what standard asks")

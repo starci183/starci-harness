@@ -109,15 +109,15 @@ const readFrontMatter = (file: string) => {
 const readPatterns = (knowledge: string): Topics => {
     const declared = new Map<string, string[]>()
     const files = new Map<string, string[]>()
+    const addTopic = (file: string, topic: string): void => {
+        const front = readFrontMatter(file)
+        if (front === undefined) return
+        for (const id of front.slots ?? []) addTo(declared, id, topic)
+        for (const slot of (front.files ?? []).map((entry) => entry.slot)) if (slot !== undefined) addTo(files, slot, topic)
+    }
     for (const side of ["be", "fe"]) {
         const folder = join(knowledge, "code", side)
-        for (const name of readdirSync(folder).filter((file) => file.endsWith(".md")).sort(byCodeUnit)) {
-            const front = readFrontMatter(join(folder, name))
-            if (front === undefined) continue
-            const topic = `${side}/${name}`
-            for (const id of front.slots ?? []) addTo(declared, id, topic)
-            for (const slot of (front.files ?? []).map((entry) => entry.slot)) if (slot !== undefined) addTo(files, slot, topic)
-        }
+        for (const name of readdirSync(folder).filter((file) => file.endsWith(".md")).sort(byCodeUnit)) addTopic(join(folder, name), `${side}/${name}`)
     }
     return { declared, files }
 }

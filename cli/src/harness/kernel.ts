@@ -107,28 +107,40 @@ export const ensureWorkflowWorktree = async (root: string, workflowId: string): 
     const { workflow, known } = withRecord(root, (db) => ({ workflow: getWorkflow(db, workflowId), known: workflowWorktreeOf(db, workflowId) }))
     if (known !== undefined && existsSync(known)) return known
     const given = workflow.header.worktree
-    let path: string
-    let branch: string | null = null
-    let created = 0
-    const selector = given !== undefined && /^(?:(?:identity|id|name|branch|issue):|(?:current|active|new-child|new-top-level)$)/.test(given)
-    if (given !== undefined && !selector) {
-        path = resolve(root, given.startsWith("path:") ? given.slice("path:".length) : given)
-        if (!existsSync(path)) throw new Refusal("WORKTREE_MISSING", `workflow ${workflowId} names worktree ${given}, which does not exist`)
-    } else if (given === undefined) {
-        path = join(projectDir(root), "worktrees", workflowId)
-        branch = `starci/${workflowId}`
-        if (!existsSync(path)) {
-            mkdirSync(dirname(path), { recursive: true })
-            const args = (await refExists(root, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"]
-            await git(root, args)
-            created = 1
-        }
-    } else throw new Refusal("WORKTREE_SELECTOR", `workflow ${workflowId} names the Orca selector ${given}; one workflow runs in one git worktree, so name a folder (or none, and the harness makes one)`)
+    const { path, branch, created } = given === undefined ? await harnessWorktree(root, workflowId) : namedWorktree(root, workflowId, given)
     withRecord(root, (db) => {
         db.prepare("UPDATE workflows SET worktree = ? WHERE id = ?").run(path, workflowId)
-        recordEvent(db, "workflow-worktree", workflowId, { path, branch, created: created === 1 })
+        recordEvent(db, "workflow-worktree", workflowId, { path, branch, created })
     })
     return path
+}
+
+/** Where a workflow's worktree is and how it came to be: the branch the harness made it on, whether this call created it. */
+interface WorktreeMade {
+    readonly path: string
+    readonly branch: string | null
+    readonly created: boolean
+}
+
+/** The folder a workflow header's `worktree` names, which must exist; an Orca selector names none and is refused. */
+const namedWorktree = (root: string, workflowId: string, given: string): WorktreeMade => {
+    if (/^(?:(?:identity|id|name|branch|issue):|(?:current|active|new-child|new-top-level)$)/.test(given)) {
+        throw new Refusal("WORKTREE_SELECTOR", `workflow ${workflowId} names the Orca selector ${given}; one workflow runs in one git worktree, so name a folder (or none, and the harness makes one)`)
+    }
+    const path = resolve(root, given.startsWith("path:") ? given.slice("path:".length) : given)
+    if (!existsSync(path)) throw new Refusal("WORKTREE_MISSING", `workflow ${workflowId} names worktree ${given}, which does not exist`)
+    return { path, branch: null, created: false }
+}
+
+/** The harness's own worktree of a workflow, `<project state>/worktrees/<workflow>` on branch `starci/<workflow>`, added when missing. */
+const harnessWorktree = async (root: string, workflowId: string): Promise<WorktreeMade> => {
+    const path = join(projectDir(root), "worktrees", workflowId)
+    const branch = `starci/${workflowId}`
+    if (existsSync(path)) return { path, branch, created: false }
+    mkdirSync(dirname(path), { recursive: true })
+    const args = (await refExists(root, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"]
+    await git(root, args)
+    return { path, branch, created: true }
 }
 
 /** Requires an attached live Kernel before an Op launches into its Run; Ops never launch flat outside it. */
@@ -283,17 +295,22 @@ export const attachKernel = async (root: string, cwd: string, workflowId: string
 /** A self-stop keeps the terminal long enough to send its handoff; its Supervisor completes the close. */
 export type KernelClosing = "closed" | "gone" | "kept-adopted" | "awaiting-handoff" | "none" | `error: ${string}`
 
+/** Closes a Kernel seat's dispatch and its tab: settled, the seat is released and the tab's end returned; unsettled, the error. */
+const closeKernelDispatch = async (root: string, cwd: string, binary: OrcaBinary, seat: SeatRow, handle: string, terminal: string | null): Promise<KernelClosing> => {
+    const closed = await closeWorker(binary, handle, cwd, seat.terminal ?? terminal)
+    if (!closed.settled) return `error: ${closed.release}; ${closed.tab}`
+    withRecord(root, (db) => recordSeat(db, seat.id, { status: SEAT_RELEASED, facts: { closed } }))
+    return closed.tab === "closed" || closed.tab === "gone" ? closed.tab : "gone"
+}
+
 /** Releases a Kernel dispatch after its Ops, then closes its terminal; a repeated stop finishes a partial release. */
 export const closeKernel = async (root: string, cwd: string, workflowId: string, binary: OrcaBinary): Promise<KernelClosing> => {
     const { kernel, seat } = withRecord(root, (db) => ({ kernel: getWorkflow(db, workflowId).kernel, seat: kernelSeatOf(db, workflowId) }))
     if ((kernel.terminal === null && seat === undefined) || kernel.closedAt !== null) return "none"
     if (process.env.ORCA_TERMINAL_HANDLE !== undefined && process.env.ORCA_TERMINAL_HANDLE === kernel.terminal) return "awaiting-handoff"
-    let outcome: KernelClosing
-    if (seat?.handle != null) {
-        const closed = await closeWorker(binary, seat.handle, cwd, seat.terminal ?? kernel.terminal)
-        outcome = closed.settled && (closed.tab === "closed" || closed.tab === "gone") ? closed.tab : closed.settled ? "gone" : `error: ${closed.release}; ${closed.tab}`
-        if (!outcome.startsWith("error: ")) withRecord(root, (db) => recordSeat(db, seat.id, { status: SEAT_RELEASED, facts: { closed } }))
-    } else outcome = kernel.owned && kernel.terminal !== null ? await terminalClose(binary, kernel.terminal, cwd).catch((error: unknown): KernelClosing => `error: ${error instanceof Error ? error.message : String(error)}`) : "kept-adopted"
+    let outcome: KernelClosing = "kept-adopted"
+    if (seat?.handle != null) outcome = await closeKernelDispatch(root, cwd, binary, seat, seat.handle, kernel.terminal)
+    else if (kernel.owned && kernel.terminal !== null) outcome = await terminalClose(binary, kernel.terminal, cwd).catch((error: unknown): KernelClosing => `error: ${error instanceof Error ? error.message : String(error)}`)
     withRecord(root, (db) => {
         if (outcome.startsWith("error: ")) recordEvent(db, "workflow-kernel-close-failed", workflowId, { terminal: kernel.terminal, outcome })
         else recordKernel(db, workflowId, { closedAt: now() })

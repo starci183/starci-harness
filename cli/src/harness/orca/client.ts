@@ -188,13 +188,16 @@ const effectOfRefusal = (reply: z.infer<typeof replySchema>): OrcaEffect => {
 
 const stderrNote = (run: ToolRun): string => (run.stderr === "" ? "" : `\nstderr:\n${tail(run.stderr)}`)
 
-const flagArgs = (name: string, value: string | true | undefined): string[] => {
+/** The value of one Orca flag: its text, true for a bare switch, undefined when not passed. */
+type FlagValue = string | true | undefined
+
+const flagArgs = (name: string, value: FlagValue): string[] => {
     if (value === undefined) return []
     return value === true ? [`--${name}`] : [`--${name}`, value]
 }
 
 /** The argv of any orca `<group> <command>` (terminal, repo) with its flags and --json; a flag whose value is true is given bare. */
-export const orcaToolArgv = (group: string, command: string, flags: Readonly<Record<string, string | true | undefined>>): string[] => [
+export const orcaToolArgv = (group: string, command: string, flags: Readonly<Record<string, FlagValue>>): string[] => [
     group,
     command,
     ...Object.entries(flags).flatMap(([name, value]) => flagArgs(name, value)),
@@ -732,7 +735,7 @@ export interface MailDelivery {
  * batch, waiting up to `waitMs` when given. A timeout or an empty result is a checkpoint, not a failure.
  */
 export const mailCheck = async (binary: OrcaBinary, input: { readonly terminal: string; readonly run: string; readonly ack?: string | undefined; readonly waitMs?: number | undefined }, cwd: string): Promise<MailDelivery> => {
-    const base: Record<string, string | true | undefined> = { terminal: input.terminal, run: input.run, ack: input.ack }
+    const base: Record<string, FlagValue> = { terminal: input.terminal, run: input.run, ack: input.ack }
     const flags = input.waitMs === undefined ? base : { ...base, wait: true as const, types: "worker_done,question,escalation,handoff", "timeout-ms": String(input.waitMs) }
     const result = await callOrcaArgv(binary, orcaToolArgv("orchestration", "check", flags), "orca orchestration check", checkSchema, cwd, (input.waitMs ?? 0) + ORCA_TIMEOUT_MS)
     const rows = result.delivery?.messages ?? result.messages ?? []

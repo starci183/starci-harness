@@ -11,6 +11,7 @@ import { inTransaction } from "./leases.js"
 import { assertRoute, isRouted, withRoutes } from "./routes.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
+import type { WorkflowRow } from "./workflow.js"
 
 /**
  * The seven commands of the seat tree (wave principle 5). Down: goal, goal-change, stop (Supervisor -> Kernel); the Kernel's own
@@ -130,6 +131,17 @@ export const goalVersionOf = (db: DatabaseSync, workflowId: string): number => g
 /** The admission of a command: `new` (an intent row is written, apply it), or `replay` of a command already applied. */
 export type Admission = { readonly kind: "new" } | { readonly kind: "replay"; readonly row: CommandRow }
 
+/** Refuses a basedOn that is not the workflow's current graph or goal version (STALE), or one its kind must name and does not. */
+const assertBasedOn = (db: DatabaseSync, command: Command, workflow: WorkflowRow): void => {
+    const graph = command.basedOn.graph
+    if (graph !== undefined && graph !== workflow.graphVersion) throw new Refusal("STALE", `basedOn graph v${String(graph)}, but workflow ${workflow.id} is at graph v${String(workflow.graphVersion)}; re-read and resubmit`)
+    const goal = command.basedOn.goal
+    const goalNow = goalVersionOf(db, workflow.id)
+    if (goal !== undefined && goal !== goalNow) throw new Refusal("STALE", `basedOn goal v${String(goal)}, but workflow ${workflow.id} is at goal v${String(goalNow)}; re-read and resubmit`)
+    if (command.kind === "workflow-change" && graph === undefined) throw new Refusal("COMMAND_INVALID", "a workflow-change names basedOn.graph")
+    if (command.kind === "goal-change" && goal === undefined) throw new Refusal("COMMAND_INVALID", "a goal-change names basedOn.goal")
+}
+
 /**
  * Admits a command under compare-and-swap, before any side effect: a known cmdId with the same bytes replays its recorded
  * outcome (a failed one is applied again), with other bytes refuses CMD_CONFLICT; a basedOn that is not the current graph or
@@ -144,13 +156,7 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
         if (known?.status === "applied") return { kind: "replay", row: known }
         if (known?.status === "applying") throw new Refusal("CMD_IN_FLIGHT", `command ${command.cmdId} is being applied; read its outcome with the next ${scope} next`)
         const workflow = getWorkflow(db, command.workflow)
-        const graph = command.basedOn.graph
-        if (graph !== undefined && graph !== workflow.graphVersion) throw new Refusal("STALE", `basedOn graph v${String(graph)}, but workflow ${workflow.id} is at graph v${String(workflow.graphVersion)}; re-read and resubmit`)
-        const goal = command.basedOn.goal
-        const goalNow = goalVersionOf(db, workflow.id)
-        if (goal !== undefined && goal !== goalNow) throw new Refusal("STALE", `basedOn goal v${String(goal)}, but workflow ${workflow.id} is at goal v${String(goalNow)}; re-read and resubmit`)
-        if (command.kind === "workflow-change" && graph === undefined) throw new Refusal("COMMAND_INVALID", "a workflow-change names basedOn.graph")
-        if (command.kind === "goal-change" && goal === undefined) throw new Refusal("COMMAND_INVALID", "a goal-change names basedOn.goal")
+        assertBasedOn(db, command, workflow)
         for (const id of command.answers ?? []) {
             const decision = getDecision(db, id)
             if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
@@ -214,7 +220,7 @@ const toDecision = (row: Record<string, unknown>): Decision => ({
 
 /** The stable id of a decision: the same fact raised twice is one decision. */
 export const decisionId = (scope: CommandScope, workflowId: string, kind: string, subject: string): string =>
-    `d-${createHash("sha256").update(`${scope}\0${workflowId}\0${kind}\0${subject}`).digest("hex").slice(0, 12)}`
+    "d-" + createHash("sha256").update(`${scope}\0${workflowId}\0${kind}\0${subject}`).digest("hex").slice(0, 12)
 
 /**
  * Raises a decision once (a fact already raised, answered or not, is not raised again); returns its id. A red or question

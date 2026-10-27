@@ -223,7 +223,7 @@ export const scopeProblems = (nodes: readonly Pick<PlanNode, "key" | "contract">
 export const assertScope = (workflowId: string, nodes: readonly Pick<PlanNode, "key" | "contract">[], goal: Pick<Goal, "version" | "scope">): void => {
     const problems = scopeProblems(nodes, goal.scope)
     if (problems.length === 0) return
-    throw new Refusal("SCOPE_EXCEEDED", `the graph of ${workflowId} exceeds the scope ceiling of goal v${String(goal.version)}; escalate (kind scope) instead:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
+    throw new Refusal("SCOPE_EXCEEDED", `the graph of ${workflowId} exceeds the scope ceiling of goal v${String(goal.version)}; escalate (kind scope) instead:\n${problems.map((problem) => "- " + problem).join("\n")}`)
 }
 
 /** The nodes of a graph the deliverables rule reads: each key and the paths it owns. */

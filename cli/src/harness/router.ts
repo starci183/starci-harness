@@ -365,10 +365,10 @@ const balanceReason = (routing: Routing, head: Candidate, ordered: readonly Cand
 }
 
 /** Where the tier came from, for the record. */
-const tierSource = (input: RouteInput, labelTier: string | undefined, effective: string, difficulty: string | null, floor: string): string =>
-    input.coordinator === undefined
-        ? labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
-        : "coordinators." + input.coordinator
+const tierSource = (input: RouteInput, labelTier: string | undefined, effective: string, difficulty: string | null, floor: string): string => {
+    if (input.coordinator !== undefined) return "coordinators." + input.coordinator
+    return labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
+}
 
 const newRecord = (input: RouteInput, at: string): RouteRecord => ({
     at,
@@ -463,6 +463,18 @@ const scoreStep = (stage: Stage, input: RouteInput, facts: Facts, members: reado
     return ordered
 }
 
+/** The member the head yields to when it was picked too often in a row or holds too much of the tier; undefined when it keeps the pick. */
+const balanceStep = (stage: Stage, facts: Facts, ordered: readonly Candidate[], demoted: readonly Candidate[]): Candidate | undefined => {
+    const head = ordered[0]
+    if (head === undefined || ordered.length <= 1) return undefined
+    const reason = balanceReason(stage.routing, head, ordered, facts.recent(stage.record.tier))
+    // Balance never yields to a member the lineage put behind the head.
+    const next = ordered.slice(1).find((candidate) => demoted.includes(head) || !demoted.includes(candidate))
+    if (reason === null || next === undefined) return undefined
+    stage.snapshot("balance", [next, ...ordered.filter((candidate) => candidate !== next)], `${reason}; yields to ${next.id}`)
+    return next
+}
+
 /** Runs the decision over gathered facts; pure but for its facts (and their random source). */
 const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteRefusal => {
     const stage = openStage(input, facts, at)
@@ -494,19 +506,11 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
 
     // 5. Score, exploring by Thompson sampling within its share; 6. balance.
     const ordered = scoreStep(stage, input, facts, funded, demoted)
-    let chosen = probe ?? ordered[0]
-    let by = probe === undefined ? (record.explore?.exploring === true ? "explore" : "score") : "probe"
-    const head = ordered[0]
-    if (probe === undefined && head !== undefined && ordered.length > 1) {
-        const reason = balanceReason(routing, head, ordered, facts.recent(record.tier))
-        // Balance never yields to a member the lineage put behind the head.
-        const next = ordered.slice(1).find((candidate) => demoted.includes(head) || !demoted.includes(candidate))
-        if (reason !== null && next !== undefined) {
-            chosen = next
-            by = "balance"
-            stage.snapshot("balance", [next, ...ordered.filter((candidate) => candidate !== next)], `${reason}; yields to ${next.id}`)
-        }
-    }
+    const balanced = probe === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
+    const chosen = probe ?? balanced ?? ordered[0]
+    let by = record.explore?.exploring === true ? "explore" : "score"
+    if (balanced !== undefined) by = "balance"
+    if (probe !== undefined) by = "probe"
     if (chosen === undefined) return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${record.tier} is left`, record)
     record.chosen = { member: chosen.id, by }
     return {
@@ -624,7 +628,7 @@ const authorsOf = (db: DatabaseSync, taskId: string, label: string): string[] =>
         if (!labels.includes(textOf(row?.label) ?? "")) continue
         for (const attempt of db.prepare("SELECT agent FROM attempts WHERE task_id = ? AND agent IS NOT NULL").all(dep)) authors.add(providerOfAgent(routing, textOf(attempt.agent) ?? ""))
     }
-    return [...authors].sort()
+    return [...authors].sort((a, b) => a.localeCompare(b))
 }
 
 /** The risk tags of a workflow task: its plan node's route in the workflow's current graph; none for a task outside a workflow. */
@@ -638,7 +642,7 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
 }
 
 /** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, timed out, or a worker that never started. */
-const STALLED_OUTCOMES: readonly string[] = ["stalled", "launch-failed", "timeout"]
+const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "timeout"])
 
 /** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
@@ -655,7 +659,7 @@ export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
             const agent = textOf(row.agent)
             const model = textOf(row.model)
             if (textOf(row.verdict) === "red" && agent !== null && model !== null) reds.push({ agent, model })
-            if (STALLED_OUTCOMES.includes(textOf(row.outcome) ?? "") && agent !== null && model !== null) stalled.push({ agent, model })
+            if (STALLED_OUTCOMES.has(textOf(row.outcome) ?? "") &&agent !== null && model !== null) stalled.push({ agent, model })
         }
         current = getTask(db, current).retryOf
     }
@@ -698,7 +702,8 @@ export const describeRoute = (answer: RoutePick | RouteRefusal): string[] => {
     const tools = Object.entries(record.hostTools)
         .map(([tool, ok]) => tool + " " + (ok ? "ok" : "missing"))
         .join(", ")
-    const risk = record.risk.length === 0 ? "none" : `${record.risk.join(", ")}${record.highRisk ? " (high-risk)" : ""}`
+    const highRisk = record.highRisk ? " (high-risk)" : ""
+    const risk = record.risk.length === 0 ? "none" : record.risk.join(", ") + highRisk
     const lines = [
         `label ${record.label}, attempt ${String(record.attempt)}, difficulty ${record.difficulty ?? "-"}, floor ${record.floor}, contract-red ${String(record.reds)}, risk ${risk}`,
         `tier ${record.tier}${escalated} from ${record.tierFrom}`,

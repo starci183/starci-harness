@@ -298,10 +298,11 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
     const actions: StepAction[] = []
     const orca = workflow.header.runner === "orca"
     let free = (orca ? workflow.header.maxParallel : 1) - snapshot.live
+    const slotsTaken = orca ? `all ${String(workflow.header.maxParallel)} parallel slot(s) are taken` : "the inline run works one task at a time"
     for (const view of snapshot.views) {
         if (view.state !== "ready") continue
         if (free <= 0) {
-            actions.push({ key: view.key, task: null, action: "wait", detail: orca ? `all ${String(workflow.header.maxParallel)} parallel slot(s) are taken` : "the inline run works one task at a time" })
+            actions.push({ key: view.key, task: null, action: "wait", detail: slotsTaken })
             continue
         }
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)

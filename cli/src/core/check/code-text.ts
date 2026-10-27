@@ -66,6 +66,41 @@ const regexEnd = (text: string, from: number): number => {
     return text.length
 }
 
+/** The end (exclusive) of the line holding `from`: the index of its line break, or the end of the text. */
+const lineEnd = (text: string, from: number): number => {
+    let end = from
+    while (end < text.length && !isLineBreak(text.charAt(end))) end += 1
+    return end
+}
+
+/** Marks the comment, quoted string or regex literal opening at `at` and returns the index after it; undefined when none opens there. */
+const scanLiteral = (text: string, classes: Uint8Array, at: number): number | undefined => {
+    const char = text.charAt(at)
+    const next = text.charAt(at + 1)
+    if (char === "/" && next === "/") {
+        const end = lineEnd(text, at)
+        mark(text, classes, at, end, COMMENT)
+        return end
+    }
+    if (char === "/" && next === "*") {
+        const close = text.indexOf("*/", at + 2)
+        const end = close === -1 ? text.length : close + 2
+        mark(text, classes, at, end, COMMENT)
+        return end
+    }
+    if (char === "'" || char === '"') {
+        const end = quotedEnd(text, at + 1, char)
+        mark(text, classes, at + 1, end, STRING)
+        return end + 1
+    }
+    if (char === "/" && opensRegex(text, classes, at)) {
+        const end = regexEnd(text, at + 1)
+        mark(text, classes, at + 1, end, STRING)
+        return end + 1
+    }
+    return undefined
+}
+
 /**
  * Classifies a JavaScript-family text (also CSS, Vue and Svelte, close enough for markers): line and block comments,
  * quoted strings, template literals with their `${...}` interpolations kept as code, and regex literals.
@@ -96,27 +131,10 @@ const classifyScript = (text: string): Uint8Array => {
     }
     while (at < text.length) {
         const char = text.charAt(at)
-        const next = text.charAt(at + 1)
-        if (char === "/" && next === "/") {
-            let end = at
-            while (end < text.length && !isLineBreak(text.charAt(end))) end += 1
-            mark(text, classes, at, end, COMMENT)
-            at = end
-        } else if (char === "/" && next === "*") {
-            const close = text.indexOf("*/", at + 2)
-            const end = close === -1 ? text.length : close + 2
-            mark(text, classes, at, end, COMMENT)
-            at = end
-        } else if (char === "'" || char === '"') {
-            const end = quotedEnd(text, at + 1, char)
-            mark(text, classes, at + 1, end, STRING)
-            at = end + 1
-        } else if (char === "`") at = template(at + 1)
-        else if (char === "/" && opensRegex(text, classes, at)) {
-            const end = regexEnd(text, at + 1)
-            mark(text, classes, at + 1, end, STRING)
-            at = end + 1
-        } else if (char === "{") {
+        const literalEnd = scanLiteral(text, classes, at)
+        if (literalEnd !== undefined) at = literalEnd
+        else if (char === "`") at = template(at + 1)
+        else if (char === "{") {
             depth += 1
             at += 1
         } else if (char === "}") {
@@ -138,7 +156,8 @@ const classifyScript = (text: string): Uint8Array => {
 const classifyHashComments = (text: string): Uint8Array => {
     const classes = new Uint8Array(text.length)
     let quote: string | undefined
-    for (let at = 0; at < text.length; at += 1) {
+    let at = 0
+    while (at < text.length) {
         const char = text.charAt(at)
         if (isLineBreak(char)) quote = undefined
         else if (quote !== undefined) {
@@ -146,11 +165,11 @@ const classifyHashComments = (text: string): Uint8Array => {
             else if (char === quote) quote = undefined
         } else if (char === "'" || char === '"') quote = char
         else if (char === "#" && (at === 0 || /\s/.test(text.charAt(at - 1)))) {
-            let end = at
-            while (end < text.length && !isLineBreak(text.charAt(end))) end += 1
+            const end = lineEnd(text, at)
             mark(text, classes, at, end, COMMENT)
             at = end - 1
         }
+        at += 1
     }
     return classes
 }
@@ -176,11 +195,13 @@ const blank = (text: string, classes: Uint8Array, hidden: readonly number[]): st
 /** How a kind of file is read: as script, with hash comments, as properties, or not tokenized (JSON). */
 export type TextSyntax = "script" | "hash" | "properties" | "none"
 
+/** The classifier of each tokenized syntax. */
+const CLASSIFIERS: Readonly<Record<Exclude<TextSyntax, "none">, (text: string) => Uint8Array>> = { script: classifyScript, hash: classifyHashComments, properties: classifyProperties }
+
 /** The four views of `text` read with `syntax`. */
 export const textViews = (text: string, syntax: TextSyntax): TextViews => {
     if (syntax === "none") return { raw: text, comments: text, strings: text, code: text }
-    const classify = syntax === "script" ? classifyScript : syntax === "hash" ? classifyHashComments : classifyProperties
-    const classes = classify(text)
+    const classes = CLASSIFIERS[syntax](text)
     return { raw: text, comments: blank(text, classes, [STRING]), strings: blank(text, classes, [COMMENT]), code: blank(text, classes, [STRING, COMMENT]) }
 }
 

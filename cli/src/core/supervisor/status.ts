@@ -7,7 +7,8 @@ import { projectFrom } from "./driver.js"
 
 const lineOf = (state: SupervisorState): string => {
     const seat = state.supervisor
-    const detail = seat === null ? "" : ` (${seat.agent}/${seat.model}, terminal ${seat.terminal ?? "-"}, Run ${seat.run_id ?? "-"}, lease until ${seat.lease_until ?? "-"}${state.leaseExpired ? ", expired" : ""})`
+    const expired = state.leaseExpired ? ", expired" : ""
+    const detail = seat === null ? "" : ` (${seat.agent}/${seat.model}, terminal ${seat.terminal ?? "-"}, Run ${seat.run_id ?? "-"}, lease until ${seat.lease_until ?? "-"}${expired})`
     return `${supervisorTitle(state.project.name)} ${state.project.root}: ${state.liveness}${detail}`
 }
 

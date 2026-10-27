@@ -9,6 +9,7 @@ import { captureTool, headline, runTool, startDetached, ToolNotStarted } from ".
 import { hostLauncherPath, runtimeRoot, stateBase } from "./ledger.js"
 import { orcaBinarySync } from "./orca/client.js"
 import { locateOps } from "./ops.js"
+import { inOrder } from "./sequential.js"
 
 const argvSchema = z.array(z.string().min(1)).min(1)
 
@@ -37,6 +38,41 @@ const serviceSchema = z.strictObject({
     requires: z.array(z.string()).default([]),
 })
 
+type ServiceEntry = z.infer<typeof serviceSchema>
+
+/** The declaration problems of the services: an id or schedule name declared twice, a schedule with not exactly one trigger, an unscheduled service with no check. */
+const declarationProblems = (services: readonly ServiceEntry[]): string[] => {
+    const problems: string[] = []
+    const ids = new Set<string>()
+    const names = new Set<string>()
+    for (const service of services) {
+        if (ids.has(service.id)) problems.push(`service ${service.id} is declared twice`)
+        ids.add(service.id)
+        if (service.install.kind === "schedule") {
+            const schedule = service.install
+            if ((schedule.everyMinutes === undefined) === (schedule.atLogon === undefined)) problems.push(`${service.id}: a schedule names exactly one of everyMinutes and atLogon`)
+            if (names.has(schedule.name.toLowerCase())) problems.push(`schedule ${schedule.name} is declared twice`)
+            names.add(schedule.name.toLowerCase())
+        } else if (service.check === undefined) problems.push(`${service.id}: a service with no schedule needs a check`)
+    }
+    return problems
+}
+
+/** The requires problems of the services: a requirement that names no service, and every cycle the requirements form. */
+const requiresProblems = (services: readonly ServiceEntry[]): string[] => {
+    const byId = new Map(services.map((service) => [service.id, service]))
+    const problems = services.flatMap((service) => service.requires.filter((need) => !byId.has(need)).map((need) => `${service.id} requires ${need}, which is no service`))
+    const visit = (id: string, path: readonly string[]): void => {
+        if (path.includes(id)) {
+            problems.push(`requires form a cycle: ${[...path, id].join(" > ")}`)
+            return
+        }
+        for (const need of byId.get(id)?.requires ?? []) visit(need, [...path, id])
+    }
+    for (const service of services) visit(service.id, [])
+    return problems
+}
+
 const hostSchema = z
     .strictObject({
         schema: z.literal("starci/host@1"),
@@ -45,30 +81,7 @@ const hostSchema = z
         services: z.array(serviceSchema).min(1),
     })
     .superRefine((host, issues) => {
-        const ids = new Set<string>()
-        const names = new Set<string>()
-        for (const service of host.services) {
-            if (ids.has(service.id)) issues.addIssue({ code: "custom", message: `service ${service.id} is declared twice` })
-            ids.add(service.id)
-            if (service.install.kind === "schedule") {
-                const schedule = service.install
-                if ((schedule.everyMinutes === undefined) === (schedule.atLogon === undefined)) issues.addIssue({ code: "custom", message: `${service.id}: a schedule names exactly one of everyMinutes and atLogon` })
-                if (names.has(schedule.name.toLowerCase())) issues.addIssue({ code: "custom", message: `schedule ${schedule.name} is declared twice` })
-                names.add(schedule.name.toLowerCase())
-            } else if (service.check === undefined) issues.addIssue({ code: "custom", message: `${service.id}: a service with no schedule needs a check` })
-        }
-        for (const service of host.services) {
-            for (const need of service.requires) if (!ids.has(need)) issues.addIssue({ code: "custom", message: `${service.id} requires ${need}, which is no service` })
-        }
-        const byId = new Map(host.services.map((service) => [service.id, service]))
-        const visit = (id: string, path: readonly string[]): void => {
-            if (path.includes(id)) {
-                issues.addIssue({ code: "custom", message: `requires form a cycle: ${[...path, id].join(" > ")}` })
-                return
-            }
-            for (const need of byId.get(id)?.requires ?? []) visit(need, [...path, id])
-        }
-        for (const service of host.services) visit(service.id, [])
+        for (const message of [...declarationProblems(host.services), ...requiresProblems(host.services)]) issues.addIssue({ code: "custom", message })
     })
 
 /** ops/host.yaml, validated: the services a host runs for the harness. */
@@ -177,16 +190,16 @@ export interface ScheduledTask {
 const decodeXml = (text: string): string => text.replaceAll("&quot;", '"').replaceAll("&apos;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
 
 const tagOf = (xml: string, tag: string): string | undefined => {
-    const found = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(xml)?.[1]
+    const found = new RegExp(String.raw`<${tag}>([\s\S]*?)</${tag}>`).exec(xml)?.[1]
     return found === undefined ? undefined : decodeXml(found.trim())
 }
 
 /** Parses `schtasks /Query /XML`: every task's XML follows a `<!-- \folder\name -->` comment. */
 export const parseScheduledTasks = (dump: string): ScheduledTask[] => {
-    const parts = dump.split(/<!--\s*(\\[^>]*?)\s*-->/)
+    const parts = dump.split(/<!--\s*(\\[^>]*)-->/)
     const tasks: ScheduledTask[] = []
     for (let index = 1; index + 1 < parts.length; index += 2) {
-        const path = parts[index] ?? ""
+        const path = (parts[index] ?? "").trimEnd()
         const xml = parts[index + 1] ?? ""
         const exec = /<Exec>([\s\S]*?)<\/Exec>/.exec(xml)?.[1] ?? ""
         tasks.push({
@@ -208,7 +221,7 @@ export const schtasksPath = (): string => system32("schtasks.exe")
 export const listScheduledTasks = async (cwd: string): Promise<ScheduledTask[] | string> => {
     try {
         const run = await captureTool(schtasksPath(), ["/Query", "/XML"], cwd, { timeoutMs: 60_000 })
-        if (run.exitCode !== 0) return `schtasks /Query failed: ${headline(run.stderr) || `exit ${String(run.exitCode)}`}`
+        if (run.exitCode !== 0) return `schtasks /Query failed: ${headline(run.stderr) || "exit " + String(run.exitCode)}`
         return parseScheduledTasks(run.stdout)
     } catch (error: unknown) {
         return error instanceof Error ? error.message : String(error)
@@ -261,7 +274,7 @@ export const planSchedule = (service: HostService): SchedulePlan => {
         "@echo off",
         `rem StarCi host service ${service.id}, written by starci host install from ops/host.yaml`,
         `cd /d ${launcherToken(runtimeRoot())}`,
-        ...Object.entries(schedule.env ?? {}).map(([key, value]) => `set ${launcherToken(`${key}=${expandToken(value)}`)}`),
+        ...Object.entries(schedule.env ?? {}).map(([key, value]) => `set ${launcherToken(key + "=" + expandToken(value))}`),
         `${expandArgv(schedule.argv).map(launcherToken).join(" ")}${log}`,
         "",
     ]
@@ -347,7 +360,9 @@ const statusOf = async (service: HostService, config: HostConfig, tasks: readonl
         return { ...base, state: probe.up ? "up" : "down", evidence: probe.evidence, ...withSchedule }
     }
     const scheduled = schedule?.state
-    const state = scheduled === "installed" ? "up" : scheduled === "absent" || scheduled === "unsupported" ? "not installed" : "down"
+    let state: ServiceStatus["state"] = "down"
+    if (scheduled === "installed") state = "up"
+    else if (scheduled === "absent" || scheduled === "unsupported") state = "not installed"
     const hint = state === "up" ? "" : `; starci host install ${service.id}`
     return { ...base, state, evidence: `${schedule?.evidence ?? "no schedule"}${hint}`, ...withSchedule }
 }
@@ -368,7 +383,8 @@ const foreignOf = (config: HostConfig, tasks: readonly ScheduledTask[] | string)
 export const hostStatus = async (config: HostConfig, services: readonly HostService[], cwd: string): Promise<HostStatus> => {
     const tasks = process.platform === "win32" ? await listScheduledTasks(cwd) : []
     const statuses = await Promise.all(services.map((service) => statusOf(service, config, tasks, cwd)))
-    return { platform: process.platform, services: statuses, others: foreignOf(config, tasks), scheduler: typeof tasks === "string" ? tasks : process.platform === "win32" ? "schtasks" : "none" }
+    const scheduler = process.platform === "win32" ? "schtasks" : "none"
+    return { platform: process.platform, services: statuses, others: foreignOf(config, tasks), scheduler: typeof tasks === "string" ? tasks : scheduler }
 }
 
 /** The services named and every service they require, ordered so that each comes after what it requires. */
@@ -401,47 +417,50 @@ const POLL_MS = 2000
  * requirement stayed down is blocked. A started service is up once its check says so within waitSeconds.
  */
 export const hostUp = async (config: HostConfig, services: readonly HostService[], cwd: string, progress: (line: string) => void): Promise<UpOutcome[]> => {
-    const outcomes: UpOutcome[] = []
     const upIds = new Set<string>()
     const tasks = process.platform === "win32" ? await listScheduledTasks(cwd) : []
-    for (const service of inRequiresOrder(config, services)) {
-        if (!appliesTo(service, process.platform)) {
-            outcomes.push({ id: service.id, outcome: "other platform", evidence: `runs on ${service.platform}` })
-            upIds.add(service.id)
-            continue
-        }
-        const status = await statusOf(service, config, tasks, cwd)
-        if (status.state === "up") {
-            outcomes.push({ id: service.id, outcome: "already up", evidence: status.evidence })
-            upIds.add(service.id)
-            continue
-        }
-        const down = service.requires.filter((need) => !upIds.has(need))
-        if (down.length > 0) {
-            outcomes.push({ id: service.id, outcome: "blocked", evidence: `requires ${down.join(", ")}, which is not up` })
-            continue
-        }
-        if (service.start === undefined || service.check === undefined) {
-            outcomes.push({ id: service.id, outcome: "not startable", evidence: status.evidence })
-            continue
-        }
-        progress(`starting ${service.id}`)
-        const argv = expandArgv(service.start.argv)
-        if (service.start.detach) await startDetached(argv, cwd)
-        else {
-            const [tool, ...args] = argv
-            if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: config.waitSeconds * 1000 })
-        }
-        const deadline = Date.now() + config.waitSeconds * 1000
-        let probe = await probeService(service.check, cwd, config.checkTimeoutSeconds)
-        while (!probe.up && Date.now() < deadline) {
-            await sleep(POLL_MS)
-            probe = await probeService(service.check, cwd, config.checkTimeoutSeconds)
-        }
-        if (probe.up) upIds.add(service.id)
-        outcomes.push({ id: service.id, outcome: probe.up ? "started" : "still down", evidence: probe.evidence })
+    return inOrder(inRequiresOrder(config, services), async (service) => {
+        const outcome = await upService(service, { config, tasks, cwd, upIds, progress })
+        if (outcome.outcome === "other platform" || outcome.outcome === "already up" || outcome.outcome === "started") upIds.add(service.id)
+        return outcome
+    })
+}
+
+/** Starts a service by its start argv: detached, or run to its end within waitSeconds. */
+const startService = async (start: NonNullable<HostService["start"]>, config: HostConfig, cwd: string): Promise<void> => {
+    const argv = expandArgv(start.argv)
+    if (start.detach) {
+        await startDetached(argv, cwd)
+        return
     }
-    return outcomes
+    const [tool, ...args] = argv
+    if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: config.waitSeconds * 1000 })
+}
+
+/** Probes a started service until its check says up or the deadline passes, POLL_MS apart. */
+const awaitUp = async (check: NonNullable<HostService["check"]>, config: HostConfig, cwd: string, deadline: number): Promise<Probe> => {
+    const probe = await probeService(check, cwd, config.checkTimeoutSeconds)
+    if (probe.up || Date.now() >= deadline) return probe
+    await sleep(POLL_MS)
+    return awaitUp(check, config, cwd, deadline)
+}
+
+/** `host up` for one service, its requirements already handled (`upIds` holds those that are up). */
+const upService = async (
+    service: HostService,
+    host: { readonly config: HostConfig; readonly tasks: readonly ScheduledTask[] | string; readonly cwd: string; readonly upIds: ReadonlySet<string>; readonly progress: (line: string) => void },
+): Promise<UpOutcome> => {
+    const { config, cwd } = host
+    if (!appliesTo(service, process.platform)) return { id: service.id, outcome: "other platform", evidence: `runs on ${service.platform}` }
+    const status = await statusOf(service, config, host.tasks, cwd)
+    if (status.state === "up") return { id: service.id, outcome: "already up", evidence: status.evidence }
+    const down = service.requires.filter((need) => !host.upIds.has(need))
+    if (down.length > 0) return { id: service.id, outcome: "blocked", evidence: `requires ${down.join(", ")}, which is not up` }
+    if (service.start === undefined || service.check === undefined) return { id: service.id, outcome: "not startable", evidence: status.evidence }
+    host.progress(`starting ${service.id}`)
+    await startService(service.start, config, cwd)
+    const probe = await awaitUp(service.check, config, cwd, Date.now() + config.waitSeconds * 1000)
+    return { id: service.id, outcome: probe.up ? "started" : "still down", evidence: probe.evidence }
 }
 
 /** What `host install` or `host uninstall` did (or, with --dry, would do) for one service. */
@@ -479,8 +498,7 @@ const scheduled = (services: readonly HostService[], platform: string): { readon
 export const hostInstall = async (services: readonly HostService[], cwd: string, dry: boolean, platform: string): Promise<InstallOutcome[]> => {
     assertSchedulable(platform)
     const { plans, skipped } = scheduled(services, platform)
-    const outcomes: InstallOutcome[] = [...skipped]
-    for (const service of plans) {
+    const installed = await inOrder(plans, async (service): Promise<InstallOutcome> => {
         const plan = planSchedule(service)
         if (!dry) {
             for (const launcher of plan.launchers) {
@@ -490,9 +508,9 @@ export const hostInstall = async (services: readonly HostService[], cwd: string,
             const [tool, ...args] = plan.argv
             if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: 60_000 })
         }
-        outcomes.push({ id: service.id, outcome: dry ? "planned" : "installed", evidence: plan.name, argv: plan.argv, launchers: plan.launchers })
-    }
-    return outcomes
+        return { id: service.id, outcome: dry ? "planned" : "installed", evidence: plan.name, argv: plan.argv, launchers: plan.launchers }
+    })
+    return [...skipped, ...installed]
 }
 
 /** The human lines of an install or uninstall: each service's outcome, its scheduler argv as one json string per token, and its launchers. */
@@ -510,24 +528,17 @@ export const describeOutcomes = (outcomes: readonly InstallOutcome[]): string =>
 export const hostUninstall = async (services: readonly HostService[], cwd: string, dry: boolean, platform: string): Promise<InstallOutcome[]> => {
     assertSchedulable(platform)
     const { plans, skipped } = scheduled(services, platform)
-    const outcomes: InstallOutcome[] = [...skipped]
     const tasks = platform === process.platform ? await listScheduledTasks(cwd) : []
     if (typeof tasks === "string") throw new Refusal("HOST_SCHEDULER_UNREADABLE", tasks)
-    for (const service of plans) {
+    const removed = await inOrder(plans, async (service): Promise<InstallOutcome> => {
         const plan = planSchedule(service)
         const argv = [schtasksPath(), "/Delete", "/F", "/TN", plan.name]
+        if (dry) return { id: service.id, outcome: "planned", evidence: plan.name, argv }
         const present = tasks.some((task) => task.name.toLowerCase() === plan.name.toLowerCase())
-        if (!present && !dry) {
-            for (const launcher of plan.launchers) rmSync(launcher.path, { force: true })
-            outcomes.push({ id: service.id, outcome: "absent", evidence: `no scheduled task ${plan.name}` })
-            continue
-        }
-        if (!dry) {
-            const [tool, ...args] = argv
-            if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: 60_000 })
-            for (const launcher of plan.launchers) rmSync(launcher.path, { force: true })
-        }
-        outcomes.push({ id: service.id, outcome: dry ? "planned" : "uninstalled", evidence: plan.name, argv })
-    }
-    return outcomes
+        const [tool, ...args] = argv
+        if (present && tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: 60_000 })
+        for (const launcher of plan.launchers) rmSync(launcher.path, { force: true })
+        return present ? { id: service.id, outcome: "uninstalled", evidence: plan.name, argv } : { id: service.id, outcome: "absent", evidence: `no scheduled task ${plan.name}` }
+    })
+    return [...skipped, ...removed]
 }

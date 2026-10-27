@@ -30,10 +30,12 @@ export const kernelNextVerb = defineVerb({
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         const data = await kernelNext(context, root, flags.workflow, parseWait(flags.wait))
-        const head = data.decision === null ? `idle${data.inlineNext === null ? "" : `: inline task ${data.inlineNext} waits for the chat agent (starci workflow step ${data.workflow})`}` : `${data.kind} ${data.decision.id} (${data.decision.subject})`
+        const inline = data.inlineNext === null ? "" : ": inline task " + data.inlineNext + " waits for the chat agent (starci workflow step " + data.workflow + ")"
+        const head = data.decision === null ? "idle" + inline : `${data.kind} ${data.decision.id} (${data.decision.subject})`
+        const reason = data.digest.reason === null ? "" : " (" + data.digest.reason + ")"
         const lines = [
             `${data.workflow}: ${head}`,
-            `digest: ${data.digest.status}${data.digest.reason === null ? "" : ` (${data.digest.reason})`}, graph v${String(data.digest.graphVersion)}, goal v${String(data.digest.goalVersion)}, nodes ${JSON.stringify(data.digest.nodes)}, ${String(data.digest.openDecisions)} open decision(s)`,
+            `digest: ${data.digest.status}${reason}, graph v${String(data.digest.graphVersion)}, goal v${String(data.digest.goalVersion)}, nodes ${JSON.stringify(data.digest.nodes)}, ${String(data.digest.openDecisions)} open decision(s)`,
             ...(data.decision === null ? [] : [`evidence: ${JSON.stringify(data.decision.evidence)}`]),
             ...data.actions.map((action) => `${action.action}: ${action.key ?? "-"} ${action.detail}`),
         ]

@@ -99,7 +99,7 @@ const tasksOfWorkflowFile = (snapshot: Snapshot, file: string, source: WorkflowS
     }
 }
 
-const unfit = (workflowId: string, problems: readonly string[]): Refusal => new Refusal("WORKFLOW_INVALID", `the replan of ${workflowId} is not fit:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
+const unfit = (workflowId: string, problems: readonly string[]): Refusal => new Refusal("WORKFLOW_INVALID", `the replan of ${workflowId} is not fit:\n${problems.map((problem) => "- " + problem).join("\n")}`)
 
 /** Builds a task list into nodes: fit, hashes carried for unchanged nodes, re-added keys moved to a fresh round. */
 const nodesOf = (db: DatabaseSync, snapshot: Snapshot, tasks: readonly PlanTask[], ops: Ops): { readonly nodes: PlanNode[]; readonly notes: readonly string[] } => {

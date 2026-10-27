@@ -9,4 +9,5 @@ import { INDEX_PATH, buildIndex, writeIndex } from "./search-index.js"
 const index = await buildIndex(runtimeRoot(), (line) => process.stdout.write(`contexts search: ${line}\n`))
 writeIndex(index)
 const kb = Math.round(statSync(INDEX_PATH).size / 1024)
-process.stdout.write(`contexts search: ${String(index.chunks.length)} chunks from ${String(index.files)} files, ${String(kb)} KB at ${INDEX_PATH}; vectors: ${index.embedding === null ? `none (${index.embeddingNote})` : index.embeddingNote}\n`)
+const vectors = index.embedding === null ? "none (" + index.embeddingNote + ")" : index.embeddingNote
+process.stdout.write(`contexts search: ${String(index.chunks.length)} chunks from ${String(index.files)} files, ${String(kb)} KB at ${INDEX_PATH}; vectors: ${vectors}\n`)

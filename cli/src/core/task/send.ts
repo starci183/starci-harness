@@ -104,6 +104,19 @@ const uatSend = async (cwd: string, flow: string, retryOf: string | undefined): 
     return { file, contract, uat: { flow, record: record.place.record, run, workRoot } }
 }
 
+/** Refuses launch flags (`given`) without --launch, a launch from a role that may not start a seat, and --agent without --model or back. */
+const assertLaunchFlags = (launch: boolean, given: readonly string[], agent: string | undefined, model: string | undefined): void => {
+    if (!launch) {
+        const named = given.map((name) => `--${name}`).join(", ")
+        if (given.length > 0) throw new Refusal("CLI_USAGE", `${named} only go with --launch`, EXIT_USAGE)
+    } else if (!roleMayLaunch()) {
+        // An inline agent sends its own task; launching an Orca seat stays with the roles of seat start.
+        throw new Refusal("ROLE_REFUSED", `task send --launch starts a seat, which is for ${seatStartVerb.roles.join(", ")}; ${ROLE_ENV} says this caller is ${String(callerRole())}`)
+    } else if ((agent === undefined) !== (model === undefined)) {
+        throw new Refusal("CLI_USAGE", "task send --launch takes both --agent and --model, or neither and the router picks them", EXIT_USAGE)
+    }
+}
+
 /** `starci task send <contract>`: registers a fit contract as a queued task and leases its allowPaths; --launch also starts its worker seat. */
 export const taskSendVerb = defineVerb({
     path: ["task", "send"],
@@ -126,16 +139,7 @@ export const taskSendVerb = defineVerb({
         "timeout-ms": { kind: "string", summary: "with --launch: how long Orca may wait for a ready worker" },
     },
     run: async (context, flags): Promise<VerbResult<SendData>> => {
-        if (!flags.launch) {
-            const given = LAUNCH_FLAGS.filter((name) => flags[name] !== undefined)
-            const named = given.map((name) => `--${name}`).join(", ")
-            if (given.length > 0) throw new Refusal("CLI_USAGE", `${named} only go with --launch`, EXIT_USAGE)
-        } else if (!roleMayLaunch()) {
-            // An inline agent sends its own task; launching an Orca seat stays with the roles of seat start.
-            throw new Refusal("ROLE_REFUSED", `task send --launch starts a seat, which is for ${seatStartVerb.roles.join(", ")}; ${ROLE_ENV} says this caller is ${String(callerRole())}`)
-        } else if ((flags.agent === undefined) !== (flags.model === undefined)) {
-            throw new Refusal("CLI_USAGE", "task send --launch takes both --agent and --model, or neither and the router picks them", EXIT_USAGE)
-        }
+        assertLaunchFlags(flags.launch, LAUNCH_FLAGS.filter((name) => flags[name] !== undefined), flags.agent, flags.model)
         const timeoutMs = parseTimeout(flags["timeout-ms"])
         if ((flags.contract === undefined) === (flags.uat === undefined)) throw new Refusal("CLI_USAGE", "task send takes a contract file or --uat <flow>, exactly one of the two", EXIT_USAGE)
         const fromWork = flags.uat === undefined ? undefined : await uatSend(context.cwd, flags.uat, flags["retry-of"])

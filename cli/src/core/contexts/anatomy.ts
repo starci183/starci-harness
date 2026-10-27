@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
+import type { VerbResult } from "../../shared/verb.js"
 import { BEGIN_MARKER, END_MARKER, SLICE_EDITIONS, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
 import { INDEX_FILE, renderIndex } from "./index-render.js"
 
@@ -55,6 +56,22 @@ const settleWhole = (target: { readonly file: string; readonly text: string }, w
     return { file: target.file, verdict: difference === null ? "green" : "drift", firstDifference: difference }
 }
 
+/** The `--check` answer: green when anatomy.md's block (first differing at `difference`) and every whole generated file match. */
+const checkAnatomy = (file: string, difference: number | null, whole: ReturnType<typeof wholeFiles>, dangling: readonly string[], note: string): VerbResult<AnatomyData> => {
+    const files = whole.map((target) => settleWhole(target, false))
+    const drifted = files.filter((item) => item.verdict === "drift")
+    const green = difference === null && drifted.length === 0
+    const data: AnatomyData = { file, mode: "check", verdict: green ? "green" : "drift", dangling, firstDifference: difference, files }
+    const lines = [
+        ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
+        ...drifted.map((item) => `drift: ${item.file} differs from the generator at line ${String(item.firstDifference)}`),
+    ]
+    const message = green
+        ? `green: ${file}, its ${String(files.length - 1)} slice(s) and the contexts index match the generator${note}`
+        : `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`
+    return { data, message, exitCode: green ? 0 : 1 }
+}
+
 /**
  * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
  * pattern front matter, its slices (`anatomy-<edition>-<side>.md`, the app root and one side, which op files read instead of
@@ -104,18 +121,6 @@ export const contextsAnatomyVerb = defineVerb({
             })
         }
         spliceAnatomy(text, block, file)
-        const difference = firstDifference(generatedOf(text), block)
-        const files = whole.map((target) => settleWhole(target, false))
-        const drifted = files.filter((item) => item.verdict === "drift")
-        const green = difference === null && drifted.length === 0
-        const data: AnatomyData = { file, mode: "check", verdict: green ? "green" : "drift", dangling, firstDifference: difference, files }
-        const lines = [
-            ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
-            ...drifted.map((item) => `drift: ${item.file} differs from the generator at line ${String(item.firstDifference)}`),
-        ]
-        const message = green
-            ? `green: ${file}, its ${String(files.length - 1)} slice(s) and the contexts index match the generator${note}`
-            : `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`
-        return Promise.resolve({ data, message, exitCode: green ? 0 : 1 })
+        return Promise.resolve(checkAnatomy(file, firstDifference(generatedOf(text), block), whole, dangling, note))
     },
 })

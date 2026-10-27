@@ -83,8 +83,11 @@ export const askIdle = async (binary: OrcaBinary, cwd: string, seat: { readonly 
     const lastActive = newest([inventory?.lastOutput.get(seat.terminal), shown?.lastOutputAt, shown?.heartbeatAt])
     const quiet = lastActive !== null && olderThan(lastActive, rules.quietMinutes)
     const tui = await terminalWaitIdle(binary, seat.terminal, rules.tuiIdleWaitMs, cwd)
-    const evidence = [`tui-idle ${tui}`, `last active ${lastActive ?? "unknown"}${quiet ? `, quiet past ${String(rules.quietMinutes)} min` : ""}`]
-    const idle = tui === "idle" || quiet ? true : tui === "unknown" && lastActive === null ? null : false
+    const quietNote = quiet ? ", quiet past " + String(rules.quietMinutes) + " min" : ""
+    const evidence = [`tui-idle ${tui}`, `last active ${lastActive ?? "unknown"}${quietNote}`]
+    // Idle on either word; unknown only when the TUI cannot tell and nothing was ever seen active.
+    let idle: boolean | null = tui === "idle" || quiet
+    if (!idle && tui === "unknown" && lastActive === null) idle = null
     return { idle, lastActive, evidence, failureText: shown?.failureText ?? null }
 }
 

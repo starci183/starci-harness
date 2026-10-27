@@ -66,12 +66,12 @@ const resultHash = async (root: string, db: DatabaseSync, taskId: string, at: Se
  */
 export const ensureResultHashes = async (root: string, db: DatabaseSync, workflowId: string): Promise<void> => {
     const rows = db.prepare("SELECT id, settle_commit FROM tasks WHERE workflow_id = ? AND status = 'done' AND result_hash IS NULL").all(workflowId)
-    for (const row of rows) {
+    await inOrder(rows, async (row) => {
         const id = text(row.id)
         const at = await settledAt(root, db, id, row.settle_commit === null || row.settle_commit === undefined ? null : text(row.settle_commit))
         const hash = await resultHash(root, db, id, at)
         db.prepare("UPDATE tasks SET settle_commit = ?, result_hash = ? WHERE id = ?").run(at.landed, hash, id)
-    }
+    })
 }
 
 /** The settled facts of a workflow's tasks: result hash and landed commit of each done task, and the dependency tasks each ran on. */
@@ -286,6 +286,19 @@ const dropRow = (node: PlanNode, view: NodeView | undefined, context: Context, n
     return { row: { ...base, why: `done; ${revert.key} reverts ${listed}` }, revert: { task: revert, of: { key: node.key, task: view.task.id, commits } } }
 }
 
+/** The row of one node of the new graph: new (an add, or a revert), redone on a retry, changed, or unchanged (kept in `context.unchanged`). */
+const afterRow = (node: ReplanInput["after"][number], context: Context): Classified => {
+    const { input } = context
+    const previous = context.old.get(node.key)
+    const view = context.views.get(node.key)
+    if (previous === undefined) return { key: node.key, class: isGeneratedKey(node.key) ? "revert" : "add", state: null, cancel: null, hash: node.hash, why: "new in the goal" }
+    if (input.retries.has(node.key)) return { key: node.key, class: "redo", state: view?.state ?? null, cancel: liveTaskId(view), hash: node.hash, why: "retry asked" }
+    if (previous.hash !== node.hash) return changedRow(node, previous, view, input.results)
+    const row = unchangedRow(node, view, context)
+    if (row.class === "keep" || row.class === "continue") context.unchanged.add(node.key)
+    return row
+}
+
 /**
  * Classifies a replan per task key against the current graph (the reconcile of a desired graph, or of a change file applied
  * to it). Node hashes carry no dependency hashes, so an upstream change reaches a task below only when the upstream's settled
@@ -294,22 +307,7 @@ const dropRow = (node: PlanNode, view: NodeView | undefined, context: Context, n
  */
 export const classifyReplan = (input: ReplanInput): ClassifiedReplan => {
     const context: Context = { input, old: new Map(input.beforeNodes.map((node) => [node.key, node])), views: new Map(input.before.map((view) => [view.key, view])), unchanged: new Set<string>() }
-    const rows: Classified[] = []
-    for (const node of input.after) {
-        const previous = context.old.get(node.key)
-        const view = context.views.get(node.key)
-        if (previous === undefined) {
-            rows.push({ key: node.key, class: isGeneratedKey(node.key) ? "revert" : "add", state: null, cancel: null, hash: node.hash, why: "new in the goal" })
-        } else if (input.retries.has(node.key)) {
-            rows.push({ key: node.key, class: "redo", state: view?.state ?? null, cancel: liveTaskId(view), hash: node.hash, why: "retry asked" })
-        } else if (previous.hash !== node.hash) {
-            rows.push(changedRow(node, previous, view, input.results))
-        } else {
-            const row = unchangedRow(node, view, context)
-            if (row.class === "keep" || row.class === "continue") context.unchanged.add(node.key)
-            rows.push(row)
-        }
-    }
+    const rows: Classified[] = input.after.map((node) => afterRow(node, context))
     const nextKeys = new Set(input.after.map((node) => node.key))
     const reverts: RevertPlan[] = []
     for (const node of input.beforeNodes) {
@@ -403,7 +401,7 @@ const startOf = (db: DatabaseSync, workflowId: string, node: PlanNode): Pick<Nod
     return {}
 }
 
-const STUCK: readonly NodeState[] = ["failed", "returned", "lost", "cancelled"]
+const STUCK: ReadonlySet<NodeState> = new Set<NodeState>(["failed", "returned", "lost", "cancelled"])
 
 /** The action of one node of a snapshot, given the settled facts. */
 const actionOf = (db: DatabaseSync, snapshot: Snapshot, node: PlanNode, results: Results, views: ReadonlyMap<string, NodeView>): NodeAction => {
@@ -413,7 +411,7 @@ const actionOf = (db: DatabaseSync, snapshot: Snapshot, node: PlanNode, results:
     const base = { key: node.key, state, task: task?.id ?? null }
     if (state === "ready") return { ...base, action: "start", why: view?.why ?? "ready", ...startOf(db, snapshot.workflow.id, node) }
     if (state === "waiting" || state === "blocked") return { ...base, action: "wait", why: view?.why ?? state }
-    if (STUCK.includes(state)) return { ...base, action: "stuck", why: view?.why ?? state }
+    if (STUCK.has(state)) return { ...base, action: "stuck", why: view?.why ?? state }
     const carrying = taskOf(results, task?.id)
     const current = (dep: string): string | null => {
         const depView = views.get(dep)

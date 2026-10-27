@@ -23,13 +23,18 @@ export const supervisorWatchVerb = defineVerb({
         if (limit !== Infinity && (!Number.isInteger(limit) || limit < 1)) throw new Refusal("CLI_USAGE", `--ticks is a whole number above 0, not "${String(flags.ticks)}"`, EXIT_USAGE)
         const seconds = loadStallRules().watchSeconds
         const ticks: SupervisorTick[] = []
-        for (let pass = 1; pass <= limit; pass += 1) {
+        // One pass after another, `seconds` apart, until the limit.
+        const pass = async (n: number): Promise<void> => {
             const tick = await supervisorTick(context)
             ticks.push(tick)
             const lines = tick.actions.length === 0 ? "" : `\n  ${tick.actions.join("\n  ")}`
-            context.progress(`${new Date().toISOString()} tick ${String(pass)}: ${tick.swept.length === 0 ? "nothing swept" : `swept ${tick.swept.join(", ")}`}${lines}`)
-            if (pass < limit) await sleep(seconds * 1000)
+            const swept = tick.swept.length === 0 ? "nothing swept" : "swept " + tick.swept.join(", ")
+            context.progress(`${new Date().toISOString()} tick ${String(n)}: ${swept}${lines}`)
+            if (n >= limit) return
+            await sleep(seconds * 1000)
+            await pass(n + 1)
         }
+        await pass(1)
         return { data: { ticks: ticks.length, last: ticks.at(-1) ?? null }, message: `supervisor watch: ${String(ticks.length)} tick(s)` }
     },
 })
