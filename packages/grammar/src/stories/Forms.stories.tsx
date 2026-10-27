@@ -42,7 +42,7 @@ export const Input: Story = {
     <Matrix maxWidth={formColumn}>
       <State label="Variants" direction="column">
         <G.Input id="input-primary" name="email" label="Email" kind="email" variant="primary" placeholder="you@example.com" />
-        <G.Input id="input-secondary" name="name" label="Display name" variant="secondary" hint="Shown on your profile." />
+        <G.Input id="input-secondary" name="name" label="Display name" variant="secondary" description="Shown on your profile." />
         <G.Input id="input-password" name="password" label="Password" kind="password" defaultValue="hunter22" revealLabel="Show password" hideLabel="Hide password" />
       </State>
       <State label="Required" direction="column">
@@ -82,8 +82,8 @@ export const InputRowHiddenLabel: Story = {
 export const InputCopyable: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
-      <G.Input id="input-copy-url" name="webhookUrl" label="Webhook URL" variant="secondary" hint="Paste this into the provider." isReadOnly isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="https://example.com/api/hooks/26465cdf" />
-      <G.Input id="input-copy-name" name="webhookName" label="Webhook name" variant="secondary" hint="You can change it here." isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="Acme · Main account" />
+      <G.Input id="input-copy-url" name="webhookUrl" label="Webhook URL" variant="secondary" description="Paste this into the provider." isReadOnly isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="https://example.com/api/hooks/26465cdf" />
+      <G.Input id="input-copy-name" name="webhookName" label="Webhook name" variant="secondary" description="You can change it here." isCopyable copyLabel="Copy" copiedLabel="Copied" defaultValue="Acme · Main account" />
       <G.Input id="input-copy-key" name="apiKey" label="API Key" kind="password" variant="secondary" isCopyable copyLabel="Copy" copiedLabel="Copied" revealLabel="Show" hideLabel="Hide" defaultValue="key_b564bbce026c88a12f034ecfbee4387" />
       <G.Input id="input-copy-disabled" name="disabled" label="Disabled" isDisabled isCopyable copyLabel="Copy" defaultValue="Locked value" />
     </div>

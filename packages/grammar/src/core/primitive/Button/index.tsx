@@ -1,7 +1,8 @@
 "use client"
 
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, skeletonVariants } from "@heroui/react"
-import type { ReactNode } from "react"
+import { useId, type ReactNode } from "react"
+import { Tooltip } from "../../branch/Tooltip/index.js"
 import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
 
 /**
@@ -25,6 +26,11 @@ type ButtonBase = {
     /** Directional or explanatory content after the label. */
     readonly endContent?: ReactNode
     readonly isDisabled?: boolean
+    /**
+     * Why the action is unavailable. A disabled Button shows these words in a Tooltip on hover and keyboard focus
+     * and carries them as its accessible description. It has no effect while the Button is enabled.
+     */
+    readonly disabledReason?: string
     /** Initial unresolved-content geometry. It is distinct from action-owned pending. */
     readonly isSkeleton?: boolean
     /** Pending belongs to the action that started the work and blocks duplicate presses. */
@@ -93,6 +99,22 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 
 /** Button-shaped action: an anchor for a destination, the vendor button for a command. */
 export const Button = (props: ButtonProps) => {
+    const reasonId = useId()
+    const reason = props.disabledReason
+    const explained = props.isDisabled === true && reason !== undefined && reason !== ""
+    const control = <ButtonControl {...props} {...(explained ? { reasonId } : {})} />
+    if (!explained) return control
+    return (
+        <>
+            <span id={reasonId} hidden>{reason}</span>
+            <Tooltip content={reason} isDisabledTrigger triggerDescribedBy={reasonId}>
+                {control}
+            </Tooltip>
+        </>
+    )
+}
+
+const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     const {
         children,
         variant: legacyVariant = "secondary",
@@ -103,6 +125,7 @@ export const Button = (props: ButtonProps) => {
         isSkeleton = false,
         isPending = false,
         width = "content",
+        reasonId,
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? legacyVariant
     const unavailable = isDisabled || isPending || isSkeleton
@@ -126,6 +149,7 @@ export const Button = (props: ButtonProps) => {
                 data-loading={isSkeleton ? "true" : "false"}
                 data-action-pending={isPending ? "true" : "false"}
                 isDisabled={unavailable}
+                {...(reasonId === undefined ? {} : { "aria-describedby": reasonId })}
                 aria-busy={isPending || undefined}
                 aria-hidden={isSkeleton || undefined}
                 data-width={width}
@@ -156,6 +180,7 @@ export const Button = (props: ButtonProps) => {
             variant={VARIANTS[variant]}
             size={SIZES[size]}
             isDisabled={unavailable}
+            {...(reasonId === undefined ? {} : { "aria-describedby": reasonId })}
             isPending={isPending}
             data-width={width}
             data-contract={width === "fill" ? "MEASURE-2" : undefined}

@@ -779,6 +779,21 @@
         white-space: nowrap;
     }
 
+    /* Reorderable tags: the grab cursor, the lifted tag and the tag a drop would replace. */
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[draggable="true"] {
+        cursor: grab;
+    }
+
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[data-grammar-tag-dragging="true"] {
+        opacity: 0.5;
+        cursor: grabbing;
+    }
+
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[data-grammar-tag-drop-target="true"] {
+        outline: 2px solid var(--accent, Highlight);
+        outline-offset: 2px;
+    }
+
     /*
      * Selectable chips (0.9.6, selectionMode single or multiple): a group of choices carries a 1px inset ring,
      * --border when unselected and --accent when selected. The chip face, hover and selected paint are HeroUI's own.
@@ -890,6 +905,42 @@
 
     .starci-core-data-table-cell-content {
         box-sizing: border-box;
+    }
+
+    /* A whole-row link target reads as one pressable row. */
+    .starci-core-data-table-row[data-grammar-table-row-link="true"] {
+        cursor: pointer;
+    }
+
+    /* An editor cell hosts a field; the field keeps its own control height and may not widen past the column. */
+    .starci-core-data-table-editor {
+        display: flex;
+        min-width: 0;
+        max-inline-size: 100%;
+        align-items: center;
+        white-space: normal;
+    }
+
+    /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
+    .starci-core-data-table-secondary {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        margin-block-start: 0.25rem;
+        color: var(--muted, GrayText);
+        font-size: 0.875em;
+        white-space: normal;
+    }
+
+    .starci-core-data-table-secondary-item {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .starci-core-data-table-secondary-label::after {
+        content: ":";
     }
 
     .starci-core-drag-item {
