@@ -102,11 +102,10 @@ a folder outside any StarCi tree show every verb. The groups:
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
 | `uat` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml) |
-| `app` | what a lite app declares |
+| `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx starci app ...` |
 
 Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`, `lease list`,
-`check unit`, `git`, `release notes`, and the app verbs (`app scaffold|sync|check|emit|db|secret`, `pattern`,
-`supabase`, `stack`, `docker`, and the full edition's `app add`).
+`check unit`, `git`, `release notes`, and shell completion.
 
 ## CI
 

@@ -33,6 +33,11 @@ src/
 - **Output.** With `--json` every verb prints one envelope, `{schema, ok, data}`, or
   `{schema: "starci/refusal@1", ok: false, code, message}`. Exit 0 is done, 1 is refused or red (nothing moved),
   2 is bad usage. A refusal is thrown as `Refusal(code, message)`.
+- **The app commands.** `core/app/hfs.ts` runs the `starci app` verbs that `@starci/hfs` implements in-process in the
+  app's directory: each verb file maps its typed flags to the hfs arguments (`hfsArgv`, values checked by zod first) and
+  `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
+  that prints a report and carries it in the envelope; the exit code is hfs's, 3 included (a database mutation not
+  armed). `core/app/input-bounds.ts` is the package export `starci-harness/input-bounds` an app's codegen loads.
 - **Roles.** A verb lists the roles that may run it. They are enforced when `STARCI_ROLE` names the caller's role: a
   role the verb does not list refuses `ROLE_REFUSED`, a value that is no role is usage (`ROLE_UNKNOWN`), and unset
   means not enforced. Orca's `worker-start` cannot set a worker's environment, so the rendered brief names the role

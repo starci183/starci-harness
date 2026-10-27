@@ -30,8 +30,8 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         const progress = (line: string): void => {
             if (mode === "human") process.stdout.write(`${line}\n`)
         }
-        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs, progress }
-        const flags = command.opts<Record<string, string | boolean | undefined>>()
+        const context: VerbContext = { cwd, tree: location.tree, treeRoot: location.root, verbs, json: mode === "json", progress }
+        const flags = command.opts<Record<string, string | boolean | readonly string[] | undefined>>()
         const positionals = Object.keys(verb.flags).filter((name) => verb.flags[name]?.positional === true || verb.flags[name]?.kind === "rest")
         const given = command.processedArgs as unknown[]
         const operand = (value: unknown, spec: FlagSpec | undefined): string | readonly string[] | undefined => {
@@ -40,10 +40,11 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
         }
         const positionalValues = Object.fromEntries(positionals.map((name, index) => [name, operand(given[index], verb.flags[name])]))
         // commander stores `--dry-run` as `dryRun` and `--no-commit` as a negated `commit`, so read each flag through its own option.
-        const optionValue = (name: string, spec: FlagSpec): string | boolean | undefined => {
+        const optionValue = (name: string, spec: FlagSpec): string | boolean | readonly string[] | undefined => {
             const option = command.options.find((candidate) => candidate.long === `--${name}`)
             const value = option === undefined ? undefined : flags[option.attributeName()]
-            if (spec.kind === "string") return value
+            if (spec.kind === "list") return typeof value === "object" ? value : []
+            if (spec.kind === "string") return typeof value === "string" ? value : undefined
             return option?.negate === true ? value === false : value === true
         }
         const values = Object.fromEntries(Object.entries(verb.flags).map(([name, spec]) => [name, spec.positional === true || spec.kind === "rest" ? positionalValues[name] : optionValue(name, spec)]))
@@ -69,7 +70,7 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
     const command = parent.command(name).description(verb.summary)
     for (const [flag, spec] of Object.entries(verb.flags)) {
         if (spec.kind === "rest") {
-            command.argument(`[${flag}...]`, spec.summary)
+            command.argument(spec.required === true ? `<${flag}...>` : `[${flag}...]`, spec.summary)
             continue
         }
         if (spec.positional === true) {
@@ -77,7 +78,8 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
             continue
         }
         const spelling = spec.kind === "boolean" ? `--${flag}` : `--${flag} <value>`
-        if (spec.required === true) command.requiredOption(spelling, spec.summary)
+        if (spec.kind === "list") command.option(spelling, spec.summary, (value: string, previous: readonly string[] | undefined) => [...(previous ?? []), value])
+        else if (spec.required === true) command.requiredOption(spelling, spec.summary)
         else command.option(spelling, spec.summary)
     }
     command.action(async (...received: unknown[]) => {
