@@ -89,7 +89,7 @@ design asks for.
 | [crash-verifying-orphan](scenarios/crash-verifying-orphan.yaml) | crash | the CLI died mid-verify: the next step returns the task to reported and verifies it | automated | pass | 2026-10-27 |
 | [coordinator-stall-model-capacity](scenarios/coordinator-stall-model-capacity.yaml) | orca | a Kernel stops at its prompt after a model-capacity error: the tick nudges it, then relaunches it on another member with the first one's circuit open | automated | pass | 2026-10-27 |
 | [kernel-holding-on-open-escalation](scenarios/kernel-holding-on-open-escalation.yaml) | orca | a Kernel escalates and ends its turn while its workflow still has work it can drive: the tick nudges it | automated | pass | 2026-10-27 |
-| [nudge-storm-bounded](scenarios/nudge-storm-bounded.yaml) | orca | a Kernel that answers each nudge and stalls again, under a storm of ticks: nudges stay bounded, then it is relaunched | automated | pass | 2026-10-27 |
+| [nudge-storm-bounded](scenarios/nudge-storm-bounded.yaml) | orca | a Kernel that answers each nudge and stalls again, under a storm of ticks: nudges stay bounded, then it is relaunched | automated | **FAIL** | 2026-10-27 |
 | [op-stall-nudge](scenarios/op-stall-nudge.yaml) | orca | an Op stops at its prompt with its task unfiled: its Kernel's driver nudges it once, and the nudge restarts it | automated | pass | 2026-10-27 |
 | [orca-dead-on-arrival-launch](scenarios/orca-dead-on-arrival-launch.yaml) | orca | Orca completed an Op's launch but the agent never started its turn: the dispatch is judged, fenced, and the task relaunched on another member | automated | pass | 2026-10-27 |
 | [orca-down-pauses-workflow](scenarios/orca-down-pauses-workflow.yaml) | orca | Orca stops answering mid-run: the Kernel driver pauses the workflow (orca-down) and lifts only that pause when Orca is back | automated | pass | 2026-10-27 |
@@ -152,6 +152,7 @@ design asks for.
 | [budget-minutes-exhausted](scenarios/budget-minutes-exhausted.yaml) | budget | a workflow that used its minutes holds dispatch with BUDGET_EXHAUSTED | automated | pass | 2026-10-27 |
 | [budget-raise-mid-flight](scenarios/budget-raise-mid-flight.yaml) | budget | a budget raise arrives while tasks are live | automated | pending |  |
 | [budget-tries-exhausted-then-raised](scenarios/budget-tries-exhausted-then-raised.yaml) | budget | a workflow out of tries holds dispatch until a raise, then resumes | automated | pass | 2026-10-27 |
+| [config-change-widens-scope](scenarios/config-change-widens-scope.yaml) | verify | a change to an app-wide configuration file widens the scoped check to every side that reads it | automated | pass | 2026-10-27 |
 | [verify-clean-checkout-not-worker-env](scenarios/verify-clean-checkout-not-worker-env.yaml) | verify | a check that passes only in the worker's environment is red on the clean checkout | automated | pass | 2026-10-27 |
 | [verify-flaky-test](scenarios/verify-flaky-test.yaml) | verify | a check fails then passes on the same tree | automated | pending |  |
 | [verify-only-task-settles-on-observed-evidence](scenarios/verify-only-task-settles-on-observed-evidence.yaml) | verify | a task whose audit finds nothing to change settles green on the checks over its allowPaths, with no commit | automated | pass | 2026-10-27 |
@@ -214,9 +215,11 @@ design asks for.
 | [budget-task-always-over](scenarios/budget-task-always-over.yaml) | plan | a task blows its budget every try | automated | pending |  |
 | [flow-incomplete-refused](scenarios/flow-incomplete-refused.yaml) | plan | a replan that adds back-end code without the rest of its lane is refused and the graph stays as it was | automated | pass | 2026-10-27 |
 | [lane-be-needs-test-e2e-review](scenarios/lane-be-needs-test-e2e-review.yaml) | plan | back-end code is tested, proven end to end and reviewed before the plan is recorded | automated | pass | 2026-10-27 |
+| [lane-fe-code-held-until-be-code](scenarios/lane-fe-code-held-until-be-code.yaml) | plan | front-end code of a feature waits for the back end's code of the same feature | automated | pass | 2026-10-27 |
 | [lane-fe-code-held-until-ui](scenarios/lane-fe-code-held-until-ui.yaml) | plan | front-end code waits for its feature's screens to be drawn | automated | pass | 2026-10-27 |
 | [lane-ui-already-drawn-skips](scenarios/lane-ui-already-drawn-skips.yaml) | plan | a screen the owner already drew is not drawn again; its front end is built, audited and walked | automated | pass | 2026-10-27 |
 | [lane-ui-draw-then-image](scenarios/lane-ui-draw-then-image.yaml) | plan | a screen not yet drawn walks its ui lane, draw then image, before define records the graph | automated | pass | 2026-10-27 |
+| [plan-code-split-per-record](scenarios/plan-code-split-per-record.yaml) | plan | one code task over several impl records is refused; one task per record fans out in parallel | automated | pass | 2026-10-27 |
 | [plan-replan-oscillation](scenarios/plan-replan-oscillation.yaml) | plan | the Kernel replans A, B, A, B | automated | pending |  |
 | [plan-self-overlap-serialised](scenarios/plan-self-overlap-serialised.yaml) | plan | the Kernel plans two independent tasks over one path: the lease serialises them | automated | pass | 2026-10-27 |
 | [plan-unachievable-goal](scenarios/plan-unachievable-goal.yaml) | plan | the goal cannot be met | automated | pending |  |
@@ -228,6 +231,7 @@ design asks for.
 | [environment-npm-registry-down](scenarios/environment-npm-registry-down.yaml) | environment | the npm registry is down during clean verify | manual | pending |  |
 | [environment-port-taken](scenarios/environment-port-taken.yaml) | environment | the dev server's port is taken during uat | manual | pending |  |
 | [environment-secret-unavailable](scenarios/environment-secret-unavailable.yaml) | environment | a test needs a secret the host lacks | manual | pending |  |
+| [host-status-and-install-dry](scenarios/host-status-and-install-dry.yaml) | environment | host status reads every service of ops/host.yaml; install --dry prints the scheduler argv and writes nothing | automated | pass | 2026-10-27 |
 | [verify-docker-down-uat](scenarios/verify-docker-down-uat.yaml) | environment | Docker is down when a uat verify needs the pinned image | semi | pending |  |
 | [owner-cancels-during-settle](scenarios/owner-cancels-during-settle.yaml) | owner | the owner cancels a task while its verify settles | automated | pending |  |
 | [owner-late-gate-approval](scenarios/owner-late-gate-approval.yaml) | owner | the owner approves a gated diff long after it was asked | automated | pending |  |

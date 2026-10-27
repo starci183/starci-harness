@@ -10,7 +10,7 @@ starci workflow start <id>
 
 - `orca`: only from the terminal of the Supervisor of the repository's project (elsewhere `SUPERVISOR_REQUIRED`). It makes
   the workflow's one worktree and launches its `[Kernel] <id>` agent into that Supervisor's Run; the Kernel attaches, and its `kernel next` dispatches the
-  ready tasks as `[Op] <label> (<task id>) - <summary>` under it, up to `maxParallel`, each routed, all in that worktree. If Orca does
+  ready tasks as `[Op] <label> (<task id>) - <summary>` under it, up to `maxParallel` within `workflowParallel` of ops/routing.yaml (the rest wait), each routed, all in that worktree. If Orca does
   not know the repository yet, the harness registers it (`orca repo add`).
 - `inline`: queues one task and prints it with its brief and the commands to finish it. Work it as
   [inline-task.md](inline-task.md) says.
@@ -19,7 +19,7 @@ starci workflow start <id>
 
 `workflow step` is one idempotent tick: it cancels live tasks no node carries any more, settles reported
 tasks through `task verify`, closes the seat and tab of every task whose result is settled (done, failed, returned,
-cancelled), dispatches newly ready tasks within `maxParallel` and the budget, and updates the status. Exit 1 means
+cancelled), dispatches newly ready tasks within `maxParallel` (capped by `workflowParallel`) and the budget, and updates the status. Exit 1 means
 the workflow is blocked.
 
 ```text

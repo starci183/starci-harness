@@ -143,6 +143,10 @@ scoring:
 # decreaseCooldownMinutes); a success after quietMinutes without one adds 1, at most once per increaseStepMinutes.
 concurrency: {floor: 2, decreaseCooldownMinutes: 2, quietMinutes: 15, increaseStepMinutes: 5}
 
+# The most Ops one orca workflow runs at once (its fan-out), and its default; a workflow file's maxParallel asks for fewer, never more, and
+# ready tasks past it wait for a free slot (engine.ts queueReady).
+workflowParallel: 10
+
 # Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise).
 budgets:
   workflow: {minutes: 480, tries: 40}

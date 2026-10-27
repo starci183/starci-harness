@@ -127,10 +127,11 @@ const windowName = (minutes: number | null): string => (minutes === null || minu
 
 /**
  * Codex's own record of its limits, for when Orca gives no Codex reading: the `rate_limits` of the last line that carries one
- * in the newest session rollout under ~/.codex/sessions (never a credential file), observed at that file's last write.
+ * in the newest session rollout under $CODEX_HOME/sessions (Codex's home, ~/.codex by default; never a credential file), observed at
+ * that file's last write.
  */
 export const codexRolloutUsage = (): { readonly usage: ProviderUsage; readonly observedAt: string } | undefined => {
-    const file = newestFile(join(homedir(), ".codex", "sessions"), /^rollout-.*\.jsonl$/)
+    const file = newestFile(join(process.env.CODEX_HOME ?? join(homedir(), ".codex"), "sessions"), /^rollout-.*\.jsonl$/)
     if (file === undefined) return undefined
     const line = readFileSync(file, "utf8").split("\n").reverse().find((text) => text.includes("\"rate_limits\""))
     if (line === undefined) return undefined

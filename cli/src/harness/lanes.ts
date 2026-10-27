@@ -21,13 +21,20 @@ export const SATISFIERS = ["record-exists", "record-done", "direction-approved",
 /** The goal flags of `optionalUnless` and the value of the workflow file's `requires` (graph.ts headerSchema) each reads. */
 const GOAL_FLAGS = { requiresSecurity: "security", requiresPerf: "perf" } as const
 
+/** One lane a step is held until: its records of the feature, through one of its steps (default the last), required unless `required: false`. */
+const heldSchema = z.strictObject({
+    lane: z.string().min(1),
+    through: z.string().min(1).optional(),
+    required: z.boolean().optional(),
+})
+
 const stepSchema = z.strictObject({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     label: z.string().min(1),
     satisfiedWhen: z.array(z.enum(SATISFIERS)).min(1),
     optionalWhen: z.enum(["hasNoArtworkSlots"]).optional(),
     optionalUnless: z.enum(Object.keys(GOAL_FLAGS) as [keyof typeof GOAL_FLAGS, ...(keyof typeof GOAL_FLAGS)[]]).optional(),
-    heldUntil: z.string().min(1).optional(),
+    heldUntil: z.array(heldSchema).min(1).optional(),
     over: z.enum(["record", "feature"]).optional(),
 })
 
@@ -46,7 +53,7 @@ export type Lane = z.infer<typeof laneSchema>
 /** One step of a lane. */
 export type LaneStep = z.infer<typeof stepSchema>
 
-/** Loads ops/lanes.yaml beside the op files; every label, build and heldUntil must name an op or a lane (LANES_INVALID). */
+/** Loads ops/lanes.yaml beside the op files; every label, build and heldUntil must name an op, a lane or a lane's step (LANES_INVALID). */
 export const loadLanes = (ops: Ops): readonly Lane[] => {
     const file = join(ops.dir, "lanes.yaml")
     const parsed = lanesFileSchema.safeParse(parse(readFileSync(file, "utf8")))
@@ -58,7 +65,11 @@ export const loadLanes = (ops: Ops): readonly Lane[] => {
         ...(lane.build === undefined || lane.build in ops.labels ? [] : [`lane ${lane.id}: build ${lane.build} has no op file`]),
         ...lane.steps.flatMap((step) => [
             ...(step.label in ops.labels ? [] : [`lane ${lane.id} step ${step.id}: label ${step.label} has no op file`]),
-            ...(step.heldUntil === undefined || ids.has(step.heldUntil) ? [] : [`lane ${lane.id} step ${step.id}: heldUntil ${step.heldUntil} names no lane`]),
+            ...(step.heldUntil ?? []).flatMap((held) => {
+                const target = lanes.find((other) => other.id === held.lane)
+                if (target === undefined) return [`lane ${lane.id} step ${step.id}: heldUntil ${held.lane} names no lane`]
+                return held.through === undefined || target.steps.some((other) => other.id === held.through) ? [] : [`lane ${lane.id} step ${step.id}: heldUntil ${held.lane} through ${held.through} names no step of it`]
+            }),
         ]),
     ])
     if (problems.length > 0) throw new Refusal("LANES_INVALID", `${file}:\n${[...new Set(problems)].join("\n")}`)
@@ -303,18 +314,30 @@ const ancestorsOf = (nodes: readonly FlowNode[]): Map<string, Set<string>> => {
 /** The step a task names in its inputs (`step`), when a lane holds more than one step of its label. */
 const stepInput = (contract: Contract): string | undefined => contract.input.extend?.step ?? contract.input.base?.step
 
-/** The records of a feature in the families of a lane: those on disk and those the graph covers. */
-const featureRecords = (feature: string, lane: Lane, covered: readonly WorkRef[], repo: string): WorkRef[] => {
-    const found = new Map(covered.filter((ref) => ref.feature === feature && lane.match.some((match) => match.family === ref.family)).map((ref) => [ref.id, ref]))
-    for (const { family } of lane.match) {
-        const dir = join(repo, WORK, "features", feature, family)
-        if (!existsSync(dir)) continue
+/** The records of a feature that walk a lane: those on disk (at any depth of the lane's families) and those the graph covers. */
+const featureRecords = (feature: string, lane: Lane, covered: readonly WorkRef[], lanes: readonly Lane[], repo: string): WorkRef[] => {
+    const found = new Map(covered.filter((ref) => ref.feature === feature).map((ref) => [ref.id, ref]))
+    for (const family of new Set(lane.match.map((match) => match.family))) {
+        for (const ref of recordsUnder(posix.join(WORK, "features", feature, family), repo)) if (!found.has(ref.id)) found.set(ref.id, ref)
+    }
+    return [...found.values()].filter((ref) => laneOf(ref, lanes, repo)?.id === lane.id)
+}
+
+/** The Work records on disk under a repository folder, at any depth, once each. */
+const recordsUnder = (folder: string, repo: string): WorkRef[] => {
+    const found = new Map<string, WorkRef>()
+    const scan = (at: string): void => {
+        const dir = join(repo, at)
+        if (!existsSync(dir)) return
         for (const entry of readdirSync(dir, { withFileTypes: true })) {
-            if (!entry.isDirectory() || !existsSync(join(dir, entry.name, "index.yaml"))) continue
-            const ref = recordOfPath(posix.join(WORK, "features", feature, family, entry.name), repo)
+            if (!entry.isDirectory() || INSIDE_RECORD.has(entry.name)) continue
+            const path = posix.join(at, entry.name)
+            const ref = existsSync(join(dir, entry.name, "index.yaml")) ? recordOfPath(path, repo) : undefined
             if (ref !== undefined && !found.has(ref.id)) found.set(ref.id, ref)
+            scan(path)
         }
     }
+    scan(folder)
     return [...found.values()]
 }
 
@@ -337,18 +360,26 @@ interface LaneWalk {
 const isOver = (walk: LaneWalk, node: FlowNode, ref: WorkRef, step: LaneStep): boolean =>
     (walk.refsOf.get(node.key) ?? []).some((other) => (step.over === "feature" ? ref.feature !== null && other.feature === ref.feature : other.id === ref.id))
 
-/** The problems of a carrier of a held step: the feature has no record of the lane it is held until, or the carrier does not depend on their tasks. */
+/** The problems of a carrier of a held step: a required held lane with no record of the feature, or a carrier that does not depend on the tasks carrying the held records' steps (through the named step). */
 const heldProblems = (walk: LaneWalk, step: LaneStep, ref: WorkRef, key: string, above: ReadonlySet<string>): string[] => {
-    const held = step.heldUntil === undefined ? undefined : walk.lanes.find((lane) => lane.id === step.heldUntil)
-    if (held === undefined || ref.feature === null) return []
-    const records = featureRecords(ref.feature, held, [...walk.covered.values()], walk.place.repo)
-    if (records.length === 0) {
-        return [`${ref.id}: step ${step.id} is held until the ${held.id} records of feature ${ref.feature}, and it has none; write one (docs) and walk its lane (${held.steps.map((entry) => entry.label).join(", ")}) before task ${key}`]
-    }
-    return records.flatMap((record) => {
-        const keys = (walk.flowOf(record)?.steps ?? []).flatMap((entry) => entry.tasks)
-        const missing = keys.filter((dep) => !above.has(dep))
-        return missing.length === 0 ? [] : [`${ref.id}: task ${key} carries step ${step.id}, held until ${record.id}; make it depend on ${missing.join(", ")}`]
+    const { feature } = ref
+    if (feature === null) return []
+    return (step.heldUntil ?? []).flatMap((until) => {
+        const held = walk.lanes.find((lane) => lane.id === until.lane)
+        if (held === undefined) return []
+        const through = until.through ?? held.steps.at(-1)?.id
+        const steps = held.steps.slice(0, held.steps.findIndex((entry) => entry.id === through) + 1)
+        const named = through === held.steps.at(-1)?.id ? held.id : held.id + " through " + String(through)
+        const records = featureRecords(feature, held, [...walk.covered.values()], walk.lanes, walk.place.repo)
+        if (records.length === 0) {
+            return until.required === false ? [] : [`${ref.id}: step ${step.id} is held until the ${named} records of feature ${feature}, and it has none; write one (docs) and walk its lane (${steps.map((entry) => entry.label).join(", ")}) before task ${key}`]
+        }
+        return records.flatMap((record) => {
+            const keys = (walk.flowOf(record)?.steps ?? []).filter((entry) => steps.some((kept) => kept.id === entry.step)).flatMap((entry) => entry.tasks)
+            const missing = keys.filter((dep) => !above.has(dep))
+            const suffix = named === held.id ? "" : " (" + named + ")"
+            return missing.length === 0 ? [] : [`${ref.id}: task ${key} carries step ${step.id}, held until ${record.id}${suffix}; make it depend on ${missing.join(", ")}`]
+        })
     })
 }
 
@@ -390,6 +421,38 @@ const walkStep = (walk: LaneWalk, ref: WorkRef, lane: Lane, step: LaneStep, befo
     return { step: step.id, label: step.label, status: "carried", detail: `carried by ${carriers.join(", ")}`, tasks: carriers }
 }
 
+/** The owner paths of an impl record (`owners`: {role, path}). */
+const ownerPaths = (ref: WorkRef, repo: string): string[] => {
+    const record = readYamlFile(join(repo, ref.file))
+    const owners = Array.isArray(record?.owners) ? (record.owners as unknown[]) : []
+    return owners.flatMap((owner) => (typeof owner === "object" && owner !== null && "path" in owner && typeof owner.path === "string" && owner.path !== "" ? [normaliseRepoPath(owner.path)] : []))
+}
+
+/** Whether two repository paths overlap: one is the other or inside it. */
+const overlaps = (left: string, right: string): boolean => left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`)
+
+/**
+ * The tasks of a perRecord label (ops/ops/README.md) that work more than one Work record: they carry lane steps of several
+ * records, or their allowPaths reach the owner paths of several impl records.
+ */
+const splitProblems = (nodes: readonly FlowNode[], report: FlowReport, repo: string, ops: Ops): string[] => {
+    const features = join(repo, WORK, "features")
+    const impls = existsSync(features)
+        ? readdirSync(features, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? recordsUnder(posix.join(WORK, "features", entry.name, "impl"), repo) : []))
+        : []
+    const owned = impls.map((ref) => ({ id: ref.id, paths: ownerPaths(ref, repo) }))
+    return nodes.flatMap((node) => {
+        if (ops.labels[node.contract.label]?.perRecord !== true) return []
+        const allowed = node.contract.context.allowPaths.map(normaliseRepoPath)
+        const records = new Set([
+            ...report.records.filter((flow) => flow.steps.some((step) => step.tasks.includes(node.key))).map((flow) => flow.record),
+            ...owned.filter((impl) => impl.paths.some((path) => allowed.some((allow) => overlaps(path, allow)))).map((impl) => impl.id),
+        ])
+        if (records.size <= 1) return []
+        return [`task ${node.key} (${node.contract.label}) works ${[...records].sort().join(", ")}: split into one task per record (disjoint allowPaths), they run in parallel up to the workflow cap`]
+    })
+}
+
 /**
  * The flow of a graph (ops/lanes.yaml): every Work record a task is over walks its lane, and so does every record a held step
  * waits on. Each step is optional, satisfied by evidence, carried by tasks of its label over the record, or missing; a carrying
@@ -422,7 +485,7 @@ export const evaluateFlow = (nodes: readonly FlowNode[], place: FlowPlace, lanes
         return flow
     }
     const walk: LaneWalk = { nodes, place, lanes, refsOf, covered, ancestors: ancestorsOf(nodes), problems: [], flowOf }
-    for (const ref of covered.values()) flowOf(ref)
+    for (const ref of [...covered.values()]) flowOf(ref)
     return { records: [...flows.values()], problems: [...new Set(walk.problems)] }
 }
 
@@ -434,11 +497,14 @@ export const flowLines = (report: FlowReport): string[] =>
     })
 
 /**
- * Refuses FLOW_INCOMPLETE when a Work record the graph covers has a lane step that is neither satisfied by evidence nor carried by
- * a task of its label over the record, or a carrying task out of the lane's order: the Kernel plans the missing steps, and only them.
+ * Refuses TASK_NOT_SPLIT when a task of a perRecord label works more than one Work record (splitProblems), then FLOW_INCOMPLETE
+ * when a Work record the graph covers has a lane step that is neither satisfied by evidence nor carried by a task of its label over
+ * the record, or a carrying task out of the lane's order: the Kernel plans the missing steps, and only them.
  */
 export const assertFlow = (workflowId: string, nodes: readonly FlowNode[], place: FlowPlace, ops: Ops): FlowReport => {
     const report = evaluateFlow(nodes, place, loadLanes(ops))
+    const unsplit = splitProblems(nodes, report, place.repo, ops)
+    if (unsplit.length > 0) throw new Refusal("TASK_NOT_SPLIT", `the graph of ${workflowId} gives one task several Work records:\n${unsplit.map((problem) => `- ${problem}`).join("\n")}`)
     if (report.problems.length === 0) return report
     throw new Refusal(
         "FLOW_INCOMPLETE",

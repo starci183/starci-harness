@@ -89,6 +89,7 @@ const routingSchema = z.object({
     }),
     concurrency: z.object({ floor: z.number().int().positive(), decreaseCooldownMinutes: minutes, quietMinutes: minutes, increaseStepMinutes: minutes }),
     budgets: z.object({ workflow: z.object({ minutes: z.number().int().positive(), tries: z.number().int().positive() }) }),
+    workflowParallel: z.number().int().positive(),
 })
 
 /** ops/routing.yaml, validated: tiers, pools, quota, usage, circuit, outcomes, qualification, scoring, concurrency and budgets. */

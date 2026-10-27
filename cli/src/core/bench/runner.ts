@@ -399,6 +399,8 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
         STARCI_ORCA_BIN: orcaBinary(),
         STARCI_BENCH_ORCA: orcaState,
         STARCI_BENCH_ORCA_LOG: orcaLog,
+        // The host's own Codex usage never reaches a scenario: its Codex home is the run's empty folder.
+        CODEX_HOME: join(dir, "codex"),
         NODE_OPTIONS: `--import=${stub}`,
     }
     const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [] }

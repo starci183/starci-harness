@@ -10,7 +10,9 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 - **Lanes and repair routes.** `ops/lanes.yaml` is the standard build flow each Work record walks; `workflow define`,
   `amend` and every replan refuse `FLOW_INCOMPLETE` while a covered record's step is neither satisfied by evidence nor
-  carried by a task of its label in order, and `kernel next` digests each record's lane. `ops/routes.yaml` bounds repairs:
+  carried by a task of its label in order (a front-end code step held until its feature's drawings and back-end code), and
+  `TASK_NOT_SPLIT` while one task of a `perRecord` label works several records; `kernel next` digests each record's lane.
+  An orca workflow runs at most `workflowParallel` Ops at once (`ops/routing.yaml`); ready tasks past it wait. `ops/routes.yaml` bounds repairs:
   a red or question decision carries its legal route, `kernel submit` refuses `ROUTE_ILLEGAL` off it, and past its limit
   the Kernel escalates to the owner. The `ui` label becomes `draw`; `audit` and `review` are new, and the router never
   gives a `review` to the provider that authored the work it reads (`independentOf`). A workflow file may name

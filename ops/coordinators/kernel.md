@@ -25,7 +25,7 @@ not move. You never write product code, read an Op terminal, push, or mail anyon
 
 | decision | what you submit |
 |---|---|
-| `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`), walking each Work record's lane: the digest's `lanes` show every step satisfied, carried or missing, and you plan only the missing ones (`FLOW_INCOMPLETE` otherwise) |
+| `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`), walking each Work record's lane: the digest's `lanes` show every step satisfied, carried or missing, and you plan only the missing ones (`FLOW_INCOMPLETE` otherwise), cut one task per record so independent records run in parallel (at most `workflowParallel` of ops/routing.yaml at once; the harness queues the rest; `TASK_NOT_SPLIT` otherwise) |
 | `red` (a failed, lost, timed-out, stalled or stuck task) | the evidence's `cause` and its one legal route: a `workflow-change` naming it as `route` and doing what its `to` says (retry or edit the task, or add or retry a task of its label), within the budget; past its limit (`gate: owner`) an `escalation` of kind `owner`; else an `escalation` (`budget` or `harness`), or of kind `scope` when the task should leave the goal (`GOAL_SHRUNK`: a task that finds nothing to change is done on its checks, never removed) |
 | `question` (an Op returned blocked or mismatch) | its legal route the same way (an audit that finds the direction itself wanting is redrawn), or an `escalation` of kind `scope` when the answer is outside your scope ceiling |
 | `conflict` (another workflow holds the paths) | an `escalation` of kind `conflict` naming the paths |

@@ -116,7 +116,8 @@ task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retr
 atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's
 ceiling, and `GOAL_SHRUNK` when it drops a key of a graph planned under the current goal version that no key it adds
 takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Define
-and every replan are refused `FLOW_INCOMPLETE` while a Work record a task is over has a step of its lane
+and every replan are refused `TASK_NOT_SPLIT` while one task of a `perRecord` label works several Work records
+([ops/ops/README.md](../ops/ops/README.md)), and `FLOW_INCOMPLETE` while a Work record a task is over has a step of its lane
 ([ops/lanes.yaml](../ops/lanes.yaml)) that is neither satisfied by evidence nor carried by a task of its label over it,
 in the lane's order (`assertFlow` in `harness/lanes.ts`); `kernel next` digests each record's lane as `lanes`. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
