@@ -3,11 +3,12 @@
 These hold for every role and every task. A rule with a gate names it; the others are held by review.
 
 1. **No secret is read, printed or committed.** Never open a file that `policy/security.yaml` `neverRead` lists
-   (`.env`, keys, credentials); judge it by name. Never echo a token. `starci check secrets` and `release push` scan
-   for leaks; this repository is public and tracks no secret envelope.
+   (`.env`, keys, credentials); judge it by name, and a contract whose `allowPaths` names one is unfit
+   (`contractProblems`). Never echo a token. `starci check secrets`, `task verify` (on the files a candidate changes) and
+   `release push` scan for leaks; this repository is public and tracks no secret envelope.
 2. **No loosening.** No inline disable, `ts-ignore`, `NOSONAR`, skipped or focused test, `|| true`, `--no-verify` or
-   widened allowlist. Change the code, not the gate. `starci check loosening` reads the tree as it stands; an
-   exception lives only in `policy/loosening.yaml`, one file, one marker and the reason.
+   widened allowlist. Change the code, not the gate. `starci check loosening` reads the tree as it stands and
+   `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, one file, one marker and the reason.
 3. **No stash, force or reset in a dirty tree.** Never `git stash`, `reset --hard`, `checkout -- .`, `clean -f`, a
    force push or a branch switch in a checkout that holds someone's uncommitted work. Work in your own worktree.
 4. **Two tools never touch the same files.** Parallel agents, seats or tools write disjoint paths; the harness enforces

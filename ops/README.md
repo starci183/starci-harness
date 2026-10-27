@@ -47,7 +47,8 @@ failure accounting use the numbers of `routing.yaml`; it never restates them.
 | blocked | `env` goes to the Supervisor, `authority` to the owner, a `gap` to the Kernel's plan | |
 
 - A failure with no effect is free: a launch that certainly failed returns its task to `queued`, and a verify that
-  reached no verdict returns it to `reported` (`TRANSITIONS` in `cli/src/harness/tasks.ts`).
+  reached no verdict returns it to `reported` (`TRANSITIONS` in `cli/src/harness/tasks.ts`), up to `settleNoVerdictMax`
+  times per result ([liveness.yaml](liveness.yaml)); past it the task is `awaiting_owner` with the last reason.
 - An unknown effect costs a try and is reconciled before the retry.
 - `awaiting_owner` costs nothing.
 - A task's tries are its contract's `budget.tries`; a workflow's minutes and tries are capped by `budgets` and raised only

@@ -7,6 +7,7 @@ import { hostHas } from "../harness/router.js"
 import { loadRouting } from "../harness/routing.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { captureTool, probeTool, runNpm } from "../shared/exec.js"
+import { captureGit } from "../shared/git.js"
 import { formatTable } from "../shared/output.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../shared/verb.js"
 
@@ -90,7 +91,7 @@ const policyOf = (repository: string | undefined, treeRoot: string | undefined):
 }
 
 const git = async (cwd: string, args: readonly string[]): Promise<{ readonly exitCode: number; readonly stdout: string }> =>
-    captureTool("git", args, cwd, { timeoutMs: 15_000 }).catch(() => ({ exitCode: -1, stdout: "" }))
+    captureGit(args, cwd, { timeoutMs: 15_000 }).catch(() => ({ exitCode: -1, stdout: "" }))
 
 /** The Work folder of the repository holding `cwd`; null outside git. */
 const workOf = async (cwd: string): Promise<WorkView | null> => {

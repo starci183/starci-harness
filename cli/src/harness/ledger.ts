@@ -4,7 +4,7 @@ import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
-import { captureToolSync } from "../shared/exec.js"
+import { captureGitSync } from "../shared/git.js"
 
 /** The ledger schema version this build writes. */
 export const LEDGER_VERSION = 8
@@ -229,21 +229,49 @@ const projectOf = (root: string): Project => {
     const known = projects.get(at)
     if (known !== undefined) return known
     let project: Project = { root: at, key: pathKey(at) }
-    const dirs = captureToolSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], at)
+    const dirs = captureGitSync(["rev-parse", "--path-format=absolute", "--git-common-dir"], at)
     const commonDir = dirs.stdout.trim()
     if (dirs.exitCode === 0 && commonDir !== "") {
         // The first entry of the worktree list is the main checkout (the repository itself when it is bare).
-        const main = /^worktree (.+)$/m.exec(captureToolSync("git", ["worktree", "list", "--porcelain"], at).stdout)?.[1]
+        const main = /^worktree (.+)$/m.exec(captureGitSync(["worktree", "list", "--porcelain"], at).stdout)?.[1]
         project = { root: main === undefined ? dirname(resolve(commonDir)) : resolve(main.trim()), key: pathKey(commonDir) }
     }
     projects.set(at, project)
     return project
 }
 
-const connect = (file: string): DatabaseSync => {
+// SQLite's result codes for a file that is no database or a damaged one (SQLITE_NOTADB, SQLITE_CORRUPT).
+const DAMAGED = new Set([26, 11])
+
+/**
+ * LEDGER_CORRUPT for an error SQLite raised because `file` is no readable database, naming the file and its recovery; any other
+ * error as it was. The file is never written or replaced: it stays as it is for the Debug role.
+ */
+const damaged = (file: string, error: unknown): unknown => {
+    const code = typeof error === "object" && error !== null && "errcode" in error ? error.errcode : undefined
+    if (typeof code !== "number" || !DAMAGED.has(code)) return error
+    const why = error instanceof Error ? error.message : String(error)
+    const after =
+        file === machinePath()
+            ? "the host store starts empty and each project's ledger is registered again, under the same id, by its next writing verb"
+            : "the project starts a new empty ledger, and its history stays readable only in the moved file"
+    return new Refusal("LEDGER_CORRUPT", `${file} is not a readable SQLite database (${why}); it is kept as it is. To recover, move it aside (rename it to ${basename(file)}.corrupt) and run the verb again: ${after}`)
+}
+
+/**
+ * Opens a host or project store and reads its header, so a damaged file is refused LEDGER_CORRUPT at the open (damaged); a
+ * writable open switches to WAL with foreign keys on. Every store of the harness is opened here.
+ */
+const connect = (file: string, readOnly = false): DatabaseSync => {
     // The busy timeout must hold before the WAL switch, or a concurrent open fails with "database is locked".
-    const db = new DatabaseSync(file, { timeout: 5000 })
-    db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")
+    const db = new DatabaseSync(file, { readOnly, timeout: 5000 })
+    try {
+        if (readOnly) db.prepare("SELECT 1 FROM sqlite_master LIMIT 1").get()
+        else db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")
+    } catch (error: unknown) {
+        db.close()
+        throw damaged(file, error)
+    }
     return db
 }
 
@@ -285,7 +313,7 @@ export const openMachine = (): DatabaseSync => {
 export const ledgerCount = (): number | undefined => {
     const file = machinePath()
     if (!existsSync(file)) return undefined
-    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    const db = connect(file, true)
     try {
         if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledgers'").get() === undefined) return undefined
         return Number(db.prepare("SELECT COUNT(*) AS n FROM ledgers").get()?.n ?? 0)
@@ -311,7 +339,7 @@ export const findLedgerId = (root: string): string | undefined => {
 const lookUp = (project: Project): { readonly id: string; readonly version: number } | undefined => {
     const file = machinePath()
     if (!existsSync(file)) return undefined
-    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    const db = connect(file, true)
     try {
         if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledgers'").get() === undefined) return undefined
         const row = db.prepare("SELECT ledger_id, schema_version FROM ledgers WHERE repo_common_dir = ?").get(project.key)
@@ -413,7 +441,7 @@ export const openLedger = (root: string): DatabaseSync => {
         if (own !== id) throw new Refusal("LEDGER_MISMATCH", `${file} carries ledger id ${String(own)}, not ${id}; keep the file and fix the registry`)
         // Whether git folds case here, read once per ledger: path leases compare under it.
         if (db.prepare("SELECT 1 FROM meta WHERE key = 'ignorecase'").get() === undefined) {
-            const folds = captureToolSync("git", ["config", "--type=bool", "core.ignorecase"], root).stdout === "true"
+            const folds = captureGitSync(["config", "--type=bool", "core.ignorecase"], root).stdout === "true"
             db.prepare("INSERT INTO meta (key, value) VALUES ('ignorecase', ?) ON CONFLICT(key) DO NOTHING").run(folds ? "true" : "false")
         }
     } catch (error: unknown) {

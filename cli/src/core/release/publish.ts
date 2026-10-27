@@ -1,6 +1,6 @@
 import { Refusal } from "../../shared/errors.js"
-import { captureNpm, captureTool } from "../../shared/exec.js"
-import { isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { captureNpm } from "../../shared/exec.js"
+import { captureGit, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
@@ -85,7 +85,7 @@ export const releasePublishVerb = defineVerb({
         if (flags.publish && due.length > 0) {
             const dirty = await trackedChanges(root)
             if (dirty.length > 0) throw new Refusal("PUBLISH_DIRTY_TREE", "publish from a clean tree: the archive must equal the commit")
-            await captureTool("git", ["fetch", "--quiet", "origin", "main"], root)
+            await captureGit(["fetch", "--quiet", "origin", "main"], root)
             const head = await resolveSha(root, "HEAD")
             if (!(await refExists(root, "origin/main")) || !(await isAncestor(root, head, "origin/main"))) {
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")

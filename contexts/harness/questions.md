@@ -14,6 +14,6 @@
    owner's yes before resuming, and at what threshold?
 7. **A lingering red CI.** Fix forward only, as today, or revert the red commit automatically after N minutes?
 8. **Worker guard.** A worker has full Bash: should a PreToolUse guard refuse dangerous commands, beside the
-   `allowPaths` diff at settle and the secret scan at push?
+   `allowPaths` diff, the foreign-commit check and the secret and loosening scans at settle, and the secret scan at push?
 9. **Placing a feature across running workflows.** Should the Supervisor place it by a path-ownership map kept as data,
    amending only the workflows that own the touched paths, with the model deciding only what the map cannot place?

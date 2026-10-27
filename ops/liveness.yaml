@@ -1,5 +1,6 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone. Read by `seat ping` and `workflow step`; nothing here is restated in code.
+# explicit word that a worker is gone; and settle liveness. Read by `seat ping`, `workflow step` and `task verify`; nothing
+# here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -16,6 +17,10 @@ quietMinutes: 20
 # error in goneErrors. Only these make a seat worker-lost (and its running task effect_unknown).
 goneStates: [exited, failed, stopped, released, abandoned]
 goneErrors: [dispatch_not_found]
+
+# Settle liveness (both runners): a verify that reaches no verdict returns its task to reported for free, but once one result
+# has reached no verdict this many times the failure is persistent and the task ends awaiting_owner with the last reason.
+settleNoVerdictMax: 3
 
 # Coordinators (`kernel next`, `supervisor next`): the mechanics the deterministic driver applies, never an LLM's choice.
 coordinators:

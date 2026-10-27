@@ -128,7 +128,7 @@ A verb is one `defineVerb` in its own file. Refusals throw `Refusal(code, messag
 
 ### CONTRIB-13 No shell
 
-Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through `cli/src/shared/git.ts`.
+Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through the one runner in `cli/src/shared/git.ts`.
 
 ### CONTRIB-14 House style
 
