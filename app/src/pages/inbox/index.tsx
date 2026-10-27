@@ -3,6 +3,7 @@ import {
     Alert,
     Badge,
     Button,
+    Code,
     EmptyNotice,
     Heading,
     ListBox,
@@ -116,7 +117,7 @@ const DecisionDetail = ({ decision, onSent }: DetailProps) => {
                         </Button>
                     </span>
                     <Text size="xs" tone="muted">
-                        {INBOX.commandPrefix} <code>{decision.command}</code> {INBOX.commandSuffix}
+                        {INBOX.commandPrefix} <Code>{decision.command}</Code> {INBOX.commandSuffix}
                     </Text>
                 </div>
             </div>

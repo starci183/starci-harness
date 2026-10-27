@@ -14,8 +14,9 @@ const toItem = (event: EventRow, index: number): TimelineItem => ({
     title: event.text,
     dateTime: event.at,
     timeLabel: `${clockTime(event.at)} · ${event.project}`,
-    // An attention event (an escalation, a red check) is drawn in the cautionary state.
+    // An attention event (an escalation, a red check) is a cautionary row on its tone's background.
     state: event.attention ? "cautionary" : "neutral",
+    isAttention: event.attention,
 })
 
 /** The newest harness events across projects, attention rows highlighted. */

@@ -2,21 +2,23 @@ import {
     Alert,
     Badge,
     Button,
+    DataTable,
     DescriptionList,
     ListRow,
     NumberField,
+    PinnedActionBar,
     SectionHeader,
-    Select,
     SurfaceCard,
     SurfaceListCard,
     Tabs,
     Text,
+    type DataTableColumn,
 } from "@starci/grammar/core"
 import { useMemo, useState, type ReactNode } from "react"
 import type { ActionResult, ConfigEntry } from "@contract"
 import { useAction, useConfig } from "../../api/client"
-import { CONFIG_GROUPS, EFFORT_OPTIONS, SETTINGS, TIER, configFieldLabel, type ConfigGroupLabel } from "../../app/labels"
-import { FieldEditor, ListEditor, helper, isStringList, unique, type Draft } from "./editors"
+import { CONFIG_GROUPS, SETTINGS, TIER, configFieldLabel, type ConfigGroupLabel } from "../../app/labels"
+import { EffortSelect, FieldEditor, ListEditor, helper, isStringList, unique, type Draft } from "./editors"
 
 interface Group extends ConfigGroupLabel {
     readonly files: readonly string[]
@@ -77,6 +79,14 @@ const keyLabel = (key: string): string => {
     return configFieldLabel(key).label
 }
 
+/** Below this width the effort select folds under the tier name, so the members editor keeps its room. */
+const TIER_TABLE_COLLAPSE_BELOW = 820
+
+/** One routing tier: a row of the tiers table. */
+interface TierRow {
+    readonly id: string
+}
+
 const ModelsPanel = ({ group, draft }: { readonly group: Group; readonly draft: Draft }) => {
     const keys = new Set(group.entries.map((entry) => entry.key))
     const tiers = tierIds(group.entries)
@@ -90,49 +100,70 @@ const ModelsPanel = ({ group, draft }: { readonly group: Group; readonly draft: 
         ...tiers.map(membersOf),
     ])
     const rest = group.entries.filter((entry) => !TIER_KEY.test(entry.key))
+    const tierName = (tier: string) => TIER[tier]?.label ?? tier
+    const columns: readonly DataTableColumn<TierRow>[] = [
+        { id: "tier", label: SETTINGS.tier, isRowHeader: true },
+        {
+            id: "members",
+            label: SETTINGS.members,
+            editor: ({ id: tier }) => {
+                const membersKey = `routing.tiers.${tier}.members`
+                return keys.has(membersKey) ? (
+                    <ListEditor
+                        configKey={membersKey}
+                        label={SETTINGS.tierMembers(tierName(tier))}
+                        items={membersOf(tier)}
+                        pool={pool}
+                        addLabel={SETTINGS.tierAdd(tierName(tier))}
+                        addPlaceholder={SETTINGS.addModelPlaceholder}
+                        emptyText={SETTINGS.noMembers}
+                        exhaustedText={SETTINGS.noMoreModels}
+                        isAddLabelHidden
+                        isOrdered
+                        draft={draft}
+                    />
+                ) : null
+            },
+        },
+        {
+            id: "effort",
+            label: SETTINGS.effort,
+            priority: "low",
+            editor: ({ id: tier }) => {
+                const effortKey = `routing.tiers.${tier}.effort`
+                return keys.has(effortKey) ? (
+                    <EffortSelect configKey={effortKey} label={SETTINGS.tierEffort(tierName(tier))} isLabelHidden draft={draft} />
+                ) : null
+            },
+        },
+    ]
     return (
         <div className="app-stack">
-            <SurfaceListCard label={group.label} headingLevel={2} fact={group.description}>
-                {tiers.map((tier) => {
-                    const membersKey = `routing.tiers.${tier}.members`
-                    const effortKey = `routing.tiers.${tier}.effort`
-                    const effort = draft.valueOf(effortKey)
-                    const effortError = draft.errorOf(effortKey)
-                    const effortSelect = keys.has(effortKey) ? (
-                        <Select
-                            label={SETTINGS.effort}
-                            options={EFFORT_OPTIONS}
-                            value={typeof effort === "string" ? effort : null}
-                            onValueChange={(next) => {
-                                if (next !== null) draft.set(effortKey, next)
-                            }}
-                            description={effortKey}
-                            isDisabled={draft.isDisabled}
-                            {...(effortError === undefined ? {} : { errorMessage: effortError })}
-                        />
-                    ) : null
-                    return (
-                        <ListRow key={tier} title={TIER[tier]?.label ?? tier} description={TIER[tier]?.description}>
-                            {keys.has(membersKey) ? (
-                                <ListEditor
-                                    configKey={membersKey}
-                                    label={SETTINGS.members}
-                                    items={membersOf(tier)}
-                                    pool={pool}
-                                    addLabel={SETTINGS.addModel}
-                                    addPlaceholder={SETTINGS.addModelPlaceholder}
-                                    emptyText={SETTINGS.noMembers}
-                                    exhaustedText={SETTINGS.noMoreModels}
-                                    aside={effortSelect}
-                                    draft={draft}
-                                />
-                            ) : (
-                                effortSelect
+            <SurfaceCard label={group.label} headingLevel={2} fact={group.description}>
+                <DataTable<TierRow>
+                    label={group.label}
+                    columns={columns}
+                    rows={tiers.map((id) => ({ id }))}
+                    collapseBelow={TIER_TABLE_COLLAPSE_BELOW}
+                    renderCell={(row) => (
+                        <span className="app-pair">
+                            <Text as="span" size="sm" weight="medium">
+                                {tierName(row.id)}
+                            </Text>
+                            {TIER[row.id] === undefined ? null : (
+                                <Text as="span" size="xs" tone="muted">
+                                    {TIER[row.id]?.description}
+                                </Text>
                             )}
-                        </ListRow>
-                    )
-                })}
-            </SurfaceListCard>
+                        </span>
+                    )}
+                    emptyContent={
+                        <Text size="sm" tone="muted">
+                            {SETTINGS.noTiers}
+                        </Text>
+                    }
+                />
+            </SurfaceCard>
             {rest.length === 0 ? null : <FieldsPanel group={{ ...group, entries: rest }} draft={draft} />}
         </div>
     )
@@ -189,6 +220,7 @@ const LanesPanel = ({ group, draft }: { readonly group: Group; readonly draft: D
                                 addPlaceholder={SETTINGS.addStepPlaceholder}
                                 emptyText={SETTINGS.noItems}
                                 exhaustedText={SETTINGS.noMoreSteps}
+                                isOrdered
                                 draft={draft}
                             />
                         </ListRow>
@@ -234,68 +266,57 @@ const LoadingGroup = () => (
     </SurfaceCard>
 )
 
-interface PendingProps {
+/** The unsaved changes, old value struck through beside the new one, keys in the monospace stack. */
+const PendingChanges = ({
+    drafts,
+    originalOf,
+    refusals,
+}: {
     readonly drafts: ReadonlyMap<string, unknown>
     readonly originalOf: (key: string) => unknown
     readonly refusals: ReadonlyMap<string, ActionResult>
-    readonly isSaving: boolean
-    readonly onDiscard: () => void
-    readonly onSave: () => void
-}
-
-/** The unsaved changes, old value struck through beside the new one, with the two commands that settle them. */
-const PendingChanges = ({ drafts, originalOf, refusals, isSaving, onDiscard, onSave }: PendingProps) => (
-    <div className="app-sticky-end">
-        <SurfaceCard label={SETTINGS.pending(drafts.size)} headingLevel={2} fact={SETTINGS.pendingFact}>
-            <div className="app-stack">
-                <DescriptionList
-                    layout="columns"
-                    isDivided
-                    items={[...drafts].map(([key, value]) => {
-                        const refusal = refusals.get(key)
-                        return {
-                            id: key,
-                            term: (
-                                <span className="app-lines">
-                                    <span>{keyLabel(key)}</span>
-                                    <Text as="span" size="xs" tone="muted">
-                                        {key}
-                                    </Text>
-                                </span>
-                            ),
-                            description: (
-                                <span className="app-row">
-                                    <Text as="span" size="sm" tone="muted" isSuperseded>
-                                        {formatValue(originalOf(key))}
-                                    </Text>
-                                    <Text as="span" size="sm" tone="muted">
-                                        →
-                                    </Text>
-                                    <Text as="span" size="sm" weight="medium">
-                                        {formatValue(value)}
-                                    </Text>
-                                    {refusal === undefined ? null : <Badge tone="danger">{refusal.code ?? SETTINGS.refusedBadge}</Badge>}
-                                </span>
-                            ),
-                        }
-                    })}
-                />
-                {refusals.size === 0 ? null : (
-                    <Text size="sm" tone="muted">
-                        {SETTINGS.refusedHint}
-                    </Text>
-                )}
-                <div className="app-row app-row-end">
-                    <Button intent="dismiss" onPress={onDiscard} isDisabled={isSaving}>
-                        {SETTINGS.discard}
-                    </Button>
-                    <Button intent="commit" onPress={onSave} isPending={isSaving}>
-                        {SETTINGS.save}
-                    </Button>
-                </div>
-            </div>
-        </SurfaceCard>
-    </div>
+}) => (
+    <SurfaceCard label={SETTINGS.pendingList} headingLevel={2} fact={SETTINGS.pendingFact}>
+        <div className="app-stack">
+            <DescriptionList
+                layout="columns"
+                isDivided
+                items={[...drafts].map(([key, value]) => {
+                    const refusal = refusals.get(key)
+                    return {
+                        id: key,
+                        term: (
+                            <span className="app-lines">
+                                <span>{keyLabel(key)}</span>
+                                <Text as="span" size="xs" tone="muted" mono>
+                                    {key}
+                                </Text>
+                            </span>
+                        ),
+                        description: (
+                            <span className="app-row">
+                                <Text as="span" size="sm" tone="muted" isSuperseded>
+                                    {formatValue(originalOf(key))}
+                                </Text>
+                                <Text as="span" size="sm" tone="muted">
+                                    →
+                                </Text>
+                                <Text as="span" size="sm" weight="medium">
+                                    {formatValue(value)}
+                                </Text>
+                                {refusal === undefined ? null : <Badge tone="danger">{refusal.code ?? SETTINGS.refusedBadge}</Badge>}
+                            </span>
+                        ),
+                    }
+                })}
+            />
+            {refusals.size === 0 ? null : (
+                <Text size="sm" tone="muted">
+                    {SETTINGS.refusedHint}
+                </Text>
+            )}
+        </div>
+    </SurfaceCard>
 )
 
 /** Route `/settings` · Cài đặt: the harness's ops/*.yaml values, one tab per concern, saved through starci config set. */
@@ -425,14 +446,24 @@ export const SettingsPage = () => {
                 />
             )}
             {drafts.size === 0 ? null : (
-                <PendingChanges
-                    drafts={drafts}
-                    originalOf={originalOf}
-                    refusals={refusals}
-                    isSaving={isSaving}
-                    onDiscard={discard}
-                    onSave={() => void save()}
-                />
+                <>
+                    <PendingChanges drafts={drafts} originalOf={originalOf} refusals={refusals} />
+                    <PinnedActionBar
+                        label={SETTINGS.pendingActions}
+                        visibility="always"
+                        summary={SETTINGS.pending(drafts.size)}
+                        dismiss={
+                            <Button intent="dismiss" onPress={discard} isDisabled={isSaving}>
+                                {SETTINGS.discard}
+                            </Button>
+                        }
+                        commit={
+                            <Button intent="commit" onPress={() => void save()} isPending={isSaving}>
+                                {SETTINGS.save}
+                            </Button>
+                        }
+                    />
+                </>
             )}
         </div>
     )

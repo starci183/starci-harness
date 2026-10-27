@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input, NumberField, Select, TagGroup, Text, Textarea } from "@starci/grammar/core"
+import { Button, Checkbox, Code, Input, NumberField, Select, TagGroup, Text, Textarea } from "@starci/grammar/core"
 import { useState, type ReactNode } from "react"
 import type { ConfigEntry } from "@contract"
 import { EFFORT_OPTIONS, SETTINGS, configFieldLabel } from "../../app/labels"
@@ -18,14 +18,16 @@ export const isStringList = (value: unknown): value is readonly string[] =>
 
 const isEffortKey = (key: string) => /(^|\.)effort$/i.test(key)
 
-/** A field's helper text: its one-line description, then its config key, quiet. */
+/** A field's helper text: its one-line description, then its config key as code. */
 export const helper = (key: string, description?: string): ReactNode =>
     description === undefined ? (
-        key
+        <Code>{key}</Code>
     ) : (
         <span className="app-lines">
             <span>{description}</span>
-            <span>{key}</span>
+            <span>
+                <Code>{key}</Code>
+            </span>
         </span>
     )
 
@@ -43,16 +45,18 @@ interface ListEditorProps {
     readonly emptyText: string
     /** The add Select's placeholder once every pooled value is in the list. */
     readonly exhaustedText?: string
-    /** A control that shares the add control's row (the tier's effort), so both labels sit on one line. */
-    readonly aside?: ReactNode
+    /** The list's order means something (lane steps run in order, tier members break score ties in order): tags reorder. */
+    readonly isOrdered?: boolean
+    /** Inside a table cell the column header names the list, so the add control keeps its label for assistive technology only. */
+    readonly isAddLabelHidden?: boolean
     readonly draft: Draft
 }
 
 /**
- * A list of strings as removable tags, plus one control that adds a value: a Select over the known values when there is a
- * pool, else a text field and an add button. New values go to the end.
+ * A list of strings as removable tags, reorderable when the order matters, plus one control that adds a value: a Select
+ * over the known values when there is a pool, else a text field and an add button. New values go to the end.
  */
-export const ListEditor = ({ configKey, label, items, pool, addLabel, addPlaceholder, emptyText, exhaustedText, aside, draft }: ListEditorProps) => {
+export const ListEditor = ({ configKey, label, items, pool, addLabel, addPlaceholder, emptyText, exhaustedText, isOrdered = false, isAddLabelHidden = false, draft }: ListEditorProps) => {
     const [text, setText] = useState("")
     const error = draft.errorOf(configKey)
     const available = (pool ?? []).filter((item) => !items.includes(item))
@@ -60,64 +64,97 @@ export const ListEditor = ({ configKey, label, items, pool, addLabel, addPlaceho
         const next = value.trim()
         if (next !== "" && !items.includes(next)) draft.set(configKey, [...items, next])
     }
+    const reorder = isOrdered
+        ? {
+              onReorder: (ids: readonly string[]) => draft.set(configKey, [...ids]),
+              reorderInstructions: SETTINGS.reorderInstructions,
+              reorderAnnouncement: SETTINGS.reorderAnnouncement,
+          }
+        : {}
     return (
         <div className="app-stack">
             <TagGroup
                 label={label}
+                size="sm"
                 items={items.map((item) => ({ id: item, label: item }))}
                 onRemove={(ids) => draft.set(configKey, items.filter((item) => !ids.includes(item)))}
                 removeLabel={SETTINGS.removeTag}
+                {...reorder}
                 emptyContent={
                     <Text size="sm" tone="muted">
                         {emptyText}
                     </Text>
                 }
             />
-            <div className="app-tier">
-                {pool === undefined ? (
-                    <div className="app-pair">
-                        <Input
-                            id={`config-add-${configKey}`}
-                            name={`${configKey}-add`}
-                            label={addLabel}
-                            placeholder={addPlaceholder}
-                            value={text}
-                            onValueChange={setText}
-                            isDisabled={draft.isDisabled}
-                            hint={configKey}
-                            {...(error === undefined ? {} : { errorMessage: error, isError: true })}
-                        />
-                        <span className="app-row">
-                            <Button
-                                intent="neutral"
-                                size="sm"
-                                isDisabled={draft.isDisabled || text.trim() === ""}
-                                onPress={() => {
-                                    add(text)
-                                    setText("")
-                                }}
-                            >
-                                {SETTINGS.add}
-                            </Button>
-                        </span>
-                    </div>
-                ) : (
-                    <Select
+            {pool === undefined ? (
+                <div className="app-pair">
+                    <Input
+                        id={`config-add-${configKey}`}
+                        name={`${configKey}-add`}
                         label={addLabel}
-                        placeholder={available.length === 0 ? (exhaustedText ?? addPlaceholder) : addPlaceholder}
-                        options={available.map((item) => ({ id: item, label: item }))}
-                        value={null}
-                        onValueChange={(value) => {
-                            if (value !== null) add(value)
-                        }}
-                        description={configKey}
-                        isDisabled={draft.isDisabled || available.length === 0}
-                        {...(error === undefined ? {} : { errorMessage: error })}
+                        placeholder={addPlaceholder}
+                        value={text}
+                        onValueChange={setText}
+                        isDisabled={draft.isDisabled}
+                        description={<Code>{configKey}</Code>}
+                        {...(error === undefined ? {} : { errorMessage: error, isError: true })}
                     />
-                )}
-                {aside}
-            </div>
+                    <span className="app-row">
+                        <Button
+                            intent="neutral"
+                            size="sm"
+                            isDisabled={draft.isDisabled || text.trim() === ""}
+                            onPress={() => {
+                                add(text)
+                                setText("")
+                            }}
+                        >
+                            {SETTINGS.add}
+                        </Button>
+                    </span>
+                </div>
+            ) : (
+                <Select
+                    label={addLabel}
+                    isLabelHidden={isAddLabelHidden}
+                    placeholder={available.length === 0 ? (exhaustedText ?? addPlaceholder) : addPlaceholder}
+                    options={available.map((item) => ({ id: item, label: item }))}
+                    value={null}
+                    onValueChange={(value) => {
+                        if (value !== null) add(value)
+                    }}
+                    isDisabled={draft.isDisabled || available.length === 0}
+                    {...(isAddLabelHidden ? {} : { description: <Code>{configKey}</Code> })}
+                    {...(error === undefined ? {} : { errorMessage: error })}
+                />
+            )}
         </div>
+    )
+}
+
+/** The effort of a key as a Select over the known levels. */
+export const EffortSelect = ({ configKey, label, isLabelHidden = false, description, draft }: {
+    readonly configKey: string
+    readonly label: string
+    readonly isLabelHidden?: boolean
+    readonly description?: ReactNode
+    readonly draft: Draft
+}) => {
+    const value = draft.valueOf(configKey)
+    const error = draft.errorOf(configKey)
+    return (
+        <Select
+            label={label}
+            isLabelHidden={isLabelHidden}
+            options={EFFORT_OPTIONS}
+            value={typeof value === "string" ? value : null}
+            onValueChange={(next) => {
+                if (next !== null) draft.set(configKey, next)
+            }}
+            isDisabled={draft.isDisabled}
+            {...(description === undefined ? {} : { description })}
+            {...(error === undefined ? {} : { errorMessage: error })}
+        />
     )
 }
 
@@ -148,16 +185,7 @@ export const FieldEditor = ({ entry, draft }: { readonly entry: ConfigEntry; rea
         return <Checkbox {...field} isSelected={value === true} onSelectedChange={(next) => draft.set(entry.key, next)} />
     }
     if (typeof entry.value === "string" && isEffortKey(entry.key)) {
-        return (
-            <Select
-                {...field}
-                options={EFFORT_OPTIONS}
-                value={String(value)}
-                onValueChange={(next) => {
-                    if (next !== null) draft.set(entry.key, next)
-                }}
-            />
-        )
+        return <EffortSelect configKey={entry.key} label={label} description={field.description} draft={draft} />
     }
     if (typeof entry.value === "string") {
         return (
@@ -165,7 +193,7 @@ export const FieldEditor = ({ entry, draft }: { readonly entry: ConfigEntry; rea
                 id={`config-${entry.key}`}
                 name={entry.key}
                 label={label}
-                hint={field.description}
+                description={field.description}
                 isDisabled={draft.isDisabled}
                 value={String(value)}
                 onValueChange={(next) => draft.set(entry.key, next)}

@@ -1,5 +1,5 @@
 import { PlusIcon } from "@heroicons/react/20/solid"
-import { Button, Icon, SectionHeader, Tooltip } from "@starci/grammar/core"
+import { Button, Icon, SectionHeader } from "@starci/grammar/core"
 import type { Overview } from "@contract"
 import { OVERVIEW } from "../../app/labels"
 import { overviewCounts } from "./format"
@@ -17,11 +17,14 @@ export const OverviewHeader = ({ overview, isLoading }: OverviewHeaderProps) => 
         description={overview === undefined ? undefined : overviewCounts(overview)}
         isSkeleton={isLoading}
         action={
-            <Tooltip content={OVERVIEW.newWorkflowHint}>
-                <Button intent="commit" isDisabled startContent={<Icon source={PlusIcon} usage="leading" />}>
-                    {OVERVIEW.newWorkflow}
-                </Button>
-            </Tooltip>
+            <Button
+                intent="commit"
+                isDisabled
+                disabledReason={OVERVIEW.newWorkflowReason}
+                startContent={<Icon source={PlusIcon} usage="leading" />}
+            >
+                {OVERVIEW.newWorkflow}
+            </Button>
         }
     />
 )

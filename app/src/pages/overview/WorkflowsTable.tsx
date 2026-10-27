@@ -1,22 +1,26 @@
 import { QueueListIcon } from "@heroicons/react/24/outline"
-import { Badge, DataTable, type DataTableColumn, EmptyNotice, Link, Progress, SurfaceCard, Text } from "@starci/grammar/core"
+import { Badge, DataTable, type DataTableColumn, EmptyNotice, Progress, StatusDot, SurfaceCard, Text } from "@starci/grammar/core"
 import type { WorkflowRow } from "@contract"
 import { AWAITING_DECISION, COMMON, OVERVIEW, WORKFLOW_STATUS } from "../../app/labels"
 import { progressPercent, workflowPath } from "./format"
 
-/** The table keys rows by `project/workflow`, since a workflow id is unique only inside its project. */
+/** The table keys rows by `project/workflow`, since a workflow id is unique only inside its project; a row opens its workflow. */
 interface TableRow {
     readonly id: string
+    readonly href: string
     readonly workflow: WorkflowRow
 }
 
-const COLUMNS: readonly DataTableColumn[] = [
+/** Below the width all six columns need, the `low` columns fold under the workflow cell as stacked secondary lines. */
+const COLLAPSE_BELOW = 900
+
+const COLUMNS: readonly DataTableColumn<TableRow>[] = [
     { id: "workflow", label: OVERVIEW.columns.workflow, isRowHeader: true },
-    { id: "project", label: OVERVIEW.columns.project },
+    { id: "project", label: OVERVIEW.columns.project, priority: "low" },
     { id: "status", label: OVERVIEW.columns.status },
     { id: "progress", label: OVERVIEW.columns.progress },
-    { id: "live", label: OVERVIEW.columns.live, align: "end" },
-    { id: "kernel", label: OVERVIEW.columns.kernel },
+    { id: "live", label: OVERVIEW.columns.live, align: "end", priority: "low" },
+    { id: "kernel", label: OVERVIEW.columns.kernel, priority: "low" },
 ]
 
 const StatusCell = ({ row }: { readonly row: WorkflowRow }) => {
@@ -24,9 +28,9 @@ const StatusCell = ({ row }: { readonly row: WorkflowRow }) => {
     return (
         <div className="app-pair">
             <span className="app-row">
-                <Badge tone={status.tone} isDot>
+                <StatusDot tone={status.tone} size="sm">
                     {status.label}
-                </Badge>
+                </StatusDot>
                 {row.awaitingOwner ? <Badge tone={AWAITING_DECISION.tone}>{AWAITING_DECISION.label}</Badge> : null}
             </span>
             {row.reason === null ? null : (
@@ -43,16 +47,16 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRow; readonly columnId:
         case "workflow":
             return (
                 <div className="app-pair">
-                    <Link href={workflowPath(row)} visited="uniform">
+                    <Text size="sm" weight="medium" mono>
                         {row.id}
-                    </Link>
+                    </Text>
                     <Text size="xs" tone="muted" overflow="truncate">
                         {row.goalSummary}
                     </Text>
                 </div>
             )
         case "project":
-            return <Text size="sm">{row.project}</Text>
+            return <Text size="sm" mono>{row.project}</Text>
         case "status":
             return <StatusCell row={row} />
         case "progress":
@@ -65,14 +69,14 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRow; readonly columnId:
                             valueText={OVERVIEW.progressValue(row.done, row.total)}
                         />
                     </span>
-                    <Text size="xs" tone="muted">{`${row.done}/${row.total}`}</Text>
+                    <Text size="xs" tone="muted" tabular>{`${row.done}/${row.total}`}</Text>
                 </span>
             )
         case "live":
-            return <Text size="sm">{row.status === "defined" ? COMMON.dash : `${row.liveOps} / ${row.parallelCap}`}</Text>
+            return <Text size="sm" tabular>{row.status === "defined" ? COMMON.dash : `${row.liveOps} / ${row.parallelCap}`}</Text>
         case "kernel":
             return (
-                <Text size="xs" tone="muted">
+                <Text size="xs" tone="muted" mono>
                     {row.kernel === null ? COMMON.dash : row.kernel.model}
                 </Text>
             )
@@ -86,9 +90,9 @@ interface WorkflowsTableProps {
     readonly isLoading: boolean
 }
 
-/** Every workflow of every project; the name links to its detail screen. */
+/** Every workflow of every project; a row opens its detail screen. */
 export const WorkflowsTable = ({ workflows, isLoading }: WorkflowsTableProps) => {
-    const rows: readonly TableRow[] = workflows.map(workflow => ({ id: `${workflow.project}/${workflow.id}`, workflow }))
+    const rows: readonly TableRow[] = workflows.map(workflow => ({ id: `${workflow.project}/${workflow.id}`, href: workflowPath(workflow), workflow }))
     return (
         <SurfaceCard label={OVERVIEW.workflowsTitle} headingLevel={2} fact={OVERVIEW.workflowsFact}>
             <DataTable<TableRow>
@@ -98,6 +102,7 @@ export const WorkflowsTable = ({ workflows, isLoading }: WorkflowsTableProps) =>
                 renderCell={(row, columnId) => <Cell row={row.workflow} columnId={columnId} />}
                 isLoading={isLoading}
                 loadingRows={4}
+                collapseBelow={COLLAPSE_BELOW}
                 emptyContent={<EmptyNotice iconSource={QueueListIcon} message={OVERVIEW.noWorkflows} description={OVERVIEW.noWorkflowsHint} />}
             />
         </SurfaceCard>

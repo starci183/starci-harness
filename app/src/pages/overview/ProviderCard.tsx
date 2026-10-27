@@ -1,4 +1,4 @@
-import { Badge, Meter, RelativeTime, SurfaceCard, Text } from "@starci/grammar/core"
+import { Meter, RelativeTime, StatusDot, SurfaceCard, Text } from "@starci/grammar/core"
 import type { ProviderStatus } from "@contract"
 import { COMMON, LOCALE, OVERVIEW, PROVIDER_NAME } from "../../app/labels"
 import { circuitView, nextReset, peakUsage, runningLine, windowsLine } from "./format"
@@ -16,9 +16,9 @@ export const ProviderCard = ({ provider }: { readonly provider: ProviderStatus }
             headingLevel={3}
             height="fill"
             labelEnd={
-                <Badge tone={circuit.tone} isDot>
+                <StatusDot tone={circuit.tone} size="sm">
                     {circuit.label}
-                </Badge>
+                </StatusDot>
             }
         >
             <div className="app-pair">

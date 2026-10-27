@@ -4,10 +4,10 @@
  *
  * Tones: `danger` is reserved for a real failure (a failed or lost Op, a red check, an absent Supervisor, an open
  * circuit). Work in progress is `accent`; something that needs a look is `warning`; finished is `success`; idle, waiting
- * and intentionally stopped are `neutral`. A live state carries the dot, a flag does not, so two badges side by side
- * differ in shape as well as hue.
+ * and intentionally stopped are `neutral`. A state is a `StatusDot` chip (a dot and its words), a flag is a `Badge`, so
+ * two side by side differ in shape as well as hue. Every label starts with an uppercase letter.
  */
-import type { BadgeTone, FlowGraphTone, PresentationState } from "@starci/grammar/core"
+import type { FlowGraphTone, PresentationState, StatusDotTone } from "@starci/grammar/core"
 import type {
     CheckState,
     CircuitState,
@@ -23,7 +23,7 @@ export const LOCALE = "vi"
 
 export interface StatusLabel {
     readonly label: string
-    readonly tone: BadgeTone
+    readonly tone: StatusDotTone
 }
 
 /* ------------------------------------------------------------------ navigation and page titles */
@@ -55,7 +55,7 @@ export const WORKFLOW_STATUS: Readonly<Record<WorkflowStatus, StatusLabel>> = {
     done: { label: "Hoàn tất", tone: "success" },
 }
 
-/** The flag a workflow carries while an owner decision on it is open. A flag, not a state: no dot. */
+/** The flag a workflow carries while an owner decision on it is open. A flag, not a state: a Badge, no dot. */
 export const AWAITING_DECISION: StatusLabel = { label: "Cần quyết định", tone: "accent" }
 
 /* ------------------------------------------------------------------ Op (graph node) state */
@@ -67,7 +67,7 @@ export interface NodeStateLabel extends StatusLabel {
     readonly isPending: boolean
 }
 
-const node = (label: string, tone: BadgeTone, graphTone: FlowGraphTone, presentation: PresentationState, isPending = false): NodeStateLabel => ({
+const node = (label: string, tone: StatusDotTone, graphTone: FlowGraphTone, presentation: PresentationState, isPending = false): NodeStateLabel => ({
     label,
     tone,
     graphTone,
@@ -110,7 +110,7 @@ export const SEAT_LIVENESS: Readonly<Record<Liveness, StatusLabel>> = {
     unknown: { label: "Chưa rõ", tone: "neutral" },
 }
 
-/** A project's Supervisor as the sidebar dot announces it; `null` is a project with no Supervisor seat. */
+/** A project's Supervisor as the sidebar dot names it (accessible name and tooltip); `null` is a project with no Supervisor seat. */
 export const supervisorStatus = (liveness: Liveness | null): StatusLabel => {
     switch (liveness) {
         case null:
@@ -205,7 +205,7 @@ export const OVERVIEW = {
     title: "Tổng quan",
     counts: (projects: number, active: number, live: number) => `${projects} dự án · ${active} workflow đang hoạt động · ${live} Op đang chạy`,
     newWorkflow: "Workflow mới",
-    newWorkflowHint: "Tạo workflow từ app sẽ có ở bản sau; hiện dùng starci workflow trong terminal.",
+    newWorkflowReason: "Tạo workflow từ app sẽ có ở bản sau; hiện dùng starci workflow trong terminal.",
     loadError: "Không tải được tổng quan",
     staleSuffix: "Đang hiện số liệu lần trước.",
     providersRegion: "Hạn mức nhà cung cấp",
@@ -258,7 +258,7 @@ export const WORKFLOW = {
     stopHard: "Dừng ngay",
     stopHardHint: "Đóng các Op đang chạy; công việc chưa nộp phải chạy lại.",
     graphTitle: "Graph theo đợt",
-    graphLabel: (id: string, waves: number) => `Graph của ${id}, ${waves} đợt`,
+    graphLabel: (id: string, waves: number) => `Graph của ${id}, ${waves} đợt, từ trên xuống`,
     graphEmpty: "Graph chưa có Op nào.",
     legend: "Chú giải trạng thái",
     legendSide: "BE / FE: phía của Op",
@@ -266,9 +266,8 @@ export const WORKFLOW = {
     statQueued: "Hàng chờ",
     statWaves: "Số đợt",
     statDone: "Hoàn tất",
-    wavesList: "Các đợt, từ trên xuống",
     wave: (n: number, count: number) => `Đợt ${n} · ${count} Op`,
-    selectHint: "Chọn một Op trên graph để xem chi tiết; Op có task mở được trang task.",
+    selectHint: "Op có task mở trang task khi bấm; chọn Op chưa có task để xem chi tiết.",
     nodeTitle: (label: string, title: string) => `${label} · ${title}`,
     member: "Member",
     side: "Phía",
@@ -308,7 +307,6 @@ export const TASK = {
     noChecks: "Chưa có check nào.",
     checkColumns: { name: "Check", tier: "Tier", state: "Trạng thái", detail: "Chi tiết" },
     terminal: "Terminal",
-    terminalTail: "Đuôi terminal",
     noTerminal: "Terminal chưa có dòng nào.",
     route: "Vì sao chọn model này",
     routeFact: (tier: string) => `Route tier ${tier}`,
@@ -363,7 +361,13 @@ export const SETTINGS = {
     noMoreSteps: "Đã có mọi bước đã biết",
     removeTag: (label: string) => `Bỏ ${label}`,
     steps: "Các bước",
-    tierKeys: (members: string, effort: string) => `${members} · ${effort}`,
+    tier: "Tier",
+    tierEffort: (tier: string) => `Effort của tier ${tier}`,
+    tierMembers: (tier: string) => `Model của tier ${tier}`,
+    tierAdd: (tier: string) => `Thêm model vào tier ${tier}`,
+    noTiers: "Chưa có tier nào trong routing.",
+    reorderInstructions: "Kéo, hoặc Alt và phím mũi tên, để đổi thứ tự.",
+    reorderAnnouncement: (label: string, position: number, total: number) => `${label} ở vị trí ${position} trên ${total}`,
     noMembers: "Chưa có model nào; tier này không nhận Op.",
     effort: "Effort",
     addStep: "Thêm bước",
@@ -375,6 +379,8 @@ export const SETTINGS = {
     jsonInvalid: "JSON không hợp lệ; giá trị này chưa vào danh sách lưu.",
     pending: (n: number) => `${n} thay đổi chưa lưu`,
     pendingFact: "Giá trị cũ → giá trị mới",
+    pendingList: "Thay đổi chưa lưu",
+    pendingActions: "Lưu hoặc bỏ thay đổi",
     refusedHint: "Lý do từ chối hiện dưới ô của từng giá trị.",
     refusedBadge: "Bị từ chối",
     discard: "Bỏ thay đổi",

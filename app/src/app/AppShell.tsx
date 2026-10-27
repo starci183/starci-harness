@@ -7,11 +7,11 @@ import {
     RectangleGroupIcon,
 } from "@heroicons/react/24/outline"
 import {
-    Badge,
     CoreGrammarRoot,
     IdentityLockup,
     PageContainer,
     Sidebar,
+    StatusDot,
     Text,
     WorkspaceShell,
     type SidebarGroup,
@@ -94,9 +94,14 @@ export const AppShell = () => {
                         id: `project:${project.key}`,
                         label: project.name,
                         source: FolderIcon,
-                        // A status dot only. Its words (tooltip and accessible name) wait on Grammar gap G1: a Sidebar
-                        // item `status` slot; the item's name is fixed to its label today.
-                        trailing: <Badge isDot tone={supervisor.tone} />,
+                        // The Supervisor as a dot: its words are the dot's name and tooltip; it echoes while alive.
+                        trailing: (
+                            <StatusDot
+                                tone={supervisor.tone}
+                                aria-label={supervisor.label}
+                                echo={project.supervisor?.liveness === "alive"}
+                            />
+                        ),
                     }
                 }),
             },

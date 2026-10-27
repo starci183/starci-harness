@@ -2,9 +2,9 @@ import {
     Alert,
     AlertDialog,
     Avatar,
-    Badge,
     Breadcrumbs,
     Button,
+    Code,
     DescriptionList,
     Dialog,
     EmptyNotice,
@@ -14,21 +14,24 @@ import {
     ListRow,
     RadioGroup,
     SectionHeader,
+    StatusDot,
     SurfaceCard,
     SurfaceListCard,
     Text,
     Textarea,
+    layeredPositions,
     type FlowGraphEdge,
+    type FlowGraphLayerHeader,
     type FlowGraphNode,
 } from "@starci/grammar/core"
 import { ExclamationTriangleIcon, RectangleGroupIcon } from "@heroicons/react/24/outline"
-import { useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useEffect, useMemo, useState } from "react"
+import { useParams } from "react-router"
 import { useAction, useWorkflow, type ActionRequest } from "../../api/client"
 import type { ActionResult, GraphNode, WorkflowDetail } from "@contract"
 import { COMMON, NAV, NODE_LEGEND, NODE_STATE, SEAT_LIVENESS, SEAT_ROLE, WORKFLOW, WORKFLOW_STATUS } from "../../app/labels"
+import { KeyList } from "../../app/KeyList"
 import { elapsedText, memberText, taskPath } from "./state"
-import { groupByWave, waveOf, wavePositions } from "./waves"
 
 /** Where this workflow sits: the overview, its project, the workflow. */
 const Trail = ({ project, workflow }: { readonly project: string; readonly workflow: string }) => (
@@ -44,7 +47,7 @@ const Trail = ({ project, workflow }: { readonly project: string; readonly workf
 
 type WorkflowVerb = "pause" | "resume" | "stop-graceful" | "stop-hard"
 
-/** Route `/w/:project/:workflow`: one workflow's header, its DAG in waves, the flow check and the seats. */
+/** Route `/w/:project/:workflow`: one workflow's header, its DAG in waves top to bottom, the flow check and the seats. */
 export const WorkflowPage = () => {
     const params = useParams()
     const project = params["project"] ?? ""
@@ -70,7 +73,7 @@ export const WorkflowPage = () => {
                     {trail}
                     <SectionHeader level={1} title={id} description={COMMON.dash} isSkeleton />
                 </div>
-                <FlowGraph label={WORKFLOW.graphTitle} nodes={[]} edges={[]} layout="manual" height="lg" isLoading />
+                <FlowGraph label={WORKFLOW.graphTitle} nodes={[]} edges={[]} direction="TB" height="lg" isLoading />
             </div>
         )
     }
@@ -103,9 +106,9 @@ const WorkflowView = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                     title={workflow.id}
                     description={
                         <span className="app-row">
-                            <Badge tone={status.tone} isDot>
+                            <StatusDot tone={status.tone} size="sm">
                                 {status.label}
-                            </Badge>
+                            </StatusDot>
                             <Text as="span" size="sm" tone="muted">
                                 {WORKFLOW.versions(workflow.goal.version, workflow.graphVersion, done, workflow.nodes.length)}
                             </Text>
@@ -220,17 +223,43 @@ const nodeDescription = (node: GraphNode, now: number): string => {
     return parts.join(" · ")
 }
 
+/**
+ * Graph units the layout's node centres leave out: half a node on each side across, plus the lane headers on the left
+ * (about 440), and half a node above and below (about 80).
+ */
+const GRAPH_MARGIN = { across: 440, along: 80 } as const
+const GRAPH_HEIGHT = { min: 320, max: 840 } as const
+
+/**
+ * The canvas takes the graph's own aspect at the card's width, so the fitted graph fills it at either window size
+ * instead of floating in empty space above and below.
+ */
+const graphHeight = (width: number, extent: { readonly across: number; readonly along: number }): number => {
+    const height = (width * (extent.along + GRAPH_MARGIN.along)) / (extent.across + GRAPH_MARGIN.across)
+    return Math.round(Math.min(GRAPH_HEIGHT.max, Math.max(GRAPH_HEIGHT.min, height)))
+}
+
+/** The inline size of an element, followed as it resizes. */
+const useInlineSize = (): readonly [(element: HTMLDivElement | null) => void, number] => {
+    const [size, setSize] = useState(0)
+    const [element, setElement] = useState<HTMLDivElement | null>(null)
+    useEffect(() => {
+        if (element === null) return
+        const observer = new ResizeObserver(([entry]) => setSize(entry?.contentRect.width ?? 0))
+        observer.observe(element)
+        return () => observer.disconnect()
+    }, [element])
+    return [setElement, size]
+}
+
 const WaveGraph = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
-    const navigate = useNavigate()
     const [selected, setSelected] = useState<string | null>(null)
-    const { groups, nodes, edges } = useMemo(() => {
+    const [frame, frameWidth] = useInlineSize()
+    const { headers, nodes, edges, extent } = useMemo(() => {
         const now = Date.now()
-        const grouped = groupByWave(workflow.nodes, waveOf(workflow.nodes))
-        const positions = wavePositions(grouped)
         const keys = new Set(workflow.nodes.map((node) => node.key))
         const graphNodes: FlowGraphNode[] = workflow.nodes.map((node) => {
             const state = NODE_STATE[node.state]
-            const position = positions.get(node.key)
             return {
                 id: node.key,
                 label: node.title,
@@ -239,7 +268,7 @@ const WaveGraph = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                 size: "sm",
                 isPlaceholder: state.isPending,
                 ...(node.side === null ? {} : { count: node.side.toUpperCase() }),
-                ...(position === undefined ? {} : { position }),
+                ...(node.task === null ? {} : { href: taskPath(workflow.project, node.task) }),
             }
         })
         const graphEdges: FlowGraphEdge[] = workflow.nodes.flatMap((node) =>
@@ -252,8 +281,16 @@ const WaveGraph = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                     isPlaceholder: NODE_STATE[node.state].isPending,
                 })),
         )
-        return { groups: grouped, nodes: graphNodes, edges: graphEdges }
-    }, [workflow.nodes])
+        // A wave is a layer of the Grammar's layered layout: one more than the node's deepest dependency.
+        const layout = layeredPositions(graphNodes, graphEdges, "TB")
+        const sizes: number[] = []
+        for (const layer of layout.layers.values()) sizes[layer] = (sizes[layer] ?? 0) + 1
+        const layerHeaders: FlowGraphLayerHeader[] = Array.from(sizes, (count, layer) => ({ at: layer, label: WORKFLOW.wave(layer + 1, count) }))
+        const points = [...layout.positions.values()]
+        const span = (values: readonly number[]) => (values.length === 0 ? 0 : Math.max(...values) - Math.min(...values))
+        const graphExtent = { across: span(points.map((point) => point.x)), along: span(points.map((point) => point.y)) }
+        return { headers: layerHeaders, nodes: graphNodes, edges: graphEdges, extent: graphExtent }
+    }, [workflow.nodes, workflow.project])
     const selectedNode = workflow.nodes.find((node) => node.key === selected) ?? null
     const done = workflow.nodes.filter((node) => node.state === "done").length
 
@@ -266,16 +303,16 @@ const WaveGraph = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                     items={[
                         { id: "live", term: WORKFLOW.statLive, description: String(workflow.parallel.live), unit: `/ ${workflow.parallel.cap}` },
                         { id: "queued", term: WORKFLOW.statQueued, description: String(workflow.parallel.queued) },
-                        { id: "waves", term: WORKFLOW.statWaves, description: String(groups.length) },
+                        { id: "waves", term: WORKFLOW.statWaves, description: String(headers.length) },
                         { id: "done", term: WORKFLOW.statDone, description: String(done), unit: `/ ${workflow.nodes.length}` },
                     ]}
                 />
                 <ul className="app-row app-plain-list" aria-label={WORKFLOW.legend}>
                     {NODE_LEGEND.map((entry) => (
                         <li key={entry.label}>
-                            <Badge tone={entry.tone} isDot>
+                            <StatusDot tone={entry.tone} size="sm">
                                 {entry.label}
-                            </Badge>
+                            </StatusDot>
                         </li>
                     ))}
                     <li>
@@ -284,38 +321,33 @@ const WaveGraph = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                         </Text>
                     </li>
                 </ul>
-                <FlowGraph
-                    label={WORKFLOW.graphLabel(workflow.id, groups.length)}
-                    nodes={nodes}
-                    edges={edges}
-                    layout="manual"
-                    height="lg"
-                    selectedId={selected}
-                    onSelect={setSelected}
-                    emptyLabel={WORKFLOW.graphEmpty}
-                />
-                <ol className="app-row app-plain-list" aria-label={WORKFLOW.wavesList}>
-                    {groups.map((group, wave) => (
-                        <li key={wave}>
-                            <Text as="span" size="xs" tone="muted">
-                                {WORKFLOW.wave(wave + 1, group.length)}
-                            </Text>
-                        </li>
-                    ))}
-                </ol>
+                <div ref={frame}>
+                    <FlowGraph
+                        label={WORKFLOW.graphLabel(workflow.id, headers.length)}
+                        nodes={nodes}
+                        edges={edges}
+                        layout="layered"
+                        direction="TB"
+                        headers={headers}
+                        height={graphHeight(frameWidth, extent)}
+                        selectedId={selected}
+                        onSelect={setSelected}
+                        emptyLabel={WORKFLOW.graphEmpty}
+                    />
+                </div>
                 {selectedNode === null ? (
                     <Text size="sm" tone="muted">
                         {WORKFLOW.selectHint}
                     </Text>
                 ) : (
-                    <NodeDetail node={selectedNode} onOpen={(task) => void navigate(taskPath(workflow.project, task))} />
+                    <NodeDetail node={selectedNode} project={workflow.project} />
                 )}
             </div>
         </SurfaceCard>
     )
 }
 
-const NodeDetail = ({ node, onOpen }: { readonly node: GraphNode; readonly onOpen: (task: string) => void }) => {
+const NodeDetail = ({ node, project }: { readonly node: GraphNode; readonly project: string }) => {
     const state = NODE_STATE[node.state]
     const task = node.task
     return (
@@ -324,9 +356,9 @@ const NodeDetail = ({ node, onOpen }: { readonly node: GraphNode; readonly onOpe
             headingLevel={3}
             state={state.presentation}
             labelEnd={
-                <Badge tone={state.tone} isDot>
+                <StatusDot tone={state.tone} size="sm">
                     {state.label}
-                </Badge>
+                </StatusDot>
             }
         >
             <div className="app-stack">
@@ -335,8 +367,8 @@ const NodeDetail = ({ node, onOpen }: { readonly node: GraphNode; readonly onOpe
                     items={[
                         { id: "member", term: WORKFLOW.member, description: node.member === null ? COMMON.unassigned : memberText(node.member) },
                         { id: "side", term: WORKFLOW.side, description: node.side === null ? COMMON.shared : node.side.toUpperCase() },
-                        { id: "deps", term: WORKFLOW.deps, description: node.dependsOn.length === 0 ? COMMON.none : node.dependsOn.join(", ") },
-                        { id: "record", term: WORKFLOW.record, description: node.record ?? COMMON.none },
+                        { id: "deps", term: WORKFLOW.deps, description: <KeyList keys={node.dependsOn} /> },
+                        { id: "record", term: WORKFLOW.record, description: node.record === null ? COMMON.none : <Code>{node.record}</Code> },
                         ...(node.why === null ? [] : [{ id: "why", term: WORKFLOW.why, description: node.why }]),
                     ]}
                 />
@@ -346,7 +378,7 @@ const NodeDetail = ({ node, onOpen }: { readonly node: GraphNode; readonly onOpe
                     </Text>
                 ) : (
                     <span className="app-row">
-                        <Button intent="alternative" onPress={() => onOpen(task)}>
+                        <Button intent="alternative" href={taskPath(project, task)}>
                             {`${WORKFLOW.openTask} ${task}`}
                         </Button>
                     </span>
@@ -380,7 +412,6 @@ const FlowPanel = ({ workflow }: { readonly workflow: WorkflowDetail }) => (
 )
 
 const SeatsPanel = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
-    const navigate = useNavigate()
     return (
         <SurfaceListCard
             label={WORKFLOW.seatsTitle}
@@ -402,13 +433,13 @@ const SeatsPanel = ({ workflow }: { readonly workflow: WorkflowDetail }) => {
                         title={`${SEAT_ROLE[seat.role]} · ${seat.title.replace(/^\[[^\]]+\]\s*/, "")}`}
                         description={memberText(seat.member)}
                         badges={
-                            <Badge tone={liveness.tone} isDot>
+                            <StatusDot tone={liveness.tone} size="sm">
                                 {liveness.label}
-                            </Badge>
+                            </StatusDot>
                         }
                         actions={
                             task === null ? undefined : (
-                                <Button intent="neutral" size="sm" onPress={() => void navigate(taskPath(workflow.project, task))}>
+                                <Button intent="neutral" size="sm" href={taskPath(workflow.project, task)}>
                                     {WORKFLOW.openTask}
                                 </Button>
                             )

@@ -60,10 +60,6 @@ body,
     min-inline-size: 0;
 }
 
-.app-row-end {
-    justify-content: flex-end;
-}
-
 .app-plain-list {
     list-style: none;
     margin: 0;
@@ -93,20 +89,6 @@ body,
     align-items: start;
 }
 
-/* A settings row: the members editor beside the effort select. */
-.app-tier {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
-    gap: var(--grammar-section-gap) var(--grammar-region-gap);
-    align-items: start;
-}
-
-@media (max-width: 48rem) {
-    .app-tier {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
 .app-sidebar-island {
     height: 100%;
     display: flex;
@@ -116,10 +98,6 @@ body,
 .app-cell-progress {
     inline-size: 7.5rem;
     flex-shrink: 0;
-}
-
-.app-terminal {
-    max-block-size: 24rem;
 }
 
 .app-connect {
@@ -135,11 +113,4 @@ body,
     display: flex;
     flex-direction: column;
     min-inline-size: 0;
-}
-
-/* The pending-changes bar stays at the bottom of the scroll area while there are changes. */
-.app-sticky-end {
-    position: sticky;
-    inset-block-end: var(--grammar-section-gap);
-    z-index: 1;
 }

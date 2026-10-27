@@ -2,25 +2,26 @@ import {
     Alert,
     Badge,
     Breadcrumbs,
+    Code,
     DataTable,
     DescriptionList,
     EmptyNotice,
-    FencedCodeBlock,
     PrimaryRailLayout,
     SectionHeader,
+    StatusDot,
     SurfaceCard,
     TagGroup,
+    Terminal,
     Text,
     Timeline,
-    VerticalScrollRegion,
     type DataTableColumn,
     type PresentationState,
 } from "@starci/grammar/core"
 import { CommandLineIcon } from "@heroicons/react/24/outline"
-import { useEffect, useRef } from "react"
 import { useParams } from "react-router"
 import { useTask } from "../../api/client"
 import type { Check, TaskDetail } from "@contract"
+import { KeyList } from "../../app/KeyList"
 import { CHECK_STATE, COMMON, LOCALE, NAV, NODE_STATE, TASK } from "../../app/labels"
 import { elapsedText, memberText, workflowPath } from "../workflow/state"
 
@@ -110,12 +111,17 @@ const TaskView = ({ task }: { readonly task: TaskDetail }) => {
                     title={TASK.title(task.label, task.title)}
                     description={
                         <span className="app-row">
-                            <Badge tone={state.tone} isDot>
+                            <StatusDot tone={state.tone} size="sm">
                                 {state.label}
-                            </Badge>
-                            <Text as="span" size="sm" tone="muted">
-                                {isLive && latest !== undefined ? `${task.id} · ${elapsedText(latest.at)}` : task.id}
+                            </StatusDot>
+                            <Text as="span" size="sm" tone="muted" mono>
+                                {task.id}
                             </Text>
+                            {isLive && latest !== undefined ? (
+                                <Text as="span" size="sm" tone="muted" tabular>
+                                    {elapsedText(latest.at)}
+                                </Text>
+                            ) : null}
                         </span>
                     }
                 />
@@ -157,9 +163,9 @@ const ContractPanel = ({ task }: { readonly task: TaskDetail }) => (
             <DescriptionList
                 isDivided
                 items={[
-                    { id: "deps", term: TASK.deps, description: task.contract.dependsOn.length === 0 ? COMMON.none : task.contract.dependsOn.join(", ") },
-                    { id: "record", term: TASK.record, description: task.contract.record ?? COMMON.none },
-                    { id: "step", term: TASK.step, description: task.contract.step ?? COMMON.none },
+                    { id: "deps", term: TASK.deps, description: <KeyList keys={task.contract.dependsOn} /> },
+                    { id: "record", term: TASK.record, description: task.contract.record === null ? COMMON.none : <Code>{task.contract.record}</Code> },
+                    { id: "step", term: TASK.step, description: task.contract.step === null ? COMMON.none : <Code>{task.contract.step}</Code> },
                 ]}
             />
         </div>
@@ -180,14 +186,14 @@ const ChecksPanel = ({ task }: { readonly task: TaskDetail }) => {
                     </Text>
                 }
                 renderCell={(row, columnId) => {
-                    if (columnId === "name") return <Text size="sm">{row.name}</Text>
+                    if (columnId === "name") return <Text size="sm" mono>{row.name}</Text>
                     if (columnId === "tier") return <Badge tone="neutral">{row.tier}</Badge>
                     if (columnId === "state") {
                         const check = CHECK_STATE[row.state]
                         return (
-                            <Badge tone={check.tone} isDot>
+                            <StatusDot tone={check.tone} size="sm">
                                 {check.label}
-                            </Badge>
+                            </StatusDot>
                         )
                     }
                     return (
@@ -202,12 +208,6 @@ const ChecksPanel = ({ task }: { readonly task: TaskDetail }) => {
 }
 
 const TerminalPanel = ({ task }: { readonly task: TaskDetail }) => {
-    const scroller = useRef<HTMLDivElement>(null)
-    const tail = task.terminalTail.join("\n")
-    useEffect(() => {
-        const element = scroller.current
-        if (element !== null) element.scrollTop = element.scrollHeight
-    }, [tail])
     const latest = task.attempts.at(-1)
     const fact = [latest === undefined ? null : memberText(latest.member), task.terminal].filter((part) => part !== null).join(" · ")
 
@@ -218,9 +218,7 @@ const TerminalPanel = ({ task }: { readonly task: TaskDetail }) => {
                     {TASK.noTerminal}
                 </Text>
             ) : (
-                <VerticalScrollRegion ref={scroller} className="app-terminal" isScrollable aria-label={TASK.terminalTail} hideScrollBar={false}>
-                    <FencedCodeBlock label={TASK.terminalTail} code={tail} />
-                </VerticalScrollRegion>
+                <Terminal lines={task.terminalTail} label={TASK.terminal} />
             )}
         </SurfaceCard>
     )
