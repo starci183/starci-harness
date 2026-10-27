@@ -1,0 +1,68 @@
+{
+  "name": "@starci/ai-router",
+  "version": "0.1.0",
+  "description": "A zero-dependency pool router for OpenAI-compatible APIs: many keys, many models and many providers behind one chat, stream and embeddings call, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry.",
+  "keywords": [
+    "ai",
+    "llm",
+    "openai",
+    "openai-compatible",
+    "router",
+    "load-balancer",
+    "api-keys",
+    "failover",
+    "circuit-breaker",
+    "rate-limit",
+    "streaming"
+  ],
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/ai-router#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/ai-router"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist').filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/(from \\\"\\.\\/[\\w-]+)\\.ts\\\"/g, '$1.js\\\"'))\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "npm run typecheck && npm run lint && node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-lines=90 \"test/**/*.test.ts\"",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
+  }
+}
