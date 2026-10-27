@@ -92,22 +92,11 @@ the variant from the declared intent and the placement it reads from context.
 | rank in its decision | next, alternative, way-out | whether it is the decision's commit |
 | step (destructive only) | entry (opens the confirm, or removes an unsubmitted row), confirm (the final irreversible press) | soft or solid danger |
 
-| Facts | Intent |
-| --- | --- |
-| rank next, consequence neutral or negative, the view's decision | `commit` |
-| a real alternative in the same decision (Reject beside Approve) | `alternative` |
-| consequence none (Cancel, Close, Back, Skip, Not now) | `dismiss` |
-| a command that is not part of a decision (Edit, Export, Details), any per-item command, a next step outside the view's one decision | `neutral` |
-| consequence destructive | `destructive` + `step` |
-
-The label word never decides: "Cancel offer" is destructive; "Cancel" that changes nothing is `dismiss`. A
-reversible negative outcome (decline, reject an application) is not destructive.
-
-Placement (`decision`, `item`, `chrome`) is read by the grammar from the surrounding composition, never declared
-by the app. The intent x placement -> variant map is grammar data, declared once by the grammar contract
-([../grammars/contract.md](../grammars/contract.md)) and realised by each family. Its logic, which every family keeps: only `commit` in a
-decision reaches the strongest emphasis; the same intent repeated per item drops a step, so a list never shows a
-column of strong buttons; destructive is soft at entry and solid only at confirm.
+The facts give the intent by the decision table `button.choose.intent`
+([components/button.md](components/button.md#choose)). Placement (`decision`, `item`, `chrome`) is read by the
+grammar from the surrounding composition, never declared by the app; the intent x placement -> variant map and
+its logic are the grammar contract's
+([../grammars/contract.md](../grammars/contract.md#intent-x-placement---variant)).
 Lint: `starci-fe/button-intent-required`, `starci-fe/button-no-variant`.
 
 ### CTA-1 One commit per view

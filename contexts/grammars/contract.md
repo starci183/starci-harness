@@ -28,24 +28,27 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
 - **Vendor parity** in one mode, `strict` or `custom` ([vendor/parity.yaml](../vendor/parity.yaml)): strict
   keeps HeroUI's paint and arrangement and changes tokens only; custom may re-skin and re-arrange. Neither may
   change anatomy, roles, keyboard or focus.
+- **Its DNA laws held on every render.** `mustKeep.common` holds in every grammar and `mustKeep.<id>` in that
+  grammar only; each entry is a law and the measurement a DNA gate performs (layer 1 of
+  [README](README.md#three-layers)). A role lists its ids under `dna`. A grammar that departs from a common law
+  does not delete it: the departure is a decision with family evidence, and the law moves from `common` to the
+  grammars that keep it.
 
 ## The shared scale
 
 A row of controls reads as one object, so its controls share one height. The ramp has the vendor's names and
-three steps in equal increments (reference 32, 40, 48 px), held at every breakpoint (ruling `control-height-40`):
-`md` is the default of every standalone control; `sm` is for a control nested in a collection item or a dense
-toolbar; `lg` is for a landing hero call to action. `control` is not a fourth height: it marks a control inside a
-bar row and renders at `md`; the bar composition sets it and the app never passes it (decision D-3). HeroUI steps
-controls down on desktop and draws fields one step shorter than buttons; the contract removes both, because mixed
-rows are exactly where they disagreed ([vendor/heroui](../vendor/heroui.md#how-sizes-align)). Fields have one
-step, `md`. Badges and glyphs keep their own smaller scales: they label, they are not pressed. When a step is
-chosen is [ui/scale](../ui/scale.md). The heights are Common tokens (`--grammar-control-height-*`, decision D-4).
+three steps in equal increments (reference 32, 40, 48 px), held at every breakpoint (ruling `control-height-40`);
+`control` is not a fourth height but the `md` height held for bar controls, set by the bar composition and never
+by an app (decision D-3). HeroUI steps controls down on desktop and draws fields one step shorter than buttons;
+the contract removes both, because mixed rows are exactly where they disagreed
+([vendor/heroui](../vendor/heroui.md#how-sizes-align)). Fields have one step, `md`. Badges and glyphs keep their
+own smaller scales: they label, they are not pressed. Which step a control takes is the choice
+`scale.choose.step` in [ui/scale](../ui/scale.md); what every step measures is `DNA-COMMON-CONTROL-*`. The
+heights are Common tokens (`--grammar-control-height-*`, decision D-4).
 
-**Drawn height and target are two facts.** The box is the ramp; the hit area has its own floor (coarse and fine
-pointer, values in [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml)). Every pressable part extends its hit
-area to the floor without redrawing its box, so a 40px control meets a 44px touch floor; a row of `sm` controls
-whose extensions would overlap takes `md` on a coarse pointer. The floors are Common tokens
-(`--grammar-target-*`).
+**Drawn height and target are two facts** ([ui/scale](../ui/scale.md#drawn-height-and-target-size-are-two-facts)):
+the box is the ramp, the hit area meets its floor without redrawing the box (`DNA-COMMON-TARGET-COARSE`,
+`DNA-COMMON-TARGET-FINE`). The floors are Common tokens (`--grammar-target-*`).
 
 **Corners are roles.** HeroUI derives every corner from `radius` and `field-radius`, and a Button's corner is
 three times `radius`, so whether a Button is a pill follows from the grammar's radius, never from a per-button

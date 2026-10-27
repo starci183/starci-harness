@@ -8,7 +8,9 @@ spacing and arrangement: it changes how things look, never where they are or how
 Owners: values `@starci/grammar src/offset-pop/dna.ts` (`OFFSET_POP_DNA`: the contract shape plus the `offset`
 group), bindings `src/offset-pop/styles.css`, component paint `src/offset-pop/components-{forms,overlays,navigation}.css`,
 root `OffsetPopGrammarRoot`. Its decisions are O-1 to O-12 in [open-grammar](../decisions/open-grammar.md);
-where the code still differs, the decision names the follow-up.
+where the code still differs, the decision names the follow-up. The laws `offset-pop` keeps beyond the common
+ones, with their measurements, are [contract.yaml](contract.yaml) `mustKeep.offset-pop` (`DNA-OFFSET-POP-*`);
+this file says why.
 
 ## Material and why
 

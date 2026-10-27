@@ -34,18 +34,12 @@ to the caller:
 `COMMON_SPACING_SCALE` is the only scale (`owner: src/common/spacing.ts`); a grammar does not re-space. Its
 rungs are whole and unevenly spaced, so half a rung is off the ladder, not between two. Common publishes the
 rhythm as four relationship tokens plus a page inset, each named for what it separates, not for its size:
-
-| Token | Separates |
-|---|---|
-| `--grammar-inline-gap` | companions inside one control or one decision (glyph and label, way out and commit) |
-| `--grammar-row-gap` | peers in one row or group |
-| `--grammar-section-gap` | sibling blocks under one heading |
-| `--grammar-region-gap` | page regions, each with its own heading |
-| `--grammar-page-inset` | the page edge; responsive, owned by `PageContainer` |
-
-Rhythm is monotonic (region > section > row > inline) and equal peers get equal gaps; the reasoning and the
-side-contact law for insets live in [ui/presentation](../ui/presentation.md). Because the rhythm is a
-relationship, a denser rhythm changes the four values together in Common, never one of them in a grammar.
+`--grammar-inline-gap`, `--grammar-row-gap`, `--grammar-section-gap` and `--grammar-region-gap` are the relations
+GAP-2 to GAP-5, and `--grammar-page-inset` is the page edge, responsive and owned by `PageContainer`. Which
+relation a gap expresses is the choice `space.choose.gap` in [ui/presentation](../ui/presentation.md#space), with
+the side-contact law for insets; that the tokens stay strictly ordered is `DNA-COMMON-RHYTHM-MONOTONIC`. Because
+the rhythm is a relationship, a denser rhythm changes the four values together in Common, never one of them in a
+grammar.
 
 ## Size and intent
 

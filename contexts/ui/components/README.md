@@ -10,16 +10,52 @@ Every page has the same sections, so a hardening always has one place to land:
 | Section | Holds |
 | --- | --- |
 | Job | the one thing the role is for |
-| Choose | the role against its neighbours, as a need -> role table |
-| Variants | which declared fact or context picks the variant, and why |
+| Choose | every decision the author makes about the role, each one decision table (format below) |
+| Variants | which declared fact or context picks the variant, and why; never a decision the Choose tables own |
 | Size | its steps on [../scale.md](../scale.md) |
 | States | which carriers it holds |
 | Owner split | grammar owns / knowledge decides / app author decides |
 | Rules | rule ids and lint ids, never their text |
 
+## The Choose format
+
+A Choose section is layer 2 of [../../grammars/README.md](../../grammars/README.md#three-layers): what the LLM
+decides, read from a table and cited. Each decision is one table, opened by one line:
+
+```text
+Choice `<role>.choose.<decision>`: <the question the table answers>
+```
+
+| Column | Holds |
+| --- | --- |
+| Row | a short lowercase key, stable like the anchor; a row is cited, never renumbered |
+| When | the condition, stated as facts the spec or the placement already settled (never a look) |
+| Choose | the component, intent, step or composition that condition takes |
+| Measure | `DNA-...` when a DNA gate already measures the row's outcome; `candidate: <what to count or measure>` when it could be measured; `judgement` when only a reader can tell |
+
+Rules of the format:
+
+- **Exactly one row applies.** The rows of one table exclude each other; when two could apply, the earlier row
+  wins and the table says so. A condition no row covers is a gap, recorded in
+  [../../decisions/open-ui.md](../../decisions/open-ui.md), not improvised.
+- **Cite the row.** A spec, a draw record or a code review names each choice it made as `<anchor>:<row>`, for
+  example `tabs.choose.level:region` or `button.choose.intent:dismiss`. The anchor is stable: a renamed decision
+  keeps its anchor, a removed one is never reused.
+- **One owner per decision.** A decision has one table in the whole tree; a page that depends on another
+  page's decision links its anchor and does not copy its rows. Composition rules (`CTA-*`, `COLLECTION-*`) state
+  the law; the table that applies it lives on the component page.
+- **Measured rows move down.** A `candidate` row whose measure lands in a DNA gate turns into `DNA-...`; the row
+  stays as the choice and the law moves to [contract.yaml](../../grammars/contract.yaml) `mustKeep`.
+
+The anchors are found by their opening line; no list of them is kept by hand. Two decisions live outside this
+folder because they are not about one role: `scale.choose.step` ([../scale.md](../scale.md#the-ramp)) and
+`space.choose.gap` ([../presentation.md](../presentation.md#space)).
+
 ## Choosing a role
 
-| The need | Role |
+This table only routes a need to the page whose own Choose tables decide; it is not cited.
+
+| The need | Page |
 | --- | --- |
 | run a command or follow a destination | [button](button.md) |
 | several actions together: a decision with its way out, peer commands on one object | [action-group](action-group.md) |

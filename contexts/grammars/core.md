@@ -5,7 +5,9 @@ HeroUI's paint and arrangement (`parity: strict`) and expresses itself almost en
 so it is the closest grammar to the vendor and the reference the contract is checked against.
 
 Owners: values `@starci/grammar src/core/dna.ts` (`STARCI_CORE_DNA`, token names and light/dark defaults),
-bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`).
+bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`). The laws
+`core` keeps beyond the common ones, with their measurements, are [contract.yaml](contract.yaml) `mustKeep.core`
+(`DNA-CORE-*`); this file says why.
 
 ## Material and why
 

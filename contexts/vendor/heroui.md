@@ -156,6 +156,5 @@ and errors extra small and muted.
 | Spinner | 16 | 24 | 32 (xl 40) | yes | glyph scale |
 
 The vendor clusters controls at 36 to 40px with a 4px step and a desktop step-down, and keeps labels and glyphs
-on smaller scales; only Avatar is on an 8px 32/40/48 ladder. The house ladder adopts that one: 32, 40, 48 at every
-breakpoint, so a row mixing a button, a switch, a field and an avatar shares one height
-([contract](../grammars/contract.md#the-shared-scale), decision D-3).
+on smaller scales; only Avatar is on an 8px 32/40/48 ladder, which is the one the house ramp adopts
+([contract](../grammars/contract.md#the-shared-scale)).

@@ -9,14 +9,17 @@ It is a form control announced as a radio group; it submits a value inside a for
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| 2-5 short options, all visible, one value | `SegmentedControl` |
-| more options, or long labels | [select](select.md) |
-| options that each need a sentence of explanation | a radio group |
-| on/off of one setting | a switch |
-| swap whole panels | [tabs](tabs.md) |
-| filter a collection, possibly several at once | selectable `TagGroup` ([chip](chip.md)) |
+Choice `segmented-control.choose.role`: which control sets one value from a closed set. The first row that
+applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| panels | the choice swaps whole panels | `tabs.choose.role:panels` | judgement |
+| filter | the choice filters a collection, possibly several values at once | selectable `TagGroup` (`chip.choose.role:filter`) | judgement |
+| switch | the value is on or off of one setting | `Switch` | judgement |
+| radio | each option needs a sentence of explanation | `RadioGroup` | judgement |
+| list | six or more options, or labels too long for one segment | `select.choose.role` | candidate: a `SegmentedControl` holds 2 to 5 segments |
+| segmented | 2 to 5 short, mutually exclusive options, all worth seeing at once | `SegmentedControl` | `DNA-COMMON-SEGMENTED-RADIO` |
 
 ## Variants
 None for the app. The selected segment carries the selection treatment (CTA-1): never a commit among the options.

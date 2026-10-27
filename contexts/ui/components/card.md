@@ -7,20 +7,29 @@ Present **one subject** as one bounded object with its own face (COLLECTION-2).
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| one entity or one summary of one subject | `SurfaceCard` |
-| a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard`: label outside, rows inside |
-| one summary that reveals a rarely changed region | `SurfaceAccordionCard`, closed by default |
-| three or more entities of one kind on a page | not a card: a section with a list ([list-table](list-table.md)) |
-| several kinds of content about one subject | bands of one card, divided by separators |
-| a row of key figures | one default card holding a stat strip (DISCIPLINE-2) |
-| the whole card is one destination or command | the card's whole-action contract (STATE-5) |
+Choice `card.choose.role`: what presents the subject. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| collection | three or more entities of one kind on a page | not a card: a section with a list (`list-table.choose.role`) | candidate: no card holds three or more sibling cards |
+| rail-list | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard`: label outside, rows inside | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
+| disclosure | one summary that reveals a rarely changed region | `SurfaceAccordionCard`, closed by default | judgement |
+| figures | a row of key figures | one default card holding a stat strip (DISCIPLINE-2) | candidate: stat cells at most `budgets.ribbonCells` |
+| whole | the whole card is one destination or command | `SurfaceCard` with its whole action (STATE-5) | judgement |
+| kinds | several kinds of content about one subject | one joined `SurfaceCard`, its bands divided by separators, never inner cards | candidate: separators per card at most `budgets.hairlinesPerCard` |
+| entity | one entity or one summary of one subject | `SurfaceCard` | judgement |
+
+Choice `card.choose.highlight`: whether a card claims the next step.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| highlight | peers share the view and this card is the task's next step | `isHighlight` on this card only | `DNA-COMMON-ONE-HIGHLIGHT` |
+| plain | every other card | no highlight | judgement |
 
 ## Variants
 The face is the grammar's. Depth is resolved from context: a top-level card is raised, a nested card subordinate
-(BOUNDARY-6). One highlighted card per view at most, and only as a claim about the task. A decorative slab belongs
-to the joined card's first face, edge to edge (SURFACE-6).
+(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`). A decorative slab belongs to the joined card's first face, edge to
+edge (SURFACE-6).
 
 ## Size
 No size. Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).

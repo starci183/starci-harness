@@ -16,14 +16,18 @@ intent's job ([composition.md](composition.md) CTA-6), rank is the type scale's 
 
 ## The ramp
 
-The step names `sm`, `md`, `lg`, `control` are the ones the contract's size sets use; this table is their meaning.
+The step names `sm`, `md`, `lg`, `control` are the ones the contract's size sets use.
 
-| Step | Role | Where it is used | Who picks it |
+Choice `scale.choose.step`: which step, and so which control height, a button or any other control takes. The
+first row that applies wins.
+
+| Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| `md` | the one control height | every standalone control: buttons, icon buttons, fields, selects, segmented controls, tab bars, switches, bar avatars, composer send | default; the app omits `size` |
-| `sm` | the nested step, one increment below | a control nested in a collection item, or a dense toolbar whose every control is `sm` | the app, only in those two placements |
-| `lg` | the hero step, one increment above | the one conversion call to action of a landing hero | the app, only there |
-| `control` | the bar step: the `md` height, held for bar controls | every control in a navbar, top bar or site bar, so identity, search, switches and avatars align | the bar composition only; the app passes nothing (grammar decision D-3) |
+| bar | the control sits in a navbar, top bar or site bar | nothing: the bar composition sets `control`, the `md` height held so identity, search, switches and avatars align (decision D-3) | `DNA-COMMON-BAR-ONE-HEIGHT` |
+| field-row | the row holds a field (fields have one step) | `md` | `DNA-COMMON-FIELD-MD` |
+| hero | the one conversion call to action of a landing hero | `lg`, once per view | `DNA-COMMON-CONTROL-LG`; candidate: at most one `lg` control per view |
+| nested | the control is nested in a collection item, or sits in a dense toolbar whose every control is `sm` | `sm` | `DNA-COMMON-CONTROL-SM`; candidate: every `sm` control sits in an item or an all-`sm` toolbar |
+| standalone | every other control: buttons, icon buttons, selects, segmented controls, tab bars, switches, composer send | `md`: omit `size` | `DNA-COMMON-CONTROL-MD` |
 
 Rules, each with one place to harden:
 

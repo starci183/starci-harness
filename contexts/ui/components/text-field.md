@@ -7,20 +7,21 @@ Let the reader type one value, with a persistent label, an optional standing des
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| one line of free text | `Input` |
-| a search over the current view | `SearchField` (named, with its shortcut hint in chrome) |
-| a number with bounds or steps | `NumberField` |
-| a date or time | the date and time fields |
-| several lines of prose | `Textarea` |
-| several values of one kind | one `Input` per value with its remove action and an "add another" command (COLLECTION-1), never one textarea |
-| a value from a known list | [select](select.md) or [segmented-control](segmented-control.md) |
+Choice `text-field.choose.role`: which field takes the value. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| list | the value comes from a known list | not typed: `select.choose.role` | judgement |
+| multi | several values of one kind | one `Input` per value with its remove action and an "add another" command (COLLECTION-1), never one textarea | judgement |
+| search | a search over the current view | `SearchField` (named, with its shortcut hint in chrome) | judgement |
+| number | a number with bounds or steps | `NumberField` | judgement |
+| date | a date or a time | the date and time fields | judgement |
+| prose | several lines of prose | `Textarea` | judgement |
+| line | one line of free text | `Input` | judgement |
 
 ## Variants
-The field's treatment follows its layer: on the page background it takes the canvas treatment, inside a painted
-surface the nested treatment. The grammar resolves this from context; the app never passes a field variant
-(presentation "The layer chain"). Lint: `starci-fe/nested-control-variant`.
+None for the app: the treatment follows the layer, canvas or inside a surface, resolved by the grammar
+(`DNA-COMMON-FIELD-BY-LAYER`; lint `starci-fe/nested-control-variant`).
 
 ## Size
 `md` only ([../scale.md](../scale.md)). A row that holds a field is an `md` row. Fields inside a narrow owner

@@ -10,6 +10,47 @@ one rule here removes it.
 Read by: an agent drawing or implementing UI, a grammar author, an auditor judging a render. Gates read
 [contract.yaml](contract.yaml), [vendor](../vendor/README.md) data and the code, never the prose.
 
+## Three layers
+
+A screen on a grammar is decided in three layers. Each decision has exactly one layer, and the layers never
+trade work: a gate never judges taste, a reviewer never re-measures a constraint, and the LLM never re-decides
+what a gate measures.
+
+| Layer | Who decides | What it decides | Owner | Proof |
+|---|---|---|---|---|
+| 1. Grammar and gates | the package and the DNA gate | constraints: what holds on every render of the grammar, whatever was chosen | `@starci/grammar` code; the laws and their measures in [contract.yaml](contract.yaml) `mustKeep` | the DNA gate measures the render; pass or fail, no judgement |
+| 2. The choice | the LLM drawing or implementing the screen | which component, which variant-deciding fact (intent, step, placement-free facts), which spacing step | the Choose sections of [ui/components](../ui/components/README.md), [ui/scale](../ui/scale.md) and [ui/presentation](../ui/presentation.md) | the record cites the choice anchor and the row it took |
+| 3. Taste | a reviewer of a different model than the author | whether the whole reads well: hierarchy, balance, density, voice | [ui/proof](../ui/proof.md) scored lenses | the review verdict; a rejection names the rule that was missing |
+
+**Layer 1 is constraints, never judgement.** A DNA entry is one sentence of law plus one measurement on the DOM
+(a selector, a metric, an expected value). Examples: an `md` control is 40px tall
+(`DNA-COMMON-CONTROL-MD`); a horizontal divider has inline inset 0px inside its surface
+(`DNA-COMMON-DIVIDER-FULL-BLEED`); a StatusDot with text has the padding and height of the HeroUI soft Chip of the
+same size (`DNA-COMMON-STATUSDOT-CHIP-PARITY`); no raised surface sits inside a surface
+(`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); a list card's label sits above its shell
+(`DNA-COMMON-LISTCARD-LABEL-OUTSIDE`); in `offset-pop` pink is never a text colour
+(`DNA-OFFSET-POP-PINK-NEVER-TEXT`). A law nobody can measure is not layer 1: it is a choice rule or taste.
+
+**Layer 2 is a choice, read from a table and cited.** The LLM reads the Choose table that owns the decision,
+takes the row whose condition the spec's facts meet, and cites it as `<anchor>:<row>`. Examples: page tabs or
+region tabs (`tabs.choose.level`); which intent a command has, commit, alternative, dismiss, neutral or
+destructive (`button.choose.intent`); a decision with its way out or a peer `ButtonGroup`
+(`action-group.choose.kind`); which gap a relation takes (`space.choose.gap`); which step a control takes
+(`scale.choose.step`). The grammar then renders the look the choice implies; the app never passes it. A choice
+the tables do not settle is a gap in [decisions/open-grammar](../decisions/open-grammar.md) or
+[open-ui](../decisions/open-ui.md), never an improvisation.
+
+**Layer 3 is taste.** Whether a correct, cited page is also good is the reviewer's verdict on the render
+([ui/proof](../ui/proof.md), ruling `beautiful-by-eye`). A rejection is evidence that a rule is missing: the
+reviewer names the choice row or the law it would add.
+
+**A rule moves down when it becomes measurable.** A choice rule whose outcome can be read off the DOM becomes a
+DNA entry and its Choose row cites the id: "one commit per view" is a choice when the LLM assigns intents, and a
+constraint once counted (`DNA-COMMON-ONE-ACCENT-FILL`); "one highlighted card per view" likewise
+(`DNA-COMMON-ONE-HIGHLIGHT`). A taste verdict that recurs becomes a choice row or a threshold. Movement is only
+downward, and each move deletes the sentence it replaces (CONTRIB-6). Every Choose row says whether it is
+measured (a DNA id), measurable (a candidate) or a judgement.
+
 ## The model: one contract, composed implementations
 
 ```
@@ -38,12 +79,12 @@ The package stores Common's renderers under `src/core/**` today; that path is st
 
 | File | Holds | Read when |
 |---|---|---|
-| [contract.md](contract.md), [contract.yaml](contract.yaml) | What every grammar provides, per role: slots, variants, sizes, states, keep vs may change | always, before the grammar file |
+| [contract.md](contract.md), [contract.yaml](contract.yaml) | What every grammar provides, per role: slots, variants, sizes, states, what a grammar may change; `mustKeep`, the DNA laws with their measurements, per scope (`common`, `core`, `offset-pop`) | always, before the grammar file |
 | [common.md](common.md) | The shared layer's reasoning: context over props, spacing, one root, idioms, playbook shapes | composing any screen |
 | [core.md](core.md), [offset-pop.md](offset-pop.md) | How each grammar fills the contract and why: material, departures, lint | the app's grammar only |
 
-Terms: **DNA** is a grammar's material values as code (`src/<id>/dna.ts` plus its sheet); knowledge explains
-them and never copies a value. An **idiom** is a composition chosen at least twice; a **playbook shape** is the
+Terms: **DNA** is a grammar's material as code (`src/<id>/dna.ts` plus its sheet) and the laws it keeps, each a
+`mustKeep` entry with its measurement; knowledge explains the values and never copies one. An **idiom** is a composition chosen at least twice; a **playbook shape** is the
 composition for a business situation. Both live in [common](common.md) because they hold in every grammar.
 
 ## Who owns what
@@ -83,5 +124,6 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 ## Where feedback lands
 
 Feedback hardens, it never accumulates. In order of preference it becomes an API that removes the choice
-(grammar package), a lint rule, or a stricter sentence in the one section that owns the concept: the contract
-role, the common section or the grammar's role row. It is never a case note appended beside a rule.
+(grammar package), a DNA entry or a lint rule, a stricter row in the Choose table that owns the decision, or a
+stricter sentence in the one section that owns the concept: the contract role, the common section or the
+grammar's role row. It is never a case note appended beside a rule.

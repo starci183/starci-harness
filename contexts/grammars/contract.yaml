@@ -1,5 +1,7 @@
-# What every grammar implements. Read by the grammar contract gate and by generators; reasoning is contract.md.
-# Values never appear here: each grammar's package path owns them. Vendor part names come from ../vendor/parity.yaml.
+# What every grammar implements. Read by the grammar contract gate, the DNA gate and generators; reasoning is contract.md.
+# Values are the package's: a measure names the value's owner (a token read at gate time, a threshold key, a vendor
+# reference) and writes a literal only where a ruling fixes it (control-height-40). Vendor part names come from
+# ../vendor/parity.yaml. roles[].dna lists the mustKeep ids of the role; mustKeep (last) owns each law and measure.
 schema: starci/grammar-contract@1
 grammars: [core, offset-pop]          # the implementations; each has contexts/grammars/<id>.md
 base: common                          # shared renderers, anatomy, spacing and mechanics under every grammar
@@ -116,7 +118,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material]
-    mustKeep: [one card is one subject, depth from context, nested depth never raised, slots and heading level]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-IN-MATERIAL, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
 
   - id: button
     ui: ui/components/button.md
@@ -131,7 +133,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    mustKeep: [vendor variant names, one height per size, pending keeps label and box, skeleton takes the button corner, icon-only is square or circle at the size, "a disabled reason shows in a tooltip on hover and keyboard focus and is the accessible description"]
+    dna: [DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
 
   - id: button-group
     ui: ui/components/action-group.md
@@ -144,7 +146,7 @@ roles:
     sizes: inherits its buttons
     states: [disabled]
     grammarMayChange: [separator paint]
-    mustKeep: ["joined vendor arrangement: inner corners square, borders collapsed, no press scale", "only peers of one intent", "a decision and its way out are separate buttons at the inline gap, never a group"]
+    dna: [DNA-COMMON-BUTTONGROUP-JOINED, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE, DNA-COMMON-BUTTONGROUP-ONE-INTENT]
 
   - id: tabs
     ui: ui/components/tabs.md
@@ -157,7 +159,7 @@ roles:
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    mustKeep: [vendor names one to one, required Indicator, each tab owns its panel, keyboard roving]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING]
 
   - id: segmented-control
     ui: ui/components/segmented-control.md
@@ -169,7 +171,7 @@ roles:
     sizes: { steps: [sm, md], default: md }
     states: [selected, focus-visible, disabled, skeleton]
     grammarMayChange: [selected paint (soft accent with accent border)]
-    mustKeep: [one value, radio semantics, same height as the md control]
+    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED]
 
   - id: chip
     ui: ui/components/chip.md
@@ -185,7 +187,7 @@ roles:
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md, equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
     states: [selected (TagGroup), disabled, echo (StatusDot, off under reduced motion)]
     grammarMayChange: [tone paint through tokens]
-    mustKeep: [a label not a target (Badge, StatusDot), tone x emphasis axes, the label's first letter is uppercase, "one dot-size token for every dot", "StatusDot with text: dot, text and the tone's light tint with the Chip's padding and height and a 4px dot-to-text gap", "a dot without text is named by aria-label and shows it in a tooltip", "echo is a ring in the tone's light stop", interactive chip is a Tag with its remove button, reorder by drag and by Alt+arrow keys with an announcement]
+    dna: [DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-STATUSDOT-CHIP-PARITY, DNA-COMMON-STATUSDOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS]
 
   - id: input
     ui: ui/components/text-field.md
@@ -197,7 +199,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    mustKeep: [label is the accessible name (placeholder never is), error in the field's own slot, single-line height equals the md control]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING]
 
   - id: select
     ui: ui/components/select.md
@@ -209,7 +211,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    mustKeep: [required Trigger and Popover, popover portals into the root, option rows match the list row]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES]
 
   - id: dialog
     ui: ui/components/dialog-drawer.md
@@ -223,7 +225,7 @@ roles:
     sizes: dialogSize is a max inline size, not a control size
     states: [open, closed, confirm-pending]
     grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
-    mustKeep: ["named and closable: Heading and CloseTrigger", focus trapped and restored, Escape closes, alert dialog dismiss first and focused, portal into the root]
+    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
 
   - id: menu
     ui: ui/components/menu.md
@@ -235,7 +237,7 @@ roles:
     sizes: none
     states: [open, focused, selected, disabled]
     grammarMayChange: [item paint, "arrangement: indicator side, leading glyph size, separators"]
-    mustKeep: [menu roles, sections separated by the vendor separator, destructive items carry the danger tone]
+    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-MENU-SECTIONS, DNA-COMMON-MENU-DANGER]
 
   - id: list
     ui: ui/components/list-table.md
@@ -251,7 +253,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    mustKeep: [n rows have n-1 seams, separators full bleed, one content edge for rows and captions, "a picked option's description wraps, a static row's description is one line", "a row href is a whole-row link through the root's navigation", "low-priority columns fold into the first column on a narrow table"]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -265,7 +267,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    mustKeep: [tone on indicator and title only, one live owner per urgency, one Toaster]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-SURFACE, DNA-CORE-ALERT-RAISED, DNA-OFFSET-POP-ALERT-SOFT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -277,7 +279,7 @@ roles:
     sizes: none
     states: [action-pending]
     grammarMayChange: [glyph and text paint]
-    mustKeep: [renders in the region's place inside the unchanged surface, at most one action]
+    dna: [DNA-COMMON-EMPTY-ONE-ACTION]
 
   - id: avatar
     ui: ui/components/identity-mark.md
@@ -290,7 +292,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [image, initials fallback, skeleton]
     grammarMayChange: [ring, fallback paint]
-    mustKeep: ["fallback is generated initials from name, coloured by seed", "an agent carries a badge and an accessible name saying so", "one size inside a group"]
+    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED]
 
   - id: shell
     ui: ui/composition.md
@@ -303,4 +305,611 @@ roles:
     sizes: every bar control is size control
     states: [sidebar expanded, sidebar collapsed, drawer open]
     grammarMayChange: [bar and sidebar paint]
-    mustKeep: ["one shell owns the frame, the bar and the mobile drawer", no bottom tab bar, one scroll owner per axis]
+    dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER]
+
+# The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
+# Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
+# only once it has a measure. A gate run for grammar <id> measures `common` plus `<id>`; roles[].dna lists the ids.
+mustKeep:
+  shape:
+    id: "DNA-<SCOPE>-<NAME>, SCOPE is COMMON (held by every grammar), CORE or OFFSET-POP; stable, a closed id is never reused"
+    role: "a roles[].id, a list of them, or root"
+    law: "the constraint as one present-tense sentence"
+    measure: "one measure object (fields below)"
+    owner: "who fixes the law or its value: a ruling id (decisions/rulings.yaml), a decision id (decisions/open-grammar.md), a package path"
+    followUp: "optional: the open decision whose code change makes the law hold; the gate reports the entry red until it lands"
+  measureFields:
+    kind:
+      box: "border-box geometry of each match in CSS px: width, height, top, bottom, left, right; inner-left and inner-right are the padding box (inside the border)"
+      style: "computed style of each match (and of `pseudo` when given); metric is a CSS property or a derived metric"
+      attr: "an attribute value of each match"
+      relation: "a metric of each match against `ref`: { within: ancestor selector (closest), select: a selector inside it, self (the ancestor) or previous (the previous sibling matching select), metric, offset }; the compared value is ref + offset"
+      uniform: "every match inside one `scope` has the same metric value"
+      count: "the number of matches inside each `scope` (the family root when absent), after the `where` filter; no metric"
+      seams: "the visible horizontal rules between consecutive `rows` inside each match; metric count (compared with rows - 1) or inset-inline (each rule's distance from the match's padding box, both sides)"
+      a11y: "accessibility-tree property of each match: role, name, description, focusable, controls (the id it controls resolves to `value`)"
+      text: "rendered text of each match; metric text, first-letter (uppercase or lowercase) or lines (rendered line count)"
+      tokens: "custom properties resolved on the family root; metric is a list of names or { contract: <path in this file> }; an order op (> <) compares each name with the next"
+      interaction: "`act` steps on each match (press <key>, focus, hover, press, open (the fixture opens the overlay the match belongs to), state <name> (the fixture sets that state), resize <inline-size>), then `then`, a measure on the same match (kind defaults to style) or on `then.select`"
+      source: "a static check another gate owns: lint:<rule id>, parity:<mode> or conformance; the DNA gate verifies the check exists and is green"
+    select: "a CSS selector evaluated inside .grammar-common-root[data-grammar-family=\"<id>\"]; `document ` prefix means the whole document"
+    scope: "optional ancestor selector grouping matches (uniform, count, seams)"
+    target: "optional: painted-box measures the painted box resolved from each match instead of the match itself"
+    checks: "instead of metric, op and value: a list of { metric, op, value }, every one must hold"
+    metric: "one name or a list; every listed metric is held to the same op and value; against a list-valued ref the lists pair element-wise"
+    derivedMetrics:
+      radius: "border-start-start-radius resolved to px"
+      border-width: "the largest of the four border widths"
+      shadow-blur: "blur radius of the first box-shadow layer (0 when none)"
+      shadow-offset: "x and y offsets of the first box-shadow layer"
+      scale: "scale factor of the computed transform matrix (1 when none)"
+      translate: "x and y translation of the computed transform matrix"
+      hit-area: "the square around the box centre over which elementFromPoint resolves to the match or a descendant"
+      focus-rings: "elements in the match's subtree, the match included, that draw a visible outline or a focus box-shadow"
+      tabs-look: "pill when the selected tab's .tabs__indicator is at least 80% of the tab's height, else underline"
+      painted-box: "the nearest element at or above the match, inside the same component, whose background-color is not transparent"
+      navigation: "client (history changed, no document load), reload or none"
+      scroll-owners-x: "how many elements at or above the match scroll on the inline axis (overflow auto or scroll and content larger than the box)"
+      scroll-owners-y: "the same on the block axis"
+    op: "= != < <= > >= set (resolves to a non-empty value) matches (a pattern or another value)"
+    value: >-
+      a literal with its unit; or { token: --name } resolved on the match through a probe so colours compare as computed
+      rgb; or { threshold: <key path in ../ui/proof/thresholds.yaml> }; or { vendor: { component, props, metric } }, the
+      HeroUI component rendered in the same root with $data-size standing for the match's data-size; or
+      { self: <metric>, times: n }; or { count: <selector>, offset: n } (count only); or { rows: n } (seams: the row count
+      plus n); or { oneOf: [values] }; or { before: true } (interaction:
+      the same metric before `act`); or { fixture: <fact> } that the gate's fixture declares
+    where: "optional filter on matches: { metric, op, value }"
+    context: "pointer coarse|fine, viewport WxH, theme light|dark, forcedColors active, reducedMotion reduce, state hover|pressed|focus-visible; default light, fine pointer, 1280x800"
+    tolerance: "box and relation, default 0.5px"
+    cases: "a list of { select, metric?, value } sharing every other field"
+    coverage: "an entry with zero matches is not exercised: the gate reports it per id from its fixture and never passes it"
+
+  common:
+    # --- size ramp (contract sizes; ruling control-height-40)
+    - id: DNA-COMMON-CONTROL-MD
+      role: button
+      law: An md button or icon button, and every bar control, is 40px tall at every breakpoint.
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"])', metric: height, op: "=", value: 40px }
+      owner: control-height-40
+    - id: DNA-COMMON-CONTROL-SM
+      role: button
+      law: An sm button or icon button is one equal increment below md, 32px.
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"])', metric: height, op: "=", value: 32px }
+      owner: control-height-40; contract sizes.increments
+    - id: DNA-COMMON-CONTROL-LG
+      role: button
+      law: An lg button or icon button is one equal increment above md, 48px.
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"])', metric: height, op: "=", value: 48px }
+      owner: control-height-40; contract sizes.increments
+    - id: DNA-COMMON-ICON-BUTTON-SQUARE
+      role: button
+      law: An icon button is as wide as it is tall at its step.
+      measure: { kind: box, select: '[data-component="IconButton"]', metric: width, op: "=", value: { self: height, times: 1 } }
+      owner: contract roles.button
+    - id: DNA-COMMON-FIELD-MD
+      role: [input, select]
+      law: Every single-line field box (input, select trigger, combo box, search, number, date and time field) is as tall as an md control, 40px.
+      measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group)', metric: height, op: "=", value: 40px }
+      owner: control-height-40
+    - id: DNA-COMMON-SEGMENTED-RAMP
+      role: segmented-control
+      law: A segmented control sits on the ramp, md 40px and sm 32px.
+      measure:
+        kind: box
+        metric: height
+        op: "="
+        cases:
+          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="md"]', value: 40px }
+          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="sm"]', value: 32px }
+      owner: control-height-40
+      followUp: D-3
+    - id: DNA-COMMON-TABS-BAR-MD
+      role: tabs
+      law: A tab bar, pill or underline, lands on the md height without a size prop.
+      measure: { kind: box, select: '[data-component="Tabs"] .tabs__list-container', metric: height, op: "=", value: 40px }
+      owner: contract roles.tabs
+    - id: DNA-COMMON-AVATAR-RAMP
+      role: avatar
+      law: An avatar is on the control ramp, sm 32px, md 40px, lg 48px and the bar avatar 40px.
+      measure:
+        kind: box
+        metric: [width, height]
+        op: "="
+        cases:
+          - { select: '[data-component="Avatar"][data-grammar-avatar-size="sm"]', value: 32px }
+          - { select: '[data-component="Avatar"][data-grammar-avatar-size="md"]', value: 40px }
+          - { select: '[data-component="Avatar"][data-grammar-avatar-size="lg"]', value: 48px }
+          - { select: '[data-component="Avatar"][data-grammar-avatar-size="control"]', value: 40px }
+      owner: control-height-40
+    - id: DNA-COMMON-BAR-ONE-HEIGHT
+      role: shell
+      law: Every control in a bar has one height, the md height.
+      measure: { kind: uniform, scope: '[data-component="TopBar"]', select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="Avatar"],[data-component="SegmentedControl"],[data-component="Switch"],.starci-core-search-field-group)', metric: height, op: "=", value: 40px }
+      owner: control-height-40; contract sizes.control
+    - id: DNA-COMMON-BADGE-BELOW-RAMP
+      role: chip
+      law: A Badge and a StatusDot are labels below the control ramp, shorter than an sm control.
+      measure: { kind: box, select: ':is([data-component="Badge"],[data-component="StatusDot"])', metric: height, op: "<", value: 32px }
+      owner: contract sizes.labels
+    - id: DNA-COMMON-TARGET-COARSE
+      role: button
+      law: On a coarse pointer every pressable part has a hit area of at least the coarse floor, without redrawing its box.
+      measure: { kind: box, context: { pointer: coarse, viewport: 375x812 }, select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="TextAction"],[role="tab"],[role="option"],[role="radio"],[role="checkbox"],[role="switch"],[role="menuitem"],[role="row"][data-grammar-tag])', metric: hit-area, op: ">=", value: { threshold: target.coarse.min } }
+      owner: contract sizes.target; ui/scale.md
+      followUp: D-4
+    - id: DNA-COMMON-TARGET-FINE
+      role: button
+      law: On a fine pointer every pressable part has a hit area of at least the fine floor.
+      measure: { kind: box, context: { pointer: fine }, select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="TextAction"],[role="tab"],[role="option"],[role="radio"],[role="checkbox"],[role="switch"],[role="menuitem"])', metric: hit-area, op: ">=", value: { threshold: target.fine.min } }
+      owner: contract sizes.target
+    # --- root, tokens and rhythm
+    - id: DNA-COMMON-TOKENS-BOUND
+      role: root
+      law: Every contract colour role resolves on the grammar root; none falls through to the host theme.
+      measure: { kind: tokens, metric: { contract: tokens.colour }, op: set }
+      owner: contract tokens
+      followUp: C-3, C-4
+    - id: DNA-COMMON-RHYTHM-MONOTONIC
+      role: root
+      law: The rhythm tokens are strictly ordered, region gap above section gap above row gap above inline gap.
+      measure: { kind: tokens, metric: [--grammar-region-gap, --grammar-section-gap, --grammar-row-gap, --grammar-inline-gap], op: ">" }
+      owner: "@starci/grammar src/common/spacing.ts; ui/presentation.md (Space)"
+    - id: DNA-COMMON-ONE-TOASTER
+      role: alert
+      law: A document holds at most one Toaster, inside the grammar root.
+      measure: { kind: count, select: 'document [data-component="Toaster"]', op: "<=", value: 1 }
+      owner: grammars/common.md#one-root
+    - id: DNA-COMMON-TOASTER-LIVE
+      role: alert
+      law: The Toaster owns exactly one polite and one assertive live region.
+      measure:
+        kind: count
+        scope: '[data-component="Toaster"]'
+        op: "="
+        cases:
+          - { select: '[data-grammar-toaster-live="polite"][aria-live="polite"]', value: 1 }
+          - { select: '[data-grammar-toaster-live="assertive"][aria-live="assertive"]', value: 1 }
+      owner: grammars/common.md#one-root
+    - id: DNA-COMMON-OVERLAY-IN-ROOT
+      role: [dialog, menu, select]
+      law: Every open overlay (dialog, alert dialog, drawer, popover, menu, listbox popover, tooltip) renders inside the grammar root.
+      measure: { kind: count, select: 'document :is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"],[role="tooltip"]):not(.grammar-common-root[data-grammar-family] *)', op: "=", value: 0 }
+      owner: grammars/common.md#one-root
+    - id: DNA-COMMON-NO-BOTTOM-TABS
+      role: shell
+      law: The shell has no bottom tab bar; on a phone the navigation is the drawer.
+      measure: { kind: count, context: { viewport: 375x812 }, select: '[data-component="BottomNav"]', op: "=", value: 0 }
+      owner: D-13; lint no-shell-bottom-tabs
+    - id: DNA-COMMON-ONE-SHELL
+      role: shell
+      law: One shell owns the frame, the bar and the mobile drawer.
+      measure: { kind: count, select: 'document [data-component="WorkspaceShell"]', op: "<=", value: 1 }
+      owner: contract roles.shell
+    - id: DNA-COMMON-ONE-SCROLL-OWNER
+      role: shell
+      law: One owner scrolls each axis; no scrolling element sits inside another that scrolls on the same axis.
+      measure: { kind: style, select: '*', metric: [scroll-owners-x, scroll-owners-y], op: "<=", value: 1 }
+      owner: contract roles.shell; OVERFLOW-3
+    - id: DNA-COMMON-VENDOR-PARITY
+      role: root
+      law: Every wrapper keeps HeroUI's parts, required parts, roles, keyboard, focus, props, closed values and defaults.
+      measure: { kind: source, check: "parity:always" }
+      owner: grammar-vendor-parity
+    # --- surfaces and cards
+    - id: DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE
+      role: card
+      law: A surface inside another surface takes the nested depth; two raised surfaces never stack.
+      measure: { kind: count, select: '[data-grammar-nesting="surface"] [data-grammar-nesting="surface"] [data-grammar-surface-depth="top"]', op: "=", value: 0 }
+      owner: surfacecard-always-painted; src/core/surfaceContext.tsx
+    - id: DNA-COMMON-CARD-LABEL-ABOVE
+      role: card
+      law: A card's label row sits above the card's content frame, never beside or inside it.
+      measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-grammar-surface-content]', metric: top } }
+      owner: contract roles.card
+    - id: DNA-COMMON-CARD-LABEL-HEADING
+      role: card
+      law: A card label is a heading and names its card.
+      measure: { kind: a11y, select: '[data-grammar-surface-label] > :first-child', metric: role, op: "=", value: heading }
+      owner: contract roles.card
+    - id: DNA-COMMON-LISTCARD-LABEL-OUTSIDE
+      role: card
+      law: A list card's label row sits on the page above the list shell, outside its material.
+      measure: { kind: relation, select: '[data-component="SurfaceListCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceListCard"]', select: '[data-grammar-surface="true"]', metric: top } }
+      owner: R318/case-1
+    - id: DNA-COMMON-LISTCARD-LABEL-UNPAINTED
+      role: card
+      law: A list card's label row carries no fill, border or shadow of its own.
+      measure:
+        kind: style
+        select: '[data-component="SurfaceListCard"] > [data-grammar-surface-label]'
+        checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: 0px }]
+      owner: R318/case-1
+    - id: DNA-COMMON-ONE-HIGHLIGHT
+      role: card
+      law: A view holds at most one highlighted card.
+      measure: { kind: count, select: 'document [data-grammar-highlight="true"]', op: "<=", value: 1 }
+      owner: contract roles.card variants.highlight
+      followUp: G-9
+    - id: DNA-COMMON-DIVIDER-FULL-BLEED
+      role: card
+      law: A horizontal divider runs the full inner width of its surface, inline inset 0px on both sides.
+      measure: { kind: relation, select: '[data-component="Divider"][data-grammar-divider="bare"][data-grammar-divider-orientation="horizontal"]', metric: [left, right], op: "=", ref: { within: '[data-grammar-frame="bounded"]', select: self, metric: [inner-left, inner-right] } }
+      owner: divider-full-bleed
+    # --- lists
+    - id: DNA-COMMON-LIST-SEAMS
+      role: list
+      law: n rows of a list are divided by exactly n-1 seams, or by gap and no seam.
+      measure: { kind: seams, select: '[data-grammar-list="true"]', rows: ':is([data-grammar-row],[data-grammar-list-item],[role="option"])', metric: count, op: "=", value: { oneOf: [{ rows: -1 }, 0] } }
+      owner: contract roles.list; BOUNDARY-3
+    - id: DNA-COMMON-SEAM-FULL-BLEED
+      role: list
+      law: Every seam between rows runs the list's full inner width, inline inset 0px.
+      measure: { kind: seams, select: '[data-grammar-list="true"]', rows: ':is([data-grammar-row],[data-grammar-list-item],[role="option"])', metric: inset-inline, op: "=", value: 0px }
+      owner: divider-full-bleed
+    - id: DNA-COMMON-ROW-DESCRIPTION-ONE-LINE
+      role: list
+      law: A static or entity row's description renders one line.
+      measure: { kind: text, select: '.starci-core-list-row-description', metric: lines, op: "<=", value: 1 }
+      owner: item-description-one-line
+    - id: DNA-COMMON-OPTION-DESCRIPTION-WRAPS
+      role: list
+      law: A list box option's description wraps unless the list sets descriptionLines.
+      measure: { kind: style, select: '[data-component="ListBox"] [data-grammar-item-description]:not([data-grammar-description-lines="1"],[data-grammar-description-lines="2"],[data-grammar-description-lines="3"])', metric: -webkit-line-clamp, op: "=", value: none }
+      owner: contract roles.list
+    - id: DNA-COMMON-TABLE-ROW-LINK
+      role: list
+      law: A table row with href is one link that navigates through the root's router, without a document load.
+      measure: { kind: interaction, select: '[data-grammar-table-row-link="true"]', act: [focus, press Enter], then: { metric: navigation, op: "=", value: client } }
+      owner: contract roles.list; grammars/common.md#one-root
+    - id: DNA-COMMON-TABLE-FOLD
+      role: list
+      law: On a narrow table the low-priority columns fold into the first column, so only high-priority column headers remain.
+      measure: { kind: interaction, select: '[data-component="DataTable"]', act: [resize 600px], then: { select: '[role="columnheader"]', kind: count, op: "=", value: { fixture: highPriorityColumns } } }
+      owner: contract roles.list
+    # --- buttons and groups
+    - id: DNA-COMMON-PENDING-KEEPS-BOX
+      role: button
+      law: A pending button keeps its box and its accessible name and refuses a second press.
+      measure: { kind: interaction, select: '[data-component="Button"]', act: [state pending], then: { metric: [width, height, name], op: "=", value: { before: true } } }
+      owner: contract roles.button; CTA-3
+    - id: DNA-COMMON-SKELETON-CORNER
+      role: button
+      law: A button skeleton takes the corner of the button it stands for.
+      measure: { kind: style, select: '[data-component="Button"][data-loading="true"]', metric: radius, op: "=", value: { vendor: { component: Button, props: { size: $data-size }, metric: radius } } }
+      owner: buttons-pill
+    - id: DNA-COMMON-DISABLED-REASON
+      role: button
+      law: A disabled button's reason is its accessible description and shows in a tooltip on hover and keyboard focus.
+      measure: { kind: interaction, select: '[data-component="Button"]:is([disabled],[data-disabled="true"],[aria-disabled="true"])', act: [focus], then: { select: 'document [role="tooltip"]', kind: text, metric: text, op: "=", value: { fixture: disabledReason } } }
+      owner: contract roles.button
+    - id: DNA-COMMON-BUTTONGROUP-JOINED
+      role: button-group
+      law: Buttons of a horizontal group touch with no gap between them.
+      measure: { kind: relation, select: '[data-component="ButtonGroup"][data-grammar-orientation="horizontal"] [data-component="Button"] + [data-component="Button"]', metric: left, op: "<=", ref: { within: '[data-component="ButtonGroup"]', select: previous, metric: right } }
+      owner: contract roles.button-group; vendor/parity.yaml button-group
+    - id: DNA-COMMON-BUTTONGROUP-INNER-CORNERS
+      role: button-group
+      law: The inner corners of a horizontal group are square.
+      measure: { kind: style, select: '[data-component="ButtonGroup"][data-grammar-orientation="horizontal"] [data-component="Button"] + [data-component="Button"]', metric: [border-start-start-radius, border-end-start-radius], op: "=", value: 0px }
+      owner: vendor/parity.yaml button-group
+    - id: DNA-COMMON-BUTTONGROUP-NO-PRESS-SCALE
+      role: button-group
+      law: A button inside a group does not scale when pressed.
+      measure: { kind: style, context: { state: pressed }, select: '[data-component="ButtonGroup"] [data-component="Button"]', metric: scale, op: "=", value: 1 }
+      owner: vendor/parity.yaml button-group
+    - id: DNA-COMMON-BUTTONGROUP-ONE-INTENT
+      role: button-group
+      law: Every button of a group has one paint, because a group holds peers of one intent.
+      measure: { kind: uniform, scope: '[data-component="ButtonGroup"]', select: '[data-component="Button"]', metric: [background-color, color], op: "=" }
+      owner: CTA-1/case-7
+    - id: DNA-COMMON-ONE-ACCENT-FILL
+      role: button
+      law: A view shows at most budgets.commitPerView buttons in the accent fill, the commit; the page behind an open modal does not count.
+      measure: { kind: count, select: 'document [data-component="Button"]:not([inert] *)', where: { metric: background-color, op: "=", value: { token: --accent } }, op: "<=", value: { threshold: budgets.commitPerView.max } }
+      owner: CTA-1; lint single-commit-per-render
+    # --- tabs, segmented control, fields
+    - id: DNA-COMMON-TABS-BY-LAYER
+      role: tabs
+      law: Tabs outside a painted surface draw the underline and tabs inside a surface draw the pill.
+      measure:
+        kind: style
+        metric: tabs-look
+        op: "="
+        cases:
+          - { select: '[data-component="Tabs"]:not([data-grammar-nesting="surface"] *)', value: underline }
+          - { select: '[data-grammar-nesting="surface"] [data-component="Tabs"]', value: pill }
+      owner: D-2; UI-9
+      followUp: C-1
+    - id: DNA-COMMON-TABS-INDICATOR
+      role: tabs
+      law: A tab bar draws exactly one indicator.
+      measure: { kind: count, scope: '[data-component="Tabs"]', select: '.tabs__indicator', op: "=", value: 1 }
+      owner: vendor/parity.yaml tabs
+    - id: DNA-COMMON-TABS-OWN-PANEL
+      role: tabs
+      law: Each tab controls its own panel.
+      measure: { kind: a11y, select: '[data-component="Tabs"] [role="tab"]', metric: controls, op: "=", value: tabpanel }
+      owner: vendor/parity.yaml tabs
+    - id: DNA-COMMON-TABS-ROVING
+      role: tabs
+      law: Arrow keys move focus between tabs.
+      measure: { kind: interaction, select: '[data-component="Tabs"] [role="tab"][aria-selected="true"]', act: [focus, press ArrowRight], then: { select: 'document :focus', kind: a11y, metric: role, op: "=", value: tab } }
+      owner: vendor/parity.yaml tabs
+    - id: DNA-COMMON-SEGMENTED-RADIO
+      role: segmented-control
+      law: A segmented control is a radio group with exactly one checked segment.
+      measure: { kind: count, scope: '[data-component="SegmentedControl"]', select: '[role="radio"][aria-checked="true"]', op: "=", value: 1 }
+      owner: STATE-6/case-5
+    - id: DNA-COMMON-FIELD-BY-LAYER
+      role: [input, select]
+      law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice.
+      measure:
+        kind: attr
+        metric: data-grammar-variant
+        op: "="
+        cases:
+          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"]):not([data-grammar-nesting="surface"] *)', value: primary }
+          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"])', value: secondary }
+      owner: R318/case-1; UI-10
+    - id: DNA-COMMON-FIELD-NAME-IS-LABEL
+      role: [input, select]
+      law: A field's accessible name is its visible label, never its placeholder.
+      measure: { kind: a11y, select: ':is(input,textarea,[role="combobox"]):is([data-component="Input"] *,[data-component="Textarea"] *,[data-component="Select"] *,[data-component="ComboBox"] *,[data-component="SearchField"] *,[data-component="NumberField"] *)', metric: name, op: "=", value: { fixture: label } }
+      owner: contract roles.input; A11Y-1
+    - id: DNA-COMMON-FIELD-ERROR-DESCRIBES
+      role: [input, select]
+      law: An invalid field's error renders in its own slot and is part of its accessible description.
+      measure: { kind: a11y, select: '[aria-invalid="true"]', metric: description, op: matches, value: { fixture: errorMessage } }
+      owner: FEEDBACK-1
+    - id: DNA-COMMON-FIELD-ONE-RING
+      role: input
+      law: A focused single-line field shows exactly one focus ring, on the field frame.
+      measure: { kind: interaction, select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="ComboBox"])', act: [focus], then: { metric: focus-rings, op: "=", value: 1 } }
+      owner: FOCUS-1/case-6
+    # --- chips and status dots
+    - id: DNA-COMMON-CHIP-NOT-TARGET
+      role: chip
+      law: A Badge and a StatusDot with text are labels, not focusable or pressable.
+      measure: { kind: a11y, select: ':is([data-component="Badge"],[data-component="StatusDot"][data-variant="text"])', metric: focusable, op: "=", value: false }
+      owner: contract roles.chip
+    - id: DNA-COMMON-CHIP-LABEL-UPPERCASE
+      role: chip
+      law: A chip label's first letter renders uppercase.
+      measure: { kind: text, select: ':is([data-component="Badge"],[data-component="StatusDot"][data-variant="text"],[data-grammar-tag])', metric: first-letter, op: "=", value: uppercase }
+      owner: lint R322; contract roles.chip
+    - id: DNA-COMMON-STATUSDOT-CHIP-PARITY
+      role: chip
+      law: A StatusDot with text has the padding and height of the HeroUI soft Chip of the same size.
+      measure: { kind: style, select: '[data-component="StatusDot"][data-variant="text"]', metric: [padding-inline-start, padding-inline-end, height], op: "=", value: { vendor: { component: Chip, props: { variant: soft, size: $data-size }, metric: [padding-inline-start, padding-inline-end, height] } } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-STATUSDOT-GAP
+      role: chip
+      law: A StatusDot's dot sits 4px before its text.
+      measure: { kind: relation, select: '[data-component="StatusDot"][data-variant="text"] .starci-core-status-dot-label', metric: left, op: "=", ref: { within: '[data-component="StatusDot"]', select: '[data-slot="status-dot-mark"]', metric: right, offset: 4px } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-DOT-SIZE
+      role: chip
+      law: Every status dot, in every variant, is the one dot-size token square.
+      measure: { kind: box, select: '[data-slot="status-dot-mark"]', metric: [width, height], op: "=", value: { token: --starci-core-status-dot-size } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-DOT-NAMED
+      role: chip
+      law: A dot without text is named by its aria-label and shows that name in a tooltip on hover and focus.
+      measure: { kind: interaction, select: '[data-component="StatusDot"]:is([data-variant="static"],[data-variant="echo"])', act: [focus], then: { select: 'document [role="tooltip"]', kind: text, metric: text, op: "=", value: { fixture: ariaLabel } } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-ECHO-LIGHT-STOP
+      role: chip
+      law: The echo ring is painted in the tone's light stop.
+      measure: { kind: style, select: '[data-slot="status-dot-mark"][data-echo="true"]', pseudo: "::after", metric: background-color, op: "=", value: { token: --starci-core-status-dot-light } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-ECHO-REDUCED-MOTION
+      role: chip
+      law: Under reduced motion the echo ring is not drawn.
+      measure: { kind: style, context: { reducedMotion: reduce }, select: '[data-slot="status-dot-mark"][data-echo="true"]', pseudo: "::after", metric: display, op: "=", value: none }
+      owner: contract roles.chip
+    - id: DNA-COMMON-TAG-REMOVE
+      role: chip
+      law: A removable tag carries one remove button of its own.
+      measure: { kind: count, scope: '[data-component="TagGroup"][data-grammar-tag-removable="true"] [data-grammar-tag]', select: ':is(button,[role="button"])', op: "=", value: 1 }
+      owner: vendor/parity.yaml tag
+    - id: DNA-COMMON-TAG-REORDER-KEYS
+      role: chip
+      law: A reorderable tag moves with Alt and an arrow key, and the move is announced politely.
+      measure: { kind: interaction, select: '[data-grammar-tag-reorderable="true"] [data-grammar-tag]', act: [focus, press Alt+ArrowRight], then: { select: 'document [aria-live="polite"]', kind: text, metric: text, op: set } }
+      owner: contract roles.chip
+    # --- overlays and menus
+    - id: DNA-COMMON-DIALOG-NAMED
+      role: dialog
+      law: Every modal overlay has an accessible name from its heading and a close control.
+      measure: { kind: a11y, select: 'document :is([role="dialog"],[role="alertdialog"])', metric: name, op: set }
+      owner: vendor/parity.yaml modal
+    - id: DNA-COMMON-DIALOG-ESCAPE
+      role: dialog
+      law: Escape closes a modal overlay and focus returns to its trigger.
+      measure: { kind: interaction, select: '[aria-haspopup="dialog"]', act: [press, press Escape], then: { select: 'document :focus', kind: attr, metric: aria-haspopup, op: "=", value: dialog } }
+      owner: vendor/parity.yaml modal; FOCUS-3
+    - id: DNA-COMMON-DIALOG-FOCUS-TRAP
+      role: dialog
+      law: Tab never moves focus out of an open modal overlay.
+      measure: { kind: interaction, select: 'document :is([role="dialog"],[role="alertdialog"])', act: [press Tab, press Tab, press Tab, press Tab, press Tab, press Tab], then: { kind: count, select: 'document :is([role="dialog"],[role="alertdialog"]) :focus', op: "=", value: 1 } }
+      owner: vendor/parity.yaml modal; FOCUS-3
+    - id: DNA-COMMON-ALERTDIALOG-DISMISS-FIRST
+      role: dialog
+      law: An alert dialog opens with focus on its dismiss button, which comes first; the confirm comes last.
+      measure: { kind: interaction, select: 'document [role="alertdialog"]', act: [open], then: { select: '.starci-core-overlay-footer [data-component="Button"]:first-child', kind: a11y, metric: focused, op: "=", value: true } }
+      owner: CTA-4
+    - id: DNA-COMMON-MENU-SECTIONS
+      role: menu
+      law: Menu sections are separated by the vendor separator, one fewer than the sections.
+      measure: { kind: count, scope: 'document [role="menu"]', select: '[role="separator"]', op: "=", value: { count: '[data-grammar-menu-section]', offset: -1 } }
+      owner: vendor/parity.yaml dropdown
+    - id: DNA-COMMON-MENU-DANGER
+      role: menu
+      law: A destructive menu item carries the danger tone.
+      measure: { kind: source, check: "lint:starci-grammar/destructive-menu-entry-needs-danger-tone" }
+      owner: CTA-4
+    # --- alerts, empty states, avatars
+    - id: DNA-COMMON-ALERT-SURFACE
+      role: alert
+      law: An Alert in the surface appearance is drawn on the surface colour; its tone paints only the indicator and the title.
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="surface"]', metric: background-color, op: "=", value: { token: --surface } }
+      owner: alert-white-surface; D-12
+    - id: DNA-COMMON-EMPTY-ONE-ACTION
+      role: empty-state
+      law: An empty notice holds at most one action.
+      measure: { kind: count, scope: '[data-component="EmptyNotice"]', select: ':is([data-component="Button"],[data-component="TextAction"])', op: "<=", value: 1 }
+      owner: contract roles.empty-state
+    - id: DNA-COMMON-AVATAR-GROUP-ONE-SIZE
+      role: avatar
+      law: Every member of an avatar group has one size.
+      measure: { kind: uniform, scope: '[data-component="AvatarGroup"]', select: '[data-component="Avatar"]', metric: [width, height], op: "=" }
+      owner: R318/case-1
+    - id: DNA-COMMON-AVATAR-INITIALS
+      role: avatar
+      law: An avatar without an image draws the initials of the first and last words of its name.
+      measure: { kind: text, select: '[data-component="Avatar"]:not(:has(img[src]))', metric: text, op: "=", value: { fixture: initials } }
+      owner: avatar-default-dicebear-initials
+    - id: DNA-COMMON-AGENT-NAMED
+      role: avatar
+      law: An agent avatar carries the bot badge and an accessible name that says it is an agent.
+      measure: { kind: a11y, select: '.starci-core-avatar-agent-anchor [data-component="Avatar"]', metric: name, op: "=", value: { fixture: agentAccessibleName } }
+      owner: agent-avatar-initials-bot-badge
+
+  core:
+    - id: DNA-CORE-EDGE-TOP
+      role: card
+      law: A top-depth surface is raised by its shadow and draws no border.
+      measure:
+        kind: style
+        select: '[data-grammar-surface-depth="top"]'
+        target: painted-box
+        checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 0px }]
+      owner: surfacecard-always-painted
+    - id: DNA-CORE-EDGE-NESTED
+      role: card
+      law: A nested surface draws a border and no shadow; border and shadow are never both drawn.
+      measure:
+        kind: style
+        select: '[data-grammar-surface-depth="nested"]'
+        target: painted-box
+        checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: ">=", value: 1px }]
+      owner: surfacecard-always-painted
+    - id: DNA-CORE-CARD-LABEL-IN-MATERIAL
+      role: card
+      law: A labelled card is one material box, its label inside the painted card and the inner frame unpainted.
+      measure:
+        kind: style
+        op: "="
+        cases:
+          - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"]', metric: background-color, value: { token: --surface } }
+          - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"] > [data-grammar-frame="bounded"]', metric: background-color, value: "rgba(0, 0, 0, 0)" }
+      owner: grammars/core.md
+    - id: DNA-CORE-BUTTON-PILL
+      role: button
+      law: Every button and its skeleton is a pill, its corner at least half its height.
+      measure: { kind: style, select: ':is([data-component="Button"],[data-component="IconButton"])', metric: radius, op: ">=", value: { self: height, times: 0.5 } }
+      owner: buttons-pill
+    - id: DNA-CORE-ACCENT-TEXT
+      role: root
+      law: Where the accent is text (a link, the current tab label) it reads the text-safe accent, never the fill accent.
+      measure: { kind: style, select: '[data-component="Link"]', metric: color, op: "=", value: { token: --link } }
+      owner: grammars/core.md
+    - id: DNA-CORE-SEGMENT-SELECTED
+      role: segmented-control
+      law: The selected segment sits on the soft accent with an accent border.
+      measure:
+        kind: style
+        op: "="
+        cases:
+          - { select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: background-color, value: { token: --accent-soft } }
+          - { select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: border-top-color, value: { token: --accent } }
+      owner: CTA-1/case-6
+    - id: DNA-CORE-ALERT-RAISED
+      role: alert
+      law: A surface Alert is raised like a top surface, by its shadow and without a border.
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="surface"]', metric: border-width, op: "=", value: 0px }
+      owner: alert-white-surface
+    - id: DNA-CORE-PARITY-STRICT
+      role: root
+      law: core changes HeroUI through tokens only; every other deviation is a ruled override.
+      measure: { kind: source, check: "parity:strict" }
+      owner: grammar-vendor-parity; repaint-default-heroui-unless-ruled
+
+  offset-pop:
+    - id: DNA-OFFSET-POP-STICKER
+      role: card
+      law: A top-depth object wears the ink outline and an unblurred offset shadow down and to the right.
+      measure:
+        kind: style
+        select: '[data-grammar-surface-depth="top"]'
+        target: painted-box
+        checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: shadow-blur, op: "=", value: 0px }, { metric: shadow-offset, op: ">", value: 0px }]
+      owner: O-1
+    - id: DNA-OFFSET-POP-POCKET
+      role: card
+      law: A nested surface keeps the outline, drops the shadow and takes the secondary fill.
+      measure:
+        kind: style
+        select: '[data-grammar-surface-depth="nested"]'
+        target: painted-box
+        checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: box-shadow, op: "=", value: none }, { metric: background-color, op: "=", value: { token: --surface-secondary } }]
+      owner: O-1
+    - id: DNA-OFFSET-POP-CARD-LABEL-OUTSIDE
+      role: card
+      law: A card's label sits on the page above the sticker, outside the painted box.
+      measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-slot="card-content"]', metric: top } }
+      owner: grammars/offset-pop.md
+    - id: DNA-OFFSET-POP-BUTTON-STICKER
+      role: button
+      law: Every button wears the ink outline and an unblurred offset shadow.
+      measure:
+        kind: style
+        select: '[data-component="Button"]'
+        checks: [{ metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: shadow-blur, op: "=", value: 0px }, { metric: shadow-offset, op: ">", value: 0px }]
+      owner: grammars/offset-pop.md
+    - id: DNA-OFFSET-POP-HARD-SHADOWS
+      role: root
+      law: No shadow inside the grammar is blurred.
+      measure: { kind: count, select: '*', where: { metric: shadow-blur, op: ">", value: 0px }, op: "=", value: 0 }
+      owner: grammars/offset-pop.md (What an app must not add)
+    - id: DNA-OFFSET-POP-PINK-NEVER-TEXT
+      role: root
+      law: Pink is a fill and a ring, never a text colour.
+      measure: { kind: count, select: '*:not(:empty)', where: { metric: color, op: "=", value: { token: --offset-pop-pink } }, op: "=", value: 0 }
+      owner: O-2
+    - id: DNA-OFFSET-POP-INK-ON-PINK
+      role: button
+      law: Text on a pink fill is ink.
+      measure: { kind: style, select: '*', where: { metric: background-color, op: "=", value: { token: --offset-pop-pink } }, metric: color, op: "=", value: { token: --offset-pop-ink } }
+      owner: O-2
+    - id: DNA-OFFSET-POP-PRESS-TRAVEL
+      role: button
+      law: A pressed button travels into its shadow, which collapses.
+      measure: { kind: style, context: { state: pressed }, select: '[data-component="Button"]:not([disabled])', metric: shadow-offset, op: "=", value: 0px }
+      owner: grammars/offset-pop.md
+    - id: DNA-OFFSET-POP-REDUCED-MOTION
+      role: root
+      law: Under reduced motion nothing travels when pressed.
+      measure: { kind: style, context: { reducedMotion: reduce, state: pressed }, select: ':is([data-component="Button"],[data-grammar-surface],[data-grammar-row])', metric: translate, op: "=", value: 0px }
+      owner: grammars/offset-pop.md
+    - id: DNA-OFFSET-POP-FORCED-COLORS
+      role: root
+      law: In forced colours every shadow is dropped and the outline stays.
+      measure:
+        kind: style
+        context: { forcedColors: active }
+        select: ':is([data-component="Button"],[data-component="Badge"],[data-grammar-surface])'
+        checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }]
+      owner: grammars/offset-pop.md
+    - id: DNA-OFFSET-POP-ALERT-SOFT
+      role: alert
+      law: A soft Alert is its tone's palette fill with ink text.
+      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="soft"]', metric: color, op: "=", value: { token: --offset-pop-ink } }
+      owner: O-10
+      followUp: O-10
+    - id: DNA-OFFSET-POP-PARITY-CUSTOM
+      role: root
+      law: offset-pop re-skins paint and arrangement only inside its scope; anatomy, roles and behaviour stay HeroUI's.
+      measure: { kind: source, check: "parity:custom" }
+      owner: grammar-vendor-parity
