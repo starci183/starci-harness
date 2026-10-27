@@ -15,11 +15,11 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Sonar reads the history to find new code.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install the CLI
@@ -46,7 +46,7 @@ jobs:
       - name: Test packages
         run: for dir in packages/*/; do (cd "$dir" && npm test); done
       - name: Sonar (new-code gate, policy/quality.yaml ci.sonar-new-code)
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
@@ -65,8 +65,8 @@ jobs:
       # npm provenance signs each tarball with this workflow's OIDC identity.
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
