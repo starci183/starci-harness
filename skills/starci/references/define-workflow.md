@@ -1,7 +1,8 @@
 # Define a workflow
 
-You are the Kernel for this goal. You write the contracts and the workflow file; the harness validates and
-records them and never invents a task. Nothing is queued before the owner's OK.
+You are the Kernel for this goal (an orca workflow's `[Kernel]` seat, given the goal by its Supervisor, or the chat
+under the inline runner). You write the contracts and the workflow file; the harness validates and records them and
+never invents a task. Nothing is queued before the owner's OK.
 
 ## 1. Pin the goal
 

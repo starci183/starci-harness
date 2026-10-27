@@ -9,6 +9,8 @@ difficulties: [easy, medium, hard, insane]
 difficultyTier: {easy: low, medium: medium, hard: high, insane: frontier}
 # A label named here takes that tier whatever its difficulty.
 labelTiers: {}
+# Coordinator seats use these tiers and the same pool, provider, quota and bias rules as Ops.
+coordinators: {supervisor: high, kernel: high}
 # Lowest first: a second contract-red in a task's lineage raises the tier one step along this order.
 tierOrder: [low, medium, high, frontier]
 escalateAfterReds: 2
@@ -35,18 +37,20 @@ pools:
   claude:
     provider: claude
     maxParallel: 6
-    labels: [code, test, ui, verify, uat, docs, deliver]
+    labels: [code, test, ui, verify, uat, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
   codex:
     provider: codex
     maxParallel: 10
-    labels: [code, test, ui, verify, uat, docs, deliver]
+    labels: [code, test, ui, verify, uat, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
   devin:
     provider: devin
     maxParallel: 10
     labels: [code, test, verify, docs]
     tools: [git, node, docker]
+    # Devin takes no launch-time model: worker-start names none and the attempt records the model Orca attests.
+    modelSelection: false
 
 # Host tools the router checks on this machine (the command must exit 0); a tool without a probe is the pool's own.
 hostProbes:

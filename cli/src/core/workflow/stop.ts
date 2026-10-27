@@ -17,7 +17,7 @@ export const workflowStopVerb = defineVerb({
     summary: "stop a workflow: --graceful dispatches nothing new and waits for live tasks, --hard cancels every live task and its seats now; once stopped, its Kernel terminal is closed",
     editions: BOTH_EDITIONS,
     effect: "host",
-    roles: ["owner", "supervisor"],
+    roles: ["owner", "supervisor", "kernel"],
     schema: "starci/workflow-step@1",
     flags: {
         workflow: { kind: "string", summary: "the workflow id", required: true, positional: true },
@@ -32,8 +32,7 @@ export const workflowStopVerb = defineVerb({
         const live = (() => {
             try {
                 const workflow = getWorkflow(db, flags.workflow)
-                if (workflow.status === "stopped" || workflow.status === "done") throw new Refusal("WORKFLOW_ENDED", `workflow ${workflow.id} is ${workflow.status} already`)
-                setWorkflowStatus(db, workflow.id, workflow.status === "defined" ? "stopped" : "stopping", `${mode} stop asked`)
+                if (workflow.status !== "stopped" && workflow.status !== "done") setWorkflowStatus(db, workflow.id, workflow.status === "defined" ? "stopped" : "stopping", `${mode} stop asked`)
                 return workflowTasks(db, workflow.id).filter(isLiveTask)
             } finally {
                 db.close()

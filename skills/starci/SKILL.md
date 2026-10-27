@@ -38,12 +38,17 @@ Run `starci explain` (or `starci explain --term <word>`) for the exact flags of 
 verb for one `{schema, ok, data}` envelope. Exit 0 is done, 1 is refused or red (nothing moved), 2 is bad
 usage. Read every refusal code; never retry blindly.
 
-## Roles in a chat
+## Seats and the chat
 
-The Kernel plans: it writes every contract and the workflow file, sends, steps and verifies. Ops are plain
-workers that run the procedure of their label's op file ([ops/ops/](../../ops/ops/README.md)) on one contract. Until a Kernel seat exists, the chat
-that defines a workflow is its Kernel. Under the `orca` runner the chat never writes product code; under
-`inline` it is Kernel and worker, one task at a time.
+The owner starts the host's Supervisor once (`starci supervisor start`, or a scheduled `starci supervisor ensure`) and
+then talks to its `[Supervisor]` terminal: it turns a request into a workflow, starts it from its own terminal, and
+answers its Kernels' escalations. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
+it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
+contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
+
+A chat agent outside Orca is Debug: it diagnoses the harness read-only and hands the Supervisor a repair contract; it
+never starts an orca workflow (that refuses `SUPERVISOR_REQUIRED`). Under the `inline` runner the chat is the Kernel and
+the worker, one task at a time, without seats.
 
 ## Approvals
 

@@ -7,7 +7,10 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 7
+export const LEDGER_VERSION = 8
+
+/** The additive host schema version, including the singleton Supervisor seat. */
+export const MACHINE_VERSION = 2
 
 /**
  * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
@@ -62,6 +65,13 @@ CREATE TABLE IF NOT EXISTS prior_work (
   kind TEXT NOT NULL CHECK (kind IN ('preserved', 'committed')), sha256 TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id),
   base TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (workflow_id, plan_key, contract_hash, attempt_id, kind, sha256));
+CREATE TABLE IF NOT EXISTS commands (
+  cmd_id TEXT PRIMARY KEY, scope TEXT NOT NULL, workflow_id TEXT NOT NULL, kind TEXT NOT NULL, based_on_json TEXT NOT NULL,
+  sha256 TEXT NOT NULL, body_json TEXT NOT NULL, status TEXT NOT NULL, outcome_json TEXT, received_at TEXT NOT NULL, applied_at TEXT);
+CREATE TABLE IF NOT EXISTS decisions (
+  id TEXT PRIMARY KEY, scope TEXT NOT NULL, workflow_id TEXT NOT NULL, kind TEXT NOT NULL, subject TEXT NOT NULL,
+  evidence_json TEXT NOT NULL, raised_at TEXT NOT NULL, answered_by TEXT, answered_at TEXT,
+  UNIQUE (scope, workflow_id, kind, subject));
 `
 
 /**
@@ -95,6 +105,11 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "tasks", column: "result_hash", type: "TEXT", since: 7 },
     { table: "tasks", column: "plan_inputs_json", type: "TEXT", since: 7 },
     { table: "graph_versions", column: "cmd_id", type: "TEXT", since: 7 },
+    // Version 8: a Kernel is a seat (role kernel) of its workflow, and every seat holds a TTL lease.
+    { table: "seats", column: "workflow_id", type: "TEXT", since: 8 },
+    { table: "seats", column: "lease_until", type: "TEXT", since: 8 },
+    // One workflow = one worktree: the checkout every Op, verify and relaunched Kernel of the workflow uses.
+    { table: "workflows", column: "worktree", type: "TEXT", since: 8 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
@@ -148,11 +163,22 @@ const projectsRoot = (): string => {
 /** The host store, `<state base>/machine.sqlite`. */
 export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 
+/** A coordinator's immutable launch brief, outside every product repository. */
+export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string =>
+    join(role === "supervisor" ? stateBase() : projectDir(root), "briefs", `${role}-${launchId}.md`)
+
 /**
  * The host store keeps only host-wide state: the registry of project ledgers (the legacy `ledgers` columns plus
  * repo_common_dir, the lookup key) and provider health, since a provider's rate limit or circuit is the same for every project.
  */
 const MACHINE_SCHEMA = `
+CREATE TABLE IF NOT EXISTS machine_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+INSERT INTO machine_meta (key, value) VALUES ('version', '${String(MACHINE_VERSION)}')
+  ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+CREATE TABLE IF NOT EXISTS supervisors (
+  id TEXT PRIMARY KEY, terminal TEXT, run_id TEXT, task_id TEXT, agent TEXT NOT NULL, model TEXT NOT NULL,
+  started_at TEXT NOT NULL, ended_at TEXT, lease_until TEXT, launch_op TEXT, launch_json TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS one_live_supervisor ON supervisors ((1)) WHERE ended_at IS NULL;
 CREATE TABLE IF NOT EXISTS ledgers (
   ledger_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, repo_common_dir TEXT NOT NULL UNIQUE, repo_root TEXT NOT NULL,
   file TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'idle', 'retired')),
@@ -161,6 +187,21 @@ CREATE TABLE IF NOT EXISTS provider_health (
   provider TEXT PRIMARY KEY, status TEXT NOT NULL, strikes INTEGER NOT NULL DEFAULT 0,
   failure_kind TEXT, circuit_open_until TEXT, updated_at TEXT NOT NULL);
 `
+
+/** Host columns added after their table was first created, additive like ADDED_COLUMNS (machine version 2 adds the Supervisor's lease). */
+const MACHINE_ADDED_COLUMNS: readonly { readonly table: string; readonly column: string; readonly type: string }[] = [
+    { table: "supervisors", column: "lease_until", type: "TEXT" },
+    { table: "supervisors", column: "launch_op", type: "TEXT" },
+    { table: "supervisors", column: "launch_json", type: "TEXT" },
+]
+
+const applyMachineSchema = (db: DatabaseSync): void => {
+    db.exec(MACHINE_SCHEMA)
+    for (const { table, column, type } of MACHINE_ADDED_COLUMNS) {
+        const known = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((row) => String(row.name)))
+        if (!known.has(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
+    }
+}
 
 interface Project {
     readonly root: string
@@ -232,7 +273,7 @@ export const openMachine = (): DatabaseSync => {
     mkdirSync(stateBase(), { recursive: true })
     const db = connect(machinePath())
     try {
-        db.exec(MACHINE_SCHEMA)
+        applyMachineSchema(db)
     } catch (error: unknown) {
         db.close()
         throw error
@@ -259,7 +300,7 @@ export const findLedgerId = (root: string): string | undefined => {
     if (!existsSync(file)) return undefined
     const db = connect(file)
     try {
-        db.exec(MACHINE_SCHEMA)
+        applyMachineSchema(db)
         return registered(db, projectOf(root))
     } finally {
         db.close()
@@ -292,7 +333,7 @@ export const ensureLedgerId = (root: string): string => {
     mkdirSync(stateBase(), { recursive: true })
     const db = connect(machinePath())
     try {
-        db.exec(MACHINE_SCHEMA)
+        applyMachineSchema(db)
         db.exec("BEGIN IMMEDIATE")
         try {
             let id = registered(db, project)

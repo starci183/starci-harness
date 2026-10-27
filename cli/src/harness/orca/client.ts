@@ -211,6 +211,55 @@ const callOrcaArgv = async <T>(binary: OrcaBinary, argv: readonly string[], labe
 const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags, schema: z.ZodType<T>, cwd: string, timeoutMs: number = ORCA_TIMEOUT_MS): Promise<T> =>
     callOrcaArgv(binary, orcaArgv(command, flags), `orca orchestration ${command}`, schema, cwd, timeoutMs)
 
+/** The routed coordinator launch, with a brief pointer instead of a full prompt in argv. */
+export interface AgentLaunchInput {
+    readonly agent: string
+    readonly model?: string | undefined
+    readonly effort?: string | undefined
+    readonly worktree: string
+    readonly prompt: string
+    readonly retryLaunch?: string | undefined
+}
+
+const agentLaunchSchema = z.looseObject({
+    outcome: z.looseObject({ kind: z.string(), handle: z.string().min(1).nullish() }).nullish(),
+})
+
+const UNKNOWN_AGENT_LAUNCH_CODES: ReadonlySet<string> = new Set(["agent_session_operation_unknown", "agent_session_operation_expired"])
+
+const launchOperationSchema = z.looseObject({ operationId: z.string().min(1) })
+
+/** The operation id an unknown `agent launch` names, the only key a replay (`--retry-launch`) may use. */
+export const launchOperationOf = (failure: OrcaFailure): string | undefined => {
+    const parsed = launchOperationSchema.safeParse(failure.result)
+    return parsed.success ? parsed.data.operationId : /operationId[^\w-]*([\w-]{8,})/.exec(failure.message)?.[1]
+}
+
+/** Launches a coordinator in a terminal; a lost or expired receipt never authorizes another launch. */
+export const agentLaunch = async (binary: OrcaBinary, input: AgentLaunchInput, cwd: string): Promise<{ readonly terminal: string | null }> => {
+    const argv = orcaToolArgv("agent", "launch", {
+        agent: input.agent,
+        model: input.model,
+        effort: input.effort,
+        worktree: input.worktree,
+        prompt: input.prompt,
+        surface: "terminal",
+        "retry-launch": input.retryLaunch,
+    })
+    try {
+        const result = await callOrcaArgv(binary, argv, "orca agent launch", agentLaunchSchema, cwd, LAUNCH_TIMEOUT_MS + LAUNCH_GRACE_MS)
+        if (result.outcome !== null && result.outcome !== undefined && result.outcome.kind !== "terminal") {
+            throw new OrcaFailure(`orca agent launch requested a terminal but returned ${result.outcome.kind}; its effect is unknown`, undefined, result, "unknown")
+        }
+        return { terminal: result.outcome?.handle ?? null }
+    } catch (error: unknown) {
+        if (error instanceof OrcaFailure && error.orcaCode !== undefined && UNKNOWN_AGENT_LAUNCH_CODES.has(error.orcaCode)) {
+            throw new OrcaFailure(error.message, error.orcaCode, error.result, "unknown")
+        }
+        throw error
+    }
+}
+
 /**
  * Titles a terminal tab (`orca terminal rename`), so a seat reads `[Op] <task>` instead of Orca's generated name.
  * Best effort: the title is presentation, so a failure is returned as text and never fails the caller.
@@ -244,7 +293,7 @@ export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<{ r
 }
 
 /** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
-const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
+const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["tab_not_found", "terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
 
 /**
  * `orca terminal close --terminal <handle> --tab`: closes the terminal's whole tab. `closed` when Orca closed it, `gone` when
@@ -320,7 +369,8 @@ export interface WorkerStartInput {
     readonly taskTitle: string
     readonly worktree: string
     readonly agent: string
-    readonly model: string
+    /** Absent for an agent that takes no launch-time model (ops/routing.yaml modelSelection: false). */
+    readonly model?: string | undefined
     readonly effort?: string | undefined
     readonly run?: string | undefined
     readonly parent?: string | undefined
@@ -536,3 +586,73 @@ export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: s
 
 /** True when a released worker's tab may still be open: closing it failed, or its handle was unknown (an event records it). */
 export const tabLeftOpen = (closed: WorkerClosed): boolean => closed.settled && closed.tab !== "closed" && closed.tab !== "gone"
+
+/** `orca orchestration worker-abandon`: fences a worker without claiming its process stopped (the fence when worker-stop cannot answer). */
+export const workerAbandon = async (binary: OrcaBinary, dispatchId: string, cwd: string, retryRequest: string): Promise<string> =>
+    (await callOrca(binary, "worker-abandon", { dispatch: dispatchId, "retry-request": retryRequest }, z.looseObject({ state: z.string().nullish() }), cwd, SETTLE_TIMEOUT_MS)).state ?? "abandoned"
+
+/** What request-show says of one mutation request: it landed (completed), is still running (pending) or Orca holds no receipt (absent). */
+export type RequestState = "completed" | "pending" | "absent" | "unknown"
+
+const requestShowSchema = z.looseObject({ state: z.string().nullish(), status: z.string().nullish(), request: z.looseObject({ state: z.string().nullish() }).nullish() })
+
+/** `orca orchestration request-show --request <id>`: read-only; absent is not proof that nothing happened. */
+export const requestShow = async (binary: OrcaBinary, requestId: string, cwd: string): Promise<RequestState> => {
+    const result = await callOrca(binary, "request-show", { request: requestId }, requestShowSchema, cwd)
+    const state = result.state ?? result.status ?? result.request?.state ?? null
+    return state === "completed" || state === "pending" || state === "absent" ? state : "unknown"
+}
+
+/** One message of an Orca delivery, read loosely: the harness acts on its type only, the ledger stays the state. */
+export interface MailMessage {
+    readonly id: string
+    readonly type: string
+    readonly subject: string
+    readonly body: string
+    readonly payload: unknown
+}
+
+const messageSchema = z.looseObject({ id: z.string(), type: z.string().nullish(), subject: z.string().nullish(), body: z.string().nullish(), payload: z.unknown().optional() })
+const checkSchema = z.looseObject({
+    delivery: z.looseObject({ id: z.string().nullish(), messages: z.array(messageSchema).nullish() }).nullish(),
+    deliveryId: z.string().nullish(),
+    messages: z.array(messageSchema).nullish(),
+})
+
+/** A drained delivery: its id (acked by the next check) and its messages; a null id when the mailbox was empty. */
+export interface MailDelivery {
+    readonly deliveryId: string | null
+    readonly messages: readonly MailMessage[]
+}
+
+/**
+ * `orca orchestration check` on a coordinator's bound Run: acks the previous delivery, then returns the oldest unacknowledged
+ * batch, waiting up to `waitMs` when given. A timeout or an empty result is a checkpoint, not a failure.
+ */
+export const mailCheck = async (binary: OrcaBinary, input: { readonly terminal: string; readonly run: string; readonly ack?: string | undefined; readonly waitMs?: number | undefined }, cwd: string): Promise<MailDelivery> => {
+    const base: Record<string, string | true | undefined> = { terminal: input.terminal, run: input.run, ack: input.ack }
+    const flags = input.waitMs === undefined ? base : { ...base, wait: true as const, types: "worker_done,question,escalation,handoff", "timeout-ms": String(input.waitMs) }
+    const result = await callOrcaArgv(binary, orcaToolArgv("orchestration", "check", flags), "orca orchestration check", checkSchema, cwd, (input.waitMs ?? 0) + ORCA_TIMEOUT_MS)
+    const rows = result.delivery?.messages ?? result.messages ?? []
+    return {
+        deliveryId: result.delivery?.id ?? result.deliveryId ?? null,
+        messages: rows.map((row) => ({ id: row.id, type: row.type ?? "status", subject: row.subject ?? "", body: row.body ?? "", payload: row.payload ?? null })),
+    }
+}
+
+/** One wake-up mail: the recipient (`run:<id>` or `dispatch:<id>`), its type, a subject, a body and the ledger row as payload. */
+export interface MailSend {
+    readonly to: string
+    readonly from?: string | undefined
+    readonly type: "status" | "escalation" | "handoff"
+    readonly subject: string
+    readonly body: string
+    readonly payload: unknown
+    readonly retryRequest: string
+}
+
+/** `orca orchestration send`: wakes a seat; a mail never carries state the ledger does not hold. */
+export const mailSend = async (binary: OrcaBinary, input: MailSend, cwd: string): Promise<void> => {
+    const flags = { to: input.to, from: input.from, type: input.type, subject: input.subject, body: input.body, payload: JSON.stringify(input.payload), "retry-request": input.retryRequest }
+    await callOrca(binary, "send", flags, z.unknown(), cwd)
+}

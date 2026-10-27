@@ -8,10 +8,10 @@ The workflow is defined and the owner's OK covers starting it. You hold its id a
 starci workflow start <id>
 ```
 
-- `orca`: makes the workflow's Kernel in Orca once (a `[Kernel] <id>` terminal, its Run and its task; the terminal
-  you run in when `ORCA_TERMINAL_HANDLE` names one), then dispatches the ready tasks to worker seats nested under it as
-  `[Op] <id> › <task>`, up to `maxParallel`, each pinned or routed. If Orca does not know the repository yet, the harness
-  registers it (`orca repo add`); if the Kernel cannot be made, the report says so and ops launch flat.
+- `orca`: only from the Supervisor's terminal (elsewhere `SUPERVISOR_REQUIRED`). It makes the workflow's one worktree and
+  launches its `[Kernel] <id>` agent into the Supervisor's Run; the Kernel attaches, and its `kernel next` dispatches the
+  ready tasks as `[Op] <task>` under it, up to `maxParallel`, each pinned or routed, all in that worktree. If Orca does
+  not know the repository yet, the harness registers it (`orca repo add`).
 - `inline`: queues one task and prints it with its brief and the commands to finish it. Work it as
   [inline-task.md](inline-task.md) says.
 
@@ -19,8 +19,8 @@ starci workflow start <id>
 
 `workflow step` is one idempotent tick: it cancels live tasks no node carries any more, settles reported
 tasks through `task verify`, closes the seat and tab of every task whose result is settled (done, failed, returned,
-cancelled), dispatches newly ready tasks within `maxParallel` and the budget, and updates the status. A Kernel
-terminal that is gone is made again at the next launch. Exit 1 means the workflow is blocked.
+cancelled), dispatches newly ready tasks within `maxParallel` and the budget, and updates the status. Exit 1 means
+the workflow is blocked.
 
 ```text
 starci workflow step <id>
@@ -29,13 +29,11 @@ starci workflow step <id>
 - **Inline**: call it after each `task result`; it settles that task and prints the next one. No timer.
 - **A terminal you watch**: `starci workflow run <id> --interval 60` repeats the step in the foreground, one line per
   change, and exits 0 when done, 1 when blocked; it honours pause and stop.
-- **Orca, Claude Code**: `/loop <interval> Run "starci workflow step <id> --cwd <repo>"; on exit 1 run "starci workflow status <id> --cwd <repo>" and handle the block as references/run-workflow.md says; stop when the status is done or stopped.`
-  Use a few minutes as the interval.
-- **Orca, Codex**: if the running Codex accepts `/loop`, use it with the same sentence; otherwise create a
-  thread automation (heartbeat) with it; otherwise run the step yourself on each owner check-in. Say which
-  one you used, and never claim a loop the host did not confirm.
+- **Orca**: the Kernel's loop is `starci kernel next <id>` (it steps, fences and waits for you) and one
+  `starci kernel submit <file>` per decision, as [its brief](../../../ops/coordinators/kernel.md) says; no timer, no
+  `/loop`. A Kernel that dies is relaunched by `supervisor next` and continues from the ledger and the worktree.
 
-One loop per workflow per chat. End it when the workflow is done or stopped.
+One loop per workflow. End it when the workflow is done or stopped.
 
 `starci workflow pause <id>` holds dispatch while live tasks still settle; `starci workflow resume <id>` dispatches
 again. Pause and resume are the owner's or the Kernel's.
@@ -106,5 +104,6 @@ starci workflow stop <id> --hard
 
 `--graceful` sends nothing new and lets live tasks settle; the workflow reads `stopping` until none is live.
 In an inline run, finish the current task or cancel it (`starci task cancel <task> --reason "<why>"`),
-then step once. `--hard` cancels every live task and its seats now. Once the workflow is stopped, after its ops,
-the harness closes the Kernel terminal it made (one it adopted from `ORCA_TERMINAL_HANDLE` stays open).
+then step once. `--hard` cancels every live task and its seats now. Under orca the Supervisor stops a workflow with a
+`stop` command (`supervisor submit`); once stopped or done, after its Ops, the harness releases the Kernel's dispatch and
+closes its terminal (a Kernel's own call leaves that to the Supervisor, so it can send its handoff first).

@@ -7,6 +7,9 @@ import { locateOps } from "./ops.js"
 
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 
+/** A coordinator seat whose tier is owned by ops/routing.yaml. */
+export type CoordinatorRole = "supervisor" | "kernel"
+
 /** A difficulty by name, from easy to insane. */
 export type Difficulty = z.infer<typeof difficultySchema>
 
@@ -20,6 +23,8 @@ const poolSchema = z.object({
     maxParallel: z.number().int().positive(),
     labels: z.array(z.string().min(1)),
     tools: z.array(z.string().min(1)),
+    // false for an agent Orca launches with the model of its own config: worker-start then names no --model or --effort.
+    modelSelection: z.boolean().default(true),
 })
 
 /** One pool: a provider quota window with its parallel slots, the labels it takes and the tools its agent has. */
@@ -40,6 +45,7 @@ const routingSchema = z.object({
     difficulties: z.tuple([z.literal("easy"), z.literal("medium"), z.literal("hard"), z.literal("insane")]),
     difficultyTier: z.record(difficultySchema, z.string().min(1)),
     labelTiers: z.record(z.string(), z.string().min(1)),
+    coordinators: z.object({ supervisor: z.string().min(1), kernel: z.string().min(1) }),
     tierOrder: z.array(z.string().min(1)).min(1),
     escalateAfterReds: z.number().int().positive(),
     tiers: z.record(z.string(), z.array(memberSchema).min(1)),
@@ -67,7 +73,7 @@ export type Routing = z.infer<typeof routingSchema>
 const problemsOf = (routing: Routing): string[] => {
     const problems: string[] = []
     const tiers = new Set(Object.keys(routing.tiers))
-    for (const tier of [...routing.tierOrder, ...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers)]) {
+    for (const tier of [...routing.tierOrder, ...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers), ...Object.values(routing.coordinators)]) {
         if (!tiers.has(tier)) problems.push(`tier ${tier} is named but not defined under tiers`)
     }
     for (const tier of tiers) if (!routing.tierOrder.includes(tier)) problems.push(`tier ${tier} is missing from tierOrder`)
@@ -115,6 +121,9 @@ export const loadRouting = (dir: string = locateOps()): Routing => {
 
 /** The pool id of an agent: pools are keyed by the agent that launches in them. */
 export const poolOfAgent = (routing: Routing, agent: string): string | undefined => (agent in routing.pools ? agent : undefined)
+
+/** True when the agent takes a launch-time model (and effort); an agent whose pool says modelSelection: false runs its own. */
+export const selectsModel = (routing: Routing, agent: string): boolean => routing.pools[agent]?.modelSelection ?? true
 
 /** The provider of an agent (its pool's provider), else the agent itself: a circuit is per provider. */
 export const providerOfAgent = (routing: Routing, agent: string): string => routing.pools[agent]?.provider ?? agent

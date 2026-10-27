@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
@@ -8,7 +9,7 @@ import { loadOps } from "../../harness/ops.js"
 import { classifyFailure, recordOutcome } from "../../harness/circuit.js"
 import { describeRoute, routeTask, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
-import { loadRouting, poolOfAgent, providerOfAgent } from "../../harness/routing.js"
+import { loadRouting, poolOfAgent, providerOfAgent, selectsModel } from "../../harness/routing.js"
 import {
     LAUNCH_TIMEOUT_MS,
     OrcaFailure,
@@ -31,7 +32,8 @@ import {
     worktreeSelector,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { ensureKernel, launchableKernel } from "../../harness/kernel.js"
+import { ensureKernel, launchableKernel, workflowWorktreeOf } from "../../harness/kernel.js"
+import { applyPriorWork } from "../../harness/prior.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -89,6 +91,13 @@ const REQUEST_PLACEHOLDER = "<derived from the attempt id>"
 
 const clip = (text: string): string => (text.length <= TITLE_CHARS ? text : `${text.slice(0, TITLE_CHARS - 1)}…`)
 
+/** The folder a --worktree value names (a path, or a path: selector); another Orca selector leaves the repository root. */
+const worktreeFolder = (value: string | undefined, cwd: string, root: string): string => {
+    if (value === undefined) return root
+    if (value.startsWith("path:")) return value.slice("path:".length)
+    return value.includes(":") && !/^[A-Za-z]:[\\/]/.test(value) ? root : resolve(cwd, value)
+}
+
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
 /** Everything one launch sends to Orca, stored on its seat (seats.launch_json) so a resume replays exactly the same calls and request ids. */
@@ -102,7 +111,7 @@ const launchRecordSchema = z.object({
         taskTitle: z.string(),
         worktree: z.string(),
         agent: z.string(),
-        model: z.string(),
+        model: z.string().optional(),
         effort: z.string().optional(),
         parent: z.string().optional(),
         from: z.string().optional(),
@@ -141,12 +150,11 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
-            // Seats read as a tree: [Supervisor], then [Kernel] <workflow>, then [Op] <workflow> › <task> under it.
-            taskTitle: clip(`[Op] ${task.workflowId ?? "inline"} › ${task.id} ${task.contract.label}: ${task.contract.input.summary}`),
+            taskTitle: `[Op] ${task.id}`,
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
-            model: options.model,
-            ...(options.effort === undefined ? {} : { effort: options.effort }),
+            // An agent that takes no launch-time model (modelSelection: false) runs its own; Orca refuses --model for it.
+            ...(selectsModel(loadRouting(), options.agent) ? { model: options.model, ...(options.effort === undefined ? {} : { effort: options.effort }) } : {}),
             ...(kernel === null ? {} : { parent: kernel.taskId }),
             ...(from === undefined || from === "" ? {} : { from }),
             timeoutMs: options.timeoutMs ?? LAUNCH_TIMEOUT_MS,
@@ -317,7 +325,7 @@ const attestLaunch = async (at: Launching, launched: LaunchOf<"ready">) => {
     const effective = typeof shown === "string" ? started.effective : (shown.effective ?? started.effective)
     const attested = effectiveLaunch(effective)
     const requested = record.start
-    const mismatch = (attested.model !== null && attested.model !== requested.model) || (attested.agent !== null && attested.agent !== requested.agent)
+    const mismatch = (requested.model !== undefined && attested.model !== null && attested.model !== requested.model) || (attested.agent !== null && attested.agent !== requested.agent)
     const ours = stillOurs(db, task.id, attemptId)
     // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
     const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
@@ -344,7 +352,7 @@ const abandonReady = async (at: Launching, launched: LaunchOf<"ready">, attestat
         const after = rolled ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
         throw new Refusal(
             "MODEL_MISMATCH",
-            `requested ${requested.agent} ${requested.model}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
+            `requested ${requested.agent} ${requested.model ?? "(its own model)"}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
         )
     }
     throw new Refusal("TASK_LEFT_DURING_LAUNCH", `task ${task.id} became ${getTask(db, task.id).status} while its worker was launching; the worker was closed${closeNote(closed)}`)
@@ -370,7 +378,7 @@ const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omi
     const titled = terminal === null ? "no terminal handle to title" : await terminalRename(binary, terminal, requested.taskTitle, cwd)
     if (titled !== undefined) recordEvent(db, "seat-title-skipped", task.id, { seat: seat.id, reason: titled })
     const data: SeatStartData = { ...base, seat: seatRow, dispatchId: started.dispatchId, effective, attested }
-    const model = attested.model ?? `${requested.model} (not attested)`
+    const model = attested.model ?? `${requested.model ?? "its own model"} (not attested)`
     const under = requested.parent === undefined ? "" : ` under the Kernel task ${requested.parent}`
     return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}${under}; brief ${at.files.brief}` }
 }
@@ -393,20 +401,13 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
 }
 
 /**
- * The Kernel a workflow task's worker nests under. A real launch first makes sure it exists in Orca (created once, recreated
- * when its terminal is gone); a dry run only reads what is recorded. A Kernel Orca cannot make is an event and the worker
- * launches flat: the tree is how seats read, never a reason not to run a task.
+ * Requires the workflow's attached Kernel before a real launch; a dry run only reads its recorded identity.
  */
 const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, options: SeatStartOptions): Promise<KernelLaunch | null> => {
     if (task.workflowId === null) return null
     const workflowId = task.workflowId
     if (options.dryRun !== true && getWorkflow(db, workflowId).header.runner === "orca") {
-        try {
-            const ensured = await ensureKernel(options.root, options.cwd, workflowId, binary)
-            if (ensured.notes.length > 0) recordEvent(db, "workflow-kernel-ensured", workflowId, { task: task.id, notes: ensured.notes })
-        } catch (error: unknown) {
-            recordEvent(db, "workflow-kernel-unavailable", workflowId, { task: task.id, error: messageOf(error) })
-        }
+        await ensureKernel(options.root, options.cwd, workflowId, binary)
     }
     return launchableKernel(getWorkflow(db, workflowId))
 }
@@ -415,12 +416,15 @@ const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, opt
  * Launches one Orca worker on a queued task. The claim comes first, in one BEGIN IMMEDIATE transaction (queued -> running, a
  * new attempt, an open seat carrying the launch record), so two concurrent starts cannot both launch; only then is Orca called.
  */
-export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<SeatStartData>> => {
-    const { root, cwd } = options
+export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<SeatStartData>> => {
+    const { root, cwd } = given
     const ops = loadOps()
     const db = openLedger(root)
     try {
-        const task = getTask(db, options.task)
+        const task = getTask(db, given.task)
+        // One workflow = one worktree: every Op of a workflow launches into the worktree its workflow recorded.
+        const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
+        const options: SeatStartOptions = { ...given, worktree: given.worktree ?? recorded }
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
         const binary = await locateOrca(cwd)
         const kernel = nestingOf(await kernelOf(db, task, binary, options), options)
@@ -451,8 +455,10 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
             const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
             return { task: running, seat, record, files }
         })
+        await applyPriorWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
+        const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files: claim.files, resumed: false, kernel }, launched)
+        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)
     } finally {
         db.close()
     }
@@ -489,6 +495,8 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             const runId = seat.runId ?? parsed.data.run
             return { task, seat, record: parsed.data, runId }
         })
+        const recorded = claim.task.workflowId === null ? undefined : workflowWorktreeOf(db, claim.task.workflowId)
+        await applyPriorWork(root, recorded ?? root, claim.task)
         const files = writeBrief(claim.task, loadOps(), root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
         const parent = claim.record.start.parent

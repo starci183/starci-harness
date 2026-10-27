@@ -26,7 +26,8 @@ replan builds the same contract, and `WORK_ROOT_ELSEWHERE` refuses a workflow de
   actor, the accounts file (named, never its values) and every step with its expectation, its screenshot name
   (`step-01.png` ...) and its check ids; `context.extend` reads the record and the accounts file; `allowPaths` is the
   run folder `<flow>/runs/<runId>`; `output.extend` asks for one `steps` entry per record step; `checks.extend` adds
-  `uat-flow` to the op's `result-passed` ([ops/checks.yaml](../../../ops/checks.yaml)). A retry walks into the run
+  nothing: the op's base `uat-flow` takes the record and run from the inputs and judges the walk on the receipt
+  `starci uat run` writes ([ops/checks.yaml](../../../ops/checks.yaml)). A retry walks into the run
   folder of the task it retries.
 - **Gates at send:** `WORK_RUNS_TRACKED` when git would commit the run folder (raw output stays git-ignored),
   `WORK_EVIDENCE_IGNORED` when git ignores the flow's `evidence.yaml`, `WORK_RECORD_MISSING` and

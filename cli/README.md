@@ -32,7 +32,7 @@ src/
 - **Roles.** A verb lists the roles that may run it. They are enforced when `STARCI_ROLE` names the caller's role: a
   role the verb does not list refuses `ROLE_REFUSED`, a value that is no role is usage (`ROLE_UNKNOWN`), and unset
   means not enforced. Orca's `worker-start` cannot set a worker's environment, so the rendered brief names the role
-  (`worker` for an Orca seat, `agent` for an inline task) and tells the worker to set it.
+  (`supervisor`, `kernel`, `worker` for Orca seats, `agent` for an inline task) and tells the agent to set it.
 - **Host processes** run without a shell (`shared/exec.ts`; npm through the running Node), so no quoting breaks on
   Windows; git goes through `shared/git.ts`.
 
@@ -47,8 +47,11 @@ graph version's nodes with contract hash, node hash, routing hints and retry rou
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
-`pool_concurrency`, `route_picks`, `budgets` and `budget_raises` (`harness/machine.ts`). Seats and leases stay in the
-project ledger. A new column comes by an additive migration that bumps `LEDGER_VERSION`; migrations never drop.
+`pool_concurrency`, `route_picks`, `budgets`, `budget_raises` and the host Supervisor record (`harness/machine.ts`).
+A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
+and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's one worktree. Seats and leases stay
+in the project ledger.
+Additive migrations bump the corresponding machine schema version or `LEDGER_VERSION`; migrations never drop.
 
 **Task states.** `TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`, a
 compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
@@ -104,16 +107,49 @@ Windows argv cap). The effective agent and model are attested from `worker-show`
 requeues the task. An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
 `seat start <task> --resume` replays the same requests.
 
-**Seats as a tree.** An orca workflow has one Orca Run, created at `workflow start` with a `[Kernel] <workflow>`
-coordinator terminal and a Kernel task; every op launches into that Run with `--parent <kernel task>` and `--from
-<kernel terminal>` (Orca accepts `--run` only from the Run's coordinator), titled `[Op] <workflow> › <task> …`.
-`ORCA_TERMINAL_HANDLE` adopts an existing terminal as the coordinator only when the Kernel is first set up; an adopted
-terminal is never closed by the harness. A missing Kernel terminal is recreated and takes the Run back (`run-use`). A
-repository Orca does not know is registered (`orca repo add`) and the call retried once. A seat's tab is closed after
-Orca reports its worker released; `workflow step` closes the seats of settled tasks, and `workflow stop` closes the
-Kernel terminal after its ops. Inline workflows touch nothing in Orca.
+**Seats as a tree.** `[Supervisor]` (one per host) > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <task>`
+(one per attempt), each a real Orca agent. The owner runs `supervisor start` once: it reserves the host's one Supervisor
+in machine.sqlite and launches the router's coordinator member (`orca agent launch`, terminal surface) in the runtime
+checkout with a prompt naming its brief under `.runtime/` (rendered from `ops/coordinators/`). Its first command,
+`supervisor attach`, binds its terminal as coordinator of a new Run with a `[Supervisor]` task. `supervisor status` reads
+its liveness from Orca, `supervisor stop` closes it, and `supervisor ensure` starts one only when Orca says it is gone
+(or replays a launch whose answer was lost) — for a scheduled task, e.g.
+`schtasks /Create /SC MINUTE /MO 10 /TN StarCiSupervisor /TR "node D:\.claude\cli\dist\main.js supervisor ensure"`.
+`workflow start` of an orca workflow runs only in the Supervisor's terminal (`SUPERVISOR_REQUIRED` elsewhere): it
+makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default `<project state>/worktrees/<workflow>`
+on branch `starci/<workflow>`) and launches the Kernel by `worker-start --run/--parent/--from` into the Supervisor's Run,
+titled `[Kernel] <workflow>`; `kernel start` relaunches one Orca reports gone. The Kernel's first command, `kernel attach`,
+adopts its terminal as coordinator of the workflow's child Run (taken back with `run-use` after a relaunch) and its
+`[Kernel] <workflow>` task; every Op launches into that Run (`--run/--parent/--from` of the Kernel) inside the workflow's
+worktree, where verify settles it, so a relaunched Kernel or a retried attempt continues from the code already there.
+
+Coordinators are **episodic**. `kernel next <workflow>` is the deterministic driver: it drains the Kernel Run's mail, steps
+the workflow (dispatch, verify, close seats), fences an Op Orca reports idle past its budget.minutes (worker-stop, else
+worker-abandon; the task fails with outcome `timeout`), resolves an effect_unknown launch through `request-show` with its
+attempt's request id (completed: replayed; absent past the deadline: stuck), holds the workflow `paused(orca-down)` while
+Orca does not answer, and returns only one decision — `red`, `stale`, `question`, `conflict`, `goal`, `goal-change`,
+`escalation-answer` or `done`, with its evidence and a ledger digest — or `idle` after its wait. `kernel submit <file>`
+applies one command: `workflow-change` (a change file or the whole desired workflow, through `workflow amend`),
+`escalation` {budget, scope, conflict, owner, harness} or `handoff` (a Supervisor decision plus a wake-up mail).
+`supervisor next` sweeps every registered project: a Kernel whose lease lapsed with no workflow event past its TTL is
+relaunched on Orca's word (gone, or idle), more than the relaunch limit in the window pauses the workflow and escalates to
+the owner; it returns the oldest `escalation` or `handoff`. `supervisor submit <file>` applies `goal`, `goal-change` (goal
+version n+1) or `stop`, and its `answers` close escalations (the escalating Kernel gets an `escalation-answer`).
+
+A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
+(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`; `project` for the Supervisor). It is
+admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its
+outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
+`decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca
+orchestration send|check`) only wakes: an Op mails only its Kernel, a Kernel only its Supervisor and its Ops, the
+Supervisor only the owner. A repository Orca does not know is registered (`orca repo add`) and the call retried once. A
+seat's tab is closed after Orca reports its worker released. Inline workflows touch nothing in Orca: the chat agent is
+their Kernel, and `kernel next` returns `idle` naming its next task.
 
 **Routing and liveness** are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, provider
-circuit, AIMD concurrency, workflow budgets) and [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, and the Orca
-answers that prove a worker gone; anything else is unknown, never dead). `starci route explain` prints a pick step by
-step.
+circuit, AIMD concurrency, workflow budgets, and the `coordinators` tiers: a Supervisor or Kernel is routed through the
+same circuit, quota, balance and bias as an Op, a workflow's bias applying to its Kernel) and
+[ops/liveness.yaml](../ops/liveness.yaml) (thresholds, the Orca answers that prove a worker gone — anything else is
+unknown, never dead — and the `coordinators` block: seat lease, Kernel and Supervisor TTLs, relaunch limit and window,
+effect-unknown deadline, conflict wait, and how long `next` waits). `starci route explain` prints a pick step by step,
+`--coordinator supervisor|kernel` for a coordinator's.

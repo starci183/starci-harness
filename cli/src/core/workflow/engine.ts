@@ -5,11 +5,13 @@ import { openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
-import { closeKernel, ensureKernel } from "../../harness/kernel.js"
+import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
+import { applyPriorWork } from "../../harness/prior.js"
+import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { getTask } from "../../harness/tasks.js"
+import { getTask, recordEvent } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
@@ -189,25 +191,10 @@ const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<Step
     return closed.flat()
 }
 
-/**
- * Makes sure an orca workflow has its Kernel in Orca (`[Kernel] <workflow>` terminal, Run and task) and reports what was made.
- * Orca being unable to make it is a problem, not a stop: ops then launch flat.
- */
-export const kernelActions = async (context: VerbContext, root: string, id: string): Promise<StepAction[]> => {
-    try {
-        const binary = await locateOrca(context.cwd)
-        const ensured = await ensureKernel(root, context.cwd, id, binary)
-        return ensured.notes.map((note) => ({ key: null, task: null, action: "kernel", detail: note }))
-    } catch (error: unknown) {
-        const refusal = asRefusal(error)
-        return [{ key: null, task: null, action: "problem", detail: `the Kernel was not made in Orca (${refusal.code}): ${refusal.message}; ops launch flat` }]
-    }
-}
-
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
 export const closeKernelActions = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const { workflow } = snapshot
-    if (workflow.status !== "stopped" || workflow.kernel.terminal === null || workflow.kernel.closedAt !== null) return []
+    if (!["stopped", "done"].includes(workflow.status) || workflow.kernel.terminal === null || workflow.kernel.closedAt !== null) return []
     try {
         const outcome = await closeKernel(root, context.cwd, workflow.id, await locateOrca(context.cwd))
         const failed = outcome.startsWith("error: ")
@@ -242,10 +229,29 @@ const launchOf = (root: string, workflow: WorkflowRow, node: PlanNode, taskId: s
     return { agent: pick.agent, model: pick.model, effort: effort ?? pick.effort, pick }
 }
 
+/**
+ * The mechanics of a revert node (reconcile.ts revertOf): before its worker starts, the dropped key's commits are reversed in
+ * the checkout once (revertCommits), and the worker checks and files it; a revert that does not apply cleanly is the worker's.
+ */
+const applyRevert = async (root: string, checkout: string, workflowId: string, node: PlanNode, taskId: string): Promise<string | null> => {
+    const { revertOf } = withLedger(root, (db) => priorWorkOf(db, workflowId, node))
+    if (revertOf === undefined || withLedger(root, (db) => db.prepare("SELECT 1 FROM events WHERE kind = 'revert-applied' AND subject = ?").get(taskId)) !== undefined) return null
+    let detail: string
+    try {
+        await revertCommits(checkout, revertOf.commits)
+        detail = `reverted ${String(revertOf.commits.length)} commit(s) of ${revertOf.key} in the checkout`
+    } catch (error: unknown) {
+        detail = `revert of ${revertOf.key} left to the worker: ${asRefusal(error).message}`
+    }
+    withLedger(root, (db) => { recordEvent(db, "revert-applied", taskId, { of: revertOf.key, commits: revertOf.commits, detail }) })
+    return detail
+}
+
 const launchTask = async (context: VerbContext, root: string, workflow: WorkflowRow, node: PlanNode, task: string): Promise<StepAction> => {
     const chosen = launchOf(root, workflow, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
+        await applyRevert(root, withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root, workflow.id, node, task)
         const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen.pick, worktree: workflow.header.worktree })
         const by = chosen.pick === undefined ? "pinned" : `routed (tier ${chosen.pick.tier}, pool ${chosen.pick.pool})`
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} ${by}: ${started.message.split("\n")[0] ?? "launched"}` }
@@ -373,7 +379,19 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         snapshot = reconcile(root, id)
     }
     actions.push(...(await closeKernelActions(context, root, snapshot)))
+    await priorWorkOfInline(root, readSnapshot(root, id))
     return reportOf(root, readSnapshot(root, id), actions)
+}
+
+/** Brings an inline task's prior work back before its brief is written (applyPriorWork is a no-op the second time). */
+const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void> => {
+    if (snapshot.workflow.header.runner !== "inline" || !DISPATCHING.includes(snapshot.workflow.status)) return
+    const view = snapshot.views.find((candidate) => (candidate.state === "queued" || candidate.state === "running") && candidate.task !== null)
+    if (view?.task == null) return
+    const id = view.task.id
+    const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
+    if (node !== undefined) await applyRevert(root, root, snapshot.workflow.id, node, id)
+    await applyPriorWork(root, root, withLedger(root, (db) => getTask(db, id)))
 }
 
 /** The report of a workflow as it stands, with what was done to it. */

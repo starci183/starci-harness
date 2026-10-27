@@ -16,18 +16,18 @@ differs from the procedure below. A body never restates the common procedure.
 | key | holds |
 |---|---|
 | `summary`, `floor`, `hostTools` | what the label is for, its difficulty floor and the host tools it needs; the router reads the last two ([../README.md](../README.md)) |
-| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`) |
+| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`). An entry marked `shared: true` is read by every task of the label for orientation, so its ids are never a read trace. `context.budget` caps the resolved context in tokens (bytes / 4); `contract check` refuses a heavier one |
 | `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |
-| `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary`. `behavioural: true` says the output is itself the evidence of behaviour (a suite or flow report) |
-| `checks.base` | the checks of every task of the label: presets of [../checks.yaml](../checks.yaml), bare or `{preset, args}`. `behavioural: true` makes a contract without a behavioural check unfit |
+| `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary` |
+| `checks.base` | the checks of every task of the label: presets of [../checks.yaml](../checks.yaml), bare (its arguments then come from the contract's inputs of the same names, which `input.base` must declare) or `{preset, args}`. Each check has a trust tier by its kind: T0 the harness observes (command, starci, files, probe), T1 it reads from a receipted run (uat-flow), T2 is the worker's claim (json, cited) and is never behavioural. `behavioural: true` makes a contract without a T0 or T1 behavioural check unfit |
 
 ## The contract's extend
 
 A contract (`starci/contract@2`, written by `starci contract new` or inline in a workflow file) carries the Kernel's part:
 
 - `context.extend`: more files to read (the Kernel picks the knowledge topics, the project's Work records and code the
-  task needs; it reads the whole `contexts/` tree in its load order, the project's Work and these op files, to
-  write it). `context.revision` is the commit the task starts from.
+  task needs; it reads [contexts/project/index.md](../../contexts/project/index.md), the generated index of the tree, in
+  place of the tree itself, then only the files the task needs, the project's Work and these op files, to write it). `context.revision` is the commit the task starts from.
 - `input.base`: the values of the op's base inputs; `input.extend`: named inputs of its own.
 - `output.extend`: more keys the output must carry.
 - `checks.extend`: more checks.
@@ -41,7 +41,7 @@ The resolved contract always carries the op's whole base, pinned or not. A `star
 ## What the harness generates from the base
 
 - The `output` check: a json check of the filed result carrying every required key with its type (base and extend), so no
-  hand-written `result-json` is needed for them. It counts as behavioural when `output.behavioural` is true.
+  hand-written `result-json` is needed for them. It is a T2 claim: it can make a task red, never prove it green.
 - The read trace: `rulesApplied` lists the rule ids the work applied and `workRecords` the Work record ids a work-driven
   task (one whose context reads `.starciwork/`) worked from. The `rules-cited` preset is red when a cited id is named by none
   of the task's context files, literally as a token of a Markdown heading or a yaml `id:` value (`workRecords` against the
@@ -81,3 +81,23 @@ would make your checks green.
 
 Never commit, push, merge into main, change the contract, edit tests or configs outside allowPaths, or ask the owner.
 The harness verifies your result again on a clean checkout and commits it; a green you did not earn is refused.
+
+### Orca mail
+
+Under the Orca runner you talk only to your Kernel: never to the Supervisor, the owner or another Op. Your filed result
+and `task verify` are the state; mail only wakes the Kernel. Use the terminal, Orca task and dispatch ids of your injected
+Orca preamble (the Orca task id is not the StarCi task id above). Upward mail omits `--to` and `--run`, so Orca delivers
+it to your dispatch's owning Run, which is your Kernel's.
+
+- Stuck, or the work needs a change outside your allowPaths: never wait on a blocking `ask`. File the StarCi result with
+  `--status blocked` (or `mismatch`) and your question in its output; the Kernel takes it as one decision.
+- Done: file the StarCi result, then report exactly once with both ids and an honest outcome (`failed` when the requested
+  work is incomplete); the body is three sentences: what you did, what you found, what remains.
+
+```text
+orca orchestration send --from <terminal> --type worker_done --subject "<status>" --body "<three sentences>" --task-id <orca-task-id> --dispatch-id <dispatch-id> --outcome succeeded
+```
+
+Read downward guidance at natural checkpoints and before you report (`orca orchestration check --terminal <terminal>
+--json`, then `--ack <delivery-id>` on the next check). After `worker_done`, stop and stay idle. Inline tasks file the
+StarCi result without Orca mail.

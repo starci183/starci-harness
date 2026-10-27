@@ -1,6 +1,7 @@
 import { describeRoute, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RouteMember, RoutePick, RouteRecord } from "../../harness/router.js"
 import { loadRouting, parseDifficulty } from "../../harness/routing.js"
+import type { CoordinatorRole } from "../../harness/routing.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 
@@ -23,16 +24,22 @@ const members = (value: string | undefined): RouteMember[] | undefined =>
         return { agent, model }
     })
 
-/** `starci route explain`: dry-runs the router for a label and prints the whole decision path; nothing is recorded. */
+const coordinatorRole = (value: string | undefined): CoordinatorRole | undefined => {
+    if (value === undefined || value === "supervisor" || value === "kernel") return value
+    throw new Refusal("CLI_USAGE", `--coordinator is supervisor or kernel, not "${value}"`, EXIT_USAGE)
+}
+
+/** `starci route explain`: dry-runs the router for a worker or coordinator and prints the whole decision path. */
 export const routeExplainVerb = defineVerb({
     path: ["route", "explain"],
-    summary: "dry-run the router for a label: the tier, the chain, every dropped member with its reason, and the chosen agent and model",
+    summary: "dry-run worker or coordinator routing: the tier, chain, dropped members and chosen agent and model",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/route-explain@1",
     flags: {
-        label: { kind: "string", summary: "the worker label, one op file ops/ops/<label>.md", required: true },
+        label: { kind: "string", summary: "the worker label, one op file ops/ops/<label>.md (choose this or --coordinator)" },
+        coordinator: { kind: "string", summary: "the coordinator seat: supervisor or kernel (choose this or --label)" },
         difficulty: { kind: "string", summary: "the measured difficulty: easy, medium, hard, insane or 1..4 (the label's floor raises it)" },
         attempt: { kind: "string", summary: "the attempt number in the task's lineage (default 1)" },
         red: { kind: "string", summary: "the contract-red attempts so far, as agent/model,... (the second escalates the tier)" },
@@ -42,11 +49,15 @@ export const routeExplainVerb = defineVerb({
     },
     run: (_context, flags) => {
         const routing = loadRouting()
+        const coordinator = coordinatorRole(flags.coordinator)
+        if ((flags.label === undefined) === (coordinator === undefined)) throw new Refusal("CLI_USAGE", "choose exactly one of --label or --coordinator", EXIT_USAGE)
+        const label = coordinator ?? flags.label
+        if (label === undefined) throw new Refusal("CLI_USAGE", "choose --label or --coordinator", EXIT_USAGE)
         const difficulty = flags.difficulty === undefined ? undefined : parseDifficulty(routing, flags.difficulty)
         const attempt = flags.attempt === undefined ? 1 : Number(flags.attempt)
         if (!Number.isInteger(attempt) || attempt < 1) throw new Refusal("CLI_USAGE", `--attempt is a whole number from 1, not "${String(flags.attempt)}"`, EXIT_USAGE)
         const answer = pickRoute(
-            { label: flags.label, difficulty, attempt, previousRed: members(flags.red), workflowBias: { only: list(flags.only), avoid: list(flags.avoid), prefer: list(flags.prefer) } },
+            { label, coordinator, difficulty, attempt, previousRed: members(flags.red), workflowBias: { only: list(flags.only), avoid: list(flags.avoid), prefer: list(flags.prefer) } },
             { record: false },
         )
         const lines = describeRoute(answer)

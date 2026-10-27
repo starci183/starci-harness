@@ -10,7 +10,7 @@ import { loadOps } from "./ops.js"
 import { poolConcurrency } from "./pools.js"
 import type { PoolConcurrency } from "./pools.js"
 import { difficultyRank, loadRouting, parseDifficulty, providerOfAgent } from "./routing.js"
-import type { Difficulty, MemberSpec, Routing } from "./routing.js"
+import type { CoordinatorRole, Difficulty, MemberSpec, Routing } from "./routing.js"
 import { getTask } from "./tasks.js"
 
 /** An owner or workflow bias: each entry names an agent (`codex`), a model, an `agent/model` member or a provider. */
@@ -33,6 +33,7 @@ export interface RouteMember {
  */
 export interface RouteInput {
     readonly label: string
+    readonly coordinator?: CoordinatorRole | undefined
     readonly difficulty?: Difficulty | number | undefined
     readonly attempt: number
     readonly previousRed?: number | readonly RouteMember[] | undefined
@@ -136,10 +137,10 @@ export const hostHas = (routing: Routing, tool: string): boolean => {
 
 const RECENT_PICKS = 20
 
-const gatherFacts = (label: string, at: string): Facts => {
+const gatherFacts = (input: RouteInput, at: string): Facts => {
     const routing = loadRouting()
-    const spec = loadOps().labels[label]
-    if (spec === undefined) throw new Refusal("LABEL_UNKNOWN", `no label ${label} in ops/ops/`)
+    const spec = input.coordinator === undefined ? loadOps().labels[input.label] : { floor: "easy" as const, hostTools: [] }
+    if (spec === undefined) throw new Refusal("LABEL_UNKNOWN", `no label ${input.label} in ops/ops/`)
     const hostTools = Object.fromEntries(spec.hostTools.filter((tool) => tool in routing.hostProbes).map((tool) => [tool, hostHas(routing, tool)]))
     const running: RunningWorkers = runningWorkers()
     const snapshot = (db: DatabaseSync | undefined): { recent: Map<string, string[]>; candidates: Map<string, Candidate[]> } => {
@@ -311,7 +312,9 @@ const choiceReason = (record: RouteRecord, chosen: Candidate, basis: Basis): str
 
 /** Where the tier came from, for the record. */
 const tierSource = (input: RouteInput, labelTier: string | undefined, effective: string, difficulty: string | null, floor: string): string =>
-    labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
+    input.coordinator === undefined
+        ? labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
+        : "coordinators." + input.coordinator
 
 /** The quota step: skip a member at the reserve (a biased one may go to biasPercent), never use an exhausted one; unknown is kept. */
 const quotaStep = (stage: Stage, balanced: readonly Candidate[], isBiased: (candidate: Candidate) => boolean): Candidate[] => {
@@ -337,7 +340,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     const difficulty = input.difficulty === undefined ? null : parseDifficulty(routing, input.difficulty)
     const effective = difficulty !== null && difficultyRank(routing, difficulty) > difficultyRank(routing, facts.floor) ? difficulty : facts.floor
     const labelTier = routing.labelTiers[input.label]
-    const baseTier = labelTier ?? routing.difficultyTier[effective]
+    const baseTier = input.coordinator === undefined ? labelTier ?? routing.difficultyTier[effective] : routing.coordinators[input.coordinator]
     const reds = typeof input.previousRed === "number" ? input.previousRed : redMembers(input.previousRed).length
     const order = routing.tierOrder.indexOf(baseTier)
     const raised = reds >= routing.escalateAfterReds ? routing.tierOrder[order + 1] : undefined
@@ -429,7 +432,7 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
     const at = now()
     let decided: RoutePick | RouteRefusal
     try {
-        decided = decide(input, gatherFacts(input.label, at), at)
+        decided = decide(input, gatherFacts(input, at), at)
     } catch (error: unknown) {
         if (error instanceof Refusal) return new RouteRefusal(error.code, error.message, emptyRecord(input, at))
         throw error
@@ -442,6 +445,10 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
     })
     return pick
 }
+
+/** Routes a coordinator through the shared circuit, capacity, bias, balance and quota pipeline. */
+export const pickCoordinator = (role: CoordinatorRole, options: { readonly bias?: RouteBias | undefined; readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
+    pickRoute({ label: role, coordinator: role, attempt: 1, workflowBias: options.bias }, { record: options.record ?? true })
 
 const emptyRecord = (input: RouteInput, at: string): RouteRecord => ({
     at,

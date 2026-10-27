@@ -44,6 +44,17 @@ import { workflowRunVerb } from "./core/workflow/run.js"
 import { seatPingVerb } from "./core/seat/ping.js"
 import { uatRunVerb } from "./core/uat/run.js"
 import { contextsAnatomyVerb } from "./core/contexts/anatomy.js"
+import { supervisorStartVerb } from "./core/supervisor/start.js"
+import { supervisorStatusVerb } from "./core/supervisor/status.js"
+import { supervisorStopVerb } from "./core/supervisor/stop.js"
+import { supervisorAttachVerb } from "./core/supervisor/attach.js"
+import { kernelStartVerb } from "./core/kernel/start.js"
+import { kernelAttachVerb } from "./core/kernel/attach.js"
+import { kernelNextVerb } from "./core/kernel/next.js"
+import { kernelSubmitVerb } from "./core/kernel/submit.js"
+import { supervisorEnsureVerb } from "./core/supervisor/ensure.js"
+import { supervisorNextVerb } from "./core/supervisor/next.js"
+import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -97,6 +108,17 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     seatPingVerb,
     uatRunVerb,
     contextsAnatomyVerb,
+    supervisorStartVerb,
+    supervisorStatusVerb,
+    supervisorStopVerb,
+    supervisorAttachVerb,
+    kernelStartVerb,
+    kernelAttachVerb,
+    kernelNextVerb,
+    kernelSubmitVerb,
+    supervisorEnsureVerb,
+    supervisorNextVerb,
+    supervisorSubmitVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
