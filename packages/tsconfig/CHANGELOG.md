@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0 - 2026-10-27
+
+- Added: `package-esm.json` and `package-cjs.json`, the presets a StarCi package builds from `src/` to `dist/` with (the build convention of `packages/README.md`): `nodenext`, declarations, `rewriteRelativeImportExtensions` (sources import `./x.ts`, `dist` imports `./x.js`), `rootDir`/`outDir` anchored at `${configDir}`; the ES-module preset adds `verbatimModuleSyntax` and `erasableSyntaxOnly` so Node runs the sources and specs as they are, and the CommonJS preset (jest-preset, prettier-config) turns those two off so a source can write `export =`. Every strictness flag still comes from `base.json`. The package exports and ships exactly its seven presets; its spec is TypeScript (`config.spec.ts`, typechecked by `npm test`). No existing preset changed.
+
 ## 2.0.8 - 2026-10-27
 
 - Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.
