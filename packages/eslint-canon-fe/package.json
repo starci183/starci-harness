@@ -58,7 +58,7 @@
     "eslint-plugin-unicorn": "65.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.18.0",
+    "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "typescript": "^6.0.3"
   }
