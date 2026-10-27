@@ -24,8 +24,6 @@ steps:
         id: scoped
         goal: document the api
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         scope:
           paths: [docs/]

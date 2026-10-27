@@ -11,10 +11,6 @@ pass:
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-finding: >-
-  mail is never checked against the Run tree: cli/src/harness/orca/client.ts:615 reads no sender from a delivered message and
-  :639 drops it, and takeMail in cli/src/core/kernel/driver.ts:215 raises a Kernel question for every question or escalation
-  mail whoever sent it
 steps:
   - file:
       path: wf.yaml
@@ -23,8 +19,6 @@ steps:
         id: guard
         goal: write doc a
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

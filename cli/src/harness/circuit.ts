@@ -61,10 +61,10 @@ export const cooldownMinutes = (routing: Routing, kind: FailureKind, reopens: nu
 
 /**
  * The half-open state of an open circuit, from its events since it opened: a probe is due at the cooldown's end or
- * probeEveryMinutes after the open (times reopenFactor per failed probe, capped at probeCapMinutes), whichever is first; a
- * probe sent and not answered within probeLeaseMinutes is in flight.
+ * probeEveryMinutes after the open (times reopenFactor per failed probe, capped at probeCapMinutes), whichever is first, and
+ * a quota circuit's at its reset; a probe sent and not answered within probeLeaseMinutes is in flight.
  */
-const probeOf = (db: DatabaseSync, routing: Routing, provider: string, openUntil: string | null, fallbackOpenedAt: string, at: string): Pick<CircuitState, "probe" | "probeDueAt" | "failedProbes"> => {
+const probeOf = (db: DatabaseSync, routing: Routing, provider: string, failureKind: string | null, openUntil: string | null, fallbackOpenedAt: string, at: string): Pick<CircuitState, "probe" | "probeDueAt" | "failedProbes"> => {
     const opened = textOf(db.prepare("SELECT MAX(at) AS at FROM provider_events WHERE provider = ? AND kind = 'circuit-open'").get(provider)?.at) ?? fallbackOpenedAt
     const rows = db.prepare("SELECT kind, at FROM provider_events WHERE provider = ? AND kind IN ('probe', 'probe-failed') AND at >= ? ORDER BY id").all(provider, opened)
     const times = (kind: string): string[] => rows.filter((row) => row.kind === kind).map((row) => textOf(row.at) ?? "")
@@ -74,7 +74,8 @@ const probeOf = (db: DatabaseSync, routing: Routing, provider: string, openUntil
     const { probeEveryMinutes, probeCapMinutes, probeLeaseMinutes, reopenFactor } = routing.circuit
     const inFlight = lastProbe !== undefined && (lastFailed === undefined || lastFailed < lastProbe) && Date.parse(lastProbe) + minutesMs(probeLeaseMinutes) > Date.parse(at)
     const interval = Math.min(probeEveryMinutes * reopenFactor ** failed.length, Math.max(probeCapMinutes, probeEveryMinutes))
-    const byInterval = later(lastFailed ?? opened, interval)
+    // A quota circuit waits for its window's reset: a launch before it proves nothing the reset time does not already say.
+    const byInterval = failureKind === "quota" && openUntil !== null ? openUntil : later(lastFailed ?? opened, interval)
     const probeDueAt = openUntil !== null && openUntil < byInterval ? openUntil : byInterval
     const probe: ProbeState = inFlight ? "in-flight" : probeDueAt <= at ? "due" : "none"
     return { probe, probeDueAt, failedProbes: failed.length }
@@ -90,7 +91,7 @@ export const readCircuit = (db: DatabaseSync | undefined, provider: string, at: 
     const updatedAt = textOf(row.updated_at)
     const base = { provider, status, strikes: Number(row.strikes), failureKind: textOf(row.failure_kind), openUntil, updatedAt }
     if (status !== "open") return { ...base, open: false, probe: "none", probeDueAt: null, failedProbes: 0 }
-    return { ...base, open: true, ...probeOf(db, loadRouting(), provider, openUntil, updatedAt ?? at, at) }
+    return { ...base, open: true, ...probeOf(db, loadRouting(), provider, base.failureKind, openUntil, updatedAt ?? at, at) }
 }
 
 const writeCircuit = (db: DatabaseSync, state: Pick<CircuitState, "provider" | "status" | "strikes" | "failureKind" | "openUntil">, at: string): void => {

@@ -1,3 +1,7 @@
+import { readdirSync, readFileSync, statSync } from "node:fs"
+import type { Dirent } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { captureToolSync } from "../shared/exec.js"
@@ -95,6 +99,58 @@ export const applyUsage = (db: DatabaseSync, routing: Routing, usages: readonly 
 
 const ORCA_SOURCE = "orca"
 
+const CODEX_SOURCE = "codex-rollout"
+
+const rolloutLimitSchema = z.looseObject({ used_percent: z.number(), window_minutes: z.number().nullish(), resets_at: z.number().nullish() })
+const rolloutLimitsSchema = z.looseObject({ primary: rolloutLimitSchema.nullish(), secondary: rolloutLimitSchema.nullish() })
+
+/** The newest file under a folder whose name matches, walking only the newest-named branch of each level (Codex keeps yyyy/mm/dd). */
+const newestFile = (dir: string, pattern: RegExp): string | undefined => {
+    let entries: Dirent[]
+    try {
+        entries = readdirSync(dir, { withFileTypes: true })
+    } catch {
+        return undefined
+    }
+    const files = entries.filter((entry) => entry.isFile() && pattern.test(entry.name)).map((entry) => join(dir, entry.name))
+    const newest = files.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
+    if (newest !== undefined) return newest
+    for (const sub of entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort().reverse()) {
+        const found = newestFile(join(dir, sub), pattern)
+        if (found !== undefined) return found
+    }
+    return undefined
+}
+
+/** A usage window named by its length, so a source that numbers its windows maps onto usage.windows. */
+const windowName = (minutes: number | null): string => (minutes === null || minutes > 10_080 ? "monthly" : minutes > 1440 ? "weekly" : "session")
+
+/**
+ * Codex's own record of its limits, for when Orca gives no Codex reading: the `rate_limits` of the last line that carries one
+ * in the newest session rollout under ~/.codex/sessions (never a credential file), observed at that file's last write.
+ */
+export const codexRolloutUsage = (): { readonly usage: ProviderUsage; readonly observedAt: string } | undefined => {
+    const file = newestFile(join(homedir(), ".codex", "sessions"), /^rollout-.*\.jsonl$/)
+    if (file === undefined) return undefined
+    const line = readFileSync(file, "utf8").split("\n").reverse().find((text) => text.includes("\"rate_limits\""))
+    if (line === undefined) return undefined
+    let limits: unknown
+    try {
+        const parsed: unknown = JSON.parse(line)
+        limits = recordOf(recordOf(parsed)?.payload)?.rate_limits
+    } catch {
+        return undefined
+    }
+    const read = rolloutLimitsSchema.safeParse(limits)
+    if (!read.success) return undefined
+    const windows = [read.data.primary, read.data.secondary].flatMap((limit): UsageWindow[] =>
+        limit === null || limit === undefined
+            ? []
+            : [{ window: windowName(limit.window_minutes ?? null), usedPercent: limit.used_percent, windowMinutes: limit.window_minutes ?? null, resetsAt: limit.resets_at === null || limit.resets_at === undefined ? null : new Date(limit.resets_at * 1000).toISOString() }],
+    )
+    return { usage: { provider: "codex", status: "ok", error: null, windows }, observedAt: statSync(file).mtime.toISOString() }
+}
+
 /** When Orca's usage was last polled (its event on the host store), or null. */
 const lastPoll = (): string | null => readMachine((db) => textOf(db.prepare("SELECT MAX(at) AS at FROM provider_events WHERE provider = ? AND kind = 'usage-poll'").get(ORCA_SOURCE)?.at), null)
 
@@ -122,9 +178,14 @@ export const refreshUsage = (options: { readonly force?: boolean; readonly reply
         }
     }
     const usages = failure === null ? parseOrcaUsage(reply, routing.usage.windows) : []
+    const codexRead = usages.some((usage) => usage.provider === "codex" && usage.status === "ok")
+    const rollout = codexRead || options.reply !== undefined ? undefined : codexRolloutUsage()
+    const freshRollout = rollout !== undefined && Date.parse(at) - Date.parse(rollout.observedAt) <= minutesMs(routing.quota.maxAgeMinutes) ? rollout : undefined
     return withMachine((db) => {
         recordProviderEvent(db, ORCA_SOURCE, "usage-poll", { ok: failure === null, detail: failure, providers: usages.map((usage) => usage.provider) }, at)
-        return failure === null ? applyUsage(db, routing, usages, options.reply === undefined ? ORCA_SOURCE : "report", at) : [`orca usage not read: ${failure}`]
+        const lines = failure === null ? applyUsage(db, routing, usages, options.reply === undefined ? ORCA_SOURCE : "report", at) : [`orca usage not read: ${failure}`]
+        const fallback = freshRollout === undefined ? [] : applyUsage(db, routing, [freshRollout.usage], CODEX_SOURCE, freshRollout.observedAt).map((line) => `${line} [${CODEX_SOURCE}]`)
+        return [...lines, ...fallback]
     })
 }
 

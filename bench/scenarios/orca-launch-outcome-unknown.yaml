@@ -20,8 +20,6 @@ steps:
         id: unk
         goal: bench workflow unk
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

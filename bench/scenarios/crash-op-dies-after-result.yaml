@@ -19,8 +19,6 @@ steps:
         id: died
         goal: bench workflow died
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

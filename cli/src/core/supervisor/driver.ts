@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { admitCommand, finishCommand, getDecision, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
+import { admitCommand, answerDecision, finishCommand, getDecision, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
 import type { Command, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
@@ -62,9 +62,14 @@ export const registeredProjects = (): string[] =>
 const isCoordinated = (workflow: WorkflowRow): boolean =>
     workflow.header.runner === "orca" && ["running", "blocked", "paused"].includes(workflow.status) && workflow.reason?.startsWith(RELAUNCH_LIMIT) !== true
 
-/** The last time anything happened to a workflow (its own events and its tasks'), the Kernel's progress clock. */
+/** The events a relaunch itself records on a workflow: launching a Kernel is not the Kernel making progress. */
+const RELAUNCH_EVENTS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel"]
+
+/** The last time a workflow's work moved (its own events and its tasks', but none a relaunch records), the Kernel's progress clock. */
 const lastProgress = (db: DatabaseSync, workflowId: string): string | null => {
-    const row = db.prepare("SELECT MAX(at) AS at FROM events WHERE subject = ? OR subject IN (SELECT id FROM tasks WHERE workflow_id = ?)").get(workflowId, workflowId)
+    const row = db
+        .prepare(`SELECT MAX(at) AS at FROM events WHERE (subject = ? OR subject IN (SELECT id FROM tasks WHERE workflow_id = ?)) AND kind NOT IN (${RELAUNCH_EVENTS.map(() => "?").join(", ")})`)
+        .get(workflowId, workflowId, ...RELAUNCH_EVENTS)
     return row?.at === null || row?.at === undefined ? null : String(row.at)
 }
 
@@ -102,15 +107,18 @@ const resolveKernelLaunch = async (root: string, binary: OrcaBinary, cwd: string
     return null
 }
 
-/** Relaunches a Kernel, or past kernelRelaunchMax inside the window pauses its workflow and escalates to the owner. */
+/**
+ * Relaunches a Kernel, or, once kernelRelaunchMax relaunches came with no progress since the first of them, pauses its workflow
+ * and escalates to the owner instead: a Kernel that dies at every launch stops being relaunched however far apart they fall.
+ */
 const relaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, why: string, replace: boolean, rules: CoordinatorLiveness): Promise<string> => {
-    const since = new Date(Date.now() - rules.kernelRelaunchWindowMinutes * 60_000).toISOString()
     const limited = withLedger(root, (db) =>
         inTransaction(db, () => {
-            const recent = db.prepare("SELECT id FROM events WHERE kind = 'kernel-relaunched' AND subject = ? AND at >= ? ORDER BY id DESC").all(workflow.id, since)
+            const since = lastProgress(db, workflow.id) ?? ""
+            const recent = db.prepare("SELECT id FROM events WHERE kind = 'kernel-relaunched' AND subject = ? AND at > ? ORDER BY id DESC").all(workflow.id, since)
             if (recent.length < rules.kernelRelaunchMax) return null
-            if (DISPATCHING.includes(getWorkflow(db, workflow.id).status) || getWorkflow(db, workflow.id).status === "paused") setWorkflowStatus(db, workflow.id, "paused", `${RELAUNCH_LIMIT}: ${String(recent.length)} relaunches in ${String(rules.kernelRelaunchWindowMinutes)} min`)
-            return raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `relaunch-limit:${String(recent[0]?.id)}`, evidence: { project: root, escalation: { kind: "owner", question: `the Kernel of ${workflow.id} was relaunched ${String(recent.length)} times in ${String(rules.kernelRelaunchWindowMinutes)} min (last: ${why}); the workflow is paused. Ask the owner, then workflow resume and kernel start.` } } })
+            if (DISPATCHING.includes(getWorkflow(db, workflow.id).status) || getWorkflow(db, workflow.id).status === "paused") setWorkflowStatus(db, workflow.id, "paused", `${RELAUNCH_LIMIT}: ${String(recent.length)} relaunches with no progress`)
+            return raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `relaunch-limit:${String(recent[0]?.id)}`, evidence: { project: root, escalation: { kind: "owner", question: `the Kernel of ${workflow.id} was relaunched ${String(recent.length)} times with no progress since ${since === "" ? "it started" : since} (last: ${why}); the workflow is paused. Ask the owner, then workflow resume and kernel start.` } } })
         }),
     )
     if (limited !== null) return `${workflow.id}: relaunch limit reached, paused and escalated (${limited})`
@@ -204,22 +212,39 @@ const wakeKernel = async (root: string, cwd: string, command: Command, decision:
 }
 
 /** Raises the Kernel's decision for a Supervisor command, and an escalation-answer for each other workflow whose escalation it answers. */
+/** Raises an escalation-answer for the Kernel of each other workflow whose escalation a Supervisor command answers. */
+const answerOtherWorkflows = (db: DatabaseSync, command: Command): string[] =>
+    (command.answers ?? [])
+        .map((id) => getDecision(db, id))
+        .filter((decision): decision is Decision => decision !== undefined && decision.workflowId !== command.workflow)
+        .map((decision) => raiseDecision(db, { scope: "kernel", workflowId: decision.workflowId, kind: "escalation-answer", subject: command.cmdId, evidence: { answers: decision.id, ruling: command.note ?? null, by: command.kind, workflow: command.workflow, goal: command.goal ?? null } }))
+
 const raiseForKernel = (db: DatabaseSync, root: string, command: Command): string => {
     const answered = (command.answers ?? []).map((id) => getDecision(db, id)).filter((decision) => decision !== undefined)
-    for (const decision of answered.filter((candidate) => candidate.workflowId !== command.workflow)) {
-        raiseDecision(db, { scope: "kernel", workflowId: decision.workflowId, kind: "escalation-answer", subject: command.cmdId, evidence: { answers: decision.id, ruling: command.note ?? null, by: command.kind, workflow: command.workflow, goal: command.goal ?? null } })
-    }
+    answerOtherWorkflows(db, command)
     const own: KernelDecisionKind = command.kind === "goal" ? "goal" : command.kind === "goal-change" ? "goal-change" : "done"
     const kind: KernelDecisionKind = answered.some((decision) => decision.workflowId === command.workflow) ? "escalation-answer" : own
     const goalVersion = goalVersionOf(db, command.workflow)
     return raiseDecision(db, { scope: "kernel", workflowId: command.workflow, kind, subject: command.cmdId, evidence: { project: root, cmdId: command.cmdId, command: command.kind, goal: command.goal ?? null, goalVersion, note: command.note ?? null, answers: command.answers ?? [] } })
 }
 
+/**
+ * A stop ends its workflow's conversation: every open decision of the stopped workflow, the Kernel's and the Supervisor's, is
+ * answered by the stop's cmdId, and no Kernel decision is raised for a Kernel the stop closes. An escalation of another
+ * workflow the stop answers still gets its escalation-answer.
+ */
+const endDecisions = (db: DatabaseSync, command: Command): { readonly closed: readonly string[]; readonly answered: readonly string[] } =>
+    inTransaction(db, () => {
+        const open = [...openDecisions(db, "kernel", command.workflow), ...openDecisions(db, "supervisor", command.workflow)]
+        for (const decision of open) answerDecision(db, decision.id, `stopped: ${command.cmdId}`, decision.scope)
+        return { closed: open.map((decision) => decision.id), answered: answerOtherWorkflows(db, command) }
+    })
+
 const applySupervisor = async (context: VerbContext, root: string, command: Command, sha256: string): Promise<unknown> => {
     if (command.kind === "stop") {
         const stopped = await workflowStopVerb.run({ ...context, cwd: root }, { workflow: command.workflow, graceful: command.mode !== "hard", hard: command.mode === "hard" })
-        const decision = (command.answers ?? []).length === 0 ? null : withLedger(root, (db) => raiseForKernel(db, root, command))
-        return { stopped: stopped.message.split("\n")[0] ?? "", decision }
+        const ended = withLedger(root, (db) => endDecisions(db, command))
+        return { stopped: stopped.message.split("\n")[0] ?? "", ended }
     }
     if (command.kind === "goal-change") {
         const change: GoalChange = {

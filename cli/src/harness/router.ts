@@ -248,7 +248,7 @@ const circuitReason = (candidate: Candidate, facts: Facts, highRisk: boolean): s
     if (!circuit.open) return null
     const kind = circuit.failureKind ?? "?"
     if (circuit.probe === "in-flight" || facts.probing.has(candidate.provider)) return `provider ${candidate.provider} circuit open (${kind}); its probe is in flight`
-    if (circuit.probe === "none") return `provider ${candidate.provider} circuit open (${kind}); next probe at ${circuit.probeDueAt ?? "?"}`
+    if (circuit.probe === "none") return `provider ${candidate.provider} circuit open (${kind}) until ${circuit.openUntil ?? "?"}; next probe at ${circuit.probeDueAt ?? "?"}`
     return highRisk ? `provider ${candidate.provider} circuit half-open (${kind}); a high-risk task is never a probe` : null
 }
 

@@ -21,8 +21,6 @@ steps:
         id: twice
         goal: write doc a
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

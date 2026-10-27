@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { admitCommand, answerDecision, finishCommand, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
@@ -5,7 +7,8 @@ import type { Command, CommandRow, Decision, KernelDecisionKind } from "../../ha
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
-import { now, openLedger } from "../../harness/ledger.js"
+import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
+import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { closeWorker, locateOrca, mailCheck, mailSend, OrcaFailure, requestIdOf, requestShow, terminalList, workerAbandon } from "../../harness/orca/client.js"
@@ -65,6 +68,15 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 }
 
 const sleep = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+
+/**
+ * The repository a ledger belongs to, as the host registry records it: the project a Supervisor decision names, whichever of
+ * its checkouts (the workflow's worktree, say) the Kernel runs in.
+ */
+const repositoryOf = (root: string): string => {
+    const id = findLedgerId(root)
+    return (id === undefined ? null : readMachine((db) => textOf(db.prepare("SELECT repo_root FROM ledgers WHERE ledger_id = ?").get(id)?.repo_root), null)) ?? root
+}
 
 /** The digest of a workflow as the ledger holds it now. */
 export const digestOf = (db: DatabaseSync, workflowId: string): Digest => {
@@ -208,15 +220,34 @@ const holdForOrca = (root: string, workflowId: string, down: string | null): Ste
         }),
     )
 
-/** Raises a question for each Op mail that asks something (question, escalation); worker_done only wakes, the ledger is the state. */
+/** The terminals that may ask this workflow's Kernel something: its own Op seats' terminals, and the Supervisor's above it. */
+const askers = (db: DatabaseSync, workflowId: string): ReadonlySet<string> => {
+    const ops = db
+        .prepare("SELECT s.terminal FROM seats s JOIN tasks t ON t.id = s.task_id WHERE s.role = 'worker' AND t.workflow_id = ? AND s.terminal IS NOT NULL")
+        .all(workflowId)
+        .map((row) => String(row.terminal))
+    const supervisor = supervisorRecord()?.terminal
+    return new Set(supervisor == null ? ops : [...ops, supervisor])
+}
+
+/**
+ * Raises a question for each mail that asks something (question, escalation) from the Run tree: one of this workflow's own Op
+ * seats, or the Supervisor. Mail from any other sender (or none named) is recorded as an impostor event and never reaches the
+ * Kernel; worker_done only wakes, the ledger is the state.
+ */
 const takeMail = (root: string, workflowId: string, messages: readonly MailMessage[]): StepAction[] =>
-    withLedger(root, (db) =>
-        messages.flatMap((message): StepAction[] => {
+    withLedger(root, (db) => {
+        const trusted = askers(db, workflowId)
+        return messages.flatMap((message): StepAction[] => {
             if (message.type !== "question" && message.type !== "escalation") return []
-            const id = raiseDecision(db, { scope: "kernel", workflowId, kind: "question", subject: `mail:${message.id}`, evidence: { type: message.type, subject: message.subject, body: message.body, payload: message.payload } })
+            if (message.from === null || !trusted.has(message.from)) {
+                recordEvent(db, "mail-impostor", workflowId, { mail: message.id, from: message.from, type: message.type, subject: message.subject })
+                return [{ key: null, task: null, action: "problem", detail: `mail ${message.id} (${message.type}) from ${message.from ?? "no sender"} is not of this workflow's Run tree: recorded, dropped` }]
+            }
+            const id = raiseDecision(db, { scope: "kernel", workflowId, kind: "question", subject: `mail:${message.id}`, evidence: { from: message.from, type: message.type, subject: message.subject, body: message.body, payload: message.payload } })
             return [{ key: null, task: null, action: "wait", detail: `mail ${message.id} (${message.type}) is decision ${id}` }]
-        }),
-    )
+        })
+    })
 
 /** Drains the Kernel Run's mailbox (waiting up to `waitMs` for the first batch): each batch is recorded, then acked. */
 const drainMail = async (root: string, workflowId: string, binary: OrcaBinary, cwd: string, waitMs: number | undefined): Promise<StepAction[]> => {
@@ -423,28 +454,76 @@ const applyKernel = async (context: VerbContext, root: string, command: Command,
             workflowId: command.workflow,
             kind,
             subject: command.cmdId,
-            evidence: { project: root, cmdId: command.cmdId, escalation: command.escalation ?? null, handoff: command.handoff ?? null, note: command.note ?? null, digest: digestOf(db, command.workflow) },
+            evidence: { project: repositoryOf(root), cmdId: command.cmdId, escalation: command.escalation ?? null, handoff: command.handoff ?? null, note: command.note ?? null, digest: digestOf(db, command.workflow) },
         }),
     )
     return { decision, mail: await wakeSupervisor(context.cwd, command, decision) }
 }
 
 /**
+ * The content of a Kernel command, whatever its cmdId: its fields but the cmdId, and the bytes of the change file it names, so
+ * one unfit change resubmitted under fresh cmdIds is recognised as the same command.
+ */
+const contentOf = (command: Command, dir: string): string => {
+    const hash = createHash("sha256").update(JSON.stringify(Object.entries(command).filter(([field]) => field !== "cmdId")))
+    if (command.change !== undefined) {
+        try {
+            hash.update("\0").update(readFileSync(resolve(dir, command.change)))
+        } catch {
+            hash.update("\0unreadable")
+        }
+    }
+    return hash.digest("hex")
+}
+
+/** How many times the workflow's Kernel commands of this content were refused. */
+const refusalsOf = (db: DatabaseSync, workflowId: string, content: string): number =>
+    Number(db.prepare("SELECT COUNT(*) AS n FROM commands WHERE scope = 'kernel' AND workflow_id = ? AND status = 'failed' AND json_extract(outcome_json, '$.content') = ?").get(workflowId, content)?.n ?? 0)
+
+/** Raises the one harness escalation of a poisoned command for the Supervisor (once per content). */
+const escalatePoison = (db: DatabaseSync, root: string, command: Command, content: string, refusals: number, last: string): string =>
+    raiseDecision(db, {
+        scope: "supervisor",
+        workflowId: command.workflow,
+        kind: "escalation",
+        subject: `poison:${content.slice(0, 16)}`,
+        evidence: { project: repositoryOf(root), cmdId: command.cmdId, escalation: { kind: "harness", question: `the Kernel of ${command.workflow} submitted the same ${command.kind} ${String(refusals)} times and it was refused each time (last: ${last}); later submits of it are refused at once. Look at the Kernel's plan.` } },
+    })
+
+/**
  * `kernel submit <file>`: one Kernel command. It is admitted first (cmdId dedupe, basedOn compare-and-swap, an `applying` intent
  * row), then applied: workflow-change through `workflow amend`; escalation and handoff become a Supervisor decision carrying
- * the ledger row, and a mail wakes the Supervisor. The decisions it answers close with it.
+ * the ledger row, and a mail wakes the Supervisor. The decisions it answers close with it. A refused command records its content;
+ * the poisonRefusals-th refusal of one content escalates to the Supervisor (kind harness), and every later submit of that
+ * content is refused at once (COMMAND_POISONED) without being applied.
  */
 export const kernelSubmit = async (context: VerbContext, root: string, file: string): Promise<Submitted> => {
     const parsed = readCommand(file, "kernel")
     const { command } = parsed
     const admitted = withLedger(root, (db) => admitCommand(db, "kernel", parsed))
     if (admitted.kind === "replay") return { command: admitted.row, replay: true }
+    const limit = loadCoordinatorLiveness().poisonRefusals
+    const content = contentOf(command, dirname(file))
+    const prior = withLedger(root, (db) => refusalsOf(db, command.workflow, content))
+    if (prior >= limit) {
+        const message = `this ${command.kind} was refused ${String(prior)} times under other cmdIds; it is not applied again and the Supervisor has the escalation`
+        withLedger(root, (db) => { inTransaction(db, () => {
+                finishCommand(db, "kernel", command, "failed", { code: "COMMAND_POISONED", message, content })
+                escalatePoison(db, root, command, content, prior, message)
+            }); },
+        )
+        throw new Refusal("COMMAND_POISONED", message)
+    }
     let outcome: unknown
     try {
         outcome = await applyKernel(context, root, command, dirname(file))
     } catch (error: unknown) {
         const refusal = asRefusal(error)
-        withLedger(root, (db) => finishCommand(db, "kernel", command, "failed", { code: refusal.code, message: refusal.message }))
+        withLedger(root, (db) => { inTransaction(db, () => {
+                finishCommand(db, "kernel", command, "failed", { code: refusal.code, message: refusal.message, content })
+                if (prior + 1 >= limit) escalatePoison(db, root, command, content, prior + 1, `${refusal.code}: ${refusal.message.split("\n")[0] ?? ""}`)
+            }); },
+        )
         throw error
     }
     const row = withLedger(root, (db) => finishCommand(db, "kernel", command, "applied", outcome))

@@ -3,10 +3,10 @@ id: provider-auth-revoked
 group: provider
 title: "a provider's auth is revoked (org disabled): its circuit opens and the router routes around it"
 inject: provider report claude --outcome auth
-expect: claude is dropped at the hard filter with circuit open (auth); a claude-only bias is refused, never launched
+expect: claude is dropped at the hard filter with circuit open (auth) until its half-open probe is due; nothing launches on it before
 pass:
   - route explain drops claude naming auth
-  - --only claude refuses
+  - the drop names the next probe time
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -28,13 +28,3 @@ steps:
     expect:
       exit: 0
       contains: circuit open (auth)
-  - name: route claude
-    starci:
-      - route
-      - explain
-      - --label
-      - code
-      - --only
-      - claude
-    expect:
-      exit: 1

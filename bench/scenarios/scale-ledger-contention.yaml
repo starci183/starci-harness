@@ -18,8 +18,6 @@ steps:
         id: busy
         goal: bench workflow busy
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

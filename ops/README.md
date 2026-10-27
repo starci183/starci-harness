@@ -23,7 +23,8 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
 
 0. **Signals.** A recorded pick first reads Orca's account usage when the last reading is older than `usage.refreshMinutes`
    (`harness/usage.ts`: every window of `usage.windows` per pool, the most-used one as the pool's quota with its reset; an
-   ok reading closes a circuit opened for auth, or for quota with headroom) and records every ended attempt of every
+   ok reading closes a circuit opened for auth, or for quota with headroom; Codex's own session rollout stands in when Orca
+   gives no Codex reading; a platform with no source, Devin among them, is unknown and judged by its outcomes) and records every ended attempt of every
    registered ledger per member and label (`harness/outcomes.ts`: green or red verdict, timeout, lost, launch failure,
    mismatch, minutes). `starci provider sync` does both at once; `provider report` records one outcome or reading by hand.
 1. **Tier.** `labelTiers[label]` when the label is named there, else `difficultyTier` of the higher of the task's

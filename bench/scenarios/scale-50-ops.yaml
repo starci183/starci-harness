@@ -20,8 +20,6 @@ steps:
         id: fifty
         goal: bench workflow fifty
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 16
         tasks:
           - id: o0

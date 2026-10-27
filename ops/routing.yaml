@@ -80,14 +80,15 @@ quota: {reservePercent: 90, exhaustedPercent: 100, maxAgeMinutes: 1440}
 
 # Orca's account list (`orca account list --json`, its rateLimits per provider) is read before a recorded pick when the last
 # reading is older than refreshMinutes. The windows named here feed the pool's quota (the most-used one binds) and its pace;
-# a provider whose reading says ok proves its auth, which closes a circuit opened for auth.
+# a provider whose reading says ok proves its auth, which closes a circuit opened for auth. When Orca gives no Codex reading,
+# the rate_limits of Codex's newest session rollout (~/.codex/sessions) stand in, observed at that file's last write.
 usage: {refreshMinutes: 10, windows: [session, weekly, monthly]}
 
 # Provider circuit: a failure of a kind opens the provider for its cooldown once it has `strikes` of that kind in a row
 # (1 when not named). An open within reopenWindowMinutes of the last one waits reopenFactor times longer, capped at
 # capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
 # Half-open: an open provider is due one probe when its cooldown ends, or probeEveryMinutes after it opened (each failed probe
-# multiplies that by reopenFactor, capped at probeCapMinutes), whichever comes first. One pick sends the probe; a success closes
+# multiplies that by reopenFactor, capped at probeCapMinutes), whichever comes first; a quota circuit at its reset. One pick sends the probe; a success closes
 # the circuit, a failure re-opens it with the backoff. A probe whose outcome never arrives frees the slot after probeLeaseMinutes.
 circuit:
   cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2}

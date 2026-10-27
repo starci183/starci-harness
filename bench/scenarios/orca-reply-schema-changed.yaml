@@ -19,8 +19,6 @@ steps:
         id: shape
         goal: bench workflow shape
         runner: orca
-        agent: claude
-        model: sonnet
         maxParallel: 2
         tasks:
           - id: a

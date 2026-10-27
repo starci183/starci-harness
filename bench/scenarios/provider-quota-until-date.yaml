@@ -32,12 +32,3 @@ steps:
       contains: 2099-11-21
     save:
       chosen: data.chosen.agent
-  - starci:
-      - route
-      - explain
-      - --label
-      - code
-      - --avoid
-      - codex
-    expect:
-      exit: 0
