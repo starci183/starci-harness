@@ -78,6 +78,7 @@
     "eslint-plugin-unicorn": "65.0.0"
   },
   "devDependencies": {
+    "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "^24.19.2",
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^7.1.1",

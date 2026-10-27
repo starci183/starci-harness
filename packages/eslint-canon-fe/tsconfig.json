@@ -1,32 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@starci/tsconfig/package-esm.json",
   "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitReturns": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "allowUnusedLabels": false,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "erasableSyntaxOnly": true,
-    "rewriteRelativeImportExtensions": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "target": "ES2023",
-    "lib": ["ES2023"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": ["node"],
+    "noEmit": true,
+    "rootDir": "..",
     "allowJs": true,
-    "checkJs": false,
-    "noEmit": true
+    "checkJs": false
   },
   "include": ["src", "types", "fixtures/overlay-host-files.ts", "fixtures/typed/tester.ts"]
 }
