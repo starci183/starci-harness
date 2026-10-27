@@ -45,8 +45,11 @@ function tagged(t, tag, content) {
   return fixture;
 }
 
+// The fixture is the only release under test: the CI run that executes this spec may itself be a tag build.
+const LOCAL_ENV = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'GITHUB_ACTIONS' && key !== 'GITHUB_REF'));
+
 function check(fixture, edition, extra = {}) {
-  return releaseProvenanceFindings({ ...fixture, repo: { kind: 'app', profile: 'app', edition }, isRoot: true, ...extra });
+  return releaseProvenanceFindings({ ...fixture, repo: { kind: 'app', profile: 'app', edition }, isRoot: true, env: LOCAL_ENV, ...extra });
 }
 
 const dbWorkflow = (job = {}, on = TRIGGER) => stringify({ name: 'database deploy', on, jobs: { deploy: { 'runs-on': 'ubuntu-latest', steps: [CHECKOUT, MIGRATE], ...job } } });
