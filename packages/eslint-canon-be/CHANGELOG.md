@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.56 - 2026-10-27
+
+- Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.
+
 ## 3.4.55 - 2026-10-26
 
 - Changed: the bundled runtime copies and canon pins move with the alpha.31 cohort (light push gate, owner rulings of 2026-10-26).

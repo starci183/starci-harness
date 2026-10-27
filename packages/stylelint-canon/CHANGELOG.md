@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.14 - 2026-10-27
+
+- Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.
+
 ## 2.0.13 - 2026-10-26
 - Changed: the CSS vocabulary is regenerated after the Grammar repaint reverts: `--radius-md` is no longer read by the Grammar sources and `--badge-border` is added.
 

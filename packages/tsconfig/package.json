@@ -1,6 +1,6 @@
 {
   "name": "@starci/tsconfig",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "The StarCi TypeScript configs: base, be (back end), build (back-end emit overlay), next (front-end app) and e2e. Strict, including noImplicitAny.",
   "license": "MIT",
   "author": "starci183",
