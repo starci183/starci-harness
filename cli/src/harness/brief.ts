@@ -37,6 +37,22 @@ const slashed = (path: string): string => path.replaceAll("\\", "/")
 
 const code = (text: string): string => `\`${text}\``
 
+/** A files check in words: nothing changed outside allowPaths, and the files that must exist. */
+const describeFilesCheck = (check: PrimitiveCheck & { readonly kind: "files" }): string => {
+    const parts = [
+        ...(check.onlyAllowPaths === true ? ["nothing outside allowPaths changed since the revision"] : []),
+        ...(check.mustExist === undefined || check.mustExist.length === 0 ? [] : [`these exist: ${check.mustExist.join(", ")}`]),
+    ]
+    return parts.length === 0 ? "files as expected" : parts.join("; ")
+}
+
+/** A cite check in words: the author's cites resolve and name each family's Choose anchor; the grader grades each handed cite. */
+const describeCiteCheck = (check: PrimitiveCheck & { readonly kind: "cite" }): string =>
+    [
+        ...(check.author === true ? [`every id under ${code(CITES_KEY)} resolves, and each Grammar family your changed files import has a Choose anchor cited (${code("<family>.choose")})`] : []),
+        ...(check.grade === true ? [`each handed cite is graded once under ${code(GRADES_KEY)}, and none is violated`] : []),
+    ].join("; ") || "the handed cites resolve"
+
 /** What one primitive check runs, in words a worker can act on. */
 const describeCheck = (check: PrimitiveCheck): string => {
     switch (check.kind) {
@@ -47,13 +63,8 @@ const describeCheck = (check: PrimitiveCheck): string => {
             // A verdict check reruns the suite: green when the result's verdict agrees with its exit, not when it exits 0.
             return check.verdict === undefined ? `${run} exits 0` : `${run} reruns on the clean checkout and your verdict must agree with its exit`
         }
-        case "files": {
-            const parts = [
-                ...(check.onlyAllowPaths === true ? ["nothing outside allowPaths changed since the revision"] : []),
-                ...(check.mustExist === undefined || check.mustExist.length === 0 ? [] : [`these exist: ${check.mustExist.join(", ")}`]),
-            ]
-            return parts.length === 0 ? "files as expected" : parts.join("; ")
-        }
+        case "files":
+            return describeFilesCheck(check)
         case "json": {
             const keys = check.requiredKeys.map((key) => {
                 const type = check.types?.[key]
@@ -70,10 +81,7 @@ const describeCheck = (check: PrimitiveCheck): string => {
             return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})`
         }
         case "cite":
-            return [
-                ...(check.author === true ? [`every id under ${code(CITES_KEY)} resolves, and each Grammar family your changed files import has a Choose anchor cited (${code("<family>.choose")})`] : []),
-                ...(check.grade === true ? [`each handed cite is graded once under ${code(GRADES_KEY)}, and none is violated`] : []),
-            ].join("; ") || "the handed cites resolve"
+            return describeCiteCheck(check)
     }
 }
 

@@ -328,6 +328,18 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     return { name: check.name, kind: check.check.kind, status: run.exitCode === 0 && ran.length > 0 ? "green" : "red", exitCode: run.exitCode, detail: lines.join("\n") }
 }
 
+/** Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. */
+const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+    const primitive = check.check
+    const argv = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
+    try {
+        if (primitive.verdict !== undefined) return await runVerdictCommand(check, argv, primitive.verdict, place, options)
+        return fromRun(check, await captureCommand(argv, place.cwd, options))
+    } catch (error: unknown) {
+        return outcome(check, [error instanceof Error ? error.message : String(error)], "")
+    }
+}
+
 /** Runs one primitive check of a contract. A missing tool or file is a red check, never a crash of the verify. */
 export const runCheck = async (check: ResolvedCheck, contract: Contract, place: CheckPlace): Promise<CheckOutcome> => {
     const primitive = check.check
@@ -338,15 +350,8 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.has(verb)) return runScopedCheck(check, primitive.args, place, contract.context.allowPaths)
             return fromRun(check, await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options))
         }
-        case "command": {
-            const argv = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
-            try {
-                if (primitive.verdict !== undefined) return await runVerdictCommand(check, argv, primitive.verdict, place, options)
-                return fromRun(check, await captureCommand(argv, place.cwd, options))
-            } catch (error: unknown) {
-                return outcome(check, [error instanceof Error ? error.message : String(error)], "")
-            }
-        }
+        case "command":
+            return runCommandCheck({ ...check, check: primitive }, place, options)
         case "files":
             return runFilesCheck({ ...check, check: primitive }, contract, place)
         case "json":

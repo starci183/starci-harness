@@ -90,6 +90,17 @@ const authorProblems = (cites: unknown, required: readonly string[], uses: Retur
     return { problems, notes }
 }
 
+/** The problems of one grade that names its cite: a cite not handed, a grade outside CITE_GRADES, bad evidence, a violation. */
+const gradeProblems = (where: string, cite: string, entry: Readonly<Record<string, unknown>>, required: readonly string[]): string[] => {
+    const problems: string[] = []
+    if (!required.includes(cite)) problems.push(`${where} grades ${cite}, which the contract does not hand this task`)
+    if (!isGrade(entry.grade)) problems.push(`${where} (${cite}): grade ${JSON.stringify(entry.grade)} is none of ${CITE_GRADES.join(", ")}`)
+    const evidence = typeof entry.evidence === "string" ? entry.evidence.trim() : ""
+    if (evidence === "" || evidence.includes("\n") || evidence.length > EVIDENCE_MAX) problems.push(`${where} (${cite}): evidence must be one line of at most ${String(EVIDENCE_MAX)} characters`)
+    if (entry.grade === "violated") problems.push(`${cite} violated: ${evidence}`)
+    return problems
+}
+
 /** The grader half: each handed id graded once, each grade well formed, none violated. */
 const graderProblems = (grades: unknown, required: readonly string[]): { problems: string[]; notes: string[] } => {
     if (!Array.isArray(grades)) return { problems: [`${GRADES_KEY} is not a list`], notes: [] }
@@ -98,21 +109,17 @@ const graderProblems = (grades: unknown, required: readonly string[]): { problem
     for (const [index, raw] of grades.entries()) {
         const entry = asRecord(raw)
         const where = `${GRADES_KEY}[${String(index)}]`
-        const cite = typeof entry.cite === "string" ? entry.cite : undefined
-        if (cite === undefined) {
+        if (typeof entry.cite !== "string") {
             problems.push(`${where} names no cite`)
             continue
         }
-        seen.set(cite, (seen.get(cite) ?? 0) + 1)
-        if (!required.includes(cite)) problems.push(`${where} grades ${cite}, which the contract does not hand this task`)
-        if (!isGrade(entry.grade)) problems.push(`${where} (${cite}): grade ${JSON.stringify(entry.grade)} is none of ${CITE_GRADES.join(", ")}`)
-        const evidence = typeof entry.evidence === "string" ? entry.evidence.trim() : ""
-        if (evidence === "" || evidence.includes("\n") || evidence.length > EVIDENCE_MAX) problems.push(`${where} (${cite}): evidence must be one line of at most ${String(EVIDENCE_MAX)} characters`)
-        if (entry.grade === "violated") problems.push(`${cite} violated: ${evidence}`)
+        seen.set(entry.cite, (seen.get(entry.cite) ?? 0) + 1)
+        problems.push(...gradeProblems(where, entry.cite, entry, required))
     }
     for (const id of required) {
         const count = seen.get(id) ?? 0
-        if (count !== 1) problems.push(count === 0 ? `${GRADES_KEY} does not grade ${id}` : `${GRADES_KEY} grades ${id} ${String(count)} times`)
+        if (count === 0) problems.push(`${GRADES_KEY} does not grade ${id}`)
+        else if (count > 1) problems.push(`${GRADES_KEY} grades ${id} ${String(count)} times`)
     }
     return { problems, notes: [`${String(required.length)} handed cite(s) graded`] }
 }

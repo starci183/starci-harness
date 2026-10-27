@@ -110,23 +110,25 @@ const OPAQUE: StaticValue = { kind: "opaque" }
 const propertyName = (ts: TypeScript, name: ts.PropertyName): string | undefined =>
     ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name) ? name.text : undefined
 
+/** The keys one property of an object literal sets, in order: a spread's whole object, else its own key and value. */
+const propertyEntries = (parsed: Parsed, property: ts.ObjectLiteralElementLike, depth: number): (readonly [string, StaticValue])[] => {
+    const { ts } = parsed
+    if (ts.isSpreadAssignment(property)) {
+        // A spread the reader cannot follow adds nothing it can vouch for; the properties written after it still count.
+        const spread = valueOf(parsed, property.expression, depth)
+        return spread.kind === "object" ? [...spread.entries] : []
+    }
+    const name = propertyName(ts, property.name)
+    if (name === undefined) return []
+    if (ts.isPropertyAssignment(property)) return [[name, valueOf(parsed, property.initializer, depth)]]
+    if (ts.isShorthandPropertyAssignment(property)) return [[name, valueOf(parsed, property.name, depth)]]
+    return [[name, OPAQUE]]
+}
+
 /** The value an object literal builds, with JavaScript's shallow spread: a later key replaces an earlier one whole. */
 const objectValue = (parsed: Parsed, node: ts.ObjectLiteralExpression, depth: number): StaticValue => {
-    const { ts } = parsed
     const entries = new Map<string, StaticValue>()
-    for (const property of node.properties) {
-        if (ts.isSpreadAssignment(property)) {
-            // A spread the reader cannot follow adds nothing it can vouch for; the properties written after it still count.
-            const spread = valueOf(parsed, property.expression, depth)
-            if (spread.kind === "object") for (const [key, value] of spread.entries) entries.set(key, value)
-            continue
-        }
-        const name = propertyName(ts, property.name)
-        if (name === undefined) continue
-        if (ts.isPropertyAssignment(property)) entries.set(name, valueOf(parsed, property.initializer, depth))
-        else if (ts.isShorthandPropertyAssignment(property)) entries.set(name, valueOf(parsed, property.name, depth))
-        else entries.set(name, OPAQUE)
-    }
+    for (const property of node.properties) for (const [key, value] of propertyEntries(parsed, property, depth)) entries.set(key, value)
     return { kind: "object", entries }
 }
 
