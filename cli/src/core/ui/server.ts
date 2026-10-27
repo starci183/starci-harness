@@ -131,23 +131,41 @@ const liveFeed = (): { readonly join: (res: ServerResponse) => void; readonly st
     }
 }
 
+/** The answer a route gives when it is called, or undefined when no route of the method matches the path. */
+type Route = (() => unknown) | undefined
+
+/** The GET routes of /api. */
+const getRoute = (context: VerbContext, parts: readonly string[]): Route => {
+    const [head, a, b, c] = parts
+    if (head === "overview" && a === undefined) return () => overviewOf(context.cwd)
+    if (head === "inbox" && a === undefined) return () => inboxOf()
+    if (head === "config" && a === undefined) return () => configOf()
+    if (a === undefined || b === undefined || c !== undefined) return undefined
+    if (head === "workflows") return () => workflowOf(context.cwd, a, b)
+    if (head === "tasks") return () => taskOf(a, b)
+    return undefined
+}
+
+/** The POST routes of /api; each reads the request body only once it is called. */
+const postRoute = (context: VerbContext, req: IncomingMessage, parts: readonly string[]): Route => {
+    const [head, a, b, c, d] = parts
+    if (head === "config" && a === undefined) return async () => setConfig(context, configSetOf(await readBody(req)))
+    if (a === undefined || b === undefined || c === undefined || d !== undefined) return undefined
+    if (head === "inbox" && c === "ruling") return async () => rule(context, a, b, rulingOf(await readBody(req)))
+    if (head === "workflows" && c === "goal") return async () => setGoal(context, a, b, goalSetOf(await readBody(req)))
+    if (head !== "workflows") return undefined
+    if (!isAction(c)) throw new Refusal("NOT_FOUND", `no workflow action ${c}; the actions are ${WORKFLOW_ACTIONS.join(", ")}`)
+    return () => workflowAction(context, a, b, c)
+}
+
 /** The body of one /api answer after its token passed; a refusal becomes its status with `{code, message}`. */
 const answerOf = async (context: VerbContext, req: IncomingMessage, parts: readonly string[]): Promise<unknown> => {
     const method = req.method ?? "GET"
-    const [head, a, b, c, d] = parts
-    if (method === "GET" && head === "overview" && a === undefined) return overviewOf(context.cwd)
-    if (method === "GET" && head === "inbox" && a === undefined) return inboxOf()
-    if (method === "GET" && head === "config" && a === undefined) return configOf()
-    if (method === "GET" && head === "workflows" && a !== undefined && b !== undefined && c === undefined) return workflowOf(context.cwd, a, b)
-    if (method === "GET" && head === "tasks" && a !== undefined && b !== undefined && c === undefined) return taskOf(a, b)
-    if (method === "POST" && head === "inbox" && a !== undefined && b !== undefined && c === "ruling" && d === undefined) return rule(context, a, b, rulingOf(await readBody(req)))
-    if (method === "POST" && head === "workflows" && a !== undefined && b !== undefined && c === "goal" && d === undefined) return setGoal(context, a, b, goalSetOf(await readBody(req)))
-    if (method === "POST" && head === "workflows" && a !== undefined && b !== undefined && c !== undefined && d === undefined) {
-        if (!isAction(c)) throw new Refusal("NOT_FOUND", `no workflow action ${c}; the actions are ${WORKFLOW_ACTIONS.join(", ")}`)
-        return workflowAction(context, a, b, c)
-    }
-    if (method === "POST" && head === "config" && a === undefined) return setConfig(context, configSetOf(await readBody(req)))
-    throw new Refusal("NOT_FOUND", `no ${method} /api/${parts.join("/")}`)
+    let route: Route
+    if (method === "GET") route = getRoute(context, parts)
+    else if (method === "POST") route = postRoute(context, req, parts)
+    if (route === undefined) throw new Refusal("NOT_FOUND", `no ${method} /api/${parts.join("/")}`)
+    return await route()
 }
 
 /** What one request is, after the origin, host and token gates: refused, a preflight, the index, the event stream or an /api call. */

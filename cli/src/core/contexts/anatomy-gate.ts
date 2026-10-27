@@ -110,7 +110,8 @@ const unresolvedPath = (knowledge: string, cited: string): string | undefined =>
         const doc: unknown = parse(text)
         return typeof doc === "object" && doc !== null && anchor in doc ? undefined : `has no top-level key ${anchor}`
     }
-    const headings = text.split("\n").flatMap((line) => /^#{1,6}\s+(.*)$/.exec(line)?.[1] ?? [])
+    // The text after the `#` run and one blank; slug trims the rest.
+    const headings = text.split("\n").flatMap((line) => /^#{1,6}\s(.*)$/.exec(line)?.[1] ?? [])
     return headings.some((heading) => slug(heading) === anchor) ? undefined : `has no heading #${anchor}`
 }
 
@@ -126,7 +127,7 @@ const openGaps = (knowledge: string, catalog: z.infer<typeof catalogSchema>): { 
         const enforcers = rule.enforcers ?? []
         if (enforcers.length === 0) pendable.push(gap("rule-no-enforcer", rule.id, `${rule.id} (${rule.code}) names no enforcer`))
         else if (enforcers.every((enforcer) => enforcer.status === "planned")) {
-            pendable.push(gap("rule-enforcer-planned", rule.id, `${rule.id} (${rule.code}) is judged only by planned enforcers: ${enforcers.map((enforcer) => `${enforcer.kind} ${enforcer.id}`).join(", ")}`))
+            pendable.push(gap("rule-enforcer-planned", rule.id, `${rule.id} (${rule.code}) is judged only by planned enforcers: ${enforcers.map((enforcer) => enforcer.kind + " " + enforcer.id).join(", ")}`))
         }
         for (const enforcer of enforcers.filter((item) => !(item.kind in catalog.enforcerKinds))) {
             hard.push(gap("enforcer-kind-unknown", rule.id, `${rule.id} names enforcer ${enforcer.id} of kind ${enforcer.kind}, which enforcerKinds does not declare`))

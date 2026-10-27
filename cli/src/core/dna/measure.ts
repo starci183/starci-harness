@@ -96,11 +96,17 @@ export const settlePage = async (input: { readonly rootAttribute: string; readon
     }
     const deadline = Date.now() + input.waitMs
     const present = (): boolean => view.document.querySelectorAll(`[${input.rootAttribute}]`).length > 0
-    while (!present() && Date.now() < deadline) {
+    // Polls every 50ms, one tick after the other, until the root is in the document or the time is up.
+    const poll = async (): Promise<void> => {
+        if (present() || Date.now() >= deadline) return
         await new Promise<void>((done) => view.setTimeout(done, 50))
+        await poll()
     }
+    const frame = (): Promise<void> => new Promise<void>((done) => view.requestAnimationFrame(done))
+    await poll()
     await view.document.fonts.ready
-    for (let frame = 0; frame < 2; frame += 1) await new Promise<void>((done) => view.requestAnimationFrame(done))
+    await frame()
+    await frame()
     return present()
 }
 
@@ -142,6 +148,11 @@ export const measurePage = (input: PageInput): PageResult => {
     const px = (value: string): number => Number.parseFloat(value) || 0
     const list = (items: ArrayLike<PageElement>): PageElement[] => Array.from(items)
 
+    // A marker attribute as a selector: bare when it is a flag (empty or "true"), else with its value.
+    const markerSelector = (marker: { readonly name: string; readonly value: string } | undefined): string => {
+        if (marker === undefined) return ""
+        return marker.value === "" || marker.value === "true" ? `[${marker.name}]` : `[${marker.name}="${marker.value}"]`
+    }
     const step = (element: PageElement): string => {
         const tag = element.tagName.toLowerCase()
         if (element.id !== "") return `${tag}#${element.id}`
@@ -149,8 +160,7 @@ export const measurePage = (input: PageInput): PageResult => {
         const parent = element.parentElement
         const twins = parent === null ? [] : list(parent.children).filter((child) => child.tagName === element.tagName)
         const nth = twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""
-        const attribute = marker === undefined ? "" : marker.value === "" || marker.value === "true" ? `[${marker.name}]` : `[${marker.name}="${marker.value}"]`
-        return `${tag}${attribute}${nth}`
+        return `${tag}${markerSelector(marker)}${nth}`
     }
     const pathOf = (element: PageElement): string => {
         const steps: string[] = []
@@ -185,14 +195,63 @@ export const measurePage = (input: PageInput): PageResult => {
         return value
     }
 
+    const round = (value: number): number => Math.round(value * 100) / 100
+    // The widest distance from the element to the padding box of its nearest `ref` ancestor, over the edges measured.
+    const insetOf = (element: PageElement, ref: string, edges: readonly string[]): number | null => {
+        const owner = element.parentElement?.closest(ref) ?? null
+        if (owner === null) return null
+        const inner = paddingBox(owner)
+        const box = element.getBoundingClientRect()
+        const distance: Record<string, number> = { top: box.top - inner.top, right: inner.right - box.right, bottom: inner.bottom - box.bottom, left: box.left - inner.left }
+        return round(Math.max(...edges.map((edge) => Math.abs(distance[edge] ?? 0))))
+    }
+    // How many `ref` elements enclose the element, up to and including its Grammar root.
+    const ancestorsOf = (element: PageElement, root: PageElement, ref: string): number => {
+        let count = 0
+        let at = element.parentElement
+        while (at !== null && at !== root) {
+            if (at.matches(ref)) count += 1
+            at = at.parentElement
+        }
+        if (at === root && root.matches(ref)) count += 1
+        return count
+    }
+    // The element's box and the box of every visible leaf under it that matches `leafSelector`, keyed by child position.
+    const unitBoxes = (element: PageElement, path: string, leafSelector: string): DnaBox[] => {
+        const boxOf = (item: PageElement, key: string, at: string): DnaBox => {
+            const box = item.getBoundingClientRect()
+            return { key, path: at, x: round(box.left), y: round(box.top), width: round(box.width), height: round(box.height) }
+        }
+        const boxes: DnaBox[] = [boxOf(element, "", path)]
+        const walk = (parent: PageElement, key: string, at: string): void => {
+            list(parent.children).forEach((child, index) => {
+                const childKey = `${key}/${String(index + 1)}`
+                const childPath = `${at} > ${step(child)}`
+                if (child.children.length === 0) {
+                    if (child.matches(leafSelector) && visible(child)) boxes.push(boxOf(child, childKey, childPath))
+                } else walk(child, childKey, childPath)
+            })
+        }
+        walk(element, "", path)
+        return boxes
+    }
+    // The element's width as a share of the content width of its nearest `ref` ancestor.
+    const shareOf = (element: PageElement, ref: string): number | null => {
+        const owner = element.parentElement?.closest(ref) ?? null
+        if (owner === null) return null
+        const style = view.getComputedStyle(owner)
+        const content = paddingBox(owner).width - px(style.paddingLeft) - px(style.paddingRight)
+        return content > 0 ? Math.round((element.getBoundingClientRect().width / content) * 1000) / 1000 : null
+    }
+
     const sampleOf = (element: PageElement, root: PageElement, measure: DnaMeasurement): DnaSample => {
         const path = pathOf(element)
         const ref = measure.ref ?? ""
         switch (measure.metric) {
             case "height":
-                return { path, measured: Math.round(element.getBoundingClientRect().height * 100) / 100 }
+                return { path, measured: round(element.getBoundingClientRect().height) }
             case "width":
-                return { path, measured: Math.round(element.getBoundingClientRect().width * 100) / 100 }
+                return { path, measured: round(element.getBoundingClientRect().width) }
             case "css": {
                 const property = measure.property ?? ""
                 const measured = view.getComputedStyle(element).getPropertyValue(property)
@@ -200,58 +259,20 @@ export const measurePage = (input: PageInput): PageResult => {
             }
             case "attribute":
                 return { path, measured: element.getAttribute(measure.property ?? "") }
-            case "inset": {
-                const owner = element.parentElement?.closest(ref) ?? null
-                if (owner === null) return { path, measured: null }
-                const inner = paddingBox(owner)
-                const box = element.getBoundingClientRect()
-                const distance: Record<string, number> = { top: box.top - inner.top, right: inner.right - box.right, bottom: inner.bottom - box.bottom, left: box.left - inner.left }
-                const edges = measure.edges ?? ["left", "right"]
-                return { path, measured: Math.round(Math.max(...edges.map((edge) => Math.abs(distance[edge] ?? 0))) * 100) / 100 }
-            }
+            case "inset":
+                return { path, measured: insetOf(element, ref, measure.edges ?? ["left", "right"]) }
             case "outside": {
                 const scope = (measure.scope === undefined ? null : element.closest(measure.scope)) ?? root
                 const box = element.getBoundingClientRect()
                 const inside = list(scope.querySelectorAll(ref)).some((other) => other !== element && !element.contains(other) && (other.contains(element) || overlaps(other.getBoundingClientRect(), box)))
                 return { path, measured: !inside }
             }
-            case "ancestors": {
-                let count = 0
-                let at = element.parentElement
-                while (at !== null && at !== root) {
-                    if (at.matches(ref)) count += 1
-                    at = at.parentElement
-                }
-                if (at === root && root.matches(ref)) count += 1
-                return { path, measured: count }
-            }
-            case "skeleton-parity": {
-                const round = (value: number): number => Math.round(value * 100) / 100
-                const boxOf = (item: PageElement, key: string, at: string): DnaBox => {
-                    const box = item.getBoundingClientRect()
-                    return { key, path: at, x: round(box.left), y: round(box.top), width: round(box.width), height: round(box.height) }
-                }
-                const leafSelector = measure.leaf ?? "*"
-                const boxes: DnaBox[] = [boxOf(element, "", path)]
-                const walk = (parent: PageElement, key: string, at: string): void => {
-                    list(parent.children).forEach((child, index) => {
-                        const childKey = `${key}/${String(index + 1)}`
-                        const childPath = `${at} > ${step(child)}`
-                        if (child.children.length === 0) {
-                            if (child.matches(leafSelector) && visible(child)) boxes.push(boxOf(child, childKey, childPath))
-                        } else walk(child, childKey, childPath)
-                    })
-                }
-                walk(element, "", path)
-                return { path, measured: null, boxes }
-            }
-            case "share": {
-                const owner = element.parentElement?.closest(ref) ?? null
-                if (owner === null) return { path, measured: null }
-                const style = view.getComputedStyle(owner)
-                const content = paddingBox(owner).width - px(style.paddingLeft) - px(style.paddingRight)
-                return { path, measured: content > 0 ? Math.round((element.getBoundingClientRect().width / content) * 1000) / 1000 : null }
-            }
+            case "ancestors":
+                return { path, measured: ancestorsOf(element, root, ref) }
+            case "skeleton-parity":
+                return { path, measured: null, boxes: unitBoxes(element, path, measure.leaf ?? "*") }
+            case "share":
+                return { path, measured: shareOf(element, ref) }
         }
     }
 

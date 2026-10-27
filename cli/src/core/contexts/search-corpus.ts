@@ -13,13 +13,13 @@ export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack"
 export type SearchScope = (typeof SEARCH_SCOPES)[number]
 
 /** Bumped whenever chunking changes, so an index built by another chunker reads as stale. */
-export const CHUNKER_VERSION = 2
+export const CHUNKER_VERSION = 3
 
 /** One searchable piece of the corpus: a Markdown section or a yaml entry, named by the anchor a worker cites. */
 export interface Chunk {
     /**
-     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or record id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
-     * `control-height-40`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
+     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or decision id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
+     * `two-grammars`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
      */
     readonly anchor: string
     /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */
@@ -127,46 +127,53 @@ const markdownSections = (lines: readonly string[]): Section[] => {
     return sections
 }
 
+/** A counter of the slugs a file has used: the first use keeps a slug, the n-th repeat gets `-n`, as GitHub numbers them. */
+const slugCounter = (): ((base: string) => string) => {
+    const seen = new Map<string, number>()
+    return (base) => {
+        const count = seen.get(base) ?? 0
+        seen.set(base, count + 1)
+        return count === 0 ? base : base + "-" + String(count)
+    }
+}
+
 /** The GitHub slugs of a Markdown file's headings as written (an explicit `{#id}` included), each deduplicated as GitHub does. */
 const renderedSlugsOf = (path: string, sections: readonly Section[]): string[] => {
-    const seen = new Map<string, number>()
-    return sections
-        .filter((section) => section.level > 0)
-        .map((section) => {
-            const base = slug(section.raw)
-            const count = seen.get(base) ?? 0
-            seen.set(base, count + 1)
-            return `${path}#${count === 0 ? base : `${base}-${String(count)}`}`
-        })
+    const numbered = slugCounter()
+    return sections.filter((section) => section.level > 0).map((section) => `${path}#${numbered(slug(section.raw))}`)
+}
+
+/** The chunk of the text before a file's first heading (its front matter included), named `<path>#top`. */
+const topChunk = (path: string, text: string, anchor: string): Chunk => ({ anchor, aliases: [], citable: false, path, line: 1, scope: scopeOf(path), title: path, text })
+
+/** The chunk of one heading's section: its anchor and the Choice ids its body declares, under the headings above it. */
+const headingChunk = (path: string, section: Section, text: string, fallback: string, parents: readonly string[]): Chunk => {
+    const named = headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
+    return {
+        anchor: named.anchor,
+        aliases: [...new Set([...named.aliases, ...choiceIds(text)])],
+        citable: ruleIdsIn(`# ${section.raw}`).has(named.anchor),
+        path,
+        line: section.line,
+        scope: scopeOf(path),
+        title: [path, ...parents.filter((item) => item !== "")].join(" › "),
+        text: `${"#".repeat(section.level)} ${section.heading}\n${text}`.trim(),
+    }
 }
 
 const markdownChunks = (path: string, sections: readonly Section[]): Chunk[] => {
-    const scope = scopeOf(path)
-    const slugs = new Map<string, number>()
+    const numbered = slugCounter()
     const parents: string[] = []
     const chunks: Chunk[] = []
     for (const section of sections) {
-        if (section.level > 0) {
-            parents.length = Math.min(parents.length, section.level - 1)
-            parents[section.level - 1] = section.heading
-        }
         const text = section.body.join("\n").trim()
-        if (section.level === 0 && text === "") continue
-        const base = section.level === 0 ? "top" : slug(section.heading)
-        const seen = slugs.get(base) ?? 0
-        slugs.set(base, seen + 1)
-        const fallback = seen === 0 ? base : `${base}-${String(seen)}`
-        const named = section.level === 0 ? { anchor: `${path}#${fallback}`, aliases: [] } : headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
-        chunks.push({
-            anchor: named.anchor,
-            aliases: section.level === 0 ? named.aliases : [...new Set([...named.aliases, ...choiceIds(text)])],
-            citable: section.level > 0 && ruleIdsIn(`# ${section.raw}`).has(named.anchor),
-            path,
-            line: section.line,
-            scope,
-            title: [path, ...parents.filter((item) => item !== "")].join(" › "),
-            text: section.level === 0 ? text : `${"#".repeat(section.level)} ${section.heading}\n${text}`.trim(),
-        })
+        if (section.level === 0) {
+            if (text !== "") chunks.push(topChunk(path, text, `${path}#${numbered("top")}`))
+            continue
+        }
+        parents.length = Math.min(parents.length, section.level - 1)
+        parents[section.level - 1] = section.heading
+        chunks.push(headingChunk(path, section, text, numbered(slug(section.heading)), parents))
     }
     return chunks
 }
@@ -214,11 +221,11 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
     return cuts
 }
 
-/** A yaml cut's anchor: an id-shaped record id stands alone; a plain record key (`card`) or a key is qualified by the file. */
+/** A yaml cut's anchor: a rule or decision id stands alone (isAnchorId); a record key (`button-group`) or a key is qualified by the file. */
 const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[]; readonly citable: boolean } => {
     if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [], citable: false }
     const qualified = `${path}#${cut.key}.${cut.id}`
-    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
+    return isAnchorId(cut.id, scopeOf(path) === "decisions") ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
 }
 
 const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
@@ -226,7 +233,7 @@ const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
     const cuts = yamlCuts(lines)
     const chunks: Chunk[] = []
     const header = lines.slice(0, cuts[0]?.line ?? lines.length).join("\n").trim()
-    if (header !== "") chunks.push({ anchor: `${path}#top`, aliases: [], citable: false, path, line: 1, scope, title: path, text: header })
+    if (header !== "") chunks.push(topChunk(path, header, `${path}#top`))
     for (const [at, cut] of cuts.entries()) {
         const text = lines.slice(cut.line, cuts[at + 1]?.line ?? lines.length).join("\n").trim()
         chunks.push({

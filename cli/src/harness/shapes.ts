@@ -151,7 +151,7 @@ const strayFindings = (app: AppShapes): StoriesFinding[] =>
         if (shape.kind !== "string") return [finding("STORY_SHAPE_UNREAD", unit, story, `story ${story.story} sets shape to something that is not a string literal; name the shape literally`)]
         const members = app.unions.filter((union) => union.unit === story.unit && !union.renamed).flatMap((union) => union.members.map((member) => member.name))
         if (members.includes(shape.value)) return []
-        const known = members.length === 0 ? `${unit} exports no ${unit}Shape union` : `${unit}Shape is ${members.map((member) => `"${member}"`).join(" | ")}`
+        const known = members.length === 0 ? `${unit} exports no ${unit}Shape union` : `${unit}Shape is ${members.map((member) => '"' + member + '"').join(" | ")}`
         return [finding("STORY_SHAPE_UNKNOWN", unit, story, `story ${story.story} sets shape: "${shape.value}", which is no shape of ${unit}: ${known}`)]
     })
 

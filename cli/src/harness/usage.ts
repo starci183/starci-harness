@@ -74,27 +74,44 @@ export const applyUsage = (db: DatabaseSync, routing: Routing, usages: readonly 
             lines.push(`${usage.provider}: no reading (${usage.status}${usage.error === null ? "" : ": " + usage.error})`)
             continue
         }
-        const bound = binding(usage.windows)
-        for (const pool of pools) {
-            for (const window of usage.windows) {
-                db.prepare(
-                    `INSERT INTO pool_windows (pool, window, used_percent, window_minutes, resets_at, observed_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)
-                     ON CONFLICT(pool, window) DO UPDATE SET used_percent = excluded.used_percent, window_minutes = excluded.window_minutes,
-                     resets_at = excluded.resets_at, observed_at = excluded.observed_at, source = excluded.source`,
-                ).run(pool, window.window, window.usedPercent, window.windowMinutes, window.resetsAt, at, source)
-            }
-            if (bound !== undefined) writeQuota(db, pool, bound.usedPercent, bound.resetsAt, source, at)
-        }
-        recordProviderEvent(db, usage.provider, "usage-reading", { pools, windows: usage.windows, source }, at)
-        const circuit = readCircuit(db, usage.provider, at)
-        const headroom = bound === undefined || bound.usedPercent < routing.quota.exhaustedPercent
-        if (circuit.open && (circuit.failureKind === "auth" || (circuit.failureKind === "quota" && headroom))) {
-            closeCircuit(db, usage.provider, "usage", { status: usage.status, source, binding: bound ?? null }, at)
-        }
-        const quota = bound === undefined ? "no window" : `${String(bound.usedPercent)}% (${bound.window}${bound.resetsAt === null ? "" : ", resets " + bound.resetsAt})`
-        lines.push(`${usage.provider}: ${quota}${circuit.open ? `; circuit ${circuit.failureKind ?? "?"} ${headroom || circuit.failureKind === "auth" ? "closed by the reading" : "stays open"}` : ""}`)
+        lines.push(applyReading(db, routing, usage, pools, source, at))
     }
     return lines
+}
+
+/** Writes one ok reading's windows to each pool, the binding one as the pool's quota. */
+const writeWindows = (db: DatabaseSync, pools: readonly string[], windows: readonly UsageWindow[], bound: UsageWindow | undefined, source: string, at: string): void => {
+    for (const pool of pools) {
+        for (const window of windows) {
+            db.prepare(
+                `INSERT INTO pool_windows (pool, window, used_percent, window_minutes, resets_at, observed_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(pool, window) DO UPDATE SET used_percent = excluded.used_percent, window_minutes = excluded.window_minutes,
+                 resets_at = excluded.resets_at, observed_at = excluded.observed_at, source = excluded.source`,
+            ).run(pool, window.window, window.usedPercent, window.windowMinutes, window.resetsAt, at, source)
+        }
+        if (bound !== undefined) writeQuota(db, pool, bound.usedPercent, bound.resetsAt, source, at)
+    }
+}
+
+/** The quota a reading shows: the binding window's use, its name and its reset. */
+const quotaLine = (bound: UsageWindow | undefined): string => {
+    if (bound === undefined) return "no window"
+    const resets = bound.resetsAt === null ? "" : ", resets " + bound.resetsAt
+    return `${String(bound.usedPercent)}% (${bound.window}${resets})`
+}
+
+/** Records one ok reading of a provider, closes a circuit the reading disproves, and returns its line. */
+const applyReading = (db: DatabaseSync, routing: Routing, usage: ProviderUsage, pools: readonly string[], source: string, at: string): string => {
+    const bound = binding(usage.windows)
+    writeWindows(db, pools, usage.windows, bound, source, at)
+    recordProviderEvent(db, usage.provider, "usage-reading", { pools, windows: usage.windows, source }, at)
+    const circuit = readCircuit(db, usage.provider, at)
+    const headroom = bound === undefined || bound.usedPercent < routing.quota.exhaustedPercent
+    const closes = circuit.failureKind === "auth" || (circuit.failureKind === "quota" && headroom)
+    if (circuit.open && closes) closeCircuit(db, usage.provider, "usage", { status: usage.status, source, binding: bound ?? null }, at)
+    if (!circuit.open) return `${usage.provider}: ${quotaLine(bound)}`
+    const fate = headroom || circuit.failureKind === "auth" ? "closed by the reading" : "stays open"
+    return `${usage.provider}: ${quotaLine(bound)}; circuit ${circuit.failureKind ?? "?"} ${fate}`
 }
 
 const ORCA_SOURCE = "orca"
@@ -123,7 +140,10 @@ const newestFile = (dir: string, pattern: RegExp): string | undefined => {
 }
 
 /** A usage window named by its length, so a source that numbers its windows maps onto usage.windows. */
-const windowName = (minutes: number | null): string => (minutes === null || minutes > 10_080 ? "monthly" : minutes > 1440 ? "weekly" : "session")
+const windowName = (minutes: number | null): string => {
+    if (minutes === null || minutes > 10_080) return "monthly"
+    return minutes > 1440 ? "weekly" : "session"
+}
 
 /**
  * Codex's own record of its limits, for when Orca gives no Codex reading: the `rate_limits` of the last line that carries one

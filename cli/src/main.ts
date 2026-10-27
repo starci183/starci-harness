@@ -58,6 +58,22 @@ const execute = async (verb: AnyVerb, command: Command, verbs: readonly AnyVerb[
     }
 }
 
+/** Adds one flag to a verb's command: a rest or positional flag as an argument, any other as an option. */
+const addFlag = (command: Command, flag: string, spec: FlagSpec): void => {
+    if (spec.kind === "rest") {
+        command.argument(spec.required === true ? `<${flag}...>` : `[${flag}...]`, spec.summary)
+        return
+    }
+    if (spec.positional === true) {
+        command.argument(spec.required === true ? `<${flag}>` : `[${flag}]`, spec.summary)
+        return
+    }
+    const spelling = spec.kind === "boolean" ? `--${flag}` : `--${flag} <value>`
+    if (spec.kind === "list") command.option(spelling, spec.summary, (value: string, previous: readonly string[] | undefined) => [...(previous ?? []), value])
+    else if (spec.required === true) command.requiredOption(spelling, spec.summary)
+    else command.option(spelling, spec.summary)
+}
+
 /** Adds one verb to the program, creating its group command on first use. */
 const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): void => {
     const [first, second] = verb.path
@@ -68,20 +84,7 @@ const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): v
         name = second
     }
     const command = parent.command(name).description(verb.summary)
-    for (const [flag, spec] of Object.entries(verb.flags)) {
-        if (spec.kind === "rest") {
-            command.argument(spec.required === true ? `<${flag}...>` : `[${flag}...]`, spec.summary)
-            continue
-        }
-        if (spec.positional === true) {
-            command.argument(spec.required === true ? `<${flag}>` : `[${flag}]`, spec.summary)
-            continue
-        }
-        const spelling = spec.kind === "boolean" ? `--${flag}` : `--${flag} <value>`
-        if (spec.kind === "list") command.option(spelling, spec.summary, (value: string, previous: readonly string[] | undefined) => [...(previous ?? []), value])
-        else if (spec.required === true) command.requiredOption(spelling, spec.summary)
-        else command.option(spelling, spec.summary)
-    }
+    for (const [flag, spec] of Object.entries(verb.flags)) addFlag(command, flag, spec)
     command.action(async (...received: unknown[]) => {
         const self = received.at(-1)
         if (self instanceof Command) await execute(verb, self, verbs)

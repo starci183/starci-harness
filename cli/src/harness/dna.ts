@@ -235,6 +235,33 @@ const asNumber = (value: DnaSample["measured"]): number | null => {
 
 const normalise = (value: string): string => value.trim().replace(/\s+/g, " ")
 
+/** One condition of a law on a measured value: whether it holds and how it reads. */
+interface Condition {
+    readonly ok: boolean
+    readonly want: string
+}
+
+/** The `equals` condition: a number within its tolerance, a string equal up to blanks, else the very value. */
+const equalsCondition = (target: Exclude<DnaExpected["equals"], undefined>,tolerance: number | undefined, measured: DnaSample["measured"]): Condition => {
+    if (typeof target === "number") {
+        const within = tolerance ?? DEFAULT_TOLERANCE
+        const value = asNumber(measured)
+        return { ok: value !== null && Math.abs(value - target) <= within, want: `${String(target)} ±${String(within)}` }
+    }
+    if (typeof target === "string") return { ok: typeof measured === "string" && normalise(measured) === normalise(target), want: JSON.stringify(target) }
+    return { ok: measured === target, want: String(target) }
+}
+
+/** The conditions a law sets on a measured value, in the order they read: equals, then min, then max. */
+const conditionsOf = (expected: DnaExpected, measured: DnaSample["measured"]): Condition[] => {
+    const value = asNumber(measured)
+    const conditions: Condition[] = []
+    if (expected.equals !== undefined) conditions.push(equalsCondition(expected.equals, expected.tolerance, measured))
+    if (expected.min !== undefined) conditions.push({ ok: value !== null && value >= expected.min, want: `>= ${String(expected.min)}` })
+    if (expected.max !== undefined) conditions.push({ ok: value !== null && value <= expected.max, want: `<= ${String(expected.max)}` })
+    return conditions
+}
+
 /** Whether a measured value keeps the law; the reason names what it should have been when it does not. */
 export const judgeSample = (expected: DnaExpected, sample: DnaSample): { readonly ok: boolean; readonly want: string } => {
     const { measured } = sample
@@ -242,33 +269,6 @@ export const judgeSample = (expected: DnaExpected, sample: DnaSample): { readonl
         const want = sample.resolvedVar ?? ""
         return { ok: typeof measured === "string" && want !== "" && normalise(measured) === normalise(want), want: `var(${expected.var}) = ${want === "" ? "unset" : want}` }
     }
-    const wants: string[] = []
-    let ok = true
-    if (expected.equals !== undefined) {
-        const target = expected.equals
-        if (typeof target === "number") {
-            const tolerance = expected.tolerance ?? DEFAULT_TOLERANCE
-            const value = asNumber(measured)
-            ok &&= value !== null && Math.abs(value - target) <= tolerance
-            wants.push(`${String(target)} ±${String(tolerance)}`)
-        } else if (typeof target === "string") {
-            ok &&= typeof measured === "string" && normalise(measured) === normalise(target)
-            wants.push(JSON.stringify(target))
-        } else {
-            ok &&= measured === target
-            wants.push(String(target))
-        }
-    }
-    if (expected.min !== undefined || expected.max !== undefined) {
-        const value = asNumber(measured)
-        if (expected.min !== undefined) {
-            ok &&= value !== null && value >= expected.min
-            wants.push(`>= ${String(expected.min)}`)
-        }
-        if (expected.max !== undefined) {
-            ok &&= value !== null && value <= expected.max
-            wants.push(`<= ${String(expected.max)}`)
-        }
-    }
-    return { ok, want: wants.join(" and ") }
+    const conditions = conditionsOf(expected, measured)
+    return { ok: conditions.every((condition) => condition.ok), want: conditions.map((condition) => condition.want).join(" and ") }
 }

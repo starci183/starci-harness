@@ -110,10 +110,11 @@ Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wa
 ## CI
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to main: the CLI's typecheck,
-lint and build, the loosening and secret gates, every package's specs, the desktop app's build, and the Sonar new-code
-gate. A `v*` tag also publishes the CLI (`starci-harness`) and every package under `packages/` whose version is not yet
-on npm ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds
-the desktop app's bundles on an `app-v*` tag or a manual run.
+lint and build, the anatomy, anchor and search-index checks of `contexts/`, the loosening, secret and shape gates, every
+package's specs, the desktop app's build, and the Sonar new-code gate. A `v*` tag also publishes the CLI
+(`starci-harness`) and every package under `packages/` whose version is not yet on npm ([CONTRIBUTING.md](CONTRIBUTING.md)
+CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag or
+a manual run.
 
 ## License
 

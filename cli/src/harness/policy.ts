@@ -144,8 +144,11 @@ const securityOverlay = z.object({
 /** security.yaml after the project's overlay. */
 export type SecurityPolicy = z.infer<typeof securitySchema>
 
-// A string literal, or a regular-expression literal opened where an expression starts.
-const PATTERN_LITERAL = /(["'`]).+?\1|(?:^|[=(,:[!&|?{};]\s*)\/(?![/*])(?:\\.|[^/\\\n])+\/[dgimsuyv]*/
+const STRING_LITERAL = /(["'`]).+?\1/
+const REGEX_LITERAL = /(?:^|[=(,:[!&|?{};]\s*)\/(?![/*])(?:\\.|[^/\\\n])+\/[dgimsuyv]*/
+
+/** True when `text` holds a string literal, or a regular-expression literal opened where an expression starts. */
+const holdsPatternLiteral = (text: string): boolean => STRING_LITERAL.test(text) || REGEX_LITERAL.test(text)
 
 type KindView = Pick<LooseningException, "path" | "kind" | "match" | "decision">
 
@@ -170,7 +173,7 @@ export const exceptionKindProblem = (exception: KindView): string | undefined =>
     if (runtime === -1 || !dirs.slice(runtime + 1).some((dir) => dir === "rules" || dir === "guards" || dir === "lib")) {
         return "a detector sits in a rules/, guards/ or lib/ folder under a runtime/ folder"
     }
-    const bare = exception.match.find((entry) => !PATTERN_LITERAL.test(entry))
+    const bare = exception.match.find((entry) => !holdsPatternLiteral(entry))
     return bare === undefined ? undefined : `a detector's match holds the string or regular-expression literal it detects; ${JSON.stringify(bare)} holds none`
 }
 

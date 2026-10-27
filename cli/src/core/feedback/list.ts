@@ -19,7 +19,12 @@ export const feedbackListVerb = defineVerb({
         const status = STATUSES.find((item) => item === (flags.status ?? "open"))
         if (status === undefined) throw new Refusal("CLI_USAGE", `--status ${String(flags.status)} is not one of ${STATUSES.join(", ")}`)
         const items = listFeedback().filter((item) => status === "all" || item.status === status)
-        const lines = items.map((item) => `${item.id} ${item.status} ${item.givenOn}${item.target === null ? "" : ` -> ${String(item.targetKind)} ${item.target}`}: ${item.words}`)
-        return Promise.resolve({ data: { status, items }, message: lines.length === 0 ? `no ${status === "all" ? "" : `${status} `}feedback` : lines.join("\n") })
+        const lines = items.map((item) => {
+            const aimed = item.target === null ? "" : " -> " + String(item.targetKind) + " " + item.target
+            return `${item.id} ${item.status} ${item.givenOn}${aimed}: ${item.words}`
+        })
+        if (lines.length > 0) return Promise.resolve({ data: { status, items }, message: lines.join("\n") })
+        const which = status === "all" ? "" : status + " "
+        return Promise.resolve({ data: { status, items }, message: `no ${which}feedback` })
     },
 })

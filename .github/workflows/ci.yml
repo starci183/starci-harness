@@ -42,6 +42,10 @@ jobs:
         run: node cli/dist/main.js check secrets --all
       - name: Harness shape (contexts/hfs/harness.yaml)
         run: node cli/dist/main.js check shape
+      - name: Contexts anchors (one place per anchor, no dangling link)
+        run: node cli/dist/main.js contexts anchor --check
+      - name: Contexts search index (cli/dist/contexts-search.json matches the tree)
+        run: node cli/dist/main.js contexts search --check
       # Specs read sibling packages by relative path and the Grammar lint packages install siblings as file: copies,
       # which npm packs from the sibling's folder (its dist/ included), so every package is installed and built, in
       # folder order, before any is tested (packages/README.md, build convention).

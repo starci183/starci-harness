@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { readCorpus } from "../core/contexts/search-corpus.js"
+import type { Chunk } from "../core/contexts/search-corpus.js"
 import { ruleIdsIn } from "./contract.js"
 
 /** What a cited id stands for: the text of the section or entry that defines it and the harness file holding it. */
@@ -31,7 +32,8 @@ export const anchorSlug = (text: string): string =>
     text
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
+        // The first replace leaves at most one hyphen at either end.
+        .replace(/^-|-$/g, "")
 
 /** The Choose anchor of a family (`tabs.choose`) and the prefix of its finer anchors (`tabs.choose.<term>`). */
 export const chooseAnchor = (family: string): string => `${family}.choose`
@@ -45,7 +47,7 @@ const EXPLICIT = /\{#([A-Za-z0-9][\w.-]*)\}|<a\s+(?:id|name)="([^"]+)"/g
 const BOLD = /\*\*([^*]+)\*\*/g
 
 // A family page is lower-case kebab; the folder's README.md never matches.
-const FAMILY_PAGE = new RegExp(`^${COMPONENT_PAGES}/([a-z0-9-]+)\\.md$`)
+const FAMILY_PAGE = new RegExp(String.raw`^${COMPONENT_PAGES}/([a-z0-9-]+)\.md$`)
 
 const componentFamily = (path: string): string | undefined => FAMILY_PAGE.exec(path)?.[1]
 
@@ -53,7 +55,7 @@ const componentFamily = (path: string): string | undefined => FAMILY_PAGE.exec(p
 const chooseAnchorsOf = (path: string, title: string, text: string): string[] => {
     const family = componentFamily(path)
     if (family === undefined) return []
-    const heading = /^#{1,6}\s+(.*)$/.exec(text.split("\n")[0] ?? "")?.[1]?.trim() ?? ""
+    const heading = /^#{1,6}\s(.*)$/.exec(text.split("\n")[0] ?? "")?.[1]?.trim() ?? ""
     const own = heading === CHOOSE_HEADING
     const under = title.split(" › ").slice(1).includes(CHOOSE_HEADING)
     if (!own && !under) return []
@@ -63,6 +65,26 @@ const chooseAnchorsOf = (path: string, title: string, text: string): string[] =>
 
 const cache = new Map<string, ReadonlyMap<string, ResolvedAnchor>>()
 
+/** Every id one chunk defines, in the order the first definition wins. */
+const idsOf = (chunk: Chunk): string[] => [
+    chunk.anchor,
+    ...chunk.aliases,
+    ...ruleIdsIn(chunk.text),
+    ...[...chunk.text.matchAll(EXPLICIT)].map((found) => found[1] ?? found[2] ?? ""),
+    ...chooseAnchorsOf(chunk.path, chunk.title, chunk.text),
+]
+
+/** The ids of the corpus under `root`, each to the chunk that defines it first; an empty id defines nothing. */
+const corpusIds = (root: string): ReadonlyMap<string, ResolvedAnchor> => {
+    const built = new Map<string, ResolvedAnchor>()
+    const corpus = existsSync(join(root, "contexts")) ? readCorpus(root).chunks : []
+    for (const chunk of corpus) {
+        const anchor = { text: chunk.text, file: chunk.path, line: chunk.line }
+        for (const id of idsOf(chunk)) if (id !== "" && !built.has(id)) built.set(id, anchor)
+    }
+    return built
+}
+
 /**
  * The resolver over the search corpus under `root` (the harness checkout): every chunk's anchor and aliases (core/contexts
  * anchors.ts owns how a chunk is anchored), every id a chunk names as the rules-cited trace reads it (a heading token or a yaml `id:`), explicit
@@ -70,25 +92,8 @@ const cache = new Map<string, ReadonlyMap<string, ResolvedAnchor>>()
  * `<family>.choose.<term>` for each sub-heading and bold term of that section). The first definition of an id wins.
  */
 export const corpusResolver = (root: string): AnchorResolver => {
-    let ids = cache.get(root)
-    if (ids === undefined) {
-        const built = new Map<string, ResolvedAnchor>()
-        const define = (id: string, anchor: ResolvedAnchor): void => {
-            if (id !== "" && !built.has(id)) built.set(id, anchor)
-        }
-        const corpus = existsSync(join(root, "contexts")) ? readCorpus(root).chunks : []
-        for (const chunk of corpus) {
-            const anchor = { text: chunk.text, file: chunk.path, line: chunk.line }
-            define(chunk.anchor, anchor)
-            for (const alias of chunk.aliases) define(alias, anchor)
-            for (const id of ruleIdsIn(chunk.text)) define(id, anchor)
-            for (const found of chunk.text.matchAll(EXPLICIT)) define(found[1] ?? found[2] ?? "", anchor)
-            for (const id of chooseAnchorsOf(chunk.path, chunk.title, chunk.text)) define(id, anchor)
-        }
-        ids = built
-        cache.set(root, ids)
-    }
-    const known = ids
+    const known = cache.get(root) ?? corpusIds(root)
+    cache.set(root, known)
     return (id) => known.get(id.trim())
 }
 

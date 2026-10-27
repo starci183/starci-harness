@@ -43,7 +43,7 @@ const lineSuffix = (line: number | null): string => (line === null ? "" : ":" + 
 
 /** The value a policy line declares as a `match` entry (`match: <text>` or `- <text>`), or undefined. */
 const declaredMatch = (text: string): unknown => {
-    const body = /^(?:match:|-)\s+(.+)$/.exec(text)?.[1]
+    const body = /^(?:match:|-)\s+(\S.*)$/.exec(text)?.[1]
     if (body === undefined) return undefined
     try {
         return parse(body) as unknown

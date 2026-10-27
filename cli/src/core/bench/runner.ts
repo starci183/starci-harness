@@ -384,20 +384,22 @@ const readStream = async (response: Response, contains: string | undefined): Pro
     return text
 }
 
-/** One HTTP request to a served verb, held to its expected status, text, JSON paths and values. */
-const http = async (run: RunState, step: NonNullable<Step["http"]>, label: string): Promise<void> => {
-    const url = expand(run, step.url)
+/** The fetch options of an http step: its method, its bearer token and, when it has one, its JSON body. */
+const requestInit = (run: RunState, step: NonNullable<Step["http"]>): RequestInit => {
     const headers: Record<string, string> = step.token === undefined ? {} : { Authorization: `Bearer ${expand(run, step.token)}` }
-    const init: RequestInit = step.body === undefined ? { method: step.method, headers } : { method: step.method, headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(deepExpand(run, step.body)) }
-    const response = await fetch(url, init).catch((error: unknown) => unmet(run, label, `${step.method} ${url} failed: ${error instanceof Error ? error.message : String(error)}`))
+    if (step.body === undefined) return { method: step.method, headers }
+    return { method: step.method, headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(deepExpand(run, step.body)) }
+}
+
+/** The JSON a response text carries: its envelope or a bare array; nothing for a stream. */
+const responseBody = (text: string, stream: boolean): unknown => {
+    if (stream) return undefined
+    return envelopeOf(text) ?? (text.startsWith("[") ? JSON.parse(text) : undefined)
+}
+
+/** Holds a response body to the JSON paths and values an http step expects, then saves the paths it names as variables. */
+const holdBody = (run: RunState, step: NonNullable<Step["http"]>, url: string, body: unknown, said: string, label: string): void => {
     const expect = step.expect ?? {}
-    const contains = expect.contains === undefined ? undefined : expand(run, expect.contains)
-    const text = step.stream === true ? await readStream(response, contains) : await response.text()
-    const said = `${String(response.status)} ${text.slice(0, 300)}`
-    const status = expect.status ?? 200
-    if (response.status !== status) unmet(run, label, `${step.method} ${url}: expected status ${String(status)}, got ${said}`)
-    if (contains !== undefined && !text.includes(contains)) unmet(run, label, `${step.method} ${url} lacks "${contains}": ${said}`)
-    const body: unknown = step.stream === true ? undefined : envelopeOf(text) ?? (text.startsWith("[") ? JSON.parse(text) : undefined)
     for (const path of expect.has ?? []) if (pathOf(body, path) === undefined) unmet(run, label, `${step.method} ${url} has no ${path}: ${said}`)
     for (const [path, want] of Object.entries(expect.equals ?? {})) {
         const got = pathOf(body, path)
@@ -408,6 +410,21 @@ const http = async (run: RunState, step: NonNullable<Step["http"]>, label: strin
         if (value === undefined) unmet(run, label, `no ${path} to save as ${name}: ${said}`)
         run.vars.set(name, typeof value === "string" ? value : JSON.stringify(value))
     }
+}
+
+/** One HTTP request to a served verb, held to its expected status, text, JSON paths and values. */
+const http = async (run: RunState, step: NonNullable<Step["http"]>, label: string): Promise<void> => {
+    const url = expand(run, step.url)
+    const response = await fetch(url, requestInit(run, step)).catch((error: unknown) => unmet(run, label, `${step.method} ${url} failed: ${error instanceof Error ? error.message : String(error)}`))
+    const expect = step.expect ?? {}
+    const contains = expect.contains === undefined ? undefined : expand(run, expect.contains)
+    const stream = step.stream === true
+    const text = stream ? await readStream(response, contains) : await response.text()
+    const said = `${String(response.status)} ${text.slice(0, 300)}`
+    const status = expect.status ?? 200
+    if (response.status !== status) unmet(run, label, `${step.method} ${url}: expected status ${String(status)}, got ${said}`)
+    if (contains !== undefined && !text.includes(contains)) unmet(run, label, `${step.method} ${url} lacks "${contains}": ${said}`)
+    holdBody(run, step, url, responseBody(text, stream), said, label)
 }
 
 /** Runs a step's SQL on a store of the run. */

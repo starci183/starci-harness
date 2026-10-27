@@ -80,8 +80,13 @@ const familiesNamed = (name: string, families: readonly Family[]): string[] => {
     return (owners.length > 0 ? owners : families.filter((family) => family.parts.has(key))).map((family) => family.family)
 }
 
+const PACKAGE_PATTERN = GRAMMAR_PACKAGE.replace("/", String.raw`\/`)
+
 // Group 1 marks a type-only import (`import type { ... }`), which uses no component; group 2 is the braced list.
-const IMPORT = new RegExp(String.raw`import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']${GRAMMAR_PACKAGE.replace("/", String.raw`\/`)}(?:\/[^"']*)?["']`, "g")
+const IMPORT = new RegExp(String.raw`import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']${PACKAGE_PATTERN}(?:\/[^"']*)?["']`, "g")
+
+// An `as` between blanks: the imported name is what comes before it, trimmed.
+const AS = /\sas\s/
 
 /** The names a source imports from the Grammar package (rule 2). */
 export const grammarImports = (source: string): string[] =>
@@ -90,7 +95,7 @@ export const grammarImports = (source: string): string[] =>
             .split(",")
             .map((item) => item.trim())
             .filter((item) => item !== "" && !item.startsWith("type "))
-            .map((item) => item.split(/\s+as\s+/)[0]?.trim() ?? ""),
+            .map((item) => item.split(AS)[0]?.trim() ?? ""),
     )
 
 /** Every family use of the given sources, against the families of the harness checkout at `root`. */

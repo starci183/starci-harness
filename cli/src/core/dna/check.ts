@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { defaultContractFile, entriesFor, judgeParity, judgeSample, loadDnaContract, readyTwinOf } from "../../harness/dna.js"
 import type { DnaContract, DnaEntry, DnaSample } from "../../harness/dna.js"
+import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 import { HeadlessPage, findBrowser } from "./browser.js"
@@ -83,7 +84,14 @@ const routesOf = (routes: string | undefined, fallback: string): string[] =>
         .map((route) => route.trim())
         .filter((route) => route !== "")
 
-const joinRoute = (base: string, route: string): string => (isUrl(route) ? route : `${base.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`)
+/** `text` without the slashes it ends with, counted from the end so a long run is walked once. */
+const withoutTrailingSlashes = (text: string): string => {
+    let end = text.length
+    while (end > 0 && text[end - 1] === "/") end -= 1
+    return text.slice(0, end)
+}
+
+const joinRoute = (base: string, route: string): string => (isUrl(route) ? route : `${withoutTrailingSlashes(base)}/${route.replace(/^\/+/, "")}`)
 
 interface Flags {
     readonly target: string | undefined
@@ -120,33 +128,40 @@ const resolveSource = (cwd: string, flags: Flags): { readonly kind: "url" | "sto
 const lawsByFamily = (contract: DnaContract): Record<string, PageLaw[]> =>
     Object.fromEntries(contract.grammars.map((family) => [family, entriesFor(contract, family).map((entry) => ({ id: entry.id, measure: entry.measure }))]))
 
-/** Judges what one page measured: a finding per element that breaks a law, and the problems that stop a page being judged. */
-const judgePage = (page: PageTarget, result: PageResult, entries: ReadonlyMap<string, DnaEntry>, contract: DnaContract) => {
-    const findings: DnaFinding[] = []
-    const problems: DnaProblem[] = []
-    let measured = 0
-    if (result.roots.length === 0) problems.push({ code: "DNA_NO_ROOT", page: page.label, detail: `no [${ROOT_ATTRIBUTE}] Grammar root rendered` })
-    for (const root of result.roots) {
-        if (!contract.grammars.includes(root.family)) {
-            problems.push({ code: "DNA_UNKNOWN_FAMILY", page: page.label, detail: `${root.path} names the family "${root.family}", which ${contract.file} does not list` })
-            continue
-        }
-        for (const law of root.laws) {
-            const entry = entries.get(law.id)
-            if (entry === undefined) continue
-            if (law.error !== undefined) problems.push({ code: "DNA_SELECTOR", page: page.label, detail: `${law.id}: ${law.error}` })
-            // A parity law compares two renders, so judgeParityPairs judges it once both pages are measured.
-            if (entry.measure.metric === "skeleton-parity") continue
-            for (const sample of law.samples) {
-                measured += 1
-                const verdict = judgeSample(entry.measure.expected, sample)
-                if (!verdict.ok) {
-                    findings.push({ id: entry.id, law: entry.law, family: root.family, page: page.label, path: sample.path, metric: entry.measure.metric, measured: sample.measured, expected: verdict.want })
-                }
+/** What judging gave: the findings, the problems that stop a page being judged, and how many elements were measured. */
+interface Judged {
+    readonly findings: DnaFinding[]
+    readonly problems: DnaProblem[]
+    measured: number
+}
+
+/** Judges the laws of one Grammar root of a known family into `judged`. */
+const judgeRoot = (page: PageTarget, root: PageResult["roots"][number], entries: ReadonlyMap<string, DnaEntry>, judged: Judged): void => {
+    for (const law of root.laws) {
+        const entry = entries.get(law.id)
+        if (entry === undefined) continue
+        if (law.error !== undefined) judged.problems.push({ code: "DNA_SELECTOR", page: page.label, detail: `${law.id}: ${law.error}` })
+        // A parity law compares two renders, so judgeParityPairs judges it once both pages are measured.
+        if (entry.measure.metric === "skeleton-parity") continue
+        for (const sample of law.samples) {
+            judged.measured += 1
+            const verdict = judgeSample(entry.measure.expected, sample)
+            if (!verdict.ok) {
+                judged.findings.push({ id: entry.id, law: entry.law, family: root.family, page: page.label, path: sample.path, metric: entry.measure.metric, measured: sample.measured, expected: verdict.want })
             }
         }
     }
-    return { findings, problems, measured }
+}
+
+/** Judges what one page measured: a finding per element that breaks a law, and the problems that stop a page being judged. */
+const judgePage = (page: PageTarget, result: PageResult, entries: ReadonlyMap<string, DnaEntry>, contract: DnaContract): Judged => {
+    const judged: Judged = { findings: [], problems: [], measured: 0 }
+    if (result.roots.length === 0) judged.problems.push({ code: "DNA_NO_ROOT", page: page.label, detail: `no [${ROOT_ATTRIBUTE}] Grammar root rendered` })
+    for (const root of result.roots) {
+        if (contract.grammars.includes(root.family)) judgeRoot(page, root, entries, judged)
+        else judged.problems.push({ code: "DNA_UNKNOWN_FAMILY", page: page.label, detail: `${root.path} names the family "${root.family}", which ${contract.file} does not list` })
+    }
+    return judged
 }
 
 /** The samples of one law on one page, root by root in document order. */
@@ -172,7 +187,8 @@ const readyTwin = (loading: MeasuredPage, pages: readonly MeasuredPage[]): Measu
             if (meta.id !== story.pair && meta.pair !== story.pair) return false
             return story.shape === null || meta.shape === story.shape
         })
-        return twin ?? `no ready story of pair ${story.pair}${story.shape === null ? "" : ` and shape ${story.shape}`} was opened by this check`
+        const shaped = story.shape === null ? "" : " and shape " + story.shape
+        return twin ?? `no ready story of pair ${story.pair}${shaped} was opened by this check`
     }
     const twinLabel = readyTwinOf(loading.target.label)
     if (twinLabel === null) return null
@@ -220,8 +236,61 @@ const judgeParityPairs = (measuredPages: readonly MeasuredPage[], contract: DnaC
     return { findings, problems, measured }
 }
 
-const describeFinding =(finding: DnaFinding): string =>
+const describeFinding = (finding: DnaFinding): string =>
     `red ${finding.id} [${finding.family}] ${finding.page}: ${finding.path}\n    ${finding.metric} measured ${JSON.stringify(finding.measured)}, expected ${finding.expected} (${finding.law})`
+
+/** The pages of a served folder: every story of a Storybook build, else the routes under the folder. */
+const folderTargets = (source: ReturnType<typeof resolveSource>, base: string, flags: Flags): PageTarget[] => {
+    if (source.kind === "storybook") return storiesOf(source.place, base, flags.stories)
+    return routesOf(flags.routes, source.route ?? "/").map((route) => ({ label: route, url: joinRoute(base, route) }))
+}
+
+/**
+ * Opens one target in the tab, waits for its Grammar root to settle and measures it, with the story's pairing in a Storybook;
+ * a page that does not finish loading is a DNA_PAGE_LOAD problem.
+ */
+const openTarget = async (tab: HeadlessPage, target: PageTarget, input: PageInput, waitMs: number, storybook: boolean): Promise<MeasuredPage | DnaProblem> => {
+    if (!(await tab.open(target.url, waitMs + 10_000))) return { code: "DNA_PAGE_LOAD", page: target.label, detail: `${target.url} did not finish loading` }
+    await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootAttribute: ROOT_ATTRIBUTE, waitMs })})`)
+    const result = (await tab.evaluate(`(${measurePage.toString()})(${JSON.stringify(input)})`)) as PageResult
+    const story = storybook ? ((await tab.evaluate(`(${readStoryPairing.toString()})()`)) as StoryPairing | null) : null
+    return { target, result, story, storybook }
+}
+
+/** Judges the opened pages, each on its own and then the skeleton pairs, into the check's data and its report lines. */
+const judgeOpened = (contract: DnaContract, opened: readonly (MeasuredPage | DnaProblem)[]): DnaCheckData => {
+    const entries = new Map(contract.entries.map((entry) => [entry.id, entry]))
+    const findings: DnaFinding[] = []
+    const problems: DnaProblem[] = []
+    const pages: DnaCheckData["pages"][number][] = []
+    const measuredPages: MeasuredPage[] = []
+    for (const item of opened) {
+        if ("code" in item) {
+            problems.push(item)
+            continue
+        }
+        const judged = judgePage(item.target, item.result, entries, contract)
+        findings.push(...judged.findings)
+        problems.push(...judged.problems)
+        pages.push({ label: item.target.label, url: item.target.url, roots: item.result.roots.map((root) => root.family), measured: judged.measured })
+        measuredPages.push(item)
+    }
+    const parity = judgeParityPairs(measuredPages, contract)
+    findings.push(...parity.findings)
+    problems.push(...parity.problems)
+    const measured = pages.reduce((sum, item) => sum + item.measured, 0) + parity.measured
+    const red = [...new Set(findings.map((finding) => finding.id))].sort((a, b) => a.localeCompare(b))
+    const verdict = findings.length === 0 && problems.length === 0 && measured > 0 ? "green" : "red"
+    const laws = Object.fromEntries(contract.grammars.map((family) => [family, entriesFor(contract, family).length]))
+    const lines = [
+        ...findings.map(describeFinding),
+        ...problems.map((problem) => `red ${problem.code} ${problem.page}: ${problem.detail}`),
+        ...(measured === 0 ? ["red DNA_NOTHING_MEASURED: no element on any page matched a law; the gate proves nothing"] : []),
+        `${verdict}: ${String(measured)} element(s) measured on ${String(pages.length)} page(s) against ${String(contract.entries.length)} law(s) of ${contract.file}`,
+        `red ids: [${red.join(", ")}]`,
+    ]
+    return { contract: contract.file, laws, pages, measured, findings, problems, red, verdict, report: lines }
+}
 
 /**
  * `starci dna check`: opens the rendered UI in a headless browser and measures every DNA law of contexts/grammars/contract.yaml
@@ -263,49 +332,20 @@ export const dnaCheckVerb = defineVerb({
             if (source.kind === "url") targets = routesOf(flags.routes, "/").map((route) => ({ label: route, url: joinRoute(source.place, route) }))
             else {
                 site = await serveFolder(source.place)
-                const base = site.url
-                if (source.kind === "storybook") targets = storiesOf(source.place, base, flags.stories)
-                else targets = routesOf(flags.routes, source.route ?? "/").map((route) => ({ label: route, url: joinRoute(base, route) }))
+                targets = folderTargets(source, site.url, flags)
             }
             if (targets.length === 0) throw new Refusal("DNA_NO_PAGES", "the source has no page to open (no story matched, or no route)")
-            page = await HeadlessPage.launch(binary, VIEWPORT)
+            const tab = await HeadlessPage.launch(binary, VIEWPORT)
+            page = tab
             const input: PageInput = { rootAttribute: ROOT_ATTRIBUTE, laws: lawsByFamily(contract) }
-            const entries = new Map(contract.entries.map((entry) => [entry.id, entry]))
-            const findings: DnaFinding[] = []
-            const problems: DnaProblem[] = []
-            const pages: DnaCheckData["pages"][number][] = []
-            const measuredPages: MeasuredPage[] = []
-            for (const target of targets) {
+            const storybook = source.kind === "storybook"
+            // One tab opens every target, so the targets are opened one after another.
+            const opened = await inOrder(targets, (target) => {
                 context.progress(`dna: ${target.label}`)
-                if (!(await page.open(target.url, waitMs + 10_000))) {
-                    problems.push({ code: "DNA_PAGE_LOAD", page: target.label, detail: `${target.url} did not finish loading` })
-                    continue
-                }
-                await page.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootAttribute: ROOT_ATTRIBUTE, waitMs })})`)
-                const result = (await page.evaluate(`(${measurePage.toString()})(${JSON.stringify(input)})`)) as PageResult
-                const judged = judgePage(target, result, entries, contract)
-                findings.push(...judged.findings)
-                problems.push(...judged.problems)
-                pages.push({ label: target.label, url: target.url, roots: result.roots.map((root) => root.family), measured: judged.measured })
-                const story = source.kind === "storybook" ? ((await page.evaluate(`(${readStoryPairing.toString()})()`)) as StoryPairing | null) : null
-                measuredPages.push({ target, result, story, storybook: source.kind === "storybook" })
-            }
-            const parity = judgeParityPairs(measuredPages, contract)
-            findings.push(...parity.findings)
-            problems.push(...parity.problems)
-            const measured = pages.reduce((sum, item) => sum + item.measured, 0) + parity.measured
-            const red = [...new Set(findings.map((finding) => finding.id))].sort((a, b) => a.localeCompare(b))
-            const verdict = findings.length === 0 && problems.length === 0 && measured > 0 ? "green" : "red"
-            const laws = Object.fromEntries(contract.grammars.map((family) => [family, entriesFor(contract, family).length]))
-            const lines = [
-                ...findings.map(describeFinding),
-                ...problems.map((problem) => `red ${problem.code} ${problem.page}: ${problem.detail}`),
-                ...(measured === 0 ? ["red DNA_NOTHING_MEASURED: no element on any page matched a law; the gate proves nothing"] : []),
-                `${verdict}: ${String(measured)} element(s) measured on ${String(pages.length)} page(s) against ${String(contract.entries.length)} law(s) of ${contract.file}`,
-                `red ids: [${red.join(", ")}]`,
-            ]
-            const data: DnaCheckData = { contract: contract.file, laws, pages, measured, findings, problems, red, verdict, report: lines }
-            return { data, message: lines.join("\n"), exitCode: verdict === "red" ? 1 : 0 }
+                return openTarget(tab, target, input, waitMs, storybook)
+            })
+            const data = judgeOpened(contract, opened)
+            return { data, message: data.report.join("\n"), exitCode: data.verdict === "red" ? 1 : 0 }
         } finally {
             await page?.close()
             await site?.close()

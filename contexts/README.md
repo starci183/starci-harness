@@ -33,7 +33,7 @@ The first layer is read before any work and is fixed: your row above, or for a w
 looked up on demand when a question comes up mid-task: `starci contexts search "<question>" [--scope ui,code,...]`,
 asked in English since the tree is English (a question in another language is translated first, keeping rule ids and
 names as written; the verb refuses it otherwise with `SEARCH_QUERY_NOT_ENGLISH`), ranks the sections of this tree, the op files, `policy/` and the harness documents and prints each hit's id, file,
-line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or record id; `rulesApplied`
+line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or decision id; `rulesApplied`
 may cite it only when that file is among the task's context files, since the rules-cited check reads ids from those
 files alone.
 

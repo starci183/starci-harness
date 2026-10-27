@@ -83,19 +83,18 @@ const settleWhole = (target: { readonly file: string; readonly text: string }, w
 const checkAnatomy = (file: string, difference: number | null, whole: ReturnType<typeof wholeFiles>, dangling: readonly string[], gate: GateVerdict): VerbResult<AnatomyData> => {
     const files = whole.map((target) => settleWhole(target, false))
     const drifted = files.filter((item) => item.verdict === "drift")
-    const inSync = difference === null && drifted.length === 0
-    const green = inSync && gate.red.length === 0
     const note = gateNote(gate)
-    const verdict = inSync ? (green ? "green" : "gap") : "drift"
-    const data: AnatomyData = { file, mode: "check", verdict, dangling, firstDifference: difference, files, gaps: gate.red, pending: gate.pending }
-    const lines = [
-        ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
-        ...drifted.map((item) => `drift: ${item.file} differs from the generator at line ${String(item.firstDifference)}`),
-    ]
-    const message = inSync
-        ? `${green ? "green" : "red"}: ${file}, its ${String(files.length - 1)} slice(s) and the contexts index match the generator${green ? "" : `; ${String(gate.red.length)} completeness gap(s)`}${note}`
-        : `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`
-    return { data, message, exitCode: green ? 0 : 1 }
+    const data = (verdict: AnatomyData["verdict"]): AnatomyData => ({ file, mode: "check", verdict, dangling, firstDifference: difference, files, gaps: gate.red, pending: gate.pending })
+    if (difference !== null || drifted.length > 0) {
+        const lines = [
+            ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
+            ...drifted.map((item) => `drift: ${item.file} differs from the generator at line ${String(item.firstDifference)}`),
+        ]
+        return { data: data("drift"), message: `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`, exitCode: 1 }
+    }
+    const matched = `${file}, its ${String(files.length - 1)} slice(s) and the contexts index match the generator`
+    if (gate.red.length > 0) return { data: data("gap"), message: `red: ${matched}; ${String(gate.red.length)} completeness gap(s)${note}`, exitCode: 1 }
+    return { data: data("green"), message: `green: ${matched}${note}`, exitCode: 0 }
 }
 
 /**
