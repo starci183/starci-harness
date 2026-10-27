@@ -21,15 +21,20 @@ Gap, padding and margin share **one closed spacing scale** (contract: spacing st
 Its rule ids are ordinal positions on that scale, not utility numbers. Off-scale and fractional steps do not
 exist for app layout. Lint: `starci-grammar/no-fractional-step`.
 
-| Id | Relationship it expresses | Typical place |
-| --- | --- | --- |
-| GAP-0 | no space: a separator or joined faces draw the seam | bands of a joined card, rows divided by lines |
-| GAP-1 | two lines read as one identity | title and its qualifier, value and unit |
-| GAP-2 | inline companions inside one unit (inline-gap token) | glyph and label, a badge row, a decision and its way out |
-| GAP-3 | peers in one row or group, each read on its own (row-gap token) | a field and its submit, two filters, row parts |
-| GAP-4 | sibling blocks under one heading (section-gap token) | cards of one collection, field groups of one step |
-| GAP-5 | page regions, each with its own heading (region-gap token) | summary above history, primary column and rail |
-| GAP-6 | a named major transition | unrelated halves, spacious landing sections |
+Choice `space.choose.gap`: which gap a relation between two siblings takes. The first row that applies wins; the
+Choose column names the rule id each gap carries.
+
+| Row | When (the relationship) | Choose | Measure |
+| --- | --- | --- | --- |
+| seam | a separator or joined faces already draw the seam (bands of a joined card, rows divided by lines) | GAP-0: no space | `DNA-COMMON-LIST-SEAMS` |
+| identity | two lines read as one identity (title and its qualifier, value and unit) | GAP-1 | candidate: equals the tightest rung |
+| inline | inline companions inside one unit (glyph and label, a badge row, a decision and its way out) | GAP-2, `--grammar-inline-gap` | candidate: computed gap equals the token |
+| row | peers in one row or group, each read on its own (a field and its submit, two filters, row parts) | GAP-3, `--grammar-row-gap` | candidate: computed gap equals the token |
+| section | sibling blocks under one heading (cards of one collection, field groups of one step) | GAP-4, `--grammar-section-gap` | candidate: computed gap equals the token |
+| region | page regions, each with its own heading (summary above history, primary column and rail) | GAP-5, `--grammar-region-gap` | candidate: computed gap equals the token |
+| transition | a named major transition (unrelated halves, spacious landing sections) | GAP-6 | judgement |
+
+The tokens stay ordered region > section > row > inline (`DNA-COMMON-RHYTHM-MONOTONIC`).
 
 Padding uses the same scale; its ids name the clearance a boundary needs, not a step number:
 

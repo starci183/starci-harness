@@ -8,20 +8,22 @@ Show several of one kind of thing in a page section, with equal rows the reader 
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list |
-| static lines (status facts, how it works) | `StaticStateRow` |
-| records compared across many columns, sorted or bulk-selected | `DataTable`; a row that opens its record takes `href`, a value edited in place takes the column `editor`, columns that can fold on a narrow table take `priority="low"` |
-| one selectable item from a list inside a panel | `ListBox`; navigation-like lists use fill selection with no check |
-| a standalone list in a rail | `SurfaceListCard` ([card](card.md)) |
-| a timeline of events | `Timeline`; an entry that needs the reader (a failed step, a pending approval) takes `isAttention` |
+Choice `list-table.choose.role`: which collection carries the rows. The first row that applies wins.
 
-A list is never wrapped in a card. Title, count, filters and the section's command belong to the section header
-above it.
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| rail | a standalone list in a rail (choices, suggestions, how it works) | `SurfaceListCard` (`card.choose.role:rail-list`) | `DNA-COMMON-LISTCARD-LABEL-OUTSIDE` |
+| timeline | events in time order | `Timeline`; an entry that needs the reader (a failed step, a pending approval) takes `isAttention` | judgement |
+| table | records compared across many columns, sorted or bulk-selected | `DataTable`; a row that opens its record takes `href`, a value edited in place takes the column `editor`, a column that may fold on a narrow table takes `priority="low"` | `DNA-COMMON-TABLE-ROW-LINK`, `DNA-COMMON-TABLE-FOLD` |
+| pick | picking one item is the task (a list inside a panel) | `ListBox`; a navigation-like list selects by fill with no check | lint `selection-fill-no-check` |
+| static | lines that only report (status facts, how it works) | `StaticStateRow` | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
+| entity | entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
+
+A list is never wrapped in a card (COLLECTION-1). Title, count, filters and the section's command belong to the
+section header above it.
 
 ## Variants
-Rows are separated by lines (n-1 lines) or by gap, never both. Rows align their boxes to the panel's content edge
+Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the panel's content edge
 in panels. Per-item commands are `neutral` (CTA-6). Unread rows take the contract's unread weight.
 
 ## Size

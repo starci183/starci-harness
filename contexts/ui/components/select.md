@@ -7,13 +7,16 @@ Pick one value (or several) from a list too long to show all at once.
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| 2-5 short options, all worth seeing | [segmented-control](segmented-control.md) or a radio group |
-| 6 or more known options, one value | `Select` |
-| a long or searchable list, or free entry with suggestions | `ComboBox` |
-| several values from a list | a multi-select, or a selectable `TagGroup` when all options fit on screen |
-| an action, not a value | a [menu](menu.md) |
+Choice `select.choose.role`: which list control picks the value. Reached from
+`segmented-control.choose.role:list`, which settles the short sets first. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| action | the entries are actions, not values | `menu.choose.placement` | judgement |
+| multi-visible | several values, and every option fits on screen | selectable `TagGroup` | judgement |
+| multi | several values from a longer list | a multi-select | judgement |
+| combo | a long or searchable list, or free entry with suggestions | `ComboBox` | judgement |
+| select | six or more known options, one value | `Select` | candidate: a `Select` lists at least six options |
 
 ## Variants
 Same layer rule as a [text field](text-field.md): the grammar resolves the treatment from context. The selection

@@ -42,6 +42,39 @@ UX-12 apply it to their lens):
 - Below-volume data cannot complete a density or count criterion; data creation needs its own authorized op.
   A user-accepted exception records the decision reference beside the original failing observation.
 
+The four interface-audit lenses below decide what counts as a finding before any lens scores it. Each is cited by
+its id.
+
+### AUDIT-1 A symbol is a product claim
+An icon or illustration encodes one exact product concept and still reads as that concept with its label hidden.
+It is not generic stock imagery; its maturity fits the audience and category; it is distinct from its siblings;
+the family shares one style (camera, base, material, light, scale, density); it stays legible at the smallest
+required size; and its medium is truthful, rich authored imagery as a raster asset and system or action meaning
+as grammar iconography. A label never rescues a weak symbol. One wrong asset under a clear symbolic direction is an
+implementation finding; a weak symbolic language shared across surfaces goes back to the draw. The auditor
+records the mismatch and its route and never redesigns the asset.
+
+### AUDIT-2 System sources outrank direction pixels
+The accepted direction owns composition, hierarchy, section order, content, state and intent. It does not own what
+a system source defines: grammar anatomy (shape, corner, fill, border of a primitive), brand tokens, the shared
+registries (module and app icons) and the wording declared by the ui record or the message catalogue. Where the
+capture follows the system source and the drawing differs, the difference is a resolved note, not a finding, and
+no deviation case is opened. A capture that departs from the system source is a hard finding however it looks.
+
+### AUDIT-3 An intentional departure is drift until the owner decides that exact case
+A visible difference from the accepted draw stays drift when the implementer or auditor calls it intentional; a
+taste score, green checks or owner silence never accept it. The audit records a deviation case bound to the
+accepted draw, the capture and the matrix cell: the affected regions and their measurements, the rationale, the
+conforming alternative, the rules kept and broken, the risks, and the strongest counterargument against the
+departure. Until the owner decides that case, the finding stays open and the verdict cannot be no drift.
+
+### AUDIT-4 Real artwork and code-native interface are separate modes
+Every region of the accepted draw is either a raster asset (authored imagery whose identity depends on texture or a
+retained master: a mascot, a photograph, a painted scene) or code-native (layout, cards, panels, text, controls,
+system icons, borders, shadows, simple geometry that the grammar, CSS or repository SVG can draw faithfully).
+Flattening code-native interface into an image, or redrawing a required asset in CSS, is a hard finding, not a
+creative preference.
+
 ## Accessibility (gating)
 
 | Id | Criterion | Falsified by |

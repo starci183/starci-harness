@@ -7,13 +7,16 @@ Tell the reader a region has nothing yet (or could not load) and offer the one a
 
 ## Choose
 
-| Need | Use |
-| --- | --- |
-| a collection with no items | `EmptyNotice` in the collection's place: title, one line, the action that ends the emptiness |
-| a region that failed | the same owner naming what could not load, with a retry when it is safe (FEEDBACK-2) |
-| an empty drawing (chart, map, graph) | the drawing still renders what is known; the notice is the card's last band |
-| no results for a filter | the notice offers clearing the filter |
-| a first-run page | the page's signature moment may live here (DISCIPLINE-3) |
+Choice `empty-state.choose.cause`: why the region is empty, and what its notice offers. The first row that
+applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| failed | the region's read failed | `EmptyNotice` naming what could not load, with a retry when it is safe (FEEDBACK-2) | judgement |
+| filtered | a filter left no results | `EmptyNotice` offering to clear the filter | judgement |
+| drawing | a chart, map or graph has no data | the drawing still renders what is known; the notice is the card's last band | judgement |
+| first-run | the page has never held content | `EmptyNotice`; the page's signature moment may live here (DISCIPLINE-3) | judgement |
+| empty | a collection has no items | `EmptyNotice` in the collection's place: title, one line, the action that ends the emptiness | `DNA-COMMON-EMPTY-ONE-ACTION` |
 
 ## Variants
 While the region is empty, its notice owns the region's command as the view's commit and the header omits it
