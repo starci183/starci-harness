@@ -84,7 +84,7 @@ export const BOTH_EDITIONS: readonly Edition[] = ["lite", "full"]
 /** The roles that may run a read-only verb: every role, the harness's own (kernel, supervisor, op, debug) included. */
 export const EVERYONE: readonly Role[] = ["owner", "release", "coordinator", "lead", "worker", "agent", "kernel", "supervisor", "op", "debug"]
 
-/** The roles that may run a local-write verb open to all: everyone but debug, which never runs a writing verb. */
+/** The roles that may run a local-write verb open to all: everyone but debug, whose one writing verb is `config set`. */
 export const WRITERS: readonly Role[] = EVERYONE.filter((role) => role !== "debug")
 
 /** The command spelling of a verb, e.g. `release ci-status`. */

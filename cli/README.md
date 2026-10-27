@@ -18,7 +18,7 @@ src/
   main.ts                 builds the commander program for the tree of the working directory; prints the envelope
   registry.ts             every verb, core first, then each edition; which verbs a tree offers
   shared/                 verb, errors, output, tree, exec, git, role, secrets, workspace
-  harness/                ledger and host store, contracts, tasks, settle, router, workflow graph, seats, liveness, uat
+  harness/                ledger and host store, contracts, tasks, settle, router, workflow graph, seats, liveness, uat, settings
   core/<group>/<verb>.ts  verbs of both editions (the harness verbs among them)
   lite/<group>/<verb>.ts  verbs of lite apps
 ```

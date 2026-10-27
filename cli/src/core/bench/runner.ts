@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto"
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
 import { stringify } from "yaml"
 import { runtimeRoot, stateBase } from "../../harness/ledger.js"
+import { locateOps } from "../../harness/ops.js"
 import { inOrder } from "../../harness/sequential.js"
 import { captureTool } from "../../shared/exec.js"
 import { captureGit } from "../../shared/git.js"
@@ -84,6 +85,7 @@ const expand = (run: RunState, text: string): string =>
         if (name === "run") return run.dir
         if (name === "state") return run.state
         if (name === "project") return projectFolder(run) ?? whole
+        if (name === "ops") return locateOps()
         return run.vars.get(name) ?? whole
     })
 
@@ -326,7 +328,8 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
         const content = step.file.content ?? stringify(deepExpand(run, step.file.yaml))
         writeText(target, expand(run, content), step.file.crlf === true)
     }
-    if (step.write !== undefined) {
+    if (step.write?.from !== undefined) cpSync(expand(run, step.write.from), inRepo(run, step.write.path), { recursive: true })
+    else if (step.write !== undefined) {
         const content = step.write.generated === undefined ? expand(run, step.write.content ?? "") : generated(step.write.generated)
         writeText(inRepo(run, step.write.path), content, step.write.crlf === true)
     }

@@ -40,6 +40,9 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
   from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers
   the pick, and no circuit waits for a person ([ops/README.md](../../ops/README.md) "The router").
+- **One door to the settings.** Each harness setting stays in the ops/ yaml that owns it, with no config file of its own;
+  `starci config list|get|set` reads and changes them, and `set` writes only a value the file's own loaders accept
+  (`cli/src/harness/settings.ts`).
 - **Policy selects; code and canon enforce.** [policy/](../../policy/README.md) picks the gates and configures them; every
   rule lives once, in the CLI or a canon package.
 - **One CI workflow.** [.github/workflows/ci.yml](../../.github/workflows/ci.yml) gates every push and pull request to main

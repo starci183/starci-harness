@@ -1,7 +1,9 @@
 # ops/
 
 The data the harness reads to give a task its base, check its result, route it and watch its seat. Every file is
-validated by the CLI when it is read; a key no code reads is deleted.
+validated by the CLI when it is read; a key no code reads is deleted. A setting of the yaml files below is changed through
+`starci config set <key> <value>` (`config list` and `config get` read them), which writes it into the file that owns
+it, comments kept, only after that file's loaders accept the whole new file (`cli/src/harness/settings.ts`).
 
 | file | holds | read by |
 |---|---|---|
