@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.3.0 - 2026-10-28
+
+- Changed (breaking for apps): owner ruling fe-shape-not-state. A pure half takes `{ shape?, props, on? }`; `base-props-atom` refuses the retired `state` key with a message naming the rename, and `no-data-status-shape` reads `XShape` unions (and still the old `XState` names, so a status word is caught during the rename).
+
 ## 9.2.0 - 2026-10-27
 
 - Changed: owner ruling two-grammars: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).

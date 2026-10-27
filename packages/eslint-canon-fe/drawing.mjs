@@ -75,7 +75,7 @@ const keyOf = (member) => (member.key?.type === "Identifier" ? member.key.name :
 export const basePropsAtom = {
   meta: {
     type: "problem",
-    docs: { description: "A pure `XBase` takes `state`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
+    docs: { description: "A pure `XBase` takes `shape`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
     schema: [],
     messages: {
       tree:
@@ -85,7 +85,9 @@ export const basePropsAtom = {
       onData:
         "`on.{{key}}` is not an action. `on` holds functions only; data belongs in `props`.",
       member:
-        "`{{key}}` is not part of the pure contract. A pure half takes `state`, `props` and `on`{{children}}.",
+        "`{{key}}` is not part of the pure contract. A pure half takes `shape`, `props` and `on`{{children}}.",
+      renamed:
+        "`state` is the retired name of the drawn shape: rename it `shape` (owner ruling fe-shape-not-state).",
     },
   },
   create(context) {
@@ -197,7 +199,11 @@ export const basePropsAtom = {
         for (const member of membersOf(annotation, types)) {
           const key = keyOf(member)
           const type = member.typeAnnotation?.typeAnnotation
-          if (key === "state") continue
+          if (key === "shape") continue
+          if (key === "state") {
+            context.report({ node: member, messageId: "renamed" })
+            continue
+          }
           if (key === "props") checkData(type, "props", new Set())
           else if (key === "on") checkActions(type)
           else if (key === "children" && tier === "layouts") continue
@@ -274,11 +280,11 @@ const DATA_STATUS = new Set([
   "skeleton", "closed", "idle", "refreshing", "retrying",
 ])
 
-/** A surface's `XState` names shapes only. */
+/** A surface's `XShape` names shapes only. */
 export const noDataStatusShape = {
   meta: {
     type: "problem",
-    docs: { description: "`XState` of a pure half names drawn shapes, never a data status or open/closed." },
+    docs: { description: "`XShape` of a pure half names drawn shapes, never a data status or open/closed." },
     schema: [],
     messages: {
       status:
@@ -298,7 +304,7 @@ export const noDataStatusShape = {
     }
     return {
       TSTypeAliasDeclaration(node) {
-        if (/^[A-Z][A-Za-z0-9]*State$/.test(node.id.name)) check(node.id.name, node.typeAnnotation)
+        if (/^[A-Z][A-Za-z0-9]*(?:Shape|State)$/.test(node.id.name)) check(node.id.name, node.typeAnnotation)
       },
     }
   },

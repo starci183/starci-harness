@@ -42,7 +42,7 @@ for (const edition of ["lite", "full"]) {
       invalid: [{filename: COMPONENT, code: "type Props = Omit<Base, 'className'>", errors: [{messageId: "utility"}]}],
     })
     tester.run("base-props-atom", drawing["base-props-atom"], {
-      valid: [{filename: BLOCK, code: 'export type HandoffBlockBaseProps = { readonly state: "sent"; readonly props: {readonly id: string}; readonly on: {readonly retry: () => void} }; export const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />;'}],
+      valid: [{filename: BLOCK, code: 'export type HandoffBlockBaseProps = { readonly shape: "sent"; readonly props: {readonly id: string}; readonly on: {readonly retry: () => void} }; export const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />;'}],
       invalid: [{filename: BLOCK, code: 'export const HandoffBlockBase = (props: {label: string}) => <div />', errors: [{messageId: "member"}]}],
     })
     tester.run("base-import-pair", drawing["base-import-pair"], {
