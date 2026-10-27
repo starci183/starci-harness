@@ -54,6 +54,23 @@ entry names its enforcers by kind (`eslint-be`, `eslint-fe`, `eslint-grammar-cor
 `hfs`, `sonar`). Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
 StarCi runtime repository itself are harness policy, not app knowledge, and are not in this catalog.
 
+## The harness's own shape
+
+The harness repository is a tree of kind `runtime` (its `hfs.json`), and its shape is [harness.yaml](harness.yaml), in
+the field vocabulary above: each slot has an `id`, a `path` pattern (or a list), `presence` (`required`, `optional`,
+`forbidden`), what it `holds` and the `rule` it serves. Three fields are the runtime's own: `per` makes a required slot
+hold in every instance folder (`packages/<name>/`), with `requires` naming the files each must hold and `exempt` the
+instances it does not apply to; `jsonKey` narrows a forbidden slot to JSON files that declare the key (a `package.json`
+with `bin` is a second CLI); `generated` marks copies made from an owner in `contexts/` (a package's `runtime/`).
+
+`starci check shape` places every file of the tree as it stands (tracked and untracked, never what `.gitignore`
+ignores). Forbidden slots judge first: a match is `SHAPE_FORBIDDEN`. A file no other slot holds is `SHAPE_UNPLACED`; a
+required slot, or one instance of it, with no file is `SHAPE_MISSING`. A slot with `enforce: target` states a law the
+tree is still moving to (every package TypeScript in `src/` built to `dist/`, knowledge only in `contexts/`): a violation
+is `SHAPE_TARGET` unless one of its dated `exceptions` (a literal file or folder, `until`, `owner`, `why`) covers it. An
+exception that covers nothing is `SHAPE_EXCEPTION_STALE` and one past its date `SHAPE_EXCEPTION_EXPIRED`, so the list
+only shrinks; a gate slot has no exceptions. A new place for a file is a new slot here, never a wider pattern elsewhere.
+
 ## Editing
 
 A slot or rule changes here first, in its one entry, and the patterns cite it. A changed path, presence, import edge

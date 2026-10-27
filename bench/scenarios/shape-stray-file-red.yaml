@@ -1,0 +1,66 @@
+schema: starci/scenario@1
+id: shape-stray-file-red
+group: security
+title: a file no slot of the harness shape holds turns check shape red, and so does a missing required slot
+inject: a stray notes file at the root of a tree whose contexts/hfs/harness.yaml has no slot for it; then the required README removed
+expect: >-
+  check shape is green on the tree as declared; the stray file is red SHAPE_UNPLACED naming its path; removing it brings
+  green back; removing the required README is red SHAPE_MISSING naming the slot
+pass:
+  - the declared tree is green
+  - the stray file is SHAPE_UNPLACED and the verb exits 1
+  - the missing required file is SHAPE_MISSING and the verb exits 1
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    src/value.ts: "export const value = 1\n"
+    contexts/hfs/harness.yaml: |
+      schema: starci/harness-slots@1
+      version: 1.0.0
+      kind: runtime
+      presenceValues: [required, optional, forbidden]
+      enforceValues: [gate, target]
+      slots:
+        - id: root.readme
+          path: README.md
+          presence: required
+          holds: what the scratch tree is
+          rule: bench
+        - id: contexts.harness-shape
+          path: contexts/hfs/harness.yaml
+          presence: required
+          holds: this manifest, the tree's own shape
+          rule: bench
+        - id: src.code
+          path: "src/**/*.ts"
+          presence: optional
+          holds: the scratch tree's TypeScript source
+          rule: bench
+steps:
+  - name: the declared tree is green
+    starci: [check, shape]
+    expect:
+      exit: 0
+      contains: "\"verdict\": \"green\""
+  - write:
+      path: notes.txt
+      content: "a stray note\n"
+  - name: the stray file is unplaced
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_UNPLACED notes.txt\""
+  - remove: notes.txt
+  - name: green again once it is gone
+    starci: [check, shape]
+    expect:
+      exit: 0
+      contains: "\"verdict\": \"green\""
+  - git: [rm, -q, README.md]
+  - name: the required readme is missing
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_MISSING README.md\""

@@ -1,0 +1,98 @@
+schema: starci/scenario@1
+id: shape-forbidden-file-red
+group: security
+title: a forbidden file is red even where a slot would place it, and a target rule is red outside its dated exceptions
+inject: an env file, JavaScript beside the TypeScript source, and new legacy JavaScript outside the folder a dated exception covers
+expect: >-
+  check shape is green on the declared tree (the old legacy file is excepted); the env file and the .mjs source are red
+  SHAPE_FORBIDDEN; the new legacy file is red SHAPE_TARGET; an exception that covers nothing is red SHAPE_EXCEPTION_STALE
+pass:
+  - the declared tree is green with its legacy file excepted
+  - the env file and the JavaScript source are SHAPE_FORBIDDEN and the verb exits 1
+  - the legacy file outside the exception is SHAPE_TARGET
+  - an exception left with nothing to cover is SHAPE_EXCEPTION_STALE
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    src/value.ts: "export const value = 1\n"
+    lib/old/legacy.mjs: "export const legacy = 1\n"
+    contexts/hfs/harness.yaml: |
+      schema: starci/harness-slots@1
+      version: 1.0.0
+      kind: runtime
+      presenceValues: [required, optional, forbidden]
+      enforceValues: [gate, target]
+      slots:
+        - id: never.env
+          path: "**/{.env,*.env,.env.*}"
+          presence: forbidden
+          holds: an env or secret file
+          rule: bench
+        - id: never.src-js
+          path: "src/**/*.{js,mjs,cjs}"
+          presence: forbidden
+          holds: JavaScript source beside the TypeScript
+          rule: bench
+        - id: never.lib-js
+          path: "lib/**/*.mjs"
+          presence: forbidden
+          enforce: target
+          exceptions:
+            - path: lib/old/
+              until: "2099-12-31"
+              owner: bench
+              why: the old library is converted later; nothing new joins it
+          holds: legacy JavaScript being converted
+          rule: bench
+        - id: root.files
+          path: "{README.md,contexts/hfs/harness.yaml}"
+          presence: required
+          requires: [README.md, contexts/hfs/harness.yaml]
+          holds: the readme and this manifest
+          rule: bench
+        - id: src.code
+          path: "src/"
+          presence: optional
+          holds: the scratch tree's source
+          rule: bench
+steps:
+  - name: the declared tree is green, its legacy file excepted
+    starci: [check, shape]
+    expect:
+      exit: 0
+      contains: "\"exception\": \"lib/old/\""
+  - write:
+      path: .env
+      content: "VALUE=1\n"
+  - write:
+      path: src/helper.mjs
+      content: "export const helper = 1\n"
+  - write:
+      path: lib/new.mjs
+      content: "export const fresh = 1\n"
+  - name: the env file is forbidden
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_FORBIDDEN .env\""
+  - name: the JavaScript source is forbidden though src/ would place it
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_FORBIDDEN src/helper.mjs\""
+  - name: new legacy JavaScript outside the exception is red
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_TARGET lib/new.mjs\""
+  - remove: .env
+  - remove: src/helper.mjs
+  - remove: lib/new.mjs
+  - git: [rm, -q, lib/old/legacy.mjs]
+  - name: the exception now covers nothing
+    starci: [check, shape]
+    expect:
+      exit: 1
+      contains: "\"key\": \"SHAPE_EXCEPTION_STALE lib/old/\""
