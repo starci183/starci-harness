@@ -491,9 +491,8 @@ removedVocabulary:
     replacedBy: nothing (dropped)
     ruling: "two-grammars"
   - spelling: '@starci/eslint-grammar-starci'
-    replacedBy: '@starci/eslint-grammar-common plus the grammar factory @starci/eslint-grammar-<id>'
+    replacedBy: '@starci/eslint-grammar-core'
     ruling: "two-grammars"
-    pending: the package is still published under the old name (stack/pins.yaml); decisions/open-grammar.md D-7
   - spelling: fe.package.ui
     as: slot (a product UI package)
     replacedBy: the grammar package; shared front-end packages hold no visuals

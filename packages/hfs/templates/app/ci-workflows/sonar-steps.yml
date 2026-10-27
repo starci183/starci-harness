@@ -1,0 +1,3 @@
+{{sonarJobHeader}}
+{{> app/ci-workflows/install-steps.yml}}
+{{sonarJobSteps}}

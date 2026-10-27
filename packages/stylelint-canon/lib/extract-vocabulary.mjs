@@ -3,7 +3,7 @@
  * derived from what the grammar ships and never typed by hand. `vocabulary.generated.mjs` is this function's
  * output; the twin test recomputes it and fails when the two differ.
  *
- * A family token is any custom property under a family prefix (`--grammar-`, `--starci-core-`, `--heritage-`,
+ * A family token is any custom property under a family prefix (`--grammar-`, `--starci-core-`,
  * `--offset-pop-`): the grammar sets some of them from TypeScript, so a prefix is the honest boundary. The
  * un-prefixed tokens are the semantic layer the grammar declares (`--accent`, `--surface`, ...) plus the vendor
  * tokens it reads but does not declare (`--radius-md`, `--font-mono`).
@@ -13,7 +13,7 @@ import path from "node:path"
 import { byCodeUnit } from "./order.mjs"
 
 /** The four namespaces the grammar owns. */
-export const FAMILY_PREFIXES = ["--grammar-", "--starci-core-", "--heritage-", "--offset-pop-"]
+export const FAMILY_PREFIXES = ["--grammar-", "--starci-core-", "--offset-pop-"]
 
 /** The grammar CSS the vocabulary is read from, relative to the grammar package. */
 export const GRAMMAR_CSS = [
@@ -22,7 +22,6 @@ export const GRAMMAR_CSS = [
   "common/components-navigation.css",
   "common/components-overlays.css",
   "core/styles.css",
-  "heritage/styles.css",
   "offset-pop/styles.css",
   "offset-pop/components-navigation.css",
 ]

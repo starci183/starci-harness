@@ -1,0 +1,134 @@
+import { cn } from "@heroui/react"
+import { isValidElement, type ReactNode } from "react"
+import { SurfaceNesting } from "../../surfaceContext.js"
+import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import type { OverlayOpenState } from "../../overlayScope.js"
+import { Drawer } from "../../branch/Drawer/index.js"
+import { Rail } from "../../branch/Rail/index.js"
+import { IconButton } from "../../primitive/IconButton/index.js"
+import type { IconSource } from "../../primitive/Icon/index.js"
+import { NavigationFeatureNav } from "../NavigationFeatureNav/index.js"
+import { TopBar } from "../TopBar/index.js"
+import {
+    workspaceShellClassName,
+    workspaceShellCompactHeaderClassName,
+    workspaceShellCompactNavigationClassName,
+    workspaceShellFloatingLayerClassName,
+    workspaceShellHeaderClassName,
+    workspaceShellLayoutClassName,
+    workspaceShellLeadingRuleClassName,
+    workspaceShellNavigationClassName,
+    workspaceShellOpenerClassName,
+    workspaceShellPrimaryClassName,
+    workspaceShellRailClassName,
+} from "./classNames.js"
+
+type SlotContent = Exclude<ReactNode, null | undefined | boolean>
+type ShellOwnedMain = ({ readonly primaryLabel: string; readonly primaryLabelledBy?: never } | { readonly primaryLabel?: never; readonly primaryLabelledBy: string }) & { readonly mainLandmark?: "shell" }
+type CallerOwnedMain = { readonly mainLandmark: "caller"; readonly primaryLabel?: never; readonly primaryLabelledBy?: never }
+type WithNavigation = { readonly navigation: SlotContent; readonly navigationLabel: string; readonly navigationTrack?: "fixed" | "intrinsic"; readonly navigationVisibility?: "always" | "wide" }
+type WithoutNavigation = { readonly navigation?: undefined; readonly navigationLabel?: never; readonly navigationTrack?: never; readonly navigationVisibility?: never }
+type WithRail = { readonly rail: SlotContent; readonly railLabel: string; readonly railMode?: "flow" | "sticky"; readonly railWidth?: "compact" | "standard" | "wide"; readonly railInset?: "none" | "content"; readonly railPosition?: "leading" | "trailing"; readonly isRailLabelHidden?: boolean }
+type WithoutRail = { readonly rail?: undefined; readonly railLabel?: never; readonly railMode?: never; readonly railWidth?: never; readonly railInset?: never; readonly railPosition?: never; readonly isRailLabelHidden?: never }
+type WithCompactNavigation = { readonly compactNavigation: SlotContent; readonly compactNavigationLabel: string }
+type WithoutCompactNavigation = { readonly compactNavigation?: undefined; readonly compactNavigationLabel?: never }
+
+/**
+ * The compact-width opener of the navigation: below the wide breakpoint the shell hides `navigation` and draws one row under the bar
+ * (the bar's height, an edge-to-edge divider) holding a round tertiary icon button that opens `content` (a `Sidebar` with
+ * `presentation="drawer"`) in a left Drawer. The Drawer owns its state from `defaultOpen`; the shared overlay contract also
+ * permits controlled state when the caller needs to coordinate dismissal with another action.
+ */
+export type WorkspaceShellNavigationDrawer = OverlayOpenState & {
+    /** The drawer's title and its dialog name. */
+    readonly title: string
+    /** The opener button's accessible name. */
+    readonly openLabel: string
+    /** The drawer close button's accessible name. */
+    readonly closeLabel: string
+    /** The opener glyph (an ellipsis). */
+    readonly source: IconSource
+    /** The drawer body, normally `<Sidebar presentation="drawer" ... />`. */
+    readonly content: ReactNode
+    /** Optional text drawn beside the opener, e.g. the current section. */
+    readonly rowTitle?: string
+}
+
+/** The actual Drawer trigger owns activation, expanded state and focus restoration without a caller callback. */
+const WorkspaceNavigationDrawer = ({ openLabel, source, content, rowTitle, ...drawerProps }: WorkspaceShellNavigationDrawer) => (
+    <div className={workspaceShellOpenerClassName} data-grammar-workspace-opener="true">
+        <Drawer {...drawerProps} placement="left" trigger={<IconButton label={openLabel} source={source} variant="tertiary" size="control" />}>{content}</Drawer>
+        {rowTitle === undefined ? null : <span className="starci-core-workspace-shell-opener-title" data-grammar-workspace-opener-title="true">{rowTitle}</span>}
+    </div>
+)
+
+/**
+ * Who owns the page's single banner landmark when the shell has a `header`.
+ *
+ * `shell`: the shell's header wrapper is the `<header>` (banner) and the slot holds plain content.
+ * `slot`: the slot content is itself the banner (a `TopBar`, a `NavigationFeatureNav`, or an app
+ * bar that renders `<header>`), so the wrapper renders a plain `div` and never nests a second
+ * banner around it (axe `landmark-banner-is-top-level`, `landmark-no-duplicate-banner`).
+ */
+export type WorkspaceShellHeaderLandmark = "shell" | "slot"
+
+/** Grammar bars that own the banner themselves; hosting one flips the default to `slot`. */
+const BANNER_OWNERS: ReadonlySet<unknown> = new Set([TopBar, NavigationFeatureNav])
+
+/** Resolve the landmark rule: an explicit prop wins, otherwise a Grammar app bar in the slot owns it. */
+export const resolveWorkspaceHeaderLandmark = (header: ReactNode, headerLandmark?: WorkspaceShellHeaderLandmark): WorkspaceShellHeaderLandmark =>
+    headerLandmark ?? (isValidElement(header) && BANNER_OWNERS.has(header.type) ? "slot" : "shell")
+
+export type WorkspaceShellProps = (ShellOwnedMain | CallerOwnedMain) & (WithNavigation | WithoutNavigation) & (WithRail | WithoutRail) & (WithCompactNavigation | WithoutCompactNavigation) & {
+    readonly header?: ReactNode
+    /**
+     * Landmark owner for `header` (see `WorkspaceShellHeaderLandmark`). Defaults to `slot` when the
+     * header is a `TopBar` or `NavigationFeatureNav`, otherwise `shell`. Pass `slot` when an
+     * app-owned bar that renders its own `<header>` goes in the slot.
+     */
+    readonly headerLandmark?: WorkspaceShellHeaderLandmark
+    readonly compactHeader?: ReactNode
+    /**
+     * `flow` (default): the page scrolls and the shell grows with its content. `fixed`: the shell is exactly one viewport tall
+     * (`100dvh`), the header stays on top and the navigation, the primary region and the rail each scroll on their own, so an app
+     * needs no viewport-height arithmetic of its own.
+     */
+    readonly viewport?: "flow" | "fixed"
+    /** The compact-width navigation opener row and its Sidebar drawer (see `WorkspaceShellNavigationDrawer`). Needs `navigation`. */
+    readonly navigationDrawer?: WorkspaceShellNavigationDrawer
+    readonly primary: ReactNode
+    readonly primaryId?: string
+    readonly floatingLayer?: ReactNode
+    readonly align?: "start" | "stretch"
+    readonly className?: string
+}
+
+/** Shared product workspace anatomy; connected apps supply every route and business slot. */
+export const WorkspaceShell = (props: WorkspaceShellProps) => {
+    const hasHeader = props.header != null && typeof props.header !== "boolean"
+    const drawerSpec = props.navigation === undefined ? undefined : props.navigationDrawer
+    const hasSlotOpener = props.viewport === "fixed" && drawerSpec === undefined
+    const hasCompactHeader = (props.compactHeader != null && typeof props.compactHeader !== "boolean") || drawerSpec !== undefined
+    const hasNavigation = props.navigation !== undefined
+    const hasRail = props.rail !== undefined
+    const hasCompactNavigation = props.compactNavigation !== undefined
+    const railPosition = hasRail ? props.railPosition ?? "trailing" : undefined
+    const hasFloatingLayer = props.floatingLayer != null && typeof props.floatingLayer !== "boolean"
+    const mainLandmark = props.mainLandmark ?? "shell"
+    const primary = mainLandmark === "caller" ? <div className={workspaceShellPrimaryClassName} data-contract="GAP-5" data-grammar-workspace-primary="true" data-grammar-main-landmark="caller" id={props.primaryId} tabIndex={-1}>{props.primary}</div> : <main aria-label={props.primaryLabel} aria-labelledby={props.primaryLabelledBy} className={workspaceShellPrimaryClassName} data-contract="GAP-5" data-grammar-workspace-primary="true" data-grammar-main-landmark="shell" id={props.primaryId} tabIndex={-1}>{props.primary}</main>
+    const rail = hasRail ? <div className={workspaceShellRailClassName} data-grammar-workspace-rail-region="true"><Rail inset={props.railInset ?? "none"} isLabelHidden={props.isRailLabelHidden ?? true} label={props.railLabel} mode={props.railMode ?? "flow"} width={props.railWidth ?? "standard"}>{props.rail}</Rail></div> : null
+    const leadingRule = railPosition === "leading" ? <div aria-hidden="true" className={workspaceShellLeadingRuleClassName} data-contract="BOUNDARY-4" data-grammar-workspace-leading-rule="true" /> : null
+
+    return <div className={cn(workspaceShellClassName, props.className)} data-contract="FE-APP-SHELL-1" data-grammar-workspace-viewport={props.viewport ?? "flow"} data-grammar-workspace-floating={hasFloatingLayer ? "present" : "absent"} data-grammar-workspace-shell="true" data-component="WorkspaceShell" data-tier="composition">
+        {hasHeader ? (resolveWorkspaceHeaderLandmark(props.header, props.headerLandmark) === "slot"
+            ? <div className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="slot"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></div>
+            : <header className={workspaceShellHeaderClassName} data-contract="MARGIN-5" data-grammar-workspace-header="true" data-grammar-workspace-header-landmark="shell"><ButtonPlacementProvider placement="chrome" navbar><SurfaceNesting>{props.header}</SurfaceNesting></ButtonPlacementProvider></header>) : null}
+        {hasCompactHeader ? <div className={cn(workspaceShellCompactHeaderClassName, hasSlotOpener ? workspaceShellOpenerClassName : undefined)} data-grammar-workspace-compact-header="true" data-grammar-workspace-opener={hasSlotOpener ? "true" : undefined}><ButtonPlacementProvider placement="chrome" navbar>{props.compactHeader}{drawerSpec === undefined ? null : <WorkspaceNavigationDrawer {...drawerSpec} />}</ButtonPlacementProvider></div> : null}
+        <div className={workspaceShellLayoutClassName} data-contract="GAP-5 MEASURE-1" data-grammar-workspace-align={props.align ?? "start"} data-grammar-workspace-navigation={hasNavigation ? "present" : "absent"} data-grammar-workspace-navigation-track={hasNavigation ? props.navigationTrack ?? (props.viewport === "fixed" ? "intrinsic" : "fixed") : undefined} data-grammar-workspace-navigation-visibility={hasNavigation ? props.navigationVisibility ?? (drawerSpec !== undefined || (hasSlotOpener && hasCompactHeader) ? "wide" : "always") : undefined} data-grammar-workspace-rail={hasRail ? "present" : "absent"} data-grammar-workspace-rail-position={railPosition} data-grammar-workspace-rail-width={hasRail ? props.railWidth ?? "standard" : undefined}>
+            {hasNavigation ? <nav aria-label={props.navigationLabel} className={workspaceShellNavigationClassName} data-grammar-workspace-navigation-region="true">{props.navigation}</nav> : null}
+            {railPosition === "leading" ? rail : null}{leadingRule}{primary}{railPosition === "trailing" ? rail : null}
+        </div>
+        {hasCompactNavigation ? <nav aria-label={props.compactNavigationLabel} className={workspaceShellCompactNavigationClassName} data-contract="BOUNDARY-1" data-grammar-workspace-compact-navigation="true" data-grammar-bottom-chrome="true">{props.compactNavigation}</nav> : null}
+        {hasFloatingLayer ? <div className={workspaceShellFloatingLayerClassName} data-contract="OVERFLOW-4" data-grammar-workspace-floating-layer="true">{props.floatingLayer}</div> : null}
+    </div>
+}

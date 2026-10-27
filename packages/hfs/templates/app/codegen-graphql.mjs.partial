@@ -1,0 +1,92 @@
+// GraphQL wire types, the same in both editions (owner ruling 2026-10-13): every fe app with operations under
+// src/modules/api/graphql/{queries,mutations,subscriptions} gets its typed documents generated from the contract snapshots the back end emits
+// (be/contracts/<app>/schema.graphql, `npm run contract:emit`) into the gitignored src/modules/api/graphql/__generated__/.
+// The input-bounds output carries the backend validators into translated form schemas through modules/api.
+// Nothing to generate (no snapshot yet, or no fe app with a modules/api/graphql folder) is not an error.
+const CONTRACTS = path.join("be", "contracts")
+const FE_APPS = path.join("fe", "apps")
+const posix = (file) => file.split(path.sep).join("/")
+const services = (fs.existsSync(CONTRACTS) ? fs.readdirSync(CONTRACTS) : []).sort(byCodeUnit)
+const frontendApps = (fs.existsSync(FE_APPS) ? fs.readdirSync(FE_APPS) : []).sort(byCodeUnit)
+const schemas = services
+    .map((app) => path.join(CONTRACTS, app, "schema.graphql"))
+    .filter((file) => fs.existsSync(file))
+    .sort(byCodeUnit)
+    .map(posix)
+const operationRoots = frontendApps
+    .map((app) => path.join(FE_APPS, app, "src", "modules", "api", "graphql"))
+    .filter((dir) => fs.existsSync(dir))
+    .sort(byCodeUnit)
+    .map(posix)
+const writeFormBounds = (roots, source) => {
+    for (const root of roots) {
+        const generated = `${root}/__generated__`
+        fs.mkdirSync(generated, { recursive: true })
+        fs.writeFileSync(`${generated}/input-bounds.ts`, source)
+    }
+}
+if (schemas.length === 0 || operationRoots.length === 0) {
+    process.stdout.write("codegen: no GraphQL contract under be/contracts yet\n")
+    if (schemas.length === 0 && operationRoots.length) {
+        const { emptyInputBoundsSource } = await import("@starci/cli/input-bounds")
+        writeFormBounds(operationRoots, emptyInputBoundsSource())
+    }
+} else {
+    const { buildSchema } = await import("graphql")
+    const { assertCompatibleInputBounds } = await import("@starci/cli/input-bounds")
+    assertCompatibleInputBounds(
+        Object.fromEntries(schemas.map((file) => [file, buildSchema(fs.readFileSync(file, "utf8"))])),
+    )
+    const { generate } = await import("@graphql-codegen/cli")
+    const generates = Object.fromEntries(
+        operationRoots.flatMap((root) => [
+            [
+                `${root}/__generated__/`,
+                {
+                    preset: "client",
+                    documents: [`${root}/queries/*.ts`, `${root}/mutations/*.ts`, `${root}/subscriptions/*.ts`],
+                    presetConfig: { fragmentMasking: false },
+                    config: { useTypeImports: true, enumsAsTypes: true, avoidOptionals: true },
+                },
+            ],
+            [`${root}/__generated__/input-bounds.ts`, { plugins: [{ "@starci/cli/input-bounds": {} }] }],
+        ]),
+    )
+    await generate(
+        {
+            schema: schemas,
+            generates,
+            ignoreNoDocuments: true,
+            silent: true,
+        },
+        true,
+    )
+    // Stamp only a successful generation, using the same sorted paths and LF-normalized schemas as R52.
+    const hash = createHash("sha256")
+    for (const schema of schemas) {
+        const source = fs.readFileSync(schema, "utf8").replaceAll("\r\n", "\n")
+        hash.update(`${schema}\0${source}\0`)
+    }
+    const digest = hash.digest("hex")
+    for (const root of operationRoots) {
+        const generated = `${root}/__generated__`
+        if (fs.existsSync(generated)) fs.writeFileSync(`${generated}/.schema-sha256`, `${digest}\n`)
+    }
+}
+
+// REST forms consume the same backend DTO bounds through their API owner's generated output, even without GraphQL.
+const restRoots = frontendApps
+    .map((app) => path.join(FE_APPS, app, "src", "modules", "api", "rest"))
+    .filter((dir) => fs.existsSync(dir))
+    .map(posix)
+if (restRoots.length) {
+    const { openApiBoundsSource } = await import("@starci/cli/input-bounds")
+    const contracts = Object.fromEntries(
+        services
+            .map((service) => [service, path.join(CONTRACTS, service, "openapi.json")])
+            .filter(([, file]) => fs.existsSync(file))
+            .map(([service, file]) => [service, JSON.parse(fs.readFileSync(file, "utf8"))]),
+    )
+    // Generate an empty map when a contract disappears so stale form limits cannot survive a successful codegen.
+    writeFormBounds(restRoots, openApiBoundsSource(contracts))
+}

@@ -1,0 +1,217 @@
+schema: starci/knowledge-source@1
+id: ui.presentation.padding
+title: Padding presentation
+appliesTo:
+  - ui
+family: presentation
+purpose: Resolve one owned content edge per boundary. Applications write layout insets only for boundaries
+  they own; a selected Grammar owns its components' internal insets and the values of its published scale.
+  FE-RULE-OWNERSHIP keeps these universal requirements separate from family recipes.
+ownerVocabulary:
+  owners:
+    - name: Application layout
+      meaning: The application owns this layout boundary
+      applicationWrites: Its one layout inset from the selected Grammar scale
+    - name: Selected Grammar component
+      meaning: The published component owns this boundary
+      applicationWrites: Compose its published API
+  notes: Every boundary has one inset owner. Reimplementing an owned component inset or overriding its internal
+    geometry violates that ownership. A missing component capability is repaired in the Grammar.
+guidance:
+  - id: side-contact
+    title: Side contact
+    requirement: Resolve each side from the boundary it meets. An outer edge takes the published content
+      clearance; a separator-facing side takes the published separator clearance; a side already owned by a
+      child adds no inset. Inline sides of peer bands align. The selected Grammar owns the exact values and
+      flush-band API.
+  - id: composite-insets
+    title: Composite insets
+    requirement: An asymmetric inset recipe composes published scale values. Each side has an explicit boundary
+      reason; the recipe introduces no new value. Preserve an existing recipe identity when its purpose is
+      unchanged, and declare a new recipe only for a distinct boundary relationship.
+  - id: axis-variants
+    title: Axis variants
+    requirement: An inset may apply to logical inline sides, block sides or one side independently. A narrower
+      declaration on the same element replaces its selected sides; padding on nested elements adds. Do not
+      introduce a wrapper merely to change a side that its owner already controls.
+rules:
+  - id: PADDING-0
+    title: No duplicate inset
+    governs: A boundary contributes no extra space when content or a child already owns its edge.
+    cases:
+      - id: case-1
+        when: A container only groups children that each carry their own boundary
+        owner: Application layout
+        render: Group without adding another inset.
+      - id: case-2
+        when: Surface bands run flush to the surface edge
+        owner: The surface component
+        render: Compose its published flush-band treatment.
+      - id: case-3
+        when: A list sits inside a panel or its rows own their own inset
+        owner: The list component
+        render: "Owner ruling 2026-10-25 (owner:panel-list-box-edge): the row box aligns with the panel content
+          edge, like the search field and tabs boxes. Content retains the vendor item inset and rounded
+          interaction background inside that box; the list keeps its vendor inset without negative-margin
+          bleed. Compose without padding wrappers. The selected Grammar supplies the panel-alignment API;
+          the universal FE canon reports stacked padding as FE_LIST_PANEL_PADDING."
+    notThisRule: The boundary protecting readable content keeps its one owned inset from the selected Grammar scale.
+  - id: PADDING-1
+    title: Minimal clearance
+    governs: Use the selected Grammar's smallest published inset where a deliberately tiny boundary nearly fits
+      its content.
+    cases:
+      - id: case-1
+        when: A compact marker or key floats over an application-owned canvas
+        owner: Application layout
+        render: Choose the smallest published inset that clears the marker content.
+      - id: case-2
+        when: A scroll region reserves room for focus visibility
+        owner: The scroll-region component
+        render: Compose the region; its focus clearance owns this inset.
+      - id: case-3
+        when: A short hint is attached to a control
+        owner: The hint component
+        render: Compose the hint; its internal inset stays with the component.
+  - id: PADDING-2
+    title: Compact clearance
+    governs: Use the published compact inset for an auxiliary boundary that needs clear but economical edge space.
+    cases:
+      - id: case-1
+        when: An auxiliary strip shares one inset on all sides
+        owner: Application layout
+        render: Apply the published compact inset once.
+      - id: case-2
+        when: A compact control bar sits above application-owned content
+        owner: Application layout
+        render: Keep its edge clearance and sibling gap as separate decisions.
+    notThisRule: Space between siblings belongs to the parent gap, not the boundary inset.
+  - id: PADDING-3
+    title: Dense content clearance
+    governs: Use the published dense inset for readable nested content and separator-facing band edges.
+    cases:
+      - id: case-1
+        when: A nested container owns a boundary distinct from its parent
+        owner: Application layout
+        render: Apply the published dense inset to that distinct boundary.
+      - id: case-2
+        when: A tab strip or secondary navigation needs inline clearance
+        owner: The navigation component
+        render: Compose its published inset API.
+      - id: case-3
+        when: A band side meets a separator inside a flush surface
+        owner: The selected Grammar recipe
+        render: Use its separator-facing clearance while retaining inline alignment.
+      - id: case-4
+        when: A metric cell or list row meets a separator
+        owner: The metric or list component
+        render: The separator-facing side uses its published dense clearance.
+    notThisRule: Repeating the same inset for the same boundary doubles it along the path from outer edge to content.
+  - id: PADDING-4
+    title: Readable content clearance
+    governs: Use the published content inset once at the boundary that protects readable content.
+    cases:
+      - id: case-1
+        when: An application section owns the distance from its border to its content
+        owner: Application layout
+        render: Apply the published content inset once.
+      - id: case-2
+        when: Content sits inside a card
+        owner: The card component
+        render: Compose the card; its content inset remains component-owned.
+      - id: case-3
+        when: A disclosure has a trigger and expanded panel
+        owner: The disclosure component
+        render: Compose the disclosure; its trigger and panel own their insets.
+      - id: case-4
+        when: An empty-state notice occupies a region
+        owner: The notice component
+        render: Compose the notice without adding its internal inset again.
+      - id: case-5
+        when: A fenced code block is displayed
+        owner: The code-block component
+        render: Compose the block without duplicating its content inset.
+      - id: case-6
+        when: A band side meets the outer edge of a flush surface
+        owner: The selected Grammar recipe
+        render: Use the published outer-edge content clearance.
+      - id: case-7
+        when: Inline sides of bands meet the same surface boundary
+        owner: The selected Grammar recipe
+        render: Use the same published inline inset on every band.
+  - id: PADDING-5
+    title: Generous section clearance
+    governs: A deliberately more spacious section uses its selected Grammar's published generous inset.
+    cases:
+      - id: case-1
+        when: A section deliberately uses equal generous clearance
+        owner: Application layout
+        render: Choose the published generous inset for that density.
+      - id: case-2
+        when: A tab frame owns page-level inline clearance
+        owner: The navigation component
+        render: Compose its published page-inset API.
+    notThisRule: Space between child sections is a gap, not a boundary inset.
+  - id: PADDING-6
+    title: Low-density region clearance
+    governs: A large, low-density region may use the selected Grammar's larger frame inset where its content
+      density calls for it.
+    cases:
+      - id: case-1
+        when: A large page region needs equal generous clearance
+        owner: Application layout
+        render: Choose its published larger frame inset.
+      - id: case-2
+        when: An empty or waiting region occupies most of the viewport
+        owner: Application layout
+        render: Give the region its own published frame clearance while its notice retains internal ownership.
+    notThisRule: A large frame inset is not the default for ordinary content boundaries.
+  - id: PADDING-7
+    title: Responsive inset follows its boundary
+    governs: A boundary keeps its meaning across widths. Its responsive inset follows adjacent published scale
+      steps. Separator-facing sides retain their separator clearance; block sides change only when the
+      boundary owns them.
+    cases:
+      - id: case-1
+        when: A decision surface gains room at a wider viewport
+        owner: The selected Grammar recipe
+        render: Step inline clearance to the adjacent published inset.
+      - id: case-2
+        when: That surface's outer-edge block sides gain room with it
+        owner: The selected Grammar recipe
+        render: Step only the block sides owned by the outer boundary.
+      - id: case-3
+        when: A side meets an internal separator
+        owner: The selected Grammar recipe
+        render: Keep the separator-facing clearance at both widths.
+    notThisRule: A separator-facing side does not step merely because the viewport widens.
+  - id: PADDING-8
+    title: Subordinate content indents at the inline start
+    governs: An inset that expresses nested hierarchy applies at logical inline start. The end edge remains
+      aligned with its parent so the reading measure stays available. The selected Grammar supplies the
+      indentation step and disclosure recipe.
+    cases:
+      - id: case-1
+        when: A disclosure body belongs under its trigger
+        owner: The disclosure component
+        render: Use its published leading indentation and unchanged trailing edge.
+      - id: case-2
+        when: A nested group belongs to a named parent row
+        owner: The group component
+        render: Use the selected Grammar's per-level leading indentation.
+    notThisRule: Indenting both sides reads as an inset block rather than subordinate content. A missing
+      disclosure capability is repaired in the Grammar.
+  - id: PADDING-9
+    title: Routed content owns its block inset
+    governs: A routed content region may step its block inset with the viewport while the page container retains
+      inline inset ownership. Its responsive values use adjacent published steps and never duplicate the page
+      edge.
+    cases:
+      - id: case-1
+        when: Routed content sits directly beneath the page shell
+        owner: Application layout
+        render: Apply its published responsive block inset; leave inline clearance with the page container.
+    notThisRule: Inline clearance on routed content duplicates the page-container edge and is refused.
+doesNotDecide: Space between siblings is Gap (gap.yaml), and external offsets are Margin (margin.yaml). The
+  selected Grammar owns page-container geometry, its closed inset scale and component recipes under
+  FE-RULE-OWNERSHIP; its playbook supplies the concrete values used in proof.

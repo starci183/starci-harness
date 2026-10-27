@@ -569,8 +569,8 @@
         flex: none;
         align-items: center;
         justify-content: center;
-        width: var(--starci-core-control-min-size, 2.75rem);
-        height: var(--starci-core-control-min-size, 2.75rem);
+        width: var(--starci-core-control-min-size, 2.5rem);
+        height: var(--starci-core-control-min-size, 2.5rem);
         margin: -0.5rem -0.5rem 0 0;
         padding: 0;
         border: 0;

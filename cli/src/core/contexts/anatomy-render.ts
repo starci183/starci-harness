@@ -41,7 +41,7 @@ type Side = (typeof SIDES)[number]
 /** Enforcer kinds that judge the other side only; a tree hides them so each line names the lint of its own side. */
 const FOREIGN_KINDS: Readonly<Record<Side, readonly string[]>> = {
     app: [],
-    be: ["eslint-fe", "eslint-grammar-starci", "stylelint"],
+    be: ["eslint-fe", "eslint-grammar-core", "stylelint"],
     fe: ["eslint-be"],
 }
 

@@ -75,7 +75,7 @@ for (const edition of ["lite", "full"])
           "indicator",
         ),
         {
-          code: 'import {ListBox as Choices} from "@starci/grammar/heritage"; const C=()=> <nav><Choices /></nav>',
+          code: 'import {ListBox as Choices} from "@starci/grammar/offset-pop"; const C=()=> <nav><Choices /></nav>',
           errors: [{ messageId: "indicator" }],
         },
         {

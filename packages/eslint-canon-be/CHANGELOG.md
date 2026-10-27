@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.57 - 2026-10-27
+
+- Changed: the bundled runtime copy follows the two-grammars ruling: the Grammar catalog declares `core` and `offset-pop` only, and the canon pins follow the harness packages. The spec fixture app selects `core`. No rule changes.
+
 ## 3.4.56 - 2026-10-27
 
 - Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.

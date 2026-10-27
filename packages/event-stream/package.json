@@ -1,0 +1,67 @@
+{
+  "name": "@starci/event-stream",
+  "version": "0.1.0",
+  "description": "A framework-agnostic Server-Sent Events client for browsers and Node 18+: Bearer auth with one renewal, Last-Event-ID resume, backoff, heartbeat timeout, interceptors, an async iterator and a useSWRSubscription adapter.",
+  "type": "module",
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/event-stream#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/event-stream"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*",
+    "!dist/**/*.map",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./swr": {
+      "types": "./dist/swr.d.ts",
+      "import": "./dist/swr.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test --experimental-test-coverage --test-coverage-include=\"dist/**/*.js\" --test-coverage-exclude=\"dist/**/*.spec.js\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"dist/**/*.spec.js\"",
+    "prepack": "npm run test"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "swr": ">=2"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "swr": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -24,7 +24,7 @@ guidance:
       Do not treat this catalog as selecting a default Grammar family. Family choice belongs to the
       current design specification and its explicit sides.fe.grammar declaration.
     rationale: |
-      Silent fallback to StarCi would invent product direction and override an absent/ambiguous design.
+      Silent fallback to a family would invent product direction and override an absent/ambiguous design.
   - id: verify-before-use
     requirement: |
       Before applying snapshot APIs or recorded gaps, inspect the selected repository's package
@@ -47,11 +47,11 @@ topics:
       Generated DNA snapshot of the `@starci/grammar/common` public entry: custom properties,
       the 110 renderers of its registry, their classes, stamped rule ids and recorded gaps. The DNA owns the observed package
       version and source inventory. Common supplies anatomy, not colour. The snapshot is drift-checked.
-  - id: starci
-    path: starci/index.yaml
-    title: StarCi Core Grammar
+  - id: core
+    path: core/index.yaml
+    title: Core Grammar
     summary: |
-      Historical snapshot of the StarCi Core family — DNA, idioms, playbook (including composing the
+      Historical snapshot of the core family — DNA, idioms, playbook (including composing the
       0.5.0 forms, overlays and navigation chrome) and family boundaries.
   - id: offset-pop
     path: offset-pop/index.yaml
@@ -61,22 +61,7 @@ topics:
       shadow, one pink decision accent with a text-safe accent for text — with DNA, idioms, a
       mobile-first playbook for playful learning or consumer apps, and family boundaries including two
       decisions flagged for the family owner.
-  - id: heritage
-    path: heritage/DNA.yaml
-    title: Heritage Grammar
-    summary: |
-      Generated snapshot of the Heritage family's parity declaration, arrangement, scoped tokens and Common renderers.
-# The one alias table of Grammar family ids (ruling two-grammars, 2026-10-27): `core` is the canonical id of the
-# legacy core grammar; the legacy catalog id `starci` and the DNA id `starci-core` are deprecated spellings that
-# resolve to it. Every reader resolves a selection through scripts/lib/grammar-lint.mjs, never through its own list.
-familyAliases:
-  starci: core
-  starci-core: core
 families:
-  - id: heritage
-    title: heritage
-    contractRef: common
-    packageSnapshot: heritage/DNA.yaml
   - id: common
     title: common
     componentContract:
@@ -95,14 +80,14 @@ families:
     title: core
     contractRef: common
     lint:
-      package: '@starci/eslint-grammar-starci'
-      factory: starciGrammarConfig
+      package: '@starci/eslint-grammar-core'
+      factory: coreGrammarConfig
       prefix: starci-grammar
-    authority: starci/family.yaml
-    packageSnapshot: starci/DNA.yaml
-    reusableStyle: starci/idioms.yaml
-    productComposition: starci/playbook.yaml
-    index: starci/index.yaml
+    authority: core/family.yaml
+    packageSnapshot: core/DNA.yaml
+    reusableStyle: core/idioms.yaml
+    productComposition: core/playbook.yaml
+    index: core/index.yaml
   - id: offset-pop
     title: offset-pop
     contractRef: common

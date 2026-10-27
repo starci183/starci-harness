@@ -1,0 +1,149 @@
+schema: starci/design-truths@1
+id: hfs.design-truths
+title: The design truths - the one list of exceptions the loosening state check allows
+purpose: |
+  A loosening is always red (owner ruling loosening-always-red). The state check (scripts/lib/loosening-state.mjs, self-check loosening-state,
+  also the app gate's bypass rule) reads the tree as it stands and refuses any bypass, any ignore or exclude entry, any lowered threshold and any
+  exception file the canon does not derive. This file is where the canon says what it does derive and allow: every exception is here and nowhere
+  else, each with the owner ruling that makes it a design truth rather than a loosening, and each list entry bound to the files it holds for.
+  Changing this file is an owner decision (owner ruling loosening-state-check, 2026-10-24): the latest owner ruling that amends it records its
+  sha256 (pins), and the self-check is red whenever the file's digest is not the recorded one, so an edit never lands on a lane's say-so.
+
+# The files that may spell a forbidden token on purpose (the fixtures of the specs of this checker) and the vendored dependency copy. They are not read
+# by the tree check; each is pinned by digest in the latest owner ruling, only a package spec of packages/hfs/src may import the fixtures, and
+# a vendored file is a dependency copy, not authored source.
+fixtureFiles:
+  - packages/hfs/src/fixtures/loosening/forms.mjs
+  - packages/hfs/src/fixtures/loosening/swallows.mjs
+  - packages/hfs/src/fixtures/loosening/adversarial.mjs
+vendored:
+  - {path: engine/yaml.mjs, slot: runtime.vendored-yaml}
+
+# What no gate reads: build output, generated records and sealed custody. An ignore or exclude entry that names only these is no loosening. A group
+# with anyDepth holds at any depth (a folder of that name anywhere is output); the others are rooted (only the spelling at the root of the file's own
+# tree, never a glob that reaches a domain folder of that name).
+outsideTheGates:
+  - id: build-output
+    cite: {ruling: design-truths-confirmed}
+    anyDepth: true
+    entries: [node_modules, dist, build, coverage, .next, storybook-static, "*.tsbuildinfo", __generated__, .starci]
+  - id: root-output-and-records
+    cite: {ruling: design-truths-confirmed}
+    entries: [reports, contracts, supabase/types, .starcistacks, .starciwork, package-lock.json]
+
+# The gate limits of the Sonar gate (knowledge/sonar-gate.yaml): a floor is a number that may not be lower, a ceiling a number that may not be higher.
+gateLimits:
+  file: knowledge/sonar-gate.yaml
+  cite: {ruling: design-truths-confirmed}
+  floors: {minPercent: 100, minReviewedPercent: 100}
+  ceilings: {maxPercent: 3, max: 0, unreviewedMax: 0, ignoreBelowChangedLines: 0}
+
+# The numeric budgets of the slot manifests, pinned: a ceiling raised, a floor lowered or a budget removed there is red. An app or example config
+# never states a budget (hfs.json keys, ESLint max-* options): the canon owns them.
+budgets:
+  - file: knowledge/hfs/slots.yaml
+    cite: {ruling: design-truths-confirmed}
+    params:
+      under: ruleParams.common
+      ceilings: {fileLines.soft: 500, functionLines: 80, featureFiles: 250}
+      floors: {duplicateBlock.lines: 8, duplicateBlock.tokens: 60}
+      equals: {fileLines.hardGrowth: true}
+    slots:
+        repo.docs-media: {"bytes": 512000}
+        be.app.api: {"app.module.ts": 250, "main.ts": 80, "<app>.env.ts": 150, "<app>.options.ts": 200, "compose/<area>.ts": 120}
+        be.app.worker: {"app.module.ts": 250, "main.ts": 80, "<app>.env.ts": 150, "<app>.options.ts": 200, "compose/<area>.ts": 120}
+        be.app.cli: {"app.module.ts": 250, "main.ts": 80, "<app>.env.ts": 150, "<app>.options.ts": 200, "compose/<area>.ts": 120}
+        be.feature: {"files": 250, "indexExports": 60}
+        be.domain: {"indexExports": 60}
+        be.platform: {"indexExports": 60}
+        be.platform.event-bus: {"indexExports": 60}
+        be.platform.queue: {"indexExports": 60}
+        be.platform.jobs: {"indexExports": 60}
+        be.integrations: {"indexExports": 80}
+        fe.feature: {"component.tsx": 300, "index.tsx": 200, "dataHooks": 6, "useState": 6}
+        fe.components: {"component.tsx": 300, "index.tsx": 200, "dataHooks": 6, "useState": 6}
+        fe.hooks: {"file": 200, "barrel": 400, "dataHooks": 6, "useState": 6}
+        fe.hooks.swr: {"file": 200, "barrel": 400}
+        fe.hooks.rhf: {"file": 200, "barrel": 400}
+        fe.hooks.zustand: {"file": 200, "barrel": 400}
+        fe.hooks.socketio: {"file": 200, "barrel": 400}
+        fe.hooks.effects: {"file": 200, "barrel": 400}
+        fe.hooks.reuseables: {"file": 200, "barrel": 400}
+        fe.redux: {"file": 400}
+        fe.modules: {"file": 400}
+        fe.package.ui: {"component.tsx": 300, "index.tsx": 200, "dataHooks": 6, "useState": 6}
+  - file: knowledge/hfs/runtime-slots.yaml
+    cite: {ruling: design-truths-confirmed}
+    params:
+      under: ruleParams.runtime
+      ceilings: {fileLines.soft: 500}
+      equals: {fileLines.hardGrowth: true}
+  - file: modules/kernel/hook-input.yaml
+    cite: {ruling: hook-input-budget-pins}
+    params:
+      under: ""
+      ceilings: {maxBytes: 1048576, outputTimeoutMs: 1000, verdictTimeoutMs: 20000, teardownTimeoutMs: 1000, hookTimeoutSeconds: 30}
+      floors: {minInputWindowMs: 5000}
+
+truths:
+  - id: fe-has-no-specs
+    cite: {ruling: design-truths-standing}
+    says: The front end has no tests, so it is never a coverage target and a front end folder is outside every coverage measure.
+    allows:
+      - {list: coverage-exclusions, file: "{**/codecov.yml,**/sonar-project.properties}", entries: ["fe/**"]}
+  - id: runtime-has-no-specs
+    cite: {ruling: no-runtime-specs}
+    says: The .claude runtime has no specs of its own (specs for bundled libraries live in packages/*), so Sonar analyses the runtime without a coverage report and its own specs are not analysed as source.
+    allows:
+      - {list: sonar-exclusions, derivedBy: runtime-coverage-scope, file: sonar-project.properties, entries: ["**/*.spec.mjs"]}
+      - {list: coverage-exclusions, derivedBy: runtime-coverage-scope}
+      - {list: sonar-scope, derivedBy: runtime-coverage-scope}
+  - id: thin-wiring-roles-outside-coverage
+    cite: {ruling: design-truths-standing}
+    says: Back end unit coverage is 100 per file on the logic roles only; the files of a thin wiring role (module, controller, resolver, port, options, entity and the like) and the slots marked coverage none are outside coverage, derived once from the slot manifest.
+    allows:
+      - {list: coverage-exclusions, derivedBy: coverage-scope}
+  - id: app-config-renders-from-the-canon
+    cite: {ruling: design-truths-standing}
+    says: The ignore and exclude lists of a rendered app file (sonar.exclusions, sonar.cpd.exclusions, a tsconfig exclude, a prettier ignore, the jest excludes) are what the canon template renders for that file; an entry the render does not hold is a loosening.
+    allows:
+      - {list: sonar-exclusions, derivedBy: template-render}
+      - {list: cpd-exclusions, derivedBy: template-render}
+      - {list: sonar-scope, derivedBy: template-render}
+      - {list: path-ignores, derivedBy: template-render}
+  - id: message-catalogs-are-not-duplicate-code
+    cite: {ruling: message-catalogs-not-duplicate-code}
+    says: The message catalogs are left out of Sonar copy-paste detection and out of the formatter, and nothing else is.
+    allows:
+      - {list: cpd-exclusions, file: "{**/sonar-project.properties,packages/hfs/templates/app/quality-config/*.properties}", entries: ["**/messages/*.messages.ts", "**/messages/*.json"]}
+      - {list: path-ignores, file: "{**/.prettierignore,packages/hfs/templates/app/tool-config*/prettierignore}", entries: ["**/i18n/messages/**"]}
+  - id: be-tests-have-their-own-tsconfig
+    cite: {ruling: design-truths-confirmed}
+    says: The app and build tsconfig of a back end exclude the test folders and the specs because src/tests/tsconfig.json compiles them, so every test is still type-checked.
+    allows:
+      - {list: path-ignores, file: "{**/be/tsconfig.json,**/be/tsconfig.build.json,packages/hfs/templates/be/tool-config/tsconfig*.json}", entries: [src/tests, src/tests/contract, src/tests/e2e, src/tests/integration, src/tests/world, "**/*.spec.ts"]}
+  - id: grammar-stories-are-not-the-package
+    cite: {ruling: design-truths-confirmed}
+    says: The grammar package build leaves its stories out of the shipped bundle; the stories are compiled by their own tsconfig in the same script, so no story is unchecked.
+    allows:
+      - {list: path-ignores, file: packages/grammar/tsconfig.build.json, entries: ["src/**/*.stories.ts", "src/**/*.stories.tsx", "src/stories/**"]}
+  - id: jest-preset-ignores-node-modules
+    cite: {ruling: design-truths-confirmed}
+    says: The jest preset skips the installed dependencies when it looks for tests; nothing else is skipped, and a jest pattern is compared as the exact text.
+    allows:
+      - {list: jest-patterns, file: packages/jest-preset/index.cjs, entries: [/node_modules/]}
+  - id: require-ci-defaults-false
+    cite: {ruling: release-require-ci-per-project}
+    says: release.requireCi defaults to false; every local gate row runs either way, so a project that does not wait for its candidate CI loosens nothing.
+    allows:
+      - {setting: requireCi, value: false}
+  - id: one-allowlist-holds-no-entries
+    cite: {ruling: loosening-always-red}
+    says: The runtime has one allowlist file, with its reserved sections empty. An entry added to it is a loosening.
+    allows:
+      - {exceptionFile: modules/kernel/allowlist.yaml, maxEntries: 0}
+  - id: skip-lib-check-skips-third-party-declarations
+    cite: {ruling: design-truths-confirmed}
+    says: skipLibCheck true skips type-checking of third-party declaration files only and never app code; it is a design truth of the canon base tsconfig and of no other file, so a tsconfig that sets it, or turns any other strictness option off, is red.
+    allows:
+      - {compilerOption: skipLibCheck, value: true, files: [packages/tsconfig/base.json]}

@@ -1,0 +1,107 @@
+// Every form the loosening state check must refuse, and the look-alikes it must not. They live in this declared fixture folder of
+// knowledge/hfs/design-truths.yaml because the check reads every other file of the tree and refuses these spellings there.
+// FORBIDDEN: [{ id, file, text, kind, detail? }] - the tree { [file]: text } holds a loosening of `kind` (and `detail` when given).
+// LOOKALIKES: [{ id, file, text }] - the same words as data or prose, which the check leaves alone.
+
+const SCRIPT = 'scripts/checks/check-x.mjs';
+const SPEC = 'packages/x/src/a.spec.mjs';
+
+export const FORBIDDEN = [
+  // an inline disable or a type-check escape, a Sonar or coverage ignore, at the start of a comment
+  { id: 'eslint-disable line', file: SCRIPT, text: '// eslint-disable-next-line no-undef\nconst a = 1;\n', kind: 'bypass', detail: 'eslint-disable' },
+  { id: 'eslint-disable block', file: SCRIPT, text: '/* eslint-disable */\nconst a = 1;\n', kind: 'bypass', detail: 'eslint-disable' },
+  { id: 'stylelint-disable', file: 'fe/src/a.css', text: '/* stylelint-disable color-no-hex */\na { color: #fff; }\n', kind: 'bypass', detail: 'stylelint-disable' },
+  { id: 'ts-ignore', file: 'be/src/a.ts', text: '// @ts-ignore\nconst a: number = "x";\n', kind: 'bypass', detail: '@ts-ignore' },
+  { id: 'ts-expect-error', file: 'be/src/a.ts', text: '// @ts-expect-error because\nconst a: number = "x";\n', kind: 'bypass', detail: '@ts-expect-error' },
+  { id: 'ts-nocheck', file: 'be/src/a.ts', text: '// @ts-nocheck\nconst a = 1;\n', kind: 'bypass', detail: '@ts-nocheck' },
+  { id: 'Sonar word at the end of a line comment', file: SCRIPT, text: 'const a = 1; // NOSONAR\n', kind: 'bypass', detail: 'NOSONAR' },
+  { id: 'istanbul ignore', file: SCRIPT, text: '/* istanbul ignore next */\nfunction f() {}\n', kind: 'bypass', detail: 'istanbul ignore' },
+  { id: 'c8 ignore', file: SCRIPT, text: '// c8 ignore next\nfunction f() {}\n', kind: 'bypass', detail: 'c8 ignore' },
+  { id: 'v8 ignore', file: SCRIPT, text: '/* v8 ignore start */\nfunction f() {}\n', kind: 'bypass', detail: 'v8 ignore' },
+  { id: 'prettier-ignore', file: SCRIPT, text: '// prettier-ignore\nconst a = [1,2];\n', kind: 'bypass', detail: 'prettier-ignore' },
+  // a skipped, focused or todo test
+  { id: 'describe.skip', file: SPEC, text: "describe.skip('x', () => {});\n", kind: 'bypass' },
+  { id: 'it.only', file: SPEC, text: "it.only('x', () => {});\n", kind: 'bypass' },
+  { id: 'test.todo', file: SPEC, text: "test.todo('x');\n", kind: 'bypass' },
+  { id: 'xit in a spec', file: SPEC, text: "xit('x', () => {});\n", kind: 'bypass' },
+  { id: 'fit in a spec', file: SPEC, text: "fit('x', () => {});\n", kind: 'bypass' },
+  { id: 'skip option in a spec', file: SPEC, text: "test('x', { skip: process.platform === 'win32' }, () => {});\n", kind: 'bypass' },
+  // a failure swallowed in a hook, a workflow, a package script or a script that hands a shell a command
+  { id: 'or true in a hook', file: '.husky/pre-commit', text: 'npx eslint . || true\n', kind: 'bypass' },
+  { id: 'semicolon true in a hook', file: '.husky/pre-push', text: 'npm test; true\n', kind: 'bypass' },
+  { id: 'set plus e in a shell script', file: 'scripts/run.sh', text: 'set +e\nnpm test\n', kind: 'bypass' },
+  { id: 'HUSKY=0 in a shell script', file: 'scripts/run.sh', text: 'HUSKY=0 git commit -m x\n', kind: 'bypass' },
+  { id: 'no-verify in a shell script', file: 'scripts/run.sh', text: 'git commit --no-verify -m x\n', kind: 'bypass' },
+  { id: 'continue-on-error in a workflow', file: '.github/workflows/ci.yml', text: 'jobs:\n  a:\n    steps:\n      - run: npm test\n        continue-on-error: true\n', kind: 'bypass' },
+  { id: 'fail_ci_if_error false in a workflow', file: '.github/workflows/ci.yml', text: 'jobs:\n  a:\n    steps:\n      - uses: codecov/codecov-action@v5\n        with:\n          fail_ci_if_error: false\n', kind: 'bypass' },
+  { id: 'or true in a package script', file: 'package.json', text: '{\n  "scripts": {\n    "lint": "eslint . || true"\n  }\n}\n', kind: 'bypass' },
+  { id: 'pass with no tests in a package script', file: 'package.json', text: '{\n  "scripts": {\n    "test": "jest --passWithNoTests"\n  }\n}\n', kind: 'bypass', detail: '--passWithNoTests' },
+  { id: 'warning budget in a package script', file: 'package.json', text: '{\n  "scripts": {\n    "lint": "eslint . --max-warnings 10"\n  }\n}\n', kind: 'bypass', detail: 'a warning budget' },
+  { id: 'coverage threshold off in a package script', file: 'package.json', text: '{\n  "scripts": {\n    "test": "jest --coverageThreshold={}"\n  }\n}\n', kind: 'bypass', detail: '--coverageThreshold' },
+  { id: 'no-verify as a git argument in a script', file: SCRIPT, text: "run(['git', 'commit', '--no-verify', '-m', 'x']);\n", kind: 'bypass', detail: '--no-verify' },
+  { id: 'or true in the command a script hands a shell', file: SCRIPT, text: "run('npm test || true');\n", kind: 'bypass' },
+  { id: 'or true in a template literal command', file: SCRIPT, text: 'run(`npm run ${name} || true`);\n', kind: 'bypass' },
+  // an ignore or exclude entry the canon does not derive
+  { id: 'extra codecov ignore', file: 'codecov.yml', text: 'ignore:\n  - "src/new/**"\n', kind: 'list-extra' },
+  { id: 'codecov ignore that a broad glob already covers', file: 'codecov.yml', text: 'ignore:\n  - "be/**"\n  - "be/src/a.ts"\n', kind: 'list-extra', detail: 'ignore: be/src/a.ts' },
+  { id: 'extra sonar exclusion', file: 'sonar-project.properties', text: 'sonar.exclusions=**/dist/**,src/logic/**\n', kind: 'list-extra', detail: 'sonar.exclusions: src/logic/**' },
+  { id: 'extra sonar coverage exclusion', file: 'sonar-project.properties', text: 'sonar.coverage.exclusions=be/src/modules/**\n', kind: 'list-extra' },
+  { id: 'extra sonar duplication exclusion', file: 'sonar-project.properties', text: 'sonar.cpd.exclusions=be/src/**\n', kind: 'list-extra' },
+  { id: 'a Sonar issue ignore rule', file: 'sonar-project.properties', text: 'sonar.issue.ignore.multicriteria=e1\n', kind: 'list-extra' },
+  { id: 'extra jest coverage ignore', file: 'be/jest.config.js', text: 'module.exports = { coveragePathIgnorePatterns: ["/node_modules/", "src/logic/"] };\n', kind: 'list-extra', detail: 'coveragePathIgnorePatterns: src/logic/' },
+  { id: 'extra jest test ignore', file: 'be/jest.config.js', text: 'module.exports = { testPathIgnorePatterns: ["/node_modules/", "src/hard/"] };\n', kind: 'list-extra' },
+  { id: 'extra collectCoverageFrom exclusion', file: 'be/jest.config.js', text: 'module.exports = { collectCoverageFrom: ["src/**", "!src/hard/**"] };\n', kind: 'scope-override' },
+  { id: 'extra eslint ignore', file: 'be/eslint.config.mjs', text: 'export default [{ ignores: ["src/hard/**"] }];\n', kind: 'list-extra' },
+  { id: 'extra tsconfig exclude', file: 'be/tsconfig.json', text: '{\n  "exclude": ["node_modules", "src/hard"]\n}\n', kind: 'list-extra', detail: 'exclude: src/hard' },
+  { id: 'extra prettier ignore', file: '.prettierignore', text: 'node_modules/\nsrc/hard/\n', kind: 'list-extra' },
+  // a lowered threshold or a relaxing setting
+  { id: 'codecov target below 100', file: 'codecov.yml', text: 'coverage:\n  status:\n    project:\n      default:\n        target: 90%\n', kind: 'threshold', detail: 'target 90' },
+  { id: 'codecov threshold above 0', file: 'codecov.yml', text: 'coverage:\n  status:\n    project:\n      default:\n        threshold: 2%\n', kind: 'threshold', detail: 'threshold 2' },
+  { id: 'jest threshold below 100', file: 'be/jest.config.js', text: 'module.exports = { coverageThreshold: { global: { lines: 90, branches: 100 } } };\n', kind: 'threshold', detail: 'lines 90' },
+  { id: 'codecov does not require ci to pass', file: 'codecov.yml', text: 'codecov:\n  require_ci_to_pass: false\n', kind: 'setting' },
+  { id: 'codecov informational', file: 'codecov.yml', text: 'coverage:\n  status:\n    project:\n      default:\n        informational: true\n', kind: 'setting' },
+  { id: 'jest passes with no tests', file: 'be/jest.config.js', text: 'module.exports = { passWithNoTests: true };\n', kind: 'setting' },
+  { id: 'eslint rule off', file: 'be/eslint.config.mjs', text: 'export default [{ rules: { "no-undef": "off" } }];\n', kind: 'rule-off', detail: 'no-undef' },
+  { id: 'tsconfig strict off', file: 'be/tsconfig.json', text: '{\n  "compilerOptions": { "strict": false }\n}\n', kind: 'strictness', detail: 'strict: false' },
+  { id: 'tsconfig noImplicitAny off', file: 'tsconfig.json', text: '{\n  "compilerOptions": {\n    "noImplicitAny": false\n  }\n}\n', kind: 'strictness' },
+  { id: 'skipLibCheck outside the canon base tsconfig', file: 'be/tsconfig.json', text: '{\n  "compilerOptions": { "skipLibCheck": true }\n}\n', kind: 'strictness', detail: 'skipLibCheck: true' },
+  { id: 'skipLibCheck in a package tsconfig', file: 'packages/grammar/tsconfig.build.json', text: '{\n  "compilerOptions": {\n    "strict": true,\n    "skipLibCheck": true\n  }\n}\n', kind: 'strictness' },
+  { id: 'another type-check relaxation', file: 'tsconfig.json', text: '{\n  "compilerOptions": {\n    "suppressImplicitAnyIndexErrors": true\n  }\n}\n', kind: 'strictness' },
+  { id: 'unused locals allowed', file: 'tsconfig.json', text: '{\n  "compilerOptions": {\n    "noUnusedLocals": false\n  }\n}\n', kind: 'strictness' },
+  // a budget stated by an app or example config
+  { id: 'a budget override in hfs.json', file: 'hfs.json', text: '{"hfs": 3, "kind": "app", "ruleParams": {"fileLines": {"soft": 900}}}\n', kind: 'budget-override' },
+  { id: 'a file budget in hfs.json', file: 'examples/x/hfs.json', text: '{"hfs": 3, "kind": "app", "fileLines": 900}\n', kind: 'budget-override' },
+  { id: 'a line budget in an eslint config', file: 'be/eslint.config.mjs', text: 'export default [{ rules: { "max-lines": ["error", 2000] } }];\n', kind: 'budget-override', detail: 'max-lines' },
+  { id: 'a complexity budget in an eslint config', file: 'fe/eslint.config.mjs', text: 'export default [{ rules: { complexity: 40, "max-params": 12 } }];\n', kind: 'budget-override', detail: 'max-params' },
+  // an exception file the manifest does not list
+  { id: 'an approvals file', file: 'modules/kernel/approvals.yaml', text: 'approvals: []\n', kind: 'exception-file' },
+  { id: 'a baseline file', file: 'reports/known-issues.json', text: '[]\n', kind: 'exception-file' },
+  { id: 'an entry in the listed allowlist', file: 'modules/kernel/allowlist.yaml', text: 'export-used:\n  - scripts/lib/a.mjs\n', kind: 'exception-file', detail: '1 entries' },
+];
+
+export const LOOKALIKES = [
+  { id: 'a marker word quoted as data', file: SCRIPT, text: "const BANNED = ['eslint-disable', '@ts-ignore', 'NOSONAR'];\n" },
+  { id: 'a marker word in the middle of prose', file: SCRIPT, text: '// the rule refuses an eslint-disable comment and a @ts-ignore comment\nconst a = 1;\n' },
+  { id: 'a marker word inside a multi-line template', file: SCRIPT, text: 'const code = `\n// eslint-disable-next-line x\nit.skip("x", () => {});\n`;\n' },
+  { id: 'a marker word inside a regular expression', file: SCRIPT, text: 'const BAD = /\\/\\/ eslint-disable|@ts-ignore/;\n' },
+  { id: 'a documentation block that lists the switches', file: SCRIPT, text: '/**\n * The switches refused:\n * eslint-disable, @ts-ignore, istanbul ignore\n */\nconst a = 1;\n' },
+  { id: 'the flag as an argument of a guard, not of git', file: SCRIPT, text: "if (has(options, '--no-verify')) return refusal('git commit --no-verify skips the hooks');\n" },
+  { id: 'a method called skip on a context', file: SCRIPT, text: "context.skip(w.path, 'live-owner');\nconst skip = 3;\nconst fit = (x) => x;\n" },
+  { id: 'fit and a skip key in a non-spec file', file: SCRIPT, text: 'const o = { skip: 10 };\nfit(o);\n' },
+  { id: 'a query inside a substitution', file: '.husky/pre-push', text: 'for tag in $(git tag --list 2>/dev/null || true); do echo "$tag"; done\n' },
+  { id: 'a commented shell line', file: '.husky/pre-commit', text: '# a note: || true\nnpx eslint .\n' },
+  { id: 'continue-on-error false', file: '.github/workflows/ci.yml', text: 'jobs:\n  a:\n    steps:\n      - run: npm test\n        continue-on-error: false\n' },
+  { id: 'a zero warning budget', file: 'package.json', text: '{\n  "scripts": {\n    "lint": "eslint . --max-warnings 0"\n  }\n}\n' },
+  { id: 'a package script that is not a command', file: 'package.json', text: '{\n  "name": "x",\n  "description": "never use || true"\n}\n' },
+  { id: 'the same words in a markdown file', file: 'docs/a.md', text: '// eslint-disable\nit.skip(x)\nnpx eslint . || true\n' },
+  { id: 'codecov at 100 with a zero threshold', file: 'codecov.yml', text: 'codecov:\n  require_ci_to_pass: true\ncoverage:\n  status:\n    project:\n      default:\n        target: 100%\n        threshold: 0%\n' },
+  { id: 'the build output ignores and the formatter output', file: '.prettierignore', text: 'node_modules/\ndist/\ncoverage/\n.next/\n**/__generated__/\n' },
+  { id: 'a placeholder in a template', file: 'packages/hfs/templates/app/quality-config/codecov.yml', text: 'ignore:\n{{codecovExclusions}}\n' },
+  { id: 'skipLibCheck in the canon base tsconfig', file: 'packages/tsconfig/base.json', text: '{\n  "compilerOptions": {\n    "strict": true,\n    "skipLibCheck": true\n  }\n}\n' },
+  { id: 'skipLibCheck off', file: 'be/tsconfig.json', text: '{\n  "compilerOptions": { "skipLibCheck": false }\n}\n' },
+  { id: 'an hfs.json that states no budget', file: 'hfs.json', text: '{"hfs": 1, "kind": "runtime", "project": "starci"}\n' },
+  { id: 'strict on in a tsconfig', file: 'tsconfig.json', text: '{\n  "compilerOptions": { "strict": true, "allowUnusedLabels": false }\n}\n' },
+  { id: 'the design truth requireCi false', file: '.starcistacks/application-stacks.yaml', text: 'release:\n  requireCi: false\n' },
+  { id: 'a migration called baseline', file: 'supabase/migrations/20261014100000_baseline.sql', text: 'select 1;\n' },
+  { id: 'the schema of an allowlist is not an allowlist', file: 'modules/schemas/allowlist.schema.yaml', text: 'type: object\n- x\n' },
+];

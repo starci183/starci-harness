@@ -251,7 +251,7 @@ concerns:
     why: the canon lint and format configuration.
   - id: grammar-lint
     tier: opt
-    packages: ['@starci/eslint-grammar-starci', '@starci/eslint-grammar-offset-pop']
+    packages: ['@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop']
     home: [fe.source-root-pinned]
     pattern: FE-RULE-OWNERSHIP
     forbids: []

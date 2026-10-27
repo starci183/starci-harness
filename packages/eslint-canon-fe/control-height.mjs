@@ -2,7 +2,7 @@
 import { attributeValue, stringOf } from "./lib/ast.mjs"
 import { importOf } from "./lib/bindings.mjs"
 
-const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|heritage|offset-pop))?$/
+const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const CONTROLS = new Set(["Button", "IconButton", "Switch", "Input", "SearchField", "Select", "Tabs", "SegmentedControl", "Textarea", "NumberField", "ComboBox"])
 /** A marketing hero call to action on a landing page is the one place the 48px step is allowed. */
 const LANDING_PATH = /[\\/](?:landing|hero|marketing)[\\/]|(?:Landing|Hero)[^\\/]*[\\/]/

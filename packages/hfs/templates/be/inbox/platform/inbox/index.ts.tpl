@@ -1,0 +1,5 @@
+export { INBOX, InjectInbox } from "./inbox.decorators"
+export { InboxModule } from "./inbox.module"
+export type { Inbox, InboxEventId } from "./inbox.port"
+export { INBOX_ERROR_KINDS } from "./errors/inbox.error"
+export { INBOX_MESSAGES } from "./messages/inbox.messages"

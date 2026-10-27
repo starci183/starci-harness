@@ -1,0 +1,161 @@
+"use client"
+
+import { Children, useId, type ReactNode } from "react"
+import { SurfaceNesting } from "../../surfaceContext.js"
+import { ButtonPlacementProvider } from "../../buttonIntent.js"
+import { ListRow } from "../../composite/ListRow/index.js"
+import type { RowVerdict } from "../../composite/StaticStateRow/index.js"
+import { VerticalScrollRegion } from "../../composite/VerticalScrollRegion/index.js"
+import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../primitive/Label/index.js"
+import { collectionClassName, listShellClassName, surfaceFactClassName, surfaceFooterClassName, surfaceLabelClassName, surfaceListClassName } from "./classNames.js"
+
+type LabelledSurfaceList = {
+    readonly label: string
+    readonly ariaLabel?: string
+}
+
+type SelfNamedSurfaceList = {
+    readonly label?: undefined
+    readonly ariaLabel: string
+}
+
+type SurfaceListFrameProps = (LabelledSurfaceList | SelfNamedSurfaceList) & {
+    readonly fact?: string
+    readonly labelEnd?: ReactNode
+    readonly labelHidden?: boolean
+    readonly footer?: ReactNode
+    readonly depth?: "top" | "nested"
+    /**
+     * Outline rank of the visible `label` (default 3). Pick the rank below the nearest heading
+     * above this surface so the page never skips a level.
+     */
+    readonly headingLevel?: SurfaceHeadingLevel
+    /**
+     * The collection is loading (knowledge STATE-8). With no `children` it draws `loadingRows` skeleton rows (ListRow
+     * anatomy, `aria-hidden`) and is `aria-busy`; real `children` win over the skeleton rows.
+     */
+    readonly isLoading?: boolean
+    /** How many skeleton rows a loading card draws (default 3, 1 to 12). */
+    readonly loadingRows?: number
+    /**
+     * The collection reports outcomes: it squares its corners and paints each row's verdict edge.
+     *
+     * A row opts into that edge by carrying `data-verdict="success" | "danger"` - the slot contract
+     * this card publishes for its collection. `StaticStateRow` takes a `verdict` prop that emits it;
+     * an application-owned row spells the attribute itself and gets exactly the same shipped edge,
+     * because rows here are the caller's children and no prop of this card can reach them.
+     */
+    readonly isVerdict?: boolean
+    readonly isScrollable?: boolean
+}
+
+/** The value a row in a verdict collection puts in `data-verdict`. */
+export type SurfaceListRowVerdict = RowVerdict
+
+export type SurfaceListCardProps = SurfaceListFrameProps & {
+    /**
+     * The rows: `<li>` elements (`StaticStateRow`, or an app-owned `<li>`). The collection is the
+     * list - a `<ul role="list">`, or the scroll region with `role="list"` when `isScrollable` - so
+     * every row has a real list parent and the list is announced with its item count.
+     */
+    readonly children?: ReactNode
+    /**
+     * What the card shows when it has no rows (e.g. an `EmptyNotice`). It is drawn in the same
+     * collection slot but as plain content, not as a list, because a notice is not a list item.
+     */
+    readonly empty?: ReactNode
+}
+
+const DEFAULT_LOADING_ROWS = 3
+const clampRows = (rows: number) => Math.min(12, Math.max(1, Math.floor(Number.isFinite(rows) ? rows : DEFAULT_LOADING_ROWS)))
+
+export const SurfaceListCard = (props: SurfaceListCardProps) => {
+    const {
+        label,
+        ariaLabel,
+        children,
+        empty,
+        fact,
+        labelEnd,
+        labelHidden = false,
+        footer,
+        depth = "top",
+        headingLevel = DEFAULT_SURFACE_HEADING_LEVEL,
+        isLoading = false,
+        loadingRows = DEFAULT_LOADING_ROWS,
+        isVerdict = false,
+        isScrollable = false,
+    } = props
+    const headingId = useId()
+    const accessibleName = ariaLabel ?? label
+    const hasRows = Children.toArray(children).length > 0
+    const isSkeleton = isLoading && !hasRows
+    const isEmpty = !isSkeleton && empty !== undefined && !hasRows
+    const collectionSemantics = isEmpty
+        ? {}
+        : isScrollable
+            ? { role: "list", ...(!labelHidden && label !== undefined ? { "aria-labelledby": headingId } : accessibleName === undefined ? {} : { "aria-label": accessibleName }) }
+            : { as: "ul" as const, role: "list" }
+
+    const content = (
+        <section
+            className={surfaceListClassName}
+            data-grammar-label-visibility={labelHidden ? "hidden" : "visible"}
+            data-grammar-surface-list="true"
+            data-grammar-nesting="surface"
+            data-component="SurfaceListCard"
+            data-tier="branch"
+            data-grammar-surface-depth={depth}
+        >
+            {label === undefined || labelHidden ? null : (
+                <div
+                    className={surfaceLabelClassName}
+                    data-contract="GAP-2"
+                    data-grammar-surface-label="true"
+                    data-grammar-label-end={labelEnd === undefined ? "false" : "true"}
+                >
+                    <Label as={`h${headingLevel}`} id={headingId} depth={depth}>{label}</Label>
+                    {fact === undefined ? null : (
+                        <span
+                            className={surfaceFactClassName}
+                            data-grammar-surface-depth={depth}
+                            data-contract={`TONE-2 ${depth === "nested" ? "FONT-1" : "FONT-2"}`}
+                        >
+                            {fact}
+                        </span>
+                    )}
+                    {labelEnd === undefined ? null : <span className="starci-core-surface-label-end"><ButtonPlacementProvider placement="chrome">{labelEnd}</ButtonPlacementProvider></span>}
+                </div>
+            )}
+            <div
+                aria-label={labelHidden || label === undefined ? accessibleName : undefined}
+                aria-labelledby={!labelHidden && label !== undefined ? headingId : undefined}
+                className={listShellClassName}
+                data-contract="SURFACE-2 PADDING-0 OVERFLOW-2"
+                data-grammar-surface="true"
+                data-grammar-scroll={isScrollable ? "contained" : "page"}
+                data-grammar-surface-depth={depth}
+                data-surface-context={depth === "nested" ? "nested" : "page"}
+                data-verdict={String(isVerdict)}
+            >
+                <VerticalScrollRegion
+                    {...collectionSemantics}
+                    className={collectionClassName}
+                    data-grammar-collection={isVerdict ? "verdict" : "list"}
+                    data-grammar-list="true"
+                    data-loading={String(isLoading)}
+                    {...(isLoading ? { "aria-busy": true } : {})}
+                    isScrollable={isScrollable}
+                >
+                    {isSkeleton
+                        ? Array.from({ length: clampRows(loadingRows) }, (_, index) => <ListRow key={index} isSkeleton title="" description="" leading="" actions="" />)
+                        : isEmpty ? empty : children}
+                </VerticalScrollRegion>
+            </div>
+            {footer === undefined ? null : (
+                <div className={surfaceFooterClassName} data-grammar-surface-footer="true">{footer}</div>
+            )}
+        </section>
+    )
+    return <SurfaceNesting>{content}</SurfaceNesting>
+}

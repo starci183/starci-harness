@@ -1,0 +1,33 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.separator"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Separator
+dir: separator
+anatomy:
+  root: "SeparatorRoot"
+  parts: []
+  required: []
+  slots: {}
+  embeds: []
+variants:
+  defaults: {"orientation":"horizontal","variant":"default"}
+  values: {"orientation":["horizontal","vertical"],"variant":["default","secondary","tertiary"]}
+parts:
+  Root: {"impl":"SeparatorRoot","dataSlot":"separator","classes":[],"defaults":{},"values":{},"paints":[]}
+css:
+  files: ["separator.css"]
+  classes: ["separator","separator--default","separator--horizontal","separator--secondary","separator--tertiary","separator--vertical"]
+  dataSlots: []
+  rules:
+    - {"file":"separator.css","selectors":[".separator"],"apply":["shrink-0","rounded-sm","border-t-0","border-b-0","bg-separator","h-px","w-full"]}
+    - {"file":"separator.css","selectors":[".separator--horizontal"],"apply":["h-px","w-full"]}
+    - {"file":"separator.css","selectors":[".separator--vertical"],"apply":["h-auto","min-h-2","w-px","self-stretch"]}
+    - {"file":"separator.css","selectors":[".separator--default"],"apply":["bg-separator"]}
+    - {"file":"separator.css","selectors":[".separator--secondary"],"apply":["bg-separator-secondary"]}
+    - {"file":"separator.css","selectors":[".separator--tertiary"],"apply":["bg-separator-tertiary"]}

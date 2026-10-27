@@ -1,0 +1,59 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Configure" />
+
+# `@starci/grammar` Storybook
+
+This Storybook renders every Common renderer — all 95 in `COMMON_GRAMMAR_COMPONENTS` — inside a real
+family root. Use the toolbar to switch what wraps each story:
+
+| Toolbar | Values | What it changes |
+| --- | --- | --- |
+| **Family** | Common (neutral), Core, Offset Pop | Which `GrammarRoot` wraps the story (`GrammarRoot`, `CoreGrammarRoot`, `OffsetPopGrammarRoot`) and which packaged stylesheet is loaded. Only that family's `styles.css` is on the page, and it imports Common first, the same way an app does. |
+| **Theme** | Light, Dark, System | The root's `theme` prop (`data-grammar-theme`). System follows `prefers-color-scheme`. |
+
+Stories under **Compositions/Pages** and **Grammar/Core anatomy** are pinned to one family, so they
+ignore the Family toolbar. The Theme toolbar still applies to them.
+
+## Groups
+
+- **Primitives**: atoms such as Button, Text, Badge, Icon, Link, Avatar, Spinner, Skeleton, Meter and GrammarRoot.
+- **Forms**: Input, Field and every Field-contract control, plus Form, Fieldset, ButtonGroup and Rating.
+- **Overlays**: Dialog, AlertDialog, Drawer, Popover, DropdownMenu, Tooltip, Alert, Toast and Toaster. Overlays open by default.
+- **Navigation & Data**: Tabs, Subnav, Breadcrumbs, Pagination, Stepper, Accordion, Disclosure, DataTable, ListBox, TagGroup, Timeline, Calendar, DescriptionList and AvatarGroup.
+- **Surfaces**: SurfaceCard, SurfaceListCard, SurfaceAccordionCard, StaticStateRow, EmptyNotice, Markdown frames, scroll regions and Rail.
+- **Compositions**: shells and chrome (WorkspaceShell, ChatWorkspace, PrimaryRailLayout, PageContainer, NavigationFeatureNav, Sidebar, TopBar, BottomNav, Footer), plus three page recipes per family:
+  a settings form, a data list with a filter drawer and pagination, and a mobile home with TopBar, BottomNav and a Toast.
+
+Each story shows the states that apply to its component: default, disabled, invalid, pending, and selected or current.
+
+## The overlay rule
+
+Dialogs, drawers, popovers and menus portal into the nearest `.grammar-common-root`, not into
+`document.body`, so the family's tokens, theme and forced-colours mapping still reach them. Keep every
+overlay trigger and the single `Toaster` inside the family root:
+
+```tsx
+<OffsetPopGrammarRoot theme="system">
+  <App />
+  <Toaster label="Notifications" dismissLabel="Dismiss" />
+</OffsetPopGrammarRoot>
+```
+
+## Story parameters
+
+The preview decorator reads `parameters.grammar`:
+
+- `bleed: true`: draw edge to edge, with no page inset. Used by page-level stories.
+- `minHeight`: the root's minimum height. Overlay stories use it so the positioned surface has room.
+- `rootStyle`: an extra inline style on the root, for example a consumer accent override.
+
+## Checks
+
+```sh
+npm run typecheck        # shipped sources and stories
+npm run build-storybook  # static build
+```
+
+The grammar carries no spec suites: its proof is typecheck + build, and the addon-a11y panel
+reports axe findings per story while you work. Every Common renderer still gets a story.

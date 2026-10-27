@@ -1,0 +1,14 @@
+{
+    admin 127.0.0.1:2019
+}
+
+{{project}}.example.invalid {
+    reverse_proxy web:3000
+}
+
+api.{{project}}.example.invalid {
+    reverse_proxy api:3001 {
+        # server-sent events: flush every write at once; never add `encode` to this route (no compression of text/event-stream)
+        flush_interval -1
+    }
+}

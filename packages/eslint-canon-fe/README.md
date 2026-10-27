@@ -7,10 +7,10 @@ structure, typed contracts, token discipline and check integrity across Grammar 
 
 ```js
 import { loadHfs, starciFeConfig } from "@starci/eslint-canon-fe"
-import { starciGrammarConfig } from "@starci/eslint-grammar-starci"
+import { coreGrammarConfig } from "@starci/eslint-grammar-core"
 
 const hfs = loadHfs(import.meta.url)
-export default [...starciFeConfig({ hfs }), ...starciGrammarConfig({ hfs })]
+export default [...starciFeConfig({ hfs }), ...coreGrammarConfig({ hfs })]
 ```
 
 `starci app sync` renders the selected family's managed flat config. Both factories cover every
@@ -19,7 +19,7 @@ Sonar rules run at error; the factory sets typed parsing and refuses inline lint
 Generated wire types, dependencies and build outputs follow the shared source-scope contract.
 
 Concrete Grammar component names, props, variants, scales and vendor recipes belong to
-`@starci/eslint-grammar-starci` or the selected family's package. The family rules keep their
+`@starci/eslint-grammar-core` or the selected family's package. The family rules keep their
 bare IDs under the `starci-grammar` namespace. This package exports shared AST, binding, type,
 slot and configuration infrastructure through `@starci/eslint-canon-fe/lib/*`; family packages
 import those readers without copying them.
@@ -50,7 +50,5 @@ Regression specs belong to this package. Application front ends and Grammar libr
 ## The runtime copy
 
 `runtime/` holds the StarCi runtime files the rules import (the slot manifest and view, the project graph and the
-architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. In this repository it is a
-committed snapshot taken from the legacy runtime (starci-academy-backend/.claude at 180193f12), where
-`scripts/hfs/sync-runtime.mjs` generates it; refresh it by running that generator there and copying
-`packages/eslint/fe/runtime/` over this folder. Nothing in this package edits it.
+architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. It is committed source of
+this package, edited in place ([packages/README.md](../README.md) says how the bundled copies move together).

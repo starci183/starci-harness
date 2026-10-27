@@ -1,0 +1,859 @@
+schema: starci/schema@1
+id: starci/application-stacks@1
+title: Application stack declaration
+description: >-
+  Static, repository-owned inventory for reproducible environments. It declares intended topology,
+  custody and runbook location; it is not evidence that a stack ran. This is the machine form of
+  modules/schemas/stacks-layout.yaml's CONTENT half - the layout governs the TREE, this document governs the
+  fields inside application-stacks.yaml. Runtime and edition content rules require the applicable
+  deployment declarations; optional schema fields preserve compatibility with older inventories.
+type: object
+additionalProperties: false
+required: [schema, components, environments, k8s]
+properties:
+  schema: {type: string, minLength: 1}
+  sources:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [repository]
+      properties:
+        repository: {type: string, minLength: 1}
+  components:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role:
+          description: >-
+            Component classification, including service, stateful, observability, ingress, scheduler
+            and job. Free text preserves older declarations.
+          type: string
+          minLength: 1
+        image: {type: string, minLength: 1}
+        app:
+          description: Back-end app id whose composition the component runs.
+          type: string
+          minLength: 1
+        compose: {type: string, minLength: 1}
+        purpose: {type: string}
+        required: {type: boolean}
+        stateful: {type: boolean}
+        database:
+          description: A sidecar's declared database adapter and persistent volume.
+          type: object
+          additionalProperties: false
+          required: [provider]
+          properties:
+            provider: {type: string, minLength: 1}
+            volume: {type: string, minLength: 1}
+        volumes:
+          description: Named persistent volumes owned by this component.
+          type: array
+          uniqueItems: true
+          items: {type: string, minLength: 1}
+        mode: {enum: [service, replicated-job], default: service}
+        scheduler:
+          description: Component id of the declared scheduler that triggers a replicated-job.
+          type: string
+          minLength: 1
+        schedule:
+          description: Cron expression consumed by the declared scheduler.
+          type: string
+          minLength: 1
+  release:
+    description: Release gates of the app (starci app release gate and push); packages/hfs/release/gate.mjs is the authority for the fields.
+    type: object
+  database:
+    description: 'Database cutover data (starci app db migrate and post-cutover); packages/hfs/db/migrate.mjs is the authority for the fields. reset: optional mapping with only backupMaxAgeHours (finite positive number; default 24 hours).'
+    type: object
+  jobs:
+    description: Application-owned schedules, bound to their back-end CLI commands.
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [schedule, command]
+      properties:
+        component: {type: string, minLength: 1}
+        schedule: {type: string, minLength: 1}
+        command: {type: string, minLength: 1}
+  backing:
+    description: >-
+      Supabase backing: local Docker containers managed by the Supabase CLI in development and a hosted
+      service in production. Every other dependency is a Docker component, on Swarm in production.
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [provider, managed]
+      properties:
+        provider: {const: supabase}
+        managed: {const: true}
+  environments:
+    type: object
+    minProperties: 1
+    additionalProperties: {$ref: '#/$defs/environment'}
+  k8s:
+    type: object
+    additionalProperties: false
+    required: [status, reason]
+    properties:
+      status: {enum: [deferred, supported]}
+      reason: {type: string, minLength: 1}
+  ci: {$ref: '#/$defs/ciDeclaration'}
+  operations:
+    $ref: provision-operation.schema.yaml
+  services:
+    description: >-
+      The delivery, quality and platform services this repository's code and CI use - NOT Compose
+      services (those are `components`). One entry per service id from the closed catalog below; a
+      service the repository does not use is still declared `mode: disabled` when its CI or config
+      mentions it. Owner ruling 2026-09-24: every product states these unambiguously so no Kernel or
+      op misreads them and asks the owner again. Optional in this schema so older declarations
+      stay loadable; scripts/gates/starcistacks.mjs requires it for a new repository or a
+      new leg (contract change starcistacks-services) and reports its absence as a suspect with a
+      planned follow-up everywhere else.
+    type: object
+    minProperties: 1
+    additionalProperties: false
+    properties:
+      sonar: {$ref: '#/$defs/service'}
+      codecov: {$ref: '#/$defs/service'}
+      dependabot: {$ref: '#/$defs/serviceOptionalCi'}
+      audit: {$ref: '#/$defs/serviceOptionalCi'}
+      container-registry: {$ref: '#/$defs/service'}
+      analytics: {$ref: '#/$defs/service'}
+      error-tracking: {$ref: '#/$defs/service'}
+$defs:
+  service:
+    type: object
+    additionalProperties: false
+    required: [provider, mode, ci, ownerAction]
+    properties:
+      provider:
+        description: >-
+          Closed per service id (check-starcistacks.mjs PROVIDERS): sonar sonarqube|sonarcloud,
+          container-registry ghcr|dockerhub|ecr|gar, analytics posthog|plausible|umami|google-analytics,
+          error-tracking sentry|glitchtip.
+        type: string
+        minLength: 1
+      mode:
+        description: >-
+          local - a server a stack runs (stack and host.local required); hosted - a SaaS or remote
+          server (host.public required); disabled - not used (reason required, CI must not call it).
+        enum: [local, hosted, disabled]
+      organization: {type: string, minLength: 1}
+      flag: {type: string, minLength: 1}
+      target: {type: number, minimum: 0, maximum: 100}
+      components: {enum: [auto]}
+      required: {type: boolean}
+      badgeToken:
+        description: >-
+          codecov and sonar only: a read-only, public-safe badge token (Codecov graphing token, Sonar project badge token)
+          that the README badge of a private repository needs. It is public configuration rendered into README.md, never a
+          secret; a CI token or any write credential never goes here.
+        type: string
+        pattern: '^[A-Za-z0-9_-]{6,128}$'
+      ecosystems: {type: array, items: {enum: [npm, docker, github-actions]}}
+      schedule:
+        type: object
+        additionalProperties: false
+        required: [interval]
+        properties:
+          interval: {enum: [daily, weekly, monthly]}
+          day: {enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]}
+          time: {type: string, pattern: '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'}
+      groups:
+        type: object
+        additionalProperties: false
+        properties:
+          minorPatch: {enum: [grouped]}
+          major: {enum: [per-package]}
+      ignore: {type: array, items: {type: string}}
+      security: {enum: [immediate]}
+      level: {enum: [low, moderate, high, critical]}
+      omitDev: {type: boolean}
+      in: {type: array, items: {enum: [release-gate, ci]}}
+      purpose: {type: string, minLength: 1}
+      reason: {type: string, minLength: 1}
+      qualityGate:
+        description: >-
+          sonar only: the name of the one quality gate the repository is held to. The thresholds are not restated
+          here - knowledge/sonar-gate.yaml owns them and scripts/gates/starcistacks.mjs refuses any other name
+          (STACKS_QUALITY_GATE_DRIFT).
+        type: string
+        pattern: '^[a-z][a-z0-9-]*$'
+      host:
+        type: object
+        additionalProperties: false
+        properties:
+          local: {type: string, pattern: '^https?://[^\s]+$'}
+          public: {type: string, pattern: '^https://[^\s]+$'}
+          fromCredential:
+            description: A hosted endpoint carried inside a credential (a Sentry DSN) - the credential id, never the value.
+            type: string
+            pattern: '^[a-z][a-z0-9-]*$'
+      stack: {$ref: '#/$defs/serviceStack'}
+      auth:
+        description: >-
+          How a client authenticates - token (a credential in custody), oidc (GitHub OIDC, no stored
+          secret), github-token (the workflow's automatic GITHUB_TOKEN, no stored secret), none.
+        enum: [token, oidc, github-token, none]
+      projects:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [repository, key]
+          properties:
+            repository: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+            key: {type: string, minLength: 1}
+            name: {type: string, minLength: 1}
+      credentials:
+        type: array
+        items: {$ref: '#/$defs/serviceCredential'}
+      runtimeSecrets:
+        description: >-
+          An app that lives inside the runtime repository (an example) holds no custody: it names the variables of the runtime's untracked
+          .claude/secret.env it reads (and, in CI, the repository secret or variable of the same name). A product declares credentials instead;
+          scripts/gates/starcistacks.mjs refuses each form for the other kind (STACKS_EXAMPLE_FORM, STACKS_PRODUCT_FORM).
+        type: array
+        minItems: 1
+        items: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+      ci: {$ref: '#/$defs/serviceCi'}
+      ownerAction:
+        description: >-
+          none - nothing about this service is ever asked of the owner (the default and the only
+          value allowed while every credential is in custody). Otherwise the one thing only the owner
+          can give, named exactly.
+        anyOf:
+          - {const: none}
+          - type: object
+            additionalProperties: false
+            required: [needed, reason]
+            properties:
+              needed: {type: string, minLength: 1}
+              reason: {type: string, minLength: 1}
+  serviceOptionalCi:
+    type: object
+    additionalProperties: false
+    required: [provider, mode, ownerAction]
+    properties:
+      provider: {$ref: '#/$defs/service/properties/provider'}
+      mode: {$ref: '#/$defs/service/properties/mode'}
+      organization: {$ref: '#/$defs/service/properties/organization'}
+      target: {$ref: '#/$defs/service/properties/target'}
+      components: {$ref: '#/$defs/service/properties/components'}
+      required: {$ref: '#/$defs/service/properties/required'}
+      ecosystems: {$ref: '#/$defs/service/properties/ecosystems'}
+      schedule: {$ref: '#/$defs/service/properties/schedule'}
+      groups: {$ref: '#/$defs/service/properties/groups'}
+      ignore: {$ref: '#/$defs/service/properties/ignore'}
+      security: {$ref: '#/$defs/service/properties/security'}
+      level: {$ref: '#/$defs/service/properties/level'}
+      omitDev: {$ref: '#/$defs/service/properties/omitDev'}
+      in: {$ref: '#/$defs/service/properties/in'}
+      purpose: {$ref: '#/$defs/service/properties/purpose'}
+      reason: {$ref: '#/$defs/service/properties/reason'}
+      qualityGate: {$ref: '#/$defs/service/properties/qualityGate'}
+      host: {$ref: '#/$defs/service/properties/host'}
+      stack: {$ref: '#/$defs/service/properties/stack'}
+      auth: {$ref: '#/$defs/service/properties/auth'}
+      projects: {$ref: '#/$defs/service/properties/projects'}
+      credentials: {$ref: '#/$defs/service/properties/credentials'}
+      runtimeSecrets: {$ref: '#/$defs/service/properties/runtimeSecrets'}
+      ci: {$ref: '#/$defs/service/properties/ci'}
+      ownerAction: {$ref: '#/$defs/service/properties/ownerAction'}
+  ciName: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+  ciDeclaration:
+    type: object
+    additionalProperties: false
+    properties:
+      github:
+        type: object
+        additionalProperties: false
+        required: [repository]
+        properties:
+          repository: {type: string, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'}
+          defaultBranch: {type: string, minLength: 1, default: main}
+          workflow: {type: string, pattern: '^[A-Za-z0-9_.-]+\.ya?ml$', default: ci.yml}
+          visibility:
+            description: The GitHub repository visibility; private READMEs need services.<id>.badgeToken for live badges. Omitted means unknown.
+            enum: [public, private]
+      secrets: {type: array, items: {$ref: '#/$defs/ciSecret'}}
+      vars: {type: array, items: {$ref: '#/$defs/ciVariable'}}
+      jobs:
+        description: >-
+          Per-job settings of the managed CI (the CI standard, knowledge/hfs/ci-standard.yaml defaults): timeoutMinutes per job and the number of unit-run shards.
+          Omitted settings take the standard's defaults; starci app sync renders them.
+        type: object
+        additionalProperties: false
+        properties:
+          fast: {$ref: '#/$defs/ciJob'}
+          lint: {$ref: '#/$defs/ciJob'}
+          test:
+            type: object
+            additionalProperties: false
+            properties:
+              timeoutMinutes: {type: integer, minimum: 5, maximum: 360}
+              shards: {type: integer, minimum: 1, maximum: 20}
+          coverage: {$ref: '#/$defs/ciJob'}
+          build: {$ref: '#/$defs/ciJob'}
+          sonar: {$ref: '#/$defs/ciJob'}
+          db-types: {$ref: '#/$defs/ciJob'}
+      dependabot:
+        type: object
+        additionalProperties: false
+        properties:
+          secrets:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: {$ref: '#/$defs/ciName'}
+                purpose: {type: string}
+  ciJob:
+    type: object
+    additionalProperties: false
+    properties:
+      timeoutMinutes: {type: integer, minimum: 5, maximum: 360}
+  ciSecret:
+    anyOf:
+      - type: object
+        additionalProperties: false
+        required: [name, scope]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: repository}
+          purpose: {type: string}
+          optional: {type: boolean}
+      - type: object
+        additionalProperties: false
+        required: [name, scope, environment]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: environment}
+          environment: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+          purpose: {type: string}
+          optional: {type: boolean}
+  ciVariable:
+    description: >-
+      A public CI variable either carries its literal value, or declares ownerValue true (no value) when only the owner
+      may supply it; var sync skips an owner-supplied value and ci verify checks that it exists by name.
+    anyOf:
+      - type: object
+        additionalProperties: false
+        required: [name, scope, value]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: repository}
+          value: {type: string}
+          purpose: {type: string}
+          optional: {type: boolean}
+      - type: object
+        additionalProperties: false
+        required: [name, scope, value, environment]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: environment}
+          environment: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+          value: {type: string}
+          purpose: {type: string}
+          optional: {type: boolean}
+      - type: object
+        additionalProperties: false
+        required: [name, scope, ownerValue]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: repository}
+          ownerValue: {const: true}
+          purpose: {type: string}
+          optional: {type: boolean}
+      - type: object
+        additionalProperties: false
+        required: [name, scope, ownerValue, environment]
+        properties:
+          name: {$ref: '#/$defs/ciName'}
+          scope: {const: environment}
+          environment: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+          ownerValue: {const: true}
+          purpose: {type: string}
+          optional: {type: boolean}
+  serviceStack:
+    description: >-
+      Which stack defines a local service - either a project-owned .starcistacks stack
+      ({repository, root: .starcistacks, environment, compose}) or a host-owned runtime
+      extension ({owner: host, root: .claude/ext/<service>, environment, compose}).
+    anyOf:
+      - $ref: '#/$defs/serviceStackProject'
+      - $ref: '#/$defs/serviceStackHost'
+  serviceStackProject:
+    description: A local service one repository's own .starcistacks runs.
+    type: object
+    additionalProperties: false
+    required: [repository, root, environment, compose]
+    properties:
+      repository: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+      root: {const: .starcistacks}
+      environment: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+      compose: {type: string, minLength: 1}
+      container: {type: string, minLength: 1}
+      publishedBy: {type: string, minLength: 1}
+  serviceStackHost:
+    description: >-
+      A shared service the host's installed .claude tree runs once for every routed project
+      (SonarQube at .claude/ext/sonar). `root` is a path inside the runtime tree; `environment`
+      names the environment slot the extension serves and is not a path segment - the Compose
+      file resolves at <root>/<compose>. The runtime tree carries the extension, so no
+      repository is named.
+    type: object
+    additionalProperties: false
+    required: [owner, root, environment, compose]
+    properties:
+      owner: {const: host}
+      root: {type: string, pattern: '^\.claude/ext/[a-z][a-z0-9-]*$'}
+      environment: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+      compose: {type: string, minLength: 1}
+      container: {type: string, minLength: 1}
+      publishedBy: {type: string, minLength: 1}
+  serviceCredential:
+    description: >-
+      A custody reference, never a value - the repository whose stack holds it and the plaintext
+      member's path from that repository's root; the tracked <path>.enc twin must exist. The field env is the
+      variable the consuming tool reads; `key` is the field inside a structured custody file (app.yaml)
+      when the application reads the file itself. At least one of env and key is named. Sonar
+      convention (scripts/gates/sonar-local.mjs reads it): id `admin` creates projects and mints
+      tokens; a credential whose id is a project key is that project's analysis token.
+    type: object
+    additionalProperties: false
+    required: [id, custody]
+    properties:
+      id: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+      purpose: {type: string, minLength: 1}
+      env: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+      key: {type: string, minLength: 1}
+      custody:
+        type: object
+        additionalProperties: false
+        required: [repository, path]
+        properties:
+          repository: {type: string, pattern: '^[A-Za-z0-9._-]+$'}
+          path: {type: string, pattern: '^(\.starcistacks/[a-z][a-z0-9-]*/(runtime/files|runtime/env|secrets)/[^\s]+|\.claude/ext/[a-z][a-z0-9-]*/secrets/[^\s]+)$'}
+  serviceCi:
+    description: >-
+      How GitHub CI gets the service. wiring required - CI calls it now and the named secrets and
+      variables must exist; optional-follow-up - CI may call it, and a Kernel (never the owner) sets
+      the secrets and variables from custody when it chooses to; not-used - CI does not call it.
+    type: object
+    additionalProperties: false
+    required: [wiring]
+    properties:
+      token: {$ref: '#/$defs/ciName'}
+      hostVar: {$ref: '#/$defs/ciName'}
+      organizationVar: {$ref: '#/$defs/ciName'}
+      wiring: {enum: [required, optional-follow-up, not-used]}
+      workflow: {type: string, minLength: 1}
+      permissions: {type: array, items: {type: string, minLength: 1}}
+      secrets:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [name, credential]
+          properties:
+            name: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+            credential: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+      vars:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [name, value]
+          properties:
+            name: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+            value: {type: string, minLength: 1}
+      provisioning: {type: string, minLength: 1}
+  environment:
+    type: object
+    additionalProperties: false
+    required: [status, runtime, composeFiles, components, runbook, secrets]
+    properties:
+      status: {const: supported}
+      runtime: {enum: [docker-compose, docker-swarm]}
+      composeFiles: {type: array, minItems: 1, items: {type: string, minLength: 1}}
+      renderedModel:
+        description: Tracked rendered model relative to .starcistacks/<environment>, such as infra/swarm/rendered.yaml.
+        type: string
+        minLength: 1
+      components:
+        type: object
+        additionalProperties:
+          type: object
+          additionalProperties: {type: number}
+      runbook: {type: string, minLength: 1}
+      secrets: {type: array, items: {$ref: '#/$defs/secret'}}
+      deploy: {$ref: '#/$defs/deploy'}
+      ingress:
+        description: "The one selected ingress component and the hosts it routes, or external with the stack name when the ingress is a shared stack outside this one (then no component; rule R275 judges which of the two is declared)."
+        type: object
+        additionalProperties: false
+        required: [hosts]
+        properties:
+          component: {type: string, minLength: 1}
+          external:
+            description: "The shared ingress stack (its own docker stack) that serves the hosts; this stack renders no ingress and publishes no port."
+            type: object
+            additionalProperties: false
+            required: [stack]
+            properties:
+              stack: {type: string, minLength: 1}
+          hosts:
+            type: array
+            minItems: 1
+            uniqueItems: true
+            items: {type: string, minLength: 1}
+      dns:
+        description: Owner-run DNS prerequisites, one declaration per ingress host.
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [host, owner, receipt]
+          properties:
+            host: {type: string, minLength: 1}
+            owner: {type: string, minLength: 1}
+            receipt: {type: string, minLength: 1}
+      tls:
+        description: Ownership and receipt for TLS issuance and persistent certificate custody.
+        type: object
+        additionalProperties: false
+        required: [owner, receipt]
+        properties:
+          owner: {type: string, minLength: 1}
+          receipt: {type: string, minLength: 1}
+      release:
+        description: Immutable image inventory, active and previous release pointers, and health assertions.
+        type: object
+        additionalProperties: false
+        required: [imagesLock, pointer, previous, healthAssertions]
+        properties:
+          imagesLock: {type: string, minLength: 1}
+          pointer: {type: string, minLength: 1}
+          previous: {type: string, minLength: 1}
+          healthAssertions:
+            type: array
+            minItems: 1
+            items: {type: string, minLength: 1}
+      backup:
+        description: Backup ownership and restore evidence for each stateful component.
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [component, target, retention, owner, restoreProof]
+          properties:
+            component: {type: string, minLength: 1}
+            target: {type: string, minLength: 1}
+            retention: {type: string, minLength: 1}
+            owner: {type: string, minLength: 1}
+            restoreProof: {type: string, minLength: 1}
+  deploy:
+    description: >-
+      The Swarm deploy configuration `starci app stack` verbs read (optional; rule R294 judges it). It holds names, paths and shapes
+      only, never a value: sealed members and keys are references into .starcistacks/<environment>/secrets. The authority is
+      scripts/hfs/stack-deploy-config.mjs, which normalises exactly this shape (service, volume and member names, paths
+      inside the environment directory and the existence of the files they name are checked there, not here).
+    type: object
+    additionalProperties: false
+    properties:
+      stack: {$ref: '#/$defs/deployName'}
+      remote: {$ref: '#/$defs/deployRemote'}
+      images:
+        description: Service -> the image the deploy injects; the managed workflow builds one per entry.
+        type: object
+        propertyNames: {$ref: '#/$defs/deployName'}
+        additionalProperties: {$ref: '#/$defs/deployImage'}
+      volumes:
+        description: External volumes prepare creates and doctor checks.
+        type: array
+        items: {$ref: '#/$defs/deployVolumeName'}
+      secrets: {$ref: '#/$defs/deploySecrets'}
+      environment:
+        description: Service -> plain environment merged into the generated override.
+        type: object
+        additionalProperties: {$ref: '#/$defs/deployServiceEnvironment'}
+      configs:
+        description: Non-secret files mounted into services, versioned by content digest; config names are unique (checked by the normaliser).
+        type: array
+        items: {$ref: '#/$defs/deployConfig'}
+      passEnv:
+        description: Host variable names interpolated into the rendered stack (names only).
+        type: array
+        items: {$ref: '#/$defs/deployKey'}
+      verify: {$ref: '#/$defs/deployVerify'}
+      jobs: {$ref: '#/$defs/deployJobs'}
+      tasks: {$ref: '#/$defs/deployTasks'}
+      postDeploy:
+        description: 'The release tasks (names declared under tasks) a deploy runs inside the running task of their service after convergence and before verification, in order; each command is an idempotent write, verification stays read-only.'
+        type: array
+        uniqueItems: true
+        items: {type: string, pattern: '^[a-z][a-z0-9-]{0,40}$'}
+      backup: {$ref: '#/$defs/deployBackup'}
+      registry: {$ref: '#/$defs/deployRegistry'}
+      ingress:
+        description: The shared host ingress (stack-ingress-config.mjs is the authority for the fields; starci app check R294 judges them).
+        type: object
+  deployName:
+    type: string
+    pattern: '^[a-z][a-z0-9-]*$'
+  deployKey:
+    type: string
+    pattern: '^[A-Z][A-Z0-9_]*$'
+  deployVolumeName:
+    type: string
+    pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]*$'
+  deployTreePath:
+    description: A relative path inside .starcistacks/<environment>/ (forward slashes, no .. segment).
+    type: string
+    pattern: '^(?!/)(?!.*\\)(?!(?:.*/)?\.\.(?:/|$)).+$'
+  deployAbsolutePath:
+    description: An absolute path on the host without .. segments.
+    type: string
+    pattern: '^/(?!.*\.\.)[A-Za-z0-9._/-]+$'
+  deployKeyList:
+    type: array
+    minItems: 1
+    items: {$ref: '#/$defs/deployKey'}
+  deployMemberKeys:
+    description: A sealed member and the keys taken from it.
+    type: object
+    additionalProperties: false
+    required: [member, keys]
+    properties:
+      member: {$ref: '#/$defs/deployName'}
+      keys: {$ref: '#/$defs/deployKeyList'}
+  deployRemote:
+    type: object
+    additionalProperties: false
+    properties:
+      host:
+        description: ssh alias used for DOCKER_HOST=ssh://<host> and the release records (default vps).
+        type: string
+        pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
+      releasesBase: {$ref: '#/$defs/deployAbsolutePath'}
+      sealed:
+        description: 'Owner-machine session for prepare and doctor: members of .starcistacks/<environment>/secrets.'
+        type: object
+        additionalProperties: false
+        required: [ops, sshKey, knownHosts]
+        properties:
+          ops: {$ref: '#/$defs/deployName'}
+          sshKey: {$ref: '#/$defs/deployName'}
+          knownHosts: {$ref: '#/$defs/deployName'}
+  deployImage:
+    type: object
+    additionalProperties: false
+    required: [app]
+    properties:
+      app: {$ref: '#/$defs/deployName'}
+      buildArgs:
+        description: Public build values (they reach the browser by design), literals and the public keys of a sealed member.
+        type: object
+        additionalProperties: false
+        properties:
+          values:
+            type: object
+            propertyNames: {$ref: '#/$defs/deployKey'}
+            additionalProperties: {type: string}
+          sealed: {$ref: '#/$defs/deployMemberKeys'}
+  deploySecrets:
+    type: object
+    additionalProperties: false
+    properties:
+      grants:
+        description: Which sealed keys become which Swarm secrets, granted to which services.
+        type: array
+        items: {$ref: '#/$defs/deployGrant'}
+      settings: {$ref: '#/$defs/deployMemberKeys'}
+  deployGrant:
+    type: object
+    additionalProperties: false
+    required: [service, from]
+    properties:
+      service: {$ref: '#/$defs/deployName'}
+      filePointers:
+        description: Also set <KEY>_FILE=/run/secrets/<KEY> in the service environment.
+        type: boolean
+      from:
+        type: array
+        minItems: 1
+        items: {$ref: '#/$defs/deployGrantSource'}
+  deployGrantSource:
+    type: object
+    additionalProperties: false
+    required: [member]
+    properties:
+      member: {$ref: '#/$defs/deployName'}
+      keys: {$ref: '#/$defs/deployKeyList'}
+      required: {type: boolean}
+      fill:
+        description: Never override a key an earlier source of the same service gave.
+        type: boolean
+    if:
+      required: [required]
+      properties:
+        required: {const: true}
+    then:
+      required: [keys]
+  deployServiceEnvironment:
+    type: object
+    additionalProperties: false
+    properties:
+      files:
+        description: KEY=VALUE files, relative to .starcistacks/<environment>/.
+        type: array
+        items: {$ref: '#/$defs/deployTreePath'}
+      values:
+        type: object
+        propertyNames: {$ref: '#/$defs/deployKey'}
+        additionalProperties: {type: string}
+      settings:
+        type: object
+        propertyNames: {$ref: '#/$defs/deployKey'}
+        additionalProperties: {$ref: '#/$defs/deploySetting'}
+  deploySetting:
+    type: object
+    additionalProperties: false
+    required: [key]
+    properties:
+      key: {$ref: '#/$defs/deployKey'}
+      default: {description: 'A literal default: a string, number or boolean.'}
+  deployConfig:
+    type: object
+    additionalProperties: false
+    required: [name, file, env]
+    properties:
+      name: {$ref: '#/$defs/deployName'}
+      file: {$ref: '#/$defs/deployTreePath'}
+      env: {$ref: '#/$defs/deployKey'}
+  deployVerify:
+    type: object
+    additionalProperties: false
+    properties:
+      http:
+        type: array
+        items: {$ref: '#/$defs/deployHttpCheck'}
+      exec:
+        type: array
+        items: {$ref: '#/$defs/deployExecCheck'}
+  deployHttpCheck:
+    type: object
+    additionalProperties: false
+    required: [name, url]
+    properties:
+      name: {type: string, minLength: 1}
+      url: {type: string, pattern: '^https?://[^\s]+$'}
+      method: {enum: [GET, POST]}
+      body: {type: string}
+      status: {type: integer, minimum: 100, maximum: 599}
+      json:
+        description: Expected fields of the JSON response.
+        type: object
+      contains: {type: string}
+      retry: {type: boolean}
+  deployExecCheck:
+    type: object
+    additionalProperties: false
+    required: [name, service, command]
+    properties:
+      name: {type: string, minLength: 1}
+      service: {$ref: '#/$defs/deployName'}
+      command: {$ref: '#/$defs/deployCommand'}
+      stdout:
+        description: Regular expression the standard output must match.
+        type: string
+  deployCommand:
+    description: An argument vector run inside a task; every argument is a plain word (no shell syntax).
+    type: array
+    minItems: 1
+    items:
+      type: string
+      pattern: '^[A-Za-z0-9_@%+=:,./-]+$'
+  deployJobs:
+    type: object
+    additionalProperties: false
+    required: [service, command]
+    properties:
+      service: {$ref: '#/$defs/deployName'}
+      command: {$ref: '#/$defs/deployCommand'}
+  deployTasks:
+    description: One-off commands `starci app stack task <name>` runs inside a running task of the declared service.
+    type: object
+    propertyNames:
+      pattern: '^[a-z][a-z0-9-]{0,40}$'
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [service, command]
+      properties:
+        service: {$ref: '#/$defs/deployName'}
+        command: {$ref: '#/$defs/deployCommand'}
+        timeoutSeconds: {type: integer, minimum: 1, maximum: 3600, description: 'Seconds a post-deploy run of the task may take before the deploy fails and rolls back (default 600).'}
+  deployBackup:
+    type: object
+    additionalProperties: false
+    required: [image, volumes]
+    properties:
+      image:
+        description: The tar helper image, pinned by a non-placeholder digest.
+        type: string
+        pattern: '^[a-z0-9./_-]+(?::[A-Za-z0-9._-]+)?@sha256:(?!0{64}$)[0-9a-f]{64}$'
+      keepDays: {type: integer, minimum: 1, maximum: 3650}
+      dir: {$ref: '#/$defs/deployAbsolutePath'}
+      volumes:
+        type: array
+        minItems: 1
+        items: {$ref: '#/$defs/deployBackupVolume'}
+  deployRegistry:
+    description: >-
+      The image registry and the visibility the app's packages are meant to have. The canon scaffold writes `public`; the value then belongs to the app.
+      While the effective value is `public`, `stack build --push` scans every image for secret material before the push and checks the real
+      visibility afterwards. Omitted: ghcr.io and public.
+    type: object
+    additionalProperties: false
+    properties:
+      host: {type: string, pattern: '^[a-z0-9][a-z0-9.-]*(?::[0-9]{1,5})?$', default: ghcr.io}
+      visibility: {enum: [public, private], default: public}
+  deployBackupVolume:
+    type: object
+    additionalProperties: false
+    required: [name, volume]
+    properties:
+      name: {$ref: '#/$defs/deployName'}
+      volume: {$ref: '#/$defs/deployVolumeName'}
+  secret:
+    type: object
+    additionalProperties: false
+    required: [name, where, recipientPolicy, keyCustody]
+    properties:
+      name: {type: string, pattern: '^[a-z][a-z0-9.-]*$'}
+      runtimeName:
+        description: Immutable external Swarm secret name, ending in -v followed by its version.
+        type: string
+        pattern: '^[a-z][a-z0-9.-]*-v[1-9][0-9]*$'
+      version:
+        description: Positive version matching the immutable runtimeName suffix.
+        anyOf:
+          - {type: integer, minimum: 1}
+          - {type: string, pattern: '^[1-9][0-9]*$'}
+      where: {type: string, minLength: 1}
+      recipientPolicy: {type: string, minLength: 1, description: "Which age recipient the envelope is encrypted to: the one shared master recipient every project uses."}
+      keyCustody: {type: string, minLength: 1, description: "Where the shared decrypting identity is held; docs/host-secrets.md owns host custody and its execution prerequisites."}

@@ -1,0 +1,99 @@
+{
+  "name": "@starci/grammar",
+  "version": "0.13.0",
+  "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
+  "keywords": [
+    "starci",
+    "design-system",
+    "grammar"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/grammar#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/grammar"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "sideEffects": [
+    "./dist/**/*.css"
+  ],
+  "files": [
+    "dist",
+    "!dist/stories",
+    "!dist/**/*.stories.*",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    "./common": {
+      "types": "./dist/common/index.d.ts",
+      "import": "./dist/common/index.js"
+    },
+    "./common.css": "./dist/common/styles.css",
+    "./common/styles.css": "./dist/common/styles.css",
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./core.css": "./dist/core/styles.css",
+    "./core/styles.css": "./dist/core/styles.css",
+    "./offset-pop": {
+      "types": "./dist/offset-pop/index.d.ts",
+      "import": "./dist/offset-pop/index.js"
+    },
+    "./offset-pop.css": "./dist/offset-pop/styles.css",
+    "./offset-pop/styles.css": "./dist/offset-pop/styles.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/copy-css.mjs && node scripts/build-stamp.mjs",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json",
+    "test": "npm run typecheck && npm run build",
+    "pack:check": "npm run build && npm pack --dry-run",
+    "prepack": "npm run typecheck && npm run build",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@dicebear/core": "10.4.0",
+    "@dicebear/styles": "10.4.0",
+    "@heroicons/react": "2.2.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "@heroui/react": ">=3.2.0",
+    "@xyflow/react": "^12.11.6",
+    "react-aria-components": "^1.21.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "typescript": "^5.0.0",
+    "storybook": "^10.6.0",
+    "@storybook/react-vite": "^10.6.0",
+    "@chromatic-com/storybook": "latest",
+    "@storybook/addon-a11y": "^10.6.0",
+    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/addon-mcp": "^10.6.0",
+    "eslint-plugin-storybook": "^10.6.0",
+    "playwright": "latest",
+    "react-dom": "^19.0.0",
+    "@internationalized/date": "^3.12.4",
+    "vite": "^8.3.0",
+    "@types/node": "^22.0.0",
+    "@xyflow/react": "12.11.6",
+    "@starci/tsconfig": "2.0.7",
+    "aria-query": "5.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

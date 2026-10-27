@@ -1,0 +1,143 @@
+"use client"
+
+import { useFieldVariant } from "../../surfaceContext.js"
+import {
+    ComboBox as HeroComboBox,
+    Input as HeroInput,
+    ListBox as HeroListBox,
+    Spinner as HeroSpinner,
+    type Key,
+} from "@heroui/react"
+import { useState, type ReactNode } from "react"
+import {
+    FieldDescription,
+    FieldErrorText,
+    FieldLabel,
+    fieldVariantAttributes,
+    useGrammarPortal,
+    vendorFieldProps,
+    type FieldControlProps,
+} from "../../primitive/Field/index.js"
+import { ListOptions, type ListOption } from "../Select/index.js"
+
+export type ComboBoxProps = FieldControlProps & {
+    readonly id?: string
+    readonly options: ReadonlyArray<ListOption>
+    readonly placeholder?: string
+    /** Selected option id. */
+    readonly value?: string | null
+    readonly defaultValue?: string | null
+    readonly onValueChange?: (value: string | null) => void
+    /** Typed text. Control it to filter or fetch options yourself. */
+    readonly inputValue?: string
+    readonly defaultInputValue?: string
+    readonly onInputChange?: (value: string) => void
+    /** Keeps typed text that matches no option as the field value (autocomplete / free entry). */
+    readonly allowsCustomValue?: boolean
+    /** Shown inside the open list when nothing matches. The copy is the app's. */
+    readonly emptyState?: ReactNode
+    /** Options are being fetched for the typed text. */
+    readonly isPending?: boolean
+    /** When the list opens: while typing (default), on focus, or only from the trigger/arrow keys. */
+    readonly menuTrigger?: "input" | "focus" | "manual"
+    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
+    readonly variant?: "primary" | "secondary"
+}
+
+/*
+ * Consumer hook: `starci-core-combo-box` names this control's root for a consumer or family
+ * stylesheet. No shipped sheet paints it: the root is drawn as a whole by `.starci-core-field`, so
+ * a rule on the hook adds to the shared anatomy and never has to replace it.
+ */
+
+/*
+ * Consumer hooks: `starci-core-list-popover`, `starci-core-list` name HeroUI parts whose vendor
+ * paint Common leaves as it is. No shipped sheet paints them; the Grammar name lets a consumer or
+ * family select those parts without reaching for vendor class names.
+ */
+
+/**
+ * Type to filter a list, then pick (combobox / autocomplete).
+ *
+ * The vendor owns the combobox role, `aria-expanded`, `aria-activedescendant`, arrow/Enter/Escape
+ * handling and the "contains" filter. Pending keeps the input editable and marks the list busy.
+ */
+export const ComboBox = ({
+    id,
+    options,
+    placeholder,
+    value,
+    defaultValue,
+    onValueChange,
+    inputValue,
+    defaultInputValue,
+    onInputChange,
+    allowsCustomValue = false,
+    emptyState,
+    isPending = false,
+    menuTrigger = "input",
+    variant: requestedVariant,
+    ...field
+}: ComboBoxProps) => {
+    const variant = useFieldVariant(requestedVariant)
+    const { anchor, portalProps } = useGrammarPortal()
+    const [chosen, setChosen] = useState<string | null>(defaultValue ?? null)
+    const [typed, setTyped] = useState<string | null>(null)
+    /** The full text of the field: the one-line input ellipsizes, so it keeps the text as its title. */
+    const shownKey = value === undefined ? chosen : value
+    const fullText = inputValue ?? typed ?? options.find((option) => option.id === shownKey)?.label
+    return (
+        <HeroComboBox
+            data-tier="branch"
+            data-component="ComboBox"
+            data-contract="A11Y-1 FEEDBACK-1 STATE-1"
+            className="starci-core-field starci-core-combo-box"
+            fullWidth
+            variant={variant}
+            {...fieldVariantAttributes(variant)}
+            {...vendorFieldProps({ ...field, isPending })}
+            isReadOnly={field.isReadOnly === true}
+            allowsCustomValue={allowsCustomValue}
+            menuTrigger={menuTrigger}
+            {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value })}
+            {...(inputValue === undefined ? defaultInputValue === undefined ? {} : { defaultInputValue } : { inputValue })}
+            onInputChange={(text: string) => {
+                setTyped(text)
+                onInputChange?.(text)
+            }}
+            onChange={(key: Key | null) => {
+                setChosen(key === null ? null : String(key))
+                setTyped(null)
+                onValueChange?.(key === null ? null : String(key))
+            }}
+        >
+            {anchor}
+            <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
+            <HeroComboBox.InputGroup className="starci-core-combo-box-group" data-grammar-field-control="true">
+                <HeroInput
+                    {...(id === undefined ? {} : { id })}
+                    {...(placeholder === undefined ? {} : { placeholder })}
+                    className="starci-core-combo-box-input"
+                    {...(fullText === undefined || fullText === "" ? {} : { title: fullText })}
+                    {...(isPending ? { "aria-busy": true } : {})}
+                />
+                <HeroComboBox.Trigger className="starci-core-combo-box-trigger">
+                    {isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" className="starci-core-field-spinner" /> : undefined}
+                </HeroComboBox.Trigger>
+            </HeroComboBox.InputGroup>
+            <FieldDescription>{field.description}</FieldDescription>
+            <FieldErrorText>{field.errorMessage}</FieldErrorText>
+            <HeroComboBox.Popover className="starci-core-list-popover" data-grammar-popover="ComboBox" data-contract="LAYOUT-4" {...portalProps}>
+                <HeroListBox
+                    className="starci-core-list"
+                    {...(isPending ? { "aria-busy": true } : {})}
+                    {...(emptyState == null ? {} : {
+                        renderEmptyState: () => <div className="starci-core-list-empty" data-grammar-list-empty="true" data-contract="STATE-3">{emptyState}</div>,
+                    })}
+                >
+                    <ListOptions options={options} />
+                </HeroListBox>
+            </HeroComboBox.Popover>
+        </HeroComboBox>
+    )
+}

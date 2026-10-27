@@ -1,0 +1,73 @@
+"use client"
+
+import { useFieldVariant } from "../../surfaceContext.js"
+import { TimeField as HeroTimeField, type TimeValue } from "@heroui/react"
+import {
+    FieldDescription,
+    FieldErrorText,
+    FieldLabel,
+    fieldVariantAttributes,
+    isFieldInvalid,
+    vendorFieldProps,
+    type FieldControlProps,
+} from "../Field/index.js"
+import { DateFieldBox, DateSegments } from "../DateField/index.js"
+
+export type TimeFieldProps = FieldControlProps & {
+    readonly value?: TimeValue | null
+    readonly defaultValue?: TimeValue | null
+    readonly onValueChange?: (value: TimeValue | null) => void
+    readonly minValue?: TimeValue
+    readonly maxValue?: TimeValue
+    readonly granularity?: "hour" | "minute" | "second"
+    /** Forces 12- or 24-hour display; the locale decides by default. */
+    readonly hourCycle?: 12 | 24
+    /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
+    readonly variant?: "primary" | "secondary"
+}
+
+/*
+ * Consumer hook: `starci-core-time-field` names this control's root for a consumer or family
+ * stylesheet. No shipped sheet paints it: the root is drawn as a whole by `.starci-core-field`, so
+ * a rule on the hook adds to the shared anatomy and never has to replace it.
+ */
+
+/** A typed time of day in locale-ordered spinbutton segments. */
+export const TimeField = ({
+    value,
+    defaultValue,
+    onValueChange,
+    minValue,
+    maxValue,
+    granularity = "minute",
+    hourCycle,
+    variant: requestedVariant,
+    ...field
+}: TimeFieldProps) => {
+    const variant = useFieldVariant(requestedVariant)
+    return (
+        <HeroTimeField
+            data-tier="atom"
+            data-component="TimeField"
+            data-contract="A11Y-1 FEEDBACK-1 STATE-1"
+            className="starci-core-field starci-core-time-field"
+            fullWidth
+            {...fieldVariantAttributes(variant)}
+            {...vendorFieldProps(field)}
+            isReadOnly={field.isReadOnly === true}
+            granularity={granularity}
+            {...(hourCycle === undefined ? {} : { hourCycle })}
+            {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value })}
+            {...(onValueChange === undefined ? {} : { onChange: onValueChange })}
+            {...(minValue === undefined ? {} : { minValue })}
+            {...(maxValue === undefined ? {} : { maxValue })}
+        >
+            <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
+            <DateFieldBox isInvalid={isFieldInvalid(field)} isDisabled={field.isDisabled === true} variant={variant}>
+                <DateSegments />
+            </DateFieldBox>
+            <FieldDescription>{field.description}</FieldDescription>
+            <FieldErrorText>{field.errorMessage}</FieldErrorText>
+        </HeroTimeField>
+    )
+}
