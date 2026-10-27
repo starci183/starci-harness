@@ -449,7 +449,7 @@ const splitProblems = (nodes: readonly FlowNode[], report: FlowReport, repo: str
             ...owned.filter((impl) => impl.paths.some((path) => allowed.some((allow) => overlaps(path, allow)))).map((impl) => impl.id),
         ])
         if (records.size <= 1) return []
-        return [`task ${node.key} (${node.contract.label}) works ${[...records].sort().join(", ")}: split into one task per record (disjoint allowPaths), they run in parallel up to the workflow cap`]
+        return [`task ${node.key} (${node.contract.label}) works ${[...records].sort((a, b) => a.localeCompare(b)).join(", ")}: split into one task per record (disjoint allowPaths), they run in parallel up to the workflow cap`]
     })
 }
 
@@ -485,7 +485,7 @@ export const evaluateFlow = (nodes: readonly FlowNode[], place: FlowPlace, lanes
         return flow
     }
     const walk: LaneWalk = { nodes, place, lanes, refsOf, covered, ancestors: ancestorsOf(nodes), problems: [], flowOf }
-    for (const ref of [...covered.values()]) flowOf(ref)
+    for (const ref of covered.values()) flowOf(ref)
     return { records: [...flows.values()], problems: [...new Set(walk.problems)] }
 }
 
@@ -504,13 +504,16 @@ export const flowLines = (report: FlowReport): string[] =>
 export const assertFlow = (workflowId: string, nodes: readonly FlowNode[], place: FlowPlace, ops: Ops): FlowReport => {
     const report = evaluateFlow(nodes, place, loadLanes(ops))
     const unsplit = splitProblems(nodes, report, place.repo, ops)
-    if (unsplit.length > 0) throw new Refusal("TASK_NOT_SPLIT", `the graph of ${workflowId} gives one task several Work records:\n${unsplit.map((problem) => `- ${problem}`).join("\n")}`)
+    if (unsplit.length > 0) throw new Refusal("TASK_NOT_SPLIT", `the graph of ${workflowId} gives one task several Work records:\n${bulleted(unsplit)}`)
     if (report.problems.length === 0) return report
     throw new Refusal(
         "FLOW_INCOMPLETE",
         `the graph of ${workflowId} leaves lane steps of its Work records undone (ops/lanes.yaml):\n${report.problems.map((problem) => "- " + problem).join("\n")}\nlanes:\n${flowLines(report).map((line) => "  " + line).join("\n")}`,
     )
 }
+
+/** Problems as a bulleted list, one per line. */
+const bulleted = (problems: readonly string[]): string => problems.map((problem) => "- " + problem).join("\n")
 
 /** The repository a ledger belongs to, from the host registry (`<projects>/<ledger_id>/runtime.sqlite`). */
 export const repoOfLedger = (db: DatabaseSync): string | undefined => {

@@ -256,7 +256,7 @@ export const awaitsOwner = (decision: Decision): boolean => {
     const evidence = decision.evidence
     if (decision.kind !== "escalation" || typeof evidence !== "object" || evidence === null || !("escalation" in evidence)) return false
     const escalation = evidence.escalation
-    return typeof escalation === "object" && escalation !== null && "kind" in escalation && OWNER_RULED.some((kind) => kind === escalation.kind)
+    return typeof escalation === "object" && escalation !== null && "kind" in escalation && OWNER_RULED.includes(escalation.kind as (typeof OWNER_RULED)[number])
 }
 
 /** One decision by id. */

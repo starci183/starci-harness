@@ -479,8 +479,7 @@ export const supervisorTick = async (context: VerbContext): Promise<SupervisorTi
         swept.push(one.project.name)
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
-        lines.push(...unresolved)
-        lines.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
+        lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)

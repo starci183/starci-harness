@@ -293,6 +293,14 @@ const budgetWait = (root: string, workflowId: string, key: string): StepAction |
     }
 }
 
+/** One ready node: queued, or the wait the budget gives it (`stop`: no further node is tried), or the halt of a workflow that stopped dispatching. */
+const queueOne = (root: string, workflow: Snapshot["workflow"], node: Snapshot["nodes"][number]): { readonly action: StepAction; readonly queued: boolean; readonly stop: boolean; readonly halted: boolean } => {
+    const overBudget = budgetWait(root, workflow.id, node.key)
+    if (overBudget !== undefined) return { action: overBudget, queued: false, stop: true, halted: false }
+    const made = queueNode(root, workflow, node)
+    return { action: made.action, queued: made.queued, stop: made.halted, halted: made.halted }
+}
+
 /** The ready nodes in dependency order become queued tasks while there are free slots and budget; `halted` says the workflow stopped dispatching. */
 const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepAction[]; readonly halted: boolean } => {
     const { workflow } = snapshot
@@ -300,23 +308,19 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
     const orca = workflow.header.runner === "orca"
     const slots = orca ? Math.min(workflow.header.maxParallel ?? Infinity, loadRouting().workflowParallel) : 1
     let free = slots - snapshot.live
+    const noSlot = orca ? `all ${String(slots)} parallel slot(s) are taken` : "the inline run works one task at a time"
     for (const view of snapshot.views) {
         if (view.state !== "ready") continue
         if (free <= 0) {
-            actions.push({ key: view.key, task: null, action: "wait", detail: orca ? `all ${String(slots)} parallel slot(s) are taken` : "the inline run works one task at a time" })
+            actions.push({ key: view.key, task: null, action: "wait", detail: noSlot })
             continue
         }
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
         if (node === undefined) continue
-        const overBudget = budgetWait(root, workflow.id, node.key)
-        if (overBudget !== undefined) {
-            actions.push(overBudget)
-            break
-        }
-        const made = queueNode(root, workflow, node)
-        actions.push(made.action)
-        if (made.queued) free -= 1
-        if (made.halted) return { actions, halted: true }
+        const step = queueOne(root, workflow, node)
+        actions.push(step.action)
+        if (step.stop) return { actions, halted: step.halted }
+        if (step.queued) free -= 1
     }
     return { actions, halted: false }
 }
