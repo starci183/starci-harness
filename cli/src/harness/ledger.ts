@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 7
+export const LEDGER_VERSION = 8
 
 /** The additive host schema version, including the singleton Supervisor seat. */
 export const MACHINE_VERSION = 2
@@ -60,6 +60,11 @@ CREATE TABLE IF NOT EXISTS graph_versions (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL,
   subject TEXT, data_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS prior_work (
+  workflow_id TEXT NOT NULL, plan_key TEXT NOT NULL, contract_hash TEXT NOT NULL, attempt_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('preserved', 'committed')), sha256 TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id),
+  base TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (workflow_id, plan_key, contract_hash, attempt_id, kind, sha256));
 CREATE TABLE IF NOT EXISTS commands (
   cmd_id TEXT PRIMARY KEY, scope TEXT NOT NULL, workflow_id TEXT NOT NULL, kind TEXT NOT NULL, based_on_json TEXT NOT NULL,
   sha256 TEXT NOT NULL, body_json TEXT NOT NULL, status TEXT NOT NULL, outcome_json TEXT, received_at TEXT NOT NULL, applied_at TEXT);
@@ -95,8 +100,8 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "workflows", column: "kernel_terminal_owned", type: "INTEGER", since: 6 },
     { table: "workflows", column: "kernel_closed_at", type: "TEXT", since: 6 },
     // S4 (seat tree, episodic coordinators): a Kernel is a seat (role kernel) of its workflow, and every seat holds a TTL lease.
-    { table: "seats", column: "workflow_id", type: "TEXT", since: 7 },
-    { table: "seats", column: "lease_until", type: "TEXT", since: 7 },
+    { table: "seats", column: "workflow_id", type: "TEXT", since: 8 },
+    { table: "seats", column: "lease_until", type: "TEXT", since: 8 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
@@ -331,12 +336,18 @@ export const ensureLedgerId = (root: string): string => {
     }
 }
 
-/** A project's state folder under the state base: its ledger plus briefs/, contracts/, preserved/ and outputs/. Created on first use. */
+/** A project's state folder under the state base: its ledger plus briefs/, contracts/, preserved/, prior/ and outputs/. Created on first use. */
 export const projectDir = (root: string): string => {
     const dir = dirname(ledgerFile(ensureLedgerId(root)))
     mkdirSync(dir, { recursive: true })
     return dir
 }
+
+/**
+ * The project's prior-work store, `prior/<sha256>.patch` of its state folder: every attempt's work (a preserved or a committed
+ * patch) named by the sha256 of its bytes and indexed in the ledger's prior_work table. Nothing deletes from it.
+ */
+export const priorDir = (root: string): string => join(projectDir(root), "prior")
 
 /** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
 export const ledgerPath = (root: string): string | undefined => {

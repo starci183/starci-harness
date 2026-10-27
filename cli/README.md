@@ -43,7 +43,9 @@ every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`,
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
 `check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees a path);
-`seats`; `messages`; `events` (append-only) and `meta`. The host's `machine.sqlite` holds only host-wide state:
+`seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
+attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
+settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
 `pool_concurrency`, `route_picks`, `budgets`, `budget_raises` and the host Supervisor record (`harness/machine.ts`).
 The workflow records its Kernel dispatch, agent and model; task seats and leases stay in the project ledger.
