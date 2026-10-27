@@ -1,0 +1,208 @@
+schema: starci/scenario@1
+id: owner-ui-server-api
+group: owner
+title: starci ui serves the desktop app's contract from a scenario ledger and writes only through verbs as the owner
+inject: "an owner escalation raised straight into the ledger of a running inline workflow, and calls without the token"
+expect: >-
+  starci ui binds a free loopback port and prints its URL and bearer token; every /api call without the token is 401 with
+  {code, message}; the overview, workflow, task, inbox and config answers carry the contract's shapes from the ledger; the
+  event stream takes the token as a query; a pause runs workflow pause as the owner, a ruling becomes the Supervisor's
+  goal-change answering the escalation, and a refused config change comes back as a red ActionResult with its code
+pass:
+  - "/api/overview without the token is 401 UNAUTHORIZED"
+  - the overview lists the project, the running workflow and the providers
+  - the workflow and task answers carry the graph, the route and the checks
+  - the inbox lists the owner escalation; the ruling answers it through supervisor submit
+  - the pause leaves the workflow paused in the ledger
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: chain
+        goal: bench workflow served to the desktop app
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+            dependsOn:
+              - a
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, chain]
+    save:
+      a: data.nodes.0.task.id
+  - name: an owner escalation of the workflow, as a Kernel would raise it
+    sql:
+      db: ledger
+      exec: >-
+        INSERT INTO decisions (id, scope, workflow_id, kind, subject, evidence_json, raised_at) VALUES ('d-benchowner01',
+        'supervisor', 'chain', 'escalation', 'bench-owner', '{"escalation":{"kind":"owner","question":"ship doc a as it is?"}}',
+        '2026-10-27T00:00:00.000Z')
+  - name: serve on a free port
+    serve:
+      starci: [ui, --port, "0"]
+      as: ui
+  - name: no token, no answer
+    http:
+      url: "${ui.url}/api/overview"
+      expect:
+        status: 401
+        equals:
+          code: UNAUTHORIZED
+  - name: a wrong token, no answer
+    http:
+      url: "${ui.url}/api/inbox"
+      token: not-the-token
+      expect:
+        status: 401
+        has: [message]
+  - name: overview
+    http:
+      url: "${ui.url}/api/overview"
+      token: "${ui.token}"
+      expect:
+        has: [projects.0.key, projects.0.name, providers.0.provider, providers.0.circuit, providers.0.cap, workflows.0.goalSummary, events.0.at, host.tick]
+        equals:
+          workflows.0.id: chain
+          workflows.0.status: running
+          workflows.0.total: 2
+          projects.0.openOwnerDecisions: 1
+      save:
+        key: workflows.0.project
+  - name: workflow
+    http:
+      url: "${ui.url}/api/workflows/${key}/chain"
+      token: "${ui.token}"
+      expect:
+        has: [goal.version, goal.text, graphVersion, nodes.1.dependsOn.0, flow, flowProblems, seats, parallel.cap]
+        equals:
+          id: chain
+          nodes.0.key: a
+          nodes.0.task: "${a}"
+          nodes.1.state: waiting
+  - name: an unknown workflow is 404 with its code
+    http:
+      url: "${ui.url}/api/workflows/${key}/nope"
+      token: "${ui.token}"
+      expect:
+        status: 404
+        equals:
+          code: WORKFLOW_UNKNOWN
+  - name: task
+    http:
+      url: "${ui.url}/api/tasks/${key}/${a}"
+      token: "${ui.token}"
+      expect:
+        has: [state, route.tier, route.chosen.agent, route.by, checks.0.tier, checks.0.state, attempts, terminalTail]
+        equals:
+          key: a
+          workflow: chain
+          label: docs
+          contract.allowPaths.0: docs/a.md
+  - name: inbox
+    http:
+      url: "${ui.url}/api/inbox"
+      token: "${ui.token}"
+      expect:
+        has: [0.title, 0.body, 0.options, 0.raisedAt, 0.askedBy]
+        equals:
+          0.id: d-benchowner01
+          0.kind: owner
+          0.workflow: chain
+          0.project: "${key}"
+  - name: config
+    http:
+      url: "${ui.url}/api/config"
+      token: "${ui.token}"
+      expect:
+        has: [0.key, 0.file, 0.value]
+  - name: the event stream takes the token as a query
+    http:
+      url: "${ui.url}/api/events?token=${ui.token}"
+      stream: true
+      expect:
+        contains: ": connected"
+  - name: pause runs workflow pause as the owner
+    http:
+      method: POST
+      url: "${ui.url}/api/workflows/${key}/chain/pause"
+      token: "${ui.token}"
+      expect:
+        equals:
+          ok: true
+          code: null
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows WHERE id = 'chain'
+        equals: [paused]
+  - name: a second pause is the verb's refusal
+    http:
+      method: POST
+      url: "${ui.url}/api/workflows/${key}/chain/pause"
+      token: "${ui.token}"
+      expect:
+        equals:
+          ok: false
+          code: WORKFLOW_PAUSED
+  - name: the owner rules the escalation
+    http:
+      method: POST
+      url: "${ui.url}/api/inbox/${key}/d-benchowner01/ruling"
+      token: "${ui.token}"
+      body:
+        option: null
+        note: ship it
+      expect:
+        equals:
+          ok: true
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT kind, status FROM commands WHERE json_extract(body_json, '$.answers[0]') = 'd-benchowner01'
+        equals: [[goal-change, applied]]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT answered_at IS NOT NULL FROM decisions WHERE id = 'd-benchowner01'
+        equals: [1]
+  - name: the inbox is empty once ruled
+    http:
+      url: "${ui.url}/api/inbox"
+      token: "${ui.token}"
+      expect:
+        contains: "[]"
+  - name: a config change config set refuses comes back red with its code
+    http:
+      method: POST
+      url: "${ui.url}/api/config"
+      token: "${ui.token}"
+      body:
+        key: no.such.key
+        value: 1
+      expect:
+        has: [message]
+        equals:
+          ok: false

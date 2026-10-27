@@ -249,6 +249,52 @@ export const startDetached = (argv: readonly string[], cwd: string): Promise<voi
         })
     })
 
+/** A long-lived program `startServing` started: the stdout line its readiness pattern matched, and the kill of its whole tree. */
+export interface Serving {
+    readonly ready: RegExpExecArray
+    readonly stop: () => void
+}
+
+/**
+ * Starts a long-lived program (a local server) without a shell and waits until a line of its stdout matches `ready`; it keeps
+ * running until `stop`. Refuses SERVE_NOT_READY, its tree killed, when it exits or `timeoutMs` passes before that line.
+ */
+export const startServing = (tool: string, args: readonly string[], cwd: string, options: { readonly env?: Readonly<Record<string, string>>; readonly ready: RegExp; readonly timeoutMs: number }): Promise<Serving> =>
+    new Promise((settle, refuse) => {
+        const env = options.env === undefined ? process.env : { ...process.env, ...options.env }
+        const child = spawn(tool, [...args], { cwd, env, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] })
+        const output = collector()
+        let seen = ""
+        let waiting = true
+        const fail = (why: string): void => {
+            if (!waiting) return
+            waiting = false
+            clearTimeout(timer)
+            killTree(child)
+            refuse(new Refusal("SERVE_NOT_READY", `${tool} ${args.join(" ")} ${why}: ${output.text().slice(-500)}`))
+        }
+        const timer = setTimeout(() => {
+            fail(`printed no ready line in ${String(Math.round(options.timeoutMs / 1000))}s`)
+        }, options.timeoutMs)
+        child.stderr.on("data", output.push)
+        child.stdout.on("data", (chunk: Buffer) => {
+            output.push(chunk)
+            if (!waiting) return
+            seen += chunk.toString("utf8")
+            const match = options.ready.exec(seen)
+            if (match === null) return
+            waiting = false
+            clearTimeout(timer)
+            settle({ ready: match, stop: () => { killTree(child) } })
+        })
+        child.on("error", (error: Error) => {
+            fail(`did not start (${error.message})`)
+        })
+        child.on("close", (code: number | null) => {
+            fail(`exited ${String(code)} first`)
+        })
+    })
+
 /** Runs a host tool and reports whether it succeeded, never throwing; for probes such as doctor. */
 export const probeTool = async (tool: string, args: readonly string[], cwd: string): Promise<string | undefined> => {
     try {

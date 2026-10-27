@@ -1,8 +1,7 @@
-import { loadRouting } from "../../harness/routing.js"
 import { workflowBudgets } from "../../harness/budget.js"
 import { currentGoal } from "../../harness/goal.js"
 import { openExistingLedger } from "../../harness/ledger.js"
-import { snapshotOf } from "../../harness/workflow.js"
+import { parallelSlots, snapshotOf } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
@@ -40,7 +39,7 @@ export const workflowStatusVerb = defineVerb({
                 reason: workflow.reason,
                 goalVersion: workflow.goalVersion,
                 graphVersion: workflow.graphVersion,
-                maxParallel: Math.min(workflow.header.maxParallel ?? Infinity, loadRouting().workflowParallel),
+                maxParallel: parallelSlots(workflow.header),
                 done,
                 total: views.length,
                 live,

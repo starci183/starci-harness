@@ -195,6 +195,17 @@ on the first tick (a `workflow-coordinator` event naming `adoptedFrom`), its Ker
 that terminal, and relaunched into the project Supervisor's Run once the tick retires the host row (ended when Orca reports
 its terminal gone, never deleted; `adoptFromHost` in `core/supervisor/driver.ts`). The scheduler that runs it is registered by the `host` verbs below.
 
+**The desktop app's API.** `starci ui` (`core/ui/`) serves the contract of the StarCi Harness desktop app
+(`core/ui/contract.ts`, a copy of the app's own) on 127.0.0.1 with a bearer token it prints beside its URL; CORS answers only
+the Tauri origins and the app's dev server, and a Host that is not that loopback address is refused. Its reads go through the
+readers behind the read verbs (`core/ui/read.ts`: the registry's repositories and projects, each ledger's workflows, graph,
+seats, decisions and events, the host store's circuits, quota and Supervisors, the router's recorded pick or a dry run, the
+lanes' flow, `config list`); the owner's inbox is the open Supervisor decisions `awaitsOwner` names. Every write runs its verb
+in-process as the owner, one at a time (`core/ui/write.ts`): `workflow pause|resume|stop`, `config set`, and a ruling, which
+becomes the `goal-change` a Supervisor relays (goal kept, the ruling as its note, answering the escalation) through `supervisor
+submit`. `/api/events` polls each ledger's newest event id, the host store's rows and the settings files every second while a
+client listens and sends each change as a `data:` line, with a heartbeat comment every 15 seconds (`core/ui/live.ts`).
+
 **The host.** [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
 scheduled tick), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
 without a shell. The owner runs `host install` once: on Windows each schedule is a `StarCi <name>` scheduled task whose

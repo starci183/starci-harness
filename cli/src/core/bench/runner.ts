@@ -8,9 +8,9 @@ import { stringify } from "yaml"
 import { runtimeRoot, stateBase } from "../../harness/ledger.js"
 import { locateOps } from "../../harness/ops.js"
 import { inOrder } from "../../harness/sequential.js"
-import { captureTool } from "../../shared/exec.js"
+import { captureTool, startServing } from "../../shared/exec.js"
 import { captureGit, samePath } from "../../shared/git.js"
-import type { ToolRun } from "../../shared/exec.js"
+import type { Serving, ToolRun } from "../../shared/exec.js"
 import { benchRoot, runnable } from "./scenario.js"
 import type { Assertion, Scenario, Step } from "./scenario.js"
 
@@ -43,6 +43,8 @@ interface RunState {
     readonly env: Readonly<Record<string, string>>
     readonly vars: Map<string, string>
     readonly failures: string[]
+    /** The long-lived verbs a `serve` step started, stopped when the scenario ends. */
+    readonly served: Serving[]
 }
 
 const VAR = /\$\{([A-Za-z0-9_.-]+)\}/g
@@ -346,6 +348,64 @@ const writeFiles = (run: RunState, step: Step): void => {
     }
 }
 
+/** The ready line of a served verb: `starci ui: <url> token <token>`. */
+const SERVED = /starci ui: (http:\/\/\S+) token (\S+)/
+
+/** Starts a long-lived verb in the scratch repository and saves the URL and token its ready line prints. */
+const serve = async (run: RunState, step: NonNullable<Step["serve"]>, label: string): Promise<void> => {
+    const args = step.starci.map((arg) => expand(run, arg))
+    const served = await startServing(process.execPath, [cliPath(), ...args, "--cwd", run.repo], run.repo, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
+        unmet(run, label, `starci ${args.join(" ")} did not serve: ${error instanceof Error ? error.message : String(error)}`),
+    )
+    run.served.push(served)
+    run.vars.set(`${step.as}.url`, served.ready[1] ?? "")
+    run.vars.set(`${step.as}.token`, served.ready[2] ?? "")
+}
+
+/** Reads an event stream until `contains` shows or five seconds pass, then drops the connection. */
+const readStream = async (response: Response, contains: string | undefined): Promise<string> => {
+    const reader = response.body?.getReader()
+    if (reader === undefined) return ""
+    const decoder = new TextDecoder()
+    const deadline = Date.now() + 5000
+    let text = ""
+    while (Date.now() < deadline && (contains === undefined || !text.includes(contains))) {
+        const left = deadline - Date.now()
+        const chunk = await Promise.race([reader.read(), new Promise<undefined>((done) => setTimeout(() => { done(undefined) }, left))])
+        if (chunk === undefined || chunk.done) break
+        if (chunk.value instanceof Uint8Array) text += decoder.decode(chunk.value, { stream: true })
+        if (contains === undefined) break
+    }
+    await reader.cancel()
+    return text
+}
+
+/** One HTTP request to a served verb, held to its expected status, text, JSON paths and values. */
+const http = async (run: RunState, step: NonNullable<Step["http"]>, label: string): Promise<void> => {
+    const url = expand(run, step.url)
+    const headers: Record<string, string> = step.token === undefined ? {} : { Authorization: `Bearer ${expand(run, step.token)}` }
+    const init: RequestInit = step.body === undefined ? { method: step.method, headers } : { method: step.method, headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(deepExpand(run, step.body)) }
+    const response = await fetch(url, init).catch((error: unknown) => unmet(run, label, `${step.method} ${url} failed: ${error instanceof Error ? error.message : String(error)}`))
+    const expect = step.expect ?? {}
+    const contains = expect.contains === undefined ? undefined : expand(run, expect.contains)
+    const text = step.stream === true ? await readStream(response, contains) : await response.text()
+    const said = `${String(response.status)} ${text.slice(0, 300)}`
+    const status = expect.status ?? 200
+    if (response.status !== status) unmet(run, label, `${step.method} ${url}: expected status ${String(status)}, got ${said}`)
+    if (contains !== undefined && !text.includes(contains)) unmet(run, label, `${step.method} ${url} lacks "${contains}": ${said}`)
+    const body: unknown = step.stream === true ? undefined : envelopeOf(text) ?? (text.startsWith("[") ? JSON.parse(text) : undefined)
+    for (const path of expect.has ?? []) if (pathOf(body, path) === undefined) unmet(run, label, `${step.method} ${url} has no ${path}: ${said}`)
+    for (const [path, want] of Object.entries(expect.equals ?? {})) {
+        const got = pathOf(body, path)
+        if (!isDeepStrictEqual(got, deepExpand(run, want))) unmet(run, label, `${step.method} ${url}: ${path} is ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`)
+    }
+    for (const [name, path] of Object.entries(step.save ?? {})) {
+        const value = pathOf(body, path)
+        if (value === undefined) unmet(run, label, `no ${path} to save as ${name}: ${said}`)
+        run.vars.set(name, typeof value === "string" ? value : JSON.stringify(value))
+    }
+}
+
 /** Runs a step's SQL on a store of the run. */
 const execSql = (run: RunState, sql: NonNullable<Step["sql"]>, label: string): void => {
     const handle = openDb(run, sql.db, label, sql.repo)
@@ -379,6 +439,8 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
     if (step.boot !== undefined) await boot(run, step.boot, label)
     if (step.read !== undefined) readVar(run, step.read, label)
     if (step.worker !== undefined) await worker(run, step.worker, label)
+    if (step.serve !== undefined) await serve(run, step.serve, label)
+    if (step.http !== undefined) await http(run, step.http, label)
     if (step.starci !== undefined) await Promise.all(Array.from({ length: step.parallel ?? 1 }, async () => starci(run, step, label)))
     if (step.assert !== undefined) await check(run, step.assert, label)
 }
@@ -406,7 +468,7 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
         CODEX_HOME: join(dir, "codex"),
         NODE_OPTIONS: `--import=${stub}`,
     }
-    const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [] }
+    const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [], served: [] }
     const withEnv: RunState = { ...run, env: { ...env, ...Object.fromEntries(Object.entries(scenario.env ?? {}).map(([key, value]) => [key, expand(run, value)])) } }
     const repos: readonly [string, Readonly<Record<string, string>> | undefined][] = [[repo, scenario.repo?.files], ...Object.entries(scenario.repos ?? {}).map(([name, files]): [string, Readonly<Record<string, string>> | undefined] => [join(dir, name), files.files])]
     for (const [path] of repos.slice(1)) mkdirSync(path, { recursive: true })
@@ -437,6 +499,8 @@ export const runScenario = async (scenario: Scenario, fault: string | null): Pro
     } catch (error: unknown) {
         verdict = error instanceof Unmet ? "fail" : "error"
         if (!(error instanceof Unmet)) run.failures.push(`bench error: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+        for (const served of run.served) served.stop()
     }
     const result: ScenarioResult = { ...base, verdict, failures: run.failures, runDir: run.dir, ms: Date.now() - started }
     writeFileSync(join(run.dir, "result.json"), JSON.stringify(result, null, 2))

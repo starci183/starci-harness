@@ -39,7 +39,9 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
 - **Steps** call a verb (`starci`, with `seat`, `expect`, `save` and `parallel`), boot the tree (`boot`), write files
   (`file`, `write`; `write.from` copies a file or folder in, `${ops}` naming the ops/ folder the CLI reads), act as a worker (`worker` writes its files in the task's checkout, the workflow's worktree, and files
   its result there), read a ledger value into a variable (`read`), run git, script the Orca stand-in (`orca`), inject a
-  fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), and `assert` on the
+  fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), serve a long-lived verb
+  until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
+  `token`, `body`, `stream` for an event stream, and `expect` on status, text and JSON paths), and `assert` on the
   ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`), the stand-in's call log (`orcaCalls`, `match`
   filtering by flag) or the file system. `when` and `unless` tie a step to a `--fault`.
 - **The Orca stand-in** is `stub/orca-stub.mjs`: the runner copies this node binary to `<state base>/bench/bin/orca` and

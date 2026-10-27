@@ -190,20 +190,27 @@ export const refreshUsage = (options: { readonly force?: boolean; readonly reply
     })
 }
 
+/** Every usage window of a pool as its provider last reported it (machine.sqlite pool_windows), in the order they were stored. */
+export const poolWindows = (db: DatabaseSync | undefined, pool: string): (UsageWindow & { readonly observedAt: string })[] =>
+    (db?.prepare("SELECT window, used_percent, window_minutes, resets_at, observed_at FROM pool_windows WHERE pool = ? ORDER BY rowid").all(pool) ?? []).map((row) => ({
+        window: textOf(row.window) ?? "",
+        usedPercent: Number(row.used_percent),
+        windowMinutes: row.window_minutes === null ? null : Number(row.window_minutes),
+        resetsAt: textOf(row.resets_at),
+        observedAt: textOf(row.observed_at) ?? "",
+    }))
+
 /**
  * How far a pool burns ahead of its windows' clocks: the largest used share over elapsed share among its fresh windows (1 is on
  * pace, 2 is twice as fast); null without a fresh window. Elapsed counts from a twentieth of the window, so a window that just
  * reset does not read as burning infinitely fast.
  */
 export const paceOf = (db: DatabaseSync | undefined, routing: Routing, pool: string, at: string = now()): number | null => {
-    const rows = db?.prepare("SELECT used_percent, window_minutes, resets_at, observed_at FROM pool_windows WHERE pool = ?").all(pool) ?? []
-    const paces = rows.flatMap((row): number[] => {
-        const resetsAt = textOf(row.resets_at)
-        const observedAt = textOf(row.observed_at) ?? ""
-        const length = row.window_minutes === null ? 0 : Number(row.window_minutes)
-        if (resetsAt === null || resetsAt <= at || length <= 0 || Date.parse(at) - Date.parse(observedAt) > minutesMs(routing.quota.maxAgeMinutes)) return []
+    const paces = poolWindows(db, pool).flatMap((window): number[] => {
+        const { resetsAt, windowMinutes: length } = window
+        if (resetsAt === null || resetsAt <= at || length === null || length <= 0 || Date.parse(at) - Date.parse(window.observedAt) > minutesMs(routing.quota.maxAgeMinutes)) return []
         const elapsed = Math.min(1, Math.max(0.05, 1 - (Date.parse(resetsAt) - Date.parse(at)) / minutesMs(length)))
-        return [Number(row.used_percent) / 100 / elapsed]
+        return [window.usedPercent / 100 / elapsed]
     })
     return paces.length === 0 ? null : Math.max(...paces)
 }

@@ -131,6 +131,26 @@ const stepSchema = z.strictObject({
         })
         .optional(),
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),
+    /**
+     * Starts a long-lived verb (`starci ui --port 0`) in the scratch repository until the scenario ends, and saves the URL and
+     * token its ready line prints (`starci ui: <url> token <token>`) as `<as>.url` and `<as>.token`.
+     */
+    serve: z.strictObject({ starci: z.array(z.string()).min(1), as: z.string().regex(/^[\w-]+$/) }).optional(),
+    /**
+     * One HTTP request to a served verb: `token` is sent as `Authorization: Bearer`; `stream` reads an event stream only until
+     * `contains` shows. `has` lists dotted paths of the JSON answer that must exist, `equals` a value per path; `save` keeps one.
+     */
+    http: z
+        .strictObject({
+            method: z.enum(["GET", "POST"]).default("GET"),
+            url: z.string(),
+            token: z.string().optional(),
+            body: z.unknown().optional(),
+            stream: z.boolean().optional(),
+            expect: z.strictObject({ status: z.number().int().optional(), contains: z.string().optional(), has: z.array(z.string()).optional(), equals: z.record(z.string(), z.unknown()).optional() }).optional(),
+            save: z.record(z.string(), z.string()).optional(),
+        })
+        .optional(),
     assert: assertSchema.optional(),
 })
 
