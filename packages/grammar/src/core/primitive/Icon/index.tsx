@@ -43,7 +43,7 @@ export type IconProps = {
 const ICON_CLASS_NAME = "starci-core-icon"
 
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
-    className: "starci-core-icon-skeleton",
+    className: "starci-core-icon starci-core-icon-skeleton",
 })
 
 /**
@@ -54,7 +54,8 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
  */
 export const Icon = ({ source: Source, usage = "chip", ariaLabel, isSkeleton = false }: IconProps) => {
     if (isSkeleton) {
-        return <span data-tier="atom" data-component="Icon" data-loading="true" aria-hidden className={SKELETON_CLASS_NAME} />
+        // Skeleton parity: the resting glyph takes the same usage box as the glyph (`.starci-core-icon[data-usage]`).
+        return <span data-tier="atom" data-component="Icon" data-usage={usage} data-loading="true" aria-hidden className={SKELETON_CLASS_NAME} />
     }
 
     // The private cast is the only React-type identity boundary. Consumers see the structural

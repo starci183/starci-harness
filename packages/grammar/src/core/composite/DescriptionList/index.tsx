@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
 import type { IconSource } from "../../primitive/Icon/index.js"
-import { Skeleton } from "../../primitive/Skeleton/index.js"
+import { SkeletonPlaceholder } from "../../primitive/Skeleton/index.js"
 import { IconTile } from "../../primitive/IconTile/index.js"
 
 export type DescriptionListItem = {
@@ -45,8 +45,9 @@ export type DescriptionListProps = (PairLayout | StatStripLayout) & {
     /** Draw a separator between pairs (between cells, for `stat-strip`). */
     readonly isDivided?: boolean
     /**
-     * Unresolved values (knowledge STATE-8): every `term` stays real text, each `description` (and a stat item meta)
-     * becomes a Skeleton text line so the cells keep their size, a stat `unit` is dropped, and the list is `aria-busy`.
+     * Unresolved values (knowledge STATE-8): every `term` stays real text; each `description` (and a stat item meta) is
+     * laid out unseen under a shimmer bar, and a stat `unit` keeps its place unseen, so every cell keeps its ready size
+     * (skeleton parity). The list is `aria-busy`.
      */
     readonly isLoading?: boolean
     readonly className?: string
@@ -60,7 +61,8 @@ export type DescriptionListProps = (PairLayout | StatStripLayout) & {
  */
 export const DescriptionList = (props: DescriptionListProps) => {
     const { isDivided = true, isLoading = false, className } = props
-    const pending = <Skeleton shape="text" />
+    // Skeleton parity: a loading value is laid out unseen under the shimmer, so the cell keeps the ready value's box.
+    const pending = (value: ReactNode) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
     const layout: DescriptionListLayout = props.layout ?? "columns"
     return (
         <dl
@@ -80,18 +82,18 @@ export const DescriptionList = (props: DescriptionListProps) => {
                             <span>{item.term}</span>
                         </dt>
                         <dd className="starci-core-description-value starci-core-description-figure" data-contract="FONT-5">
-                            <span className="starci-core-description-figure-value">{isLoading ? pending : item.description}</span>
-                            {item.unit === undefined || isLoading ? null : <span className="starci-core-description-unit">{item.unit}</span>}
+                            <span className="starci-core-description-figure-value">{isLoading ? pending(item.description) : item.description}</span>
+                            {item.unit === undefined ? null : <span className="starci-core-description-unit">{item.unit}</span>}
                         </dd>
                         {item.meta === undefined ? null : (
-                            <dd className="starci-core-description-meta" data-contract="FONT-2">{isLoading ? pending : item.meta}</dd>
+                            <dd className="starci-core-description-meta" data-contract="FONT-2">{isLoading ? pending(item.meta) : item.meta}</dd>
                         )}
                     </div>
                 ))
                 : props.items.map((item) => (
                     <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true">
                         <dt className="starci-core-description-term">{item.term}</dt>
-                        <dd className="starci-core-description-value">{isLoading ? pending : item.description}</dd>
+                        <dd className="starci-core-description-value">{isLoading ? pending(item.description) : item.description}</dd>
                     </div>
                 ))}
         </dl>

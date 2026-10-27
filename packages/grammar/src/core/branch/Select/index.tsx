@@ -15,7 +15,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
@@ -41,8 +42,9 @@ export type SelectProps = FieldControlProps & {
     /** Options are still arriving. The trigger stays named and focusable, announces pending, and does not open. */
     readonly isPending?: boolean
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real and the trigger becomes a Skeleton field of the
-     * same height, `aria-hidden` and not focusable; the root is `aria-busy`. Unlike `isPending` it does not announce a value.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
@@ -90,23 +92,30 @@ export const ListOptions = ({ options }: { readonly options: ReadonlyArray<ListO
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Select = ({ isSkeleton = false, ...props }: SelectProps) => isSkeleton
+    ? <FieldSkeletonScope component="Select"><SelectControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <SelectControl {...props} />
+
+/**
  * A single choice from a closed list, opened from a field-shaped trigger.
  *
  * Keyboard, typeahead, listbox semantics and focus return are the vendor's. Read-only keeps the
  * trigger focusable and announced but holds the value and never opens the list; the vendor select
  * has no read-only mode of its own.
  */
-export const Select = ({
+const SelectControl = ({
     options,
     placeholder,
     value,
     defaultValue,
     onValueChange,
     isPending = false,
-    isSkeleton = false,
     variant: requestedVariant,
     ...field
-}: SelectProps) => {
+}: Omit<SelectProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     const [heldValue] = useState<string | null>(value ?? defaultValue ?? null)
     const { anchor, portalProps } = useGrammarPortal()
@@ -115,9 +124,6 @@ export const Select = ({
         ? { value: value === undefined ? heldValue : value }
         : value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value }
 
-    if (isSkeleton) {
-        return <FieldSkeleton component="Select" tier="branch" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} variant={variant} kind="select" className="starci-core-select" />
-    }
 
     return (
         <HeroSelect

@@ -1,4 +1,5 @@
-import { Skeleton as HeroSkeleton } from "@heroui/react"
+import { Skeleton as HeroSkeleton, skeletonVariants } from "@heroui/react"
+import type { ReactNode } from "react"
 
 export type SkeletonShape = "text" | "rect" | "circle"
 export type SkeletonRatio = "square" | "landscape" | "wide"
@@ -60,5 +61,22 @@ export const Skeleton = ({ shape = "text", lines = 1, ratio = "landscape", size 
             data-contract="STATE-2 MOTION-2"
             className={shape === "circle" ? "starci-core-skeleton rounded-full" : "starci-core-skeleton"}
         />
+    )
+}
+
+const PLACEHOLDER_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({ className: "starci-core-skeleton-placeholder" })
+
+/**
+ * Internal - skeleton parity for a slot whose ready content is known while it loads (a title, an action, a leading mark).
+ * The content is laid out exactly as the ready slot lays it out, unseen and inert, and the shimmer paints over its box,
+ * so the loading slot has the ready slot's size by construction. `text` is a run of copy (one line box per line),
+ * `block` a control or mark, `circle` a round mark, `region` a block-level body (a code block). Empty text takes a default bar width.
+ */
+export const SkeletonPlaceholder = ({ children, shape = "text" }: { readonly children?: ReactNode; readonly shape?: "text" | "block" | "circle" | "region" }) => {
+    const Element = shape === "region" ? "div" : "span"
+    return (
+        <Element aria-hidden="true" inert className={PLACEHOLDER_CLASS_NAME} data-shape={shape} data-contract="STATE-2 MOTION-2">
+            {children}
+        </Element>
     )
 }

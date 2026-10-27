@@ -95,7 +95,17 @@ export type SurfaceCardProps = (LabelledSurfaceCard | SelfNamedSurfaceCard) & (P
     readonly height?: SurfaceCardHeight
     /** Draw one accent sweep behind this surface; use for one featured card only. */
     readonly isHighlight?: boolean
+    /**
+     * How the card sits in the layout. `floating` (default): a card among other content in the page flow. `panel`: the card
+     * IS a docked panel or full-height region of the layout (a side column such as a chat details pane). The family decides
+     * where each places a visible `label` (ruling card-label-placement-per-grammar): Core keeps a floating label outside,
+     * as an unpainted row above the material, and carries a panel title inside, as the card header; Offset Pop keeps both
+     * outside. Stamped as `data-grammar-surface-placement`.
+     */
+    readonly placement?: SurfaceCardPlacement
 }
+
+export type SurfaceCardPlacement = "floating" | "panel"
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -138,6 +148,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         measure = "content",
         height = "auto",
         isHighlight = false,
+        placement = "floating",
     } = props
     const depth = useSurfaceNesting() ? "nested" : "top"
     const treatment: SurfaceCardTreatment = props.treatment ?? "surface"
@@ -233,6 +244,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-height={height}
             data-grammar-interaction={wholeAction === undefined ? "static" : "whole-action"}
             data-grammar-surface-labelled={label === undefined ? "false" : "true"}
+            data-grammar-surface-placement={placement}
             data-grammar-surface-card="true"
             data-grammar-nesting="surface"
             data-grammar-surface-treatment={treatment}

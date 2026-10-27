@@ -31,7 +31,10 @@ type ButtonBase = {
      * and carries them as its accessible description. It has no effect while the Button is enabled.
      */
     readonly disabledReason?: string
-    /** Initial unresolved-content geometry. It is distinct from action-owned pending. */
+    /**
+     * Initial unresolved-content geometry. It is distinct from action-owned pending. Skeleton parity: the loading Button keeps
+     * the ready box (control height, label and start/end content laid out as an unseen measured placeholder).
+     */
     readonly isSkeleton?: boolean
     /** Pending belongs to the action that started the work and blocks duplicate presses. */
     readonly isPending?: boolean
@@ -131,9 +134,9 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     const unavailable = isDisabled || isPending || isSkeleton
     const content = (
         <>
-            {isSkeleton ? null : isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
+            {isPending && !isSkeleton ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
             <span aria-busy={isPending || undefined}>{children}</span>
-            {isPending || isSkeleton ? null : endContent}
+            {isPending && !isSkeleton ? null : endContent}
         </>
     )
 

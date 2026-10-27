@@ -2,6 +2,7 @@
 
 import { Tag as HeroTag, TagGroup as HeroTagGroup, type Selection } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
+import { FieldSkeletonScope } from "../../primitive/Field/index.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 
 export type TagGroupItem = {
@@ -61,6 +62,11 @@ export type TagGroupProps = TagGroupRemoval & TagGroupReorder & {
     readonly emptyContent?: ReactNode
     readonly size?: "sm" | "md" | "lg"
     readonly className?: string
+    /**
+     * Unresolved tags (knowledge STATE-8): the same tags at the same size, inert, each painted as a Skeleton with its
+     * label laid out unseen, so the group keeps its ready box (skeleton parity); the root is `aria-busy`.
+     */
+    readonly isSkeleton?: boolean
 }
 
 const toIds = (selection: Selection, items: ReadonlyArray<TagGroupItem>): ReadonlyArray<string> => selection === "all"
@@ -93,7 +99,11 @@ const tagIdOf = (target: EventTarget | null, root: HTMLElement): string | undefi
  * each move through a live region.
  * Contract: root STATE-1, list FOCUS-2, chip FOCUS-1, remove A11Y-2, empty STATE-3.
  */
-export const TagGroup = ({
+export const TagGroup = (props: TagGroupProps) => props.isSkeleton === true
+    ? <FieldSkeletonScope component="TagGroup"><TagGroupControl {...props} /></FieldSkeletonScope>
+    : <TagGroupControl {...props} />
+
+const TagGroupControl = ({
     label,
     items,
     selectionMode = "none",

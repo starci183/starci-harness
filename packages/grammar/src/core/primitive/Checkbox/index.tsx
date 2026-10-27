@@ -7,6 +7,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
@@ -22,6 +24,8 @@ export type CheckboxProps = Omit<FieldControlProps, "isLabelHidden"> & {
     readonly isIndeterminate?: boolean
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
     readonly variant?: "primary" | "secondary"
+    /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
+    readonly isSkeleton?: boolean
 }
 
 /** Shared checkbox anatomy. Also rendered by CheckboxGroup for each of its options. */
@@ -51,10 +55,18 @@ export const CheckboxItem = ({ label, description, errorMessage, isStandalone }:
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Checkbox = ({ isSkeleton = false, ...props }: CheckboxProps) => isSkeleton
+    ? <FieldSkeletonScope component="Checkbox"><CheckboxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <CheckboxControl {...props} />
+
+/**
  * One on/off choice with its label as part of the hit area. Space toggles; the vendor supplies the
  * native checkbox input, `aria-checked="mixed"` for indeterminate, and required/invalid wiring.
  */
-export const Checkbox = ({
+const CheckboxControl = ({
     value,
     isSelected,
     defaultSelected,
@@ -62,7 +74,7 @@ export const Checkbox = ({
     isIndeterminate = false,
     variant: requestedVariant,
     ...field
-}: CheckboxProps) => {
+}: Omit<CheckboxProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     return (
         <HeroCheckbox

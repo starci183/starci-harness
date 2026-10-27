@@ -7,7 +7,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
@@ -33,8 +34,9 @@ export type CheckboxGroupProps = FieldControlProps & {
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
     readonly variant?: "primary" | "secondary"
     /**
-     * Initial unresolved content (knowledge STATE-8): the group label and each option label stay real text, each checkbox becomes a
-     * Skeleton box of the same size (descriptions are not drawn); `aria-hidden` geometry, nothing focusable, root `aria-busy`.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
 }
@@ -52,23 +54,28 @@ export type CheckboxGroupProps = FieldControlProps & {
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const CheckboxGroup = ({ isSkeleton = false, ...props }: CheckboxGroupProps) => isSkeleton
+    ? <FieldSkeletonScope component="CheckboxGroup"><CheckboxGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <CheckboxGroupControl {...props} />
+
+/**
  * Several independent choices under one group name (`role="group"`, labelled by the group label).
  * Required means "at least one", validated by the vendor; the group owns the one error slot.
  */
-export const CheckboxGroup = ({
+const CheckboxGroupControl = ({
     options,
     value,
     defaultValue,
     onValueChange,
     orientation = "vertical",
     variant: requestedVariant,
-    isSkeleton = false,
     ...field
-}: CheckboxGroupProps) => {
+}: Omit<CheckboxGroupProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
-    return isSkeleton ? (
-        <FieldSkeleton component="CheckboxGroup" tier="composite" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} variant={variant} kind="choices" choiceLabels={options.map((option) => option.label)} orientation={orientation} className="starci-core-choice-group" />
-    ) : (
+    return (
         <HeroCheckboxGroup
             data-tier="composite"
             data-component="CheckboxGroup"

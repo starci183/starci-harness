@@ -1,6 +1,6 @@
 import { cn } from "@heroui/react"
 import { createElement, type ReactNode } from "react"
-import { Skeleton } from "../Skeleton/index.js"
+import { SkeletonPlaceholder } from "../Skeleton/index.js"
 
 export type SectionHeaderProps = {
     readonly title: ReactNode
@@ -24,9 +24,9 @@ export type SectionHeaderProps = {
     /** Closed semantic anatomy; ContextIntro requires eyebrow, title and description. */
     readonly composition?: "section-header" | "context-intro"
     /**
-     * Draw the header as inert geometry while its content is unresolved (knowledge STATE-8): `title` keeps its heading rank and
-     * size but holds a Skeleton text line, `description` and `meta` become Skeleton text of their own size (each only if passed),
-     * `count` is dropped, and `action` keeps its footprint as a small Skeleton block with no control inside. `eyebrow` stays real.
+     * Draw the header as inert geometry while its content is unresolved (knowledge STATE-8). Skeleton parity: `title` (with
+     * `count`), `description`, `meta` and `action` keep their slots and are laid out unseen as measured placeholders under a
+     * shimmer, so the loading header has the ready header's box; an empty title takes a default bar. `eyebrow` stays real.
      * The skeleton parts are `aria-hidden` (the heading is hidden with its line, so no empty heading is announced); the root is `aria-busy`.
      */
     readonly isSkeleton?: boolean
@@ -67,13 +67,13 @@ export const SectionHeader = ({
             {eyebrow === undefined ? null : <div className="starci-core-section-eyebrow">{eyebrow}</div>}
             {createElement(
                 `h${level}`,
-                { className: "starci-core-section-title starci-core-section-skeleton-title", id, "aria-hidden": "true", "data-contract": "MARGIN-0 FLOW-3" },
-                <Skeleton shape="text" />,
+                { className: "starci-core-section-title", id, "aria-hidden": "true", "data-contract": "MARGIN-0 FLOW-3" },
+                <SkeletonPlaceholder key="title">{title}{count === undefined ? null : <span className="starci-core-section-count">{` (${count})`}</span>}</SkeletonPlaceholder>,
             )}
-            {description === undefined ? null : <div aria-hidden="true" className="starci-core-section-description starci-core-section-skeleton-description"><Skeleton shape="text" /></div>}
+            {description === undefined ? null : <div aria-hidden="true" className="starci-core-section-description"><SkeletonPlaceholder>{description}</SkeletonPlaceholder></div>}
         </div>
-        {meta === undefined ? null : <div aria-hidden="true" className="starci-core-section-meta starci-core-section-skeleton-meta"><Skeleton shape="text" /></div>}
-        {action === undefined ? null : <div aria-hidden="true" className="starci-core-section-action"><span className="starci-core-section-skeleton-action"><Skeleton shape="rect" /></span></div>}
+        {meta === undefined ? null : <div aria-hidden="true" className="starci-core-section-meta"><SkeletonPlaceholder>{meta}</SkeletonPlaceholder></div>}
+        {action === undefined ? null : <div aria-hidden="true" className="starci-core-section-action"><SkeletonPlaceholder shape="block">{action}</SkeletonPlaceholder></div>}
     </div>
 ) : (
     <div

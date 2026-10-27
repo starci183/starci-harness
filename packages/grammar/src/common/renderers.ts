@@ -48,7 +48,7 @@ export { ChatBubble, ChatBubbleSkeletons, type ChatBubbleProps, type ChatBubbleS
 export { FillViewport, type FillViewportBottomInset, type FillViewportMinHeight, type FillViewportProps } from "../core/composite/FillViewport/index.js"
 export { HorizontalScrollRegion, type HorizontalScrollRegionProps } from "../core/composite/HorizontalScrollRegion/index.js"
 export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/composite/VerticalScrollRegion/index.js"
-export { SurfaceCard, type SurfaceCardProps, type WholeCardAction } from "../core/branch/SurfaceCard/index.js"
+export { SurfaceCard, type SurfaceCardPlacement, type SurfaceCardProps, type WholeCardAction } from "../core/branch/SurfaceCard/index.js"
 export type { SurfaceCardMotif, SurfaceCardTreatment } from "../core/branch/SurfaceCard/classNames.js"
 export { SurfaceListCard, type SurfaceListCardProps, type SurfaceListRowVerdict } from "../core/branch/SurfaceListCard/index.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/branch/MarkdownArticle/index.js"

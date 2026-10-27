@@ -327,15 +327,6 @@
         overflow-wrap: anywhere;
     }
 
-    /* Loading header (knowledge STATE-8): the same ranks and sizes, the copy drawn as Skeleton text, the action as a footprint. */
-    .starci-core-section-skeleton-title > .starci-core-skeleton-group { inline-size: min(60%, 20rem); }
-    .starci-core-section-skeleton-title .starci-core-skeleton { block-size: 1em; }
-    .starci-core-section-skeleton-description > .starci-core-skeleton-group { inline-size: min(90%, 28rem); }
-    .starci-core-section-skeleton-meta > .starci-core-skeleton-group { inline-size: 6rem; }
-    .starci-core-section-skeleton-meta .starci-core-skeleton { block-size: 0.75rem; }
-    .starci-core-section-skeleton-action { display: block; inline-size: 6rem; block-size: 2.5rem; }
-    .starci-core-section-skeleton-action > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
-
     /*
      * Keyboard-reachable scroll owners (VerticalScrollRegion / HorizontalScrollRegion when focusable,
      * the Rail body, fenced code and Markdown table frames) draw the same inset focus ring the chat
@@ -2823,6 +2814,18 @@
         flex: 1 1 0%;
     }
 
+    /*
+     * Dividers are full bleed (DNA-COMMON-DIVIDER-FULL-BLEED): a horizontal hairline placed in a card's content region
+     * runs from card edge to card edge, through the content inset, never inset from them; the content above and below
+     * it keeps the card inset from the rule.
+     */
+    .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
+        align-self: stretch;
+        inline-size: auto !important;
+        margin-inline: calc(-1 * var(--starci-core-surface-inset, 1rem)) !important;
+        margin-block: var(--starci-core-surface-inset, 1rem);
+    }
+
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */
     .starci-core-divider-bare[data-grammar-divider-orientation="vertical"] {
         align-self: stretch;
@@ -2942,22 +2945,14 @@
         height: 1rem;
     }
 
+    /* The resting glyph keeps the usage box of the glyph it stands for (skeleton parity); the size comes from data-usage. */
     .starci-core-icon-skeleton {
         display: inline-block;
-        width: 1.25rem !important;
-        height: 1.25rem !important;
         flex: none;
         border-radius: var(--starci-core-pill-radius, 999px) !important;
     }
 
     /* --- Icon button: a HeroUI `Button` worn as a circle. --- */
-    .starci-core-control-size .starci-core-field-skeleton-control {
-        box-sizing: border-box;
-        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-        max-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
-    }
-
     /*
      * Owner ruling `control-height-40`: one control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
      * standalone control. `md` and `control` are the same square circle in both axes (the vendor's md:h-9 desktop step
@@ -3231,16 +3226,6 @@
         font-size: 0.75rem;
     }
 
-    .starci-core-input-resting-label {
-        width: 33.333333% !important;
-        height: 1rem !important;
-    }
-
-    .starci-core-input-resting-control {
-        width: 100% !important;
-        height: 2.5rem !important;
-    }
-
     /* --- Heading: the FONT rank each level stamps, drawn from the family's own sheet. --- */
     /*
      * `Heading` renders through the vendor's `Typography.Heading`, which sizes `.typography--h1`
@@ -3362,19 +3347,32 @@
         line-clamp: 2;
     }
 
-    /* The resting line keeps its size geometry and hides its copy; no tone is visible to claim. */
+    /*
+     * Skeleton parity: the loading line IS the ready line (same element, display, size and overflow), so its box never
+     * moves. Nothing in it is painted; the shimmer bar wraps the copy as a measured placeholder, one line box tall per
+     * line (`vertical-align: top` keeps the bar from growing the line box), or takes the size's default width when no
+     * copy was passed. The start content keeps its place, unseen.
+     */
     .starci-core-text[data-loading="true"] {
-        display: inline-block;
-        max-width: 100%;
-        border-radius: var(--radius, 0.25rem);
         color: transparent;
         user-select: none;
     }
 
-    .starci-core-text[data-loading="true"][data-size="xs"] { width: 2.5rem; }
-    .starci-core-text[data-loading="true"][data-size="sm"] { width: 3rem; }
-    .starci-core-text[data-loading="true"][data-size="md"] { width: 10rem; }
-    .starci-core-text[data-loading="true"][data-size="metric-lead"] { width: 10rem; }
+    .starci-core-text[data-loading="true"] > :not(.starci-core-text-skeleton) { visibility: hidden; }
+
+    .starci-core-text-skeleton {
+        display: inline-block;
+        max-inline-size: 100%;
+        vertical-align: top;
+        border-radius: var(--radius, 0.25rem);
+    }
+
+    .starci-core-text[data-overflow="clamp-2"] > .starci-core-text-skeleton { max-block-size: 2lh; }
+    .starci-core-text[data-overflow="truncate"] > .starci-core-text-skeleton { white-space: nowrap; }
+
+    .starci-core-text[data-size="xs"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 2.5rem; }
+    .starci-core-text[data-size="sm"] > .starci-core-text-skeleton[data-empty="true"] { inline-size: 3rem; }
+    .starci-core-text:is([data-size="md"], [data-size="metric-lead"]) > .starci-core-text-skeleton[data-empty="true"] { inline-size: 10rem; }
 
     /* --- Text action: one recipe, eight appearances, selected by data attributes. --- */
     /*
@@ -3496,13 +3494,18 @@
         text-decoration-line: none;
     }
 
-    .starci-core-text-action-resting {
-        display: inline-flex;
-        width: 4rem;
-        flex: none;
+    /*
+     * A loading TextAction (skeleton parity): the same recipe on an inert span keeps the ready box; the label is a measured
+     * placeholder inside the shimmer bar and the start/end content keep their places, unseen.
+     */
+    .starci-core-text-action[data-loading="true"] {
         color: transparent;
+        text-decoration-line: none;
         user-select: none;
     }
+
+    .starci-core-text-action-resting { border-radius: var(--radius, 0.25rem); }
+    .starci-core-text-action-placeholder { display: contents; visibility: hidden; }
 
     /*
      * --- Button: full width ---
@@ -3799,7 +3802,7 @@
 
     /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */
     .starci-core-chat-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
-    .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { block-size: 0.875rem; }
+    .starci-core-chat-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
     .starci-core-chat-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: 1rem; }
 
     @media (forced-colors: active) {

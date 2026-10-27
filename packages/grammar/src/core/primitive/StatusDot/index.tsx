@@ -1,6 +1,6 @@
 "use client"
 
-import { Chip, Tooltip as HeroTooltip } from "@heroui/react"
+import { Chip, Tooltip as HeroTooltip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../branch/Tooltip/classNames.js"
@@ -12,6 +12,11 @@ export type StatusDotSize = "sm" | "md" | "lg"
 type StatusDotBase = {
     readonly tone?: StatusDotTone
     readonly size?: StatusDotSize
+    /**
+     * Initial unresolved status (knowledge STATE-8). Skeleton parity: the same anatomy at the same size, painted as one
+     * Skeleton block, its dot and label kept as an unseen measured placeholder; `aria-hidden`, no Tooltip, nothing announced.
+     */
+    readonly isSkeleton?: boolean
 }
 
 /** With text: dot + text + light tinted background, shaped exactly like a HeroUI soft Chip of the same size. */
@@ -31,6 +36,8 @@ type StatusDotOnly = StatusDotBase & {
 }
 
 export type StatusDotProps = StatusDotWithText | StatusDotOnly
+
+const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base()
 
 const CHIP_COLORS = {
     neutral: "default",
@@ -61,12 +68,13 @@ export const StatusDotMark = ({ tone, echo = false }: { readonly tone: StatusDot
  * The text anatomy, shared by `StatusDot` and `Badge isDot`: a soft HeroUI `Chip`, the dot, then the label.
  * `component` and `extra` let Badge keep its own `data-component` and attributes on the same anatomy.
  */
-export const StatusDotChip = ({ tone, size, children, component = "StatusDot", extra, ...aria }: {
+export const StatusDotChip = ({ tone, size, children, component = "StatusDot", extra, isSkeleton = false, ...aria }: {
     readonly tone: StatusDotTone
     readonly size: StatusDotSize
     readonly children: ReactNode
     readonly component?: string
     readonly extra?: Readonly<Record<string, string | undefined>>
+    readonly isSkeleton?: boolean
     readonly "aria-label"?: string
 }) => (
     <Chip
@@ -79,8 +87,8 @@ export const StatusDotChip = ({ tone, size, children, component = "StatusDot", e
         color={CHIP_COLORS[tone]}
         variant="soft"
         size={size}
-        className="starci-core-status-dot starci-core-status-dot-chip"
-        {...aria}
+        className={isSkeleton ? `starci-core-status-dot starci-core-status-dot-chip ${SKELETON_CLASS_NAME}` : "starci-core-status-dot starci-core-status-dot-chip"}
+        {...(isSkeleton ? { "data-loading": "true", "aria-hidden": true } : aria)}
     >
         <StatusDotMark tone={tone} />
         <span className="starci-core-status-dot-label">{capitaliseFirst(children)}</span>
@@ -131,6 +139,16 @@ const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; re
 export const StatusDot = (props: StatusDotProps) => {
     const tone = props.tone ?? "neutral"
     const size = props.size ?? "md"
+    if (props.isSkeleton === true) {
+        if (props.children === undefined) {
+            return (
+                <span aria-hidden="true" className={`starci-core-status-dot ${SKELETON_CLASS_NAME}`} data-tier="atom" data-component="StatusDot" data-variant="static" data-tone={tone} data-size={size} data-loading="true">
+                    <StatusDotMark tone={tone} />
+                </span>
+            )
+        }
+        return <StatusDotChip tone={tone} size={size} isSkeleton>{props.children}</StatusDotChip>
+    }
     if (props.children === undefined) {
         return <DotOnly tone={tone} size={size} echo={props.echo === true} label={props["aria-label"] ?? "Status"} />
     }

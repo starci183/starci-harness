@@ -141,10 +141,6 @@ export const TextAction = (props: TextActionProps) => {
     const pressLockRef = useRef(false)
     const unavailable = isDisabled || isPending
 
-    if (isSkeleton) {
-        return <span data-tier="atom" data-component="TextAction" data-loading="true" data-grammar-control-size={size === "control" ? "control" : undefined} aria-hidden className={SKELETON_CLASS_NAME}>&nbsp;</span>
-    }
-
     const shared = {
         "data-tier": "atom",
         "data-component": "TextAction",
@@ -157,6 +153,22 @@ export const TextAction = (props: TextActionProps) => {
         "data-contract": getActionContract(appearance, size, isCurrent),
         className: getActionClassName(),
     } as const
+
+    /*
+     * Skeleton parity: the loading action is the same recipe on an inert span (appearance, size and pressable floor
+     * unchanged), so it keeps the ready action's box. Its label stays laid out as a measured placeholder inside the
+     * shimmer bar; the start and end content keep their places, unseen.
+     */
+    if (isSkeleton) {
+        return (
+            <span {...shared} aria-busy={undefined} data-element="span" data-loading="true" aria-hidden="true" data-contract={FONT_RULE_BY_SIZE[size]}>
+                {startContent == null ? null : <span className="starci-core-text-action-placeholder">{startContent}</span>}
+                <span className={SKELETON_CLASS_NAME}>{children}</span>
+                {endContent == null ? null : <span className="starci-core-text-action-placeholder">{endContent}</span>}
+            </span>
+        )
+    }
+
     const content = (
         <>
             {isPending ? <Spinner size="sm" color="current" aria-hidden="true" /> : startContent}

@@ -6,7 +6,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
@@ -31,8 +32,9 @@ export type SwitchProps = FieldControlProps & {
     /** The thumb glyph while on (a sun/moon theme switch passes the moon here). Needs `thumbIcon`; without one it is ignored. */
     readonly selectedThumbIcon?: IconSource
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real text and the switch track becomes a Skeleton of the same size,
-     * `aria-hidden`, no `role="switch"` and nothing focusable; the root is `aria-busy`.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
 }
@@ -47,9 +49,11 @@ export type SwitchProps = FieldControlProps & {
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
  * on submit. The label is part of the hit area; Space toggles.
  */
-export const Switch = ({ value, isSelected, defaultSelected, onSelectedChange, size = "md", thumbIcon, selectedThumbIcon, isSkeleton = false, ...field }: SwitchProps) => isSkeleton ? (
-    <FieldSkeleton component="Switch" tier="atom" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} kind="switch" switchSize={size} className="starci-core-switch" />
-) : (
+export const Switch = ({ isSkeleton = false, ...props }: SwitchProps) => isSkeleton
+    ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <SwitchControl {...props} />
+
+const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "md", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isSkeleton">) => (
     <HeroSwitch
         data-tier="atom"
         data-component="Switch"

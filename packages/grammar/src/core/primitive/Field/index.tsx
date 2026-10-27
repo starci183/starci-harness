@@ -6,9 +6,8 @@ import {
     Label as HeroLabel,
 } from "@heroui/react"
 import { FieldErrorContext } from "react-aria-components/FieldError"
-import { useCallback, useId, useState, type CSSProperties, type ReactNode } from "react"
+import { useCallback, useId, useState, type ReactNode } from "react"
 import type { PresentationState } from "../../../common/state.js"
-import { Skeleton } from "../Skeleton/index.js"
 
 /**
  * The one field contract every Grammar form control shares.
@@ -198,6 +197,8 @@ export type FieldProps = FieldControlProps & {
     readonly id?: string
     /** Renders the control with the attributes that bind it to this field's label, guidance and error. */
     readonly children: (control: FieldControlAttributes) => ReactNode
+    /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control box painted as a Skeleton. */
+    readonly isSkeleton?: boolean
 }
 
 /**
@@ -206,7 +207,11 @@ export type FieldProps = FieldControlProps & {
  * for everything else, with the id and `aria-describedby` / `aria-invalid` wiring handed to the
  * control so a custom control is announced exactly like a Grammar one.
  */
-export const Field = ({
+export const Field = ({ isSkeleton = false, ...props }: FieldProps) => isSkeleton
+    ? <FieldSkeletonScope component="Field"><FieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <FieldControl {...props} />
+
+const FieldControl = ({
     id: idProp,
     label,
     isLabelHidden,
@@ -266,84 +271,28 @@ export const Field = ({
     )
 }
 
-export type FieldSkeletonKind = "select" | "textarea" | "input" | "segmented" | "choices" | "switch"
-
 /**
- * Loading view of a field (knowledge STATE-8): the label stays real text, the control becomes Skeleton geometry of the loaded
- * control's size. The geometry is `aria-hidden` and nothing in it is focusable; the root owns `aria-busy`. Description and error
- * copy are not drawn (they are content, and nothing is invalid while loading).
- * `kind`: `select` and `input` a one-line field block, `textarea` the `rows` height, `segmented` a joined-segments block
- * (`count` segments wide; `fill` stretches it), `choices` one Skeleton box per option beside its real label, `switch` a
- * Skeleton track beside the real label.
+ * Loading view of a form control (knowledge STATE-8), with skeleton parity: the control renders its READY anatomy at the same
+ * props (label, description, control box, options), so the loading field has the ready field's box by construction, inside
+ * this scope. The scope is layout-neutral (`display: contents`), `inert` (nothing focusable or announced but the
+ * root's `aria-busy`), and paints every control box in it (`data-grammar-field-control`, the Input control, the choice
+ * controls) as a Skeleton: its value, indicator or thumb is not drawn. Label and description stay real text.
  */
-export const FieldSkeleton = ({ component, tier, label, isLabelHidden, isRequired, variant, kind, rows, count, fill, choiceLabels, orientation, switchSize, segmentedSize, className }: {
-    readonly component: string
-    readonly tier: "atom" | "branch" | "composite"
-    readonly label: ReactNode
-    readonly isLabelHidden?: boolean | undefined
-    readonly isRequired?: boolean | undefined
-    readonly variant?: FieldVariant | undefined
-    readonly kind: FieldSkeletonKind
-    readonly rows?: number
-    readonly count?: number
-    readonly fill?: boolean
-    readonly choiceLabels?: ReadonlyArray<ReactNode>
-    readonly orientation?: "vertical" | "horizontal"
-    /** `switch` kind only: the track size the loaded control will have, so the Skeleton keeps its geometry. */
-    readonly switchSize?: "md" | "lg" | "control"
-    /** `segmented` kind only: the group size the loaded control will have, so the Skeleton keeps its height. */
-    readonly segmentedSize?: "md" | "lg" | "control"
-    readonly className: string
-}) => {
-    const geometry = (shape: string, style?: CSSProperties, extra?: Record<string, string>) => (
-        <span aria-hidden="true" className="starci-core-field-skeleton-control" data-grammar-field-skeleton={shape} {...(extra ?? {})} {...(style === undefined ? {} : { style })}>
-            <Skeleton shape="rect" />
-        </span>
-    )
-    const labelNode = (
-        <span className={labelClassName(isLabelHidden)} data-grammar-field-label="true">
-            {label}
-            {isRequired === true ? <span aria-hidden="true" className="starci-core-field-required">*</span> : null}
-        </span>
-    )
-    return (
-        <div
-            data-tier={tier}
-            data-component={component}
-            data-contract="A11Y-1 STATE-8"
-            className={`${kind === "switch" ? "starci-core-choice" : "starci-core-field"} ${className} starci-core-field-skeleton`}
-            {...(variant === undefined ? {} : fieldVariantAttributes(variant))}
-            {...(orientation === undefined ? {} : { "data-grammar-orientation": orientation })}
-            data-grammar-skeleton="true"
-            data-loading="true"
-            aria-busy="true"
-        >
-            {kind === "switch" ? (
-                <span className="starci-core-choice-content">
-                    {geometry("switch", undefined, switchSize === undefined ? undefined : { "data-grammar-switch-size": switchSize })}
-                    {labelNode}
-                </span>
-            ) : (
-                <>
-                    {labelNode}
-                    {kind === "choices" ? (
-                        <div className="starci-core-choice-group-options">
-                            {(choiceLabels ?? []).map((choiceLabel, index) => (
-                                <span key={index} className="starci-core-choice-content">
-                                    {geometry("choice")}
-                                    <span className="starci-core-field-skeleton-choice-label">{choiceLabel}</span>
-                                </span>
-                            ))}
-                        </div>
-                    ) : kind === "textarea" ? (
-                        geometry("textarea", { "--starci-core-skeleton-rows": Math.max(1, Math.round(Number.isFinite(rows) ? (rows as number) : 4)) } as CSSProperties)
-                    ) : kind === "segmented" ? (
-                        geometry("segmented", { "--starci-core-skeleton-segments": Math.max(1, Math.round(count ?? 2)) } as CSSProperties, { "data-width": fill === true ? "fill" : "content", ...(segmentedSize === undefined ? {} : { "data-grammar-segmented-size": segmentedSize }) })
-                    ) : (
-                        geometry(kind)
-                    )}
-                </>
-            )}
-        </div>
-    )
-}
+export const FieldSkeletonScope = ({ component, children }: { readonly component: string; readonly children: ReactNode }) => (
+    <div
+        className="starci-core-field-skeleton-scope"
+        data-grammar-skeleton-of={component}
+        data-grammar-field-skeleton="true"
+        data-grammar-skeleton="true"
+        data-loading="true"
+        data-contract="A11Y-1 STATE-8"
+        aria-busy="true"
+        inert
+    >
+        {children}
+    </div>
+)
+
+/** What a loading control drops from its props: nothing is invalid, in error or pending while it loads. */
+export const loadingFieldProps = <P extends object>(props: P): P =>
+    ({ ...props, errorMessage: undefined, isInvalid: undefined, isError: undefined, isPending: undefined }) as P

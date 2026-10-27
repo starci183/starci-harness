@@ -1,6 +1,7 @@
 "use client"
 
 import { useFieldVariant } from "../../surfaceContext.js"
+import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
 import {
     Description as HeroDescription,
@@ -8,7 +9,6 @@ import {
     Input as HeroInput,
     InputGroup as HeroInputGroup,
     Label as HeroLabel,
-    Skeleton as HeroSkeleton,
     TextField as HeroTextField,
 } from "@heroui/react"
 
@@ -84,7 +84,15 @@ const KINDS = {
  * actions). Give the row `align-items: start` and align the action to that box (offset by the label and description above it),
  * so an error appearing under the field never shifts the action.
  */
-export const Input = ({
+/**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside `FieldSkeletonScope`
+ * (inert, `aria-busy`, the control box painted as a Skeleton), so the loading field keeps the ready box, label and description.
+ */
+export const Input = ({ isSkeleton = false, ...props }: InputProps) => isSkeleton
+    ? <FieldSkeletonScope component="Input"><InputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <InputControl {...props} />
+
+const InputControl = ({
     id,
     name,
     label,
@@ -100,7 +108,6 @@ export const Input = ({
     isError = false,
     isDisabled = false,
     isRequired = false,
-    isSkeleton = false,
     isReadOnly = false,
     isCopyable = false,
     copyLabel,
@@ -116,7 +123,7 @@ export const Input = ({
     onBlur,
     onPaste,
     autoFocus = false,
-}: InputProps) => {
+}: Omit<InputProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     const [isRevealed, setIsRevealed] = useState(false)
     const kind = KINDS[kindName]
@@ -150,15 +157,6 @@ export const Input = ({
         } catch {
             control?.select()
         }
-    }
-
-    if (isSkeleton) {
-        return (
-            <div data-tier="atom" data-component="Input" data-state="skeleton" data-grammar-variant={variant} data-contract="GAP-2" className="starci-core-input">
-                {isLabelHidden ? null : <HeroSkeleton className="starci-core-input-resting-label" />}
-                <HeroSkeleton className="starci-core-input-resting-control" data-grammar-control-size={size === "control" ? "control" : undefined} />
-            </div>
-        )
     }
 
     return (
