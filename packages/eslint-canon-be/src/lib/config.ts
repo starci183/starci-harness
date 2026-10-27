@@ -19,6 +19,15 @@
 import tsParser from "@typescript-eslint/parser"
 import { OUTSIDE_THE_SCAN_FILES } from "../../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { sonarWayRules } from "../../runtime/scripts/lib/sonar-way.mjs"
+import type { TSESLint } from "@typescript-eslint/utils"
+import type { HfsView } from "./hfs.ts"
+import type { Recommended, RuleEntry, Rules } from "./rule.ts"
+
+/** The plugin object the factory registers as `starci-be`. */
+export interface CanonPlugin {
+    readonly meta?: { readonly name?: string; readonly version?: string }
+    readonly rules: Rules
+}
 
 /** A disable directive is a weakening of lint, and one that suppresses nothing is dead weight. */
 export const linterOptions = Object.freeze({ noInlineConfig: true, reportUnusedDisableDirectives: "error" })
@@ -36,7 +45,7 @@ export const IGNORED = Object.freeze(["dist/**", "coverage/**", "**/node_modules
 const ROOT_SCRIPTS = Object.freeze(["*.js", "*.mjs", "*.cjs"])
 
 /** The typescript-eslint rules the canon borrows (BE-CONVENTION 1.17, R72/R73; Sonar S1874, S6551 and S7503 through R235), all `error`. */
-export const BORROWED = Object.freeze({
+export const BORROWED: Recommended = Object.freeze<Recommended>({
     "@typescript-eslint/consistent-type-assertions": ["error", { assertionStyle: "never" }],
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-non-null-assertion": "error",
@@ -55,7 +64,7 @@ export const BORROWED = Object.freeze({
     "no-console": "error",
 })
 
-const levelOf = (setting) => (Array.isArray(setting) ? setting[0] : setting)
+const levelOf = (setting: RuleEntry): TSESLint.SharedConfig.RuleLevel => (Array.isArray(setting) ? setting[0] : setting)
 
 /**
  * The flat config of one back-end repository.
@@ -66,7 +75,11 @@ const levelOf = (setting) => (Array.isArray(setting) ? setting[0] : setting)
  * @param {Record<string, unknown>} input.recommended - The canon levels.
  * @returns {Promise<Array<object>>} The flat config (ESLint awaits an exported promise): one ignore block, one rule block and the Sonar way block.
  */
-export const buildBeConfig = async ({ hfs, plugin, recommended }) => {
+export const buildBeConfig = async ({ hfs, plugin, recommended }: {
+    hfs: HfsView | null | undefined
+    plugin: CanonPlugin | null | undefined
+    recommended?: Recommended | undefined
+}): Promise<TSESLint.FlatConfig.ConfigArray> => {
     if (!hfs || typeof hfs.slotOf !== "function" || typeof hfs.repoRoot !== "string") {
         throw new Error("starciBeConfig needs { hfs: loadHfs(import.meta.url) } - the rules read the repository's slots through it")
     }

@@ -3,6 +3,8 @@
  * resolves to. The receiver of `.transaction` is judged by its TYPE (typeorm's `EntityManager` or `DataSource`), never by its name.
  */
 import { infraTypeOf } from "./persistence.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Context } from "./rule.ts"
 
 /**
  * The callback of a `.transaction(...)` call on a manager or data source, or null.
@@ -11,7 +13,7 @@ import { infraTypeOf } from "./persistence.ts"
  * @param {object} node - A CallExpression.
  * @returns {object | null} The arrow or function expression that receives the transactional manager.
  */
-export const transactionCallback = (context, node) => {
+export const transactionCallback = (context: Context, node: TSESTree.CallExpression): TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | null => {
     const callee = node.callee
     if (callee.type !== "MemberExpression" || callee.computed) return null
     if (callee.property.type !== "Identifier" || callee.property.name !== "transaction") return null
@@ -28,8 +30,8 @@ export const transactionCallback = (context, node) => {
  * @param {object} node - An Identifier.
  * @returns {object | null} The scope variable.
  */
-export const resolveVariable = (sourceCode, node) => {
-    for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+export const resolveVariable = (sourceCode: Readonly<TSESLint.SourceCode>, node: TSESTree.Identifier): TSESLint.Scope.Variable | null => {
+    for (let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(node); scope; scope = scope.upper) {
         const variable = scope.set.get(node.name)
         if (variable) return variable
     }

@@ -2,22 +2,25 @@
 import ts from "typescript"
 import { walk } from "./ast.ts"
 import { injectedMembers } from "./doors.ts"
-import { moduleReferences } from "./import-source.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { moduleReferences, visitModuleReference, type ModuleReference } from "./import-source.ts"
 import { baseName } from "./ports.ts"
-import { moduleOf, originsOfType, typed } from "./types.ts"
+import { childNode, moduleOf, originsOfType, resolvedSymbol, typed, type Typed, type TypeOrigin } from "./types.ts"
+import type { Context, Node } from "./rule.ts"
+import type { HfsView } from "./hfs.ts"
 
 const CQRS = "@nestjs/cqrs"
 const BUSES = new Set(["CommandBus", "QueryBus"])
 
 /** A feature handler has a feature owner and the closed handler role, regardless of its imported alias. */
-const isFeatureHandler = (hfs, file) => hfs.tierOf(file) === "feature" && baseName(file).endsWith(".handler.ts")
+const isFeatureHandler = (hfs: HfsView, file: string) => hfs.tierOf(file) === "feature" && baseName(file).endsWith(".handler.ts")
 
 /** The bus's package and declared name, or the feature handler's declaring file, establish the forbidden origin. */
-const forbiddenOrigin = (hfs, origin, buses) =>
+const forbiddenOrigin = (hfs: HfsView, origin: TypeOrigin, buses: ReadonlySet<string>): boolean =>
     (origin.module === CQRS && buses.has(origin.name)) || isFeatureHandler(hfs, origin.file)
 
 /** Include unions, intersections and class inheritance, so an alias or a subclass cannot conceal the bus. */
-const hasForbiddenType = (checker, hfs, type, buses = BUSES, seen = new Set()) => {
+const hasForbiddenType = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type | undefined, buses: ReadonlySet<string> = BUSES, seen = new Set<ts.Type>()): boolean => {
     if (!type || seen.has(type)) return false
     seen.add(type)
     if (originsOfType(checker, type).some((origin) => forbiddenOrigin(hfs, origin, buses))) return true
@@ -27,17 +30,17 @@ const hasForbiddenType = (checker, hfs, type, buses = BUSES, seen = new Set()) =
 }
 
 /** A bus or feature handler receiver is never a webhook's delegating call. */
-export const isWebhookForbiddenReceiver = (context, hfs, node) => {
+export const isWebhookForbiddenReceiver = (context: Context, hfs: HfsView, node: Node): boolean => {
     const { checker, toTs } = typed(context)
-    const reference = toTs(node)
+    const reference: ts.Node = toTs(node)
     return reference ? hasForbiddenType(checker, hfs, checker.getTypeAtLocation(reference)) : false
 }
 
 /** Resolve an imported/exported alias once before inspecting the actual declaration. */
-const targetOf = (checker, symbol) => symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+const targetOf = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts.Symbol | undefined => resolvedSymbol(checker, symbol)
 
 /** A module export's origin, including a bus subclass or an alias of its type. */
-const forbiddenExport = (checker, hfs, original) => {
+const forbiddenExport = (checker: ts.TypeChecker, hfs: HfsView, original: ts.Symbol): boolean => {
     const symbol = targetOf(checker, original)
     if (!symbol) return false
     const declarations = symbol.getDeclarations() ?? []
@@ -45,18 +48,19 @@ const forbiddenExport = (checker, hfs, original) => {
         const file = declaration.getSourceFile().fileName.replace(/\\/g, "/")
         return isFeatureHandler(hfs, file) || (moduleOf(declaration, file) === CQRS && BUSES.has(symbol.getName()))
     })) return true
-    if (declarations.length === 0) return false
-    const type = checker.getTypeOfSymbolAtLocation(symbol, declarations[0])
+    const [first] = declarations
+    if (first === undefined) return false
+    const type = checker.getTypeOfSymbolAtLocation(symbol, first)
     if (hasForbiddenType(checker, hfs, type)) return true
     return !!(symbol.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias))
         && hasForbiddenType(checker, hfs, checker.getDeclaredTypeOfSymbol(symbol))
 }
 
 /** Inspect selected exports of the referenced module, so barrels and renamed imports keep their real owner. */
-const forbiddenModuleReference = (checker, toTs, hfs, reference) => {
+const forbiddenModuleReference = (checker: ts.TypeChecker, toTs: Typed["toTs"], hfs: HfsView, reference: ModuleReference): boolean => {
     const { source, value, names } = reference
-    if (value === CQRS && names.some((name) => BUSES.has(name) || name === "*" || name === "default")) return true
-    const sourceNode = toTs(source)
+    if (value === CQRS && names.some((name) => BUSES.has(name ?? "") || name === "*" || name === "default")) return true
+    const sourceNode: ts.Node = toTs(source)
     const module = sourceNode ? targetOf(checker, checker.getSymbolAtLocation(sourceNode)) : null
     if (!module) return false
     const exports = checker.getExportsOfModule(module)
@@ -68,16 +72,16 @@ const forbiddenModuleReference = (checker, toTs, hfs, reference) => {
  * Forbidden import sites in a door or its declaring HTTP module. Named, type-only, namespace, dynamic and re-exported
  * imports all resolve to the actual export; an inline import type is judged by its resolved type.
  */
-export const webhookForbiddenReferences = (context, hfs, program) => {
+export const webhookForbiddenReferences = (context: Context, hfs: HfsView, program: TSESTree.Program): Node[] => {
     const { checker, toTs } = typed(context)
-    const nodes = new Set()
+    const nodes = new Set<Node>()
     const visitors = moduleReferences((reference) => {
         if (forbiddenModuleReference(checker, toTs, hfs, reference)) nodes.add(reference.node)
     })
     walk(program, (node) => {
-        visitors[node.type]?.(node)
+        visitModuleReference(visitors, node)
         if (node.type !== "TSImportType") return
-        const typeNode = toTs(node)
+        const typeNode: ts.Node = toTs(node)
         if (typeNode && hasForbiddenType(checker, hfs, checker.getTypeAtLocation(typeNode))) nodes.add(node)
     })
     // An ambiently supplied type still cannot be injected; an import finding already refuses the same dependency.
@@ -91,30 +95,31 @@ export const webhookForbiddenReferences = (context, hfs, program) => {
 }
 
 /** The symbol of a called member, including a statically resolved bracket access. */
-const calledSymbol = (checker, expression) => {
+const calledSymbol = (checker: ts.TypeChecker, expression: ts.Expression): ts.Symbol | undefined => {
     if (ts.isPropertyAccessExpression(expression)) return targetOf(checker, checker.getSymbolAtLocation(expression.name))
     if (ts.isElementAccessExpression(expression)) return targetOf(checker, checker.getSymbolAtLocation(expression.argumentExpression))
     return targetOf(checker, checker.getSymbolAtLocation(expression))
 }
 
 /** Overload declarations point back to their implementation; arrow-valued service members also carry a body. */
-const bodyOf = (declaration) => {
-    if (declaration?.body) return declaration.body
-    const initializer = declaration?.initializer
+const bodyOf = (declaration: ts.Node | undefined): ts.Node | null => {
+    const body = childNode(declaration, "body")
+    if (body) return body
+    const initializer = childNode(declaration, "initializer")
     return initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) ? initializer.body : null
 }
 
 /** Bodies the checker actually resolves at the intake call, never every other method of the service. */
-const calledBodies = (checker, call) => {
+const calledBodies = (checker: ts.TypeChecker, call: ts.CallExpression): ts.Node[] => {
     const signature = checker.getResolvedSignature(call)?.declaration
     const declarations = calledSymbol(checker, call.expression)?.getDeclarations() ?? []
-    return [...new Set([signature, ...declarations].map(bodyOf).filter(Boolean))]
+    return [...new Set([signature, ...declarations].map((declaration) => bodyOf(declaration)).filter((body): body is ts.Node => Boolean(body)))]
 }
 
 /** A method body dispatches on a CQRS bus or feature handler when the receiver's genuine declared type proves it. */
-const dispatchesCommand = (checker, hfs, body) => {
+const dispatchesCommand = (checker: ts.TypeChecker, hfs: HfsView, body: ts.Node): boolean => {
     let found = false
-    const visit = (node) => {
+    const visit = (node: ts.Node): void => {
         if (found) return
         if (ts.isCallExpression(node) && (ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression))) {
             const type = checker.getTypeAtLocation(node.expression.expression)
@@ -130,9 +135,9 @@ const dispatchesCommand = (checker, hfs, body) => {
  * Inspect a resolved domain intake's own body, closures included. Dynamic receivers, erased types, external signatures and
  * calls through further helpers remain semantic review: this check does not prove the full inbox/outbox transaction.
  */
-export const webhookIntakeDispatchesCommand = (context, hfs, call) => {
+export const webhookIntakeDispatchesCommand = (context: Context, hfs: HfsView, call: Node): boolean => {
     const { checker, toTs } = typed(context)
-    const reference = toTs(call)
+    const reference: ts.Node = toTs(call)
     if (!reference || !ts.isCallExpression(reference)) return false
     return calledBodies(checker, reference).some((body) => dispatchesCommand(checker, hfs, body))
 }

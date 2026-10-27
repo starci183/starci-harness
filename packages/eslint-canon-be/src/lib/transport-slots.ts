@@ -8,7 +8,7 @@
  */
 
 /** The slots of the feature kinds that are doors but are not an api's `transport/<protocol>/` folders. */
-export const KIND_DOOR_SLOTS = Object.freeze(["be.feature.webhooks.http", "be.feature.realtime.graphql", "be.feature.realtime.websocket", "be.feature.realtime.sse"])
+export const KIND_DOOR_SLOTS: readonly string[] = Object.freeze(["be.feature.webhooks.http", "be.feature.realtime.graphql", "be.feature.realtime.websocket", "be.feature.realtime.sse"])
 
 /**
  * True for a slot that holds transport code (`be.transport.<protocol>` and the door slots of the webhook and realtime kinds).
@@ -16,4 +16,4 @@ export const KIND_DOOR_SLOTS = Object.freeze(["be.feature.webhooks.http", "be.fe
  * @param {string | null} slot - A slot id from `hfs.slotOf`.
  * @returns {boolean} Whether files of that slot are transport files.
  */
-export const isTransportSlot = (slot) => typeof slot === "string" && (slot.startsWith("be.transport.") || KIND_DOOR_SLOTS.includes(slot))
+export const isTransportSlot = (slot: unknown): boolean => typeof slot === "string" && (slot.startsWith("be.transport.") || KIND_DOOR_SLOTS.includes(slot))

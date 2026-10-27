@@ -10,12 +10,22 @@
  * the quality rules of R48 judge the service specs.
  */
 import { basename } from "node:path"
+import type { HfsUnitRole, HfsView } from "./hfs.ts"
+
+/** A unit-tested role, or an optional logic role whose spec the coverage slot asks for. */
+export interface SpecRole {
+    readonly role: string
+    readonly spec: string
+    readonly slot?: string
+    readonly exempt?: readonly string[]
+    readonly optional?: boolean
+}
 
 /** The slots whose `*.spec.ts` files are not unit specs: the other test kinds and world infrastructure. */
 const OTHER_KIND_SLOTS = new Set(["be.tests.e2e", "be.tests.integration", "be.tests.contract", "be.tests.world", "be.tests.world.kit"])
 
 /** The file name of a linted path. */
-export const baseOf = (filename) => basename(String(filename || "").replace(/\\/g, "/"))
+export const baseOf = (filename: string): string => basename(String(filename || "").replace(/\\/g, "/"))
 
 /**
  * Whether a file is a unit spec.
@@ -24,14 +34,14 @@ export const baseOf = (filename) => basename(String(filename || "").replace(/\\/
  * @param {string} filename - The linted file.
  * @returns {boolean} True for a `*.spec.ts` that is not a spec of another test kind.
  */
-export const isUnitSpecFile = (hfs, filename) => {
+export const isUnitSpecFile = (hfs: HfsView, filename: string): boolean => {
     if (!/\.spec\.[cm]?ts$/.test(baseOf(filename))) return false
     const found = hfs.classify(filename)
     return !OTHER_KIND_SLOTS.has(found.slot ?? "") && !OTHER_KIND_SLOTS.has(found.nearest?.slot ?? "")
 }
 
 /** Whether a file is a `<name>.service.spec.ts` unit spec. */
-export const isServiceSpecFile = (hfs, filename) => /\.service\.spec\.ts$/.test(baseOf(filename)) && isUnitSpecFile(hfs, filename)
+export const isServiceSpecFile = (hfs: HfsView, filename: string): boolean => /\.service\.spec\.ts$/.test(baseOf(filename)) && isUnitSpecFile(hfs, filename)
 
 /**
  * The unit-tested roles of the back end: `ruleParams.be.unitRoles` of the slot manifest, the ONE list (`[{ role, spec, slot? }]`).
@@ -39,19 +49,19 @@ export const isServiceSpecFile = (hfs, filename) => /\.service\.spec\.ts$/.test(
  * @param {object} hfs - The HFS view.
  * @returns {ReadonlyArray<{ role: string, spec: string, slot?: string }>} The roles.
  */
-export const unitRoles = (hfs) => hfs.ruleParams.unitRoles ?? []
+export const unitRoles = (hfs: HfsView): readonly HfsUnitRole[] => hfs.ruleParams.unitRoles ?? []
 
 /** Whether the slot that owns a file is measured at 100 per file (`coverage: required`): the home of the optional specs of the logic roles. */
-const inCoverageSlot = (hfs, filename) => {
+const inCoverageSlot = (hfs: HfsView, filename: string): boolean => {
     const slot = hfs.slotOf(filename)
     return slot !== null && hfs.slot(slot)?.coverage === "required"
 }
 
 /** The roles whose spec is legal but not required: every logic role that is not a spec-required unit role. */
-const optionalRoles = (hfs) => (hfs.ruleParams.logicRoles ?? []).filter((role) => !unitRoles(hfs).some((unit) => unit.role === role)).map((role) => ({ role, spec: `${role}.spec`, optional: true }))
+const optionalRoles = (hfs: HfsView): SpecRole[] => (hfs.ruleParams.logicRoles ?? []).filter((role) => !unitRoles(hfs).some((unit) => unit.role === role)).map((role) => ({ role, spec: `${role}.spec`, optional: true }))
 
 /** Whether a role admits a file by its slot (a role with no slot admits any slot; an optional logic role only a coverage-required slot). */
-const inRoleSlot = (hfs, role, filename) => (role.optional === true ? inCoverageSlot(hfs, filename) : role.slot === undefined || hfs.slotOf(filename) === role.slot)
+const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => (role.optional === true ? inCoverageSlot(hfs, filename) : role.slot === undefined || hfs.slotOf(filename) === role.slot)
 
 /**
  * The unit-tested role whose spec a file is (`<name>.<role>.spec.ts`, in the role's slot), or null.
@@ -60,14 +70,14 @@ const inRoleSlot = (hfs, role, filename) => (role.optional === true ? inCoverage
  * @param {string} filename - The linted file.
  * @returns {object | null} The role entry.
  */
-export const unitRoleOfSpec = (hfs, filename) => {
+export const unitRoleOfSpec = (hfs: HfsView, filename: string): SpecRole | null => {
     if (!isUnitSpecFile(hfs, filename)) return null
     const name = baseOf(filename)
-    return [...unitRoles(hfs), ...optionalRoles(hfs)].find((role) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? null
+    return [...unitRoles(hfs), ...optionalRoles(hfs)].find((role: SpecRole) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? null
 }
 
 /** Whether a file is the spec of a value role (`ruleParams.be.valueRoles`: a zod schema): its subject is a declared value, so the spec parses it and builds no testing module. */
-export const isValueRoleSpec = (hfs, filename) => {
+export const isValueRoleSpec = (hfs: HfsView, filename: string): boolean => {
     const role = unitRoleOfSpec(hfs, filename)?.role
     return role !== undefined && (hfs.ruleParams.valueRoles ?? []).includes(role)
 }
@@ -79,7 +89,7 @@ export const isValueRoleSpec = (hfs, filename) => {
  * @param {string} filename - The linted file.
  * @returns {object | null} The role entry.
  */
-export const unitRoleOfSubject = (hfs, filename) => {
+export const unitRoleOfSubject = (hfs: HfsView, filename: string): HfsUnitRole | null => {
     const name = baseOf(filename)
     const slot = hfs.slotOf(filename)
     if (!slot || slot.startsWith("be.tests.")) return null
@@ -90,7 +100,7 @@ export const unitRoleOfSubject = (hfs, filename) => {
 const DOOR_SPEC_SLOTS = new Set(["be.feature.webhooks.http", "be.feature.realtime.graphql", "be.feature.realtime.websocket", "be.feature.realtime.sse"])
 
 /** The door a `<name>.<role>.spec.ts` of a feature kind tests, or null: `payment.webhook.spec.ts` gives `payment.webhook.ts`. */
-export const doorOfSpec = (hfs, filename) => {
+export const doorOfSpec = (hfs: HfsView, filename: string): string | null => {
     if (!isUnitSpecFile(hfs, filename) || !DOOR_SPEC_SLOTS.has(hfs.slotOf(filename) ?? "")) return null
     const match = /^(.+.(?:webhook|gateway|subscription|controller)).spec.ts$/.exec(baseOf(filename))
     return match ? `${match[1]}.ts` : null

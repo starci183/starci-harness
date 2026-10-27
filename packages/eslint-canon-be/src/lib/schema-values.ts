@@ -2,17 +2,18 @@ import fs from "node:fs"
 import path from "node:path"
 import ts from "typescript"
 import { normalizePath } from "./path.ts"
+import type { HfsView } from "./hfs.ts"
 
 /** Tiers a schema file may live in: the owners of boundary data (R304). */
-export const SCHEMA_TIERS = new Set(["domain", "platform", "integrations"])
+export const SCHEMA_TIERS: ReadonlySet<string | null> = new Set<string | null>(["domain", "platform", "integrations"])
 
 const ZOD = /^zod(?:\/|$)/
 /** A sibling schema module: its exports are schemas too, so a chain may start from them. */
 const SIBLING_SCHEMA = /^\.{1,2}\/(?:.*\/)?[^/]+\.schema(?:\.[cm]?[jt]s)?$/
 
 /** The local names the imports of a source file bind whose module specifier matches `specifier`. */
-const importedNames = (sourceFile, specifier) => {
-    const names = new Set()
+const importedNames = (sourceFile: ts.SourceFile, specifier: RegExp): Set<string> => {
+    const names = new Set<string>()
     for (const statement of sourceFile.statements) {
         if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !specifier.test(statement.moduleSpecifier.text)) continue
         const clause = statement.importClause
@@ -25,8 +26,8 @@ const importedNames = (sourceFile, specifier) => {
 }
 
 /** The identifier a call/member chain starts from (`z.string().max(5)` gives `z`), or null when it starts from anything else. */
-const rootOf = (expression) => {
-    let current = expression
+const rootOf = (expression: ts.Expression): string | null => {
+    let current: ts.Expression = expression
     for (;;) {
         if (ts.isIdentifier(current)) return current.text
         if (ts.isCallExpression(current) || ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)
@@ -36,12 +37,12 @@ const rootOf = (expression) => {
 }
 
 /** A literal bound (`100`, `-1`, `"x"`, `true`): data a schema reads, nothing that runs. */
-const isLiteral = (expression) => ts.isNumericLiteral(expression) || ts.isStringLiteralLike(expression)
+const isLiteral = (expression: ts.Expression): boolean => ts.isNumericLiteral(expression) || ts.isStringLiteralLike(expression)
     || expression.kind === ts.SyntaxKind.TrueKeyword || expression.kind === ts.SyntaxKind.FalseKeyword
     || (ts.isPrefixUnaryExpression(expression) && ts.isNumericLiteral(expression.operand))
 
 /** A statement a schema file may hold: an import, a type, or `export const X = <zod chain or a sibling schema>`. */
-const statementProblem = (statement, zodNames, declared) => {
+const statementProblem = (statement: ts.Statement, zodNames: ReadonlySet<string>, declared: Set<string>): string | null => {
     if (ts.isImportDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) return null
     if (ts.isExportDeclaration(statement)) return null
     if (!ts.isVariableStatement(statement)) return `a ${ts.SyntaxKind[statement.kind]} is logic, not a schema value`
@@ -61,7 +62,7 @@ const statementProblem = (statement, zodNames, declared) => {
  * The reasons a source text is not a pure boundary schema file: it imports zod and holds nothing but imports, types and
  * `const X = <zod chain>` values, with no class, function, provider or other logic. An empty list means a value-only schema file.
  */
-export const schemaFileProblems = (text) => {
+export const schemaFileProblems = (text: string): string[] => {
     const sourceFile = ts.createSourceFile("subject.schema.ts", text, ts.ScriptTarget.Latest, true)
     const zodNames = importedNames(sourceFile, ZOD)
     if (zodNames.size === 0) return ["it imports no zod, so it is not a boundary schema"]
@@ -72,13 +73,13 @@ export const schemaFileProblems = (text) => {
     })
 }
 
-const CACHE = new Map()
+const CACHE = new Map<string, { stamp: number; ok: boolean }>()
 
 /**
  * Whether the sibling `<name>.schema.ts` of a `<name>.schema.spec.ts` is a real boundary schema: it exists, lives in an owner tier of R304 and is
  * value-only (schemaFileProblems). Read from disk once per file and modification time.
  */
-export const siblingIsValueSchema = (hfs, specFile) => {
+export const siblingIsValueSchema = (hfs: HfsView, specFile: string): boolean => {
     const sibling = normalizePath(path.resolve(specFile.replace(/\.spec\.ts$/u, ".ts")))
     if (!fs.existsSync(sibling) || !SCHEMA_TIERS.has(hfs.tierOf(sibling))) return false
     const stamp = fs.statSync(sibling).mtimeMs

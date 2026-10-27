@@ -9,6 +9,7 @@
  *   - `compose/<area>.ts`     a composition group: the module list of one area of the app, spread by the root.
  */
 import { normalizePath } from "./path.ts"
+import type { HfsView } from "./hfs.ts"
 
 /** The composition root of an app. */
 const APP_ROOT_ROLE = "app.module.ts"
@@ -27,7 +28,7 @@ const COMPOSE_GROUP_ROLE = "compose/<area>.ts"
  * @param {string} filename - The linted file.
  * @returns {{slot: string, entry: string} | null} The app slot and the entry the file matches.
  */
-export const appRoleOf = (hfs, filename) => {
+export const appRoleOf = (hfs: HfsView, filename: string): { slot: string; entry: string } | null => {
     const file = normalizePath(filename)
     const slot = hfs.slotOf(file) ?? ""
     if (!slot.startsWith("be.app.") || typeof hfs.allows !== "function") return null
@@ -42,7 +43,7 @@ export const appRoleOf = (hfs, filename) => {
  * @param {string} filename - The linted file.
  * @returns {boolean} True for a composition file of a back-end app.
  */
-export const isAppComposition = (hfs, filename) => {
+export const isAppComposition = (hfs: HfsView, filename: string): boolean => {
     const role = appRoleOf(hfs, filename)?.entry
     return role === APP_ROOT_ROLE || role === COMPOSE_GROUP_ROLE
 }

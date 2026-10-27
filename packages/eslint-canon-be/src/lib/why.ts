@@ -4,7 +4,7 @@
  * (one rule, several failure codes) is named here so scripts/checks/check-hfs-rules.mjs sees it as emitted.
  * Append-only: each alpha.15 batch adds its own secondary codes at the end (union-merged).
  */
-export const why = {
+export const why: Readonly<Record<string, { readonly code: string }>> = {
   "webhook-inbox-key": { code: "BE_WEBHOOK_INBOX_KEY" },
   "rest-route-declared": { code: "BE_REST_ROUTE_UNDECLARED" },
   "security-headers": { code: "BE_SECURITY_HEADERS" },

@@ -4,29 +4,40 @@ import ts from "typescript"
 import { walk } from "./ast.ts"
 import { baseName, isOwnedType } from "./ports.ts"
 import { originsOfType, typeOrigins, typed } from "./types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node } from "./rule.ts"
+import type { HfsView } from "./hfs.ts"
+
+/** A webhook challenge handler's first statements: the verification call, the bound result and the echoing return. */
+export interface WebhookChallenge {
+    readonly call: TSESTree.CallExpression
+    readonly result: TSESTree.Identifier | null
+    readonly echo: TSESTree.Statement | undefined
+    readonly statements: TSESTree.Statement[]
+}
 
 /** The shared platform proof, identified by its declared owner. */
-export const isWebhookSignatureType = (context, node) => isOwnedType(context, node, { name: "WebhookSignatureService", capability: "http-security", tier: "platform" })
+export const isWebhookSignatureType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "WebhookSignatureService", capability: "http-security", tier: "platform" })
 
 /** A service declared by a domain owner, rather than a similarly named local or package type. */
-export const isWebhookDomainServiceType = (context, hfs, node) =>
+export const isWebhookDomainServiceType = (context: Context, hfs: HfsView, node: Node): boolean =>
     typeOrigins(context, node).some((origin) => origin.module === null && hfs.tierOf(origin.file) === "domain" && baseName(origin.file).endsWith(".service.ts"))
 
 /** The method symbol named by a property access, resolving imported aliases. */
-const methodSymbol = (checker, expression) => {
+const methodSymbol = (checker: ts.TypeChecker, expression: ts.Node | undefined): ts.Symbol | null => {
     if (!expression || !ts.isPropertyAccessExpression(expression)) return null
     const symbol = checker.getSymbolAtLocation(expression.name)
     return symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol ?? null
 }
 
 /** Unwrap static TypeScript annotations around a declaration's array literal. */
-const arrayOf = (expression) => {
+const arrayOf = (expression: ts.Expression | undefined): ts.ArrayLiteralExpression | null => {
     while (expression && (ts.isAsExpression(expression) || ts.isSatisfiesExpression(expression) || ts.isParenthesizedExpression(expression))) expression = expression.expression
     return expression && ts.isArrayLiteralExpression(expression) ? expression : null
 }
 
 /** All possible receiver types must be declared verifier classes; a type alias cannot rename a general service into one. */
-const isDomainVerifierType = (context, hfs, receiver) => {
+const isDomainVerifierType = (context: Context, hfs: HfsView, receiver: Node): boolean => {
     const { checker, toTs } = typed(context)
     const type = checker.getTypeAtLocation(toTs(receiver))
     const parts = type.isUnion() ? type.types : [type]
@@ -42,7 +53,7 @@ const isDomainVerifierType = (context, hfs, receiver) => {
  * domain methods, e.g. [BillingService.prototype.receiveCassoWebhook] as const.
  * Compare symbols, so spelling an arbitrary receiver or alias as a verifier grants nothing.
  */
-const declaresMethod = (checker, statement, method) => {
+const declaresMethod = (checker: ts.TypeChecker, statement: ts.Statement, method: ts.Symbol): boolean => {
     if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) return false
     if (!statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) return false
     return statement.declarationList.declarations.some((declaration) => ts.isIdentifier(declaration.name)
@@ -51,7 +62,7 @@ const declaresMethod = (checker, statement, method) => {
 }
 
 /** The module declaration is adjacent to this exact provider door, not another feature's proof list. */
-const isProviderModule = (context, source) => {
+const isProviderModule = (context: Context, source: ts.SourceFile): boolean => {
     const file = source.fileName.replace(/\\/g, "/")
     const directory = dirname(context.filename).replace(/\\/g, "/")
     const moduleName = `${baseName(context.filename).slice(0, -".webhook.ts".length)}-http.module.ts`
@@ -59,7 +70,7 @@ const isProviderModule = (context, source) => {
 }
 
 /** A general domain service method is a verifier only when this provider's module declares its resolved symbol. */
-const isModuleDeclaredVerifier = (context, call) => {
+const isModuleDeclaredVerifier = (context: Context, call: TSESTree.CallExpression): boolean => {
     const { program, checker, toTs } = typed(context)
     const method = methodSymbol(checker, toTs(call.callee))
     if (method === null) return false
@@ -68,7 +79,7 @@ const isModuleDeclaredVerifier = (context, call) => {
 }
 
 /** A direct, unconditional method call to the shared proof or a declared domain verifier. */
-const isWebhookVerificationCall = (context, hfs, call, domainOnly = false) => {
+const isWebhookVerificationCall = (context: Context, hfs: HfsView, call: Node | null | undefined, domainOnly = false): call is TSESTree.CallExpression => {
     if (call?.type !== "CallExpression" || call.optional) return false
     const callee = call.callee
     if (callee.type !== "MemberExpression" || callee.computed || callee.optional || callee.property.type !== "Identifier") return false
@@ -87,10 +98,10 @@ const PRE_PROOF_WORK = new Set(["CallExpression", "NewExpression", "ImportExpres
  * The first statement must itself be the proof (awaited if it returns a thenable).
  * Its receiver and arguments may pass delivery data, but cannot run another call first.
  */
-const completedVerification = (context, hfs, expression, domainOnly = false) => {
+const completedVerification = (context: Context, hfs: HfsView, expression: Node | null | undefined, domainOnly = false): TSESTree.CallExpression | null => {
     let call = expression
     const awaited = call?.type === "AwaitExpression"
-    if (awaited) call = call.argument
+    if (awaited && call?.type === "AwaitExpression") call = call.argument
     if (!isWebhookVerificationCall(context, hfs, call, domainOnly)) return null
     let work = false
     walk(call, (child) => {
@@ -107,13 +118,13 @@ const completedVerification = (context, hfs, expression, domainOnly = false) => 
 }
 
 /** POST's first statement remains the proof itself, before the intake or acknowledgement. */
-export const firstWebhookVerification = (context, hfs, method) => {
+export const firstWebhookVerification = (context: Context, hfs: HfsView, method: TSESTree.MethodDefinition): TSESTree.CallExpression | null => {
     const first = method.value.body?.body[0]
     return completedVerification(context, hfs, first?.type === "ExpressionStatement" ? first.expression : null)
 }
 
 /** A challenge verifier must produce an echo value, rather than a void proof. */
-const hasChallengeResult = (context, call) => {
+const hasChallengeResult = (context: Context, call: TSESTree.CallExpression): boolean => {
     const { checker, toTs } = typed(context)
     const signature = checker.getResolvedSignature(toTs(call))
     const returned = signature && checker.getReturnTypeOfSignature(signature)
@@ -123,22 +134,22 @@ const hasChallengeResult = (context, call) => {
 }
 
 /** The optional GET proves once, binding its result with const or returning the verifier call directly. */
-export const firstWebhookChallenge = (context, hfs, method) => {
-    const statements = method.value.body?.body ?? []
+export const firstWebhookChallenge = (context: Context, hfs: HfsView, method: TSESTree.MethodDefinition): WebhookChallenge | null => {
+    const statements: TSESTree.Statement[] = method.value.body?.body ?? []
     const first = statements[0]
     if (first?.type === "ReturnStatement") {
         const call = completedVerification(context, hfs, first.argument, true)
         return call && hasChallengeResult(context, call) ? { call, result: null, echo: first, statements } : null
     }
     if (first?.type !== "VariableDeclaration" || first.kind !== "const" || first.declarations.length !== 1) return null
-    const binding = first.declarations[0]
-    if (binding.id.type !== "Identifier") return null
+    const [binding] = first.declarations
+    if (!binding || binding.id.type !== "Identifier") return null
     const call = completedVerification(context, hfs, binding.init, true)
     return call && hasChallengeResult(context, call) ? { call, result: binding.id, echo: statements[1], statements } : null
 }
 
 /** The GET echoes only the original proof's value, with no intervening work or transformation. */
-export const isWebhookChallengeReturn = (context, node, challenge) => {
+export const isWebhookChallengeReturn = (context: Context, node: Node, challenge: WebhookChallenge | null | undefined): boolean => {
     if (!challenge || node !== challenge.echo || node.type !== "ReturnStatement") return false
     if (challenge.result === null) return challenge.statements.length === 1
     if (challenge.statements.length !== 2 || node.argument?.type !== "Identifier") return false

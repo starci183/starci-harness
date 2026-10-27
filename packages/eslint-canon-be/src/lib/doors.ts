@@ -7,13 +7,36 @@ import ts from "typescript"
 import { walk } from "./ast.ts"
 import { decoratorCallee, importOf, isImportedFrom } from "./import-source.ts"
 import { typed } from "./types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node } from "./rule.ts"
+
+/** A node that may carry decorators (a class, a member, a parameter). */
+export interface Decorated {
+    readonly decorators?: readonly TSESTree.Decorator[]
+}
+
+/** A class of either form. */
+export type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression
+
+/** One injected member of a class: a constructor parameter or an injector-decorated property, with its type annotation. */
+export interface InjectedMember {
+    readonly node: Node
+    readonly annotation: TSESTree.TypeNode | undefined
+}
+
+/** One call in a method body: the call, its member receiver and the called method name. */
+export interface MethodCall {
+    readonly call: TSESTree.CallExpression
+    readonly receiver: TSESTree.Expression | null
+    readonly method: string | null
+}
 
 /** True when the class carries a decorator that is `name` exported by `source`. */
-export const hasClassDecorator = (context, node, source, name) =>
+export const hasClassDecorator = (context: Context, node: Decorated, source: string | readonly string[], name: string | readonly string[]): boolean =>
     (node.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), source, name))
 
 /** The decorators of a method or class that are one of `names` exported by `source`. */
-export const decoratorsFrom = (context, node, source, names) =>
+export const decoratorsFrom = (context: Context, node: Decorated, source: string | readonly string[], names: string | readonly string[]): TSESTree.Decorator[] =>
     (node.decorators ?? []).filter((decorator) => isImportedFrom(context, decoratorCallee(decorator), source, names))
 
 /**
@@ -25,9 +48,9 @@ export const decoratorsFrom = (context, node, source, names) =>
  * @param {object} classNode - A `ClassDeclaration`.
  * @returns {Array<{ node: object, annotation: object | undefined }>} The injected members, each with its declared type annotation.
  */
-export const injectedMembers = (context, classNode) => {
-    const members = []
-    const constructor = classNode.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "constructor")
+export const injectedMembers = (context: Context, classNode: ClassNode): InjectedMember[] => {
+    const members: InjectedMember[] = []
+    const constructor = classNode.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "constructor")
     for (const original of constructor?.value.params ?? []) {
         const param = original.type === "TSParameterProperty" ? original.parameter : original
         members.push({ node: original, annotation: param.typeAnnotation?.typeAnnotation })
@@ -40,7 +63,7 @@ export const injectedMembers = (context, classNode) => {
 }
 
 /** True for a decorator that injects: `Inject` of Nest, a `@nestjs/typeorm` injector, or a function declared in a `*.decorators.ts` file. */
-const isInjectorDecorator = (context, decorator) => {
+const isInjectorDecorator = (context: Context, decorator: TSESTree.Decorator): boolean => {
     const callee = decoratorCallee(decorator)
     if (callee?.type !== "Identifier") return false
     const found = importOf(context, callee)
@@ -51,7 +74,7 @@ const isInjectorDecorator = (context, decorator) => {
 }
 
 /** The symbol an identifier names, with an import alias resolved to its target. */
-export const aliasTarget = (context, identifier) => {
+export const aliasTarget = (context: Context, identifier: Node): ts.Symbol | undefined => {
     const { checker, toTs } = typed(context)
     const tsNode = toTs(identifier)
     const symbol = tsNode && checker.getSymbolAtLocation(tsNode)
@@ -61,15 +84,15 @@ export const aliasTarget = (context, identifier) => {
 }
 
 /** The methods of a class (instance, non-constructor) that carry one of the decorators `names` of `source`. */
-export const methodsDecoratedBy = (context, classNode, source, names) =>
-    classNode.body.body.filter((member) => member.type === "MethodDefinition" && member.kind === "method" && !member.static && decoratorsFrom(context, member, source, names).length > 0)
+export const methodsDecoratedBy = (context: Context, classNode: ClassNode, source: string | readonly string[], names: string | readonly string[]): TSESTree.MethodDefinition[] =>
+    classNode.body.body.filter((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "method" && !member.static && decoratorsFrom(context, member, source, names).length > 0)
 
 /**
  * Every call made in a method body, closures included: `<receiver>.<method>(...)` as `{ call, receiver, method }`, and any
  * other call as `{ call, receiver: null, method: null }`.
  */
-export const callsOf = (method) => {
-    const calls = []
+export const callsOf = (method: TSESTree.MethodDefinition): MethodCall[] => {
+    const calls: MethodCall[] = []
     walk(method.value.body, (node) => {
         if (node.type !== "CallExpression") return
         const callee = node.callee
@@ -80,4 +103,4 @@ export const callsOf = (method) => {
 }
 
 /** The parameters of a handler method, with the pattern a default value or a destructuring wraps unwrapped. */
-export const parametersOf = (method) => method.value.params.map((param) => (param.type === "TSParameterProperty" ? param.parameter : param))
+export const parametersOf = (method: TSESTree.MethodDefinition): (TSESTree.AssignmentPattern | TSESTree.BindingName | TSESTree.RestElement)[] => method.value.params.map((param) => (param.type === "TSParameterProperty" ? param.parameter : param))

@@ -6,21 +6,21 @@
  * returns no listeners. The plugin wiring therefore has one generic gate instead of edition checks
  * scattered through rule bodies.
  */
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { loadRuleCatalog } from "../../runtime/scripts/hfs/slots.mjs"
+import { loadRuleCatalog, type RuleCatalog } from "../../runtime/scripts/hfs/slots.mjs"
+import type { CanonPlugin } from "./config.ts"
+import type { RuleModule } from "./rule.ts"
+import { RUNTIME_ROOT as RUNTIME } from "./runtime-root.ts"
 
-const RUNTIME = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "runtime")
-let catalogCache
+let catalogCache: RuleCatalog | undefined
 
 /** The bundled rule catalog, loaded once per lint process. */
-const bundledCatalog = () => {
+const bundledCatalog = (): RuleCatalog => {
     catalogCache ??= loadRuleCatalog({ root: RUNTIME })
     return catalogCache
 }
 
 /** A rule which intentionally registers no listeners in this edition. */
-const inactive = (rule) => Object.freeze({ ...rule, create: () => ({}) })
+const inactive = (rule: RuleModule): RuleModule => Object.freeze({ ...rule, create: () => ({}) })
 
 /**
  * The plugin view for one HFS edition.
@@ -30,7 +30,11 @@ const inactive = (rule) => Object.freeze({ ...rule, create: () => ({}) })
  * loads the package's bundled catalog in a published installation. Tests may inject a catalog to
  * prove the generic filtering independently of generated copies.
  */
-export const pluginForEdition = ({ plugin, hfs, catalog }) => {
+export const pluginForEdition = <P extends CanonPlugin>({ plugin, hfs, catalog }: {
+    plugin: P
+    hfs?: { readonly edition?: string } | null | undefined
+    catalog?: Pick<RuleCatalog, "enforcerJudgedIn"> | undefined
+}): P => {
     const edition = hfs?.edition === undefined ? "full" : hfs.edition
     if (edition !== "full" && edition !== "lite") {
         throw new RangeError(`Unknown HFS edition ${JSON.stringify(edition)}; expected "full" or "lite"`)

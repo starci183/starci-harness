@@ -3,16 +3,17 @@
  * rule asks the same question TypeScript asks instead of maintaining a second alias table.
  */
 import { posix } from "node:path"
+import type { Context } from "./rule.ts"
 import { typed } from "./types.ts"
 
 /**
  * The absolute path an alias specifier maps to under the program's `compilerOptions.paths`, or null when no pattern matches.
  *
- * @param {object} context - The ESLint rule context.
- * @param {string} specifier - An import specifier.
- * @returns {{ target: string, rest: string } | null} The absolute target without extension and the part the wildcard matched.
+ * @param context - The ESLint rule context.
+ * @param specifier - An import specifier.
+ * @returns The absolute target without extension and the part the wildcard matched.
  */
-export const resolveAlias = (context, specifier) => {
+export const resolveAlias = (context: Context, specifier: string): { target: string, rest: string } | null => {
     const options = typed(context).program.getCompilerOptions()
     const base = options.baseUrl ?? options.pathsBasePath
     if (!options.paths || typeof base !== "string") return null

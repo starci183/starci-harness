@@ -4,6 +4,8 @@
  */
 import { staticText } from "./ast.ts"
 import { isPackageType } from "./types.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node } from "./rule.ts"
 
 /** The `typeorm` types a call can write through. */
 const RECEIVER_TYPES = Object.freeze(["EntityManager", "DataSource", "QueryRunner"])
@@ -21,7 +23,7 @@ export const INSERTING_SQL = /(?:^|[\s;(])insert\s+into\b/i
  * @param {object} node - The receiver expression.
  * @returns {boolean} Whether its type is `EntityManager`, `DataSource` or `QueryRunner` of `typeorm`.
  */
-export const isDatabaseReceiver = (context, node) => RECEIVER_TYPES.some((name) => isPackageType(context, node, name, "typeorm"))
+export const isDatabaseReceiver = (context: Context, node: Node): boolean => RECEIVER_TYPES.some((name) => isPackageType(context, node, name, "typeorm"))
 
 /**
  * The statement text of a `query` argument: a literal, a template (substitutions read as a space), a tagged template, or the `const` it names (one hop).
@@ -30,7 +32,7 @@ export const isDatabaseReceiver = (context, node) => RECEIVER_TYPES.some((name) 
  * @param {object | null} scope - The scope the argument is read in (null after the one hop).
  * @returns {string | null} The text, or null when it cannot be read statically.
  */
-export const queryText = (node, scope) => {
+export const queryText = (node: Node | null | undefined, scope: TSESLint.Scope.Scope | null): string | null => {
     if (!node) return null
     if (node.type === "TemplateLiteral") return node.quasis.map((quasi) => quasi.value.cooked ?? "").join(" ")
     if (node.type === "TaggedTemplateExpression") return queryText(node.quasi, null)
@@ -52,7 +54,7 @@ export const queryText = (node, scope) => {
  * @param {object} node - A CallExpression.
  * @returns {string | null} The method name.
  */
-export const methodOf = (node) => {
+export const methodOf = (node: TSESTree.CallExpression): string | null => {
     const callee = node.callee
     return callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee.property.name : null
 }

@@ -2,25 +2,42 @@
 import ts from "typescript"
 import { hfsOf } from "./hfs.ts"
 import { baseName, ownerNameOf } from "./ports.ts"
-import { moduleOf, originsOfType, typed } from "./types.ts"
+import { childNode, moduleOf, originsOfType, resolvedSymbol, typed } from "./types.ts"
 import { isTransportSlot } from "./transport-slots.ts"
+import type { Context, RuleModule } from "./rule.ts"
+import type { HfsView } from "./hfs.ts"
+
+/** Where an object's property comes from: a written property's value, or a property of a spread (or of a whole) base. */
+type Mapping =
+    | { readonly expression: ts.Node; readonly base?: never; readonly name?: never }
+    | { readonly base: ts.Node; readonly name: string; readonly expression?: never }
+
+/** A decorator as the checks read it: the decorator expression, its symbol, its arguments and whether it is called. */
+interface DecoratorUse {
+    readonly expression: ts.LeftHandSideExpression
+    readonly symbol: ts.Symbol | undefined
+    readonly args: readonly ts.Expression[]
+    readonly called: boolean
+}
+
+const ASSIGNING_PREFIXES: readonly ts.PrefixUnaryOperator[] = [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken]
 
 /** Imported aliases and namespace access resolve to the declaring value. */
-const valueSymbol = (checker, expression, seen = new Set()) => {
+const valueSymbol = (checker: ts.TypeChecker, expression: ts.Node | undefined, seen = new Set<ts.Node>()): ts.Symbol | undefined => {
     if (!expression || seen.has(expression)) return undefined
     seen.add(expression)
     const name = ts.isPropertyAccessExpression(expression) ? expression.name : expression
     const symbol = name.parent && ts.isShorthandPropertyAssignment(name.parent) && name.parent.name === name
         ? checker.getShorthandAssignmentValueSymbol(name.parent) : checker.getSymbolAtLocation(name)
-    const target = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
-    const alias = target?.getDeclarations()?.find((declaration) => ts.isVariableDeclaration(declaration)
-        && declaration.parent.flags & ts.NodeFlags.Const && declaration.initializer
-        && (ts.isIdentifier(declaration.initializer) || ts.isPropertyAccessExpression(declaration.initializer)))
+    const target = resolvedSymbol(checker, symbol)
+    const alias = target?.getDeclarations()?.find((declaration): declaration is ts.VariableDeclaration => ts.isVariableDeclaration(declaration)
+        && Boolean(declaration.parent.flags & ts.NodeFlags.Const) && Boolean(declaration.initializer)
+        && (declaration.initializer !== undefined && (ts.isIdentifier(declaration.initializer) || ts.isPropertyAccessExpression(declaration.initializer))))
     return alias ? valueSymbol(checker, alias.initializer, seen) : target
 }
 
 /** The genuine decorator belongs to its platform capability, rather than merely sharing a name. */
-const ownedValue = (checker, hfs, expression, name, capability) => {
+const ownedValue = (checker: ts.TypeChecker, hfs: HfsView, expression: ts.Node | undefined, name: string, capability: string) => {
     const symbol = valueSymbol(checker, expression)
     return symbol?.name === name && symbol.getDeclarations()?.some((declaration) => {
         const file = declaration.getSourceFile().fileName
@@ -29,7 +46,7 @@ const ownedValue = (checker, hfs, expression, name, capability) => {
 }
 
 /** A resolved decorator declaration and its call arguments. */
-const decorators = (checker, node) => (ts.getDecorators(node) ?? []).map((decorator) => {
+const decorators = (checker: ts.TypeChecker, node: ts.HasDecorators): DecoratorUse[] => (ts.getDecorators(node) ?? []).map((decorator) => {
     const call = decorator.expression
     const expression = ts.isCallExpression(call) ? call.expression : call
     const symbol = valueSymbol(checker, expression)
@@ -37,17 +54,17 @@ const decorators = (checker, node) => (ts.getDecorators(node) ?? []).map((decora
 })
 
 /** Whether the class carries the platform inbox's effectful marker. */
-const effectful = (checker, hfs, node) => decorators(checker, node).some((decorator) => decorator.called
+const effectful = (checker: ts.TypeChecker, hfs: HfsView, node: ts.HasDecorators): boolean => decorators(checker, node).some((decorator) => decorator.called
     && decorator.args.length === 0 && ownedValue(checker, hfs, decorator.expression, "Effectful", "inbox"))
 
 /** A package declaration establishes framework identity even through an import alias. */
-const fromPackage = (checker, expression, name, pkg) => {
+const fromPackage = (checker: ts.TypeChecker, expression: ts.Node, name: string, pkg: string) => {
     const symbol = valueSymbol(checker, expression)
     return symbol?.name === name && symbol.getDeclarations()?.some((declaration) => moduleOf(declaration, declaration.getSourceFile().fileName) === pkg)
 }
 
 /** Class inheritance keeps the Nest Command identity without relying on local spelling. */
-const commandType = (checker, type, seen = new Set()) => {
+const commandType = (checker: ts.TypeChecker, type: ts.Type | undefined, seen = new Set<ts.Type>()): boolean => {
     if (!type || seen.has(type)) return false
     seen.add(type)
     if (originsOfType(checker, type).some((origin) => origin.name === "Command" && origin.module === "@nestjs/cqrs")) return true
@@ -55,7 +72,7 @@ const commandType = (checker, type, seen = new Set()) => {
 }
 
 /** Required strings exclude optional properties, undefined, null and unconstrained types. */
-const requiredString = (checker, type, property) => {
+const requiredString = (checker: ts.TypeChecker, type: ts.Type, property: string): boolean => {
     const member = checker.getPropertyOfType(type, property)
     if (!member || member.flags & ts.SymbolFlags.Optional) return false
     const declaration = member.valueDeclaration ?? member.declarations?.[0]
@@ -65,41 +82,44 @@ const requiredString = (checker, type, property) => {
 }
 
 /** Canonical ExecuteParams carries the request, while a direct client params object carries its own key. */
-const keyContract = (checker, type) => {
+const keyContract = (checker: ts.TypeChecker, type: ts.Type): boolean => {
     if (requiredString(checker, type, "idempotencyKey")) return true
     const request = checker.getPropertyOfType(type, "request")
     const declaration = request?.valueDeclaration ?? request?.declarations?.[0]
-    return !!declaration && !(request.flags & ts.SymbolFlags.Optional)
+    return !!declaration && !!request && !(request.flags & ts.SymbolFlags.Optional)
         && requiredString(checker, checker.getTypeOfSymbolAtLocation(request, declaration), "idempotencyKey")
 }
 
 /** A sole returned expression admits an optional await and inline expression-bodied callbacks. */
-const returned = (body) => {
+const returned = (body: ts.Node | undefined): ts.Node | null | undefined => {
     if (!body) return null
-    let expression = ts.isBlock(body) ? body.statements.length === 1 && ts.isReturnStatement(body.statements[0]) ? body.statements[0].expression : null : body
+    const only = ts.isBlock(body) ? body.statements[0] : undefined
+    let expression: ts.Node | null | undefined = ts.isBlock(body) ? body.statements.length === 1 && only !== undefined && ts.isReturnStatement(only) ? only.expression : null : body
     while (expression && ts.isParenthesizedExpression(expression)) expression = expression.expression
     return expression && ts.isAwaitExpression(expression) ? expression.expression : expression
 }
 
 /** Only a literal member name has a statically proved operation. */
-const memberName = (expression) => ts.isPropertyAccessExpression(expression) ? expression.name.text : null
+const memberName = (expression: ts.Node): string | null => ts.isPropertyAccessExpression(expression) ? expression.name.text : null
 
 /** Computed literal names have ordinary last-write semantics; dynamic names could overwrite any field. */
-const propertyName = (name) => ts.isComputedPropertyName(name)
+const propertyName = (name: ts.PropertyName): string | null => ts.isComputedPropertyName(name)
     ? ts.isStringLiteralLike(name.expression) ? name.expression.text : null
     : ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name) ? name.text : null
 
 /** Property mappings retain their last assignment, including spreads, as JavaScript does. */
-const propertyValue = (checker, expression, name) => {
+const propertyValue = (checker: ts.TypeChecker, expression: ts.Node | undefined, name: string): Mapping | null => {
     if (!expression) return null
     if (!ts.isObjectLiteralExpression(expression)) return checker.getPropertyOfType(checker.getTypeAtLocation(expression), name) ? { base: expression, name } : null
-    let result = null
+    let result: Mapping | null = null
     for (const property of expression.properties) {
         if (ts.isSpreadAssignment(property)) {
             const type = checker.getTypeAtLocation(property.expression)
             if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown) || checker.getIndexTypeOfType(type, ts.IndexKind.String)) result = null
             else if (checker.getPropertyOfType(type, name)) result = { base: property.expression, name }
-        } else if (propertyName(property.name) === null) result = null
+        } else if (propertyName(property.name) === null) {
+            result = null
+        }
         else if (propertyName(property.name) === name) {
             result = ts.isPropertyAssignment(property) ? { expression: property.initializer }
                 : ts.isShorthandPropertyAssignment(property) ? { expression: property.name } : null
@@ -109,8 +129,8 @@ const propertyValue = (checker, expression, name) => {
 }
 
 /** A property path is rooted in the same lexical parameter, so a renamed or shadowed value cannot invent a key. */
-const parameterPath = (checker, expression, parameter) => {
-    const path = []
+const parameterPath = (checker: ts.TypeChecker, expression: ts.Node | undefined, parameter: ts.ParameterDeclaration): string[] | null => {
+    const path: string[] = []
     let current = expression
     while (current && ts.isPropertyAccessExpression(current) && !current.questionDotToken) {
         path.unshift(current.name.text)
@@ -120,7 +140,7 @@ const parameterPath = (checker, expression, parameter) => {
 }
 
 /** A mapped field has the expected path from the original parameter. */
-const mappedFrom = (checker, mapping, parameter, paths) => {
+const mappedFrom = (checker: ts.TypeChecker, mapping: Mapping | null, parameter: ts.ParameterDeclaration, paths: readonly (readonly string[])[]): boolean => {
     if (!mapping) return false
     const path = parameterPath(checker, mapping.expression ?? mapping.base, parameter)
     if (!path) return false
@@ -129,16 +149,16 @@ const mappedFrom = (checker, mapping, parameter, paths) => {
 }
 
 /** Type origins bind the transactional manager and inbox port to their actual owners. */
-const hasOrigin = (checker, hfs, expression, name, pkg, capability) => !!expression && originsOfType(checker, checker.getTypeAtLocation(expression)).some((origin) =>
+const hasOrigin = (checker: ts.TypeChecker, hfs: HfsView, expression: ts.Node | undefined, name: string, pkg: string | null, capability?: string): boolean => !!expression && originsOfType(checker, checker.getTypeAtLocation(expression)).some((origin) =>
     origin.name === name && origin.module === pkg && (!capability || hfs.tierOf(origin.file) === "platform" && ownerNameOf(hfs, origin.file) === capability))
 
 /** Rejects visible calls, writes, constructions and explicit getter accesses before the inbox claim. */
-const pureEnvelope = (checker, expression) => {
+const pureEnvelope = (checker: ts.TypeChecker, expression: ts.Node): boolean => {
     let pure = true
-    const visit = (node) => {
+    const visit = (node: ts.Node): void => {
         if (ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isAwaitExpression(node)
             || ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
-            || ts.isPrefixUnaryExpression(node) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator)
+            || ts.isPrefixUnaryExpression(node) && ASSIGNING_PREFIXES.includes(node.operator)
             || ts.isPostfixUnaryExpression(node)) pure = false
         if (ts.isPropertyAccessExpression(node) && valueSymbol(checker, node)?.getDeclarations()?.some(ts.isGetAccessorDeclaration)) pure = false
         ts.forEachChild(node, visit)
@@ -148,24 +168,26 @@ const pureEnvelope = (checker, expression) => {
 }
 
 /** The service returns its transaction, whose actual callback returns the inbox execution with that callback's own manager. */
-const transactionalClient = (checker, hfs, method) => {
+const transactionalClient = (checker: ts.TypeChecker, hfs: HfsView, method: ts.MethodDeclaration): boolean => {
     const transaction = returned(method.body)
-    if (!transaction || !ts.isCallExpression(transaction) || transaction.questionDotToken || transaction.expression.questionDotToken || memberName(transaction.expression) !== "transaction"
-        || !hasOrigin(checker, hfs, transaction.expression.expression, "EntityManager", "typeorm")) return false
+    if (!transaction || !ts.isCallExpression(transaction) || transaction.questionDotToken || childNode(transaction.expression, "questionDotToken") || memberName(transaction.expression) !== "transaction"
+        || !hasOrigin(checker, hfs, childNode(transaction.expression, "expression"), "EntityManager", "typeorm")) return false
     const first = transaction.arguments[0]
     const callback = transaction.arguments.length === 1 ? first : transaction.arguments.length === 2
-        && ts.isStringLiteral(first) && ["READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"].includes(first.text) ? transaction.arguments[1] : null
-    if (!callback || ![ts.SyntaxKind.ArrowFunction, ts.SyntaxKind.FunctionExpression].includes(callback.kind)
-        || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name)) return false
+        && first !== undefined && ts.isStringLiteral(first) && ["READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"].includes(first.text) ? transaction.arguments[1] : null
+    const callbackParameter = callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback.parameters[0] : undefined
+    if (!callback || !(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+        || callback.parameters.length !== 1 || !callbackParameter || !ts.isIdentifier(callbackParameter.name)) return false
     const execution = returned(callback.body)
-    if (!execution || !ts.isCallExpression(execution) || execution.questionDotToken || execution.expression.questionDotToken || memberName(execution.expression) !== "runClient"
-        || !hasOrigin(checker, hfs, execution.expression.expression, "Inbox", null, "inbox") || execution.arguments.length !== 3) return false
+    if (!execution || !ts.isCallExpression(execution) || execution.questionDotToken || childNode(execution.expression, "questionDotToken") || memberName(execution.expression) !== "runClient"
+        || !hasOrigin(checker, hfs, childNode(execution.expression, "expression"), "Inbox", null, "inbox") || execution.arguments.length !== 3) return false
     const [envelope, manager, effect] = execution.arguments
     const original = method.parameters[0]
     if (!original || !ts.isIdentifier(original.name) || !requiredString(checker, checker.getTypeAtLocation(original), "idempotencyKey")
-        || !ts.isIdentifier(manager) || valueSymbol(checker, manager) !== valueSymbol(checker, callback.parameters[0].name)
+        || !manager || !envelope || !effect
+        || !ts.isIdentifier(manager) || valueSymbol(checker, manager) !== valueSymbol(checker, callbackParameter.name)
         || !hasOrigin(checker, hfs, manager, "EntityManager", "typeorm") || !ts.isObjectLiteralExpression(envelope)
-        || ![ts.SyntaxKind.ArrowFunction, ts.SyntaxKind.FunctionExpression].includes(effect.kind) || effect.parameters.length !== 0
+        || !(ts.isArrowFunction(effect) || ts.isFunctionExpression(effect)) || effect.parameters.length !== 0
         || !pureEnvelope(checker, envelope)) return false
     const key = propertyValue(checker, envelope, "idempotencyKey")
     const principal = propertyValue(checker, envelope, "principalId")
@@ -177,7 +199,7 @@ const transactionalClient = (checker, hfs, method) => {
 }
 
 /** The CommandHandler decorator resolves its marked command declaration. */
-const handledCommand = (checker, hfs, node) => {
+const handledCommand = (checker: ts.TypeChecker, hfs: HfsView, node: ts.ClassDeclaration): ts.ClassDeclaration | null => {
     for (const decorator of decorators(checker, node)) {
         if (!fromPackage(checker, decorator.expression, "CommandHandler", "@nestjs/cqrs") || decorator.args.length !== 1) continue
         const command = valueSymbol(checker, decorator.args[0])?.getDeclarations()?.find(ts.isClassDeclaration)
@@ -187,27 +209,28 @@ const handledCommand = (checker, hfs, node) => {
 }
 
 /** A marked handler delegates once to a concrete domain service and preserves the request's key. */
-const delegatedMethod = (checker, hfs, handler) => {
-    const process = handler.members.find((member) => ts.isMethodDeclaration(member) && member.name.getText() === "process")
+const delegatedMethod = (checker: ts.TypeChecker, hfs: HfsView, handler: ts.ClassDeclaration): ts.MethodDeclaration | null => {
+    const process = handler.members.find((member): member is ts.MethodDeclaration => ts.isMethodDeclaration(member) && member.name.getText() === "process")
     const call = returned(process?.body)
-    if (!process || process.parameters.length !== 1 || !ts.isIdentifier(process.parameters[0].name)
-        || !call || !ts.isCallExpression(call) || call.questionDotToken || call.expression.questionDotToken || call.arguments.length !== 1) return null
+    const command = process?.parameters[0]
+    if (!process || process.parameters.length !== 1 || !command || !ts.isIdentifier(command.name)
+        || !call || !ts.isCallExpression(call) || call.questionDotToken || childNode(call.expression, "questionDotToken") || call.arguments.length !== 1) return null
     const method = checker.getResolvedSignature(call)?.declaration
     if (!method || !ts.isMethodDeclaration(method) || !method.body
         || hfs.tierOf(method.getSourceFile().fileName) !== "domain" || !baseName(method.getSourceFile().fileName).endsWith(".service.ts")) return null
     const mapping = propertyValue(checker, call.arguments[0], "idempotencyKey")
-    return mappedFrom(checker, mapping, process.parameters[0], [["params", "idempotencyKey"], ["params", "request", "idempotencyKey"]]) ? method : null
+    return mappedFrom(checker, mapping, command, [["params", "idempotencyKey"], ["params", "request", "idempotencyKey"]]) ? method : null
 }
 
 /** Every reached service method is judged when that file is linted, including changed domain files. */
-const reachedByProgram = new WeakMap()
-const reachedServices = (checker, program, hfs) => {
+const reachedByProgram = new WeakMap<ts.Program, Set<ts.Node>>()
+const reachedServices = (checker: ts.TypeChecker, program: ts.Program, hfs: HfsView): Set<ts.Node> => {
     const cached = reachedByProgram.get(program)
     if (cached) return cached
-    const methods = new Set()
+    const methods = new Set<ts.Node>()
     for (const source of program.getSourceFiles()) {
         if (hfs.slotOf(source.fileName) !== "be.feature.application") continue
-        const visit = (node) => {
+        const visit = (node: ts.Node): void => {
             if (ts.isClassDeclaration(node) && handledCommand(checker, hfs, node)) {
                 const method = delegatedMethod(checker, hfs, node)
                 if (method) methods.add(method)
@@ -221,43 +244,47 @@ const reachedServices = (checker, program, hfs) => {
 }
 
 /** Genuine validators must reject empty, optional and overlong wire keys. */
-const boundedKey = (checker, declaration) => {
-    if (!declaration || !ts.isPropertyDeclaration(declaration) || declaration.questionToken
-        || propertyName(declaration.name) === null
-        || !requiredString(checker, checker.getTypeAtLocation(declaration.parent), propertyName(declaration.name))) return false
+const boundedKey = (checker: ts.TypeChecker, declaration: ts.Node | undefined): boolean => {
+    if (!declaration || !ts.isPropertyDeclaration(declaration) || declaration.questionToken) return false
+    const key = propertyName(declaration.name)
+    if (key === null || !requiredString(checker, checker.getTypeAtLocation(declaration.parent), key)) return false
     const validators = decorators(checker, declaration).filter((decorator) => decorator.called && decorator.symbol?.getDeclarations()?.some((item) => moduleOf(item, item.getSourceFile().fileName) === "class-validator"))
-    const has = (name) => validators.some((decorator) => decorator.symbol.name === name)
-    const bound = (name, accepts) => validators.some((decorator) => decorator.symbol.name === name
-        && decorator.args.length > 0 && ts.isNumericLiteral(decorator.args[0]) && accepts(Number(decorator.args[0].text)))
+    const has = (name: string): boolean => validators.some((decorator) => decorator.symbol?.name === name)
+    const bound = (name: string, accepts: (value: number) => boolean): boolean => validators.some((decorator) => {
+        const first = decorator.args[0]
+        return decorator.symbol?.name === name
+            && decorator.args.length > 0 && first !== undefined && ts.isNumericLiteral(first) && accepts(Number(first.text))
+    })
     return !has("IsOptional") && !has("ValidateIf") && (has("IsUUID") || has("IsString")
         && bound("MinLength", (value) => value >= 1) && bound("MaxLength", (value) => value >= 1 && value <= 64))
 }
 
 /** Follow object mappings to their original property declarations rather than trusting an annotated return type. */
-const propertySymbol = (checker, expression, path) => {
-    if (path.length === 0) return valueSymbol(checker, expression)
+const propertySymbol = (checker: ts.TypeChecker, expression: ts.Node, path: readonly string[]): ts.Symbol | undefined => {
+    const [head, ...rest] = path
+    if (head === undefined) return valueSymbol(checker, expression)
     if (ts.isObjectLiteralExpression(expression)) {
-        const mapping = propertyValue(checker, expression, path[0])
+        const mapping = propertyValue(checker, expression, head)
         if (!mapping) return undefined
-        return mapping.expression ? propertySymbol(checker, mapping.expression, path.slice(1))
-            : propertySymbol(checker, mapping.base, [mapping.name, ...path.slice(1)])
+        return mapping.expression ? propertySymbol(checker, mapping.expression, rest)
+            : propertySymbol(checker, mapping.base, [mapping.name, ...rest])
     }
     let type = checker.getTypeAtLocation(expression)
-    let symbol
+    let symbol: ts.Symbol | undefined
     for (const name of path) {
         symbol = checker.getPropertyOfType(type, name)
         const declaration = symbol?.valueDeclaration ?? symbol?.declarations?.[0]
-        if (!declaration) return undefined
+        if (!declaration || !symbol) return undefined
         type = checker.getTypeOfSymbolAtLocation(symbol, declaration)
     }
     return symbol
 }
 
 /** A key mapped by a pure function must come from its actual argument, never a constant or captured replacement. */
-const mappedKeySymbol = (checker, mapping, bindings = new Map()) => {
+const mappedKeySymbol = (checker: ts.TypeChecker, mapping: Mapping | null, bindings = new Map<ts.Symbol | undefined, ts.Expression | undefined>()): ts.Symbol | undefined => {
     if (!mapping) return undefined
-    const path = mapping.name ? [mapping.name] : []
-    let expression = mapping.expression ?? mapping.base
+    const path: string[] = mapping.name ? [mapping.name] : []
+    let expression: ts.Node = mapping.expression ?? mapping.base
     while (ts.isPropertyAccessExpression(expression) && !expression.questionDotToken) {
         path.unshift(expression.name.text)
         expression = expression.expression
@@ -268,44 +295,44 @@ const mappedKeySymbol = (checker, mapping, bindings = new Map()) => {
 }
 
 /** A mapper is proved by its sole pure return expression and original argument bindings, not its function name. */
-const requestKey = (checker, expression) => {
+const requestKey = (checker: ts.TypeChecker, expression: ts.Node): ts.Symbol | undefined => {
     if (!ts.isCallExpression(expression)) return mappedKeySymbol(checker, propertyValue(checker, expression, "idempotencyKey"))
     const mapper = checker.getResolvedSignature(expression)?.declaration
-    const body = returned(mapper?.body)
+    const body = returned(childNode(mapper, "body"))
     if (!mapper || !body || expression.questionDotToken || mapper.parameters.length !== expression.arguments.length
-        || mapper.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+        || (ts.canHaveModifiers(mapper) ? ts.getModifiers(mapper) : undefined)?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)
         || !pureEnvelope(checker, body) || expression.arguments.some((argument) => !pureEnvelope(checker, argument))) return undefined
-    const bindings = new Map()
+    const bindings = new Map<ts.Symbol | undefined, ts.Expression | undefined>()
     for (const [index, parameter] of mapper.parameters.entries()) {
-        if (!ts.isIdentifier(parameter.name) || parameter.initializer || parameter.dotDotDotToken) return undefined
+        if (!ts.isIdentifier(parameter.name) || childNode(parameter, "initializer") || childNode(parameter, "dotDotDotToken")) return undefined
         bindings.set(valueSymbol(checker, parameter.name), expression.arguments[index])
     }
     return mappedKeySymbol(checker, propertyValue(checker, body, "idempotencyKey"), bindings)
 }
 
 /** Follow the constructor's key mapping to the original DTO property, including a whole ExecuteParams value. */
-const constructionKey = (checker, construction) => {
+const constructionKey = (checker: ts.TypeChecker, construction: ts.NewExpression): ts.Symbol | undefined => {
     const params = construction.arguments?.[0]
     const request = propertyValue(checker, params, "request")
-    let nestedSymbol
+    let nestedSymbol: ts.Symbol | undefined
     if (request?.base) {
         const property = checker.getPropertyOfType(checker.getTypeAtLocation(request.base), request.name)
         const declaration = property?.valueDeclaration ?? property?.declarations?.[0]
-        if (declaration) nestedSymbol = checker.getPropertyOfType(checker.getTypeOfSymbolAtLocation(property, declaration), "idempotencyKey")
+        if (declaration && property) nestedSymbol = checker.getPropertyOfType(checker.getTypeOfSymbolAtLocation(property, declaration), "idempotencyKey")
     }
     return nestedSymbol ?? (request?.expression ? requestKey(checker, request.expression)
         : mappedKeySymbol(checker, propertyValue(checker, params, "idempotencyKey")))
 }
 
 /** Only DTO key declarations that reach an effectful command carry this rule's transport obligation. */
-const keysByProgram = new WeakMap()
-const reachedKeys = (checker, program, hfs) => {
+const keysByProgram = new WeakMap<ts.Program, Set<ts.Node>>()
+const reachedKeys = (checker: ts.TypeChecker, program: ts.Program, hfs: HfsView): Set<ts.Node> => {
     const cached = keysByProgram.get(program)
     if (cached) return cached
-    const keys = new Set()
+    const keys = new Set<ts.Node>()
     for (const source of program.getSourceFiles()) {
         if (!isTransportSlot(hfs.slotOf(source.fileName))) continue
-        const visit = (node) => {
+        const visit = (node: ts.Node): void => {
             if (ts.isNewExpression(node)) {
                 const command = valueSymbol(checker, node.expression)?.getDeclarations()?.find(ts.isClassDeclaration)
                 if (command && effectful(checker, hfs, command)) {
@@ -321,7 +348,7 @@ const reachedKeys = (checker, program, hfs) => {
 }
 
 /** Effectful commands carry a bounded client key to the one atomic domain inbox execution. */
-export const mutationIdempotent = {
+export const mutationIdempotent: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An @Effectful command requires a validated client key and delegates to a domain transaction returning Inbox.runClient with that same key and manager." },
@@ -335,13 +362,13 @@ export const mutationIdempotent = {
             validation: "[BE_MUTATION_IDEMPOTENT] The client idempotencyKey must be required and validated by class-validator: @IsUUID(), or @IsString() @MinLength(1) @MaxLength(64). Optional or conditional validation cannot protect an effectful command.",
         },
     },
-    create(context) {
+    create(context: Context) {
         const hfs = hfsOf(context)
         const slot = hfs.slotOf(context.filename)
         if (!slot || slot.startsWith("be.tests.")) return {}
         const { checker, program, toTs } = typed(context)
-        let reached
-        let keys
+        let reached: Set<ts.Node> | undefined
+        let keys: Set<ts.Node> | undefined
         return {
             Identifier(node) {
                 if (hfs.tierOf(context.filename) === "platform" && ownerNameOf(hfs, context.filename) === "inbox"
@@ -369,7 +396,8 @@ export const mutationIdempotent = {
                     } else {
                         if (!(hfs.patterns ?? []).includes("idempotency")) context.report({ node: node.id ?? node, messageId: "declaration" })
                         const constructor = declaration.members.find(ts.isConstructorDeclaration)
-                        if (!constructor || constructor.parameters.length !== 1 || !keyContract(checker, checker.getTypeAtLocation(constructor.parameters[0]))) context.report({ node: node.id ?? node, messageId: "key" })
+                        const parameter = constructor?.parameters.length === 1 ? constructor.parameters[0] : undefined
+                        if (!constructor || !parameter || !keyContract(checker, checker.getTypeAtLocation(parameter))) context.report({ node: node.id ?? node, messageId: "key" })
                     }
                 }
                 if (!handledCommand(checker, hfs, declaration)) return
@@ -381,7 +409,7 @@ export const mutationIdempotent = {
                 if (hfs.tierOf(context.filename) !== "domain" || !baseName(context.filename).endsWith(".service.ts")) return
                 reached ??= reachedServices(checker, program, hfs)
                 const method = toTs(node)
-                if (reached.has(method) && !transactionalClient(checker, hfs, method)) context.report({ node: node.key, messageId: "transaction" })
+                if (reached.has(method) && ts.isMethodDeclaration(method) && !transactionalClient(checker, hfs, method)) context.report({ node: node.key, messageId: "transaction" })
             },
             PropertyDefinition(node) {
                 if (!isTransportSlot(slot)) return
