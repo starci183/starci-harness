@@ -783,6 +783,37 @@ export const TagGroup: Story = {
       </State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    const group = canvasElement.querySelector<HTMLElement>('[data-grammar-tag-reorderable="true"]');
+    if (group === null) throw new Error('The reorderable group must render');
+    const order = () => [...group.querySelectorAll<HTMLElement>('[data-grammar-tag-id]')].map((tag) => tag.dataset.grammarTagId).join(',');
+    const tag = (id: string) => {
+      const found = group.querySelector<HTMLElement>(`[data-grammar-tag-id="${id}"]`);
+      if (found === null) throw new Error(`Tag ${id} must render`);
+      return found;
+    };
+    const announcement = () => canvasElement.querySelector('[data-grammar-tag-announcement]')?.textContent ?? '';
+    await waitFor(() => {
+      if (!tag('grammar').draggable) throw new Error('Reorderable tags must be draggable');
+      const describedBy = group.querySelector('[role="grid"]')?.getAttribute('aria-describedby') ?? '';
+      if (!describedBy.split(' ').some((id) => canvasElement.ownerDocument.getElementById(id)?.textContent?.includes('Alt') === true)) throw new Error('The grid must be described by the reorder instructions');
+    });
+    // Keyboard: Alt+ArrowRight moves the focused tag one place, keeps focus on it and announces the move.
+    await userEvent.click(tag('grammar'));
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    await waitFor(() => { if (order() !== 'vocab,grammar,listening') throw new Error(`Alt+ArrowRight must move Grammar right, order is ${order()}`); });
+    await waitFor(() => { if (announcement() !== 'Grammar moved to position 2 of 3') throw new Error(`The move must be announced, got "${announcement()}"`); });
+    await waitFor(() => { if (canvasElement.ownerDocument.activeElement !== tag('grammar')) throw new Error('Focus must stay on the moved tag'); });
+    // Drag: dropping Listening on Vocabulary moves it to the front.
+    const transfer = new DataTransfer();
+    tag('listening').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+    await waitFor(() => { if (tag('listening').dataset.grammarTagDragging !== 'true') throw new Error('The dragged tag must lift'); });
+    tag('vocab').dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    tag('vocab').dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    tag('listening').dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
+    await waitFor(() => { if (order() !== 'listening,vocab,grammar') throw new Error(`A drop must move Listening to the front, order is ${order()}`); });
+    await waitFor(() => { if (announcement() !== 'Listening moved to position 1 of 3') throw new Error(`The drop must be announced, got "${announcement()}"`); });
+  },
 };
 
 export const Timeline: Story = {

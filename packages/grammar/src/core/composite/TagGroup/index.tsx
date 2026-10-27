@@ -116,14 +116,27 @@ export const TagGroup = ({
     const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined)
     const ids = items.map((item) => item.id)
     const reorderable = onReorder !== undefined
-    // The vendor tag does not forward `draggable`, so the group marks each enabled tag after every render.
+    // The vendor tag does not forward `draggable`, and the vendor group drops `aria-describedby`, so the group marks each
+    // enabled tag draggable and points the grid at the reorder instructions. The vendor collection renders its tags after
+    // this component's effects have run, so the marking also runs whenever the tags' DOM changes.
     useEffect(() => {
         const root = rootRef.current
         if (root === null || !reorderable) return
-        root.querySelectorAll<HTMLElement>("[data-grammar-tag-id]").forEach((tag) => {
-            tag.draggable = tag.getAttribute("aria-disabled") !== "true"
-        })
-    })
+        const mark = () => {
+            root.querySelectorAll<HTMLElement>("[data-grammar-tag-id]").forEach((tag) => {
+                const draggable = tag.getAttribute("aria-disabled") !== "true"
+                if (tag.draggable !== draggable) tag.draggable = draggable
+            })
+            const grid = root.querySelector<HTMLElement>("[role='grid']")
+            if (grid === null || reorderInstructions === undefined) return
+            const described = (grid.getAttribute("aria-describedby") ?? "").split(" ").filter((id) => id !== "")
+            if (!described.includes(instructionsId)) grid.setAttribute("aria-describedby", [...described, instructionsId].join(" "))
+        }
+        mark()
+        const observer = new MutationObserver(mark)
+        observer.observe(root, { childList: true, subtree: true, attributeFilter: ["aria-disabled", "aria-describedby"] })
+        return () => observer.disconnect()
+    }, [reorderable, reorderInstructions, instructionsId])
     const commit = (id: string, targetIndex: number) => {
         if (onReorder === undefined || reorderAnnouncement === undefined) return
         const next = moveId(ids, id, targetIndex)
@@ -185,9 +198,8 @@ export const TagGroup = ({
     }
     const tags = (
     <HeroTagGroup
-        ref={rootRef}
         aria-label={label}
-        {...(reorderable ? { "aria-describedby": instructionsId, "data-grammar-tag-reorderable": "true", onKeyDownCapture: onKeyDown, onDragStart, onDragOver, onDrop, onDragEnd } : {})}
+        {...(reorderable ? { "data-grammar-tag-reorderable": "true" } : {})}
         className={navigationClassName("starci-core-tag-group", className)}
         data-component="TagGroup"
         data-contract="STATE-1"
@@ -234,9 +246,22 @@ export const TagGroup = ({
     </HeroTagGroup>
     )
     if (!reorderable) return tags
+    // The vendor group forwards neither a ref nor key-capture and drag handlers, so the reorder layer listens on a
+    // wrapper of its own that lays out as if absent (`display: contents`).
     return (
         <>
-            {tags}
+            <div
+                ref={rootRef}
+                className="starci-core-tag-group-reorder"
+                data-grammar-tag-reorder="true"
+                onKeyDownCapture={onKeyDown}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onDragEnd={onDragEnd}
+            >
+                {tags}
+            </div>
             <span id={instructionsId} className="starci-core-visually-hidden" hidden>{reorderInstructions}</span>
             <span aria-live="polite" role="status" className="starci-core-visually-hidden" data-grammar-tag-announcement="true">{announcement}</span>
         </>

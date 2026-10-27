@@ -779,6 +779,11 @@
         white-space: nowrap;
     }
 
+    /* The reorder layer's event wrapper takes no box: the TagGroup lays out as if it were not there. */
+    .starci-core-tag-group-reorder {
+        display: contents;
+    }
+
     /* Reorderable tags: the grab cursor, the lifted tag and the tag a drop would replace. */
     .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[draggable="true"] {
         cursor: grab;
