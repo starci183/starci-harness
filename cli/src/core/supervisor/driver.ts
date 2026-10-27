@@ -7,12 +7,12 @@ import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-li
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { GOAL_CHANGE_SCHEMA, recordGoalChange } from "../../harness/goal.js"
 import type { GoalChange } from "../../harness/goal.js"
-import { launchKernelSeat, startKernel } from "../../harness/kernel.js"
+import { coordinatorOf, foreignKernelTerminal, launchKernelSeat, startKernel, SUPERVISOR_COORDINATOR } from "../../harness/kernel.js"
 import { now, openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadLiveness } from "../../harness/liveness.js"
 import { readMachine, textOf } from "../../harness/machine.js"
-import { locateOrca, mailCheck, mailSend, requestIdOf, requestShow, workerShow } from "../../harness/orca/client.js"
+import { locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, WorkerStartInput } from "../../harness/orca/client.js"
 import { kernelSeatOf } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -119,9 +119,19 @@ const relaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow:
     return `${workflow.id}: relaunched its Kernel (${why}) in ${started.worktree ?? "-"}`
 }
 
-/** The Kernel sweep of one project: every coordinated orca workflow keeps exactly one live Kernel, by Orca's word. */
+/**
+ * The Kernel sweep of one project: every orca workflow the Supervisor owns (its recorded coordinator, set when `kernel start` or
+ * `workflow start` launched its Kernel) keeps exactly one live Kernel, by Orca's word. A workflow nobody gave the Supervisor, or
+ * one still driven from a Kernel terminal another session adopted (Orca does not report it gone), is never touched.
+ */
 const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules: CoordinatorLiveness): Promise<string[]> => {
-    const workflows = withLedger(root, (db) => listWorkflows(db).filter(isCoordinated).map((workflow) => ({ workflow, seat: kernelSeatOf(db, workflow.id), progress: lastProgress(db, workflow.id) })))
+    const owned = withLedger(root, (db) =>
+        listWorkflows(db)
+            .filter((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR)
+            .map((workflow) => ({ workflow, seat: kernelSeatOf(db, workflow.id), progress: lastProgress(db, workflow.id), foreign: foreignKernelTerminal(db, workflow) })),
+    )
+    const live = owned.some((entry) => entry.foreign !== null) ? await terminalList(binary, cwd).catch(() => null) : null
+    const workflows = owned.filter(({ foreign }) => foreign === null || (live !== null && !live.truncated && !live.handles.has(foreign)))
     const done = await inOrder(workflows, async ({ workflow, seat, progress }): Promise<string | null> => {
         try {
             if (seat?.handle === null) return await resolveKernelLaunch(root, binary, cwd, workflow, seat, rules)
@@ -141,7 +151,7 @@ const oldestDecision = (): SupervisorDecision | undefined => {
 }
 
 /**
- * `supervisor next`: the host's deterministic driver. It sweeps every project's coordinated workflows (a Kernel with a lapsed
+ * `supervisor next`: the host's deterministic driver. It sweeps every project's workflows the Supervisor owns (a Kernel with a lapsed
  * lease and no progress past kernelTtlMinutes is relaunched on Orca's word; a launch with no receipt is resolved through
  * request-show; too many relaunches pause and escalate), then returns the oldest open escalation or handoff, else waits on the
  * Supervisor Run's mailbox until nextWaitSeconds pass and returns idle. Only the Supervisor's own terminal sweeps (it alone may

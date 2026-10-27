@@ -8,16 +8,22 @@ import { loadRouting, minutesMs, poolsOfProvider } from "./routing.js"
 import type { FailureKind, Routing } from "./routing.js"
 
 /**
- * What a launch or a worker taught about its provider. A success may close a striking circuit and lets the pool's
- * concurrency grow; a failure kind strikes and may open the circuit; `unknown` (an outcome nobody could confirm or deny) is
- * recorded and changes nothing, since unknown is never a failure.
+ * What a launch or a worker taught about its provider. A success may close a striking or half-open circuit and lets the pool's
+ * concurrency grow; a failure kind strikes and may open the circuit (or re-open a half-open one); `unknown` (an outcome nobody
+ * could confirm or deny) is recorded and changes nothing, since unknown is never a failure.
  */
 export type ProviderOutcome =
     | { readonly kind: "success"; readonly pool?: string | undefined }
     | { readonly kind: "unknown"; readonly detail?: string | undefined }
     | { readonly kind: FailureKind; readonly pool?: string | undefined; readonly detail?: string | undefined; readonly resetsAt?: string | undefined }
 
-/** A provider's circuit as provider_health keeps it; `open` is true only while circuit_open_until is in the future. */
+/**
+ * The probe of an open circuit: `none` while it waits (until `probeDueAt`), `due` when the next pick may send one launch to
+ * it, `in-flight` while that launch's outcome is awaited (other picks still skip the provider).
+ */
+export type ProbeState = "none" | "due" | "in-flight"
+
+/** A provider's circuit as provider_health keeps it; `open` is true until a success closes it, the cooldown only times the probe. */
 export interface CircuitState {
     readonly provider: string
     readonly status: "healthy" | "striking" | "open" | "recovered"
@@ -25,6 +31,9 @@ export interface CircuitState {
     readonly failureKind: string | null
     readonly openUntil: string | null
     readonly open: boolean
+    readonly probe: ProbeState
+    readonly probeDueAt: string | null
+    readonly failedProbes: number
     readonly updatedAt: string | null
 }
 
@@ -40,32 +49,68 @@ export interface OutcomeRecord {
 
 const STATUSES: readonly CircuitState["status"][] = ["healthy", "striking", "open", "recovered"]
 
-const closed = (provider: string): CircuitState => ({ provider, status: "healthy", strikes: 0, failureKind: null, openUntil: null, open: false, updatedAt: null })
+const closed = (provider: string): CircuitState => ({ provider, status: "healthy", strikes: 0, failureKind: null, openUntil: null, open: false, probe: "none", probeDueAt: null, failedProbes: 0, updatedAt: null })
+
+const later = (at: string, minutes: number): string => new Date(Date.parse(at) + minutesMs(minutes)).toISOString()
+
+/** The cooldown of an open: the kind's own, times reopenFactor per reopen in the window, capped, never below the kind's own. */
+export const cooldownMinutes = (routing: Routing, kind: FailureKind, reopens: number): number => {
+    const base = routing.circuit.cooldownMinutes[kind]
+    return Math.max(base, Math.min(base * routing.circuit.reopenFactor ** reopens, routing.circuit.capMinutes))
+}
+
+/**
+ * The half-open state of an open circuit, from its events since it opened: a probe is due at the cooldown's end or
+ * probeEveryMinutes after the open (times reopenFactor per failed probe, capped at probeCapMinutes), whichever is first; a
+ * probe sent and not answered within probeLeaseMinutes is in flight.
+ */
+const probeOf = (db: DatabaseSync, routing: Routing, provider: string, openUntil: string | null, fallbackOpenedAt: string, at: string): Pick<CircuitState, "probe" | "probeDueAt" | "failedProbes"> => {
+    const opened = textOf(db.prepare("SELECT MAX(at) AS at FROM provider_events WHERE provider = ? AND kind = 'circuit-open'").get(provider)?.at) ?? fallbackOpenedAt
+    const rows = db.prepare("SELECT kind, at FROM provider_events WHERE provider = ? AND kind IN ('probe', 'probe-failed') AND at >= ? ORDER BY id").all(provider, opened)
+    const times = (kind: string): string[] => rows.filter((row) => row.kind === kind).map((row) => textOf(row.at) ?? "")
+    const failed = times("probe-failed")
+    const lastProbe = times("probe").at(-1)
+    const lastFailed = failed.at(-1)
+    const { probeEveryMinutes, probeCapMinutes, probeLeaseMinutes, reopenFactor } = routing.circuit
+    const inFlight = lastProbe !== undefined && (lastFailed === undefined || lastFailed < lastProbe) && Date.parse(lastProbe) + minutesMs(probeLeaseMinutes) > Date.parse(at)
+    const interval = Math.min(probeEveryMinutes * reopenFactor ** failed.length, Math.max(probeCapMinutes, probeEveryMinutes))
+    const byInterval = later(lastFailed ?? opened, interval)
+    const probeDueAt = openUntil !== null && openUntil < byInterval ? openUntil : byInterval
+    const probe: ProbeState = inFlight ? "in-flight" : probeDueAt <= at ? "due" : "none"
+    return { probe, probeDueAt, failedProbes: failed.length }
+}
 
 /** The circuit of a provider at `at`; a provider with no row is healthy. */
 export const readCircuit = (db: DatabaseSync | undefined, provider: string, at: string = now()): CircuitState => {
     const row = db?.prepare("SELECT * FROM provider_health WHERE provider = ?").get(provider)
-    if (row === undefined) return closed(provider)
+    if (db === undefined || row === undefined) return closed(provider)
     const openUntil = textOf(row.circuit_open_until)
     const raw = textOf(row.status) ?? "healthy"
     const status = STATUSES.find((known) => known === raw) ?? "healthy"
-    return {
-        provider,
-        status,
-        strikes: Number(row.strikes),
-        failureKind: textOf(row.failure_kind),
-        openUntil,
-        open: status === "open" && openUntil !== null && openUntil > at,
-        updatedAt: textOf(row.updated_at),
-    }
+    const updatedAt = textOf(row.updated_at)
+    const base = { provider, status, strikes: Number(row.strikes), failureKind: textOf(row.failure_kind), openUntil, updatedAt }
+    if (status !== "open") return { ...base, open: false, probe: "none", probeDueAt: null, failedProbes: 0 }
+    return { ...base, open: true, ...probeOf(db, loadRouting(), provider, openUntil, updatedAt ?? at, at) }
 }
 
-const writeCircuit = (db: DatabaseSync, state: Omit<CircuitState, "open" | "updatedAt">, at: string): void => {
+const writeCircuit = (db: DatabaseSync, state: Pick<CircuitState, "provider" | "status" | "strikes" | "failureKind" | "openUntil">, at: string): void => {
     db.prepare(
         `INSERT INTO provider_health (provider, status, strikes, failure_kind, circuit_open_until, updated_at) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(provider) DO UPDATE SET status = excluded.status, strikes = excluded.strikes, failure_kind = excluded.failure_kind,
          circuit_open_until = excluded.circuit_open_until, updated_at = excluded.updated_at`,
     ).run(state.provider, state.status, state.strikes, state.failureKind, state.openUntil, at)
+}
+
+/** Closes an open circuit on evidence that the provider answers (a probe's success, or an account reading that says ok). */
+export const closeCircuit = (db: DatabaseSync, provider: string, by: string, evidence: unknown, at: string): void => {
+    const before = readCircuit(db, provider, at)
+    writeCircuit(db, { provider, status: "healthy", strikes: 0, failureKind: null, openUntil: null }, at)
+    recordProviderEvent(db, provider, "circuit-close", { by, evidence, was: { kind: before.failureKind, until: before.openUntil, failedProbes: before.failedProbes } }, at)
+}
+
+/** Marks the probe of a half-open circuit as sent: the pick that carries it is the one launch the provider gets until it answers. */
+export const recordProbe = (db: DatabaseSync, provider: string, data: unknown, at: string): void => {
+    recordProviderEvent(db, provider, "probe", data, at)
 }
 
 /** How many times the provider's circuit opened within the reopen window before `at`: each one multiplies the next cooldown. */
@@ -74,49 +119,53 @@ const reopensBefore = (db: DatabaseSync, routing: Routing, provider: string, at:
     return Number(db.prepare("SELECT COUNT(*) AS n FROM provider_events WHERE provider = ? AND kind = 'circuit-open' AND at >= ?").get(provider, since)?.n ?? 0)
 }
 
-/** The cooldown of an open: the kind's own, times reopenFactor per reopen in the window, capped, never below the kind's own. */
-export const cooldownMinutes = (routing: Routing, kind: FailureKind, reopens: number): number => {
-    const base = routing.circuit.cooldownMinutes[kind]
-    return Math.max(base, Math.min(base * routing.circuit.reopenFactor ** reopens, routing.circuit.capMinutes))
-}
-
-const later = (at: string, minutes: number): string => new Date(Date.parse(at) + minutesMs(minutes)).toISOString()
-
-/** A quota failure exhausts the pool's window: it is recorded as a 100% reading that resets when the circuit closes. */
-const exhaustQuota = (db: DatabaseSync, pools: readonly string[], resetsAt: string, at: string): void => {
-    for (const pool of pools) {
-        db.prepare(
-            `INSERT INTO pool_quota (pool, used_percent, resets_at, observed_at, source) VALUES (?, 100, ?, ?, 'quota-failure')
-             ON CONFLICT(pool) DO UPDATE SET used_percent = 100, resets_at = excluded.resets_at, observed_at = excluded.observed_at, source = excluded.source`,
-        ).run(pool, resetsAt, at)
-    }
+/** Writes a pool's binding quota reading (pool_quota); every source of a reading goes through here. */
+export const writeQuota = (db: DatabaseSync, pool: string, usedPercent: number, resetsAt: string | null, source: string, at: string): void => {
+    db.prepare(
+        `INSERT INTO pool_quota (pool, used_percent, resets_at, observed_at, source) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(pool) DO UPDATE SET used_percent = excluded.used_percent, resets_at = excluded.resets_at, observed_at = excluded.observed_at, source = excluded.source`,
+    ).run(pool, usedPercent, resetsAt, at, source)
 }
 
 const targetPools = (routing: Routing, provider: string, pool: string | undefined): string[] => (pool === undefined ? poolsOfProvider(routing, provider) : [pool])
 
+/** The open time of a failure: the kind's cooldown, or the reset a quota failure names. */
+const openFor = (kind: FailureKind, minutes: number, resetsAt: string | undefined, at: string): { readonly minutes: number; readonly until: string } => {
+    if (kind === "quota" && resetsAt !== undefined && Date.parse(resetsAt) > Date.parse(at)) {
+        const until = new Date(Date.parse(resetsAt)).toISOString()
+        return { minutes: Math.ceil((Date.parse(until) - Date.parse(at)) / 60_000), until }
+    }
+    return { minutes, until: later(at, minutes) }
+}
+
 const applyFailure = (db: DatabaseSync, routing: Routing, provider: string, outcome: ProviderOutcome & { readonly kind: FailureKind }, before: CircuitState, at: string): OutcomeRecord["opened"] => {
     const kind = outcome.kind
-    if (before.open) {
+    if (before.open && before.probe === "none") {
         recordProviderEvent(db, provider, "failure-while-open", { kind, detail: outcome.detail ?? null, until: before.openUntil }, at)
         return null
     }
-    const strikes = (before.status === "striking" && before.failureKind === kind ? before.strikes : 0) + 1
-    if (strikes < (routing.circuit.strikes[kind] ?? 1)) {
-        writeCircuit(db, { provider, status: "striking", strikes, failureKind: kind, openUntil: null }, at)
-        recordProviderEvent(db, provider, "strike", { kind, strikes, detail: outcome.detail ?? null }, at)
-        return null
+    let reopens: number
+    let event: string
+    let strikes: number
+    if (before.open) {
+        // The half-open probe failed: the circuit re-opens, and its cooldown and next probe back off by the failed probes.
+        reopens = before.failedProbes + 1
+        event = "probe-failed"
+        strikes = before.strikes + 1
+    } else {
+        strikes = (before.status === "striking" && before.failureKind === kind ? before.strikes : 0) + 1
+        if (strikes < (routing.circuit.strikes[kind] ?? 1)) {
+            writeCircuit(db, { provider, status: "striking", strikes, failureKind: kind, openUntil: null }, at)
+            recordProviderEvent(db, provider, "strike", { kind, strikes, detail: outcome.detail ?? null }, at)
+            return null
+        }
+        reopens = reopensBefore(db, routing, provider, at)
+        event = "circuit-open"
     }
-    const reopens = reopensBefore(db, routing, provider, at)
-    let minutes = cooldownMinutes(routing, kind, reopens)
-    let until = later(at, minutes)
-    // A quota failure that names its reset waits for that reset instead of the hour.
-    if (kind === "quota" && outcome.resetsAt !== undefined && Date.parse(outcome.resetsAt) > Date.parse(at)) {
-        until = new Date(Date.parse(outcome.resetsAt)).toISOString()
-        minutes = Math.ceil((Date.parse(until) - Date.parse(at)) / 60_000)
-    }
+    const { minutes, until } = openFor(kind, cooldownMinutes(routing, kind, reopens), outcome.resetsAt, at)
     writeCircuit(db, { provider, status: "open", strikes, failureKind: kind, openUntil: until }, at)
-    recordProviderEvent(db, provider, "circuit-open", { kind, strikes, reopens, cooldownMinutes: minutes, until, detail: outcome.detail ?? null }, at)
-    if (kind === "quota") exhaustQuota(db, targetPools(routing, provider, outcome.pool), until, at)
+    recordProviderEvent(db, provider, event, { kind, strikes, reopens, cooldownMinutes: minutes, until, detail: outcome.detail ?? null }, at)
+    if (kind === "quota") for (const pool of targetPools(routing, provider, outcome.pool)) writeQuota(db, pool, 100, until, "quota-failure", at)
     return { cooldownMinutes: minutes, reopens, until }
 }
 
@@ -133,8 +182,9 @@ export const recordOutcome = (provider: string, outcome: ProviderOutcome, at: st
         if (outcome.kind === "unknown") {
             recordProviderEvent(db, provider, "outcome-unknown", { detail: outcome.detail ?? null }, at)
         } else if (outcome.kind === "success") {
-            // A success seen while the circuit is open came from a launch started before it opened; the cooldown stands.
-            if (!before.open && before.status !== "healthy") writeCircuit(db, { provider, status: "healthy", strikes: 0, failureKind: null, openUntil: null }, at)
+            // A success while the circuit waits for its probe came from a launch started before it opened; the wait stands.
+            if (before.open && before.probe !== "none") closeCircuit(db, provider, "probe", { pool: outcome.pool ?? null }, at)
+            else if (!before.open && before.status !== "healthy") writeCircuit(db, { provider, status: "healthy", strikes: 0, failureKind: null, openUntil: null }, at)
             recordProviderEvent(db, provider, "success", { pool: outcome.pool ?? null }, at)
             for (const pool of targetPools(routing, provider, outcome.pool)) concurrency.push(stepConcurrency(db, routing, pool, "success", at))
         } else {
@@ -150,7 +200,7 @@ export const recordOutcome = (provider: string, outcome: ProviderOutcome, at: st
 /** The providers ops/routing.yaml knows, from its pools. */
 export const knownProviders = (routing: Routing): string[] => [...new Set(Object.values(routing.pools).map((pool) => pool.provider))].sort((a, b) => a.localeCompare(b))
 
-/** Closes a provider's circuit by hand (owner or Supervisor, after a passing probe); the reason is kept as an event. */
+/** Closes a provider's circuit as the Supervisor's recorded action after a probe it ran itself passed; the reason is kept as an event. */
 export const recoverProvider = (provider: string, by: string, reason: string, at: string = now()): { readonly before: CircuitState; readonly after: CircuitState } => {
     const routing = loadRouting()
     if (!knownProviders(routing).includes(provider)) throw new Refusal("PROVIDER_UNKNOWN", `no pool of ops/routing.yaml draws on provider ${provider} (known: ${knownProviders(routing).join(", ")})`)
@@ -190,10 +240,7 @@ export const recordQuota = (pool: string, usedPercent: number, options: { readon
     if (spec === undefined) throw new Refusal("POOL_UNKNOWN", `no pool ${pool} in ops/routing.yaml (known: ${Object.keys(routing.pools).join(", ")})`)
     if (!Number.isFinite(usedPercent) || usedPercent < 0) throw new Refusal("CLI_USAGE", `a quota reading is a percent of 0 or more, not ${String(usedPercent)}`, 2)
     return withMachine((db) => {
-        db.prepare(
-            `INSERT INTO pool_quota (pool, used_percent, resets_at, observed_at, source) VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(pool) DO UPDATE SET used_percent = excluded.used_percent, resets_at = excluded.resets_at, observed_at = excluded.observed_at, source = excluded.source`,
-        ).run(pool, usedPercent, options.resetsAt ?? null, at, options.source)
+        writeQuota(db, pool, usedPercent, options.resetsAt ?? null, options.source, at)
         recordProviderEvent(db, spec.provider, "quota-reading", { pool, usedPercent, resetsAt: options.resetsAt ?? null, source: options.source }, at)
         return readQuota(db, routing, pool, at)
     })

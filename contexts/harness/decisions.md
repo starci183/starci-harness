@@ -22,6 +22,10 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `check run`, the tests related to the changed files (never a whole suite) and `paths-only`. A `verify` worker runs a
   heavy suite only when the goal itself is that suite. CI runs the full suite on main after the push; a red CI becomes
   a `code` contract scoped to the red checks and never blocks the next push.
+- **The router alone picks.** Every Op and Kernel is routed by [ops/routing.yaml](../../ops/routing.yaml) from real
+  signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
+  from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers
+  the pick, and no circuit waits for a person ([ops/README.md](../../ops/README.md) "The router").
 - **Policy selects; code and canon enforce.** [policy/](../../policy/README.md) picks the gates and configures them; every
   rule lives once, in the CLI or a canon package.
 - **One CI workflow.** [.github/workflows/ci.yml](../../.github/workflows/ci.yml) gates every push and pull request to main

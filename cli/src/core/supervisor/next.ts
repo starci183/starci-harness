@@ -3,13 +3,13 @@ import { parseWait } from "../kernel/next.js"
 import { supervisorNext } from "./driver.js"
 
 /**
- * `starci supervisor next`: the Supervisor's only wait. It keeps one live Kernel per running orca workflow on the host
+ * `starci supervisor next`: the Supervisor's only wait. It keeps one live Kernel per running orca workflow it owns on the host
  * (relaunching on Orca's word, pausing and escalating past the relaunch limit) and returns the oldest open escalation or
  * handoff with its workflow digest; idle when none came.
  */
 export const supervisorNextVerb = defineVerb({
     path: ["supervisor", "next"],
-    summary: "sweep every project's Kernels (relaunch on Orca's word) and return the oldest escalation or handoff with a digest; idle after --wait",
+    summary: "sweep the Kernels of the workflows the Supervisor owns (relaunch on Orca's word) and return the oldest escalation or handoff with a digest; idle after --wait",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],

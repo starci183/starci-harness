@@ -10,7 +10,9 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  * - provider_events: every outcome, open, recover and quota reading of a provider, append-only; reopens are counted from it.
  * - pool_quota: the newest quota reading of a pool's window, in percent; no row means unknown.
  * - pool_concurrency: a pool's AIMD cap below its maxParallel; no row means the pool runs at its max.
- * - route_picks: the router's recent picks per tier, for the balance step's streak.
+ * - pool_windows: every usage window of a pool as its provider last reported it (percent used, length, reset), for the pace.
+ * - route_picks: the router's recent picks per tier, for the balance step's streak and the exploration share.
+ * - member_outcomes: every ended attempt of every registered ledger, per member and label, for qualification and scoring.
  * - budgets / budget_raises: a workflow's raised ceilings (keyed by ledger and workflow) and who raised them and why.
  */
 const TABLES = `
@@ -22,6 +24,13 @@ CREATE TABLE IF NOT EXISTS pool_quota (
 CREATE TABLE IF NOT EXISTS pool_concurrency (
   pool TEXT PRIMARY KEY, cap INTEGER NOT NULL, max INTEGER NOT NULL, halvings INTEGER NOT NULL DEFAULT 0,
   last_throttle_at TEXT, last_decrease_at TEXT, last_increase_at TEXT, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS pool_windows (
+  pool TEXT NOT NULL, window TEXT NOT NULL, used_percent REAL NOT NULL, window_minutes REAL, resets_at TEXT, observed_at TEXT NOT NULL,
+  source TEXT NOT NULL, PRIMARY KEY (pool, window));
+CREATE TABLE IF NOT EXISTS member_outcomes (
+  ledger TEXT NOT NULL, attempt_id TEXT NOT NULL, member TEXT NOT NULL, pool TEXT NOT NULL, label TEXT NOT NULL, class TEXT NOT NULL,
+  minutes REAL, ended_at TEXT NOT NULL, PRIMARY KEY (ledger, attempt_id));
+CREATE INDEX IF NOT EXISTS member_outcomes_by_member ON member_outcomes (member, label, ended_at);
 CREATE TABLE IF NOT EXISTS route_picks (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, tier TEXT NOT NULL, member TEXT NOT NULL, pool TEXT NOT NULL,
   label TEXT NOT NULL, chosen_by TEXT NOT NULL);

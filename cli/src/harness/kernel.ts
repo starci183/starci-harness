@@ -23,6 +23,26 @@ import type { KernelRecord, WorkflowRow } from "./workflow.js"
 /** The exact title of a workflow's Kernel seat and orchestration task. */
 export const kernelTitle = (workflowId: string): string => `[Kernel] ${workflowId}`
 
+/** The coordinator `kernel start` (and so `workflow start`) records on a workflow: the Supervisor owns it and sweeps its Kernel. */
+export const SUPERVISOR_COORDINATOR = "supervisor"
+
+/** The coordinator recorded on a workflow (its latest `workflow-coordinator` event), or null when the Supervisor never started or adopted it. */
+export const coordinatorOf = (db: DatabaseSync, workflowId: string): string | null => {
+    const row = db.prepare("SELECT data_json FROM events WHERE kind = 'workflow-coordinator' AND subject = ? ORDER BY id DESC LIMIT 1").get(workflowId)
+    const data: unknown = row === undefined ? null : JSON.parse(String(row.data_json))
+    return typeof data === "object" && data !== null && "coordinator" in data && typeof data.coordinator === "string" ? data.coordinator : null
+}
+
+/**
+ * The Kernel terminal a workflow records that no Kernel seat of it ever held: a terminal another session adopted as its Kernel
+ * (the terminal model), not one the Supervisor launched. Null when there is none, or it is closed.
+ */
+export const foreignKernelTerminal = (db: DatabaseSync, workflow: WorkflowRow): string | null => {
+    const { terminal, closedAt } = workflow.kernel
+    if (terminal === null || closedAt !== null) return null
+    return db.prepare("SELECT 1 FROM seats WHERE role = 'kernel' AND workflow_id = ? AND terminal = ?").get(workflow.id, terminal) === undefined ? terminal : null
+}
+
 /** The Kernel identity every Op launch supplies to Orca. */
 export interface KernelLaunch {
     readonly terminal: string
@@ -130,11 +150,18 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     if (workflow.header.runner !== "orca") throw new Refusal("KERNEL_INLINE", "an inline workflow has no Orca Kernel seat: the chat agent is its Kernel")
     if (!["running", "blocked", "paused"].includes(workflow.status)) throw new Refusal("KERNEL_NOT_RUNNING", `workflow ${workflowId} is ${workflow.status}; start a defined workflow with starci workflow start`)
     const notes: string[] = []
+    const foreign = withRecord(root, (db) => foreignKernelTerminal(db, workflow))
+    if (foreign !== null) {
+        const live = await terminalList(binary, cwd).catch(() => null)
+        if (live === null || live.truncated || live.handles.has(foreign)) {
+            throw new Refusal("KERNEL_FOREIGN", `workflow ${workflowId} is driven from terminal ${foreign}, which another session adopted as its Kernel and Orca does not report gone; let that session finish or close its terminal first`)
+        }
+    }
     const open = withRecord(root, (db) => kernelSeatOf(db, workflowId))
     if (open !== undefined) notes.push(await retireOpenSeat(root, cwd, open, binary, options.replace === true))
     if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open === undefined) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
-    const pick = pickCoordinator("kernel", { bias: workflow.header.bias })
+    const pick = pickCoordinator("kernel")
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const launchId = `k-${randomUUID().slice(0, 8)}`
     const spec = coordinatorBrief({ role: "kernel", root, workflowId, launchId, agent: pick.agent, model: pick.model, worktree })
@@ -154,6 +181,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
             if (kernelSeatOf(db, workflowId) !== undefined) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
             openKernelSeat(db, { id: launchId, workflowId, agent: pick.agent, model: pick.model, requestId: input.retryRequest, launch: input })
             recordKernel(db, workflowId, { terminal: null, owned: true, closedAt: null })
+            if (coordinatorOf(db, workflowId) !== SUPERVISOR_COORDINATOR) recordEvent(db, "workflow-coordinator", workflowId, { coordinator: SUPERVISOR_COORDINATOR, seat: launchId })
         }); },
     )
     await launchKernelSeat(root, cwd, launchId, input, binary)

@@ -1,24 +1,20 @@
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
-import { readCircuit, readQuota } from "./circuit.js"
+import { readCircuit, readQuota, recordProbe } from "./circuit.js"
 import type { CircuitState, QuotaReading } from "./circuit.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, runningWorkers, textOf, withMachine } from "./machine.js"
 import type { RunningWorkers } from "./machine.js"
 import { loadOps } from "./ops.js"
+import { evidenceOf, memberEvidence, posteriorOf, qualificationOf, recordMemberOutcomes, sampleBeta } from "./outcomes.js"
+import type { MemberEvidence } from "./outcomes.js"
 import { poolConcurrency } from "./pools.js"
 import type { PoolConcurrency } from "./pools.js"
-import { difficultyRank, loadRouting, parseDifficulty, providerOfAgent } from "./routing.js"
-import type { CoordinatorRole, Difficulty, MemberSpec, Routing } from "./routing.js"
+import { difficultyRank, loadRouting, parseDifficulty, providerOfAgent, QUALIFICATIONS } from "./routing.js"
+import type { CoordinatorRole, Difficulty, MemberSpec, Qualification, Routing } from "./routing.js"
 import { getTask } from "./tasks.js"
-
-/** An owner or workflow bias: each entry names an agent (`codex`), a model, an `agent/model` member or a provider. */
-export interface RouteBias {
-    readonly only?: readonly string[] | undefined
-    readonly avoid?: readonly string[] | undefined
-    readonly prefer?: readonly string[] | undefined
-}
+import { paceOf, refreshUsage } from "./usage.js"
 
 /** A member that ran an attempt of this task's lineage. */
 export interface RouteMember {
@@ -28,8 +24,8 @@ export interface RouteMember {
 
 /**
  * What the router needs to pick: the label, an optional measured difficulty (a name or 1..4; the label's floor raises it), the
- * 1-based attempt number in the task's lineage, the contract-red attempts so far (their members, or just
- * their count) and the workflow's bias.
+ * 1-based attempt number in the task's lineage, the contract-red attempts so far (their members, or just their count) and the
+ * task's risk tags (any of routing.yaml qualification.riskTags makes it high-risk).
  */
 export interface RouteInput {
     readonly label: string
@@ -37,7 +33,7 @@ export interface RouteInput {
     readonly difficulty?: Difficulty | number | undefined
     readonly attempt: number
     readonly previousRed?: number | readonly RouteMember[] | undefined
-    readonly workflowBias?: RouteBias | undefined
+    readonly risk?: readonly string[] | undefined
 }
 
 /** One member a step dropped, and why. */
@@ -47,7 +43,31 @@ export interface DroppedMember {
     readonly reason: string
 }
 
-/** The whole decision: how the tier was chosen, the chain after each step, every dropped member and the chosen one. */
+/** How one member scored: its qualification, its evidence, expected success over expected cost, and its Thompson sample when exploring. */
+export interface MemberScore {
+    readonly member: string
+    readonly qualification: Qualification
+    readonly green: number
+    readonly red: number
+    readonly worker: number
+    readonly expected: number
+    readonly minutes: number
+    readonly pace: number | null
+    readonly cost: number
+    readonly score: number
+    readonly sample: number | null
+}
+
+/** The exploration decision of a pick: the roll against the share, and the share explore picks already hold of the tier's recent picks. */
+export interface ExploreDecision {
+    readonly sharePercent: number
+    readonly roll: number
+    readonly recent: number
+    readonly recentExplore: number
+    readonly exploring: boolean
+}
+
+/** The whole decision: how the tier was chosen, the chain after each step, every dropped member, the scores and the chosen one. */
 export interface RouteRecord {
     readonly at: string
     readonly label: string
@@ -55,15 +75,19 @@ export interface RouteRecord {
     readonly difficulty: Difficulty | null
     readonly floor: Difficulty
     readonly reds: number
+    readonly risk: readonly string[]
+    readonly highRisk: boolean
     readonly tierFrom: string
     readonly baseTier: string
-    readonly tier: string
+    tier: string
     readonly escalated: boolean
-    readonly bias: RouteBias
     readonly hostTools: Readonly<Record<string, boolean>>
-    readonly chain: readonly string[]
+    chain: readonly string[]
     readonly steps: { readonly step: string; readonly kept: readonly string[]; readonly note?: string }[]
     readonly dropped: DroppedMember[]
+    scores: readonly MemberScore[]
+    explore: ExploreDecision | null
+    probe: string | null
     chosen: { readonly member: string; readonly by: string } | null
 }
 
@@ -102,16 +126,26 @@ interface Candidate {
     readonly running: number
     readonly runningMember: number
     readonly quota: QuotaReading
+    readonly pace: number | null
 }
 
-/** Everything outside the input the decision reads, gathered once. */
+/** A recorded pick of a tier: its member and why it was chosen. */
+interface RecentPick {
+    readonly member: string
+    readonly by: string
+}
+
+/** Everything outside the input the decision reads, gathered once; `random` is the decision's only source of chance. */
 interface Facts {
     readonly routing: Routing
     readonly floor: Difficulty
     readonly labelTools: readonly string[]
     readonly hostTools: Readonly<Record<string, boolean>>
-    readonly recent: (tier: string) => readonly string[]
+    readonly recent: (tier: string) => readonly RecentPick[]
     readonly candidates: (tier: string) => Candidate[]
+    readonly evidence: ReadonlyMap<string, MemberEvidence>
+    readonly probing: ReadonlySet<string>
+    readonly random: () => number
 }
 
 const memberId = (member: { readonly agent: string; readonly model: string }): string => `${member.agent}/${member.model}`
@@ -143,31 +177,33 @@ const gatherFacts = (input: RouteInput, at: string): Facts => {
     if (spec === undefined) throw new Refusal("LABEL_UNKNOWN", `no label ${input.label} in ops/ops/`)
     const hostTools = Object.fromEntries(spec.hostTools.filter((tool) => tool in routing.hostProbes).map((tool) => [tool, hostHas(routing, tool)]))
     const running: RunningWorkers = runningWorkers()
-    const snapshot = (db: DatabaseSync | undefined): { recent: Map<string, string[]>; candidates: Map<string, Candidate[]> } => {
-        const recent = new Map<string, string[]>()
+    const snapshot = (db: DatabaseSync | undefined): { recent: Map<string, RecentPick[]>; candidates: Map<string, Candidate[]>; evidence: ReadonlyMap<string, MemberEvidence> } => {
+        const recent = new Map<string, RecentPick[]>()
         const candidates = new Map<string, Candidate[]>()
         for (const [tier, members] of Object.entries(routing.tiers)) {
-            const rows = db?.prepare("SELECT member FROM route_picks WHERE tier = ? ORDER BY id DESC LIMIT ?").all(tier, RECENT_PICKS) ?? []
-            recent.set(tier, rows.map((row) => textOf(row.member) ?? ""))
+            const rows = db?.prepare("SELECT member, chosen_by FROM route_picks WHERE tier = ? ORDER BY id DESC LIMIT ?").all(tier, RECENT_PICKS) ?? []
+            recent.set(tier, rows.map((row) => ({ member: textOf(row.member) ?? "", by: textOf(row.chosen_by) ?? "" })))
             candidates.set(
                 tier,
                 members.map((member) => {
                     const pool = member.agent
+                    const provider = providerOfAgent(routing, member.agent)
                     return {
                         id: memberId(member),
                         spec: member,
                         pool,
-                        provider: providerOfAgent(routing, member.agent),
-                        circuit: readCircuit(db, providerOfAgent(routing, member.agent), at),
+                        provider,
+                        circuit: readCircuit(db, provider, at),
                         concurrency: poolConcurrency(db, routing, pool),
                         running: running.byAgent.get(member.agent) ?? 0,
                         runningMember: running.byMember.get(memberId(member)) ?? 0,
                         quota: readQuota(db, routing, pool, at),
+                        pace: paceOf(db, routing, pool, at),
                     }
                 }),
             )
         }
-        return { recent, candidates }
+        return { recent, candidates, evidence: memberEvidence(db, routing, at) }
     }
     const facts = readMachine<ReturnType<typeof snapshot> | undefined>(snapshot, undefined) ?? snapshot(undefined)
     return {
@@ -177,54 +213,19 @@ const gatherFacts = (input: RouteInput, at: string): Facts => {
         hostTools,
         recent: (tier) => facts.recent.get(tier) ?? [],
         candidates: (tier) => facts.candidates.get(tier) ?? [],
+        evidence: facts.evidence,
+        probing: new Set(),
+        random: Math.random,
     }
-}
-
-const named = (candidate: Candidate, names: readonly string[] | undefined): boolean =>
-    (names ?? []).some((name) => name === candidate.spec.agent || name === candidate.spec.model || name === candidate.id || name === candidate.provider)
-
-/** Why a member fails the hard filter (pool role, tools, lineage exclusion, open circuit, capacity), or null when it passes. */
-const hardReason = (candidate: Candidate, input: RouteInput, facts: Facts, redsByPool: ReadonlyMap<string, number>): string | null => {
-    const pool = facts.routing.pools[candidate.pool]
-    if (pool === undefined) return `no pool ${candidate.pool}`
-    if (!pool.labels.includes(input.label)) return `pool ${candidate.pool} does not take ${input.label} work`
-    const lacking = facts.labelTools.filter((tool) => !pool.tools.includes(tool))
-    if (lacking.length > 0) return `pool ${candidate.pool} has no ${lacking.join(", ")}`
-    const missing = facts.labelTools.filter((tool) => facts.hostTools[tool] === false)
-    if (missing.length > 0) return `host has no ${missing.join(", ")}`
-    const reds = redsByPool.get(candidate.pool) ?? 0
-    if (reds >= 2) return `excluded by this task's lineage: ${String(reds)} contract-red attempts on pool ${candidate.pool}`
-    if (candidate.circuit.open) return `provider ${candidate.provider} circuit open (${candidate.circuit.failureKind ?? "?"}) until ${candidate.circuit.openUntil ?? "?"}`
-    const limit = Math.min(pool.maxParallel, candidate.concurrency.cap)
-    if (candidate.running >= limit) return `pool ${candidate.pool} full: ${String(candidate.running)} running of ${String(limit)} (maxParallel ${String(pool.maxParallel)}, AIMD cap ${String(candidate.concurrency.cap)})`
-    return null
-}
-
-/** The quota verdict of a member: null when it may be used; unknown or stale readings are never a reason. */
-const tokenReason = (candidate: Candidate, routing: Routing, biased: boolean): string | null => {
-    const { quota } = candidate
-    if (!quota.fresh || quota.usedPercent === null) return null
-    const used = quota.usedPercent
-    const { reservePercent, biasPercent, exhaustedPercent } = routing.quota
-    if (used >= exhaustedPercent) return `quota exhausted (${String(used)}%)`
-    if (used >= biasPercent) return `quota at ${String(used)}%, at or over ${String(biasPercent)}%`
-    if (used >= reservePercent && !biased) return `quota at ${String(used)}%, in the ${String(reservePercent)}% reserve`
-    return null
-}
-
-const quotaNote = (candidates: readonly Candidate[]): string | undefined => {
-    const unknown = candidates.filter((candidate) => !candidate.quota.fresh).map((candidate) => candidate.id)
-    return unknown.length === 0 ? undefined : `quota unknown (kept): ${unknown.join(", ")}`
 }
 
 const earliest = (times: readonly (string | null)[]): string | null => times.filter((time): time is string => time !== null).sort((a, b) => (a < b ? -1 : Number(a > b)))[0] ?? null
 
 const redMembers = (previousRed: RouteInput["previousRed"]): readonly RouteMember[] => (typeof previousRed === "number" || previousRed === undefined ? [] : previousRed)
 
-/** What the steps of one decision share: the tier it routes in, the record it writes and how a step notes its kept and dropped members. */
+/** What the steps of one decision share: the record it writes and how a step notes its kept and dropped members. */
 interface Stage {
     readonly routing: Routing
-    readonly tier: string
     readonly record: RouteRecord
     readonly snapshot: (step: string, kept: readonly Candidate[], note?: string) => void
     readonly drop: (candidate: Candidate, step: string, reason: string) => void
@@ -237,77 +238,125 @@ const droppedText = (record: RouteRecord, step: string): string =>
         .map((row) => row.member + " " + row.reason)
         .join("; ")
 
+/** A member's qualification for the input's label in its tier. */
+const qualificationIn = (facts: Facts, input: RouteInput, candidate: Candidate, tier: string): Qualification =>
+    qualificationOf(facts.routing, evidenceOf(facts.evidence, candidate.id, input.label), tier)
+
+/** Why a member's circuit keeps it out: open and waiting for its probe, or its one probe already in flight; null when it may run. */
+const circuitReason = (candidate: Candidate, facts: Facts, highRisk: boolean): string | null => {
+    const { circuit } = candidate
+    if (!circuit.open) return null
+    const kind = circuit.failureKind ?? "?"
+    if (circuit.probe === "in-flight" || facts.probing.has(candidate.provider)) return `provider ${candidate.provider} circuit open (${kind}); its probe is in flight`
+    if (circuit.probe === "none") return `provider ${candidate.provider} circuit open (${kind}); next probe at ${circuit.probeDueAt ?? "?"}`
+    return highRisk ? `provider ${candidate.provider} circuit half-open (${kind}); a high-risk task is never a probe` : null
+}
+
+/** Why a member fails the hard filter (pool role, tools, lineage exclusion, circuit, capacity, qualification), or null when it passes. */
+const hardReason = (candidate: Candidate, input: RouteInput, facts: Facts, tier: string, highRisk: boolean, redsByPool: ReadonlyMap<string, number>): { readonly step: string; readonly reason: string } | null => {
+    const pool = facts.routing.pools[candidate.pool]
+    const fail = (reason: string, step = "hard-filter"): { readonly step: string; readonly reason: string } => ({ step, reason })
+    if (pool === undefined) return fail(`no pool ${candidate.pool}`)
+    if (!pool.labels.includes(input.label)) return fail(`pool ${candidate.pool} does not take ${input.label} work`)
+    const lacking = facts.labelTools.filter((tool) => !pool.tools.includes(tool))
+    if (lacking.length > 0) return fail(`pool ${candidate.pool} has no ${lacking.join(", ")}`)
+    const missing = facts.labelTools.filter((tool) => facts.hostTools[tool] === false)
+    if (missing.length > 0) return fail(`host has no ${missing.join(", ")}`)
+    const reds = redsByPool.get(candidate.pool) ?? 0
+    if (reds >= 2) return fail(`excluded by this task's lineage: ${String(reds)} contract-red attempts on pool ${candidate.pool}`)
+    const circuit = circuitReason(candidate, facts, highRisk)
+    if (circuit !== null) return fail(circuit)
+    const limit = Math.min(pool.maxParallel, candidate.concurrency.cap)
+    if (candidate.running >= limit) return fail(`pool ${candidate.pool} full: ${String(candidate.running)} running of ${String(limit)} (maxParallel ${String(pool.maxParallel)}, AIMD cap ${String(candidate.concurrency.cap)})`)
+    const minimum = facts.routing.qualification.riskMinimum
+    const qualification = qualificationIn(facts, input, candidate, tier)
+    if (highRisk && QUALIFICATIONS.indexOf(qualification) < QUALIFICATIONS.indexOf(minimum)) return fail(`${qualification} for ${input.label}; a high-risk task needs ${minimum}`, "qualification")
+    return null
+}
+
 /** The refusal of a hard filter that kept nobody, named by why the members fell. */
 const hardRefusal = (stage: Stage, input: RouteInput, candidates: readonly Candidate[]): RouteRefusal => {
-    const { tier, record } = stage
-    const steps = record.dropped.map((row) => row.reason)
-    const circuitOnly = steps.every((reason) => reason.startsWith("provider "))
-    const fullOnly = steps.every((reason) => reason.startsWith("pool ") && reason.includes(" full: "))
+    const { record } = stage
+    const tier = record.tier
     const reasons = record.dropped.map((row) => `${row.member}: ${row.reason}`).join("; ")
-    if (circuitOnly) return new RouteRefusal("PROVIDERS_UNAVAILABLE", `every member of tier ${tier} has its provider circuit open: ${reasons}`, record, earliest(candidates.map((candidate) => candidate.circuit.openUntil)))
-    if (fullOnly) return new RouteRefusal("POOLS_FULL", `every pool of tier ${tier} is at its concurrency; the task waits in the queue: ${reasons}`, record)
+    if (record.dropped.every((row) => row.reason.startsWith("provider "))) {
+        return new RouteRefusal("PROVIDERS_UNAVAILABLE", `every member of tier ${tier} has its provider circuit open: ${reasons}`, record, earliest(candidates.map((candidate) => candidate.circuit.probeDueAt)))
+    }
+    if (record.dropped.every((row) => row.reason.includes(" full: "))) return new RouteRefusal("POOLS_FULL", `every pool of tier ${tier} is at its concurrency; the task waits in the queue: ${reasons}`, record)
+    if (record.dropped.some((row) => row.step === "qualification")) return new RouteRefusal("ROUTE_UNQUALIFIED", `no member of tier ${tier} or above is qualified for high-risk ${input.label} work: ${reasons}`, record)
     return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${tier} can take ${input.label} work: ${reasons}`, record)
 }
 
-/** Owner bias: only keeps, avoid removes, prefer moves to the front. */
-const applyBias = (stage: Stage, lineage: readonly Candidate[], bias: RouteBias): Candidate[] => {
-    const only = (bias.only ?? []).length > 0 ? lineage.filter((candidate) => named(candidate, bias.only)) : lineage
-    for (const candidate of lineage) if (!only.includes(candidate)) stage.drop(candidate, "bias", "not named by only")
-    for (const candidate of only.filter((member) => named(member, bias.avoid))) stage.drop(candidate, "bias", "avoided")
-    const kept = only.filter((candidate) => !named(candidate, bias.avoid))
-    return [...kept.filter((candidate) => named(candidate, bias.prefer)), ...kept.filter((candidate) => !named(candidate, bias.prefer))]
+/** The quota verdict of a member: null when it may be used; unknown or stale readings are never a reason. */
+const quotaReason = (candidate: Candidate, routing: Routing): { readonly reserve: boolean; readonly reason: string } | null => {
+    const { quota } = candidate
+    if (!quota.fresh || quota.usedPercent === null) return null
+    const used = quota.usedPercent
+    const until = quota.resetsAt === null ? "" : ` until ${quota.resetsAt}`
+    if (used >= routing.quota.exhaustedPercent) return { reserve: false, reason: `quota exhausted (${String(used)}%)${until}` }
+    if (used >= routing.quota.reservePercent) return { reserve: true, reason: `quota at ${String(used)}%, in the ${String(routing.quota.reservePercent)}% reserve` }
+    return null
 }
 
-/** Why the head of the chain should yield: picked too often in a row, or holding too much of the tier's running seats; null when it should not. */
-const balanceReason = (routing: Routing, head: Candidate, biased: readonly Candidate[], recent: readonly string[]): string | null => {
-    const streak = recent.findIndex((member) => member !== head.id)
+/** The quota step: an exhausted member is never used, one in the reserve only when no member below it is left; unknown is kept. */
+const quotaStep = (stage: Stage, members: readonly Candidate[]): Candidate[] => {
+    const verdicts = members.map((candidate) => ({ candidate, verdict: quotaReason(candidate, stage.routing) }))
+    const roomy = verdicts.some(({ verdict }) => verdict === null)
+    const kept = verdicts.filter(({ candidate, verdict }) => {
+        const drop = verdict !== null && (!verdict.reserve || roomy)
+        if (drop) stage.drop(candidate, "quota", verdict.reason)
+        return !drop
+    })
+    const unknown = members.filter((candidate) => !candidate.quota.fresh).map((candidate) => candidate.id)
+    const reserveUsed = kept.filter(({ verdict }) => verdict !== null).map(({ candidate }) => candidate.id)
+    const notes = [...(unknown.length === 0 ? [] : [`quota unknown (kept): ${unknown.join(", ")}`]), ...(reserveUsed.length === 0 ? [] : [`no member below the reserve; using it: ${reserveUsed.join(", ")}`])]
+    stage.snapshot("quota", kept.map(({ candidate }) => candidate), notes.length === 0 ? undefined : notes.join("; "))
+    return kept.map(({ candidate }) => candidate)
+}
+
+/** How a member scores for the label: expected success (Beta posterior mean, or a Thompson sample) over expected cost. */
+const scoreOf = (facts: Facts, input: RouteInput, candidate: Candidate, tier: string, explore: boolean): MemberScore => {
+    const { routing } = facts
+    const evidence = evidenceOf(facts.evidence, candidate.id, input.label)
+    const { alpha, beta } = posteriorOf(routing, evidence)
+    const expected = alpha / (alpha + beta)
+    const sample = explore ? sampleBeta(alpha, beta, facts.random) : null
+    const minutes = evidence.meanMinutes ?? evidenceOf(facts.evidence, candidate.id, "*").meanMinutes ?? routing.scoring.costMinutes
+    const cost = (minutes / routing.scoring.costMinutes) * (1 + routing.scoring.paceWeight * Math.max(0, (candidate.pace ?? 1) - 1))
+    return {
+        member: candidate.id,
+        qualification: qualificationIn(facts, input, candidate, tier),
+        green: evidence.green,
+        red: evidence.red,
+        worker: evidence.timeout + evidence.lost,
+        expected,
+        minutes,
+        pace: candidate.pace,
+        cost,
+        score: (sample ?? expected) / cost,
+        sample,
+    }
+}
+
+/** Whether this pick explores: a roll under the share, while explore picks hold less than the share of the tier's recent picks. */
+const exploreOf = (facts: Facts, tier: string): ExploreDecision => {
+    const sharePercent = facts.routing.scoring.exploreSharePercent
+    const recent = facts.recent(tier)
+    const recentExplore = recent.filter((pick) => pick.by === "explore").length
+    const roll = facts.random()
+    const underShare = recent.length === 0 || (recentExplore / recent.length) * 100 < sharePercent
+    return { sharePercent, roll, recent: recent.length, recentExplore, exploring: roll * 100 < sharePercent && underShare }
+}
+
+/** Why the scored head should yield: picked too often in a row, or holding too much of the tier's running seats; null when it should not. */
+const balanceReason = (routing: Routing, head: Candidate, ordered: readonly Candidate[], recent: readonly RecentPick[]): string | null => {
+    const streak = recent.findIndex((pick) => pick.member !== head.id)
     const inRow = streak === -1 ? recent.length : streak
-    const total = biased.reduce((sum, candidate) => sum + candidate.runningMember, 0)
+    const total = ordered.reduce((sum, candidate) => sum + candidate.runningMember, 0)
     const share = total === 0 ? 0 : (head.runningMember / total) * 100
     if (inRow >= routing.balance.maxStreak) return `${head.id} was picked ${String(inRow)} times in a row`
     if (share > routing.balance.maxSharePercent) return `${head.id} holds ${String(Math.round(share))}% of the tier's running seats`
     return null
-}
-
-interface Balance {
-    readonly balanced: readonly Candidate[]
-    readonly yielded: string | null
-    readonly note: string | undefined
-}
-
-/**
- * Balance: a head picked maxStreak times in a row, or over maxSharePercent of the tier's running seats, yields to the next
- * member with tokens. An active bias is the owner's choice and is not balanced away.
- */
-const balanceStep = (stage: Stage, facts: Facts, biased: readonly Candidate[], biasActive: boolean, isBiased: (candidate: Candidate) => boolean): Balance => {
-    if (biasActive) return { balanced: biased, yielded: null, note: "bias active: not balanced" }
-    const head = biased[0]
-    if (head === undefined || biased.length <= 1) return { balanced: biased, yielded: null, note: undefined }
-    const reason = balanceReason(stage.routing, head, biased, facts.recent(stage.tier))
-    if (reason === null) return { balanced: biased, yielded: null, note: undefined }
-    const next = biased.slice(1).find((candidate) => tokenReason(candidate, stage.routing, isBiased(candidate)) === null)
-    if (next === undefined) return { balanced: biased, yielded: null, note: `${reason}, but no next member has quota; kept` }
-    const yielded = `${reason}; yields to ${next.id}`
-    return { balanced: [next, ...biased.filter((candidate) => candidate !== next)], yielded, note: yielded }
-}
-
-/** What the decision rests on after the hard filter, for the step that names why the chosen member won. */
-interface Basis {
-    readonly biasActive: boolean
-    readonly isBiased: (candidate: Candidate) => boolean
-    readonly yielded: string | null
-    readonly balanced: readonly Candidate[]
-    readonly demoted: readonly Candidate[]
-    readonly hard: readonly Candidate[]
-}
-
-/** Why the chosen member won: the first of bias, balance, quota and lineage that moved it, else the chain order. */
-const choiceReason = (record: RouteRecord, chosen: Candidate, basis: Basis): string => {
-    if (basis.biasActive && basis.isBiased(chosen)) return "bias"
-    if (basis.yielded !== null && chosen === basis.balanced[0]) return "balance"
-    if (record.dropped.some((row) => row.step === "quota")) return "quota"
-    if (basis.demoted.length > 0 && chosen !== basis.hard[0]) return "lineage"
-    return "chain-order"
 }
 
 /** Where the tier came from, for the record. */
@@ -316,58 +365,53 @@ const tierSource = (input: RouteInput, labelTier: string | undefined, effective:
         ? labelTier === undefined ? "difficulty " + effective + " (max of " + (difficulty ?? "none") + " and floor " + floor + ")" : "labelTiers." + input.label
         : "coordinators." + input.coordinator
 
-/** The quota step: skip a member at the reserve (a biased one may go to biasPercent), never use an exhausted one; unknown is kept. */
-const quotaStep = (stage: Stage, balanced: readonly Candidate[], isBiased: (candidate: Candidate) => boolean): Candidate[] => {
-    const ordered = balanced.filter((candidate) => {
-        const reason = tokenReason(candidate, stage.routing, isBiased(candidate))
-        if (reason !== null) stage.drop(candidate, "quota", reason)
-        return reason === null
-    })
-    stage.snapshot("quota", ordered, quotaNote(balanced))
-    return ordered
-}
+const newRecord = (input: RouteInput, at: string): RouteRecord => ({
+    at,
+    label: input.label,
+    attempt: input.attempt,
+    difficulty: null,
+    floor: "easy",
+    reds: 0,
+    risk: input.risk ?? [],
+    highRisk: false,
+    tierFrom: "",
+    baseTier: "",
+    tier: "",
+    escalated: false,
+    hostTools: {},
+    chain: [],
+    steps: [],
+    dropped: [],
+    scores: [],
+    explore: null,
+    probe: null,
+    chosen: null,
+})
 
-/** The refusal of a quota step that kept nobody. */
-const tokensOut = (stage: Stage, balanced: readonly Candidate[]): RouteRefusal => {
-    const resetAt = earliest(balanced.map((candidate) => candidate.quota.resetsAt))
-    const reset = resetAt === null ? "" : "; the earliest reset is " + resetAt
-    return new RouteRefusal("TOKENS_OUT", `every member of tier ${stage.tier} is out of quota${reset}: ${droppedText(stage.record, "quota")}`, stage.record, resetAt)
-}
-
-/** Runs the decision over gathered facts; pure but for its facts. */
-const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteRefusal => {
+/** The tier a decision starts in, the record it writes and the stage its steps share. */
+const openStage = (input: RouteInput, facts: Facts, at: string): Stage => {
     const { routing } = facts
     const difficulty = input.difficulty === undefined ? null : parseDifficulty(routing, input.difficulty)
     const effective = difficulty !== null && difficultyRank(routing, difficulty) > difficultyRank(routing, facts.floor) ? difficulty : facts.floor
     const labelTier = routing.labelTiers[input.label]
     const baseTier = input.coordinator === undefined ? labelTier ?? routing.difficultyTier[effective] : routing.coordinators[input.coordinator]
     const reds = typeof input.previousRed === "number" ? input.previousRed : redMembers(input.previousRed).length
-    const order = routing.tierOrder.indexOf(baseTier)
-    const raised = reds >= routing.escalateAfterReds ? routing.tierOrder[order + 1] : undefined
-    const tier = raised ?? baseTier
-    const bias: RouteBias = input.workflowBias ?? {}
-    const candidates = facts.candidates(tier)
+    const raised = reds >= routing.escalateAfterReds ? routing.tierOrder[routing.tierOrder.indexOf(baseTier) + 1] : undefined
+    const risk = input.risk ?? []
     const record: RouteRecord = {
-        at,
-        label: input.label,
-        attempt: input.attempt,
+        ...newRecord(input, at),
         difficulty,
         floor: facts.floor,
         reds,
+        highRisk: risk.some((tag) => routing.qualification.riskTags.includes(tag)),
         tierFrom: tierSource(input, labelTier, effective, difficulty, facts.floor),
         baseTier,
-        tier,
+        tier: raised ?? baseTier,
         escalated: raised !== undefined,
-        bias,
         hostTools: facts.hostTools,
-        chain: candidates.map((candidate) => candidate.id),
-        steps: [],
-        dropped: [],
-        chosen: null,
     }
     const stage: Stage = {
         routing,
-        tier,
         record,
         snapshot: (step, kept, note) => {
             record.steps.push({ step, kept: kept.map((candidate) => candidate.id), ...(note === undefined ? {} : { note }) })
@@ -376,46 +420,94 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
             record.dropped.push({ member: candidate.id, step, reason })
         },
     }
-    if (reds >= routing.escalateAfterReds && raised === undefined) stage.snapshot("tier", candidates, `already at the top tier ${tier}; ${String(reds)} contract-red attempts escalate no further`)
+    if (reds >= routing.escalateAfterReds && raised === undefined) stage.snapshot("tier", facts.candidates(record.tier), `already at the top tier ${record.tier}; ${String(reds)} contract-red attempts escalate no further`)
+    return stage
+}
 
-    // 1. Hard filter: nothing a bias can restore.
+/** The hard filter over the tier, moving a high-risk task up while qualification alone empties a tier; returns the survivors and the tier's members. */
+const hardStep = (stage: Stage, input: RouteInput, facts: Facts, redsByPool: ReadonlyMap<string, number>): { readonly hard: Candidate[]; readonly candidates: Candidate[] } => {
+    const { record, routing } = stage
+    for (;;) {
+        const candidates = facts.candidates(record.tier)
+        record.chain = candidates.map((candidate) => candidate.id)
+        const hard = candidates.filter((candidate) => {
+            const reason = hardReason(candidate, input, facts, record.tier, record.highRisk, redsByPool)
+            if (reason !== null) stage.drop(candidate, reason.step, `${reason.reason} [tier ${record.tier}]`)
+            return reason === null
+        })
+        stage.snapshot("hard-filter", hard, `tier ${record.tier}`)
+        const up = routing.tierOrder[routing.tierOrder.indexOf(record.tier) + 1]
+        const unqualifiedOnly = hard.length === 0 && record.dropped.some((row) => row.step === "qualification" && row.reason.endsWith(`[tier ${record.tier}]`))
+        if (!unqualifiedOnly || up === undefined) return { hard, candidates }
+        stage.snapshot("qualification", [], `no member of tier ${record.tier} is qualified for this high-risk task; looking in tier ${up}`)
+        record.tier = up
+    }
+}
+
+/** Orders the members by score (a demoted one after every other), exploring by Thompson sampling when the roll says so. */
+const scoreStep = (stage: Stage, input: RouteInput, facts: Facts, members: readonly Candidate[], demoted: readonly Candidate[]): Candidate[] => {
+    const { record } = stage
+    const explore = exploreOf(facts, record.tier)
+    record.explore = explore
+    const scores = new Map(members.map((candidate) => [candidate, scoreOf(facts, input, candidate, record.tier, explore.exploring)]))
+    record.scores = [...scores.values()]
+    const byScore = (a: Candidate, b: Candidate): number => (scores.get(b)?.score ?? 0) - (scores.get(a)?.score ?? 0) || members.indexOf(a) - members.indexOf(b)
+    const ordered = [...members.filter((candidate) => !demoted.includes(candidate)).sort(byScore), ...members.filter((candidate) => demoted.includes(candidate)).sort(byScore)]
+    stage.snapshot("score", ordered, explore.exploring ? "exploring: ordered by a Thompson sample" : undefined)
+    return ordered
+}
+
+/** Runs the decision over gathered facts; pure but for its facts (and their random source). */
+const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteRefusal => {
+    const stage = openStage(input, facts, at)
+    const { record, routing } = stage
+    const unknownRisk = record.risk.filter((tag) => !routing.qualification.riskTags.includes(tag))
+    if (unknownRisk.length > 0) return new RouteRefusal("ROUTE_RISK_UNKNOWN", `risk tags are ${routing.qualification.riskTags.join(", ")}, not ${unknownRisk.join(", ")}`, record)
+
+    // 1. Hard filter: pool, tools, lineage exclusion, circuit (open waits for its probe), capacity, qualification of a high-risk task.
     const redsByPool = new Map<string, number>()
     for (const member of redMembers(input.previousRed)) redsByPool.set(member.agent, (redsByPool.get(member.agent) ?? 0) + 1)
-    const hard = candidates.filter((candidate) => {
-        const reason = hardReason(candidate, input, facts, redsByPool)
-        if (reason !== null) stage.drop(candidate, "hard-filter", reason)
-        return reason === null
-    })
-    stage.snapshot("hard-filter", hard)
+    const { hard, candidates } = hardStep(stage, input, facts, redsByPool)
     if (hard.length === 0) return hardRefusal(stage, input, candidates)
 
-    // 2. Lineage: a pool with one contract-red attempt of this task goes to the back, so the retry goes to another member.
-    const demoted = hard.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1)
-    const lineage = [...hard.filter((candidate) => !demoted.includes(candidate)), ...demoted]
-    stage.snapshot("lineage", lineage, demoted.length === 0 ? undefined : `demoted after one contract-red: ${demoted.map((candidate) => candidate.id).join(", ")}`)
+    // 2. Quota.
+    const funded = quotaStep(stage, hard)
+    if (funded.length === 0) {
+        const resetAt = earliest(hard.map((candidate) => candidate.quota.resetsAt))
+        return new RouteRefusal("TOKENS_OUT", `every member of tier ${record.tier} is out of quota${resetAt === null ? "" : "; the earliest reset is " + resetAt}: ${droppedText(record, "quota")}`, record, resetAt)
+    }
 
-    // 3. Owner bias: a bias that empties the chain refuses.
-    const biased = applyBias(stage, lineage, bias)
-    stage.snapshot("bias", biased)
-    if (biased.length === 0) return new RouteRefusal("ROUTE_BIAS_EMPTY", `the bias leaves no member of tier ${tier}: ${droppedText(record, "bias")}`, record)
-    const biasActive = (bias.only ?? []).length > 0 || (bias.prefer ?? []).length > 0
-    const isBiased = (candidate: Candidate): boolean => named(candidate, bias.prefer) || named(candidate, bias.only)
+    // 3. Lineage: a pool with one contract-red attempt of this task goes behind every other member.
+    const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1)
+    stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red: ${demoted.map((candidate) => candidate.id).join(", ")}`)
 
-    // 4. Balance.
-    const { balanced, yielded, note } = balanceStep(stage, facts, biased, biasActive, isBiased)
-    stage.snapshot("balance", balanced, note)
+    // 4. Probe: a half-open provider gets this one launch (never a high-risk task's), so no provider stays dark past its probe time.
+    const probe = funded.find((candidate) => candidate.circuit.open && candidate.circuit.probe === "due")
+    record.probe = probe === undefined ? null : `${probe.provider} (${probe.circuit.failureKind ?? "?"}, ${String(probe.circuit.failedProbes)} failed probes)`
 
-    // 5. Quota.
-    const chosen = quotaStep(stage, balanced, isBiased)[0]
-    if (chosen === undefined) return tokensOut(stage, balanced)
-    record.chosen = { member: chosen.id, by: choiceReason(record, chosen, { biasActive, isBiased, yielded, balanced, demoted, hard }) }
+    // 5. Score, exploring by Thompson sampling within its share; 6. balance.
+    const ordered = scoreStep(stage, input, facts, funded, demoted)
+    let chosen = probe ?? ordered[0]
+    let by = probe === undefined ? (record.explore?.exploring === true ? "explore" : "score") : "probe"
+    const head = ordered[0]
+    if (probe === undefined && head !== undefined && ordered.length > 1) {
+        const reason = balanceReason(routing, head, ordered, facts.recent(record.tier))
+        const next = ordered[1]
+        if (reason !== null && next !== undefined) {
+            chosen = next
+            by = "balance"
+            stage.snapshot("balance", [next, ...ordered.filter((candidate) => candidate !== next)], `${reason}; yields to ${next.id}`)
+        }
+    }
+    if (chosen === undefined) return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${record.tier} is left`, record)
+    record.chosen = { member: chosen.id, by }
     return {
         agent: chosen.spec.agent,
         model: chosen.spec.model,
         ...(chosen.spec.effort === undefined ? {} : { effort: chosen.spec.effort }),
         provider: chosen.provider,
         pool: chosen.pool,
-        tier,
+        tier: record.tier,
         record,
     }
 }
@@ -424,61 +516,96 @@ const PICK_RETENTION_DAYS = 7
 
 /**
  * Picks the agent, model and effort of one dispatch: tier = labelTiers[label] ?? difficultyTier[max(difficulty, floor)],
- * raised one step by the second contract-red; then the tier's chain through the hard filter, lineage, bias, balance and quota
- * steps. Returns the pick (its record is what the attempt stores as pick_json) or a RouteRefusal; never throws for a
- * routing answer. A pick is remembered for the balance step unless `record` is false (a dry run or an explain).
+ * raised one step by the second contract-red; then the hard filter (with qualification for a high-risk task), quota, lineage,
+ * probe, score (with bounded exploration) and balance steps. A recorded pick first reads Orca's usage when it is stale and the
+ * ledgers' ended attempts, and is remembered for balance and exploration (a probe is marked in flight). Returns the pick or a
+ * RouteRefusal; never throws for a routing answer.
  */
 export const pickRoute = (input: RouteInput, options: { readonly record?: boolean } = {}): RoutePick | RouteRefusal => {
     const at = now()
+    const record = options.record !== false
     let decided: RoutePick | RouteRefusal
     try {
+        if (record) {
+            refreshUsage({}, at)
+            recordMemberOutcomes(loadRouting(), at)
+        }
         decided = decide(input, gatherFacts(input, at), at)
     } catch (error: unknown) {
-        if (error instanceof Refusal) return new RouteRefusal(error.code, error.message, emptyRecord(input, at))
+        if (error instanceof Refusal) return new RouteRefusal(error.code, error.message, newRecord(input, at))
         throw error
     }
-    if (decided instanceof RouteRefusal || options.record === false) return decided
+    if (decided instanceof RouteRefusal || !record) return decided
     const pick = decided
     withMachine((db) => {
         db.prepare("INSERT INTO route_picks (at, tier, member, pool, label, chosen_by) VALUES (?, ?, ?, ?, ?, ?)").run(at, pick.tier, memberId(pick), pick.pool, input.label, pick.record.chosen?.by ?? "")
         db.prepare("DELETE FROM route_picks WHERE at < ?").run(new Date(Date.parse(at) - PICK_RETENTION_DAYS * 86_400_000).toISOString())
+        if (pick.record.chosen?.by === "probe") recordProbe(db, pick.provider, { member: memberId(pick), label: input.label }, at)
     })
     return pick
 }
 
-/** Routes a coordinator through the shared circuit, capacity, bias, balance and quota pipeline. */
-export const pickCoordinator = (role: CoordinatorRole, options: { readonly bias?: RouteBias | undefined; readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
-    pickRoute({ label: role, coordinator: role, attempt: 1, workflowBias: options.bias }, { record: options.record ?? true })
+/** Routes a coordinator through the shared circuit, capacity, quota, probe, scoring and balance pipeline. */
+export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
+    pickRoute({ label: role, coordinator: role, attempt: 1 }, { record: options.record ?? true })
 
-const emptyRecord = (input: RouteInput, at: string): RouteRecord => ({
-    at,
-    label: input.label,
-    attempt: input.attempt,
-    difficulty: null,
-    floor: "easy",
-    reds: 0,
-    tierFrom: "",
-    baseTier: "",
-    tier: "",
-    escalated: false,
-    bias: input.workflowBias ?? {},
-    hostTools: {},
-    chain: [],
-    steps: [],
-    dropped: [],
-    chosen: null,
-})
+/** What `simulateRoute` counted over its picks: each member's picks, how many explored and probed, and the refusals. */
+export interface RouteSimulation {
+    readonly picks: number
+    readonly byMember: Readonly<Record<string, number>>
+    readonly byReason: Readonly<Record<string, number>>
+    readonly refused: Readonly<Record<string, number>>
+}
+
+/**
+ * Runs `count` decisions over one snapshot of the facts, each remembering the ones before it as recorded picks would (the
+ * balance streak, the exploration share, a probe in flight), and records nothing: how the router spreads a run of picks.
+ */
+export const simulateRoute = (input: RouteInput, count: number): RouteSimulation => {
+    const at = now()
+    const facts = gatherFacts(input, at)
+    const recent = new Map<string, RecentPick[]>()
+    const probing = new Set<string>()
+    const byMember: Record<string, number> = {}
+    const byReason: Record<string, number> = {}
+    const refused: Record<string, number> = {}
+    const simulated: Facts = { ...facts, probing, recent: (tier) => [...(recent.get(tier) ?? []), ...facts.recent(tier)].slice(0, RECENT_PICKS) }
+    for (let index = 0; index < count; index += 1) {
+        const answer = decide(input, simulated, at)
+        if (answer instanceof RouteRefusal) {
+            refused[answer.code] = (refused[answer.code] ?? 0) + 1
+            continue
+        }
+        const by = answer.record.chosen?.by ?? ""
+        byMember[memberId(answer)] = (byMember[memberId(answer)] ?? 0) + 1
+        byReason[by] = (byReason[by] ?? 0) + 1
+        if (by === "probe") probing.add(answer.provider)
+        recent.set(answer.tier, [{ member: memberId(answer), by }, ...(recent.get(answer.tier) ?? [])])
+    }
+    return { picks: count, byMember, byReason, refused }
+}
 
 /** Stores a pick on its attempt (attempts.pick_json), so a dispatch of that attempt reuses it and status can show it. */
 export const recordPick = (db: DatabaseSync, attemptId: string, pick: RoutePick): void => {
     db.prepare("UPDATE attempts SET pick_json = ? WHERE id = ?").run(JSON.stringify(pick), attemptId)
 }
 
-/** A task's lineage as the router reads it: the attempts of the task and the tasks it retries, and their contract-red members. */
+/** A task's lineage as the router reads it: the attempts of the task and the tasks it retries, their contract-red members, and its risk tags. */
 export interface Lineage {
     readonly label: string
     readonly attempts: number
     readonly reds: readonly RouteMember[]
+    readonly risk: readonly string[]
+}
+
+/** The risk tags of a workflow task: its plan node's route in the workflow's current graph; none for a task outside a workflow. */
+const riskOf = (db: DatabaseSync, taskId: string): string[] => {
+    const row = db
+        .prepare("SELECT p.route_json FROM tasks t JOIN workflows w ON w.id = t.workflow_id JOIN plan_nodes p ON p.workflow_id = w.id AND p.graph_version = w.graph_version AND p.plan_key = t.plan_key WHERE t.id = ?")
+        .get(taskId)
+    const route: unknown = row === undefined ? null : JSON.parse(textOf(row.route_json) ?? "null")
+    const risk = typeof route === "object" && route !== null && "risk" in route ? route.risk : undefined
+    return Array.isArray(risk) ? risk.filter((tag): tag is string => typeof tag === "string") : []
 }
 
 /** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red. */
@@ -498,11 +625,11 @@ export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
         }
         current = getTask(db, current).retryOf
     }
-    return { label: task.label, attempts, reds }
+    return { label: task.label, attempts, reds, risk: task.workflowId === null ? [] : riskOf(db, task.id) }
 }
 
-/** Routes the next attempt of a queued task from its ledger: its label, attempt number and contract-red lineage. */
-export const routeTask = (root: string, taskId: string, options: { readonly bias?: RouteBias | undefined; readonly record?: boolean } = {}): RoutePick | Refusal => {
+/** Routes the next attempt of a queued task from its ledger: its label, attempt number, contract-red lineage and risk. */
+export const routeTask = (root: string, taskId: string, options: { readonly record?: boolean } = {}): RoutePick | Refusal => {
     const db = openExistingLedger(root)
     if (db === undefined) return new Refusal("TASK_UNKNOWN", `no task ${taskId}: this project has no ledger yet`)
     let lineage: Lineage
@@ -514,8 +641,21 @@ export const routeTask = (root: string, taskId: string, options: { readonly bias
     } finally {
         db.close()
     }
-    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, workflowBias: options.bias }, { record: options.record ?? true })
+    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, risk: lineage.risk }, { record: options.record ?? true })
 }
+
+const fixed = (value: number): string => value.toFixed(2)
+
+/** The scoring of one member as text. */
+const scoreLine = (score: MemberScore): string =>
+    `  score ${score.member}: ${score.qualification}, green ${String(score.green)} red ${String(score.red)} worker-failed ${String(score.worker)}, expected ${fixed(score.expected)}` +
+    `${score.sample === null ? "" : " (sample " + fixed(score.sample) + ")"}, cost ${fixed(score.cost)} (${fixed(score.minutes)} min, pace ${score.pace === null ? "unknown" : fixed(score.pace)}) -> ${fixed(score.score)}`
+
+/** The exploration decision as text. */
+const exploreLine = (explore: ExploreDecision | null): string[] =>
+    explore === null
+        ? []
+        : [`explore: roll ${fixed(explore.roll * 100)} vs share ${String(explore.sharePercent)}%, explore picks ${String(explore.recentExplore)} of the last ${String(explore.recent)} -> ${explore.exploring ? "explore" : "exploit"}`]
 
 /** The decision path as text lines, for route explain and dry runs. */
 export const describeRoute = (answer: RoutePick | RouteRefusal): string[] => {
@@ -524,13 +664,17 @@ export const describeRoute = (answer: RoutePick | RouteRefusal): string[] => {
     const tools = Object.entries(record.hostTools)
         .map(([tool, ok]) => tool + " " + (ok ? "ok" : "missing"))
         .join(", ")
+    const risk = record.risk.length === 0 ? "none" : `${record.risk.join(", ")}${record.highRisk ? " (high-risk)" : ""}`
     const lines = [
-        `label ${record.label}, attempt ${String(record.attempt)}, difficulty ${record.difficulty ?? "-"}, floor ${record.floor}, contract-red ${String(record.reds)}`,
+        `label ${record.label}, attempt ${String(record.attempt)}, difficulty ${record.difficulty ?? "-"}, floor ${record.floor}, contract-red ${String(record.reds)}, risk ${risk}`,
         `tier ${record.tier}${escalated} from ${record.tierFrom}`,
         `chain: ${record.chain.join(" > ") || "-"}`,
         ...(Object.keys(record.hostTools).length === 0 ? [] : [`host tools: ${tools}`]),
         ...record.steps.map((step) => `  ${step.step}: ${step.kept.join(" > ") || "(none)"}${step.note === undefined ? "" : "  [" + step.note + "]"}`),
         ...record.dropped.map((row) => `  dropped ${row.member} at ${row.step}: ${row.reason}`),
+        `probe: ${record.probe === null ? "none due" : record.probe + " is half-open; this pick is its one probe"}`,
+        ...exploreLine(record.explore),
+        ...record.scores.map(scoreLine),
     ]
     if (answer instanceof RouteRefusal) return [...lines, `refused ${answer.code}: ${answer.message}`]
     const effort = answer.effort === undefined ? "" : " (effort " + answer.effort + ")"

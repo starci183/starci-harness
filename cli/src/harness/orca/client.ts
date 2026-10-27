@@ -98,6 +98,17 @@ export const locateOrca = async (cwd: string): Promise<OrcaBinary> => {
     throw new Refusal("ORCA_MISSING", `no orca binary: set STARCI_ORCA_BIN, install the Orca app${where} or put ${name} on PATH`)
 }
 
+/** Finds orca like locateOrca without waiting: STARCI_ORCA_BIN (which must exist), else the desktop install, else the PATH name; undefined when the override names nothing. */
+export const orcaBinarySync = (): OrcaBinary | undefined => {
+    const override = process.env.STARCI_ORCA_BIN
+    if (override !== undefined && override !== "") {
+        const found = existing(override)
+        return found === undefined ? undefined : { path: found, source: "STARCI_ORCA_BIN" }
+    }
+    const installed = installPath()
+    return installed !== undefined && existsSync(installed) ? { path: installed, source: "install" } : { path: pathName(), source: "PATH" }
+}
+
 /** Orca's worktree selectors; anything else is a filesystem path and becomes `path:<absolute path>`. */
 const SELECTOR = /^(?:(?:identity|id|name|branch|issue|path):|(?:current|active|new-child|new-top-level)$)/
 

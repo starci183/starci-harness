@@ -5,40 +5,39 @@ Every tunable lives once in [ops/routing.yaml](../../../ops/routing.yaml); read 
 ## Who will run a task
 
 ```text
-starci route explain --label <label> --difficulty <easy|medium|hard|insane>
+starci route explain --label <label> --difficulty <easy|medium|hard|insane> [--risk <tag,...>]
 ```
 
-It dry-runs the router and records nothing: the tier and why, the chain of `{agent, model, effort}`, each
-filter (host tools, lineage, bias, balance, quota) with every dropped member and its reason, and the chosen
-member. Add `--attempt <n>` and `--red <agent/model,...>` to see a retry (a second contract-red raises the
-tier one step), and `--only`, `--avoid` or `--prefer <a,...>` to see an owner bias.
-
-A bias that empties the chain is refused (`ROUTE_BIAS_EMPTY`), never dropped silently. To make it stick,
-put `bias` or an `agent` plus `model` pin in the workflow file; only on the owner's word.
+The router alone picks; no file or person steers it. `route explain` dry-runs it and records nothing:
+the tier and why, each step (hard filter with qualification, quota, lineage, probe, score, balance) with every
+dropped member and its reason, every member's score, the exploration roll, the probe decision and the chosen
+member ([ops/README.md](../../../ops/README.md) "The router" owns the steps). Add `--attempt <n>` and
+`--red <agent/model,...>` to see a retry (a second contract-red raises the tier one step), and `--simulate <n>`
+to see how a run of picks spreads.
 
 ## Provider health
 
 ```text
 starci provider status
+starci provider sync
 ```
 
-Per provider: the circuit (healthy or open until when), strikes, each pool's concurrency cap against its
-maximum, running workers and the quota window. No quota reading means unknown, never blocked.
+`status`: per provider, the circuit (healthy, striking, open until its next probe, half-open), each pool's
+concurrency cap against its maximum, running workers and the quota of its binding window. No quota reading
+means unknown, never blocked. `sync` reads Orca's account usage now and the ledgers' ended attempts; a recorded
+pick does both on its own, so run it only to look.
 
 ```text
 starci provider report <provider> --outcome <success|unknown|rate|quota|capacity|auth|launch> --detail "<typed error>"
 starci provider report <provider> --quota <percent> --pool <pool> --resets-at <iso-time>
 ```
 
-Report what a worker's result or an account poll taught; `seat start` records its own launch outcomes. An
-unknown outcome is never a failure.
+Report what a worker's result or a provider's own usage page taught when Orca does not expose it; `seat start`
+records its own launch outcomes. An unknown outcome is never a failure.
 
-```text
-starci provider recover <provider> --by owner --reason "<the probe that passed>"
-```
-
-Close a circuit only after a passing probe and with the owner's OK. Never recover a provider to get past
-an auth or quota error the owner has not fixed.
+A circuit recovers by itself: once its probe is due the next pick sends that provider one launch, and its
+success closes the circuit (an ok usage reading closes an auth circuit too). `provider recover` is the
+Supervisor's record of a probe it ran itself; it is never needed in normal operation.
 
 ## Budgets
 

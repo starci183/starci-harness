@@ -35,7 +35,9 @@ Split the goal into tasks, one outcome each. Per task decide:
   `result-json`, `probe`, `ci-green` or a command) for every label that requires it. Tests cover only what
   the task changes; never ask for a full suite. CI judges the rest after the push.
 - `dependsOn`: only real order. Overlapping `allowPaths` without an order are allowed; the lease serializes them.
-- `difficulty`, and an `agent` plus `model` pin only when the owner asked for one.
+- `difficulty`, and `risk` when the work carries one of the risks `qualification.riskTags` of
+  [ops/routing.yaml](../../../ops/routing.yaml) names: a risk-tagged task refuses a member still on probation for its
+  label. Nothing in a workflow file names an agent or a model; the router alone picks.
 
 For a contract you want as its own file, write it and judge it:
 
@@ -69,20 +71,19 @@ tasks:
     contract: <contract file, relative to this file>
 ```
 
-Optional header fields: `agent` with `model` (and `effort`) to pin every orca task, `bias`
-(`only`, `avoid`, `prefer`), `worktree`, `base`. Optional task fields: `details`, `context` (files to read beyond the op's base), `inputs`, `output`, `cwd`,
-`budget`, `difficulty`, `agent` with `model`, `effort`.
+Optional header fields: `worktree`, `base`. Optional task fields: `details`, `context` (files to read beyond the op's
+base), `inputs`, `output`, `cwd`, `budget`, `difficulty`, `risk`.
 
-For orca tasks without a pin, show who the router would pick:
+For orca tasks, show who the router would pick:
 
 ```text
-starci route explain --label <label> --difficulty <d>
+starci route explain --label <label> --difficulty <d> [--risk <tag,...>]
 ```
 
 ## 5. Present and get the OK
 
 Show the owner the whole file: goal, runner, each task with label, summary, allowPaths, checks and
-dependencies, any pin or bias, and say whether you will also start it. Wait for an explicit OK on this exact
+dependencies, any difficulty or risk, and say whether you will also start it. Wait for an explicit OK on this exact
 file. Any material edit needs a new OK.
 
 ## 6. Define

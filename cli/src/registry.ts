@@ -37,6 +37,7 @@ import { routeExplainVerb } from "./core/route/explain.js"
 import { providerStatusVerb } from "./core/provider/status.js"
 import { providerRecoverVerb } from "./core/provider/recover.js"
 import { providerReportVerb } from "./core/provider/report.js"
+import { providerSyncVerb } from "./core/provider/sync.js"
 import { budgetShowVerb } from "./core/budget/show.js"
 import { budgetRaiseVerb } from "./core/budget/raise.js"
 import { workflowPauseVerb } from "./core/workflow/pause.js"
@@ -105,6 +106,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     providerStatusVerb,
     providerRecoverVerb,
     providerReportVerb,
+    providerSyncVerb,
     budgetShowVerb,
     budgetRaiseVerb,
     workflowPauseVerb,
