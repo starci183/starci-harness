@@ -12,10 +12,10 @@ Show several of one kind of thing in a page section, with equal rows the reader 
 | --- | --- |
 | entities with a name, one description line, a few facts and actions | `ListRow` rows in the section's list |
 | static lines (status facts, how it works) | `StaticStateRow` |
-| records compared across many columns, sorted or bulk-selected | `DataTable` |
+| records compared across many columns, sorted or bulk-selected | `DataTable`; a row that opens its record takes `href`, a value edited in place takes the column `editor`, columns that can fold on a narrow table take `priority="low"` |
 | one selectable item from a list inside a panel | `ListBox`; navigation-like lists use fill selection with no check |
 | a standalone list in a rail | `SurfaceListCard` ([card](card.md)) |
-| a timeline of events | `Timeline` |
+| a timeline of events | `Timeline`; an entry that needs the reader (a failed step, a pending approval) takes `isAttention` |
 
 A list is never wrapped in a card. Title, count, filters and the section's command belong to the section header
 above it.

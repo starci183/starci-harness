@@ -59,8 +59,11 @@ imported once. Every overlay trigger renders inside it: `Dialog`, `AlertDialog`,
 `DropdownMenu` and the field popovers portal into the nearest root (`owner: src/core/overlayScope.tsx`), so
 they keep the grammar's tokens, theme and forced-colours mapping; a trigger outside the root opens an unstyled
 overlay in `<body>`. Mount exactly one `Toaster`, inside the root; it renders in place with one polite and one
-assertive live region, so a second one duplicates every announcement. This is the only statement of the
-rule; grammar files and lint cite it.
+assertive live region, so a second one duplicates every announcement. The root also owns client-side
+navigation: it takes the app router's `navigate` and `useHref` once and mounts the vendor `RouterProvider`, so every
+Grammar `href` (a `Link`, a `Button`, a `Breadcrumbs` item, a `ListBox` or `Menu` item, a `DataTable` row, a
+`FlowGraph` node) navigates inside the app without a reload; the app mounts no router provider of its own. This is
+the only statement of these rules; grammar files and lint cite it.
 
 ## Idioms
 

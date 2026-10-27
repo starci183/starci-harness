@@ -94,9 +94,10 @@ the label sits inside the material; the slots and the depth logic are the same e
 Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape
 only paints. Its variant comes from intent and placement, its size from the ramp: `sm`, `md`, `lg`, and `control`
 in a bar. `pending` means this control accepted work: label and box unchanged, a second press refused.
-`disabled` means the work cannot start; `skeleton` means the content never resolved. A grammar may repaint each
-vendor variant through its tokens and give the press its own motion; it keeps the variant names, so the emphasis
-ladder means the same in every grammar. `IconButton` is the same contract drawn square or round at the step;
+`disabled` means the work cannot start, and its `disabledReason` says why in a tooltip on hover and keyboard focus
+that is also the button's accessible description, since a disabled control is otherwise mute; `skeleton` means the
+content never resolved. A grammar may repaint each vendor variant through its tokens and give the press its own
+motion; it keeps the variant names, so the emphasis ladder means the same in every grammar. `IconButton` is the same contract drawn square or round at the step;
 `TextAction` is the quietest command, set in text.
 
 ### ButtonGroup
@@ -121,10 +122,19 @@ publishes `sm` and `md`, default `md`.
 
 ### Chip
 
-A chip is a label, not a target, on two axes: tone (which settled fact) and emphasis. A grammar's Badge is the
-vendor chip at soft emphasis and below the ramp, so status reads as tinted text, never as a filled button-like
-shape. When peers are picked from, the chip is a `TagGroup` tag, interactive and keyboard reachable, on the ramp
-at `sm` (the default: filter rows are dense) or `md` when its row holds `md` controls.
+A chip is a label, not a target, on two axes: tone (which settled fact) and emphasis. Its label starts with an
+uppercase letter. A grammar's Badge is the vendor chip at soft emphasis and below the ramp, so status reads as
+tinted text, never as a filled button-like shape; its `muted` tone drops the fill for a quiet marker.
+
+`StatusDot` is a status drawn as a dot, in three variants that share one dot-size token and five tones.
+With text it is the dot, the text and the tone's light tint, drawn as the vendor soft Chip of the same size, so its
+padding and height are the Chip's, with a 4px gap from dot to text; `Badge isDot` is this same anatomy. Without
+text it is the dot alone, `static`, or `echo` with a ring that expands and fades in the tone's light stop and stops
+under reduced motion; a dot alone is named by `aria-label` and shows that name in a tooltip on hover and focus.
+
+When peers are picked from, the chip is a `TagGroup` tag, interactive and keyboard reachable, on the ramp at `sm`
+(the default: filter rows are dense) or `md` when its row holds `md` controls; a reorderable group moves tags by
+drag and by Alt+arrow keys and announces each move.
 
 ### Input
 
@@ -154,9 +164,12 @@ selection mark sits on, the leading glyph size) is the grammar's to declare.
 ### List
 
 A list is rows of peers: a `ListBox` when picking is the task, a list card of static rows when rows only report,
-a data table when columns matter. n rows have n-1 seams, separators are full bleed, rows and captions share one
-content edge, and a description is one line by default. The leading slot follows the ramp, so a row's identity
-mark matches the controls beside it. Loading shows the same rows at rest.
+a data table when columns matter. n rows have n-1 seams, separators are full bleed, and rows and captions share
+one content edge. A static row's description is one line, because the row is scanned; an option's description in
+a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
+with `href` is one link to its record; a column with `editor` hosts its field in the cell; `low`-priority columns
+fold into the first column as stacked secondary text on a narrow table. The leading slot follows the ramp, so a
+row's identity mark matches the controls beside it. Loading shows the same rows at rest.
 
 ### Alert
 

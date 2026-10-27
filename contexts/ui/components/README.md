@@ -25,7 +25,7 @@ Every page has the same sections, so a hardening always has one place to land:
 | several actions together: a decision with its way out, peer commands on one object | [action-group](action-group.md) |
 | switch which panel or area shows | [tabs](tabs.md) |
 | choose one value inside a form or toolbar | [segmented-control](segmented-control.md) |
-| filter or tag by peer categories; label an outcome | [chip](chip.md) |
+| filter or tag by peer categories; label an outcome; mark a status with a dot | [chip](chip.md) |
 | type a value | [text-field](text-field.md) |
 | pick from a list too long for segments | [select](select.md) |
 | present one subject | [card](card.md) |

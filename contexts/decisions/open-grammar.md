@@ -78,7 +78,7 @@ Each is closed by an API that removes the choice (preferred), a lint rule, or on
 | G-16 | Mixed glyph sizes in one region | lint: one glyph step per region |
 | G-17 | Alert `appearance` surface or soft | API: resolve `soft` inside a band, `surface` on the canvas |
 | G-18 | `ListBox` publishes `className` | API: drop it (no public style doors) |
-| G-19 | Base `Input` speaks `hint`/`isError`, the other fields `description`/`errorMessage`/`isInvalid`; `OtpInput` speaks `disabled`/`invalid` | API: one field vocabulary |
+| G-19 | Base `Input` speaks `isError` where the other fields speak `isInvalid` (every field shares `description` and `errorMessage`); `OtpInput` speaks `disabled`/`invalid` | API: one field vocabulary |
 
 ## What the contract cannot express yet
 

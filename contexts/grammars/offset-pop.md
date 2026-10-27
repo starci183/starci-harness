@@ -44,7 +44,7 @@ where the code still differs, the decision names the follow-up.
 | ButtonGroup | Vendor arrangement; the outline replaces the collapsed borders |
 | Tabs | Underline in pink with the current label in `accentText`; pill is a raised pink-outlined segment |
 | SegmentedControl | Selected segment filled pink with an ink label and outline |
-| Chip | Badge as palette tint with ink text; a selected `TagGroup` tag turns pink and lifts |
+| Chip | Badge as palette tint with ink text, the `muted` Badge with a dashed edge; StatusDot with text a heavy-weight pill and every dot ringed in ink so it reads on cream; a selected `TagGroup` tag turns pink and lifts |
 | Input | Ink-outlined box on the surface at the control radius; focus is the hard offset shadow (critical when invalid) over a transparent outline that forced colours turn into a Highlight ring |
 | Select | As Input; options as List rows |
 | Dialog | Every overlay is a sticker; a drawer throws its shadow away from the edge it came from; the modal backdrop is a blush tint (O-11) |
