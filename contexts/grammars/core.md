@@ -25,15 +25,14 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
   corner (three times it) exceeds half of every height: Buttons are pills, and a Button skeleton is a pill too.
   Surfaces take the larger surface radius. A Button drawn with the control corner is a defect.
 - **Calm motion.** One short duration with a decelerating curve; no meaning rides on motion.
-- **Almost no component CSS.** Beyond token bindings the sheet has two scoped rules: the accent re-declared as
-  `accentText` where Common paints it as text, and a labelled card painted as one material box with its label
-  inside.
+- **Almost no component CSS.** Beyond token bindings the sheet has one scoped rule: the accent re-declared as
+  `accentText` where Common paints it as text. A labelled card keeps Common's label row outside the material.
 
 ## How core fills the contract
 
 | Role | core |
 |---|---|
-| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; label inside the material |
+| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; label outside the material, an unpainted row above the card (ruling `card-label-placement-per-grammar`) |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `accentText`. Pill: the vendor's soft track and white selected segment with the surface shadow |

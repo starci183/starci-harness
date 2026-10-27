@@ -61,6 +61,11 @@ rulings:
     status: live
     ruling: "One control height, the vendor md (40px), is the default of every standalone control; only sm (a control nested in an item or a dense toolbar) and lg (a landing hero call to action) exist besides it; controls of one row share one height. The values are the grammar's."
     owner: "contexts/ui/scale.md; '@starci/grammar src/common (control height tokens)'; lint control-height (R320)"
+  - id: card-label-placement-per-grammar
+    date: '2026-10-28'
+    status: live
+    ruling: "Whether a labelled card's label sits inside or outside the painted material is each grammar's decision; core (starci) and offset-pop both keep it outside, an unpainted row above the card. The owner's words: label inside or outside is decided per grammar, and core is outside. The inside version came from a legacy WIP commit (57e5851e5) without a ruling."
+    owner: "contexts/grammars/contract.yaml (DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE); contexts/grammars/core.md; @starci/grammar src/core/styles.css"
   - id: surfacecard-always-painted
     date: '2026-10-25'
     status: live
