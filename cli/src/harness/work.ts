@@ -1,13 +1,14 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
-import { dirname, join, posix, relative, resolve } from "node:path"
+import { basename, dirname, join, posix, relative, resolve } from "node:path"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { captureGit, repositoryRoot } from "../shared/git.js"
+import { captureGit, mainCheckout, repositoryRoot } from "../shared/git.js"
 import { locateTree } from "../shared/tree.js"
 import { CONTRACT_SCHEMA, DEFAULT_BUDGET, resolveChecks } from "./contract.js"
 import type { Contract } from "./contract.js"
+import { ensureLedgerId, findLedgerId } from "./ledger.js"
 import type { Ops } from "./ops.js"
 import { CHECKS_FILE, RECEIPT_FILE, fileSha256, readReceipt, storeBlob } from "./uat.js"
 import type { UatReceipt } from "./uat.js"
@@ -73,6 +74,38 @@ export const locateWorkRoot = async (cwd: string): Promise<WorkRoot> => {
         throw new Refusal("WORK_ROOT_AMBIGUOUS", `${own} holds its own ${WORK_DIR} while ${hfs ?? "hfs.json"} names ${root} as the Work root; keep one of the two`)
     }
     return { root, from: "hfs.json", hfs }
+}
+
+/** A project: the main checkout of the repository that owns its Work, its ledger id (the key of its one Supervisor) and its name. */
+export interface Project {
+    readonly root: string
+    readonly key: string
+    readonly name: string
+}
+
+const projects = new Map<string, Project>()
+
+/**
+ * The project a folder belongs to, the one rule every Supervisor verb and sweep resolves by: the repository that owns the Work
+ * (`locateWorkRoot`, read from the folder's main checkout so a workflow worktree resolves as its repository does, a side
+ * repository through its hfs.json `work.root`), else, for a repository that holds no Work and names none, the repository itself.
+ * `mint` false (a read verb) registers no ledger: an unregistered project has the empty key, so it has no Supervisor.
+ */
+export const projectOf = async (cwd: string, mint = true): Promise<Project> => {
+    const known = projects.get(resolve(cwd))
+    if (known !== undefined) return known
+    const main = await mainCheckout(cwd)
+    let owner = main
+    try {
+        owner = (await locateWorkRoot(join(main, relative(await repositoryRoot(cwd), resolve(cwd))))).root
+    } catch (error: unknown) {
+        if (!(error instanceof Refusal) || error.code !== "WORK_ROOT_UNKNOWN") throw error
+    }
+    const root = resolve(await mainCheckout(owner))
+    const key = mint ? ensureLedgerId(root) : findLedgerId(root)
+    const project: Project = { root, key: key ?? "", name: basename(root) }
+    if (key !== undefined) projects.set(resolve(cwd), project)
+    return project
 }
 
 const SEGMENT = "[a-z0-9][a-z0-9-]*"

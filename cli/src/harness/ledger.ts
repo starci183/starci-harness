@@ -9,8 +9,8 @@ import { captureGitSync } from "../shared/git.js"
 /** The ledger schema version this build writes. */
 export const LEDGER_VERSION = 8
 
-/** The additive host schema version, including the singleton Supervisor seat. */
-export const MACHINE_VERSION = 2
+/** The additive host schema version: 3 keys the Supervisors by project (`project_supervisors`). */
+export const MACHINE_VERSION = 3
 
 /**
  * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
@@ -163,22 +163,25 @@ const projectsRoot = (): string => {
 /** The host store, `<state base>/machine.sqlite`. */
 export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 
-/** A coordinator's immutable launch brief, outside every product repository. */
-export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string =>
-    join(role === "supervisor" ? stateBase() : projectDir(root), "briefs", `${role}-${launchId}.md`)
+/** A coordinator's immutable launch brief, in its project's state folder, outside every product repository. */
+export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string => join(projectDir(root), "briefs", `${role}-${launchId}.md`)
 
 /**
  * The host store keeps only host-wide state: the registry of project ledgers (the legacy `ledgers` columns plus
- * repo_common_dir, the lookup key) and provider health, since a provider's rate limit or circuit is the same for every project.
+ * repo_common_dir, the lookup key), provider health, since a provider's rate limit or circuit is the same for every project, and
+ * the Supervisors, one live row per project (`project` is the ledger id of the repository owning its Work, `ended_by` who
+ * retired a row: owner, gone, stalled). A host store from version 2 keeps its `supervisors` table of one host Supervisor,
+ * which only the adoption of its workflows reads (`harness/supervisor.ts`).
  */
 const MACHINE_SCHEMA = `
 CREATE TABLE IF NOT EXISTS machine_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO machine_meta (key, value) VALUES ('version', '${String(MACHINE_VERSION)}')
   ON CONFLICT(key) DO UPDATE SET value = excluded.value;
-CREATE TABLE IF NOT EXISTS supervisors (
-  id TEXT PRIMARY KEY, terminal TEXT, run_id TEXT, task_id TEXT, agent TEXT NOT NULL, model TEXT NOT NULL,
-  started_at TEXT NOT NULL, ended_at TEXT, lease_until TEXT, launch_op TEXT, launch_json TEXT);
-CREATE UNIQUE INDEX IF NOT EXISTS one_live_supervisor ON supervisors ((1)) WHERE ended_at IS NULL;
+CREATE TABLE IF NOT EXISTS project_supervisors (
+  id TEXT PRIMARY KEY, project TEXT NOT NULL, project_root TEXT NOT NULL, terminal TEXT, run_id TEXT, task_id TEXT,
+  agent TEXT NOT NULL, model TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, ended_by TEXT, lease_until TEXT,
+  launch_op TEXT, launch_json TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS one_live_supervisor_per_project ON project_supervisors (project) WHERE ended_at IS NULL;
 CREATE TABLE IF NOT EXISTS ledgers (
   ledger_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, repo_common_dir TEXT NOT NULL UNIQUE, repo_root TEXT NOT NULL,
   file TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'idle', 'retired')),
@@ -188,19 +191,8 @@ CREATE TABLE IF NOT EXISTS provider_health (
   failure_kind TEXT, circuit_open_until TEXT, updated_at TEXT NOT NULL);
 `
 
-/** Host columns added after their table was first created, additive like ADDED_COLUMNS (machine version 2 adds the Supervisor's lease). */
-const MACHINE_ADDED_COLUMNS: readonly { readonly table: string; readonly column: string; readonly type: string }[] = [
-    { table: "supervisors", column: "lease_until", type: "TEXT" },
-    { table: "supervisors", column: "launch_op", type: "TEXT" },
-    { table: "supervisors", column: "launch_json", type: "TEXT" },
-]
-
 const applyMachineSchema = (db: DatabaseSync): void => {
     db.exec(MACHINE_SCHEMA)
-    for (const { table, column, type } of MACHINE_ADDED_COLUMNS) {
-        const known = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((row) => String(row.name)))
-        if (!known.has(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
-    }
 }
 
 interface Project {

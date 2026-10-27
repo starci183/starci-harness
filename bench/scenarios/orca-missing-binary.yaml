@@ -47,7 +47,7 @@ steps:
   - assert:
       sql:
         db: machine
-        query: SELECT COUNT(*) FROM supervisors
+        query: SELECT COUNT(*) FROM project_supervisors
         equals:
           - 0
   - name: start

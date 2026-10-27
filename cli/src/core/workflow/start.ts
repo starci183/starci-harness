@@ -2,6 +2,7 @@ import { openLedger } from "../../harness/ledger.js"
 import { startKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { requireSupervisor } from "../../harness/supervisor.js"
+import { projectOf } from "../../harness/work.js"
 import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
@@ -9,14 +10,15 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { exitOf, readSnapshot, reportOf, reportMessage, stepWorkflow } from "./engine.js"
 
 /**
- * `starci workflow start <id>`. orca: only from the Supervisor's terminal (else SUPERVISOR_REQUIRED); the workflow gets its one
- * worktree and its `[Kernel] <id>` agent is launched into the Supervisor's Run (worker-start --run/--parent/--from). The Kernel's
- * `kernel attach` creates its child Run and its `kernel next` dispatches the Ops. A Kernel launch that fails leaves the workflow
- * running for `kernel start` (or `supervisor next`) to relaunch. inline: unchanged, its first step prints the next task.
+ * `starci workflow start <id>`. orca: only from the terminal of the Supervisor of the workflow's project (else
+ * SUPERVISOR_REQUIRED); the workflow gets its one worktree and its `[Kernel] <id>` agent is launched into that Supervisor's Run
+ * (worker-start --run/--parent/--from). The Kernel's `kernel attach` creates its child Run and its `kernel next` dispatches the
+ * Ops. A Kernel launch that fails leaves the workflow running for `kernel start` (or `supervisor next`) to relaunch. inline:
+ * unchanged, its first step prints the next task.
  */
 export const workflowStartVerb = defineVerb({
     path: ["workflow", "start"],
-    summary: "start a defined workflow: orca (from the Supervisor terminal) makes its one worktree and launches its [Kernel] agent; inline prints the next task",
+    summary: "start a defined workflow: orca (from the terminal of its project's Supervisor) makes its one worktree and launches its [Kernel] agent; inline prints the next task",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
@@ -28,7 +30,7 @@ export const workflowStartVerb = defineVerb({
         const root = await repositoryRoot(context.cwd)
         const before = readSnapshot(root, flags.workflow).workflow
         const binary = before.header.runner === "orca" ? await locateOrca(context.cwd) : undefined
-        if (binary !== undefined) await requireSupervisor(binary, context.cwd)
+        if (binary !== undefined) await requireSupervisor(binary, context.cwd, await projectOf(root))
         const db = openLedger(root)
         const runner = (() => {
             try {

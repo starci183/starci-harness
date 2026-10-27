@@ -9,6 +9,8 @@ import type { CoordinatorRole } from "./routing.js"
 export interface CoordinatorBriefInput {
     readonly role: CoordinatorRole
     readonly root: string
+    /** The project a Supervisor serves, by name. */
+    readonly project?: string
     readonly launchId: string
     readonly agent: string
     readonly model: string
@@ -19,7 +21,7 @@ export interface CoordinatorBriefInput {
 const slashed = (path: string): string => path.replaceAll("\\", "/")
 
 /**
- * Writes a coordinator's launch brief under .runtime (ops/coordinators/<role>.md with its placeholders filled) and returns the
+ * Writes a coordinator's launch brief in its project's state folder (ops/coordinators/<role>.md with its placeholders filled) and returns the
  * short pointer the launch sends, since a whole brief would pass the Windows argv cap.
  */
 export const coordinatorBrief = (input: CoordinatorBriefInput): string => {
@@ -29,6 +31,7 @@ export const coordinatorBrief = (input: CoordinatorBriefInput): string => {
     const values: Readonly<Record<string, string>> = {
         runtimeRoot: runtimeRoot(),
         projectRoot: root,
+        project: input.project ?? "",
         workflowId: input.workflowId ?? "",
         worktree: input.worktree ?? root,
         launchId,
@@ -42,6 +45,6 @@ export const coordinatorBrief = (input: CoordinatorBriefInput): string => {
     const header = `Your first command after reading this whole brief is \`starci ${attach}\`. Use \`node "${cli}"\` when starci is not on PATH. Set STARCI_ROLE=${role} for every StarCi command.\n\n`
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, header + body, "utf8")
-    const title = role === "supervisor" ? "[Supervisor]" : `[Kernel] ${input.workflowId ?? ""}`
+    const title = role === "supervisor" ? `[Supervisor] ${input.project ?? ""}` : `[Kernel] ${input.workflowId ?? ""}`
     return `${title} Read the complete brief at ${slashed(file)} before any other action; run its first command. Runtime root: ${slashed(runtimeRoot())}. Project root: ${slashed(root)}.`
 }

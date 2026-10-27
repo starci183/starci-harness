@@ -41,9 +41,9 @@ usage. Read every refusal code; never retry blindly.
 
 ## Seats and the chat
 
-The owner starts the host's Supervisor once (`starci supervisor start`, or a scheduled `starci supervisor tick`) and
-then talks to its `[Supervisor]` terminal: it turns a request into a workflow, starts it from its own terminal, and
-answers its Kernels' escalations. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
+The owner starts a project's Supervisor once (`starci supervisor start` from any checkout of the project, or a scheduled
+`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal: it turns a request
+into a workflow of its project, starts it from its own terminal, and answers its Kernels' escalations. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
 

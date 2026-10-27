@@ -44,8 +44,10 @@ const envelopeExpect = z.strictObject({
     contains: z.string().optional(),
 })
 
+/** `repo` names the repository of the run (one of `repos`) whose ledger a `ledger` query reads; default the scratch repository. */
 const sqlAssert = z.strictObject({
     db: z.enum(["ledger", "machine"]),
+    repo: z.string().optional(),
     query: z.string(),
     equals: z.unknown(),
 })
@@ -74,20 +76,25 @@ const stepSchema = z.strictObject({
     unless: z.string().optional(),
     starci: z.array(z.string()).optional(),
     /**
-     * Who runs the verb: `supervisor` (the booted Supervisor's terminal and role) or `kernel:<workflow>` (that workflow's Kernel
-     * terminal and role, from its worktree unless `cwd` says otherwise). Unset, the owner runs it outside Orca.
+     * Who runs the verb: `supervisor` (the booted Supervisor of the scratch repository's project, its terminal and role),
+     * `supervisor:<repo>` (the Supervisor of the project of another repository of the run, from that repository) or
+     * `kernel:<workflow>` (that workflow's Kernel terminal and role, from its worktree unless `cwd` says otherwise). Unset, the
+     * owner runs it outside Orca.
      */
-    seat: z.string().regex(/^(?:supervisor|kernel:[\w.-]+)$/).optional(),
+    seat: z.string().regex(/^(?:supervisor(?::[\w.-]+)?|kernel:[\w.-]+)$/).optional(),
     /**
-     * Boots the coordinator tree through real verbs on the stand-in: `supervisor start` and `supervisor attach` (once per run),
-     * `workflow define <file>` when a file is named, `workflow start <workflow>` from the Supervisor terminal and `kernel attach`
-     * from the Kernel terminal it launched (unless `attach` is false); `adopt` attaches a workflow's current Kernel seat
-     * (one `supervisor next` relaunched). It saves supervisor.{launch,terminal,run} and
-     * kernel.<workflow>.{launch,terminal,run}, worktree.<workflow>.
+     * Boots the coordinator tree through real verbs on the stand-in: the Supervisor of `project` (a repository of the run, default
+     * the scratch repository: `supervisor start` and `supervisor attach` from it, once per project), `workflow define <file>` in
+     * the repository `in` (default the project's) when a file is named, `workflow start <workflow>` there from that Supervisor's
+     * terminal and `kernel attach` from the Kernel terminal it launched (unless `attach` is false); `adopt` attaches a workflow's
+     * current Kernel seat (one `supervisor next` relaunched). It saves supervisor.{launch,terminal,run} (supervisor.<project>.*
+     * for another repository's project), kernel.<workflow>.{launch,terminal,run} and worktree.<workflow>.
      */
-    boot: z.strictObject({ file: z.string().optional(), workflow: z.string().optional(), attach: z.boolean().optional(), adopt: z.string().optional() }).optional(),
+    boot: z
+        .strictObject({ project: z.string().optional(), in: z.string().optional(), file: z.string().optional(), workflow: z.string().optional(), attach: z.boolean().optional(), adopt: z.string().optional() })
+        .optional(),
     /** Saves the first value of a query's first row under a variable name. */
-    read: z.strictObject({ db: z.enum(["ledger", "machine"]), query: z.string(), as: z.string() }).optional(),
+    read: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), query: z.string(), as: z.string() }).optional(),
     /** Runs the verb this many times at once (contention); each copy is held to `expect`. */
     parallel: z.number().int().min(2).max(64).optional(),
     /** Where the verb runs; default the scratch repository. */
@@ -122,7 +129,7 @@ const stepSchema = z.strictObject({
             terminal: z.strictObject({ handle: z.string(), live: z.boolean() }).optional(),
         })
         .optional(),
-    sql: z.strictObject({ db: z.enum(["ledger", "machine"]), exec: z.string() }).optional(),
+    sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),
     assert: assertSchema.optional(),
 })
 
@@ -149,6 +156,8 @@ const scenarioSchema = z.strictObject({
     manual: z.array(z.string()).optional(),
     faults: z.array(z.string()).optional(),
     repo: z.strictObject({ dir: z.string().optional(), files: z.record(z.string(), z.string()).optional() }).optional(),
+    /** More repositories beside the scratch one, each `<run>/<name>` (`${repo.<name>}`), for scenarios of several projects or sides. */
+    repos: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.strictObject({ files: z.record(z.string(), z.string()).optional() })).optional(),
     env: z.record(z.string(), z.string()).optional(),
     steps: z.array(stepSchema).optional(),
 })

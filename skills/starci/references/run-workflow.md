@@ -8,8 +8,8 @@ The workflow is defined and the owner's OK covers starting it. You hold its id a
 starci workflow start <id>
 ```
 
-- `orca`: only from the Supervisor's terminal (elsewhere `SUPERVISOR_REQUIRED`). It makes the workflow's one worktree and
-  launches its `[Kernel] <id>` agent into the Supervisor's Run; the Kernel attaches, and its `kernel next` dispatches the
+- `orca`: only from the terminal of the Supervisor of the repository's project (elsewhere `SUPERVISOR_REQUIRED`). It makes
+  the workflow's one worktree and launches its `[Kernel] <id>` agent into that Supervisor's Run; the Kernel attaches, and its `kernel next` dispatches the
   ready tasks as `[Op] <label> (<task id>) - <summary>` under it, up to `maxParallel`, each routed, all in that worktree. If Orca does
   not know the repository yet, the harness registers it (`orca repo add`).
 - `inline`: queues one task and prints it with its brief and the commands to finish it. Work it as

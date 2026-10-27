@@ -20,9 +20,11 @@ import type { RouteMember } from "../../harness/router.js"
 import { kernelSeatOf, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
-import { ensureSupervisor, inSupervisorTerminal, isAttached, renewSupervisorLease, startSupervisor, stopSupervisor, supervisorRecord } from "../../harness/supervisor.js"
+import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, keptProjects, liveSupervisors, projectOfRecord, renewSupervisorLease, retireHostSupervisor, startSupervisor, stopSupervisor, supervisorRecord, supervisorTitle } from "../../harness/supervisor.js"
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { recordEvent } from "../../harness/tasks.js"
+import { projectOf } from "../../harness/work.js"
+import type { Project } from "../../harness/work.js"
 import { DISPATCHING, getWorkflow, listWorkflows, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
 import type { WorkflowRow } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -58,10 +60,27 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 const sleep = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
 
 /** The repositories whose ledgers the host registry lists and that exist. */
-export const registeredProjects = (): string[] =>
+export const registeredRepositories = (): string[] =>
     readMachine((db) => db.prepare("SELECT repo_root, file FROM ledgers WHERE state != 'retired'").all(), [])
         .filter((row) => existsSync(textOf(row.file) ?? "") && existsSync(textOf(row.repo_root) ?? ""))
         .map((row) => textOf(row.repo_root) ?? "")
+
+/** The registered repositories of one project (`projectOf` each: the Work root and its sides); a repository whose binding is unfit is reported, never swept. */
+export const projectRepositories = async (project: Project): Promise<{ readonly repos: readonly string[]; readonly problems: readonly string[] }> => {
+    const repos: string[] = []
+    const problems: string[] = []
+    await inOrder(registeredRepositories(), async (repo) => {
+        try {
+            if ((await projectOf(repo)).key === project.key) repos.push(repo)
+        } catch (error: unknown) {
+            problems.push(`${repo}: no project (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+        }
+    })
+    return { repos, problems }
+}
+
+/** A project given by `--project <path>`, else the project of the working directory. */
+export const projectFrom = async (context: VerbContext, project: string | undefined, mint = true): Promise<Project> => projectOf(project === undefined ? context.cwd : resolve(context.cwd, project), mint)
 
 const isCoordinated = (workflow: WorkflowRow): boolean =>
     workflow.header.runner === "orca" && ["running", "blocked", "paused"].includes(workflow.status) && workflow.reason?.startsWith(RELAUNCH_LIMIT) !== true
@@ -200,12 +219,41 @@ const kernelStall = async (root: string, binary: OrcaBinary, cwd: string, workfl
     return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting, stalled }, rules)
 }
 
+/** The Run a Kernel seat was launched into: Orca's receipt, else the `--run` its launch sent. */
+const runOfSeat = (seat: SeatRow): string | null => {
+    const launch = seat.launch
+    return seat.runId ?? (typeof launch === "object" && launch !== null && "run" in launch && typeof launch.run === "string" ? launch.run : null)
+}
+
 /**
- * The Kernel sweep of one project: every orca workflow the Supervisor owns (its recorded coordinator, set when `kernel start` or
- * `workflow start` launched its Kernel) keeps exactly one live Kernel, by Orca's word. A workflow nobody gave the Supervisor, or
- * one still driven from a Kernel terminal another session adopted (Orca does not report it gone), is never touched. A Kernel Orca
- * reports gone (or silent past its TTL) is relaunched; a live one idle at its prompt with work pending meets the stall ladder.
- * `ops` also runs each owned workflow's Op stall ladder (the host driver's sweep, which needs no Kernel to be awake).
+ * The adoption of a workflow whose Kernel a host Supervisor launched (a version-2 host store, `hostSupervisors`): the sweep of the
+ * Supervisor of its project records it as that Supervisor's (`workflow-coordinator` with `project` and `adoptedFrom`, once), and
+ * relaunches its Kernel into its own Run only when the host Supervisor's Run has no coordinator any more (that row retired, or
+ * Orca reports its terminal gone); while that terminal lives, the Kernel is left running where it is. `moved` is true when it
+ * relaunched (or reached the relaunch limit), so nothing more is judged on the seat it fenced.
+ */
+const adoptFromHost = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, seat: SeatRow | undefined, live: TerminalInventory | null, rules: CoordinatorLiveness, acting: AttachedSupervisor): Promise<{ readonly line: string | null; readonly moved: boolean }> => {
+    const run = seat === undefined ? null : runOfSeat(seat)
+    const host = run === null ? undefined : hostSupervisors().find((candidate) => candidate.runId === run)
+    if (host === undefined) return { line: null, moved: false }
+    const adopted = withLedger(root, (db) => {
+        const latest = db.prepare("SELECT data_json FROM events WHERE kind = 'workflow-coordinator' AND subject = ? ORDER BY id DESC LIMIT 1").get(workflow.id)
+        if (latest !== undefined && String(latest.data_json).includes(`"adoptedFrom":"${host.id}"`)) return false
+        recordEvent(db, "workflow-coordinator", workflow.id, { coordinator: SUPERVISOR_COORDINATOR, project: acting.project, supervisor: acting.id, adoptedFrom: host.id })
+        return true
+    })
+    const gone = host.endedAt !== null || (host.terminal !== null && live !== null && !live.truncated && !live.handles.has(host.terminal))
+    if (gone) return { line: await relaunch(root, binary, cwd, workflow, `adopted from the host Supervisor ${host.id}, whose Run has no coordinator any more`, { replace: true, acting }, rules), moved: true }
+    return { line: adopted ? `${workflow.id}: adopted from the host Supervisor ${host.id}; its Kernel stays in that Run while ${host.terminal ?? "its terminal"} lives` : null, moved: false }
+}
+
+/**
+ * The Kernel sweep of one repository of the Supervisor's project: every orca workflow the Supervisor owns (its recorded
+ * coordinator, set when `kernel start` or `workflow start` launched its Kernel) keeps exactly one live Kernel, by Orca's word. A
+ * workflow nobody gave a Supervisor, or one still driven from a Kernel terminal another session adopted (Orca does not report it
+ * gone), is never touched. A workflow a host Supervisor launched is adopted first (`adoptFromHost`). A Kernel Orca reports gone
+ * (or silent past its TTL) is relaunched; a live one idle at its prompt with work pending meets the stall ladder. `ops` also runs
+ * each owned workflow's Op stall ladder (the host driver's sweep, which needs no Kernel to be awake).
  */
 const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules: CoordinatorLiveness, acting: AttachedSupervisor, ops: boolean): Promise<string[]> => {
     const owned = withLedger(root, (db) =>
@@ -218,8 +266,10 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     const done = await inOrder(workflows, async ({ workflow, seat, progress }): Promise<string[]> => {
         const lines: string[] = []
         try {
-            if (seat?.handle === null) lines.push((await resolveKernelLaunch(root, binary, cwd, workflow, seat, rules, acting)) ?? "")
-            else {
+            const adoption = await adoptFromHost(root, binary, cwd, workflow, seat, live, rules, acting)
+            lines.push(adoption.line ?? "")
+            if (!adoption.moved && seat?.handle === null) lines.push((await resolveKernelLaunch(root, binary, cwd, workflow, seat, rules, acting)) ?? "")
+            else if (!adoption.moved) {
                 const reason = await relaunchReason(binary, cwd, seat, progress, rules)
                 if (reason !== null) lines.push(await relaunch(root, binary, cwd, workflow, reason.why, { replace: reason.replace, acting }, rules))
                 else if (seat !== undefined) lines.push((await kernelStall(root, binary, cwd, workflow, seat, live, rules, acting)) ?? "")
@@ -234,30 +284,33 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     return done.flat()
 }
 
-const oldestDecision = (): SupervisorDecision | undefined => {
-    const all = registeredProjects().flatMap((project) => withLedger(project, (db) => openDecisions(db, "supervisor").map((decision) => ({ ...decision, project }))))
+const oldestDecision = (repos: readonly string[]): SupervisorDecision | undefined => {
+    const all = repos.flatMap((project) => withLedger(project, (db) => openDecisions(db, "supervisor").map((decision) => ({ ...decision, project }))))
     return all.sort((a, b) => a.raisedAt.localeCompare(b.raisedAt))[0]
 }
 
 /**
- * `supervisor next`: the Supervisor's own driver. From its terminal it sweeps every project's workflows the Supervisor owns (a
- * Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a live one idle at its prompt
- * with work pending meets the stall ladder; a launch with no receipt is resolved through request-show; too many relaunches pause
- * and escalate), then returns the oldest open escalation or handoff, else waits on the Supervisor Run's mailbox until
- * nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor tick` sweeps for it.
+ * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
+ * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
+ * live one idle at its prompt with work pending meets the stall ladder; a launch with no receipt is resolved through
+ * request-show; too many relaunches pause and escalate), then returns the project's oldest open escalation or handoff, else waits
+ * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
+ * tick` sweeps for it.
  */
-export const supervisorNext = async (context: VerbContext, waitSeconds?: number): Promise<SupervisorNext> => {
+export const supervisorNext = async (context: VerbContext, project: Project, waitSeconds?: number): Promise<SupervisorNext> => {
     const rules = loadCoordinatorLiveness()
     const deadline = Date.now() + (waitSeconds ?? rules.nextWaitSeconds) * 1000
-    const seat = supervisorRecord()
+    const seat = supervisorRecord(project.key)
     const attached: AttachedSupervisor | null = inSupervisorTerminal(seat) ? seat : null
     const binary = attached === null ? null : await locateOrca(context.cwd).catch(() => null)
     const actions: string[] = []
     let delivery: string | undefined
     for (;;) {
         if (attached !== null) renewSupervisorLease(attached.id)
-        if (attached !== null && binary !== null) for (const project of registeredProjects()) actions.push(...(await sweepKernels(project, binary, context.cwd, rules, attached, false)))
-        const decision = oldestDecision()
+        const { repos, problems } = await projectRepositories(project)
+        actions.push(...problems.filter((problem) => !actions.includes(problem)))
+        if (attached !== null && binary !== null) for (const repo of repos) actions.push(...(await sweepKernels(repo, binary, context.cwd, rules, attached, false)))
+        const decision = oldestDecision(repos)
         if (decision !== undefined) {
             const digest = withLedger(decision.project, (db) => digestOf(db, decision.workflowId))
             return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, actions }
@@ -288,86 +341,137 @@ const hostEventsOf = (kind: string, subject: string): { readonly at: string; rea
 const decisionOf = (data: unknown): unknown => (typeof data === "object" && data !== null && "decision" in data ? data.decision : null)
 
 /**
- * The stall ladder of the Supervisor seat: idle at its prompt (stall rules) while an escalation or handoff waits and no driver call
- * came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a stall after
- * nudgeMax nudges, gives it up: its member records a `stalled` outcome and the Supervisor is replaced by a new launch with that
- * member behind every other. Once kernelRelaunchMax replacements left the same decision waiting, the tick stops replacing and
- * reports it for the owner.
+ * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while an escalation or handoff of its project waits and
+ * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
+ * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
+ * new launch with that member behind every other. Once kernelRelaunchMax replacements left the same decision waiting, the tick
+ * stops replacing and reports it for the owner.
  */
-const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSupervisor, inventory: TerminalInventory | null, rules: CoordinatorLiveness): Promise<string | null> => {
+const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSupervisor, repos: readonly string[], inventory: TerminalInventory | null, rules: CoordinatorLiveness): Promise<string | null> => {
     const stall = loadStallRules()
-    const decision = oldestDecision()
+    const project = projectOfRecord(seat)
+    const title = supervisorTitle(project.name)
+    const decision = oldestDecision(repos)
     const lastCall = lastCallOf(seat.lease_until, rules.supervisorTtlMinutes, seat.started_at)
     if (decision === undefined || !olderThan(lastCall, stall.idleMinutes)) return null
     const signals = await askIdle(binary, cwd, { terminal: seat.terminal, handle: null }, inventory, stall)
     if (signals.idle !== true) return null
     const step = stallStep(lastCall, hostEventsOf(STALL_NUDGED, seat.id).map((event) => event.at), stall)
-    if (step.kind === "wait") return `Supervisor idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}); ${step.detail}`
+    if (step.kind === "wait") return `${title} idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}); ${step.detail}`
     if (step.kind === "nudge") {
         const claimed = withMachine((db) => {
             if (Number(db.prepare("SELECT COUNT(*) AS n FROM host_events WHERE kind = ? AND subject = ?").get(STALL_NUDGED, seat.id)?.n ?? 0) !== step.n - 1) return false
-            db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), STALL_NUDGED, seat.id, JSON.stringify({ n: step.n, lastCall, decision: decision.id, evidence: signals.evidence }))
+            db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), STALL_NUDGED, seat.id, JSON.stringify({ n: step.n, lastCall, project: project.key, decision: decision.id, evidence: signals.evidence }))
             return true
         })
         if (!claimed) return null
         await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, stall.prompts.supervisor)
-        return `Supervisor idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
+        return `${title} idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
     }
     const replaced = readMachine((db) => db.prepare("SELECT data_json FROM host_events WHERE kind = ?").all(STALL_GAVE_UP), []).filter((row) => decisionOf(JSON.parse(String(row.data_json))) === decision.id).length
-    if (replaced >= rules.kernelRelaunchMax) return `Supervisor stalled again with ${decision.id} waiting after ${String(replaced)} replacements: left for the owner (starci supervisor status)`
+    if (replaced >= rules.kernelRelaunchMax) return `${title} stalled again with ${decision.id} waiting after ${String(replaced)} replacements: left for the owner (starci supervisor status)`
     const kind = stallKindOf(signals.failureText)
-    recordHostEvent(STALL_GAVE_UP, seat.id, { member: `${seat.agent}/${seat.model}`, kind, why: step.detail, decision: decision.id, failure: signals.failureText })
+    recordHostEvent(STALL_GAVE_UP, seat.id, { member: `${seat.agent}/${seat.model}`, kind, why: step.detail, project: project.key, decision: decision.id, failure: signals.failureText })
     recordSeatOutcome({ ledger: "machine", id: seat.id, agent: seat.agent, model: seat.model, role: "supervisor", startedAt: seat.started_at })
-    reportStalled(seat.agent, kind, `Supervisor ${step.detail}${signals.failureText === null ? "" : `: ${signals.failureText}`}`)
-    await stopSupervisor(binary, cwd, false)
-    const started = await startSupervisor(binary, cwd, [{ agent: seat.agent, model: seat.model }])
-    return `Supervisor stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}`
+    reportStalled(seat.agent, kind, `${title} ${step.detail}${signals.failureText === null ? "" : `: ${signals.failureText}`}`)
+    await stopSupervisor(binary, cwd, project, false, "stalled")
+    const started = await startSupervisor(binary, cwd, project, [{ agent: seat.agent, model: seat.model }])
+    return `${title} stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}`
 }
 
-/** What one `supervisor tick` did: the Supervisor's ensure, and every action of its sweeps. */
+/** The projects that own a running orca workflow: the repositories whose ledgers hold one a Supervisor coordinates, by `projectOf`. */
+const projectsWithWorkflows = async (problems: string[]): Promise<Project[]> => {
+    const found: Project[] = []
+    await inOrder(registeredRepositories(), async (repo) => {
+        const owns = withLedger(repo, (db) => listWorkflows(db).some((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR))
+        if (!owns) return
+        try {
+            found.push(await projectOf(repo))
+        } catch (error: unknown) {
+            problems.push(`${repo}: no project (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+        }
+    })
+    return found
+}
+
+/** What `ensureSupervisors` did: one ensure per kept project, and the projects it could not ensure or resolve. */
+export interface SupervisorsEnsured {
+    readonly ensured: readonly SupervisorEnsured[]
+    readonly problems: readonly string[]
+}
+
+/**
+ * Keeps every project's Supervisor alive, the host-wide half of `supervisor tick` (and what a host service calls to start the
+ * Supervisors): the projects of `keptProjects` (a live Supervisor, or one ended by anything but the owner's stop) and every
+ * project owning a running orca workflow get `ensureSupervisor`, each once.
+ */
+export const ensureSupervisors = async (binary: OrcaBinary, cwd: string): Promise<SupervisorsEnsured> => {
+    const problems: string[] = []
+    const projects = new Map<string, Project>()
+    for (const project of [...keptProjects(), ...(await projectsWithWorkflows(problems))]) if (!projects.has(project.key)) projects.set(project.key, project)
+    const ensured: SupervisorEnsured[] = []
+    await inOrder([...projects.values()], async (project) => {
+        try {
+            ensured.push(await ensureSupervisor(binary, cwd, project))
+        } catch (error: unknown) {
+            problems.push(`${supervisorTitle(project.name)} not ensured (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+        }
+    })
+    return { ensured, problems }
+}
+
+/** What one `supervisor tick` did: every project's ensure, the projects whose Supervisor it acted for, and every action. */
 export interface SupervisorTick {
-    readonly supervisor: SupervisorEnsured | null
-    readonly swept: boolean
+    readonly supervisors: readonly SupervisorEnsured[]
+    readonly swept: readonly string[]
     readonly actions: readonly string[]
 }
 
 /**
  * `supervisor tick`: one deterministic pass of the host driver, idempotent and safe to run every minute, with no LLM awake. It
- * keeps one Supervisor (ensure: started when Orca says it is gone), and while that Supervisor is attached and alive it acts for
- * it: every project's owned workflows get the Kernel sweep (relaunch on Orca's word, the relaunch limit, a Kernel launch with no
- * receipt) and the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every action is an
- * event (project ledger, or host_events for the Supervisor and the tick).
+ * keeps every project's Supervisor (`ensureSupervisors`), retires a version-2 host Supervisor Orca reports gone, and for each
+ * Supervisor attached and alive it acts for it, over its project only: the owned workflows of the project's repositories get the
+ * Kernel sweep (adoption from a host Supervisor, relaunch on Orca's word, the relaunch limit, a Kernel launch with no receipt) and
+ * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every action is an event (project
+ * ledger, or host_events for a Supervisor and the tick).
  */
 export const supervisorTick = async (context: VerbContext): Promise<SupervisorTick> => {
     const rules = loadCoordinatorLiveness()
     const binary = await locateOrca(context.cwd)
-    const actions: string[] = []
-    let ensured: SupervisorEnsured | null = null
-    try {
-        ensured = await ensureSupervisor(binary, context.cwd)
-        if (ensured.action !== "none") actions.push(`Supervisor ${ensured.liveness}: ${ensured.action}, ${ensured.detail}`)
-    } catch (error: unknown) {
-        actions.push(`Supervisor not ensured (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
-    }
-    const seat = supervisorRecord()
-    const swept = isAttached(seat) && ensured?.liveness === "alive"
-    if (swept && isAttached(seat)) {
-        for (const project of registeredProjects()) actions.push(...(await sweepKernels(project, binary, context.cwd, rules, seat, true)))
-        try {
-            const line = await supervisorStall(binary, context.cwd, seat, await terminalList(binary, context.cwd).catch(() => null), rules)
-            if (line !== null) actions.push(line)
-        } catch (error: unknown) {
-            actions.push(`Supervisor stall ladder stopped (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+    const { ensured, problems } = await ensureSupervisors(binary, context.cwd)
+    const actions: string[] = [...problems]
+    for (const one of ensured) if (one.action !== "none") actions.push(`${supervisorTitle(one.project.name)} ${one.liveness}: ${one.action}, ${one.detail}`)
+    const retired = await retireHostSupervisor(binary, context.cwd).catch((error: unknown) => `host Supervisor not retired (${asRefusal(error).code})`)
+    if (retired !== null) actions.push(retired)
+    const swept: string[] = []
+    await inOrder(ensured, async (one) => {
+        const seat = supervisorRecord(one.project.key)
+        const title = supervisorTitle(one.project.name)
+        if (!isAttached(seat) || one.liveness !== "alive") {
+            actions.push(`${title}: no attached live Supervisor (${one.liveness}): nothing swept until it attaches`)
+            return
         }
-        if (actions.length > 0) recordHostEvent("supervisor-tick", seat.id, { actions })
-    } else actions.push(`no attached live Supervisor (${ensured?.liveness ?? "unknown"}): nothing swept until it attaches`)
-    return { supervisor: ensured, swept, actions }
+        swept.push(one.project.name)
+        const lines: string[] = []
+        const { repos, problems: unresolved } = await projectRepositories(one.project)
+        lines.push(...unresolved)
+        for (const repo of repos) lines.push(...(await sweepKernels(repo, binary, context.cwd, rules, seat, true)))
+        try {
+            const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
+            if (line !== null) lines.push(line)
+        } catch (error: unknown) {
+            lines.push(`${title} stall ladder stopped (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+        }
+        if (lines.length > 0) recordHostEvent("supervisor-tick", seat.id, { project: one.project.key, actions: lines })
+        actions.push(...lines.map((line) => `${title}: ${line}`))
+    })
+    return { supervisors: ensured, swept, actions }
 }
 
 /** Wakes a workflow's Kernel by mail (`dispatch:<its dispatch>`); the decision in the ledger is the content. */
 const wakeKernel = async (root: string, cwd: string, command: Command, decision: string): Promise<string> => {
     const seat = withLedger(root, (db) => kernelSeatOf(db, command.workflow))
-    const supervisor = supervisorRecord()
+    const supervisor = supervisorRecord((await projectOf(root)).key)
     if (seat?.handle == null || !inSupervisorTerminal(supervisor)) return "the Kernel reads the decision with its next kernel next"
     try {
         const binary = await locateOrca(cwd)
@@ -434,10 +538,15 @@ const applySupervisor = async (context: VerbContext, root: string, command: Comm
  * escalations. It is admitted under cmdId dedupe and basedOn (goal version), applied (a Kernel decision is raised, stop runs
  * `workflow stop`), and the escalations it answers close with it.
  */
-export const supervisorSubmit = async (context: VerbContext, file: string): Promise<{ readonly command: unknown; readonly replay: boolean; readonly project: string }> => {
+export const supervisorSubmit = async (context: VerbContext, file: string, projectFlag?: string): Promise<{ readonly command: unknown; readonly replay: boolean; readonly project: string }> => {
     const parsed = readCommand(file, "supervisor")
     const { command } = parsed
-    const root = await repositoryRoot(command.project === undefined ? context.cwd : resolve(dirname(file), command.project))
+    const root = await repositoryRoot(command.project !== undefined ? resolve(dirname(file), command.project) : projectFlag !== undefined ? (await projectFrom(context, projectFlag)).root : context.cwd)
+    const owner = await projectOf(root)
+    const caller = liveSupervisors().find((seat) => inSupervisorTerminal(seat))
+    if (caller !== undefined && caller.project !== owner.key) {
+        throw new Refusal("PROJECT_FOREIGN", `workflow ${command.workflow} of ${root} belongs to project ${owner.name}, not to this ${supervisorTitle(projectOfRecord(caller).name)}; its own Supervisor submits it`)
+    }
     if (command.kind === "goal" && withLedger(root, (db) => db.prepare("SELECT 1 FROM commands WHERE workflow_id = ? AND kind = 'goal' AND status = 'applied'").get(command.workflow)) !== undefined) {
         throw new Refusal("GOAL_EXISTS", `workflow ${command.workflow} has its goal; change it with a goal-change based on its goal version`)
     }
@@ -452,7 +561,6 @@ export const supervisorSubmit = async (context: VerbContext, file: string): Prom
         throw error
     }
     const row = withLedger(root, (db) => finishCommand(db, "supervisor", command, "applied", outcome))
-    const seat = supervisorRecord()
-    if (inSupervisorTerminal(seat)) renewSupervisorLease(seat.id)
+    if (caller !== undefined) renewSupervisorLease(caller.id)
     return { command: row, replay: false, project: root }
 }

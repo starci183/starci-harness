@@ -19,6 +19,7 @@ import type { SeatRow } from "./seats.js"
 import { requireSupervisor } from "./supervisor.js"
 import type { AttachedSupervisor } from "./supervisor.js"
 import { recordEvent } from "./tasks.js"
+import { projectOf } from "./work.js"
 import { getWorkflow, recordKernel } from "./workflow.js"
 import type { KernelRecord, WorkflowRow } from "./workflow.js"
 
@@ -33,7 +34,10 @@ export const opTitle = (task: { readonly id: string; readonly contract: { readon
     return title.length <= OP_TITLE_CHARS ? title : `${title.slice(0, OP_TITLE_CHARS - 1)}…`
 }
 
-/** The coordinator `kernel start` (and so `workflow start`) records on a workflow: the Supervisor owns it and sweeps its Kernel. */
+/**
+ * The coordinator `kernel start` (and so `workflow start`) records on a workflow: the Supervisor of the workflow's project
+ * (`projectOf` its repository) owns it and sweeps its Kernel.
+ */
 export const SUPERVISOR_COORDINATOR = "supervisor"
 
 /**
@@ -163,13 +167,13 @@ const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: 
 }
 
 /**
- * Launches the routed Kernel agent as a child dispatch in the Supervisor's Run (worker-start --run/--parent/--from, title
- * `[Kernel] <workflow>`) inside the workflow's one worktree; only the Supervisor's own terminal, or the host driver acting for
- * it, may call it. A seat row is reserved first with the attempt's request id, so an unknown launch is resolved through Orca and
+ * Launches the routed Kernel agent as a child dispatch in the Run of its project's Supervisor (worker-start --run/--parent/--from,
+ * title `[Kernel] <workflow>`) inside the workflow's one worktree; only that Supervisor's own terminal, or the host driver acting
+ * for it, may call it. A seat row is reserved first with the attempt's request id, so an unknown launch is resolved through Orca and
  * never launched twice. `replace` fences a Kernel Orca still shows (idle past its TTL, or given up by the stall ladder).
  */
 export const startKernel = async (root: string, cwd: string, workflowId: string, binary: OrcaBinary, options: KernelStartOptions = {}): Promise<KernelEnsured> => {
-    const supervisor = await requireSupervisor(binary, cwd, options.acting)
+    const supervisor = await requireSupervisor(binary, cwd, await projectOf(root), options.acting)
     const workflow = withRecord(root, (db) => getWorkflow(db, workflowId))
     if (workflow.header.runner !== "orca") throw new Refusal("KERNEL_INLINE", "an inline workflow has no Orca Kernel seat: the chat agent is its Kernel")
     if (!["running", "blocked", "paused"].includes(workflow.status)) throw new Refusal("KERNEL_NOT_RUNNING", `workflow ${workflowId} is ${workflow.status}; start a defined workflow with starci workflow start`)

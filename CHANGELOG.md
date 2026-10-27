@@ -14,6 +14,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   then relaunch (or fence) it on another member with a `stalled` outcome and a provider circuit strike of the kind Orca's
   failure words name (`capacity`, ..., else the new `stall`), then escalate through the relaunch limit.
 
+### Changed
+
+- **One Supervisor per project.** A project is the repository owning the Work plus the side repositories whose `hfs.json`
+  names it; each has its own `[Supervisor] <project>` launched in its main checkout (`project_supervisors`, machine
+  version 3), and every `supervisor` verb takes the project from the working directory or `--project`. `workflow start`
+  and `kernel start` require the Supervisor of the workflow's project, a Supervisor sweeps only its project, and
+  `supervisor tick` keeps and sweeps every project's Supervisor; a workflow under the version-2 host Supervisor is
+  adopted by its project's Supervisor on the first tick.
+
 ### Fixed
 
 - A completed launch request whose agent never started its turn is judged by its dispatch (adopted, or fenced and requeued

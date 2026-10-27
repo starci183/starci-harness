@@ -17,7 +17,7 @@ import { getWorkflow } from "./workflow.js"
 export const KERNEL_COMMANDS = ["workflow-change", "escalation", "handoff"] as const
 export const SUPERVISOR_COMMANDS = ["goal", "goal-change", "stop"] as const
 
-/** Who submits a command: the Kernel of a workflow, or the host Supervisor. */
+/** Who submits a command: the Kernel of a workflow, or the Supervisor of its project. */
 export type CommandScope = "kernel" | "supervisor"
 
 /** The kinds an escalation names (wave principle 5). */

@@ -16,7 +16,8 @@ import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/o
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
 import { isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { supervisorRecord } from "../../harness/supervisor.js"
+import { supervisorRecord, supervisorTerminals } from "../../harness/supervisor.js"
+import { projectOf } from "../../harness/work.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
@@ -223,13 +224,12 @@ const holdForOrca = (root: string, workflowId: string, down: string | null): Ste
     )
 
 /** The terminals that may ask this workflow's Kernel something: its own Op seats' terminals, and the Supervisor's above it. */
-const askers = (db: DatabaseSync, workflowId: string): ReadonlySet<string> => {
+const askers = (db: DatabaseSync, workflowId: string, supervisors: readonly string[]): ReadonlySet<string> => {
     const ops = db
         .prepare("SELECT s.terminal FROM seats s JOIN tasks t ON t.id = s.task_id WHERE s.role = 'worker' AND t.workflow_id = ? AND s.terminal IS NOT NULL")
         .all(workflowId)
         .map((row) => String(row.terminal))
-    const supervisor = supervisorRecord()?.terminal
-    return new Set(supervisor == null ? ops : [...ops, supervisor])
+    return new Set([...ops, ...supervisors])
 }
 
 /**
@@ -237,9 +237,9 @@ const askers = (db: DatabaseSync, workflowId: string): ReadonlySet<string> => {
  * seats, or the Supervisor. Mail from any other sender (or none named) is recorded as an impostor event and never reaches the
  * Kernel; worker_done only wakes, the ledger is the state.
  */
-const takeMail = (root: string, workflowId: string, messages: readonly MailMessage[]): StepAction[] =>
+const takeMail = (root: string, workflowId: string, messages: readonly MailMessage[], supervisors: readonly string[]): StepAction[] =>
     withLedger(root, (db) => {
-        const trusted = askers(db, workflowId)
+        const trusted = askers(db, workflowId, supervisors)
         return messages.flatMap((message): StepAction[] => {
             if (message.type !== "question" && message.type !== "escalation") return []
             if (message.from === null || !trusted.has(message.from)) {
@@ -259,10 +259,11 @@ const drainMail = async (root: string, workflowId: string, binary: OrcaBinary, c
         return []
     }
     const actions: StepAction[] = []
+    const supervisors = supervisorTerminals(await projectOf(root))
     try {
         let delivery = await mailCheck(binary, { terminal: kernel.terminal, run: kernel.runId, waitMs }, cwd)
         for (let batch = 0; delivery.deliveryId !== null && batch < 10; batch += 1) {
-            actions.push(...takeMail(root, workflowId, delivery.messages))
+            actions.push(...takeMail(root, workflowId, delivery.messages, supervisors))
             delivery = await mailCheck(binary, { terminal: kernel.terminal, run: kernel.runId, ack: delivery.deliveryId }, cwd)
         }
     } catch (error: unknown) {
@@ -526,9 +527,9 @@ export interface Submitted {
     readonly replay: boolean
 }
 
-/** Mails the Supervisor's Run to wake it; the ledger row is the content, a failed mail changes nothing. */
-const wakeSupervisor = async (cwd: string, command: Command, decision: string): Promise<string> => {
-    const supervisor = supervisorRecord()
+/** Mails the Run of the Supervisor of the workflow's project to wake it; the ledger row is the content, a failed mail changes nothing. */
+const wakeSupervisor = async (root: string, cwd: string, command: Command, decision: string): Promise<string> => {
+    const supervisor = supervisorRecord((await projectOf(root)).key)
     if (supervisor?.run_id == null) return "no Supervisor attached: the decision waits in the ledger for supervisor next"
     try {
         const binary = await locateOrca(cwd)
@@ -567,7 +568,7 @@ const applyKernel = async (context: VerbContext, root: string, command: Command,
             evidence: { project: repositoryOf(root), cmdId: command.cmdId, escalation: command.escalation ?? null, handoff: command.handoff ?? null, note: command.note ?? null, digest: digestOf(db, command.workflow) },
         }),
     )
-    return { decision, mail: await wakeSupervisor(context.cwd, command, decision) }
+    return { decision, mail: await wakeSupervisor(root, context.cwd, command, decision) }
 }
 
 /**

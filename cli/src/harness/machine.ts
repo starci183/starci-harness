@@ -14,7 +14,7 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  * - route_picks: the router's recent picks per tier, for the balance step's streak and the exploration share.
  * - member_outcomes: every ended attempt of every registered ledger, per member and label, for qualification and scoring.
  * - budgets / budget_raises: a workflow's raised ceilings (keyed by ledger and workflow) and who raised them and why.
- * - host_events: what the host driver (`supervisor tick`) did to the Supervisor seat (nudges, give-ups), append-only.
+ * - host_events: what the host driver (`supervisor tick`) did to the Supervisor seats (nudges, give-ups), append-only.
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -91,7 +91,11 @@ export const runningWorkers = (): RunningWorkers => {
         byMember.set(member, (byMember.get(member) ?? 0) + 1)
         byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)
     }
-    const supervisors = readMachine((db) => db.prepare("SELECT agent, model FROM supervisors WHERE ended_at IS NULL").all(), [])
+    // Every project's live Supervisor, and the host Supervisor a version-2 store may still run until it is retired.
+    const supervisors = readMachine((db) => {
+        const host = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supervisors'").get() === undefined ? "" : " UNION ALL SELECT agent, model FROM supervisors WHERE ended_at IS NULL"
+        return db.prepare(`SELECT agent, model FROM project_supervisors WHERE ended_at IS NULL${host}`).all()
+    }, [])
     for (const seat of supervisors) {
         const agent = textOf(seat.agent)
         if (agent !== null) count(agent, textOf(seat.model))

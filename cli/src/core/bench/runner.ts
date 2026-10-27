@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
 import { stringify } from "yaml"
 import { runtimeRoot, stateBase } from "../../harness/ledger.js"
+import { inOrder } from "../../harness/sequential.js"
 import { captureTool } from "../../shared/exec.js"
 import { captureGit } from "../../shared/git.js"
 import type { ToolRun } from "../../shared/exec.js"
@@ -45,20 +46,44 @@ interface RunState {
 
 const VAR = /\$\{([A-Za-z0-9_.-]+)\}/g
 
-/** The project state folder of the run's only project (`<state>/projects/<ledger_id>`), once a writing verb minted it. */
-const projectFolder = (state: string): string | undefined => {
+const spell = (path: string): string => {
+    const slashed = path.replaceAll("\\", "/").replace(/\/+$/, "")
+    return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+/**
+ * The state folder (`<state>/projects/<ledger_id>`) of a repository of the run, once a writing verb minted its ledger: the one the
+ * host registry lists for that repository, else, before any registry, the only folder there is.
+ */
+const ledgerFolder = (state: string, repo: string): string | undefined => {
     const root = join(state, "projects")
     if (!existsSync(root)) return undefined
+    const machine = join(state, "machine.sqlite")
+    if (existsSync(machine)) {
+        const db = new DatabaseSync(machine, { readOnly: true, timeout: 5000 })
+        try {
+            const row = db.prepare("SELECT ledger_id, repo_root FROM ledgers").all().find((candidate) => spell(String(candidate.repo_root)) === spell(repo))
+            if (row !== undefined) return join(root, String(row.ledger_id))
+        } finally {
+            db.close()
+        }
+    }
     const [only] = readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory())
     return only === undefined ? undefined : join(root, only)
 }
+
+/** A repository of the run by name: the scratch repository, or one of `repos` (`<run>/<name>`). */
+const repoNamed = (run: RunState, name: string | undefined): string => (name === undefined ? run.repo : join(run.dir, name))
+
+/** The project state folder of the run's scratch repository. */
+const projectFolder = (run: RunState): string | undefined => ledgerFolder(run.state, run.repo)
 
 const expand = (run: RunState, text: string): string =>
     text.replaceAll(VAR, (whole, name: string) => {
         if (name === "repo") return run.repo
         if (name === "run") return run.dir
         if (name === "state") return run.state
-        if (name === "project") return projectFolder(run.state) ?? whole
+        if (name === "project") return projectFolder(run) ?? whole
         return run.vars.get(name) ?? whole
     })
 
@@ -119,10 +144,19 @@ const unmet = (run: RunState, label: string, what: string): never => {
 
 const known = (run: RunState, name: string, label: string): string => run.vars.get(name) ?? unmet(run, label, `no ${name}: boot the tree first`)
 
-/** The terminal, role and default folder a seat's verb runs with: the Supervisor in the repository, a Kernel in its worktree. */
+/** The variable prefix of a project's Supervisor: `supervisor` for the scratch repository's, `supervisor.<repo>` for another's. */
+const supervisorVars = (project: string | undefined): string => (project === undefined ? "supervisor" : `supervisor.${project}`)
+
+/**
+ * The terminal, role and default folder a seat's verb runs with: a Supervisor (`supervisor`, or `supervisor:<repo>` for the
+ * project of another repository of the run) in its project's repository, a Kernel in its worktree.
+ */
 const seatOf = (run: RunState, seat: string | undefined, label: string): { readonly env: Record<string, string>; readonly cwd: string } => {
     if (seat === undefined) return { env: {}, cwd: run.repo }
-    if (seat === "supervisor") return { env: { ORCA_TERMINAL_HANDLE: known(run, "supervisor.terminal", label), STARCI_ROLE: "supervisor" }, cwd: run.repo }
+    if (seat.startsWith("supervisor")) {
+        const project = seat.includes(":") ? seat.slice("supervisor:".length) : undefined
+        return { env: { ORCA_TERMINAL_HANDLE: known(run, `${supervisorVars(project)}.terminal`, label), STARCI_ROLE: "supervisor" }, cwd: repoNamed(run, project) }
+    }
     const workflow = seat.slice("kernel:".length)
     return { env: { ORCA_TERMINAL_HANDLE: known(run, `kernel.${workflow}.terminal`, label), STARCI_ROLE: "kernel" }, cwd: run.vars.get(`worktree.${workflow}`) ?? run.repo }
 }
@@ -149,7 +183,7 @@ const starci = async (run: RunState, step: Step, label: string): Promise<void> =
 
 /** The checkout a task's worker writes in: the task's recorded worktree (its workflow's), else the scratch repository. */
 const checkoutOf = (run: RunState, task: string, label: string): string => {
-    const project = projectFolder(run.state)
+    const project = projectFolder(run)
     if (project === undefined || !existsSync(join(project, "runtime.sqlite"))) return run.repo
     const [worktree] = query(run, "ledger", `SELECT worktree FROM tasks WHERE id = '${task.replaceAll("'", "''")}'`, label) as unknown[]
     return typeof worktree === "string" && worktree !== "" ? worktree : run.repo
@@ -161,21 +195,22 @@ const worker = async (run: RunState, step: NonNullable<Step["worker"]>, label: s
     const inCheckout = (path: string): string => (isAbsolute(expand(run, path)) ? expand(run, path) : join(checkout, expand(run, path)))
     for (const [path, content] of Object.entries(step.files ?? {})) writeText(inCheckout(path), expand(run, content), false)
     for (const path of step.remove ?? []) rmSync(inCheckout(path), { force: true, recursive: true })
-    const project = projectFolder(run.state)
+    const project = projectFolder(run)
     if (project === undefined) unmet(run, label, "no project state folder to file into")
     const output = join(project ?? run.state, "outputs", `${task}.json`)
     writeText(output, JSON.stringify(deepExpand(run, step.output ?? { summary: `bench worker for ${task}`, files: Object.keys(step.files ?? {}), rulesApplied: [] })), false)
     await starci(run, { starci: ["task", "result", task, "--status", step.status, "--output", `@${output}`], cwd: checkout }, label)
 }
 
-const openDb = (run: RunState, db: "ledger" | "machine", label: string): DatabaseSync => {
-    const file = db === "machine" ? join(run.state, "machine.sqlite") : join(projectFolder(run.state) ?? run.state, "runtime.sqlite")
+/** A store of the run: the host's machine.sqlite, or the ledger of the scratch repository (or of the repository `repo` names). */
+const openDb = (run: RunState, db: "ledger" | "machine", label: string, repo?: string): DatabaseSync => {
+    const file = db === "machine" ? join(run.state, "machine.sqlite") : join(ledgerFolder(run.state, repoNamed(run, repo)) ?? run.state, "runtime.sqlite")
     if (!existsSync(file)) unmet(run, label, `${db} database ${file} does not exist`)
     return new DatabaseSync(file, { timeout: 5000 })
 }
 
-const query = (run: RunState, db: "ledger" | "machine", sql: string, label: string): unknown => {
-    const handle = openDb(run, db, label)
+const query = (run: RunState, db: "ledger" | "machine", sql: string, label: string, repo?: string): unknown => {
+    const handle = openDb(run, db, label, repo)
     try {
         const rows = handle.prepare(expand(run, sql)).all().map((row) => Object.values(row))
         return rows.every((row) => row.length === 1) ? rows.map((row) => row[0]) : rows
@@ -194,7 +229,7 @@ const orcaCalls = (run: RunState): { readonly command: string; readonly flags: R
 
 const check = async (run: RunState, assertion: Assertion, label: string): Promise<void> => {
     if (assertion.sql !== undefined) {
-        const got = query(run, assertion.sql.db, assertion.sql.query, label)
+        const got = query(run, assertion.sql.db, assertion.sql.query, label, assertion.sql.repo)
         const want = deepExpand(run, assertion.sql.equals)
         if (!isDeepStrictEqual(got, want)) unmet(run, label, `${assertion.sql.query} gave ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`)
     }
@@ -250,31 +285,38 @@ const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
     writeFileSync(run.orcaState, JSON.stringify({ ...current, ...(deepExpand(run, step.set ?? {}) as Record<string, unknown>), rules, workers, terminals, mail, benchMail: sent }, null, 2))
 }
 
-/** Attaches the workflow's current Kernel seat from the terminal Orca gave it (`kernel attach`), saving its identity. */
-const adoptKernel = async (run: RunState, workflow: string, attach: boolean, label: string): Promise<void> => {
-    const rows = query(run, "ledger", `SELECT id, terminal FROM seats WHERE role = 'kernel' AND workflow_id = '${workflow}' ORDER BY started_at DESC, rowid DESC LIMIT 1`, label) as unknown[]
+/** Attaches the workflow's current Kernel seat (in the ledger of repository `repo`) from the terminal Orca gave it (`kernel attach`), saving its identity. */
+const adoptKernel = async (run: RunState, workflow: string, attach: boolean, label: string, repo?: string): Promise<void> => {
+    const rows = query(run, "ledger", `SELECT id, terminal FROM seats WHERE role = 'kernel' AND workflow_id = '${workflow}' ORDER BY started_at DESC, rowid DESC LIMIT 1`, label, repo) as unknown[]
     const row = (Array.isArray(rows[0]) ? rows[0] : rows) as unknown[]
     const [launch, terminal] = row
     if (typeof launch !== "string" || typeof terminal !== "string") unmet(run, label, `workflow ${workflow} has no Kernel seat with a terminal: ${JSON.stringify(rows)}`)
     run.vars.set(`kernel.${workflow}.launch`, String(launch))
     run.vars.set(`kernel.${workflow}.terminal`, String(terminal))
-    const [worktree] = query(run, "ledger", `SELECT worktree FROM workflows WHERE id = '${workflow}'`, label) as unknown[]
+    const [worktree] = query(run, "ledger", `SELECT worktree FROM workflows WHERE id = '${workflow}'`, label, repo) as unknown[]
     if (typeof worktree === "string") run.vars.set(`worktree.${workflow}`, worktree)
     if (!attach) return
     await starci(run, { starci: ["kernel", "attach", workflow, "--launch", String(launch)], seat: `kernel:${workflow}`, save: { [`kernel.${workflow}.run`]: "data.kernel.runId" } }, `${label} (kernel attach)`)
 }
 
-/** Boots the coordinator tree through real verbs: Supervisor (once), the workflow's definition, its start and its Kernel's attach. */
+/**
+ * Boots the coordinator tree through real verbs: the Supervisor of the project (once per project: `supervisor start` and `attach`
+ * from that project's repository), the workflow's definition and start in its own repository (`in`, default the project's) and
+ * its Kernel's attach.
+ */
 const boot = async (run: RunState, step: NonNullable<Step["boot"]>, label: string): Promise<void> => {
-    if (!run.vars.has("supervisor.terminal")) {
-        await starci(run, { starci: ["supervisor", "start"], save: { "supervisor.launch": "data.id", "supervisor.terminal": "data.terminal" } }, `${label} (supervisor start)`)
-        await starci(run, { starci: ["supervisor", "attach", "--launch", "${supervisor.launch}"], seat: "supervisor", save: { "supervisor.run": "data.run_id" } }, `${label} (supervisor attach)`)
+    const vars = supervisorVars(step.project)
+    const seat = step.project === undefined ? "supervisor" : `supervisor:${step.project}`
+    const home = repoNamed(run, step.in ?? step.project)
+    if (!run.vars.has(`${vars}.terminal`)) {
+        await starci(run, { starci: ["supervisor", "start"], cwd: repoNamed(run, step.project), save: { [`${vars}.launch`]: "data.id", [`${vars}.terminal`]: "data.terminal" } }, `${label} (supervisor start)`)
+        await starci(run, { starci: ["supervisor", "attach", "--launch", `\${${vars}.launch}`], seat, save: { [`${vars}.run`]: "data.run_id" } }, `${label} (supervisor attach)`)
     }
-    if (step.file !== undefined) await starci(run, { starci: ["workflow", "define", step.file] }, `${label} (workflow define)`)
-    if (step.adopt !== undefined) await adoptKernel(run, step.adopt, step.attach !== false, label)
+    if (step.file !== undefined) await starci(run, { starci: ["workflow", "define", step.file], cwd: home }, `${label} (workflow define)`)
+    if (step.adopt !== undefined) await adoptKernel(run, step.adopt, step.attach !== false, label, step.in ?? step.project)
     if (step.workflow === undefined) return
-    await starci(run, { starci: ["workflow", "start", step.workflow], seat: "supervisor" }, `${label} (workflow start)`)
-    await adoptKernel(run, step.workflow, step.attach !== false, label)
+    await starci(run, { starci: ["workflow", "start", step.workflow], seat, cwd: home }, `${label} (workflow start)`)
+    await adoptKernel(run, step.workflow, step.attach !== false, label, step.in ?? step.project)
 }
 
 const execute = async (run: RunState, step: Step, index: number): Promise<void> => {
@@ -291,7 +333,7 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
     if (step.remove !== undefined) rmSync(inRepo(run, step.remove), { force: true, recursive: true })
     if (step.orca !== undefined) orcaScript(run, step.orca)
     if (step.sql !== undefined) {
-        const handle = openDb(run, step.sql.db, label)
+        const handle = openDb(run, step.sql.db, label, step.sql.repo)
         try {
             handle.exec(expand(run, step.sql.exec))
         } finally {
@@ -305,7 +347,7 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
     }
     if (step.boot !== undefined) await boot(run, step.boot, label)
     if (step.read !== undefined) {
-        const [first] = query(run, step.read.db, step.read.query, label) as unknown[]
+        const [first] = query(run, step.read.db, step.read.query, label, step.read.repo) as unknown[]
         const value = Array.isArray(first) ? (first as unknown[])[0] : first
         if (value === undefined || value === null) unmet(run, label, `${step.read.query} returned nothing to save as ${step.read.as}`)
         run.vars.set(step.read.as, typeof value === "string" ? value : JSON.stringify(value))
@@ -337,11 +379,15 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
     }
     const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [] }
     const withEnv: RunState = { ...run, env: { ...env, ...Object.fromEntries(Object.entries(scenario.env ?? {}).map(([key, value]) => [key, expand(run, value)])) } }
-    for (const args of [["init", "-q", "-b", "main"], ["config", "user.email", "bench@starci.local"], ["config", "user.name", "starci bench"], ["config", "core.autocrlf", "false"]]) await git(withEnv, args)
-    const files = scenario.repo?.files ?? { "README.md": "# bench scratch repository\n" }
-    for (const [path, content] of Object.entries(files)) writeText(join(repo, path), content, false)
-    await git(withEnv, ["add", "-A"])
-    await git(withEnv, ["commit", "-q", "-m", "bench: scratch repository"])
+    const repos: readonly [string, Readonly<Record<string, string>> | undefined][] = [[repo, scenario.repo?.files], ...Object.entries(scenario.repos ?? {}).map(([name, files]): [string, Readonly<Record<string, string>> | undefined] => [join(dir, name), files.files])]
+    for (const [path] of repos.slice(1)) mkdirSync(path, { recursive: true })
+    await inOrder(repos, async ([path, given]) => {
+        for (const args of [["init", "-q", "-b", "main"], ["config", "user.email", "bench@starci.local"], ["config", "user.name", "starci bench"], ["config", "core.autocrlf", "false"]]) await git(withEnv, args, path)
+        for (const [file, content] of Object.entries(given ?? { "README.md": "# bench scratch repository\n" })) writeText(join(path, file), expand(withEnv, content), false)
+        await git(withEnv, ["add", "-A"], path)
+        await git(withEnv, ["commit", "-q", "-m", "bench: scratch repository"], path)
+    })
+    for (const name of Object.keys(scenario.repos ?? {})) withEnv.vars.set(`repo.${name}`, join(dir, name))
     return withEnv
 }
 

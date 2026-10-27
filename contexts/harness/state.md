@@ -4,8 +4,9 @@
 
 - **Harness state** lives under the runtime root (this checkout, or the folder of an installed `starci-harness`
   package) in `.runtime/`, git-ignored: `machine.sqlite` for the
-  host and `projects/<ledger_id>/` for each project's `runtime.sqlite`, briefs, contracts, outputs, preserved work and
-  the prior-work store (`prior/<sha256>.patch`).
+  host (the ledger registry, provider health and every project's Supervisor) and `projects/<ledger_id>/` for each
+  repository's `runtime.sqlite`, coordinator briefs, contracts, outputs, preserved work and the prior-work store
+  (`prior/<sha256>.patch`).
   `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`; under `npx`, whose
   package folder is a cache, `STARCI_LOCAL_ROOT` is what keeps the ledgers.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
@@ -17,11 +18,17 @@
 
 ## How a project is found
 
-A project is a git repository, identified by its git common dir (`git rev-parse --git-common-dir`), so every linked
-worktree of one repository shares one ledger. The host registry, `machine.sqlite` table `ledgers`, maps the common dir
-to a `ledger_id` (`<main checkout name>-<hash>`), minted on the first writing verb; read verbs create nothing. A
-folder outside git is a project of its own, keyed by its path. No binding file is read: an app carries no copy of the
-harness, no `.workspaces` mapping and no ledger.
+A ledger belongs to a git repository, identified by its git common dir (`git rev-parse --git-common-dir`), so every
+linked worktree of one repository shares one ledger. The host registry, `machine.sqlite` table `ledgers`, maps the
+common dir to a `ledger_id` (`<main checkout name>-<hash>`), minted on the first writing verb; read verbs create
+nothing. A folder outside git has a ledger of its own, keyed by its path.
+
+A project is the repository that owns the Work (`.starciwork`) together with the side repositories whose `hfs.json`
+names it as `work.root` (the sides its `workspace.yaml` lists); a repository with no Work that names none is a project
+of its own. `projectOf` in `cli/src/harness/work.ts` is the one rule, read from the folder's main checkout through
+`locateWorkRoot`, so any checkout or workflow worktree of any of its repositories resolves to the same project. A
+project's key is the Work-root repository's `ledger_id`, and the project has one Supervisor (cli/README.md "Seats as a
+tree"). No binding file is read: an app carries no copy of the harness, no `.workspaces` mapping and no ledger.
 
 The nearest `hfs.json` (searched up to the repository root) says what the tree is: `kind` (`runtime` or an app), the
 app's `edition`, and the `policy` profile its gates run under (`policy/quality.yaml` owns the profiles and the default

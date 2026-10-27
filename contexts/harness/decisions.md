@@ -13,6 +13,10 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **Op pattern: `base` and `extend`.** Each label has one op file, `ops/ops/<label>.md`, owning the base of a task's
   context, input, output and checks; the Kernel's contract only extends it, and the output carries the trace of what
   the op read. [ops/ops/README.md](../../ops/ops/README.md) owns the mechanics and names the code that enforces them.
+- **One Supervisor per project.** Each project ([state.md](state.md) "How a project is found": the Work-root repository
+  and its sides) has its own `[Supervisor] <project>` in its main checkout, which starts, owns and sweeps only that
+  project's workflows; one host driver (`supervisor tick`) keeps every project's Supervisor alive
+  (`cli/src/harness/supervisor.ts`, `cli/src/core/supervisor/driver.ts`).
 - **Project pattern.** `contexts/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.
