@@ -7,12 +7,15 @@ expect: >-
   starci ui binds a free loopback port and prints its URL and bearer token; every /api call without the token is 401 with
   {code, message}; the overview, workflow, task, inbox and config answers carry the contract's shapes from the ledger; the
   event stream takes the token as a query; a pause runs workflow pause as the owner, a ruling becomes the Supervisor's
-  goal-change answering the escalation, and a refused config change comes back as a red ActionResult with its code
+  goal-change answering the escalation, written where the inbox's command names and replayed by typing that command, a new
+  goal is a goal-change keeping acceptance and scope, and a refused config change comes back as a red ActionResult with its code
 pass:
   - "/api/overview without the token is 401 UNAUTHORIZED"
   - the overview lists the project, the running workflow and the providers
   - the workflow and task answers carry the graph, the route and the checks
-  - the inbox lists the owner escalation; the ruling answers it through supervisor submit
+  - the inbox lists the owner escalation with the command its ruling becomes; the ruling answers it through supervisor submit
+  - the overview marks the workflow awaiting the owner until the ruling
+  - a new goal through the API is the workflow's next goal version
   - the pause leaves the workflow paused in the ledger
   - no human intervention beyond the injected fault
 automation: automated
@@ -88,6 +91,7 @@ steps:
           workflows.0.id: chain
           workflows.0.status: running
           workflows.0.total: 2
+          workflows.0.awaitingOwner: true
           projects.0.openOwnerDecisions: 1
       save:
         key: workflows.0.project
@@ -132,6 +136,9 @@ steps:
           0.kind: owner
           0.workflow: chain
           0.project: "${key}"
+        contains: supervisor submit
+      save:
+        ruling: 0.command
   - name: config
     http:
       url: "${ui.url}/api/config"
@@ -188,6 +195,58 @@ steps:
         db: ledger
         query: SELECT answered_at IS NOT NULL FROM decisions WHERE id = 'd-benchowner01'
         equals: [1]
+  - name: the ruling's command file is where the inbox's command names it
+    assert:
+      exists:
+        path: "${project}/owner-commands/d-benchowner01.json"
+        present: true
+  - name: the command the inbox showed, typed by the owner, replays the applied ruling
+    starci: [supervisor, submit, "${project}/owner-commands/d-benchowner01.json"]
+    expect:
+      exit: 0
+      contains: "\"replay\": true"
+  - name: the workflow no longer awaits the owner
+    http:
+      url: "${ui.url}/api/overview"
+      token: "${ui.token}"
+      expect:
+        equals:
+          workflows.0.awaitingOwner: false
+          projects.0.openOwnerDecisions: 0
+  - name: the owner sets a new goal
+    http:
+      method: POST
+      url: "${ui.url}/api/workflows/${key}/chain/goal"
+      token: "${ui.token}"
+      body:
+        text: bench workflow with a sharper goal
+      expect:
+        equals:
+          ok: true
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT goal_version, json_extract(goal_json, '$.goal') FROM workflows WHERE id = 'chain'
+        equals: [[3, bench workflow with a sharper goal]]
+  - name: the workflow answer shows the new goal
+    http:
+      url: "${ui.url}/api/workflows/${key}/chain"
+      token: "${ui.token}"
+      expect:
+        equals:
+          goal.version: 3
+          goal.text: bench workflow with a sharper goal
+  - name: an empty goal is refused before any verb runs
+    http:
+      method: POST
+      url: "${ui.url}/api/workflows/${key}/chain/goal"
+      token: "${ui.token}"
+      body:
+        text: " "
+      expect:
+        equals:
+          ok: false
+          code: BAD_REQUEST
   - name: the inbox is empty once ruled
     http:
       url: "${ui.url}/api/inbox"

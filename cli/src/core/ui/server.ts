@@ -4,11 +4,11 @@ import type { IncomingMessage, ServerResponse } from "node:http"
 import type { AddressInfo } from "node:net"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import type { VerbContext } from "../../shared/verb.js"
-import type { ConfigSet, LiveEvent, Ruling } from "./contract.js"
+import type { ConfigSet, GoalSet, LiveEvent, Ruling } from "./contract.js"
 import { poll } from "./live.js"
 import type { Markers } from "./live.js"
 import { configOf, inboxOf, overviewOf, taskOf, workflowOf } from "./read.js"
-import { rule, setConfig, WORKFLOW_ACTIONS, workflowAction } from "./write.js"
+import { rule, setConfig, setGoal, WORKFLOW_ACTIONS, workflowAction } from "./write.js"
 import type { WorkflowAction } from "./write.js"
 
 /** The origins that may call the API from a page: the packaged Tauri app (macOS, Windows over http and https) and its dev server. */
@@ -82,6 +82,11 @@ const configSetOf = (body: unknown): ConfigSet => {
     return { key: body.key, value: body.value }
 }
 
+const goalSetOf = (body: unknown): GoalSet => {
+    if (!isRecord(body) || typeof body.text !== "string") throw new Refusal("BAD_REQUEST", "a goal is {text: string}")
+    return { text: body.text }
+}
+
 const isAction = (value: string): value is WorkflowAction => (WORKFLOW_ACTIONS as readonly string[]).includes(value)
 
 /** The event stream's clients and its poller: polls only while a client listens, and tells every client each change. */
@@ -136,6 +141,7 @@ const answerOf = async (context: VerbContext, req: IncomingMessage, parts: reado
     if (method === "GET" && head === "workflows" && a !== undefined && b !== undefined && c === undefined) return workflowOf(context.cwd, a, b)
     if (method === "GET" && head === "tasks" && a !== undefined && b !== undefined && c === undefined) return taskOf(a, b)
     if (method === "POST" && head === "inbox" && a !== undefined && b !== undefined && c === "ruling" && d === undefined) return rule(context, a, b, rulingOf(await readBody(req)))
+    if (method === "POST" && head === "workflows" && a !== undefined && b !== undefined && c === "goal" && d === undefined) return setGoal(context, a, b, goalSetOf(await readBody(req)))
     if (method === "POST" && head === "workflows" && a !== undefined && b !== undefined && c !== undefined && d === undefined) {
         if (!isAction(c)) throw new Refusal("NOT_FOUND", `no workflow action ${c}; the actions are ${WORKFLOW_ACTIONS.join(", ")}`)
         return workflowAction(context, a, b, c)

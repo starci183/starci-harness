@@ -349,6 +349,22 @@ export const terminalSend = async (binary: OrcaBinary, input: { readonly termina
     await callOrcaArgv(binary, orcaToolArgv("terminal", "send", { terminal: input.terminal, text: input.text, enter: true, "retry-request": input.retryRequest }), "orca terminal send", z.unknown(), cwd, ORCA_TIMEOUT_MS)
 }
 
+const terminalReadSchema = z.looseObject({ terminal: z.looseObject({ tail: z.array(z.string()) }) })
+
+/**
+ * `orca terminal read --screen --limit <rows>`: the last rows a terminal renders now, asked once on request and never in a loop;
+ * null when Orca says the handle names no terminal any more.
+ */
+export const terminalRead = async (binary: OrcaBinary, handle: string, rows: number, cwd: string): Promise<string[] | null> => {
+    try {
+        const result = await callOrcaArgv(binary, orcaToolArgv("terminal", "read", { terminal: handle, screen: true, limit: String(rows) }), "orca terminal read", terminalReadSchema, cwd, ORCA_TIMEOUT_MS)
+        return result.terminal.tail
+    } catch (error: unknown) {
+        if (error instanceof OrcaFailure && error.orcaCode !== undefined && TERMINAL_GONE_CODES.has(error.orcaCode)) return null
+        throw error
+    }
+}
+
 /** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
 const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["tab_not_found", "terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
 

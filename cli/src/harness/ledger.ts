@@ -400,6 +400,9 @@ export const projectDir = (root: string): string => {
  */
 export const priorDir = (root: string): string => join(projectDir(root), "prior")
 
+/** The command file an owner's write through `starci ui` becomes (a ruling by its decision id, a goal by its cmdId), kept in the project's state folder. */
+export const ownerCommandPath = (root: string, name: string): string => join(projectDir(root), "owner-commands", `${name}.json`)
+
 /** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
 export const ledgerPath = (root: string): string | undefined => {
     const id = findLedgerId(root)

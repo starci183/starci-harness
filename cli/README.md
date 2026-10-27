@@ -201,9 +201,11 @@ the Tauri origins and the app's dev server, and a Host that is not that loopback
 readers behind the read verbs (`core/ui/read.ts`: the registry's repositories and projects, each ledger's workflows, graph,
 seats, decisions and events, the host store's circuits, quota and Supervisors, the router's recorded pick or a dry run, the
 lanes' flow, `config list`); the owner's inbox is the open Supervisor decisions `awaitsOwner` names. Every write runs its verb
-in-process as the owner, one at a time (`core/ui/write.ts`): `workflow pause|resume|stop`, `config set`, and a ruling, which
-becomes the `goal-change` a Supervisor relays (goal kept, the ruling as its note, answering the escalation) through `supervisor
-submit`. `/api/events` polls each ledger's newest event id, the host store's rows and the settings files every second while a
+in-process as the owner, one at a time (`core/ui/write.ts`): `workflow pause|resume|stop`, `config set`, a new goal and a
+ruling. Both of the last are the `goal-change` a Supervisor relays (acceptance and scope kept; a ruling keeps the goal, carries
+the ruling as its note and answers the escalation), written as an owner command file in the project's state folder and applied
+by `supervisor submit`; each inbox decision carries that exact command. A task's answer carries the last rows its open seat's
+terminal renders, read from Orca once per request (`terminalRead`), never polled. `/api/events` polls each ledger's newest event id, the host store's rows and the settings files every second while a
 client listens and sends each change as a `data:` line, with a heartbeat comment every 15 seconds (`core/ui/live.ts`).
 
 **The host.** [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
