@@ -447,6 +447,11 @@ slots:
     presence: required
     holds: the Orca stand-in, preloaded into a copied node binary, so it stays plain JavaScript
     rule: bench/README.md
+  - id: bench.fixtures
+    path: "bench/fixtures/**"
+    presence: optional
+    holds: data a scenario copies into its scratch repo (a product shaped to prove one law); never compiled by the harness
+    rule: cli-proven-by-bench; CONTRIB-9 data is data
   - id: skills.skill
     path: "skills/<skill>/{SKILL.md,references/*.md,agents/*.yaml}"
     presence: required
