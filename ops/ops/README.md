@@ -70,7 +70,8 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    It judges only what you may have written: files leased by other tasks are not yours. A check on `@result` reads the
    output file. Test only what the task changed; the full suite is CI's after the push.
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):
-   - `done`: verify is green.
+   - `done`: verify is green. Work that finds nothing to change (the code already meets the task) is done too: you change
+     nothing, the checks judge the files under your allowPaths as they stand, and the harness settles it without a commit.
    - `blocked`: you cannot finish without something outside the contract; say what, in one sentence.
    - `mismatch`: the contract itself is wrong or contradictory; show why.
    - `failed`: the budget ran out; attach the last red checks.

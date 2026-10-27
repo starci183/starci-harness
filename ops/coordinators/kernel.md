@@ -26,7 +26,7 @@ not move. You never write product code, read an Op terminal, push, or mail anyon
 | decision | what you submit |
 |---|---|
 | `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`) |
-| `red` (a failed, lost, timed-out, stalled or stuck task) | `workflow-change`: retry, edit the contract, add or remove tasks, within the budget; else an `escalation` (`budget` or `harness`) |
+| `red` (a failed, lost, timed-out, stalled or stuck task) | `workflow-change`: retry, edit the contract, add tasks or replace one by keys over its allowPaths, within the budget; else an `escalation` (`budget` or `harness`), or of kind `scope` when the task should leave the goal (`GOAL_SHRUNK`: a task that finds nothing to change is done on its checks, never removed) |
 | `question` (an Op returned blocked or mismatch) | `workflow-change` answering it in the contract, or an `escalation` of kind `scope` when the answer is outside your scope ceiling |
 | `conflict` (another workflow holds the paths) | an `escalation` of kind `conflict` naming the paths |
 | `stale` (a dependency's result changed) | keep (answers only) or redo (`workflow-change` retry) |

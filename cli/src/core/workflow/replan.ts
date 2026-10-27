@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite"
-import { assertScope, currentGoal, withGoal } from "../../harness/goal.js"
+import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../harness/goal.js"
 import type { Goal } from "../../harness/goal.js"
 import { applyChanges, buildGraph, isGeneratedKey, readPlanSource, uatWalksOf } from "../../harness/graph.js"
 import type { Classified, PlanNode, PlanPlace, PlanSource, PlanTask, WorkflowHeader } from "../../harness/graph.js"
@@ -7,7 +7,7 @@ import type { Ops } from "../../harness/ops.js"
 import { carryHashes, classifyReplan, freshRounds, readResults, revertRows } from "../../harness/reconcile.js"
 import type { Results } from "../../harness/reconcile.js"
 import { assertRunPlace } from "../../harness/work.js"
-import { retryOfNode } from "../../harness/workflow.js"
+import { graphVersions, retryOfNode } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
@@ -106,8 +106,8 @@ const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["
  * Builds the replan a file asks for (`source`, read by readReplanSource): a change file (add, edit, remove, retry, accept)
  * applied to the current graph, or a desired graph (a whole workflow file of the same id and runner) reconciled against it by
  * task key. The header always carries the current goal (only a goal change moves it); the new graph must be fit, inside the
- * goal's scope ceiling (SCOPE_EXCEEDED) and every new attempt within its try budget. Drops of done tasks add their revert
- * nodes. `unchanged` says it moves nothing.
+ * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK) and every new attempt within its try
+ * budget. Drops of done tasks add their revert nodes. `unchanged` says it moves nothing.
  */
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace, options: ReplanOptions = {}): Replan => {
     const { workflow } = snapshot
@@ -121,6 +121,8 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     const built = judged.reverts.length === 0 ? first : nodesOf(db, snapshot, [...first.nodes, ...judged.reverts.map((plan) => plan.task)], ops)
     const classification = [...judged.rows, ...revertRows(built.nodes, judged.reverts)]
     assertScope(workflow.id, built.nodes, goal)
+    const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
+    assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
     const problems: string[] = []
     for (const row of classification) {
         if (!STARTS.has(row.class)) continue

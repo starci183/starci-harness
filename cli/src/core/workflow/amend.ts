@@ -87,7 +87,8 @@ interface AmendData {
  * `starci workflow amend <id> --desired <workflow file> --based-on <graph version>`: the Kernel's replan. The desired graph is
  * reconciled against the current one by task key (harness/reconcile.ts): keep, continue, stale, rework, redo-live, redo, add,
  * drop and the revert nodes of dropped done tasks; graph version n+1 is recorded atomically on `--based-on` (STALE when the
- * graph moved), idempotent by `--cmd-id`, inside the goal's scope ceiling (SCOPE_EXCEEDED). `--change <file>` applies a
+ * graph moved), idempotent by `--cmd-id`, inside the goal's scope ceiling (SCOPE_EXCEEDED) and keeping its deliverables
+ * (GOAL_SHRUNK). `--change <file>` applies a
  * workflow-change@1 file (add, edit, remove, retry, accept) instead. The live tasks of redo-live, redo and drop are cancelled
  * through task cancel (fenced, preserved, released); stale tasks are never cancelled, the Kernel decides. Dispatch resumes.
  */

@@ -11,7 +11,7 @@ import { describeSecrets, scanSecrets } from "./secrets-scan.js"
 import { treeFiles } from "./tree-files.js"
 import { inOrder } from "../../harness/sequential.js"
 
-/** The verdict of one repository gate: it judges the tree (loosening) or the changed files (secrets), not one package. */
+/** The verdict of one repository gate: it judges the tree (loosening) or the judged files (secrets), not one package. */
 interface GateResult {
     readonly gate: RuntimeGate
     readonly status: "green" | "red"
@@ -33,10 +33,10 @@ interface RunData {
 /** The repository gates, run once per check; the package gates run once per package of the scope. */
 const REPOSITORY_GATES: ReadonlySet<RuntimeGate> = new Set<RuntimeGate>(["secrets", "loosening"])
 
-/** One repository gate over the tree (loosening) or the changed files (secrets). */
+/** One repository gate over the tree (loosening) or the judged files (secrets). */
 const repositoryGate = async (gate: RuntimeGate, scope: Scope, policy: Policy, profile: string, all: boolean): Promise<GateResult> => {
     if (gate === "secrets") {
-        const files = all ? await treeFiles(scope.root) : scope.changed
+        const files = all ? await treeFiles(scope.root) : scope.files
         const report = scanSecrets(scope.root, files, policy, profile, all)
         return { gate, status: report.verdict, findings: report.findings.length + report.stale.length + report.unjudged.length, output: describeSecrets(report).join("\n") }
     }
@@ -65,10 +65,10 @@ const findingSuffix = (gate: GateResult): string => (gate.findings === 0 ? "" : 
 /** A red repository gate as a step, so a verify that reads only steps still shows why it is red. */
 const asStep = (gate: GateResult): StepResult => ({ package: "(repository)", step: gate.gate, command: `starci check ${gate.gate}`, status: gate.status, reason: "", output: gate.output })
 
-/** `starci check run`: the runtime tier of the project's profile (policy/quality.yaml) over the scope decided from the diff. */
+/** `starci check run`: the runtime tier of the project's profile (policy/quality.yaml) over the scope decided from the diff, or the given paths when it changes nothing. */
 export const checkRunVerb = defineVerb({
     path: ["check", "run"],
-    summary: "run the runtime tier of the project's policy profile over the scope of the diff (the CI tier runs on CI after the push)",
+    summary: "run the runtime tier of the project's policy profile over the scope of the diff, or of the given paths when the diff changes nothing (the CI tier runs on CI after the push)",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
@@ -76,9 +76,10 @@ export const checkRunVerb = defineVerb({
     flags: {
         base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
         all: { kind: "boolean", summary: "check every package and scan every file, not only the changed ones" },
+        paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },
     },
     run: async (context, flags) => {
-        const scope = await resolveScope(context.cwd, flags.base, flags.all)
+        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths)
         const policy = loadPolicy(scope.root)
         const choice = resolveProfile(policy, context.treeRoot)
         const tier = choice.profile.runtime

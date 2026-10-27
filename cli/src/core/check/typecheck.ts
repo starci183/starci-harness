@@ -18,9 +18,10 @@ export const checkTypecheckVerb = defineVerb({
     flags: {
         base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
         all: { kind: "boolean", summary: "check every package, not only the changed ones" },
+        paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },
     },
     run: async (context, flags) => {
-        const scope = await resolveScope(context.cwd, flags.base, flags.all)
+        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths)
         const steps = await Promise.all(scope.targets.map((target) => typecheckPackage(scope, target)))
         const red = steps.some((step) => step.status === "red")
         const data: TypecheckData = { scope, steps }

@@ -9,7 +9,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
 ## Where a check runs
 
 - **Runtime tier**: `starci check run` before a push and `starci task verify` on the clean checkout, scoped to the
-  packages the diff touches. A task waits for it.
+  packages the diff touches (the changed packages below); a task that changes nothing is judged on the tracked files
+  under its allowPaths and their packages. A task waits for it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
 - **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `hfs check`). The harness
   does not call them; they run in the app's CI.
