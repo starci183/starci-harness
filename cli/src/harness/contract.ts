@@ -395,7 +395,8 @@ export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => 
 export const contractHash = (contract: Contract): string => createHash("sha256").update(JSON.stringify(canonical(contract))).digest("hex")
 
 // allowPaths are literal paths, matched as `:(literal)` pathspecs and lease prefixes; a glob there would match nothing.
-const GLOB = /[*?[\]{}!]/
+// Brackets stay allowed: a framework names folders with them (`[locale]`), and a literal pathspec reads them as written.
+const GLOB = /[*?{}!]/
 
 const placeProblems = (what: string, path: string): string[] => [
     ...(GLOB.test(path) ? [`${what} "${path}" carries a glob character; name literal folders or files (a folder covers everything below it)`] : []),
