@@ -181,6 +181,10 @@ const defaults = (command, flags, state) => {
         case "terminal show":
             if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
             return { ok: true, result: { terminal: { handle: flags.terminal, lastOutputAt: state.lastOutput?.[flags.terminal] ?? null, agentWait: null } } }
+        case "terminal read":
+            // The rendered rows a scenario set for the terminal (`screens`), else none.
+            if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            return { ok: true, result: { terminal: { handle: flags.terminal, status: "running", tail: (state.screens?.[flags.terminal] ?? []).slice(-Number(flags.limit ?? 40)), source: "screen" } } }
         case "terminal wait": {
             // tui-idle is satisfied for a terminal the scenario marked idle at its prompt; any other wait times out as Orca's does.
             if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")

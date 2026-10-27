@@ -8,6 +8,7 @@
  *   GET  /api/inbox                                 -> Decision[]
  *   POST /api/inbox/:project/:decision/ruling       Ruling -> ActionResult
  *   POST /api/workflows/:project/:workflow/:action  (pause | resume | stop-graceful | stop-hard) -> ActionResult
+ *   POST /api/workflows/:project/:workflow/goal     { text: string } -> ActionResult (a new goal version; the Kernel re-plans)
  *   GET  /api/config                                -> ConfigEntry[]
  *   POST /api/config                                ConfigSet -> ActionResult
  *   GET  /api/events                                text/event-stream of LiveEvent (one `data:` JSON per change)
@@ -75,6 +76,7 @@ export interface WorkflowRow {
     readonly liveOps: number
     readonly parallelCap: number
     readonly kernel: Member | null
+    readonly awaitingOwner: boolean
 }
 
 /** One line of the overview's event feed. */
@@ -191,12 +193,19 @@ export interface Decision {
     readonly options: readonly DecisionOption[]
     readonly raisedAt: string
     readonly askedBy: string
+    /** The harness CLI command the ruling becomes, so the owner sees what will run. */
+    readonly command: string
 }
 
 /** The owner's answer to a decision. */
 export interface Ruling {
     readonly option: string | null
     readonly note: string
+}
+
+/** A workflow's next goal text. */
+export interface GoalSet {
+    readonly text: string
 }
 
 /** Screen 5: one harness setting. */

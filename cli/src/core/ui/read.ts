@@ -14,7 +14,7 @@ import type { FlowReport } from "../../harness/lanes.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { readMachine, runningWorkers, textOf } from "../../harness/machine.js"
 import { loadOps } from "../../harness/ops.js"
-import { locateOrca } from "../../harness/orca/client.js"
+import { locateOrca, terminalRead } from "../../harness/orca/client.js"
 import type { OrcaBinary } from "../../harness/orca/client.js"
 import { RouteRefusal, routeTask } from "../../harness/router.js"
 import type { RoutePick, RouteRecord } from "../../harness/router.js"
@@ -35,6 +35,7 @@ import type { VerbContext } from "../../shared/verb.js"
 import { hostStatus, loadHost, selectServices } from "../../harness/host.js"
 import { getTask } from "../../harness/tasks.js"
 import { taskStatusVerb } from "../task/status.js"
+import { rulingCommand } from "./write.js"
 import type { Check, ConfigEntry, Decision, EventRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, WorkflowDetail, WorkflowRow } from "./contract.js"
 import { placeHolding, places, projectsOf, readLedger } from "./places.js"
 
@@ -149,7 +150,7 @@ const providersOf = (): ProviderStatus[] => {
     })
 }
 
-const workflowRowOf = (db: DatabaseSync, project: string, workflow: LedgerWorkflow): WorkflowRow => {
+const workflowRowOf = (db: DatabaseSync, project: string, workflow: LedgerWorkflow, awaiting: ReadonlySet<string>): WorkflowRow => {
     const { views, live } = snapshotOf(db, workflow.id)
     const kernel = kernelSeatOf(db, workflow.id)
     return {
@@ -163,6 +164,7 @@ const workflowRowOf = (db: DatabaseSync, project: string, workflow: LedgerWorkfl
         liveOps: live,
         parallelCap: parallelSlots(workflow.header),
         kernel: kernel === undefined ? null : memberOf(kernel.agent, kernel.model, kernel.launch),
+        awaitingOwner: awaiting.has(workflow.id),
     }
 }
 
@@ -222,8 +224,10 @@ export const overviewOf = async (cwd: string): Promise<Overview> => {
         readLedger(
             place.repo,
             (db) => {
-                owners.set(place.project.key, (owners.get(place.project.key) ?? 0) + ownerDecisions(db).length)
-                workflows.push(...listWorkflows(db).map((workflow) => workflowRowOf(db, place.project.key, workflow)))
+                const asked = ownerDecisions(db)
+                owners.set(place.project.key, (owners.get(place.project.key) ?? 0) + asked.length)
+                const awaiting = new Set(asked.map((decision) => decision.workflowId))
+                workflows.push(...listWorkflows(db).map((workflow) => workflowRowOf(db, place.project.key, workflow, awaiting)))
                 events.push(...ledgerEvents(db, place.project.key))
             },
             undefined,
@@ -370,6 +374,21 @@ const checkState = (status: string | undefined): Check["state"] => {
     return "pending"
 }
 
+/** How many rendered rows of a task's terminal the task answer carries. */
+const TAIL_ROWS = 40
+
+/**
+ * The last rows the task's open seat's terminal renders, read once from Orca for this request (never polled); none when the task
+ * has no open seat with a terminal, Orca is absent, or the terminal is gone.
+ */
+const terminalTailOf = async (seat: SeatRow | undefined, cwd: string): Promise<readonly string[]> => {
+    if (seat?.terminal == null) return []
+    const binary = await orcaOf(cwd)
+    if (binary === undefined) return []
+    const rows = await terminalRead(binary, seat.terminal, TAIL_ROWS, cwd).catch(() => null)
+    return (rows ?? []).slice(-TAIL_ROWS)
+}
+
 /** One task as the task status verb reads it (its contract, check runs and seats), through the verb itself. */
 const taskStatusOf = async (repo: string, taskId: string): Promise<{ readonly contract: Contract; readonly checkRuns: readonly { readonly name: string; readonly status: string; readonly runner: string; readonly ranAt: string }[]; readonly seats: readonly SeatRow[] }> => {
     const context: VerbContext = { cwd: repo, tree: "none", treeRoot: undefined, verbs: [], progress: () => undefined }
@@ -409,6 +428,7 @@ export const taskOf = async (project: string, id: string): Promise<TaskDetail> =
         const run = runs.find((candidate) => candidate.name === check.name)
         return { name: check.name, tier: check.tier, state: checkState(run?.status), detail: run === undefined ? null : `${run.status} at ${run.ranAt}` }
     })
+    const open = seats.find((seat) => isSeatOpen(seat) && seat.endedAt === null && seat.terminal !== null)
     const step = flow.records.flatMap((record) => record.steps.filter((candidate) => task.key !== null && candidate.tasks.includes(task.key)).map((candidate) => `${record.lane}: ${candidate.step}`))[0] ?? null
     return {
         project,
@@ -422,8 +442,8 @@ export const taskOf = async (project: string, id: string): Promise<TaskDetail> =
         checks,
         route: routeOf(place.repo, id, attempts),
         attempts: attempts.map((attempt) => ({ n: attempt.seq, member: attempt.member, outcome: attempt.outcome, at: attempt.startedAt })),
-        terminalTail: [],
-        terminal: seats.find((seat) => seat.terminal !== null)?.terminal ?? null,
+        terminalTail: await terminalTailOf(open, place.repo),
+        terminal: (open ?? seats.find((seat) => seat.terminal !== null))?.terminal ?? null,
     }
 }
 
@@ -459,7 +479,7 @@ export const inboxOf = async (): Promise<Decision[]> => {
                     ownerDecisions(db).map((decision): Decision => {
                         const { kind, question, paths, options } = questionOf(decision.evidence)
                         const body = paths.length === 0 ? question : `${question}\npaths: ${paths.join(", ")}`
-                        return { project: place.project.key, id: decision.id, kind, workflow: decision.workflowId, title: question.split("\n")[0] ?? question, body, options, raisedAt: decision.raisedAt, askedBy: askedByOf(decision) }
+                        return { project: place.project.key, id: decision.id, kind, workflow: decision.workflowId, title: question.split("\n")[0] ?? question, body, options, raisedAt: decision.raisedAt, askedBy: askedByOf(decision), command: rulingCommand(place.repo, decision.id) }
                     }),
                 [],
             ),
