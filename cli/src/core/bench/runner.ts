@@ -7,6 +7,7 @@ import { isDeepStrictEqual } from "node:util"
 import { stringify } from "yaml"
 import { runtimeRoot, stateBase } from "../../harness/ledger.js"
 import { captureTool } from "../../shared/exec.js"
+import { captureGit } from "../../shared/git.js"
 import type { ToolRun } from "../../shared/exec.js"
 import { benchRoot, runnable } from "./scenario.js"
 import type { Assertion, Scenario, Step } from "./scenario.js"
@@ -84,7 +85,7 @@ const writeText = (file: string, content: string, crlf: boolean): void => {
     writeFileSync(file, crlf ? content.replaceAll(/\r?\n/g, "\r\n") : content)
 }
 
-const git = async (run: RunState, args: readonly string[], where?: string): Promise<ToolRun> => captureTool("git", args, where === undefined ? run.repo : inRepo(run, where))
+const git = async (run: RunState, args: readonly string[], where?: string): Promise<ToolRun> => captureGit(args, where === undefined ? run.repo : inRepo(run, where))
 
 const cliPath = (): string => join(runtimeRoot(), "cli", "dist", "main.js")
 

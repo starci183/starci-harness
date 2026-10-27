@@ -1,0 +1,74 @@
+schema: starci/scenario@1
+id: orca-down-pauses-workflow
+group: orca
+title: "Orca stops answering mid-run: the Kernel driver pauses the workflow (orca-down) and lifts only that pause when Orca is back"
+inject: after the tree booted, the orca binary is gone for one kernel next, then back
+expect: >-
+  kernel next probes Orca, finds no answer and holds the workflow paused(orca-down) without launching, fencing or failing
+  anything; the next kernel next with Orca back resumes it from that pause and launches the Op
+pass:
+  - paused with reason orca-down while Orca is down, no Op worker-start
+  - running again and the Op launched once Orca answers
+  - no task failed, no try spent
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: dark
+        goal: write doc a
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: dark
+  - name: kernel next while Orca is gone
+    seat: kernel:dark
+    starci: [kernel, next, dark, --wait, "0"]
+    env:
+      STARCI_ORCA_BIN: ${run}/no-orca.exe
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status || ':' || substr(reason, 1, 9) FROM workflows
+        equals: ["paused:orca-down"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM attempts
+        equals: [0]
+  - name: kernel next with Orca back
+    seat: kernel:dark
+    starci: [kernel, next, dark, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals: [running]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status || ':' || try_no FROM tasks
+        equals: ["running:1"]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1

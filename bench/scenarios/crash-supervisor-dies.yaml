@@ -2,20 +2,165 @@ schema: starci/scenario@1
 id: crash-supervisor-dies
 group: crash
 title: the Supervisor seat dies with handoffs and escalations pending
-inject: kill the Supervisor terminal while two escalations wait
-expect: a new Supervisor reads the ledger mailbox and processes each pending command exactly once
+inject: the Supervisor terminal disappears while escalations from two workflows wait
+expect: >-
+  supervisor ensure sees Orca say the terminal is gone and starts a new Supervisor; its attach makes a new Run; supervisor next
+  returns the pending escalations oldest first, each answered exactly once by a goal-change, then returns idle
 pass:
-  - each escalation answered once
-  - none lost
-  - none duplicated
+  - a second Supervisor launched only after Orca said the first is gone
+  - each escalation answered once, by its own goal-change
+  - none lost, none duplicated; idle afterwards
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
-automation: semi
-pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
-manual:
-  - start two workflows that escalate
-  - kill the Supervisor
-  - start a new one
-  - supervisor next twice
-  - assert two distinct decisions then none
+automation: automated
+steps:
+  - file:
+      path: one.yaml
+      content: |
+        schema: starci/workflow@1
+        id: one
+        goal: write doc one
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc one
+            allowPaths: [docs/one.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/one.md]
+  - file:
+      path: two.yaml
+      content: |
+        schema: starci/workflow@1
+        id: two
+        goal: write doc two
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc two
+            allowPaths: [docs/two.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/two.md]
+  - boot:
+      file: ${run}/one.yaml
+      workflow: one
+  - boot:
+      file: ${run}/two.yaml
+      workflow: two
+  - file:
+      path: esc-one.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-one-ask-1
+        kind: escalation
+        workflow: one
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc one name the product?
+  - file:
+      path: esc-two.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-two-ask-1
+        kind: escalation
+        workflow: two
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc two name the product?
+  - seat: kernel:one
+    starci: [kernel, submit, "${run}/esc-one.yaml"]
+  - seat: kernel:two
+    starci: [kernel, submit, "${run}/esc-two.yaml"]
+  - name: an ensure while the Supervisor lives does nothing
+    starci: [supervisor, ensure]
+    expect:
+      contains: '"action": "none"'
+  - name: the Supervisor terminal dies
+    orca:
+      terminal:
+        handle: ${supervisor.terminal}
+        live: false
+  - name: the scheduled ensure starts a new Supervisor
+    starci: [supervisor, ensure]
+    expect:
+      contains: '"action": "started"'
+  - read:
+      db: machine
+      query: SELECT id FROM supervisors WHERE ended_at IS NULL
+      as: supervisor.launch
+  - read:
+      db: machine
+      query: SELECT terminal FROM supervisors WHERE ended_at IS NULL
+      as: supervisor.terminal
+  - seat: supervisor
+    starci: [supervisor, attach, --launch, "${supervisor.launch}"]
+  - seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: may doc one
+    save:
+      first: data.decision.id
+  - file:
+      path: ans-one.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-one-ans-1
+        kind: goal-change
+        workflow: one
+        project: ${repo}
+        basedOn: {goal: 1}
+        answers: [${first}]
+        goal: write doc one without naming the product
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/ans-one.yaml"]
+  - seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: may doc two
+    save:
+      second: data.decision.id
+  - file:
+      path: ans-two.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-two-ans-1
+        kind: goal-change
+        workflow: two
+        project: ${repo}
+        basedOn: {goal: 1}
+        answers: [${second}]
+        goal: write doc two without naming the product
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/ans-two.yaml"]
+  - seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "idle"'
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM supervisors
+        equals: [2]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT workflow_id || ':' || answered_by FROM decisions WHERE scope = 'supervisor' ORDER BY workflow_id"
+        equals: ["one:sup-one-ans-1", "two:sup-two-ans-1"]
+  - assert:
+      orcaCalls:
+        command: agent launch
+        count: 2
