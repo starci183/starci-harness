@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 6
+export const LEDGER_VERSION = 7
 
 /**
  * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
@@ -82,6 +82,11 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "workflows", column: "kernel_terminal", type: "TEXT", since: 6 },
     { table: "workflows", column: "kernel_terminal_owned", type: "INTEGER", since: 6 },
     { table: "workflows", column: "kernel_closed_at", type: "TEXT", since: 6 },
+    // Replan: a task's landed commit, its settled result hash and the dependency tasks it ran on; a graph version's command id.
+    { table: "tasks", column: "settle_commit", type: "TEXT", since: 7 },
+    { table: "tasks", column: "result_hash", type: "TEXT", since: 7 },
+    { table: "tasks", column: "plan_inputs_json", type: "TEXT", since: 7 },
+    { table: "graph_versions", column: "cmd_id", type: "TEXT", since: 7 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {

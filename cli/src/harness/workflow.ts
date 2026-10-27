@@ -4,6 +4,7 @@ import { normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { headerSchema, LIVE_STATES, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
+import { recordFirstGoal } from "./goal.js"
 import { now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
 import { acquireLeases, inTransaction } from "./leases.js"
@@ -205,22 +206,51 @@ export const insertWorkflow = (db: DatabaseSync, header: WorkflowHeader, nodes: 
         const at = now()
         db.prepare("INSERT INTO workflows (id, goal_json, goal_version, graph_version, status, created_at, updated_at) VALUES (?, ?, 1, 1, 'defined', ?, ?)").run(header.id, JSON.stringify(header), at, at)
         insertGraph(db, header.id, 1, 1, nodes, `defined from ${file}`, [])
+        recordFirstGoal(db, header.id, header)
         recordEvent(db, "workflow-defined", header.id, { file, tasks: nodes.map((node) => node.key) })
         return getWorkflow(db, header.id)
     })
 
-/** Records the next graph version of a workflow (an amend) with its classification; goal and graph versions move together. */
-export const recordReplan = (db: DatabaseSync, workflow: WorkflowRow, header: WorkflowHeader, nodes: readonly PlanNode[], reason: string | null, classification: readonly Classified[]): WorkflowRow =>
+/** The graph version an amend command (by its cmdId) recorded, if it was applied already. */
+export const graphVersionOfCommand = (db: DatabaseSync, workflowId: string, cmdId: string): number | undefined => {
+    const row = db.prepare("SELECT graph_version FROM graph_versions WHERE workflow_id = ? AND cmd_id = ?").get(workflowId, cmdId)
+    return row === undefined ? undefined : Number(row.graph_version)
+}
+
+/** What else a replan records: the command id it is idempotent by, and work done in the same transaction (accepted inputs). */
+export interface ReplanRecord {
+    readonly cmdId?: string
+    readonly within?: (db: DatabaseSync) => void
+}
+
+/**
+ * Records the next graph version of a workflow (an amend) with its classification, compare-and-swap on the graph version the
+ * replan was built on (WORKFLOW_MOVED). The goal version is not moved: only a goal change does that (harness/goal.ts); the
+ * graph version records which goal it was built for.
+ */
+export const recordReplan = (
+    db: DatabaseSync,
+    workflow: WorkflowRow,
+    header: WorkflowHeader,
+    nodes: readonly PlanNode[],
+    reason: string | null,
+    classification: readonly Classified[],
+    record: ReplanRecord = {},
+): WorkflowRow =>
     inTransaction(db, () => {
         const fresh = getWorkflow(db, workflow.id)
         if (fresh.graphVersion !== workflow.graphVersion) {
             throw new Refusal("WORKFLOW_MOVED", `workflow ${workflow.id} moved to graph version ${String(fresh.graphVersion)} while this amend was built on ${String(workflow.graphVersion)}; diff and amend again`)
         }
+        if (fresh.goalVersion !== workflow.goalVersion) {
+            throw new Refusal("STALE", `workflow ${workflow.id} moved to goal v${String(fresh.goalVersion)} while this amend was built on v${String(workflow.goalVersion)}; read the goal again and resubmit`)
+        }
         const version = fresh.graphVersion + 1
-        const goalVersion = fresh.goalVersion + 1
-        insertGraph(db, fresh.id, version, goalVersion, nodes, reason, classification)
-        db.prepare("UPDATE workflows SET goal_json = ?, goal_version = ?, graph_version = ?, updated_at = ? WHERE id = ?").run(JSON.stringify(header), goalVersion, version, now(), fresh.id)
-        recordEvent(db, "workflow-replanned", fresh.id, { graphVersion: version, reason, classes: classification.map((row) => `${row.key}:${row.class}`) })
+        insertGraph(db, fresh.id, version, fresh.goalVersion, nodes, reason, classification)
+        if (record.cmdId !== undefined) db.prepare("UPDATE graph_versions SET cmd_id = ? WHERE workflow_id = ? AND graph_version = ?").run(record.cmdId, fresh.id, version)
+        db.prepare("UPDATE workflows SET goal_json = ?, graph_version = ?, updated_at = ? WHERE id = ?").run(JSON.stringify(header), version, now(), fresh.id)
+        record.within?.(db)
+        recordEvent(db, "workflow-replanned", fresh.id, { graphVersion: version, goalVersion: fresh.goalVersion, cmdId: record.cmdId ?? null, reason, classes: classification.map((row) => `${row.key}:${row.class}`) })
         return getWorkflow(db, fresh.id)
     })
 
@@ -365,7 +395,10 @@ export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanN
         }
         const previous = retryOfNode(db, workflowId, node)
         const created = createTask(db, node.contract, { workflowId, ...(previous === undefined ? {} : { retryOf: previous.id }) })
-        db.prepare("UPDATE tasks SET plan_key = ?, plan_hash = ? WHERE id = ?").run(node.key, node.hash, created.id)
+        // The dependency tasks it runs on: the early cutoff later compares their settled results with the current ones.
+        const carrying = nodeTasks(graphOf(db, workflowId, workflow.graphVersion), workflowTasks(db, workflowId))
+        const inputs = Object.fromEntries(node.dependsOn.map((dep) => [dep, carrying.get(dep)?.id ?? null]))
+        db.prepare("UPDATE tasks SET plan_key = ?, plan_hash = ?, plan_inputs_json = ? WHERE id = ?").run(node.key, node.hash, JSON.stringify(inputs), created.id)
         recordEvent(db, "workflow-dispatched", workflowId, { key: node.key, task: created.id, graphVersion: workflow.graphVersion })
         return { task: created, leases: acquireLeases(db, created) }
     })

@@ -17,7 +17,7 @@ import type { UatBinding, WorkRoot } from "./work.js"
 /** The schema tag of a workflow file: the Kernel's goal and its graph of contracts. */
 export const WORKFLOW_SCHEMA = "starci/workflow@1"
 
-/** The schema tag of a change file: add, edit, remove or retry tasks of a running workflow. */
+/** The schema tag of a change file: add, edit, remove (keepEffect: no revert), retry or accept (a stale task) tasks of a running workflow. */
 export const CHANGE_SCHEMA = "starci/workflow-change@1"
 
 /** How the harness runs the tasks of a workflow: Orca worker seats, or the chat agent itself one task at a time. */
@@ -69,6 +69,15 @@ type TaskFields = z.infer<typeof taskFieldsSchema>
 
 const fileTaskSchema = z.strictObject({ id: keySchema, ...taskFieldsShape })
 
+/**
+ * The scope ceiling of a goal: the path prefixes every task's allowPaths must lie under and the most tasks the graph may hold
+ * (the harness's generated revert nodes not counted). A desired graph or an amend past it is refused SCOPE_EXCEEDED.
+ */
+export const scopeSchema = z.strictObject({ paths: z.array(z.string().min(1)).min(1).optional(), maxTasks: z.number().int().min(1).optional() })
+
+/** A goal's scope ceiling. */
+export type Scope = z.infer<typeof scopeSchema>
+
 const biasSchema = z.strictObject({ only: z.array(z.string().min(1)).optional(), avoid: z.array(z.string().min(1)).optional(), prefer: z.array(z.string().min(1)).optional() })
 
 /**
@@ -79,6 +88,8 @@ export const headerSchema = z.strictObject({
     schema: z.literal(WORKFLOW_SCHEMA),
     id: keySchema,
     goal: z.string().min(1),
+    acceptance: z.array(z.string().min(1)).optional(),
+    scope: scopeSchema.optional(),
     runner: z.enum(["orca", "inline"]),
     agent: z.string().min(1).optional(),
     model: z.string().min(1).optional(),
@@ -97,11 +108,21 @@ const workflowFileSchema = z.strictObject({ ...headerSchema.shape, tasks: z.arra
 const changeEntrySchema = z.discriminatedUnion("op", [
     z.strictObject({ op: z.literal("add"), task: fileTaskSchema }),
     z.strictObject({ op: z.literal("edit"), id: keySchema, set: taskFieldsSchema }),
-    z.strictObject({ op: z.literal("remove"), id: keySchema }),
+    z.strictObject({ op: z.literal("remove"), id: keySchema, keepEffect: z.boolean().optional() }),
     z.strictObject({ op: z.literal("retry"), id: keySchema }),
+    z.strictObject({ op: z.literal("accept"), id: keySchema }),
 ])
 
 const changeFileSchema = z.strictObject({ schema: z.literal(CHANGE_SCHEMA), workflow: keySchema, reason: z.string().min(1).optional(), changes: z.array(changeEntrySchema).min(1) })
+
+/**
+ * The key prefix of the compensating nodes the harness generates when a replan drops a done task: `revert.<key>`. A workflow
+ * or change file never adds such a key; a desired graph that leaves one out keeps it, since the harness owns it.
+ */
+export const REVERT_PREFIX = "revert."
+
+/** True for a key the harness generated (a compensating revert node). */
+export const isGeneratedKey = (key: string): boolean => key.startsWith(REVERT_PREFIX)
 
 /** One entry of a change file. */
 export type ChangeEntry = z.infer<typeof changeEntrySchema>
@@ -126,7 +147,11 @@ export interface PlanTask {
     readonly round: number
 }
 
-/** A task of a recorded graph: its contract hash, and its node hash, which also covers the node hashes of its dependencies. */
+/**
+ * A task of a recorded graph: its contract hash, and its node hash (contract hash and round), the identity its ledger tasks
+ * are dispatched under. Dependencies do not enter it: what a dependency landed is compared by its settled result hash
+ * (harness/reconcile.ts), so an upstream retry or no-op edit that lands the same result invalidates nothing below it.
+ */
 export interface PlanNode extends PlanTask {
     readonly contractHash: string
     readonly hash: string
@@ -291,6 +316,10 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
     const problems: string[] = []
     const tasks: PlanTask[] = []
     for (const { id, ...fields } of written) {
+        if (isGeneratedKey(id)) {
+            problems.push(`task ${id}: a key starting with ${REVERT_PREFIX} is the harness's own (a compensating revert node)`)
+            continue
+        }
         try {
             const at = { workflow: header.id, key: id, place }
             tasks.push({ key: id, contract: resolveContract(fields, dir, header.base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
@@ -326,7 +355,7 @@ export const uatWalksOf = (source: PlanSource, ops: Ops): UatBinding[] => {
 const applyChange = (
     change: ChangeEntry,
     key: string,
-    state: { readonly tasks: Map<string, PlanTask>; readonly retries: Set<string> },
+    state: { readonly tasks: Map<string, PlanTask>; readonly retries: Set<string>; readonly keepEffect: Set<string>; readonly accepts: Set<string> },
     where: { readonly dir: string; readonly base: string; readonly ops: Ops; readonly at: TaskAt },
 ): void => {
     const { tasks, retries } = state
@@ -334,6 +363,7 @@ const applyChange = (
     const existing = tasks.get(key)
     if (change.op === "add") {
         if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
+        if (isGeneratedKey(key)) throw new Refusal("WORKFLOW_INVALID", `a key starting with ${REVERT_PREFIX} is the harness's own (a compensating revert node)`)
         const { id, ...fields } = change.task
         tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
         return
@@ -353,15 +383,31 @@ const applyChange = (
         }
         case "remove":
             tasks.delete(key)
+            if (change.keepEffect === true) state.keepEffect.add(key)
             break
         case "retry":
             retries.add(key)
             tasks.set(key, { ...existing, round: existing.round + 1 })
             break
+        case "accept":
+            state.accepts.add(key)
+            break
     }
 }
 
-/** Applies a change file to the tasks of the current graph; returns the new task list, the keys to retry, and the problems. */
+/**
+ * A change file applied: the new task list, the keys to retry, the removed keys whose effect stays (keepEffect: no revert
+ * node), the stale keys the Kernel accepts on their dependencies' current results, and the problems.
+ */
+export interface ChangesApplied {
+    readonly tasks: readonly PlanTask[]
+    readonly retries: ReadonlySet<string>
+    readonly keepEffect: ReadonlySet<string>
+    readonly accepts: ReadonlySet<string>
+    readonly problems: readonly string[]
+}
+
+/** Applies a change file to the tasks of the current graph. */
 export const applyChanges = (
     current: readonly PlanTask[],
     changes: readonly ChangeEntry[],
@@ -369,23 +415,29 @@ export const applyChanges = (
     base: string,
     ops: Ops,
     plan: { readonly workflow: string; readonly place: PlanPlace },
-): { readonly tasks: readonly PlanTask[]; readonly retries: ReadonlySet<string>; readonly problems: readonly string[] } => {
+): ChangesApplied => {
     if (changes.some((change) => uatOfChange(change) !== undefined)) workRootOf(plan.place)
     const tasks = new Map(current.map((task) => [task.key, task]))
     const retries = new Set<string>()
+    const keepEffect = new Set<string>()
+    const accepts = new Set<string>()
     const problems: string[] = []
     for (const change of changes) {
         const key = change.op === "add" ? change.task.id : change.id
         try {
-            applyChange(change, key, { tasks, retries }, { dir, base, ops, at: { workflow: plan.workflow, key, place: plan.place } })
+            applyChange(change, key, { tasks, retries, keepEffect, accepts }, { dir, base, ops, at: { workflow: plan.workflow, key, place: plan.place } })
         } catch (error: unknown) {
             problems.push(`${change.op} ${key}: ${messageOf(error)}`)
         }
     }
-    return { tasks: [...tasks.values()], retries, problems }
+    return { tasks: [...tasks.values()], retries, keepEffect, accepts, problems }
 }
 
-const sha = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex")
+/** sha256 of a value's json. */
+export const sha = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex")
+
+/** The node hash of a task: its contract hash and its retry round. */
+export const nodeHashOf = (contract: string, round: number): string => sha({ node: 2, contract, round })
 
 // Depth-first order with the path kept, so a cycle is reported as the loop it is (a -> b -> a).
 const orderOf = (tasks: ReadonlyMap<string, PlanTask>): { readonly order: string[]; readonly cycles: string[] } => {
@@ -419,7 +471,7 @@ const ancestorsOf = (key: string, tasks: ReadonlyMap<string, PlanTask>, into: Se
 
 /**
  * Builds the graph of a task list: every contract must be fit (contractProblems), keys unique, dependencies known and the
- * edges acyclic. Node hashes are computed in dependency order, so a changed contract changes the hash of every task below it.
+ * edges acyclic. A node's hash is its contract hash and round only (nodeHashOf); the nodes come in dependency order.
  * Two tasks with no order between them whose allowPaths overlap are a note: the path lease serializes them at dispatch.
  */
 export const buildGraph = (tasks: readonly PlanTask[], ops: Ops): BuiltGraph => {
@@ -451,21 +503,14 @@ const dependencyProblems = (task: PlanTask, tasks: readonly PlanTask[]): string[
     return problems
 }
 
-/** The nodes in dependency order, each hashed from its contract, its round and the hashes of what it depends on. */
-const hashNodes = (order: readonly string[], byKey: ReadonlyMap<string, PlanTask>): PlanNode[] => {
-    const hashes = new Map<string, string>()
-    const nodes: PlanNode[] = []
-    for (const key of order) {
+/** The nodes in dependency order, each hashed from its contract and its round (nodeHashOf). */
+const hashNodes = (order: readonly string[], byKey: ReadonlyMap<string, PlanTask>): PlanNode[] =>
+    order.flatMap((key) => {
         const task = byKey.get(key)
-        if (task === undefined) continue
+        if (task === undefined) return []
         const own = contractHash(task.contract)
-        const dependsOn = [...task.dependsOn].sort(byCodeUnit)
-        const hash = sha({ contract: own, round: task.round, dependsOn: dependsOn.map((dep) => [dep, hashes.get(dep) ?? ""]) })
-        hashes.set(key, hash)
-        nodes.push({ ...task, dependsOn, contractHash: own, hash })
-    }
-    return nodes
-}
+        return [{ ...task, dependsOn: [...task.dependsOn].sort(byCodeUnit), contractHash: own, hash: nodeHashOf(own, task.round) }]
+    })
 
 /** A note for each pair of unordered nodes whose allowPaths overlap. */
 const overlapNotes = (nodes: readonly PlanNode[], byKey: ReadonlyMap<string, PlanTask>): string[] => {
@@ -574,53 +619,42 @@ export const viewNodes = (nodes: readonly PlanNode[], tasks: ReadonlyMap<string,
     return nodes.map((node) => views.get(node.key)).filter((view): view is NodeView => view !== undefined)
 }
 
-/** How a replan treats one task: kept, continued, redone, added or dropped (cli/README.md "Workflow graph"). */
-export type ReplanClass = "keep" | "continue" | "redo" | "add" | "drop"
+/**
+ * How a replan treats one task (harness/reconcile.ts classifies; cli/README.md "Workflow graph" says what each does): keep,
+ * continue, stale (a dependency's settled result changed: the Kernel decides), rework (done and its contract changed: a new
+ * attempt from its previous commit), redo-live (live and its contract changed), redo (a retry asked, or a changed task that is
+ * neither done nor live), add, drop, and revert (the compensating node a dropped done task gets).
+ */
+export type ReplanClass = "keep" | "continue" | "stale" | "rework" | "redo-live" | "redo" | "add" | "drop" | "revert"
 
-/** One task of a replan: its class, its state before, the live task the replan cancels (if any), and why. */
+/** The earlier work a new attempt of a key starts from: its task, the commit it landed (if any) and the contract diff. */
+export interface PriorWork {
+    readonly task: string
+    readonly commit: string | null
+    readonly contractDiff: readonly string[]
+}
+
+/** What a revert node undoes: the dropped key, its last done task and the commits its tasks landed, newest first. */
+export interface RevertOf {
+    readonly key: string
+    readonly task: string
+    readonly commits: readonly string[]
+}
+
+/**
+ * One task of a replan: its class, its state before, the live task the replan cancels (if any), and why. `hash` is its node
+ * hash in the new graph (none for a drop); `prior` the work a rework or redo-live starts from; `revertOf` what a revert node
+ * undoes; `staleDeps` the dependencies whose settled result changed under a stale task.
+ */
 export interface Classified {
     readonly key: string
     readonly class: ReplanClass
     readonly state: NodeState | null
     readonly cancel: string | null
     readonly why: string
+    readonly hash?: string
+    readonly prior?: PriorWork
+    readonly revertOf?: RevertOf
+    readonly staleDeps?: readonly string[]
 }
 
-/** The id of the live task a node view carries, if any. */
-const liveTaskId = (view: NodeView | undefined): string | null => (view?.task != null && LIVE_STATES.includes(view.state) ? view.task.id : null)
-
-/** How a replan treats one node of the new graph, given the node it replaces, its view before and whether a retry was asked. */
-const classifyNode = (node: PlanNode, previous: PlanNode | undefined, view: NodeView | undefined, retry: boolean): Classified => {
-    const state = view?.state ?? null
-    if (previous === undefined) return { key: node.key, class: "add", state: null, cancel: null, why: "new in the goal" }
-    if (retry) return { key: node.key, class: "redo", state, cancel: liveTaskId(view), why: "retry asked" }
-    if (previous.hash !== node.hash) {
-        const why = previous.contractHash === node.contractHash ? "a dependency changed" : "its contract changed"
-        return { key: node.key, class: "redo", state, cancel: liveTaskId(view), why: view?.task == null ? `${why} (not sent yet)` : why }
-    }
-    if (liveTaskId(view) !== null) return { key: node.key, class: "continue", state, cancel: null, why: "unchanged and running" }
-    return { key: node.key, class: "keep", state, cancel: null, why: state === "done" ? "done and unchanged: its result is reused" : "unchanged" }
-}
-
-/**
- * Classifies a replan by node hash (contract plus the hashes of its dependencies): keep (unchanged and not running: a done
- * result is reused, a task not yet sent stays as it is, a failed one stays failed), continue (unchanged and live), redo (its
- * contract or a dependency changed, or a retry was asked: a live task is cancelled and the node is sent again), add and drop
- * (a live task is cancelled, the history stays).
- */
-export const classify = (before: readonly NodeView[], beforeNodes: readonly PlanNode[], after: readonly PlanNode[], retries: ReadonlySet<string>): Classified[] => {
-    const old = new Map(beforeNodes.map((node) => [node.key, node]))
-    const views = new Map(before.map((view) => [view.key, view]))
-    const next = new Set(after.map((node) => node.key))
-    const rows: Classified[] = []
-    for (const node of after) {
-        const previous = old.get(node.key)
-        rows.push(classifyNode(node, previous, views.get(node.key), retries.has(node.key)))
-    }
-    for (const node of beforeNodes) {
-        if (next.has(node.key)) continue
-        const view = views.get(node.key)
-        rows.push({ key: node.key, class: "drop", state: view?.state ?? null, cancel: liveTaskId(view), why: "no longer in the goal; its history is kept" })
-    }
-    return rows
-}

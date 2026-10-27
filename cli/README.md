@@ -59,13 +59,26 @@ resets them and releases the leases. Settles of one project run one at a time un
 (`harness/settle.ts`), so each candidate builds on the HEAD the previous one left and a half-done edit of one task
 never reaches another's checks.
 
-**Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`). Each
-task is a node whose node hash covers its contract hash, its retry round and its dependencies' node hashes, so a
-change flows down to every dependent. A node is ready when every dependency is done; its ledger task is created only
-then, so a waiting node holds no lease. A replan (`workflow amend`, `plan diff`) classifies each task as keep,
-continue, redo, add or drop. A red or stuck task blocks its dependents and the workflow, naming the red checks;
-independent tasks keep going, and a retry is always the Kernel's amend, never automatic. `WORKFLOW_TRANSITIONS` in
-`harness/workflow.ts` is the one rule for workflow status moves.
+**Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
+a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is
+the file's; `workflow regoal` (owner, Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
+(`STALE` otherwise) and idempotent by its cmdId. A node's hash is its contract hash and retry round; its dependencies
+enter through early cutoff instead (`harness/reconcile.ts`): each dispatched task records the dependency tasks it ran
+on, and a done task's settled result hash is the git tree of its allowPaths at its settle commit plus its output hash,
+so a retry or edit upstream that lands the same result invalidates nothing below it. A node is ready when every
+dependency is done; its ledger task is created only then, so a waiting node holds no lease. A replan is
+`workflow amend --desired <workflow file> --based-on <graph version>` (the Kernel's whole desired graph, reconciled by
+task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
+atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's
+ceiling. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
+nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
+diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
+drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,
+unless the removal says `keepEffect`). `plan diff` prints the classification without applying it, and
+`workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
+blocks its dependents and the workflow, naming the red checks; independent tasks keep going, and a retry is always the
+Kernel's amend, never automatic. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
+moves.
 
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a
 `starting` seat carrying the launch record are opened; only then is Orca called, so two starts never both launch.
