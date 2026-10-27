@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS graph_versions (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL,
   subject TEXT, data_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS prior_work (
+  workflow_id TEXT NOT NULL, plan_key TEXT NOT NULL, contract_hash TEXT NOT NULL, attempt_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('preserved', 'committed')), sha256 TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id),
+  base TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY (workflow_id, plan_key, contract_hash, attempt_id, kind, sha256));
 `
 
 /**
@@ -314,12 +319,18 @@ export const ensureLedgerId = (root: string): string => {
     }
 }
 
-/** A project's state folder under the state base: its ledger plus briefs/, contracts/, preserved/ and outputs/. Created on first use. */
+/** A project's state folder under the state base: its ledger plus briefs/, contracts/, preserved/, prior/ and outputs/. Created on first use. */
 export const projectDir = (root: string): string => {
     const dir = dirname(ledgerFile(ensureLedgerId(root)))
     mkdirSync(dir, { recursive: true })
     return dir
 }
+
+/**
+ * The project's prior-work store, `prior/<sha256>.patch` of its state folder: every attempt's work (a preserved or a committed
+ * patch) named by the sha256 of its bytes and indexed in the ledger's prior_work table. Nothing deletes from it.
+ */
+export const priorDir = (root: string): string => join(projectDir(root), "prior")
 
 /** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
 export const ledgerPath = (root: string): string | undefined => {
