@@ -98,6 +98,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
 | `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
+| `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
 | `uat` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml) |
 | `app` | what a lite app declares |
 

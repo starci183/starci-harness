@@ -174,7 +174,17 @@ every open decision of its workflow.
 every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`): it ensures the Supervisor
 (started when Orca says it is gone), then, acting for the attached Supervisor (its terminal as `--from`, its lease left to
 its own calls), runs the Kernel sweep of every project with the Ops' stall ladder of each owned workflow, and the Supervisor's
-own ladder. On Windows: `schtasks /Create /SC MINUTE /MO 1 /TN StarCiTick /TR "node D:\.claude\cli\dist\main.js supervisor tick"`.
+own ladder. The scheduler that runs it is registered by the `host` verbs below.
+
+**The host.** [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
+scheduled tick), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
+without a shell. The owner runs `host install` once: on Windows each schedule is a `StarCi <name>` scheduled task whose
+action is `wscript //B <state base>/host/<service>.vbs`, which runs the `.cmd` beside it with its window hidden (changing
+to the runtime root, setting the service's environment, appending its output to its log, every token quoted), so the
+scheduler's command line carries one quoted path; `--dry` prints that argv and both files and writes nothing, and other
+platforms are refused (`supervisor watch` in a terminal serves there). `host status` reports each service up, down or not
+installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
+`host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
 Supervisor decision; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for

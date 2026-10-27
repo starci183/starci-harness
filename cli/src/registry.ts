@@ -62,6 +62,10 @@ import { supervisorNextVerb } from "./core/supervisor/next.js"
 import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
 import { supervisorTickVerb } from "./core/supervisor/tick.js"
 import { supervisorWatchVerb } from "./core/supervisor/watch.js"
+import { hostStatusVerb } from "./core/host/status.js"
+import { hostUpVerb } from "./core/host/up.js"
+import { hostInstallVerb } from "./core/host/install.js"
+import { hostUninstallVerb } from "./core/host/uninstall.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -133,6 +137,10 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorSubmitVerb,
     supervisorTickVerb,
     supervisorWatchVerb,
+    hostStatusVerb,
+    hostUpVerb,
+    hostInstallVerb,
+    hostUninstallVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
