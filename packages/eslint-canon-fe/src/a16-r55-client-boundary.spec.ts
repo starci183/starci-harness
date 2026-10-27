@@ -11,6 +11,7 @@
 // proves: FE_DANGEROUS_HTML@lite
 // proves: FE_DANGEROUS_HTML@full
 import test from 'node:test';
+import { canonTester } from '../fixtures/typed/tester.ts';
 import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.mjs';
 import {
   clientNoServerImport,
@@ -20,12 +21,20 @@ import {
   webStorageOnlyInModules,
 } from './client-boundary.ts';
 import { rules as graphRules } from './project-graph.ts';
+import type { Rule, Rules } from "./lib/rule.ts";
 
-for (const edition of ['lite', 'full']) {
+/** The published rule called `name`; a missing one fails the spec. */
+const named = (published: Rules, rule: string): Rule => {
+  const found = published[rule]
+  if (!found) throw new Error(`no rule ${rule}`)
+  return found
+};
+
+for (const edition of ['lite', 'full'] as const) {
   test(`R55 ${edition}: valid and invalid client boundaries and browser surfaces`, (t) => {
     const fixture = projectFixture({ profile: 'fe', edition });
     t.after(fixture.cleanup);
-    fixture.tester.run('use-client-only-at-boundary', useClientOnlyAtBoundary, {
+    canonTester(fixture.tester).run('use-client-only-at-boundary', useClientOnlyAtBoundary, {
       valid: [
         { filename: fixture.at('apps/web/src/components/blocks/Feed/index.tsx'), code: '"use client"; export const Feed = () => null;' },
         { filename: fixture.at('apps/web/src/features/pages/Home/index.tsx'), code: 'export const Home = () => null;' },
@@ -39,7 +48,7 @@ for (const edition of ['lite', 'full']) {
         { filename: fixture.at('apps/web/src/components/blocks/Feed/component.tsx'), code: '"use client"; export const FeedView = () => null;', errors: [{ messageId: 'elsewhere' }] },
       ],
     });
-    fixture.tester.run('client-no-server-import', clientNoServerImport, {
+    canonTester(fixture.tester).run('client-no-server-import', clientNoServerImport, {
       valid: [
         { filename: fixture.at('apps/web/src/components/blocks/Feed/index.tsx'), code: '"use client"; import type { NextRequest } from "next/server";' },
         { filename: fixture.at('apps/web/src/features/pages/Home/index.tsx'), code: 'import { headers } from "next/headers";' },
@@ -49,7 +58,7 @@ for (const edition of ['lite', 'full']) {
         { filename: fixture.at('apps/web/src/components/blocks/Feed/index.tsx'), code: '"use client"; import fs from "node:fs";', errors: [{ messageId: 'server' }] },
       ],
     });
-    fixture.tester.run('server-module-marks-server-only', serverModuleMarksServerOnly, {
+    canonTester(fixture.tester).run('server-module-marks-server-only', serverModuleMarksServerOnly, {
       valid: [
         { filename: fixture.at('apps/web/src/modules/session/read-session.ts'), code: 'import "server-only"; import { headers } from "next/headers"; export const readSession = () => headers();' },
         { filename: fixture.at('apps/web/src/modules/session/read-session.ts'), code: 'import type { NextRequest } from "next/server"; export type SessionRequest = NextRequest;' },
@@ -59,7 +68,7 @@ for (const edition of ['lite', 'full']) {
         { filename: fixture.at('apps/web/src/modules/session/read-session.ts'), code: 'import { headers } from "next/headers"; import "server-only"; export const readSession = () => headers();', errors: [{ messageId: 'mark' }] },
       ],
     });
-    fixture.tester.run('web-storage-only-in-modules', webStorageOnlyInModules, {
+    canonTester(fixture.tester).run('web-storage-only-in-modules', webStorageOnlyInModules, {
       valid: [
         { filename: fixture.at('apps/web/src/modules/storage/index.ts'), code: 'export const readTheme = () => window.localStorage.getItem("theme");' },
       ],
@@ -68,7 +77,7 @@ for (const edition of ['lite', 'full']) {
         { filename: fixture.at('apps/web/src/hooks/session/useSession.ts'), code: 'sessionStorage.setItem("session", "value");', errors: [{ messageId: 'storage' }] },
       ],
     });
-    fixture.tester.run('no-dangerous-html', noDangerousHtml, {
+    canonTester(fixture.tester).run('no-dangerous-html', noDangerousHtml, {
       valid: [
         { filename: fixture.at('apps/web/src/components/leaves/StructuredData/index.tsx'), code: 'export const StructuredData = () => <script dangerouslySetInnerHTML={{ __html: JSON_LD }} />;' },
       ],
@@ -90,7 +99,7 @@ for (const edition of ['lite', 'full']) {
     };
     const fixture = projectFixture({ profile: 'fe', edition, files });
     t.after(fixture.cleanup);
-    fixture.tester.run('client-reaches-server', graphRules['client-reaches-server'], {
+    canonTester(fixture.tester).run('client-reaches-server', named(graphRules, 'client-reaches-server'), {
       valid: [
         { filename: fixture.at('apps/web/src/components/blocks/Good/index.tsx'), code: files['apps/web/src/components/blocks/Good/index.tsx'] },
         { filename: fixture.at('apps/web/src/components/blocks/Typed/index.tsx'), code: files['apps/web/src/components/blocks/Typed/index.tsx'] },

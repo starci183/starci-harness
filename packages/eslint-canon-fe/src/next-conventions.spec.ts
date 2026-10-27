@@ -6,6 +6,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, FE_DECLARATION, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"
+import type { HfsView } from "./lib/hfs.ts"
 import {
   htmlLangFromLocale,
   i18nStackInOneModule,
@@ -285,12 +286,12 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
   }))
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R59 ${edition} separates navigation ownership from the middleware-safe routing entry`, () => {
     const one = fixtureHfs({ ...FE_DECLARATION, apps: [{ name: "web", kind: "next" }] }, { lite: edition === "lite" })
     const many = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })
-    const entry = (file, code, hfs = one) => ({ filename: at(file), code, settings: { starci: { hfs } } })
-    const rejected = (file, code, messageId, hfs = one) => ({ ...entry(file, code, hfs), errors: [{ messageId }] })
+    const entry = (file: string, code: string, hfs: HfsView = one) => ({ filename: at(file), code, settings: { starci: { hfs } } })
+    const rejected = (file: string, code: string, messageId: string, hfs: HfsView = one) => ({ ...entry(file, code, hfs), errors: [{ messageId }] })
     const routes = "apps/web/src/modules/routes/index.ts"
     const i18n = "apps/web/src/modules/i18n/index.ts"
     const proxy = "apps/web/src/proxy.ts"

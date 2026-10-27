@@ -6,7 +6,7 @@ import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
 import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
-import { at, TYPED_ROOT } from "../fixtures/typed/tester.ts"
+import { at, canonTester, TYPED_ROOT, type CanonRuleTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { callbackShape, recommended, rules } from "./callback-shape.ts"
 
@@ -17,25 +17,39 @@ const OWNER_IMPORTS = 'import { NextResponse, type NextRequest } from "next/serv
 const OWNER_BODY = 'const url = new URL(request.url); const code = url.searchParams.get("code"); if (code) await exchangeAuthCode(code); return NextResponse.redirect(new URL(APP_ROUTES.home, url.origin))'
 const EMAIL_IMPORTS = OWNER_IMPORTS.replace("{ exchangeAuthCode }", "{ exchangeAuthCode, verifyOtp }")
 const EMAIL_BODY = 'const params = request.nextUrl.searchParams; const code = params.get("code"); const tokenHash = params.get("token_hash"); const type = params.get("type"); if (code) { await exchangeAuthCode(code) } else if (tokenHash && type) { await verifyOtp({ token_hash: tokenHash, type }) } return NextResponse.redirect(new URL(APP_ROUTES.home, request.url))'
-const emailCallback = (replacement = []) => callback(replacement.reduce((body, [from, to]) => body.replace(from, to), EMAIL_BODY), EMAIL_IMPORTS)
+/** Text replacements applied to a callback body, in order. */
+type Replacements = readonly (readonly [string, string])[]
+const emailCallback = (replacement: Replacements = []): string => callback(replacement.reduce((body, [from, to]) => body.replace(from, to), EMAIL_BODY), EMAIL_IMPORTS)
 const PURE_IMPORTS = 'import { NextResponse, type NextRequest } from "next/server"\nimport { exchangeAuthCode } from "@/modules/auth/server"\nimport { APP_ROUTES, AUTH_ROUTES, requestOrigin, safeNextPath } from "@/modules/routes"'
 const PURE_BODY = 'const { searchParams } = request.nextUrl; const origin = requestOrigin(request); const code = searchParams.get("code"); const next = safeNextPath(searchParams.get("next"), origin); if (code) { if (!(await exchangeAuthCode(code)).success) return NextResponse.redirect(new URL(`${APP_ROUTES.login}?error=link_expired`, origin)) } return NextResponse.redirect(new URL(next === "/" ? AUTH_ROUTES.workspaces : next, origin))'
-const pureCallback = (replacements = [], imports = PURE_IMPORTS) => callback(replacements.reduce((body, [from, to]) => body.replaceAll(from, to), PURE_BODY), imports)
+const pureCallback = (replacements: Replacements = [], imports = PURE_IMPORTS): string => callback(replacements.reduce((body, [from, to]) => body.replaceAll(from, to), PURE_BODY), imports)
 // Witnesses copied from the runtime repository: the @starci/hfs scaffold template and the lite example app's callback.
 const TEMPLATE_CALLBACK = readFileSync(new URL("../fixtures/hfs-templates/fe/skeleton/apps/__app__/src/app/auth/callback/route.ts", import.meta.url), "utf8")
 const EXAMPLE_WITNESS = [{ filename: CALLBACK, code: readFileSync(new URL("../fixtures/lite-app/fe/apps/web/src/app/auth/callback/route.ts", import.meta.url), "utf8") }]
-const callback = (body = BODY, imports = IMPORTS) => `${imports}\nexport async function GET(request: NextRequest) { ${body} }`
-const invalid = (code) => ({ filename: CALLBACK, code, errors: [{ messageId: "shape" }] })
+const callback = (body = BODY, imports = IMPORTS): string => `${imports}\nexport async function GET(request: NextRequest) { ${body} }`
+const invalid = (code: string) => ({ filename: CALLBACK, code, errors: [{ messageId: "shape" }] })
 
 /** A Supabase-connected application makes the provider callback slot available in either edition. */
-const testerFor = (edition) => {
-  const declaration = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
+/** The parts of the shared app declaration this spec sets. */
+interface EditableApp {
+  edition?: string
+  sides: { be: { connections?: unknown } }
+}
+
+/** True for an app declaration whose back-end side can take connections. */
+const isEditableApp = (value: unknown): value is EditableApp =>
+  typeof value === "object" && value !== null && "sides" in value &&
+  typeof value.sides === "object" && value.sides !== null && "be" in value.sides && typeof value.sides.be === "object" && value.sides.be !== null
+
+const testerFor = (edition: "lite" | "full"): CanonRuleTester => {
+  const declaration: unknown = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
+  if (!isEditableApp(declaration)) throw new TypeError("the shared fixture app declaration has no back-end side")
   declaration.edition = edition
   declaration.sides.be.connections = [{ name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "supabase" }]
-  return new RuleTester({
+  return canonTester(new RuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: hfsFromDeclaration(declaration, TYPED_ROOT) } },
-  })
+  }))
 }
 
 test("R287 registers one error rule", () => {
@@ -43,7 +57,7 @@ test("R287 registers one error rule", () => {
   assert.deepEqual(recommended, { "starci-fe/callback-shape": "error" })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R287 ${edition}: natural OAuth callback shapes pass, extra work and lookalikes fail`, () => {
   assert.doesNotThrow(() => {
     testerFor(edition).run("callback-shape", callbackShape, {

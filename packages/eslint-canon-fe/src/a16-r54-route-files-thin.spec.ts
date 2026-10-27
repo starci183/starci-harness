@@ -15,16 +15,25 @@
 // proves: FE_ROUTE_DEFAULT_EXPORT@lite
 // proves: FE_ROUTE_DEFAULT_EXPORT@full
 import test from "node:test"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { noMiddlewareFile, pageExportsMetadata } from "./next-conventions.ts"
 import { rules } from "./project-graph.ts"
+import type { Rule, Rules } from "./lib/rule.ts"
+
+/** The published rule called `name`; a missing one fails the spec. */
+const named = (published: Rules, rule: string): Rule => {
+  const found = published[rule]
+  if (!found) throw new Error(`no rule ${rule}`)
+  return found
+}
 
 const APP = "apps/web/src/app"
 const LOCALE = `${APP}/[locale]`
 const HOME = "import { HomePage } from '../../features/pages/HomePage';\nexport default function Route() { return <HomePage />; }\n"
-const layoutAt = (up, body) => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\n${body}\n`
+const layoutAt = (up: number, body: string): string => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\n${body}\n`
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R54 ${edition}: valid proxy and invalid retired middleware file`, (t) => {
         const files = {
             "apps/web/src/proxy.ts": "export function proxy(request) { return request }\n",
@@ -32,7 +41,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ profile: "fe", edition, files })
         t.after(() => fixture.cleanup())
-        fixture.tester.run("no-middleware-file", noMiddlewareFile, {
+        canonTester(fixture.tester).run("no-middleware-file", noMiddlewareFile, {
             valid: [{ filename: fixture.at("apps/web/src/proxy.ts"), code: files["apps/web/src/proxy.ts"] }],
             invalid: [{ filename: fixture.at("apps/web/src/middleware.ts"), code: files["apps/web/src/middleware.ts"], errors: [{ messageId: "file" }] }],
         })
@@ -45,7 +54,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ profile: "fe", edition, files })
         t.after(() => fixture.cleanup())
-        fixture.tester.run("page-exports-metadata", pageExportsMetadata, {
+        canonTester(fixture.tester).run("page-exports-metadata", pageExportsMetadata, {
             valid: [{ filename: fixture.at(`${LOCALE}/page.tsx`), code: files[`${LOCALE}/page.tsx`] }],
             invalid: [{ filename: fixture.at(`${LOCALE}/missing/page.tsx`), code: files[`${LOCALE}/missing/page.tsx`], errors: [{ messageId: "metadata" }] }],
         })
@@ -64,7 +73,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ profile: "fe", edition, files })
         t.after(() => fixture.cleanup())
-        fixture.tester.run("route-files-thin", rules["route-files-thin"], {
+        canonTester(fixture.tester).run("route-files-thin", named(rules, "route-files-thin"), {
             valid: [
                 { filename: fixture.at(`${LOCALE}/layout.tsx`), code: files[`${LOCALE}/layout.tsx`] },
                 { filename: fixture.at(`${LOCALE}/loading.tsx`), code: files[`${LOCALE}/loading.tsx`] },
@@ -92,7 +101,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ profile: "fe", edition, files })
         t.after(() => fixture.cleanup())
-        fixture.tester.run("route-adapter", rules["route-adapter"], {
+        canonTester(fixture.tester).run("route-adapter", named(rules, "route-adapter"), {
             valid: [
                 { filename: fixture.at(`${APP}/home/page.tsx`), code: files[`${APP}/home/page.tsx`] },
                 { filename: fixture.at(`${APP}/old/page.tsx`), code: files[`${APP}/old/page.tsx`] },

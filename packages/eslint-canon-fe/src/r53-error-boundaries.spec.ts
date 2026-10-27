@@ -2,7 +2,7 @@
 // proves: FE_ERROR_BOUNDARY_MISSING@full
 // proves: FE_SUSPENSE_NULL_FALLBACK@lite
 // proves: FE_SUSPENSE_NULL_FALLBACK@full
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,7 +11,8 @@ import { RuleTester } from 'eslint';
 import parser from '@typescript-eslint/parser';
 import { noNullSuspenseFallback } from './next-conventions.ts';
 import { checkRequiredFiles } from '#runtime/scripts/hfs/architecture/required-files.mjs';
-import { openHfs } from '#runtime/scripts/hfs/slots.mjs';
+import { openHfs, type OpenedHfs } from '#runtime/scripts/hfs/slots.mjs';
+import { canonTester } from '../fixtures/typed/tester.ts';
 import { RUNTIME_ROOT as RUNTIME } from './lib/package-root.ts';
 
 const RUNTIME_ROOT = RUNTIME;
@@ -22,13 +23,19 @@ const BOUNDARIES = [
   'apps/web/src/app/[locale]/loading.tsx',
 ];
 
-function put(root, relative) {
+function put(root: string, relative: string): void {
   const target = path.join(root, relative);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, 'export {};\n');
 }
 
-function boundaryFixture(t, edition) {
+/** A repository on disk with every boundary in place, and its opened slot resolver. */
+interface BoundaryFixture {
+  readonly root: string;
+  readonly hfs: OpenedHfs;
+}
+
+function boundaryFixture(t: TestContext, edition: 'lite' | 'full'): BoundaryFixture {
   const parent = fs.realpathSync(os.tmpdir());
   const root = fs.mkdtempSync(path.join(parent, 'starci-r53-'));
   t.after(() => {
@@ -52,12 +59,12 @@ function boundaryFixture(t, edition) {
   return { root, hfs };
 }
 
-function boundaryFindings(fixture) {
+function boundaryFindings(fixture: BoundaryFixture) {
   return checkRequiredFiles({ config: { root: fixture.root, hfs: fixture.hfs } }).violations
     .filter((finding) => finding.ruleId === 'FE_ERROR_BOUNDARY_MISSING');
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition} accepts complete boundaries and rejects each missing error or loading boundary`, (t) => {
     const fixture = boundaryFixture(t, edition);
     assert.deepEqual(boundaryFindings(fixture), []);
@@ -71,9 +78,9 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition} accepts visible Suspense fallbacks and rejects null or absent loading states`, () => {
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
-    });
+    }));
     assert.doesNotThrow(() => tester.run('no-null-suspense-fallback', noNullSuspenseFallback, {
       valid: [
         { code: 'const Pending = () => <Suspense fallback={<Skeleton />}><Content /></Suspense>' },

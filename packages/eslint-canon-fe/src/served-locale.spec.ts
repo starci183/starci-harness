@@ -18,6 +18,14 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, LITE_FE_DECLARATION, slotTester } from "../fixtures/typed/tester.ts"
 import { LOCALE_HEADER, rules } from "./served-locale.ts"
+import type { Rule, Rules } from "./lib/rule.ts"
+
+/** The published rule called `name`; a missing one fails the spec. */
+const named = (published: Rules, rule: string): Rule => {
+  const found = published[rule]
+  if (!found) throw new Error(`no rule ${rule}`)
+  return found
+}
 
 const tester = slotTester()
 
@@ -38,7 +46,7 @@ test("the header this law is about is the one the server reads", () => {
   assert.equal(LOCALE_HEADER, "Accept-Language")
 })
 
-tester.run("api-client-attaches-the-locale", rules["api-client-attaches-the-locale"], {
+tester.run("api-client-attaches-the-locale", named(rules, "api-client-attaches-the-locale"), {
   valid: [
     {
       // The chain the law asks for: the locale attached beside the auth link, unconditionally.
@@ -115,7 +123,7 @@ export default chain`,
   ],
 })
 
-tester.run("locale-header-belongs-to-the-link", rules["locale-header-belongs-to-the-link"], {
+tester.run("locale-header-belongs-to-the-link", named(rules, "locale-header-belongs-to-the-link"), {
   valid: [
     {
       // The one file allowed to write it. Refusing here would leave the pair unsatisfiable.
@@ -181,10 +189,10 @@ export default headers`,
   ],
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   const hfs = edition === "lite" ? fixtureHfs(LITE_FE_DECLARATION, { lite: true }) : fixtureHfs()
-  const inEdition = (fixture) => ({ ...fixture, settings: { starci: { hfs } } })
-  tester.run(`locale-header-belongs-to-the-link (${edition})`, rules["locale-header-belongs-to-the-link"], {
+  const inEdition = <T extends object>(fixture: T) => ({ ...fixture, settings: { starci: { hfs } } })
+  tester.run(`locale-header-belongs-to-the-link (${edition})`, named(rules, "locale-header-belongs-to-the-link"), {
     valid: [
       {
         filename: LOCALE_LINK,

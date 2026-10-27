@@ -31,7 +31,10 @@
  * link; a chain is assembled elsewhere, which is where the locale belongs.
  */
 
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import { isNode } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules, type SourceCode } from "./lib/rule.ts"
 import { fileOf, isApiLayer, stem } from "./lib/scope.ts"
 
 /**
@@ -41,10 +44,10 @@ import { fileOf, isApiLayer, stem } from "./lib/scope.ts"
  * layer decides WHERE a link may be and the folder called `links` is the one fact left to the rule; the manifest would
  * carry it as a role (`locale-link: links/locale.ts`) and this function would ask for that role instead.
  */
-const linkFileName = (context) => {
+const linkFileName = (context: AnyContext): string | null => {
   if (!isApiLayer(context)) return null
   const parts = hfsOf(context).relative(fileOf(context)).split("/")
-  return parts.at(-2) === "links" ? parts.at(-1) : null
+  return parts.at(-2) === "links" ? parts.at(-1) ?? null : null
 }
 
 /**
@@ -54,7 +57,7 @@ const linkFileName = (context) => {
  * the header appears in one place, so that place has to be named somewhere, and a name is what the law and the rule can
  * both refer to.
  */
-const isLocaleLinkFile = (context) => {
+const isLocaleLinkFile = (context: AnyContext): boolean => {
   const name = linkFileName(context)
   return name !== null && stem(name) === "locale"
 }
@@ -71,7 +74,7 @@ const isLocaleLinkFile = (context) => {
  * A file under `links/` is one link. A chain is assembled somewhere else, which is exactly where the
  * locale belongs.
  */
-const isLinkImplementationFile = (context) => linkFileName(context) !== null
+const isLinkImplementationFile = (context: AnyContext): boolean => linkFileName(context) !== null
 
 /** The header a request declares its language in; HTTP header names are case-insensitive. */
 export const LOCALE_HEADER = "Accept-Language"
@@ -86,8 +89,8 @@ const TERMINAL_LINK_CALLEES = new Set(["createHttpLink", "HttpLink", "createUplo
 const LOCALE_LINK_CALLEES = new Set(["createAttachLocaleLink", "createLocaleLink"])
 
 /** The callee name of a call or `new` expression, when it has a plain one. */
-const calleeName = (node) => {
-  const callee = node && node.callee
+const calleeName = (node: TSESTree.CallExpression | TSESTree.NewExpression): string | null => {
+  const callee = node.callee
   if (!callee) return null
   if (callee.type === "Identifier") return callee.name
   if (callee.type === "MemberExpression" && callee.property && callee.property.type === "Identifier") {
@@ -97,17 +100,25 @@ const calleeName = (node) => {
 }
 
 /** Literal and expression-free template spellings identify the same header. */
-const stringOf = (node) => {
+const stringOf = (node: Node | null | undefined): string | null => {
   if (node?.type === "Literal" && typeof node.value === "string") return node.value
-  if (node?.type === "TemplateLiteral" && node.expressions.length === 0) return node.quasis[0].value.cooked
+  if (node?.type === "TemplateLiteral" && node.expressions.length === 0) return firstQuasi(node).value.cooked
   return null
 }
 
+/** The first quasi of a template literal: every template has one, so its absence stops the run as reading it always has. */
+const firstQuasi = (node: TSESTree.TemplateLiteral): TSESTree.TemplateElement => {
+  const [first] = node.quasis
+  if (first === undefined) throw new TypeError("a template literal without a quasi")
+  return first
+}
+
 /** Every static property spelling, without treating a computed variable as its identifier's name. */
-const keyOf = (node) => node?.property?.type === "Identifier" && !node.computed ? node.property.name : stringOf(node?.property)
+const keyOf = (node: TSESTree.MemberExpression): string | null =>
+  node.property.type === "Identifier" && !node.computed ? node.property.name : stringOf(node.property)
 
 /** Every string-ish key a property can carry, so `"Accept-Language"` and `["Accept-Language"]` read the same. */
-const propertyKeyOf = (property) => {
+const propertyKeyOf = (property: TSESTree.Property): string | null => {
   if (!property || property.type !== "Property") return null
   const key = property.key
   if (!key) return null
@@ -116,8 +127,8 @@ const propertyKeyOf = (property) => {
 }
 
 /** Resolve a receiver's binding, so an unrelated local `Headers` or `set` method stays unrelated. */
-const variableOf = (node, sourceCode) => {
-  for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+const variableOf = (node: TSESTree.Identifier, sourceCode: SourceCode): TSESLint.Scope.Variable | null => {
+  for (let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(node); scope; scope = scope.upper) {
     const variable = scope.set.get(node.name)
     if (variable) return variable
   }
@@ -125,19 +136,27 @@ const variableOf = (node, sourceCode) => {
 }
 
 /** Global browser constructors and globals may be qualified, but cannot be shadowed. */
-const isNativeName = (node, name, sourceCode) => {
+const isNativeName = (node: Node | null | undefined, name: string, sourceCode: SourceCode): boolean => {
   if (node?.type === "Identifier") return node.name === name && !variableOf(node, sourceCode)?.defs.length
   return node?.type === "MemberExpression" && keyOf(node) === name &&
     ["globalThis", "window"].some((global) => isNativeName(node.object, global, sourceCode))
 }
 
 /** Syntax establishes native Headers values and stable aliases; unknown or reassigned receivers are left alone. */
-const isNativeInstance = (node, name, sourceCode, seen = new Set()) => {
+/** The type a node is annotated with (`x: Headers`, `x as Headers`): the inside of a `: T` annotation, else the node's own `typeAnnotation`. */
+const annotationOf = (node: Node): Node | undefined => {
+  const outer: unknown = Reflect.get(node, "typeAnnotation")
+  if (!isNode(outer)) return undefined
+  const inner: unknown = Reflect.get(outer, "typeAnnotation")
+  return isNode(inner) ? inner : outer
+}
+
+const isNativeInstance = (node: Node | null | undefined, name: string, sourceCode: SourceCode, seen = new Set<Node>()): boolean => {
   if (!node || seen.has(node)) return false
   seen.add(node)
-  const annotation = node.typeAnnotation?.typeAnnotation ?? node.typeAnnotation
+  const annotation = annotationOf(node)
   if (annotation?.type === "TSTypeReference" && isNativeName(annotation.typeName, name, sourceCode)) return true
-  if (["TSAsExpression", "TSNonNullExpression", "ChainExpression"].includes(node.type)) return isNativeInstance(node.expression, name, sourceCode, seen)
+  if (node.type === "TSAsExpression" || node.type === "TSNonNullExpression" || node.type === "ChainExpression") return isNativeInstance(node.expression, name, sourceCode, seen)
   if (node.type === "NewExpression") return isNativeName(node.callee, name, sourceCode)
   if (name === "Headers" && node.type === "MemberExpression" && keyOf(node) === "headers") {
     return ["Request", "Response"].some((owner) => isNativeInstance(node.object, owner, sourceCode, new Set(seen)))
@@ -149,8 +168,11 @@ const isNativeInstance = (node, name, sourceCode, seen = new Set()) => {
     (variable?.defs ?? []).some((definition) => definition.type === "Variable" && isNativeInstance(definition.node.init, name, sourceCode, seen))
 }
 
-export const rules = {
-  "api-client-attaches-the-locale": {
+/** The header-writing methods of `Headers`. */
+const HEADER_WRITES: readonly (string | null)[] = ["set", "append"]
+
+export const rules: Rules = {
+  "api-client-attaches-the-locale": defineRule({
     meta: {
       type: "problem",
       docs: {
@@ -168,9 +190,9 @@ export const rules = {
       // because defining it IS its job, and there is no correct way to attach a locale there. A
       // spec asserts about a chain rather than being one.
       if (isLinkImplementationFile(context)) return {}
-      let terminalNode = null
+      let terminalNode: Node | null = null
       let attachesLocale = false
-      const note = (node) => {
+      const note = (node: TSESTree.CallExpression | TSESTree.NewExpression): void => {
         const name = calleeName(node)
         if (name === null) return
         if (TERMINAL_LINK_CALLEES.has(name)) terminalNode = terminalNode || node
@@ -186,9 +208,9 @@ export const rules = {
         },
       }
     },
-  },
+  }),
 
-  "locale-header-belongs-to-the-link": {
+  "locale-header-belongs-to-the-link": defineRule({
     meta: {
       type: "problem",
       docs: {
@@ -206,7 +228,7 @@ export const rules = {
     create(context) {
       const ownsLocale = isLocaleLinkFile(context)
       const sourceCode = context.sourceCode ?? context.getSourceCode()
-      const checkHeader = (node, key) => {
+      const checkHeader = (node: Node, key: string | null): void => {
         const header = key?.toLowerCase()
         if (header === RETIRED_LOCALE_HEADER) {
           context.report({ node, messageId: "retired" })
@@ -215,29 +237,29 @@ export const rules = {
         }
       }
       return {
-        Property(node) {
+        Property(node: TSESTree.Property) {
           checkHeader(node, propertyKeyOf(node))
         },
-        AssignmentExpression(node) {
+        AssignmentExpression(node: TSESTree.AssignmentExpression) {
           if (node.left.type === "MemberExpression") checkHeader(node, keyOf(node.left))
         },
-        NewExpression(node) {
+        NewExpression(node: TSESTree.NewExpression) {
           const initial = node.arguments[0]
           if (!isNativeName(node.callee, "Headers", sourceCode) || initial?.type !== "ArrayExpression") return
           for (const entry of initial.elements) {
             if (entry?.type === "ArrayExpression") checkHeader(entry, stringOf(entry.elements[0]))
           }
         },
-        CallExpression(node) {
+        CallExpression(node: TSESTree.CallExpression) {
           const callee = node.callee
-          if (callee.type === "MemberExpression" && ["set", "append"].includes(keyOf(callee)) && isNativeInstance(callee.object, "Headers", sourceCode)) {
+          if (callee.type === "MemberExpression" && HEADER_WRITES.includes(keyOf(callee)) && isNativeInstance(callee.object, "Headers", sourceCode)) {
             checkHeader(node, stringOf(node.arguments[0]))
           }
         },
       }
     },
-  },
+  }),
 }
 
 /** Every FE canon rule is an error; see `sources/fe/index.mjs` for why there is no warn tier. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

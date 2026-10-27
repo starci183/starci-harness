@@ -19,33 +19,36 @@
  * above it is a server component and must not have one.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
 import ts from "typescript"
+import type { FunctionNode } from "./lib/bindings.ts"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { isProductSource, kindOfFile, roleOfFile, slotOfFile, tierOfFile } from "./lib/scope.ts"
-import { typed } from "./lib/types.ts"
+import { typed, type Typed } from "./lib/types.ts"
 
 /** Route-tree roles that are client components by construction: the error boundaries, and the providers wrapper a layout renders. */
-const FRAMEWORK_CLIENT_ROLES = new Set(["error", "global-error", "providers"])
+const FRAMEWORK_CLIENT_ROLES = new Set<string | null>(["error", "global-error", "providers"])
 
 /** The slots of client state outside the hooks tier: the redux store and the toast module (fe-stack state-global, toast). */
-const CLIENT_STATE_SLOTS = new Set(["fe.redux", "fe.modules.toast"])
+const CLIENT_STATE_SLOTS = new Set<string | null>(["fe.redux", "fe.modules.toast"])
 
 /**
  * The client state of the front-end stack, which runs only in the browser, so the directive states what the file already is: a
  * provider entry (`fe.components.providers`), every file of the hooks tier, the redux store and the toast module.
  */
-const isClientState = (context) =>
+const isClientState = (context: AnyContext): boolean =>
   (slotOfFile(context) === "fe.components.providers" && roleOfFile(context) === "entry") ||
   tierOfFile(context) === "hooks" ||
   CLIENT_STATE_SLOTS.has(slotOfFile(context))
 
 /** True when the program opens with the `"use client"` directive. */
-const clientDirective = (program) =>
+const clientDirective = (program: TSESTree.Program): TSESTree.ProgramStatement | null =>
   program.body.find(
     (statement) => statement.type === "ExpressionStatement" && statement.directive === "use client",
   ) ?? null
 
 /** The layers whose files are legitimately client: a block's entry, a leaf (its interaction is intrinsic) and, in a shared package, the interactive layers (branches and leaves; a composite is presentation). */
-const isInteractionBoundary = (context) => {
+const isInteractionBoundary = (context: AnyContext): boolean => {
   const slot = slotOfFile(context)
   const kind = kindOfFile(context)
   const role = roleOfFile(context)
@@ -56,11 +59,11 @@ const isInteractionBoundary = (context) => {
 }
 
 /** Where the directive is a legitimate boundary. */
-const isBoundary = (context) =>
+const isBoundary = (context: AnyContext): boolean =>
   (slotOfFile(context) === "fe.route" && FRAMEWORK_CLIENT_ROLES.has(roleOfFile(context))) || isInteractionBoundary(context) || isClientState(context)
 
 /** The slot a file fills in the route tree (its role in `fe.route`, or the page or layout owner of a feature), when it fills one. */
-const routeFill = (context) => {
+const routeFill = (context: AnyContext): string | null => {
   if (slotOfFile(context) === "fe.route" && roleOfFile(context) !== null) return roleOfFile(context)
   if (slotOfFile(context) === "fe.feature" && kindOfFile(context) === "pages") return "page owner"
   if (slotOfFile(context) === "fe.feature" && kindOfFile(context) === "layouts") return "layout owner"
@@ -68,7 +71,7 @@ const routeFill = (context) => {
 }
 
 /** `"use client"` only at an interaction boundary; pages and layouts stay server components. */
-export const useClientOnlyAtBoundary = {
+export const useClientOnlyAtBoundary = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`\"use client\"` appears only at a block index, a leaf, a Next error boundary, or the client state of the stack (a provider, `hooks/`, `redux/`, `modules/toast/`)." },
@@ -84,7 +87,7 @@ export const useClientOnlyAtBoundary = {
     if (isBoundary(context)) return {}
     const slot = routeFill(context)
     return {
-      Program(program) {
+      Program(program: TSESTree.Program) {
         const directive = clientDirective(program)
         if (!directive) return
         if (slot) context.report({ node: directive, messageId: "slot", data: { slot } })
@@ -92,7 +95,7 @@ export const useClientOnlyAtBoundary = {
       },
     }
   },
-}
+})
 
 // -- FE-CLIENT-2 -----------------------------------------------------------------------------------
 
@@ -100,7 +103,7 @@ export const useClientOnlyAtBoundary = {
 const NODE_BUILTINS = /^(?:node:.+|fs|fs\/promises|path|os|net|tls|http|https|http2|child_process|cluster|crypto|stream|zlib|dns|worker_threads)$/
 
 /** A server API: the request-scoped Next APIs, the server half of next-intl, a Node built-in; null for anything else. */
-const serverApiReason = (source) => {
+const serverApiReason = (source: string): string | null => {
   if (source === "next/headers") return "`next/headers`"
   if (source === "next/server") return "`next/server`"
   if (source === "next-intl/server") return "`next-intl/server`"
@@ -109,10 +112,10 @@ const serverApiReason = (source) => {
 }
 
 /** A server-only source: the marker package or a server API. */
-const serverOnlyReason = (source) => (source === "server-only" ? "`server-only`" : serverApiReason(source))
+const serverOnlyReason = (source: string): string | null => (source === "server-only" ? "`server-only`" : serverApiReason(source))
 
 /** A client component imports nothing that only exists on the server. */
-export const clientNoServerImport = {
+export const clientNoServerImport = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A `\"use client\"` file does not import `server-only`, `next/headers`, `next/server`, `next-intl/server` or a Node built-in." },
@@ -125,17 +128,17 @@ export const clientNoServerImport = {
   create(context) {
     let client = false
     return {
-      Program(program) {
+      Program(program: TSESTree.Program) {
         client = clientDirective(program) !== null
       },
-      ImportDeclaration(node) {
+      ImportDeclaration(node: TSESTree.ImportDeclaration) {
         if (!client || node.importKind === "type") return
         const what = serverOnlyReason(String(node.source.value))
         if (what) context.report({ node, messageId: "server", data: { what } })
       },
     }
   },
-}
+})
 
 // -- FE-CLIENT-2b ----------------------------------------------------------------------------------
 
@@ -143,21 +146,21 @@ export const clientNoServerImport = {
 const ROUTE_FILE_SLOTS = new Set(["fe.route", "fe.source-root-pinned"])
 
 /** True when a statement is `import "server-only"`: an import with no bindings from the marker package. */
-const isMarkerStatement = (statement) =>
+const isMarkerStatement = (statement: Node | undefined): boolean =>
   statement?.type === "ImportDeclaration" && statement.specifiers.length === 0 && statement.source.value === "server-only"
 
 /** True when a TypeScript source file opens with `import "server-only"`. */
-const tsFileIsMarked = (file) => {
+const tsFileIsMarked = (file: ts.SourceFile): boolean => {
   // a file-level directive ("use strict") is the prologue: the marker is the first statement after it
   const first = file.statements.find((statement) => !(ts.isExpressionStatement(statement) && ts.isStringLiteral(statement.expression)))
-  return Boolean(first) && ts.isImportDeclaration(first) && !first.importClause && ts.isStringLiteral(first.moduleSpecifier) && first.moduleSpecifier.text === "server-only"
+  return first !== undefined && ts.isImportDeclaration(first) && !first.importClause && ts.isStringLiteral(first.moduleSpecifier) && first.moduleSpecifier.text === "server-only"
 }
 
 /**
  * The source file an import specifier resolves to: the checker's module symbol, so path aliases, extensions and index
  * files resolve as the compiler resolves them. Null for a declaration file, a package or an unresolved specifier.
  */
-const resolvedSourceFile = (context, specifier) => {
+const resolvedSourceFile = (context: AnyContext, specifier: Node): ts.SourceFile | null => {
   const { checker, toTs } = typed(context)
   const tsNode = toTs(specifier)
   if (!tsNode) return null
@@ -168,9 +171,24 @@ const resolvedSourceFile = (context, specifier) => {
 
 /** A module that uses a server-only API, or imports a module that is itself server-only, opens with `import "server-only"`. */
 /** Component tiers: a component is judged by where client code reaches it, not by a marker. */
-const COMPONENT_TIERS = new Set(["components", "feature"])
+const COMPONENT_TIERS = new Set<string | null>(["components", "feature"])
 
-export const serverModuleMarksServerOnly = {
+/** An import or re-export statement with a source. */
+type ModuleStatement = TSESTree.ImportDeclaration | TSESTree.ExportNamedDeclaration | TSESTree.ExportAllDeclaration
+
+/** True when the whole statement is type-only (`import type`, `export type`). */
+const statementIsType = (node: ModuleStatement): boolean =>
+  node.type === "ImportDeclaration" ? node.importKind === "type" : node.exportKind === "type"
+
+/** True when one specifier is type-only (`import { type A }`, `export { type A }`). */
+const specifierIsType = (specifier: TSESTree.ImportClause | TSESTree.ExportSpecifier): boolean =>
+  (specifier.type === "ImportSpecifier" && specifier.importKind === "type") || (specifier.type === "ExportSpecifier" && specifier.exportKind === "type")
+
+/** The specifiers of a statement; none for `export * from`. */
+const specifiersOf = (node: ModuleStatement): readonly (TSESTree.ImportClause | TSESTree.ExportSpecifier)[] | undefined =>
+  node.type === "ExportAllDeclaration" ? undefined : node.specifiers
+
+export const serverModuleMarksServerOnly = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A module importing `next/headers`, `next/server`, `next-intl/server`, a Node built-in or a server-only module starts with `import \"server-only\"`." },
@@ -188,16 +206,17 @@ export const serverModuleMarksServerOnly = {
     if (COMPONENT_TIERS.has(tierOfFile(context))) return {}
     let client = false
     let marked = false
-    const uses = []
+    const uses: { readonly node: ModuleStatement; readonly what: string }[] = []
     return {
-      Program(program) {
+      Program(program: TSESTree.Program) {
         client = clientDirective(program) !== null
         // a file-level directive ("use strict") is the prologue, not a statement: the marker is the first statement after it
         marked = isMarkerStatement(program.body.find((statement) => !(statement.type === "ExpressionStatement" && typeof statement.directive === "string")))
       },
-      "ImportDeclaration, ExportNamedDeclaration, ExportAllDeclaration"(node) {
-        if (!node.source || node.importKind === "type" || node.exportKind === "type") return
-        const onlyTypes = node.specifiers?.length > 0 && node.specifiers.every((specifier) => specifier.importKind === "type" || specifier.exportKind === "type")
+      "ImportDeclaration, ExportNamedDeclaration, ExportAllDeclaration"(node: ModuleStatement) {
+        if (!node.source || statementIsType(node)) return
+        const specifiers = specifiersOf(node)
+        const onlyTypes = specifiers !== undefined && specifiers.length > 0 && specifiers.every(specifierIsType)
         if (onlyTypes) return
         const specifier = String(node.source.value)
         if (specifier === "server-only") return
@@ -216,7 +235,7 @@ export const serverModuleMarksServerOnly = {
       },
     }
   },
-}
+})
 
 // -- FE-CLIENT-2c (R243 FE_SERVER_ACTION_FORBIDDEN) ------------------------------------------------
 
@@ -225,7 +244,7 @@ export const serverModuleMarksServerOnly = {
  * Reads and writes reach the back end through the operations of `modules/api` and the SWR hooks; a write that must run on a
  * server is a GraphQL mutation of the back end.
  */
-export const noServerAction = {
+export const noServerAction = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No `\"use server\"` directive (module or function level): the front end holds no Server Action." },
@@ -236,31 +255,34 @@ export const noServerAction = {
     },
   },
   create(context) {
-    const check = (statements) => {
+    const check = (statements: readonly Node[] | undefined): void => {
       for (const statement of statements ?? []) {
         if (statement.type !== "ExpressionStatement" || typeof statement.directive !== "string") return
         if (statement.directive === "use server") context.report({ node: statement, messageId: "action" })
       }
     }
-    const body = (node) => {
+    const body = (node: FunctionNode): void => {
       if (node.body?.type === "BlockStatement") check(node.body.body)
     }
     return {
-      Program: (program) => check(program.body),
+      Program: (program: TSESTree.Program) => check(program.body),
       FunctionDeclaration: body,
       FunctionExpression: body,
       ArrowFunctionExpression: body,
     }
   },
-}
+})
 
 // -- FE-CLIENT-3 -----------------------------------------------------------------------------------
 
 /** Web storage exists only in the browser and only under `modules/`, which guards it. */
 const STORAGE = new Set(["localStorage", "sessionStorage"])
 
+/** The tiers where storage is guarded. */
+const MODULE_TIERS: readonly (string | null)[] = ["foundation", "modules", "transport"]
+
 /** Web storage is read and written only inside `modules/`. */
-export const webStorageOnlyInModules = {
+export const webStorageOnlyInModules = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`localStorage` and `sessionStorage` are touched only inside `modules/`." },
@@ -272,14 +294,14 @@ export const webStorageOnlyInModules = {
   },
   create(context) {
     // Product source outside the module tiers (foundation modules, the other modules, the api transport), which are where storage is guarded.
-    if (!isProductSource(context) || ["foundation", "modules", "transport"].includes(tierOfFile(context))) return {}
+    if (!isProductSource(context) || MODULE_TIERS.includes(tierOfFile(context))) return {}
     return {
-      MemberExpression(node) {
+      MemberExpression(node: TSESTree.MemberExpression) {
         if (node.computed || node.property.type !== "Identifier" || !STORAGE.has(node.property.name)) return
         if (node.object.type !== "Identifier" || (node.object.name !== "window" && node.object.name !== "globalThis")) return
         context.report({ node, messageId: "storage", data: { name: node.property.name } })
       },
-      Identifier(node) {
+      Identifier(node: TSESTree.Identifier) {
         if (!STORAGE.has(node.name)) return
         const parent = node.parent
         if (parent.type === "MemberExpression" && parent.property === node) return
@@ -289,12 +311,12 @@ export const webStorageOnlyInModules = {
       },
     }
   },
-}
+})
 
 // -- FE-CLIENT-4 -----------------------------------------------------------------------------------
 
 /** Raw HTML is set only on a `<script>`, where the framework has no other way to inline JSON-LD or the theme bootstrap. */
-export const noDangerousHtml = {
+export const noDangerousHtml = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`dangerouslySetInnerHTML` only on `<script>`; never on a visible element." },
@@ -306,7 +328,7 @@ export const noDangerousHtml = {
   },
   create(context) {
     return {
-      JSXAttribute(node) {
+      JSXAttribute(node: TSESTree.JSXAttribute) {
         if (node.name.type !== "JSXIdentifier" || node.name.name !== "dangerouslySetInnerHTML") return
         const opening = node.parent
         const tag = opening.name.type === "JSXIdentifier" ? opening.name.name : "element"
@@ -314,27 +336,27 @@ export const noDangerousHtml = {
       },
     }
   },
-}
+})
 
 // -- FE-CLIENT-5 (R107 FE_COOKIE_ATTRIBUTES) -------------------------------------------------------
 
 /** Forward-slash file name of a declaration, and the package a `node_modules/<pkg>/` (or `@scope/<pkg>`) file belongs to. */
-const packageOfDeclaration = (declaration) => {
+const packageOfDeclaration = (declaration: ts.Node): string | null => {
   const match = /\/node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(String(declaration.getSourceFile().fileName).split("\\").join("/"))
-  return match ? match[1] : null
+  return match ? match[1] ?? null : null
 }
 
 /** Whether a call is `set` of Next's `ResponseCookies` (a `Set-Cookie` write), whatever the receiver is called: `response.cookies.set`, `(await cookies()).set`. */
-const isResponseCookieWrite = (checker, toTs, call) => {
+const isResponseCookieWrite = (checker: ts.TypeChecker, toTs: Typed["toTs"], call: TSESTree.CallExpression): boolean => {
   const tsCall = toTs(call)
-  const declaration = tsCall ? checker.getResolvedSignature(tsCall)?.declaration : undefined
+  const declaration = tsCall && ts.isCallLikeExpression(tsCall) ? checker.getResolvedSignature(tsCall)?.declaration : undefined
   if (!declaration || !ts.isMethodDeclaration(declaration) || declaration.name.getText() !== "set") return false
   const owner = declaration.parent
   return ts.isClassDeclaration(owner) && owner.name?.text === "ResponseCookies" && packageOfDeclaration(declaration) === "next"
 }
 
 /** The present (non-nullish) members of a property's type on an options type, or [] when the property is absent or only nullish. */
-const presentPropertyParts = (checker, type, name, at) => {
+const presentPropertyParts = (checker: ts.TypeChecker, type: ts.Type, name: string, at: ts.Node): ts.Type[] => {
   const symbol = type.getProperty(name)
   if (!symbol) return []
   const propertyType = checker.getTypeOfSymbolAtLocation(symbol, at)
@@ -342,12 +364,14 @@ const presentPropertyParts = (checker, type, name, at) => {
   return parts.filter((part) => !(part.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void)))
 }
 
-const isBooleanLiteral = (part, value) => Boolean(part.flags & ts.TypeFlags.BooleanLiteral) && part.intrinsicName === String(value)
+/** True for the boolean literal type `value`, read from the checker's intrinsic name. */
+const isBooleanLiteral = (part: ts.Type, value: boolean): boolean =>
+  Boolean(part.flags & ts.TypeFlags.BooleanLiteral) && "intrinsicName" in part && part.intrinsicName === String(value)
 const SAME_SITE = new Set(["lax", "strict"])
 
 /** The attributes a written cookie is missing, judged on the TYPE of its options (a spread `as const` constant keeps its literals). */
-const missingAttributes = (checker, type, at) => {
-  const missing = []
+const missingAttributes = (checker: ts.TypeChecker, type: ts.Type, at: ts.Node): string[] => {
+  const missing: string[] = []
   // httpOnly is a stated decision: `true` for a session, `false` only for a preference page script reads; a bare `boolean` decides nothing
   const httpOnly = presentPropertyParts(checker, type, "httpOnly", at)
   const stated = httpOnly.length > 0 && (httpOnly.every((part) => isBooleanLiteral(part, true)) || httpOnly.every((part) => isBooleanLiteral(part, false)))
@@ -360,7 +384,7 @@ const missingAttributes = (checker, type, at) => {
 }
 
 /** A cookie the app writes states its script reach, is sent only over TLS and is kept off cross-site requests. */
-export const responseCookieAttributes = {
+export const responseCookieAttributes = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A cookie written through Next's response cookies states `httpOnly` as a literal, carries `secure` and `sameSite` `lax` or `strict`." },
@@ -373,7 +397,7 @@ export const responseCookieAttributes = {
   create(context) {
     const { checker, toTs } = typed(context)
     return {
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         if (node.callee.type !== "MemberExpression" || !isResponseCookieWrite(checker, toTs, node)) return
         // `set(name, value, options)` or `set({ name, value, ...options })`; `set(name, value)` states nothing
         const options = node.arguments.length === 1 ? node.arguments[0] : node.arguments[2]
@@ -383,10 +407,10 @@ export const responseCookieAttributes = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "use-client-only-at-boundary": useClientOnlyAtBoundary,
   "client-no-server-import": clientNoServerImport,
   "server-module-marks-server-only": serverModuleMarksServerOnly,
@@ -397,4 +421,4 @@ export const rules = {
 }
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

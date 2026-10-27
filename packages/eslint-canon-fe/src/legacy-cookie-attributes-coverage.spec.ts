@@ -8,7 +8,7 @@ const ROUTE = at("apps/web/src/app/auth/callback/route.ts")
 const imports = 'import { NextResponse } from "next/server"\nimport { cookies } from "next/headers"\n'
 const sessionOptions = 'const OPTIONS = { httpOnly: true, secure: true, sameSite: "lax" } as const\n'
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`${edition} FE_COOKIE_ATTRIBUTES accepts explicit attributes and rejects incomplete cookie writes`, () => {
         const tester = typedTester({ lite: edition === "lite" })
         tester.run("response-cookie-attributes", responseCookieAttributes, {
