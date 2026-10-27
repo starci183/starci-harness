@@ -85,7 +85,7 @@ const expand = (run: RunState, text: string): string =>
         if (name === "state") return run.state
         if (name === "project") return projectFolder(run) ?? whole
         if (name === "ops") return locateOps()
-        if (name === "key") return run.key
+        if (name === "generatedKey") return run.key
         return run.vars.get(name) ?? whole
     })
 
@@ -102,7 +102,7 @@ const inRepo = (run: RunState, path: string): string => {
 }
 
 // A fixture that must never be text in this public repository: a provider-shaped credential and a lint suppression, built here.
-// The run's credential is one key (`${key}` in a step's text), so a scenario can name the line it sits on.
+// The run's credential is one key (`${generatedKey}` in a step's text), so a scenario can name the line it sits on.
 const generated = (run: RunState, kind: "secret" | "loosening"): string => {
     if (kind === "secret") return `const awsKey = "${run.key}"\n`
     return `// ${["eslint", "disable"].join("-")}-next-line\nexport const value = 1\n`
