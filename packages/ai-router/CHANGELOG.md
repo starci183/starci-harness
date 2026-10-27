@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-10-27
+
+- Added: the NestJS module at the `@starci/ai-router/nest` subpath, with `@nestjs/common` and `@nestjs/core` (11 or 12) as optional peer dependencies; the root entry stays dependency-free.
+- Added: `AiRouterModule.register(options)` and `AiRouterModule.registerAsync({ imports, inject, useFactory | useClass | useExisting })`, built with `ConfigurableModuleBuilder`, taking the pool config plus `on` handlers and the `isGlobal` and `name` extras.
+- Added: the `AiRouterService` facade (`chat`, `stream`, `embeddings`, `health`, `stats`, `on`, `reset`, typed profiles), the `AI_ROUTER` raw-router token, `@InjectAiRouter(name?)`, `@InjectAiRouterService(name?)`, `getAiRouterToken(name?)` and `getAiRouterServiceToken(name?)`; named registrations hold separate pools in one app.
+- Added: on application shutdown the service aborts its calls in flight and releases its handlers.
+
 ## 0.1.0 - 2026-10-27
 
 - Added: `createRouter(config)` over a pool of OpenAI-compatible providers, keys (by env var name or resolver, named by alias) and models (aliases, context window, cost, capabilities), with `chat`, `stream`, `embeddings`, `health`, `stats`, `on` and `reset`.

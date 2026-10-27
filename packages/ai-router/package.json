@@ -1,7 +1,7 @@
 {
   "name": "@starci/ai-router",
-  "version": "0.1.0",
-  "description": "A zero-dependency pool router for OpenAI-compatible APIs: many keys, many models and many providers behind one chat, stream and embeddings call, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry.",
+  "version": "0.2.0",
+  "description": "A zero-dependency pool router for OpenAI-compatible APIs: many keys, many models and many providers behind one chat, stream and embeddings call, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry; an optional NestJS module at @starci/ai-router/nest.",
   "keywords": [
     "ai",
     "llm",
@@ -13,7 +13,8 @@
     "failover",
     "circuit-breaker",
     "rate-limit",
-    "streaming"
+    "streaming",
+    "nestjs"
   ],
   "license": "MIT",
   "author": "starci183",
@@ -35,6 +36,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./nest": {
+      "types": "./dist/nest/index.d.ts",
+      "default": "./dist/nest/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -47,12 +52,24 @@
   "engines": {
     "node": ">=20"
   },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0 || ^12.0.0",
+    "@nestjs/core": "^11.0.0 || ^12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist').filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/(from \\\"\\.\\/[\\w-]+)\\.ts\\\"/g, '$1.js\\\"'))\"",
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist', {recursive: true}).filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/((?:from |import\\()\\\"\\.\\.?\\/[\\w./-]+)\\.ts\\\"/g, '$1.js\\\"'))\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "npm run typecheck && npm run lint && node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-lines=90 \"test/**/*.test.ts\"",
@@ -60,8 +77,13 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@nestjs/common": "12.1.3",
+    "@nestjs/core": "12.1.3",
+    "@nestjs/testing": "12.1.3",
     "@types/node": "24.19.2",
     "eslint": "10.13.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0"
   }
