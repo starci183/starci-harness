@@ -1,0 +1,252 @@
+# The stack declaration of the lite app, at the app root beside be/, fe/ and .starciwork.
+# The source models declare intended compute; they prove no completed deployment.
+# All-zero application digests are illustrative and must be replaced by verified release digests.
+schema: starci/application-stacks@1
+# To render README badges, declare ci.github: {repository: owner/repo, defaultBranch: main}.
+# A GitHub package.json repository URL also enables the managed block.
+sources:
+  - repository: {{project}}
+backing:
+  supabase:
+    provider: supabase
+    managed: true
+components:
+  api:
+    role: service
+    image: "{{project}}/api:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    compose: infra/swarm/stack.yaml
+    purpose: The application's GraphQL API; managed Supabase supplies its database and Auth integration.
+    required: true
+  web:
+    role: service
+    image: "{{project}}/web:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    compose: infra/swarm/stack.yaml
+    purpose: The standalone Next.js application with public configuration supplied at build time.
+    required: true
+  ingress:
+    role: ingress
+    stateful: true
+    volumes: [ingress-data, ingress-config-data]
+    image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
+    compose: infra/swarm/stack.yaml
+    purpose: The single declared ingress; certificates and persistent volumes are owner-provisioned.
+    required: true
+environments:
+  dev:
+    status: supported
+    runtime: docker-swarm
+    composeFiles: [infra/swarm/stack.yaml]
+    components:
+      api: {replicas: 1, port: 3001}
+      web: {replicas: 1, port: 3000}
+      ingress: {replicas: 1, port: 80}
+    runbook: README.md
+    ingress:
+      component: ingress
+      hosts: ["dev.{{project}}.example.invalid"]
+    dns:
+      - host: "dev.{{project}}.example.invalid"
+        owner: Development operator
+        receipt: .starcistacks/dev/infra/swarm/owner-actions.md#dns
+    tls:
+      owner: Development operator
+      receipt: .starcistacks/dev/infra/swarm/owner-actions.md#tls
+    release:
+      imagesLock: .starcistacks/dev/infra/swarm/releases/images.lock.yaml
+      pointer: .starcistacks/dev/infra/swarm/releases/current.yaml
+      previous: .starcistacks/dev/infra/swarm/releases/previous.yaml
+      healthAssertions: [API /health/live, API /health/ready, Web /health/live]
+    backup:
+      - component: ingress
+        target: Owner-provisioned encrypted off-host storage for both ingress volumes
+        retention: Seven daily snapshots
+        owner: Development operator
+        restoreProof: .starcistacks/dev/infra/swarm/recovery/restore-proof.md
+      - component: supabase
+        target: Owner-provisioned encrypted off-host storage for development database exports
+        retention: Seven daily exports
+        owner: Development operator
+        restoreProof: .starcistacks/dev/infra/swarm/recovery/restore-proof.md
+    # Scaffolding seals generated placeholders to this app's own recipient; set real values before use.
+    secrets:
+      - name: primary-db-url
+        runtimeName: "{{project}}-dev-primary-db-url-v1"
+        version: 1
+        where: secrets/primary-db-url
+        recipientPolicy: This app's own age recipient configured in .sops.yaml
+        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
+      - name: supabase-service-role-key
+        runtimeName: "{{project}}-dev-supabase-service-role-key-v1"
+        version: 1
+        where: secrets/supabase-service-role-key
+        recipientPolicy: This app's own age recipient configured in .sops.yaml
+        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
+  production:
+    status: supported
+    runtime: docker-swarm
+    composeFiles: [infra/swarm/stack.yaml]
+    components:
+      api: {replicas: 1, port: 3001}
+      web: {replicas: 1, port: 3000}
+      ingress: {replicas: 1, port: 443, httpPort: 80}
+    runbook: README.md
+    ingress:
+      component: ingress
+      hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid"]
+    dns:
+      - host: "{{project}}.example.invalid"
+        owner: Production operator
+        receipt: .starcistacks/production/infra/swarm/owner-actions.md#dns
+      - host: "api.{{project}}.example.invalid"
+        owner: Production operator
+        receipt: .starcistacks/production/infra/swarm/owner-actions.md#dns
+    tls:
+      owner: Production operator
+      receipt: .starcistacks/production/infra/swarm/owner-actions.md#tls
+    release:
+      imagesLock: .starcistacks/production/infra/swarm/releases/images.lock.yaml
+      pointer: .starcistacks/production/infra/swarm/releases/current.yaml
+      previous: .starcistacks/production/infra/swarm/releases/previous.yaml
+      healthAssertions: [API /health/live, API /health/ready, Web /health/live, Signed-in GraphQL request over TLS]
+    backup:
+      - component: ingress
+        target: Owner-provisioned encrypted off-host storage for both ingress volumes
+        retention: Thirty daily snapshots
+        owner: Production operator
+        restoreProof: .starcistacks/production/infra/swarm/recovery/restore-proof.md
+      - component: supabase
+        target: Provider PITR plus owner-provisioned encrypted off-host database exports
+        retention: Seven days PITR and thirty daily exports
+        owner: Production operator
+        restoreProof: .starcistacks/production/infra/swarm/recovery/restore-proof.md
+    # Scaffolding seals generated placeholders to this app's own recipient; set real values before use.
+    secrets:
+      - name: primary-db-url
+        runtimeName: "{{project}}-production-primary-db-url-v1"
+        version: 1
+        where: secrets/primary-db-url
+        recipientPolicy: This app's own age recipient configured in .sops.yaml
+        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
+      - name: supabase-service-role-key
+        runtimeName: "{{project}}-production-supabase-service-role-key-v1"
+        version: 1
+        where: secrets/supabase-service-role-key
+        recipientPolicy: This app's own age recipient configured in .sops.yaml
+        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
+    # What `starci app stack` deploys (verbs: prepare, doctor, deploy, verify, rollback); names and shapes only, never a value.
+    # Add a backup block (digest-pinned tar helper image) once the stateful volumes are provisioned.
+    deploy:
+      stack: {{project}}-production
+      # The image registry. The canon scaffold writes `public` (the owner's default: images cost nothing there); the value belongs to the app from now on
+      # and `starci app sync` never rewrites it. While it is public, `starci app stack build --push` scans every image for secret material first.
+      registry:
+        host: ghcr.io
+        visibility: {{registryVisibility}}
+      images:
+        api:
+          app: api
+        web:
+          app: web
+          # Public browser configuration; replace these placeholders before deployment.
+          buildArgs:
+            values:
+              NEXT_PUBLIC_SITE_URL: "https://{{project}}.example.invalid"
+              NEXT_PUBLIC_SUPABASE_URL: "https://supabase.{{project}}.example.invalid"
+              NEXT_PUBLIC_SUPABASE_ANON_KEY: "REPLACE_WITH_PUBLIC_SUPABASE_ANON_KEY"
+      volumes:
+        - {{project}}-production-ingress-data
+        - {{project}}-production-ingress-config-data
+      secrets:
+        grants:
+          - service: api
+            filePointers: true
+            from:
+              - member: primary-db-url
+              - member: supabase-service-role-key
+      # Release tasks: an idempotent write the release owes the data (a catalogue sync, a seed upsert) is declared under tasks and listed in postDeploy.
+      # A deploy runs postDeploy after the stack converged and before verify, which stays read-only. Uncomment and name the real command:
+      # tasks:
+      #   sync-catalogue: {service: api, command: [node, dist/cli.js, catalogue, sync]}
+      # postDeploy: [sync-catalogue]
+      verify:
+        http:
+          - name: api liveness
+            url: "https://api.{{project}}.example.invalid/health/live"
+            status: 200
+            retry: true
+          - name: api readiness
+            url: "https://api.{{project}}.example.invalid/health/ready"
+            status: 200
+            retry: true
+          - name: web liveness
+            url: "https://{{project}}.example.invalid/health/live"
+            status: 200
+            retry: true
+k8s:
+  status: deferred
+  reason: Lite production uses Docker Swarm with managed Supabase backing; Kubernetes belongs to a future full-edition deployment.
+ci:
+  secrets:
+    - {name: SONAR_TOKEN, scope: repository, purpose: Sonar analysis token provisioned for this app}
+    - {name: SOPS_AGE_KEY, scope: environment, environment: production, purpose: Decrypt app members during deployment, optional: true}
+    - {name: VPS_SSH_KEY, scope: environment, environment: production, purpose: Deployment SSH key, optional: true}
+    - {name: VPS_KNOWN_HOSTS, scope: environment, environment: production, purpose: Pinned deployment SSH host keys, optional: true}
+  vars:
+    - {name: SONAR_HOST_URL, scope: repository, value: "https://sonar.{{project}}.example.invalid", purpose: Documentation endpoint to replace with this app's public Sonar host}
+    - {name: VPS_HOST, scope: environment, environment: production, value: 203.0.113.10, purpose: Documentation deployment address to replace before use, optional: true}
+    - {name: VPS_USER, scope: environment, environment: production, value: deploy, purpose: Documentation deployment user to replace before use, optional: true}
+services:
+  sonar:
+    provider: sonarqube
+    mode: local
+    qualityGate: {{sonarGate}}
+    host: {local: http://127.0.0.1:9000, public: "https://sonar.{{project}}.example.invalid"}
+    stack:
+      owner: host
+      root: .claude/ext/sonar
+      environment: dev
+      compose: compose.yaml
+    auth: token
+    credentials: []
+    projects: [{repository: "{{project}}", key: "{{project}}"}]
+    ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL}
+    ownerAction:
+      needed: Provision this app's Sonar host and project, then set SONAR_TOKEN with starci app ci secret set and sync SONAR_HOST_URL.
+      reason: A fresh app declares its quality service without fabricating credentials or a successful analysis.
+  codecov:
+    provider: codecov
+    mode: hosted
+    purpose: Report application coverage through GitHub OIDC.
+    auth: oidc
+    target: 100
+    components: auto
+    required: true
+    ci: {wiring: required, workflow: .github/workflows/ci.yml}
+    ownerAction: none
+  dependabot:
+    provider: github
+    mode: hosted
+    purpose: Keep application dependencies and workflow actions current.
+    ecosystems: [npm, docker, github-actions]
+    schedule: {interval: weekly}
+    groups: {minorPatch: grouped, major: per-package}
+    ignore: ['@starci/*']
+    security: immediate
+    ownerAction: none
+  audit:
+    provider: npm
+    mode: local
+    purpose: Refuse high severity production dependency vulnerabilities.
+    level: high
+    omitDev: true
+    in: [release-gate, ci]
+    ownerAction: none
+  container-registry:
+    provider: ghcr
+    mode: hosted
+    purpose: Publish this app's deployment images with the workflow GitHub token.
+    host: {public: https://ghcr.io}
+    auth: github-token
+    projects: [{repository: "{{project}}", key: "{{project}}"}]
+    ci: {wiring: required}
+    ownerAction: none

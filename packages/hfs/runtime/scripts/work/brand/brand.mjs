@@ -1,0 +1,892 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {openLedgerReader,ledgerFileFor} from '../../../engine/db/ledger.mjs';
+import {receiptsAnswering,receiptFileOf,receiptRefOf} from '../../machine/ask-receipts.mjs';
+import {sha256} from '../../../engine/digest.mjs';
+import { isMain } from '../../lib/is-main.mjs';
+import {parseYaml} from '../../../engine/yaml.mjs';
+import {skillRoot} from '../../../engine/runtime-root.mjs';
+import {slash, sameOrUnder} from '../../lib/path-key.mjs';
+import {objectList} from '../../lib/list.mjs';
+import {formatCheckLines} from '../../lib/check-format.mjs';
+import { isInside as inside } from '../../lib/walk.mjs';
+import {readJsonFile as readJson} from '../../lib/json.mjs';
+import {parseColor,contrastRatio,deltaEOk,TOKEN_TOLERANCE} from './brand-colour.mjs';
+import {OWED_TO,checkValueSource as checkSource} from './brand-value-source.mjs';
+import {readText,readSourceTokens,lookupToken} from './brand-tokens.mjs';
+import {text as trimmedText} from '../../lib/stack-declaration.mjs';
+export {TOKEN_TOLERANCE,parseColor,contrastRatio,deltaEOk,rgbToOklab,oklabToRgb,oklabToOklch,oklchToOklab,formatHex} from './brand-colour.mjs';
+export {parseCssCustomProperties,parseTokenData,readSourceTokens} from './brand-tokens.mjs';
+
+/**
+ * The brand is proven, not stated. A brand record says what the product's colour, mascot and icon law is;
+ * this module re-derives each of those claims from the artefacts that actually ship - the frontend's CSS
+ * custom properties, the asset bytes under the tree, the import lines of the source, the grammar family's
+ * DNA - and reports every claim it could not reproduce.
+ *
+ * Nothing here renders, installs, commits or edits: every check reads, and the colour mathematics is
+ * implemented in brand-colour.mjs so a brand is never proven by a dependency that may not be installed.
+ *
+ * A check that cannot be performed is `skip` with the reason, never `pass`: a missing source root, an
+ * absent grammar snapshot or a source file this repository does not carry leaves the claim unproven, and an
+ * unproven claim must not read as a proven one.
+ */
+const BRAND_CHECKS='starci/brand-checks@1';
+export const CHECK_IDS=['tokens-match-source','contrast-aa','primary-danger-distinct','mascot-assets-present','icon-set-only','tokens-in-grammar','direction'];
+/** WCAG 2.x: text needs 4.5:1, a non-text indicator (primary on its surface) needs 3:1. */
+const DEFAULT_MIN_CONTRAST=4.5;
+const NON_TEXT_MIN_CONTRAST=3;
+/**
+ * HeroUI status tones: a solid pair (`--<tone>` + `--<tone>-foreground`) and a soft pair (`--<tone>-soft` +
+ * `--<tone>-soft-foreground`, the Chip/Badge/Alert `soft` and `flat` variants). Owner decision 2026-09-30: the
+ * soft foreground on its own soft tint is accepted at 3:1, and a bare status glyph on a page ground takes the
+ * soft foreground instead of a darkened solid tone. A soft pair is a token with role `<tone>-soft`.
+ */
+const SOFT_MIN_CONTRAST=3;
+export const STATUS_TONES=['success','warning','info','danger'];
+const softToneOf=token=>{const match=/^(success|warning|info|danger)-soft$/.exec(token.role??'');return match?match[1]:null;};
+/**
+ * Every OKLab distance in this module is reported on the x100 scale (Euclidean distance in OKLab times
+ * 100), so black against white is 100 and a just-noticeable difference is roughly 2. A destructive colour
+ * must be 20 apart from the primary - a fifth of the whole perceptual range - or a user reads "delete" as
+ * "continue". The match tolerance is half a unit: below perception, wide enough for hex/oklch rounding.
+ */
+const MIN_PRIMARY_DANGER_DELTA=20;
+const ASSET_EXTENSIONS=['.png','.svg','.webp','.jpg','.jpeg'];
+export const OFFENDER_CAP=20;
+const SCAN_EXCLUDED=new Set(['node_modules','dist','.next','.git','.dist','coverage','build','out','.turbo','.cache']);
+const SCAN_FILE_LIMIT=5000;
+const SCAN_BYTES_LIMIT=512*1024;
+/** Packages whose name advertises icons; used only to decide what counts as an icon import to judge. */
+const ICON_HINT=/icon|lucide|phosphor|feather|font-?awesome|material-symbols|tabler|remixicon|boxicons|ionicons|bootstrap-icons/i;
+
+const round=(value,places=4)=>Number.parseFloat(Number(value).toFixed(places));
+const digest=sha256;
+
+// ---------------------------------------------------------------------------
+// The brand record and the grammar canon.
+// ---------------------------------------------------------------------------
+
+/** The grammar canon the host installs: authored YAML under `knowledge/grammars`, read directly. */
+export function defaultGrammarRoot(){
+  return path.join(skillRoot,'knowledge','grammars');
+}
+
+/**
+ * Reads `<tree>/brand/index.yaml` (or `<tree>/.starciwork/brand/index.yaml`, so a repository root is also a
+ * usable argument). A missing or wrong-kind record throws: that is a broken input, not a failed check, and
+ * reporting it as a check would make "no brand" look like a brand with nothing wrong.
+ */
+export function readBrandRecord(tree){
+  const root=path.resolve(tree);
+  const candidates=[path.join(root,'brand','index.yaml'),path.join(root,'.starciwork','brand','index.yaml')];
+  const file=candidates.find(candidate=>fs.existsSync(candidate)&&fs.lstatSync(candidate).isFile());
+  if(!file)throw new Error(`No brand record: expected ${candidates.map(candidate=>slash(path.relative(root,candidate))).join(' or ')}.`);
+  const source=readText(file);
+  const record=parseYaml(source);
+  // work/brand@1 is the one family modules/schemas/work-layout.yaml allows for the brand record.
+  if(record?.schema!=='work/brand@1'||record?.kind!=='brand')throw new Error('A brand record must be a work/brand@1 record of kind brand.');
+  if(!record.brand||typeof record.brand!=='object'||Array.isArray(record.brand))throw new Error('The brand record carries no brand specification.');
+  const declared=record.rev??record.revision??record.brand.rev;
+  return {file,dir:path.dirname(file),record,brand:record.brand,
+    rev:declared===undefined?digest(source).slice(0,12):String(declared),
+    revSource:declared===undefined?'content-digest':'declared',
+    family:typeof record.brand.identity?.family==='string'?record.brand.identity.family:null};
+}
+
+/** The token names one grammar family's DNA declares. `.yaml` authored, `.json` built - both are the canon. */
+function grammarTokenNames({family,grammarRoot=defaultGrammarRoot()}){
+  if(!family)return {file:null,names:[],error:'the brand declares no identity.family'};
+  if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(family))return {file:null,names:[],error:'the declared family is not a usable directory name'};
+  const candidates=['DNA.yaml','DNA.yml','DNA.json'].map(name=>path.join(grammarRoot,family,name));
+  const file=candidates.find(candidate=>fs.existsSync(candidate)&&fs.lstatSync(candidate).isFile());
+  if(!file)return {file:null,names:[],error:`the host carries no DNA snapshot for grammar family \`${family}\``};
+  try{
+    const text=readText(file);
+    const dna=path.extname(file).toLowerCase()==='.json'?JSON.parse(text):parseYaml(text);
+    const names=(Array.isArray(dna?.tokens)?dna.tokens:[]).map(token=>token?.name).filter(name=>typeof name==='string');
+    return {file,names,error:names.length?null:'the DNA snapshot declares no tokens'};
+  }catch(error){return {file,names:[],error:`unreadable DNA snapshot: ${String(error.message??error)}`};}
+}
+
+// ---------------------------------------------------------------------------
+// The seven checks. Each takes a plain context and returns one check result.
+// ---------------------------------------------------------------------------
+
+const check=(id,outcome,detail,evidence={})=>({id,outcome,detail,evidence});
+const brandTokens=brand=>objectList(brand?.color?.tokens).filter(token=>typeof token.token==='string');
+const byRole=(tokens,role)=>tokens.find(token=>token.role===role)??null;
+
+const STAGE_ALIASES=Object.freeze({decide:'decide','brand.decide':'decide',verify:'verify','review.verify':'verify'});
+function brandStage(value){
+  if(value===undefined||value===null||value==='')return 'decide';
+  const stage=STAGE_ALIASES[String(value)];
+  if(!stage)throw new Error(`Unknown brand check stage ${JSON.stringify(value)}: expected one of ${Object.keys(STAGE_ALIASES).join(', ')}.`);
+  return stage;
+}
+/** The statuses tokens-match-source accepts: the app source carries the colour, or (decide only) its reference file or its ruling does. */
+const TOKEN_PASS_STATUSES=Object.freeze(['match','planned-from-reference','planned-from-ruling']);
+const isPlannedToken=token=>token?.valueSource!==undefined&&token?.valueSource!==null;
+
+export const checkValueSource=options=>checkSource({findReceipt:findOwnerReceipt,...options});
+
+/**
+ * 1. The brand is bound to the source, not copied from it. Every colour token the brand declares must exist
+ * in a declared source file with the same colour, compared in OKLab so `#7547ff` and its oklch spelling are
+ * one colour and a near-miss is still a miss. A token the app has not written yet passes at the `decide`
+ * stage as `planned-from-reference` when its `valueSource` reference declares exactly its value; once a
+ * declared source carries the token the normal match applies, and at the `verify` stage a planned token
+ * still absent from every declared source is `planned-source-missing`.
+ */
+function checkTokensMatchSource({brand,sourceRoot,stage='decide',brandDir=null}){
+  const id='tokens-match-source';
+  const phase=brandStage(stage);
+  const tokens=brandTokens(brand);
+  const planned=tokens.filter(isPlannedToken);
+  const declared=objectList(brand?.sources).filter(source=>['css','tokens'].includes(source.kind));
+  // At verify a planned token must be in the app's own source; a check that could read no source is not a pass.
+  const unprovenAtVerify=(why,evidence)=>{if(phase!=='verify'||!planned.length){return null;}const suffix=planned.length===1?'':'s';return check(id,'fail',`${why} At the verify stage the planned token${suffix} ${planned.map(token=>token.token).join(', ')} must be declared by the app's own source.`,{...evidence,stage:phase,tokens:planned.map(token=>({token:token.token,expected:token.value??null,actual:null,status:'planned-source-missing'}))});};
+  if(!sourceRoot)return check(id,'skip','No --source repository root was given, so the brand\'s colour claims were not compared against shipped source.',{tokens:tokens.length,sources:declared.length,stage:phase});
+  if(!tokens.length)return check(id,'skip','The brand declares no colour tokens to bind.',{sourceRoot:slash(sourceRoot),stage:phase});
+  if(!declared.length){
+    const why='The brand names no source file of kind css or tokens, so nothing binds its colours.';
+    return unprovenAtVerify(why,{sourceRoot:slash(sourceRoot)})??check(id,'skip',why,{sourceRoot:slash(sourceRoot),tokens:tokens.length,stage:phase});
+  }
+  const sources=declared.map(source=>readSourceTokens(sourceRoot,source));
+  const readable=sources.filter(source=>source.lookup);
+  const files=sources.map(({lookup,...rest})=>rest);
+  const refused=files.filter(source=>source.staleGrammarDist);
+  if(refused.length)return check(id,'fail',`Refusing to bind the brand to a stale grammar build: ${refused.map(source=>source.error).join(' ')}`,
+    {sourceRoot:slash(sourceRoot),files,stage:phase});
+  if(!readable.length){
+    const why='Not one declared colour source could be read from this repository root, so no token was compared.';
+    return unprovenAtVerify(why,{sourceRoot:slash(sourceRoot),files})??check(id,'skip',why,{sourceRoot:slash(sourceRoot),files,stage:phase});
+  }
+  const findings=tokens.map(token=>{
+    const expected=parseColor(token.value);
+    const isPlanned=isPlannedToken(token);
+    // A planned token's reference render is never its app source, even when sources[] also lists that file.
+    const referencePath=isPlanned&&typeof token.valueSource?.path==='string'?slash(token.valueSource.path):null;
+    const found=lookupToken(referencePath?readable.filter(source=>source.path!==referencePath):readable,token.token);
+    if(!expected)return {token:token.token,expected:token.value??null,actual:found?.value??null,status:'unparseable-brand-value'};
+    if(!found){
+      if(!isPlanned)return {token:token.token,expected:token.value,actual:null,status:'absent'};
+      const {status,...reference}=checkValueSource({sourceRoot,token,brandDir});
+      if(phase==='verify')return {token:token.token,expected:token.value,actual:null,status:'planned-source-missing',
+        valueSource:{...reference,referenceStatus:status,why:'the app source does not declare this planned token at the verify stage'}};
+      return {token:token.token,expected:token.value,actual:null,status,valueSource:reference};
+    }
+    const actual=parseColor(found.value);
+    if(!actual)return {token:token.token,expected:token.value,actual:found.value,file:found.file,scope:found.scope,status:'unparseable-source-value'};
+    const delta=round(deltaEOk(expected,actual),3);
+    let status='differs';if(found.scope==='dark')status='only-in-dark-scope';else if(delta<=TOKEN_TOLERANCE)status='match';
+    return {token:token.token,expected:token.value,actual:found.value,sourceValue:found.declaredValue??found.value,resolvedFrom:found.resolvedFrom??null,expectedHex:expected.hex,actualHex:actual.hex,
+      file:found.file,selector:found.selector,scope:found.scope,deltaE:delta,...(isPlanned?{plannedTokenWritten:true}:{}),
+      status};
+  });
+  const bad=findings.filter(finding=>!TOKEN_PASS_STATUSES.includes(finding.status));
+  const fromReference=findings.filter(finding=>finding.status==='planned-from-reference');
+  const fromRuling=findings.filter(finding=>finding.status==='planned-from-ruling');
+  const evidence={sourceRoot:slash(sourceRoot),tolerance:TOKEN_TOLERANCE,stage:phase,files,tokens:findings};
+  const planNote=fromReference.map(finding=>`${finding.token} (${finding.valueSource.path} ${finding.valueSource.token})`).join(', ');
+  const rulingNote=fromRuling.map(finding=>`${finding.token} (ruling ${finding.valueSource.ruling}, ${finding.valueSource.answeredBy})`).join(', ');
+  const rulingText=fromRuling.length?`; ${fromRuling.length} planned from the ledger's recorded ruling and owed to ${OWED_TO} as a declaration in the app theme: ${rulingNote}`:'';
+  const passed=fromReference.length||fromRuling.length
+    ?`All ${findings.length} brand colour tokens are bound: ${findings.length-fromReference.length-fromRuling.length} present in the shipped source with the declared colour, ${fromReference.length} planned from their reference render until the app source declares them: ${planNote}${rulingText}.`
+    :`All ${findings.length} brand colour tokens are present in the shipped source with the declared colour.`;
+  return bad.length
+    ?check(id,'fail',`${bad.length} of ${findings.length} brand colour tokens do not match the shipped source: ${bad.map(finding=>finding.token+' ('+finding.status+(finding.valueSource?.why?': '+finding.valueSource.why:'')+')').join(', ')}.`,evidence)
+    :check(id,'pass',passed,evidence);
+}
+
+/**
+ * An owner-accepted contrast exception is bound to the ratio measured when the owner accepted it. Two
+ * decimals of WCAG ratio move by about 0.01 between a hex and its oklch spelling; a twentieth is below any
+ * visible change and far above that rounding, so a colour that moved after the answer is a new question.
+ */
+const CONTRAST_EXCEPTION_TOLERANCE=0.05;
+/** The receipt serve-ask writes when an ask is answered (scripts/kernel/ask-server.mjs). */
+export const OWNER_ANSWER_SCHEMA='starci/ask-answer@1';
+const OWNER_ANSWERER='owner';
+
+/** `<work>/brand` -> the Work root and the repository root the record's receipt paths are relative to. */
+function workRootsOf(brandDir){
+  if(!brandDir)return null;
+  const work=path.dirname(path.resolve(brandDir));
+  return {work,repoRoot:path.basename(work)==='.starciwork'?path.dirname(work):work};
+}
+
+/** The receipts answering `dispatchId` in the project ledger of `repoRoot`, newest first; [] when it cannot be read. */
+function ledgerReceiptsOf(repoRoot,dispatchId){
+  let db=null;
+  try{db=openLedgerReader(ledgerFileFor(repoRoot));return receiptsAnswering(db,dispatchId);}
+  catch{return [];}
+  finally{try{db?.close();}catch{}}
+}
+
+/**
+ * The owner's answer an exception cites, read from its starci/ask-answer@1 receipt: the named `receipt`
+ * (`blob:<sha256>` - the answer serve-ask stored, scripts/machine/ask-receipts.mjs - or a path inside the
+ * repository), else the newest receipt answering `acceptedBy` in the project ledger. Only an answer the owner
+ * gave counts: an auto-accepted recommendation is not the owner accepting a sub-AA pair.
+ */
+export function findOwnerReceipt({acceptedBy,receipt=null,brandDir=null,answerer=OWNER_ANSWERER,receiptsOf=ledgerReceiptsOf}){
+  const roots=workRootsOf(brandDir);
+  if(!roots)return {ok:false,why:'no Work tree was given, so no owner answer receipt could be read'};
+  const judge=(file,answer)=>{
+    const named=receiptRefOf(file,roots.repoRoot);
+    if(answer?.schema!==OWNER_ANSWER_SCHEMA)return {ok:false,why:`${named} is not a ${OWNER_ANSWER_SCHEMA} receipt`};
+    if(answer.dispatchId!==acceptedBy)return {ok:false,why:`${named} answers ${answer.dispatchId??'(no dispatch)'}, not ${acceptedBy}`};
+    if(answer.answeredBy!==answerer)return {ok:false,why:`${acceptedBy} was answered by ${answer.answeredBy??'(nobody)'}, not ${answerer===OWNER_ANSWERER?'the owner':answerer}`};
+    return {ok:true,provisional:answer.provisional===true,gatesOk:answer.acceptance?.receipt?.ok===true,file:named,dispatchId:answer.dispatchId,answeredBy:answer.answeredBy,at:answer.at??null,option:answer.option??null,optionIndex:answer.optionIndex??null,note:answer.note??null,picks:answer.picks??null,review:answer.review??null};
+  };
+  if(receipt!==null&&receipt!==undefined){
+    if(typeof receipt!=='string'||!receipt.trim())return {ok:false,why:'receipt must be blob:<sha256> or the path of the owner answer receipt'};
+    const stored=receipt.trim().startsWith('blob:')?receiptFileOf(receipt):null;
+    const file=stored??[path.resolve(roots.repoRoot,receipt),path.resolve(roots.work,receipt)]
+      .filter(candidate=>inside(roots.repoRoot,candidate))
+      .find(candidate=>fs.existsSync(candidate)&&fs.lstatSync(candidate).isFile());
+    if(!file)return {ok:false,why:`the receipt ${slash(receipt)} is not a stored answer and is not a file inside this repository`};
+    return judge(file,readJson(file));
+  }
+  const found=receiptsOf(roots.repoRoot,acceptedBy);
+  if(found.length)return judge(found[0].file,found[0].receipt);
+  return {ok:false,why:`no receipt answers ${acceptedBy} in the project ledger`};
+}
+
+/** Why an exception entry is refused (its two tokens, pair, ratio, reason, answer and measured ratio checked in order), or null. */
+function exceptionRefusal(fields,{foregroundToken,backgroundToken,measured,seen}){
+  if(!foregroundToken)return `foreground ${JSON.stringify(fields.foreground??null)} is not a colour token this brand declares`;
+  if(!backgroundToken)return `background ${JSON.stringify(fields.background??null)} is not a colour token this brand declares`;
+  if(fields.foreground===fields.background)return 'a token is not a contrast pair with itself';
+  const key=`${fields.foreground}\u0000${fields.background}`;
+  if(seen.has(key))return 'a second exception for the same pair; one pair carries one owner answer';
+  seen.add(key);
+  if(!(typeof fields.ratio==='number'&&Number.isFinite(fields.ratio)&&fields.ratio>=1))return 'ratio must be the contrast ratio the owner accepted, a number of at least 1';
+  if(!trimmedText(fields.reason))return 'reason must say why the owner accepted this pair below the floor';
+  if(!trimmedText(fields.acceptedBy))return 'acceptedBy names no owner answer; an exception without an owner receipt is refused';
+  if(measured===null)return 'a token of the pair is not a colour this runtime can parse, so the pair cannot be measured';
+  if(Math.abs(measured-fields.ratio)>CONTRAST_EXCEPTION_TOLERANCE)
+    return `the pair measures ${measured}:1, not the ${fields.ratio}:1 the owner accepted (tolerance ${CONTRAST_EXCEPTION_TOLERANCE}); a changed colour needs a new owner answer`;
+  return null;
+}
+
+/** One `contrastExceptions[]` entry judged: `valid` with its owner receipt, or `refused` with the reason. */
+function judgeContrastException(entry,index,{byName,seen,brandDir}){
+  const fields=entry&&typeof entry==='object'&&!Array.isArray(entry)?entry:{};
+  const foregroundToken=byName.get(fields.foreground)??null,backgroundToken=byName.get(fields.background)??null;
+  const fgColor=foregroundToken?parseColor(foregroundToken.value):null,bgColor=backgroundToken?parseColor(backgroundToken.value):null;
+  const measured=fgColor&&bgColor?round(contrastRatio(bgColor,fgColor),2):null;
+  const base={index,foreground:fields.foreground??null,background:fields.background??null,ratio:fields.ratio??null,measured,
+    reason:fields.reason??null,acceptedBy:fields.acceptedBy??null,receipt:fields.receipt??null,fgColor,bgColor};
+  const refuse=why=>({...base,status:'refused',why});
+  const refusal=exceptionRefusal(fields,{foregroundToken,backgroundToken,measured,seen});
+  if(refusal!==null)return refuse(refusal);
+  const owner=findOwnerReceipt({acceptedBy:trimmedText(fields.acceptedBy),receipt:fields.receipt??null,brandDir});
+  if(!owner.ok)return refuse(`no owner receipt: ${owner.why}`);
+  return {...base,acceptedBy:trimmedText(fields.acceptedBy),receipt:owner.file,answeredBy:owner.answeredBy,answeredAt:owner.at,status:'valid'};
+}
+
+/**
+ * `color.policy.contrastExceptions[]`: each entry names one pair by its two brand token names, the ratio the
+ * owner accepted, why, and the owner answer that accepted it. An entry is `valid` only when both tokens are
+ * declared, the pair still measures within CONTRAST_EXCEPTION_TOLERANCE of the recorded ratio, and the
+ * owner's receipt for `acceptedBy` is on disk; anything else is `refused` with the reason.
+ */
+function readContrastExceptions({brand,tokens,brandDir}){
+  const raw=brand?.color?.policy?.contrastExceptions;
+  if(raw===undefined||raw===null)return [];
+  if(!Array.isArray(raw))return [{index:0,status:'refused',why:'color.policy.contrastExceptions must be a list of exceptions'}];
+  const context={byName:new Map(tokens.map(token=>[token.token,token])),seen:new Set(),brandDir};
+  return raw.map((entry,index)=>judgeContrastException(entry,index,context));
+}
+
+/** The declared token a fill's foreground value is: `<token>-foreground` or the `<role>-foreground` role. */
+function foregroundNameOf(tokens,byName,token,colour){
+  const names=[`${token.token}-foreground`,...tokens.filter(other=>token.role&&other.role===`${token.role}-foreground`).map(other=>other.token)];
+  return names.find(name=>{const value=byName.has(name)?parseColor(byName.get(name).value):null;return value&&deltaEOk(value,colour)<=TOKEN_TOLERANCE;})??null;
+}
+
+/** A bare status glyph or title takes the soft foreground; it must read as a non-text mark on every ground the brand declares. */
+function statusGlyphPairs(token,tokens,foreground,softMinimum){
+  const pairs=[];
+  for(const ground of tokens.filter(other=>other.role==='surface'||other.role==='background'||other.role==='canvas')){
+    const groundColor=parseColor(ground.value);
+    if(!groundColor)continue;
+    const glyphRatio=round(contrastRatio(groundColor,foreground),2);
+    pairs.push({kind:'status-glyph',token:token.token,against:ground.token,ratio:glyphRatio,minimum:softMinimum,outcome:glyphRatio>=softMinimum?'pass':'fail'});
+  }
+  return pairs;
+}
+
+/** The pairs one token with a declared foreground puts under test: its text or soft pair and, for a soft tone, its glyph on each ground. */
+function tokenContrastPairs(token,tokens,byName,textMinimum,softMinimum){
+  const soft=softToneOf(token)!==null;
+  const minimum=soft?softMinimum:textMinimum;
+  const background=parseColor(token.value),foreground=parseColor(token.foreground);
+  if(!background||!foreground)return [{kind:'text',token:token.token,background:token.value??null,foreground:token.foreground,minimum,outcome:'unparseable'}];
+  const ratio=round(contrastRatio(background,foreground),2);
+  const pairs=[{kind:soft?'soft':'text',token:token.token,foregroundToken:foregroundNameOf(tokens,byName,token,foreground),background:token.value,foreground:token.foreground,ratio,minimum,
+    outcome:ratio>=minimum?'pass':'fail',_bg:token.token,_fg:foreground}];
+  if(soft)pairs.push(...statusGlyphPairs(token,tokens,foreground,softMinimum));
+  return pairs;
+}
+
+/** The primary against a declared surface: a non-text indicator, or null when either token is missing. */
+function primaryOnSurfacePair(tokens){
+  const primary=byRole(tokens,'primary'),surface=byRole(tokens,'surface');
+  if(!primary||!surface)return null;
+  const one=parseColor(primary.value),two=parseColor(surface.value);
+  if(!one||!two)return {kind:'non-text',token:primary.token,against:surface.token,minimum:NON_TEXT_MIN_CONTRAST,outcome:'unparseable'};
+  const ratio=round(contrastRatio(one,two),2);
+  return {kind:'non-text',token:primary.token,against:surface.token,ratio,minimum:NON_TEXT_MIN_CONTRAST,outcome:ratio>=NON_TEXT_MIN_CONTRAST?'pass':'fail',
+    _bg:surface.token,_fg:one};
+}
+
+const exceptionCovers=(exception,pair)=>Boolean(pair._fg&&exception.fgColor&&exception.background===pair._bg&&deltaEOk(exception.fgColor,pair._fg)<=TOKEN_TOLERANCE);
+
+/** An exception pair no token declares as a fill is measured from its two tokens, so an accepted pair is never unmeasured. */
+function addExceptionPairs(pairs,exceptions,byName,minimum){
+  for(const exception of exceptions){
+    if(!exception.fgColor||!exception.bgColor||pairs.some(pair=>exceptionCovers(exception,pair)))continue;
+    pairs.push({kind:'text',token:exception.background,foregroundToken:exception.foreground,declaredBy:'contrastExceptions',
+      background:byName.get(exception.background).value,foreground:byName.get(exception.foreground).value,ratio:exception.measured,minimum,
+      outcome:exception.measured>=minimum?'pass':'fail',_bg:exception.background,_fg:exception.fgColor});
+  }
+}
+
+/** A valid exception turns the failing pair it covers into a pass; returns the pairs it lifted. */
+function applyExceptions(pairs,exceptions){
+  const applied=[];
+  for(const pair of pairs){
+    const exception=exceptions.find(entry=>entry.status==='valid'&&exceptionCovers(entry,pair));
+    if(!exception)continue;
+    if(pair.outcome==='fail'){
+      pair.outcome='pass';
+      pair.belowFloor=true;
+      pair.exception={foreground:exception.foreground,background:exception.background,acceptedBy:exception.acceptedBy,ratio:exception.ratio,receipt:exception.receipt};
+      exception.status='applied';
+      applied.push(pair);
+    } else if(exception.status==='valid')exception.status='unneeded';
+  }
+  return applied;
+}
+
+const contrastPairName=pair=>pair.declaredBy?pair.foregroundToken+' on '+pair.token:pair.token+(pair.against&&' on '+pair.against||'');
+
+/** The failure sentences of a contrast check: pairs below their floor, then refused exceptions. */
+function contrastFailures(pairs,bad,refused){
+  return [
+    ...(bad.length?[`${bad.length} of ${pairs.length} declared colour pairs miss their contrast floor: ${bad.map(pair=>contrastPairName(pair)+' '+(pair.ratio??'(unparseable)')+':1 < '+pair.minimum+':1').join(', ')}.`]:[]),
+    ...(refused.length?[`${refused.length} contrast exception${refused.length===1?' is':'s are'} refused: ${refused.map(entry=>(entry.foreground??'?')+' on '+(entry.background??'?')+' ('+entry.why+')').join('; ')}.`]:[])];
+}
+
+/**
+ * 2. A colour pair the brand itself declares must be legible. Text pairs are held to `policy.minContrast`
+ * (WCAG AA, 4.5 by default); the primary against a declared surface is a non-text indicator and needs 3:1.
+ * A HeroUI status soft pair (a token with role `<tone>-soft` and its `foreground`) and that foreground as a
+ * bare glyph on each declared surface/background/canvas are held to `policy.softMinContrast` (3 by default),
+ * so a status tone is never darkened to reach 4.5 as a bare glyph.
+ * A pair below its floor passes only through `policy.contrastExceptions` - one owner-accepted pair, named by
+ * its exact tokens and bound to its measured ratio and the owner's receipt; every other pair still fails and
+ * a refused exception fails the check. An exception pair no token declares as a fill (muted text on a
+ * surface, link ink on the canvas) is measured from its two tokens, so an accepted pair is never unmeasured.
+ */
+function checkContrastAa({brand,brandDir=null}){
+  const id='contrast-aa';
+  const tokens=brandTokens(brand);
+  const minimum=Number.isFinite(brand?.color?.policy?.minContrast)?Number(brand.color.policy.minContrast):DEFAULT_MIN_CONTRAST;
+  const softMinimum=Number.isFinite(brand?.color?.policy?.softMinContrast)?Number(brand.color.policy.softMinContrast):SOFT_MIN_CONTRAST;
+  const byName=new Map(tokens.map(token=>[token.token,token]));
+  const pairs=[];
+  for(const token of tokens){
+    if(token.foreground===undefined||token.foreground===null)continue;
+    pairs.push(...tokenContrastPairs(token,tokens,byName,minimum,softMinimum));
+  }
+  const nonText=primaryOnSurfacePair(tokens);
+  if(nonText)pairs.push(nonText);
+  const exceptions=readContrastExceptions({brand,tokens,brandDir});
+  addExceptionPairs(pairs,exceptions,byName,minimum);
+  const applied=applyExceptions(pairs,exceptions);
+  for(const pair of pairs){delete pair._bg;delete pair._fg;}
+  const refused=exceptions.filter(exception=>exception.status==='refused');
+  const reported=exceptions.map(({fgColor,bgColor,...rest})=>rest);
+  if(!pairs.length&&!refused.length)return check(id,'skip','No brand token declares a foreground and no surface is declared, so no contrast pair exists to measure.',{minimum});
+  const bad=pairs.filter(pair=>pair.outcome!=='pass');
+  const evidence={minimum,nonTextMinimum:NON_TEXT_MIN_CONTRAST,softMinimum,exceptionTolerance:CONTRAST_EXCEPTION_TOLERANCE,pairs,
+    ...(exceptions.length?{exceptions:reported}:{})};
+  const failures=contrastFailures(pairs,bad,refused);
+  const accepted=applied.length?` ${applied.length} of them below it by an owner-accepted exception: ${applied.map(pair=>pair.exception.foreground+' on '+pair.exception.background+' '+pair.ratio+':1 ('+pair.exception.acceptedBy+')').join(', ')}.`:'';
+  return failures.length
+    ?check(id,'fail',failures.join(' '),evidence)
+    :check(id,'pass',`All ${pairs.length} declared colour pairs meet their contrast floor (text ${minimum}:1, non-text ${NON_TEXT_MIN_CONTRAST}:1, status soft pair and glyph ${softMinimum}:1).${accepted}`,evidence);
+}
+
+/**
+ * 3. Destructive must not look like primary. The owner may overrule this - some brands are one hue - but
+ * then the affordance has to carry the meaning, and the check says so instead of going quiet.
+ */
+function checkPrimaryDangerDistinct({brand}){
+  const id='primary-danger-distinct';
+  const tokens=brandTokens(brand);
+  const primary=byRole(tokens,'primary'),danger=byRole(tokens,'danger');
+  const allowed=brand?.color?.policy?.dangerMayMatchPrimary===true;
+  if(!primary||!danger){let absent='danger';if(!primary&&!danger){absent='primary and no danger';}else if(!primary){absent='primary';}
+  return check(id,'skip',`The brand declares no ${absent} colour role, so the two cannot be compared.`,{threshold:MIN_PRIMARY_DANGER_DELTA,dangerMayMatchPrimary:allowed});}
+  const one=parseColor(primary.value),two=parseColor(danger.value);
+  const evidence={primary:{token:primary.token,value:primary.value??null},danger:{token:danger.token,value:danger.value??null},
+    threshold:MIN_PRIMARY_DANGER_DELTA,scale:'OKLab delta-E x100',dangerMayMatchPrimary:allowed};
+  if(!one||!two){return check(id,'fail','The primary or danger colour is not a colour this runtime can parse, so their distance is unknown.',evidence);}
+  const delta=round(deltaEOk(one,two),2);
+  const measured={...evidence,deltaE:delta};
+  if(delta>=MIN_PRIMARY_DANGER_DELTA)return check(id,'pass',`Primary and danger are ${delta} apart in OKLab (floor ${MIN_PRIMARY_DANGER_DELTA}).`,measured);
+  if(allowed)return check(id,'pass',`Primary and danger are only ${delta} apart in OKLab (floor ${MIN_PRIMARY_DANGER_DELTA}), but the owner allows danger to share the primary hue; destructive actions must carry an icon and a verb.`,
+    {...measured,note:'the owner allows danger to share the primary hue; destructive actions must carry an icon and a verb'});
+  return check(id,'fail',`Primary and danger are only ${delta} apart in OKLab (floor ${MIN_PRIMARY_DANGER_DELTA}), and the brand does not allow danger to share the primary hue.`,measured);
+}
+
+/**
+ * 4. A mascot that is named but absent is a mascot nobody can draw with. Bytes are hashed: a declared
+ * sha256 is verified, an undeclared one is reported so the owner can pin the asset they reviewed.
+ */
+function checkMascotAssetsPresent({brand,tree,brandDir}){
+  const id='mascot-assets-present';
+  const assets=objectList(brand?.mascot?.assets).filter(asset=>typeof asset.path==='string'&&asset.path);
+  const declared=objectList(brand?.mascot?.assets);
+  if(!declared.length)return check(id,'skip','The brand declares no mascot asset.',{tree:slash(tree)});
+  const root=path.resolve(tree);
+  const findings=declared.map(asset=>{
+    const relative=slash(asset.path??'');
+    const entry={path:relative,purpose:asset.purpose??null,declaredSha256:asset.sha256??null};
+    if(!relative||path.isAbsolute(relative)||relative.split('/').includes('..'))return {...entry,exists:false,status:'escapes-tree'};
+    const workRoot=path.dirname(brandDir);
+    const candidates=[path.resolve(brandDir,relative),path.resolve(workRoot,relative),path.resolve(root,relative)];
+    const file=candidates.find(candidate=>fs.existsSync(candidate)&&fs.lstatSync(candidate).isFile());
+    if(!file)return {...entry,exists:false,status:'absent',searched:candidates.map(candidate=>slash(path.relative(root,candidate)))};
+    const resolved=slash(path.relative(root,file));
+    const extension=path.extname(file).toLowerCase();
+    const computed=digest(fs.readFileSync(file));
+    const base={...entry,exists:true,resolved,extension,computedSha256:computed,bytes:fs.statSync(file).size};
+    if(!ASSET_EXTENSIONS.includes(extension))return {...base,status:'unsupported-format'};
+    if(asset.sha256&&String(asset.sha256).toLowerCase()!==computed)return {...base,status:'sha256-mismatch'};
+    return {...base,status:asset.sha256?'verified':'present-unpinned'};
+  });
+  const bad=findings.filter(finding=>!['verified','present-unpinned'].includes(finding.status));
+  const evidence={tree:slash(root),allowedFormats:ASSET_EXTENSIONS,assets:findings};
+  if(bad.length)return check(id,'fail',`${bad.length} of ${findings.length} declared mascot assets are not usable: ${bad.map(finding=>finding.path+' ('+finding.status+')').join(', ')}.`,evidence);
+  const unpinned=findings.filter(finding=>finding.status==='present-unpinned').length;
+  return check(id,'pass',`All ${findings.length} declared mascot assets exist in a supported format${unpinned?'; '+unpinned+' carry no declared sha256, so the computed hash is reported instead':' and match their declared sha256'}.`,
+    {...evidence,unpinned,assetsChecked:assets.length});
+}
+
+/** Every module specifier this file imports, with the line it sits on. */
+export function importSpecifiers(text){
+  const source=String(text??'');
+  const found=new Map();
+  const patterns=[/(?<![\w$.])(?:import|export)\b[\s\S]{0,400}?\bfrom\s*['"]([^'"\n]+)['"]/g,
+    /(?<![\w$.])(?:import|require)\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,
+    /(?<![\w$.])import\s*['"]([^'"\n]+)['"]/g];
+  for(const pattern of patterns){
+    for(const match of source.matchAll(pattern)){
+      const at=match.index+match[0].lastIndexOf(match[1]);
+      const line=source.slice(0,at).split('\n').length;
+      found.set(`${line}:${match[1]}`,{specifier:match[1],line});
+    }
+  }
+  return [...found.values()].sort((first,second)=>first.line-second.line||first.specifier.localeCompare(second.specifier));
+}
+
+const covers=(entry,specifier)=>sameOrUnder(specifier,entry);
+
+const isScannableSource=(entry,file)=>entry.isFile()&&/\.tsx?$/i.test(entry.name)&&!/\.d\.ts$/i.test(entry.name)&&fs.statSync(file).size<=SCAN_BYTES_LIMIT;
+
+/** Collects the TypeScript sources under `directory` into `files`, up to SCAN_FILE_LIMIT, skipping dot and build directories. */
+function collectSourceFiles(directory,files){
+  if(files.length>=SCAN_FILE_LIMIT)return;
+  let entries;
+  try{entries=fs.readdirSync(directory,{withFileTypes:true});}catch{return;}
+  for(const entry of entries){
+    if(files.length>=SCAN_FILE_LIMIT)return;
+    if(entry.isSymbolicLink())continue;
+    const file=path.join(directory,entry.name);
+    if(entry.isDirectory()){if(!SCAN_EXCLUDED.has(entry.name)&&!entry.name.startsWith('.')){collectSourceFiles(file,files);}continue;}
+    if(isScannableSource(entry,file))files.push(file);
+  }
+}
+
+/** The icon imports of `files` the brand does not allow: [{file, line, specifier, reason}]. */
+function iconOffendersOf(files,root,allowed,forbidden){
+  const offenders=[];
+  for(const file of files){
+    let text;
+    try{text=fs.readFileSync(file,'utf8');}catch{continue;}
+    for(const {specifier,line} of importSpecifiers(text)){
+      if(specifier.startsWith('.')||specifier.startsWith('/')||specifier.startsWith('~'))continue;
+      const banned=forbidden.find(entry=>covers(entry,specifier)||specifier.includes(entry));
+      const permitted=allowed.some(entry=>covers(entry,specifier));
+      if(banned)offenders.push({file:slash(path.relative(root,file)),line,specifier,reason:`forbidden by the brand (${banned})`});
+      else if(!permitted&&ICON_HINT.test(specifier))offenders.push({file:slash(path.relative(root,file)),line,specifier,reason:'an icon package outside iconography.set and custom'});
+    }
+  }
+  return offenders;
+}
+
+/**
+ * 5. The glyph set is closed. A forbidden package is an offender wherever it appears; any other icon-looking
+ * package is an offender unless `iconography.set` or `custom` names it. Relative imports are the product's
+ * own files and are never judged here.
+ */
+function checkIconSetOnly({brand,sourceRoot}){
+  const id='icon-set-only';
+  const iconography=brand?.iconography??{};
+  const allowed=[...(Array.isArray(iconography.set)?iconography.set:[]),...(Array.isArray(iconography.custom)?iconography.custom:[])].filter(entry=>typeof entry==='string'&&entry);
+  const forbidden=(Array.isArray(iconography.forbidden)?iconography.forbidden:[]).filter(entry=>typeof entry==='string'&&entry);
+  if(!sourceRoot)return check(id,'skip','No --source repository root was given, so the frontend\'s icon imports were not scanned.',{allowed,forbidden});
+  if(!allowed.length&&!forbidden.length)return check(id,'skip','The brand declares no iconography set and nothing forbidden, so no icon law exists to enforce.',{sourceRoot:slash(sourceRoot)});
+  const root=path.resolve(sourceRoot);
+  const files=[];
+  collectSourceFiles(root,files);
+  const offenders=iconOffendersOf(files,root,allowed,forbidden);
+  const evidence={sourceRoot:slash(root),allowed,forbidden,filesScanned:files.length,
+    offenderCount:offenders.length,offenders:offenders.slice(0,OFFENDER_CAP),capped:offenders.length>OFFENDER_CAP};
+  if(!files.length)return check(id,'skip','No TypeScript source file was found under the given repository root, so no icon import was scanned.',evidence);
+  return offenders.length
+    ?check(id,'fail',`${offenders.length} icon imports sit outside the brand's glyph set across ${files.length} scanned files.`,evidence)
+    :check(id,'pass',`Every icon import across ${files.length} scanned files comes from the brand's declared glyph set.`,evidence);
+}
+
+/**
+ * 6. A brand overrides real tokens; it never invents names. A token name the grammar family's DNA does not
+ * declare would style nothing, so the record would read as applied while the product looked untouched.
+ */
+function checkTokensInGrammar({brand,family,grammarRoot}){
+  const id='tokens-in-grammar';
+  const tokens=brandTokens(brand);
+  const canon=grammarTokenNames({family,grammarRoot});
+  const evidence={family:family??null,dna:canon.file?slash(canon.file):null,declaredInDna:canon.names.length,tokens:tokens.length};
+  if(!tokens.length)return check(id,'skip','The brand declares no colour token to look up in the grammar canon.',evidence);
+  if(!canon.names.length)return check(id,'skip',`The grammar canon could not be read (${canon.error}), so no token name was verified against it.`,evidence);
+  const names=new Set(canon.names);
+  const missing=tokens.map(token=>token.token).filter(token=>!names.has(token));
+  return missing.length
+    ?check(id,'fail',`${missing.length} of ${tokens.length} brand tokens are not token names the \`${family}\` grammar declares: ${missing.join(', ')}.`,{...evidence,missing})
+    :check(id,'pass',`All ${tokens.length} brand tokens are token names the \`${family}\` grammar declares.`,{...evidence,missing:[]});
+}
+
+// ---------------------------------------------------------------------------
+// brand.direction: the composition taste, accepted by the owner one archetype at a time.
+// ---------------------------------------------------------------------------
+
+/** The page archetypes a direction settles (work/brand@1 $defs.direction.archetypes). */
+export const DIRECTION_ARCHETYPES=Object.freeze(['dashboard','list','detail','form','wizard','empty']);
+const DIRECTION_STATUSES=Object.freeze(['proposed','accepted']);
+/** The owner ask that accepts a direction archetype (scripts/work/brand-direction.mjs question), and its receipt review. */
+export const DIRECTION_REVIEW_KIND='brand-direction-review';
+export const DIRECTION_REVIEW_SCHEMA='starci/brand-direction-review@1';
+/** The ask's options: 0 accepts, 1 asks for a revision. */
+export const DIRECTION_DECISIONS=Object.freeze(['accept','revise']);
+const DIRECTION_ACCEPT_OPTION=0;
+/** The review a draw-review receipt carries (scripts/work/draw-review.mjs DRAW_REVIEW_SCHEMA): a golden's owner accept. */
+const DRAW_REVIEW_RECEIPT_SCHEMA='starci/draw-review@1';
+const LEARNED_STATUSES=Object.freeze(['proposed','accepted']);
+const ARCHETYPE_FIELDS=['regionOrder','grid1184','grid390','emphasis','primaryActionPlacement','never','whenNotToUse'];
+
+/** The component names one grammar family's DNA renders (`renderers[].component`). */
+export function grammarComponentNames({family,grammarRoot=defaultGrammarRoot()}){
+  if(!family)return {file:null,names:[],error:'the brand declares no identity.family'};
+  if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(family))return {file:null,names:[],error:'the declared family is not a usable directory name'};
+  const file=['DNA.yaml','DNA.yml','DNA.json'].map(name=>path.join(grammarRoot,family,name)).find(candidate=>fs.existsSync(candidate)&&fs.lstatSync(candidate).isFile());
+  if(!file)return {file:null,names:[],error:`the host carries no DNA snapshot for grammar family \`${family}\``};
+  try{
+    const text=readText(file);
+    const dna=path.extname(file).toLowerCase()==='.json'?JSON.parse(text):parseYaml(text);
+    const names=objectList(dna?.renderers).map(renderer=>renderer.component).filter(name=>typeof name==='string');
+    return {file,names,error:names.length?null:'the DNA snapshot declares no renderers'};
+  }catch(error){return {file,names:[],error:`unreadable DNA snapshot: ${String(error.message??error)}`};}
+}
+
+/** The accept of a golden by the owner's draw-review receipt: the very parts the golden holds, option accept. */
+function judgeDrawReviewAcceptance(receipt,review,golden){
+  const seen=new Set(objectList(review.parts).map(entry=>entry?.sha256).filter(Boolean));
+  const unseen=golden.filter(entry=>!seen.has(entry.sha256));
+  if(!golden.length||unseen.length)return {ok:false,why:`golden ${unseen.map(entry=>entry.png).join(', ')||'(none)'} is not a drawing the owner accepted in ${receipt.file}`};
+  if(receipt.optionIndex!==DIRECTION_ACCEPT_OPTION)return {ok:false,why:`${receipt.file} chose option ${receipt.optionIndex}, not accept`};
+  return {ok:true,receipt:receipt.file};
+}
+
+/** Why a direction review receipt does not back the archetype (schema, archetype, golden bytes), or null. */
+function directionReviewRefusal(receipt,review,archetype,golden){
+  if(review.schema!==DIRECTION_REVIEW_SCHEMA)return {ok:false,why:`${receipt.file} answers a ${review.schema??'non-direction'} review, not a ${DIRECTION_REVIEW_SCHEMA}`};
+  if(archetype&&review.archetype!==archetype)return {ok:false,why:`${receipt.file} reviews archetype ${review.archetype??'(none)'}, not ${archetype}`};
+  const seen=new Set(objectList(review.golden).map(entry=>entry.sha256));
+  const unseen=golden.filter(entry=>!seen.has(entry.sha256));
+  if(archetype&&unseen.length)return {ok:false,why:`golden ${unseen.map(entry=>entry.png).join(', ')} changed after the owner reviewed it`};
+  return null;
+}
+
+/** Whether an acceptance block is the owner's answer to the direction rev it names: {ok, why?, receipt?}. */
+function judgeAcceptance({acceptance,rev,brandDir,archetype=null,golden=[]}){
+  if(!acceptance||typeof acceptance!=='object')return {ok:false,why:'no acceptance names the owner answer'};
+  if(typeof acceptance.acceptedBy!=='string'||!acceptance.acceptedBy)return {ok:false,why:'acceptance.acceptedBy names no ask'};
+  if(acceptance.rev!==rev)return {ok:false,why:`accepted at direction rev ${acceptance.rev ?? '(none)'}, the direction is rev ${rev} - the owner has not seen this revision`};
+  const receipt=findOwnerReceipt({acceptedBy:acceptance.acceptedBy,receipt:acceptance.receipt??null,brandDir});
+  if(!receipt.ok)return {ok:false,why:receipt.why};
+  const review=receipt.review;
+  const reviewed=review&&typeof review==='object';
+  // An owner-accepted drawing promoted to the archetype's golden (draw-feedback.mjs, brand-direction.mjs promoteGolden):
+  // the owner's draw-review accept of the very parts the golden holds accepts the archetype.
+  if(archetype&&reviewed&&review.schema===DRAW_REVIEW_RECEIPT_SCHEMA)return judgeDrawReviewAcceptance(receipt,review,golden);
+  const refusal=reviewed?directionReviewRefusal(receipt,review,archetype,golden):null;
+  if(refusal)return refusal;
+  if(receipt.optionIndex!==null&&receipt.optionIndex!==DIRECTION_ACCEPT_OPTION)return {ok:false,why:`${receipt.file} chose option ${receipt.optionIndex}, not accept`};
+  return {ok:true,receipt:receipt.file};
+}
+
+/** Autopilot's provisional accept (scripts/kernel/autopilot-run.mjs; owner ruling 2026-09-28 autopilot-run-to-finish). */
+const AUTOPILOT_ANSWERER='autopilot';
+/**
+ * Whether an archetype's `provisional` block is backed by an autopilot receipt for the rev it names, with passing gate
+ * evidence, reviewing this archetype and the golden bytes on disk now: {ok, why?, receipt?}. Never an owner acceptance.
+ */
+function judgeProvisional({provisional,rev,brandDir,archetype,golden=[]}){
+  if(!provisional||typeof provisional!=='object')return {ok:false,why:'no provisional block'};
+  if(provisional.by!==AUTOPILOT_ANSWERER)return {ok:false,why:`provisional.by is ${provisional.by??'(none)'}, not autopilot`};
+  if(provisional.rev!==rev)return {ok:false,why:`provisional at direction rev ${provisional.rev??'(none)'}, the direction is rev ${rev}`};
+  if(typeof provisional.acceptedBy!=='string'||!provisional.acceptedBy)return {ok:false,why:'provisional.acceptedBy names no ask'};
+  const receipt=findOwnerReceipt({acceptedBy:provisional.acceptedBy,receipt:provisional.receipt??null,brandDir,answerer:AUTOPILOT_ANSWERER});
+  if(!receipt.ok)return {ok:false,why:receipt.why};
+  if(!receipt.provisional||!receipt.gatesOk)return {ok:false,why:`${receipt.file} is not a provisional autopilot answer with passing gates`};
+  if(receipt.optionIndex!==DIRECTION_ACCEPT_OPTION)return {ok:false,why:`${receipt.file} chose option ${receipt.optionIndex}, not accept`};
+  const review=receipt.review;
+  if(review?.schema!==DIRECTION_REVIEW_SCHEMA||review.archetype!==archetype)return {ok:false,why:`${receipt.file} does not review archetype ${archetype}`};
+  const seen=new Set(objectList(review.golden).map(entry=>entry.sha256));
+  const unseen=golden.filter(entry=>!seen.has(entry.sha256));
+  if(!golden.length||unseen.length)return {ok:false,why:`golden ${unseen.map(entry=>entry.png).join(', ')||'(none)'} changed after autopilot reviewed it`};
+  return {ok:true,receipt:receipt.file};
+}
+
+/** The shape problems of a direction record: rev, status and principles. */
+function directionShapeProblems(direction,problems){
+  const rev=direction.rev;
+  if(!Number.isInteger(rev)||rev<1)problems.push('rev must be a positive integer');
+  if(!DIRECTION_STATUSES.includes(direction.status))problems.push(`status ${JSON.stringify(direction.status)} is not one of ${DIRECTION_STATUSES.join(', ')}`);
+  if(!objectList(direction.principles).length)problems.push('principles is empty');
+  for(const principle of objectList(direction.principles))if(!Array.isArray(principle.cites)||!principle.cites.length)problems.push(`principle ${principle.id??'?'} cites nothing`);
+}
+
+/** The file a golden entry's `png` or `html` names inside the brand directory, or null (the problem is pushed). */
+function goldenFileOf(relative,key,brandDir,problems){
+  if(!relative||path.isAbsolute(relative)||relative.split('/').includes('..')){problems.push(`golden ${key} ${relative||'(none)'} is not a path inside the brand record's directory`);return null;}
+  const file=path.resolve(brandDir,relative);
+  if(fs.existsSync(file))return file;
+  problems.push(`golden ${key} ${relative} is not on disk`);
+  return null;
+}
+
+/** One path of a golden entry (`png` or `html`) checked on disk against its recorded digest; records its computed digest on `finding`. */
+function goldenFileProblems(entry,key,brandDir,problems,finding){
+  const relative=slash(String(entry[key]??''));
+  const file=goldenFileOf(relative,key,brandDir,problems);
+  if(file===null)return;
+  const computed=digest(fs.readFileSync(file));
+  const declared=key==='png'?entry.sha256:entry.htmlSha256;
+  if(key==='png'&&!declared)problems.push(`golden ${relative} declares no sha256`);
+  if(declared&&String(declared).toLowerCase()!==computed)problems.push(`golden ${relative} no longer hashes to its recorded sha256`);
+  finding[`${key}Sha256`]=computed;
+}
+
+/** One golden render entry judged: its finding, with the problems it raises pushed in order. */
+function goldenFindingOf(entry,archetypes,brandDir,problems){
+  const finding={archetype:entry.archetype??null,png:entry.png??null,html:entry.html??null};
+  for(const key of ['png','html'])goldenFileProblems(entry,key,brandDir,problems,finding);
+  if(!Object.hasOwn(archetypes,entry.archetype))problems.push(`golden ${entry.png??'?'} names archetype ${entry.archetype??'(none)'}, which the direction does not declare`);
+  return finding;
+}
+
+/** The shape problems of one archetype; returns its missing fields, or null when it is not an archetype to judge further. */
+function archetypeShapeProblems(name,archetype,problems){
+  if(!DIRECTION_ARCHETYPES.includes(name)){problems.push(`archetype ${name} is not one of ${DIRECTION_ARCHETYPES.join(', ')}`);return null;}
+  if(!archetype||typeof archetype!=='object'){problems.push(`archetype ${name} is not an object`);return null;}
+  const missing=ARCHETYPE_FIELDS.filter(field=>archetype[field]===undefined||archetype[field]===null||archetype[field]===''||(Array.isArray(archetype[field])&&!archetype[field].length));
+  if(missing.length)problems.push(`archetype ${name} lacks ${missing.join(', ')}`);
+  if(!DIRECTION_STATUSES.includes(archetype.status))problems.push(`archetype ${name} status ${JSON.stringify(archetype.status)} is not one of ${DIRECTION_STATUSES.join(', ')}`);
+  return missing;
+}
+
+/** One archetype judged: its status into `ctx.summary`, `ctx.provisional` or `ctx.ready` when drawable, problems in order. */
+function judgeArchetype(name,archetype,ctx){
+  const {problems,golden,rev,brandDir}=ctx;
+  const missing=archetypeShapeProblems(name,archetype,problems);
+  if(missing===null)return;
+  ctx.summary[name]=archetype.status??null;
+  const own=golden.filter(entry=>entry.archetype===name);
+  // Autopilot: a provisional block backed by its receipt makes the archetype drawable (evidence.provisional); a
+  // stale one is dropped silently - the next brand.decide direction review asks again.
+  if(archetype.status!=='accepted'){
+    if(archetype.provisional&&judgeProvisional({provisional:archetype.provisional,rev,brandDir,archetype:name,golden:own}).ok&&!missing.length)ctx.provisional.push(name);
+    return;
+  }
+  if(!own.length)problems.push(`archetype ${name} is accepted with no golden render the owner saw`);
+  const verdict=judgeAcceptance({acceptance:archetype.acceptance,rev,brandDir,archetype:name,golden:own});
+  if(!verdict.ok)problems.push(`archetype ${name} is accepted but ${verdict.why}`);
+  else if(!missing.length&&own.length)ctx.ready.push(name);
+}
+
+/** The rubric problems (checks, anchors, duplicate ids, missing group, test or cites); returns the rubric checks. */
+function rubricProblems(direction,problems){
+  const checks=objectList(direction.rubric?.checks);
+  if(!checks.length)problems.push('rubric.checks is empty');
+  if(!objectList(direction.rubric?.beautyAnchors).length)problems.push('rubric.beautyAnchors is empty');
+  const seenChecks=new Set();
+  for(const entry of checks){
+    if(seenChecks.has(entry.id))problems.push(`rubric check ${entry.id} is declared twice`);
+    seenChecks.add(entry.id);
+    for(const field of ['group','test'])if(typeof entry[field]!=='string'||!entry[field].trim())problems.push(`rubric check ${entry.id??'?'} has no ${field}`);
+    if(!Array.isArray(entry.cites)||!entry.cites.length)problems.push(`rubric check ${entry.id??'?'} cites nothing`);
+  }
+  return checks;
+}
+
+/** Every vocabulary recipe mapped onto components the DNA renders; returns the recipes' grammar proposals. */
+function vocabularyProposals(vocabulary,canon,family,problems){
+  const components=new Set(canon.names);
+  const unmapped=[];
+  const proposals=[];
+  for(const [name,recipe] of Object.entries(vocabulary)){
+    const dna=Array.isArray(recipe?.dna)?recipe.dna:[];
+    if(!dna.length)problems.push(`recipe ${name} maps onto no DNA component`);
+    if(canon.names.length)unmapped.push(...dna.filter(component=>!components.has(component)).map(component=>`${name}: ${component}`));
+    proposals.push(...objectList(recipe?.proposals).map(proposal=>({recipe:name,component:proposal.component??null,variant:proposal.variant??null,status:proposal.status??null})));
+  }
+  if(unmapped.length)problems.push(`recipes name components the \`${family}\` DNA does not render (record a grammar proposal instead): ${unmapped.join(', ')}`);
+  return proposals;
+}
+
+/** The components an archetype names must be components the DNA renders (when the DNA could be read). */
+function archetypeComponentProblems(archetypes,canon,family,problems){
+  const components=new Set(canon.names);
+  for(const archetypeName of Object.keys(archetypes))for(const component of Array.isArray(archetypes[archetypeName]?.components)?archetypes[archetypeName].components:[])
+    if(canon.names.length&&!components.has(component))problems.push(`archetype ${archetypeName} names ${component}, which the \`${family}\` DNA does not render`);
+}
+
+/**
+ * Rulings learned from the owner's draw feedback (scripts/work/draw-feedback.mjs): proposed until the owner accepts
+ * the direction; an accepted one is backed by that owner answer. Returns {proposed, accepted} ids.
+ */
+function learnedRulings(direction,brandDir,problems){
+  const learned={proposed:[],accepted:[]};
+  const learnedIds=new Set();
+  for(const entry of objectList(direction.learned)){
+    if(!entry||typeof entry!=='object'||!entry.id){problems.push('a learned ruling has no id');continue;}
+    if(learnedIds.has(entry.id))problems.push(`learned ruling ${entry.id} is declared twice`);
+    learnedIds.add(entry.id);
+    if(!LEARNED_STATUSES.includes(entry.status)){problems.push(`learned ruling ${entry.id} status ${JSON.stringify(entry.status)} is not one of ${LEARNED_STATUSES.join(', ')}`);continue;}
+    if(entry.status==='accepted'){
+      const verdict=judgeAcceptance({acceptance:entry.acceptance,rev:entry.acceptance?.rev,brandDir});
+      if(!verdict.ok)problems.push(`learned ruling ${entry.id} is accepted but ${verdict.why}`);
+    }
+    learned[entry.status].push(entry.id);
+  }
+  return learned;
+}
+
+const directionArchetypesOf=direction=>direction.archetypes&&typeof direction.archetypes==='object'&&!Array.isArray(direction.archetypes)?direction.archetypes:{};
+const directionVocabularyOf=direction=>direction.vocabulary&&typeof direction.vocabulary==='object'?direction.vocabulary:{};
+
+/** An accepted direction is backed by the owner's answer; archetypes may be ready only under an accepted direction. */
+function directionAcceptanceProblems(direction,ready,brandDir,problems){
+  if(direction.status!=='accepted'){
+    if(ready.length)problems.push(`archetypes ${ready.join(', ')} are accepted while the direction itself is ${direction.status}`);
+    return;
+  }
+  const verdict=judgeAcceptance({acceptance:direction.acceptance,rev:direction.rev,brandDir});
+  if(!verdict.ok)problems.push(`the direction is accepted but ${verdict.why}`);
+}
+
+/**
+ * 7. `brand.direction`, when the record carries one: its shape, every vocabulary recipe mapped onto components the
+ * grammar DNA renders (a missing one is a pending grammar proposal, never an invented element), unique rubric
+ * checks, golden renders on disk with the digest the owner saw, and every `accepted` archetype - and an accepted
+ * direction - backed by the owner's own starci/ask-answer@1 receipt for the rev it names. An auto-recommended
+ * answer never accepts a direction. A record with no direction passes: interface.draw then treats every archetype
+ * as not ready.
+ */
+export function checkDirection({brand,family,grammarRoot,brandDir}){
+  const id='direction';
+  const direction=brand?.direction;
+  if(direction===undefined||direction===null)return check(id,'pass','The brand declares no direction yet; no archetype is ready to draw from.',{archetypes:{},ready:[]});
+  const problems=[];
+  if(typeof direction!=='object'||Array.isArray(direction))return check(id,'fail','brand.direction is not an object.',{problems:['not an object']});
+  const rev=direction.rev;
+  directionShapeProblems(direction,problems);
+  const archetypes=directionArchetypesOf(direction);
+  if(!Object.keys(archetypes).length)problems.push('archetypes is empty');
+  const golden=objectList(direction.golden);
+  const goldenFindings=golden.map(entry=>goldenFindingOf(entry,archetypes,brandDir,problems));
+  const ctx={problems,golden,rev,brandDir,summary:{},ready:[],provisional:[]};
+  for(const [name,archetype] of Object.entries(archetypes))judgeArchetype(name,archetype,ctx);
+  const {summary,ready,provisional}=ctx;
+  directionAcceptanceProblems(direction,ready,brandDir,problems);
+  const checks=rubricProblems(direction,problems);
+  const canon=grammarComponentNames({family,grammarRoot});
+  const proposals=vocabularyProposals(directionVocabularyOf(direction),canon,family,problems);
+  archetypeComponentProblems(archetypes,canon,family,problems);
+  const pending=objectList(direction.pendingRulings).filter(entry=>entry.status!=='ruled').map(entry=>entry.id??'?');
+  const learned=learnedRulings(direction,brandDir,problems);
+  const evidence={rev:rev??null,status:direction.status??null,archetypes:summary,ready,provisional,golden:goldenFindings,dna:canon.file?slash(canon.file):null,
+    dnaNote:canon.error,proposals,pendingRulings:pending,rubricChecks:checks.length,learned};
+  if(problems.length)return check(id,'fail',`brand.direction rev ${rev??'?'} has ${problems.length} problem(s): ${problems.slice(0,OFFENDER_CAP).join('; ')}.`,{...evidence,problems});
+  const dnaNote=canon.names.length?'every recipe maps onto a DNA component':`the DNA could not be read (${canon.error}), so recipes were not mapped`;
+  return check(id,'pass',`brand.direction rev ${rev} (${direction.status}): ${Object.keys(summary).length} archetype(s), ready ${ready.length?ready.join(', '):'none'}; ${dnaNote}${pending.length?'; open owner rulings '+pending.join(', '):''}.`,{...evidence,problems:[]});
+}
+
+// ---------------------------------------------------------------------------
+// The run.
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs every check against one Work tree. `sourceRoot` is the frontend repository root the brand's
+ * `sources[]` paths are relative to; without it the two source-reading checks skip and say so. The result
+ * is `ok` only when no check failed - a skipped check never makes a brand proven.
+ */
+function runBrandChecks({tree,sourceRoot=null,grammarRoot=defaultGrammarRoot(),stage='decide'}={}){
+  if(!tree)throw new Error('runBrandChecks needs a Work tree.');
+  const phase=brandStage(stage);
+  const record=readBrandRecord(tree);
+  const context={brand:record.brand,tree:path.resolve(tree),brandDir:record.dir,
+    sourceRoot:sourceRoot?path.resolve(sourceRoot):null,family:record.family,grammarRoot,stage:phase};
+  const checks=[checkTokensMatchSource(context),checkContrastAa(context),checkPrimaryDangerDistinct(context),
+    checkMascotAssetsPresent(context),checkIconSetOnly(context),checkTokensInGrammar(context),checkDirection(context)];
+  return {schema:BRAND_CHECKS,ok:checks.every(result=>result.outcome!=='fail'),stage:phase,checks,
+    brand:{rev:record.rev,family:record.family,revSource:record.revSource,record:slash(path.relative(path.resolve(tree),record.file))}};
+}
+
+/** One line per check, for a person reading a terminal. */
+function formatBrandChecks(result){
+  const header=`brand ${result.brand.family??'(no family)'} rev ${result.brand.rev}${result.stage?' ('+result.stage+' stage)':''}: ${result.ok?'no failing check':'failing checks'}`;
+  return formatCheckLines(header,result.checks);
+}
+
+/**
+ * `starci work brand <work-root> [--source <repository-root>] [--stage decide|verify] [--json]`.
+ * Exit 0 when no check failed, 1 when one did or the input is broken (no brand record, an unknown stage).
+ */
+function brandMain(argv=[]){
+  const usage='Usage: starci work brand <work-root> [--source <repository-root>] [--stage decide|verify] [--json]\n';
+  if(argv.includes('--help'))return {exitCode:0,text:usage};
+  const valueOf=flag=>{const at=argv.indexOf(flag);return at>=0?argv[at+1]:undefined;};
+  const flagged=new Set(['--source','--stage','--grammar-root'].flatMap(flag=>{const at=argv.indexOf(flag);return at>=0?[at,at+1]:[];}));
+  const tree=argv.find((arg,index)=>!flagged.has(index)&&!arg.startsWith('--'));
+  if(!tree)return {exitCode:1,text:usage};
+  try{
+    const result=runBrandChecks({tree,sourceRoot:valueOf('--source')??null,stage:valueOf('--stage'),
+      ...(valueOf('--grammar-root')?{grammarRoot:path.resolve(valueOf('--grammar-root'))}:{})});
+    return {exitCode:result.ok?0:1,text:argv.includes('--json')?`${JSON.stringify(result,null,2)}\n`:`${formatBrandChecks(result)}\n`};
+  }catch(error){return {exitCode:1,text:`brand check: ${String(error?.message??error)}\n`};}
+}
+
+if(isMain(import.meta.url)){
+  const {exitCode,text}=brandMain(process.argv.slice(2));
+  (exitCode?process.stderr:process.stdout).write(text);
+  process.exitCode=exitCode;
+}

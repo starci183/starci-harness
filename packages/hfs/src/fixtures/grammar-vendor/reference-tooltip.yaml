@@ -1,0 +1,44 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.tooltip"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Tooltip
+dir: tooltip
+anatomy:
+  root: "TooltipRoot"
+  parts: ["Arrow","Content","Trigger"]
+  required: ["Content"]
+  slots: {"base":"tooltip","trigger":"tooltip__trigger"}
+  embeds: []
+variants:
+  defaults: {}
+  values: {}
+parts:
+  Arrow: {"impl":"TooltipArrow","dataSlot":"overlay-arrow","classes":[],"defaults":{},"values":{},"paints":["fill","rotate"]}
+  Content: {"impl":"TooltipContent","dataSlot":"tooltip-root","classes":["tooltip"],"defaults":{"shouldSkipAnimation":"false","showArrow":"false"},"values":{},"paints":["background","font","inline-size","padding","radius","shadow"]}
+  Root: {"impl":"TooltipRoot","dataSlot":"tooltip-root","classes":[],"defaults":{"shouldSkipAnimation":"false"},"values":{},"paints":[]}
+  Trigger: {"impl":"TooltipTrigger","dataSlot":"tooltip-trigger","classes":["tooltip__trigger"],"defaults":{},"values":{},"paints":["transition"]}
+css:
+  files: ["tooltip.css"]
+  classes: ["tooltip","tooltip__trigger"]
+  dataSlots: ["overlay-arrow"]
+  rules:
+    - {"file":"tooltip.css","selectors":[".tooltip"],"apply":["max-w-xs","origin-(--trigger-anchor-point)","bg-overlay","p-2","text-xs","break-all"],"declarations":["border-radius: min(32px, var(--radius-xl))","box-shadow: var(--overlay-shadow)"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-entering=\"true\"]"],"apply":["animate-in","duration-150","ease-smooth","fade-in-0","zoom-in-90"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-entering=\"true\"][data-placement=\"top\"]"],"apply":["slide-in-from-bottom-1"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-entering=\"true\"][data-placement=\"bottom\"]"],"apply":["slide-in-from-top-1"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-entering=\"true\"][data-placement=\"left\"]"],"apply":["slide-in-from-right-1"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-entering=\"true\"][data-placement=\"right\"]"],"apply":["slide-in-from-left-1"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-exiting=\"true\"]"],"apply":["animate-out","duration-100","ease-smooth","zoom-out-95","fade-out","pointer-events-none"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-exiting=\"true\"]",".tooltip[data-entering=\"true\"]"],"apply":["transition-[opacity,transform]","will-change-[opacity,transform]"]}
+    - {"file":"tooltip.css","selectors":[".tooltip [data-slot=\"overlay-arrow\"]"],"apply":["stroke-border/40"],"declarations":["fill: var(--overlay)"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-placement=\"bottom\"] [data-slot=\"overlay-arrow\"]"],"declarations":["rotate: 180deg"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-placement=\"left\"] [data-slot=\"overlay-arrow\"]"],"declarations":["rotate: -90deg"]}
+    - {"file":"tooltip.css","selectors":[".tooltip[data-placement=\"right\"] [data-slot=\"overlay-arrow\"]"],"declarations":["rotate: 90deg"]}
+    - {"file":"tooltip.css","selectors":[".tooltip__trigger"],"apply":["inline-block","motion-reduce:transition-none"],"declarations":["transition: color 150ms var(--ease-smooth), background-color 150ms var(--ease-smooth), box-shadow 150ms var(--ease-out)"]}
+    - {"file":"tooltip.css","selectors":[".tooltip__trigger:focus-visible:not([data-focused])",".tooltip__trigger[data-focus-visible=\"true\"]"],"apply":["status-focused"]}

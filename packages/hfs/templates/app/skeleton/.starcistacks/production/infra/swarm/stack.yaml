@@ -1,0 +1,183 @@
+# Rendered production model. All-zero app digests are illustrative; publish verified images before use.
+services:
+  core:
+    image: "{{project}}/core:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HTTP_SECURITY_ALLOWED_ORIGINS: https://{{project}}.example.invalid
+    networks: [app, backing]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+  app:
+    image: "{{project}}/app:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_SITE_URL: https://{{project}}.example.invalid
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+  landing:
+    image: "{{project}}/landing:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_URL: https://{{project}}.example.invalid
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+  postgres:
+    image: postgres:16@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54
+    tty: false
+    environment:
+      POSTGRES_DB: "{{project}}"
+    configs:
+      - source: postgres-init
+        target: /docker-entrypoint-initdb.d/10-app-role.sh
+        mode: 0o555
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [backing]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "{{project}}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+  ingress:
+    image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
+    configs:
+      - source: ingress-config
+        target: /etc/caddy/Caddyfile
+    ports:
+      - { target: 80, published: 80, protocol: tcp, mode: ingress }
+      - { target: 443, published: 443, protocol: tcp, mode: ingress }
+    volumes:
+      - ingress-data:/data
+      - ingress-config-data:/config
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+networks:
+  app:
+    driver: overlay
+  backing:
+    driver: overlay
+    internal: true
+secrets:
+  primary-db-url:
+    external: true
+    name: "{{project}}-production-primary-db-url-v1"
+  postgres-password:
+    external: true
+    name: "{{project}}-production-postgres-password-v1"
+  primary-db-password:
+    external: true
+    name: "{{project}}-production-primary-db-password-v1"
+configs:
+  ingress-config:
+    file: ./Caddyfile
+  postgres-init:
+    external: true
+    name: ${POSTGRES_INIT_CONFIG}
+volumes:
+  postgres-data:
+    external: true
+    name: "{{project}}-production-postgres-data"
+  ingress-data:
+    external: true
+    name: "{{project}}-production-ingress-data"
+  ingress-config-data:
+    external: true
+    name: "{{project}}-production-ingress-config-data"

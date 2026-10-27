@@ -1,0 +1,608 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { parseDate, type DateValue } from '@internationalized/date';
+import { useState } from 'react';
+import { waitFor } from 'storybook/test';
+import * as G from '../common/index.js';
+import { BookGlyph, HomeGlyph, Matrix, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
+
+/**
+ * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
+ * (table, list box, tags, timeline) and disclosure. Selected/current states are shown where they apply.
+ */
+const meta: Meta = {
+  title: 'Navigation & Data',
+};
+export default meta;
+
+type Story = StoryObj;
+
+const faq: ReadonlyArray<G.AccordionItem> = [
+  { id: 'billing', title: 'How does billing work?', content: 'You are billed monthly for active seats.' },
+  { id: 'cancel', title: 'Can I cancel any time?', content: 'Yes. Access continues until the end of the period.' },
+  { id: 'archived', title: 'Archived plans', content: 'Not available.', isDisabled: true },
+];
+
+export const Accordion: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="One expanded (selected)" direction="column">
+        <G.Accordion label="Frequently asked questions" items={faq} defaultExpandedIds={['billing']} />
+      </State>
+      <State label="Multiple expanded" direction="column">
+        <G.Accordion label="Details" items={faq} allowsMultipleExpanded defaultExpandedIds={['billing', 'cancel']} headingLevel={4} />
+      </State>
+    </Matrix>
+  ),
+};
+
+export const Disclosure: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="Collapsed" direction="column">
+        <G.Disclosure title="Advanced options">Retention, exports and audit settings.</G.Disclosure>
+      </State>
+      <State label="Expanded" direction="column">
+        <G.Disclosure title="What is included?" defaultExpanded>Every lesson, offline access and certificates.</G.Disclosure>
+      </State>
+      <State label="With a summary (closed, open, long)" direction="column">
+        <G.Disclosure title="Filters" summary="3 active">Status, owner and date.</G.Disclosure>
+        <G.Disclosure title="Filters" summary="3 active" defaultExpanded>Status, owner and date.</G.Disclosure>
+        <G.Disclosure title="Links" summary="https://example.com/a-very-long-link-that-must-truncate-on-one-line-and-never-wrap">Body.</G.Disclosure>
+      </State>
+      <State label="Disabled" direction="column">
+        <G.Disclosure title="Locked section" isDisabled>Hidden.</G.Disclosure>
+      </State>
+    </Matrix>
+  ),
+};
+
+const people: ReadonlyArray<G.AvatarGroupItem> = [
+  { id: 'a', name: 'Alex Morgan' },
+  { id: 'b', name: 'Sam Lee', src: placeholderImage('S', 200) },
+  { id: 'c', name: 'Robin Park' },
+  { id: 'd', name: 'Jordan Kim' },
+  { id: 'e', name: 'Taylor Fox' },
+  { id: 'f', name: 'Casey Wu' },
+];
+
+export const PlainPressable: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Avatar button (round, 40px, press zoom-out, no hover)">
+        <G.AvatarButton name="Alex Morgan" seed="user-alex" onPress={() => undefined} />
+        <G.AvatarButton name="Sam Lee" seed="user-sam" src={placeholderImage('S', 200)} onPress={() => undefined} />
+        <G.AvatarButton name="Robin Park" onPress={() => undefined} />
+        <G.AvatarButton name={"Th\u1ea3o V\u00e2n Mkt"} kind="agent" seed="agent-marketing" onPress={() => undefined} />
+      </State>
+      <State label="Identity lockup (no caret)">
+        <G.IdentityLockup title="Hakuen" subtitle="Owner" onPress={() => undefined} />
+        <G.IdentityLockup title="Tedo Studio" subtitle="Member" logoSrc={placeholderImage('T', 200)} onPress={() => undefined} />
+        <G.IdentityLockup title="Rounded opt-in" subtitle="Member" markShape="rounded" logoSrc={placeholderImage('R', 200)} onPress={() => undefined} />
+      </State>
+      <State label="As a menu trigger">
+        <G.DropdownMenu
+          trigger={<G.IdentityLockup title="Hakuen" subtitle="Owner" />}
+          entries={[{ id: 'switch', label: 'Switch workspace' }, { id: 'out', label: 'Sign out' }]}
+          onAction={() => undefined}
+        />
+      </State>
+      <State label="Disabled">
+        <G.IdentityLockup title="Hakuen" subtitle="Owner" isDisabled />
+      </State>
+    </Matrix>
+  ),
+};
+
+export const AvatarGroup: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Overflow">
+        <G.AvatarGroup label="Project members" items={people} max={4} overflowLabel={(count) => `${count} more members`} />
+      </State>
+      <State label="Sizes">
+        <G.AvatarGroup label="Reviewers" items={people.slice(0, 3)} size="sm" overflowLabel={(count) => `${count} more`} />
+        <G.AvatarGroup label="Owners" items={people.slice(0, 2)} size="lg" overflowLabel={(count) => `${count} more`} />
+      </State>
+    </Matrix>
+  ),
+};
+
+export const Breadcrumbs: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Current crumb still loading (isSkeleton)">
+        <G.Breadcrumbs label="Breadcrumb (loading page)" items={[{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isSkeleton: true }]} />
+      </State>
+      <State label="Trail ending at the current page">
+        <G.Breadcrumbs
+          label="Breadcrumb"
+          items={[
+            { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="leading" /> },
+            { id: 'courses', label: 'Courses', href: '#courses' },
+            { id: 'grammar', label: 'Grammar basics' },
+          ]}
+        />
+      </State>
+      <State label="Custom separator">
+        <G.Breadcrumbs label="Folders" separator="/" items={[{ id: 'a', label: 'Drive', href: '#a' }, { id: 'b', label: 'Shared', href: '#b' }, { id: 'c', label: 'Reports' }]} />
+      </State>
+    </Matrix>
+  ),
+};
+
+const isWeekend = (date: DateValue) => {
+  const day = new Date(date.year, date.month - 1, date.day).getDay();
+  return day === 0 || day === 6;
+};
+
+export const Calendar: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Selected date, weekends unavailable">
+        <G.Calendar label="Delivery date" defaultValue={parseDate('2026-09-23')} isDateUnavailable={isWeekend} previousLabel="Previous month" nextLabel="Next month" />
+      </State>
+      <State label="Read-only and disabled">
+        <G.Calendar label="Published on" value={parseDate('2026-09-10')} isReadOnly previousLabel="Previous month" nextLabel="Next month" />
+        <G.Calendar label="Closed" defaultValue={parseDate('2026-09-10')} isDisabled previousLabel="Previous month" nextLabel="Next month" />
+      </State>
+    </Matrix>
+  ),
+};
+
+type Lesson = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number };
+const lessons: ReadonlyArray<Lesson> = [
+  { id: 'l1', title: 'Articles', level: 'A1', minutes: 12 },
+  { id: 'l2', title: 'Present simple', level: 'A1', minutes: 18 },
+  { id: 'l3', title: 'Past continuous', level: 'A2', minutes: 22 },
+  { id: 'l4', title: 'Conditionals', level: 'B1', minutes: 30 },
+];
+const lessonColumns: ReadonlyArray<G.DataTableColumn> = [
+  { id: 'title', label: 'Lesson', isRowHeader: true, allowsSorting: true },
+  { id: 'level', label: 'Level', allowsSorting: true },
+  { id: 'minutes', label: 'Minutes', align: 'end', allowsSorting: true },
+];
+const lessonCell = (row: Lesson, columnId: string) => (columnId === 'title' ? row.title : columnId === 'level' ? row.level : row.minutes);
+
+const SortableTable = () => {
+  const [sort, setSort] = useState<G.DataTableSort>({ columnId: 'title', direction: 'ascending' });
+  const sorted = [...lessons].sort((a, b) => {
+    const key = sort.columnId as keyof Lesson;
+    const order = String(a[key]).localeCompare(String(b[key]), undefined, { numeric: true });
+    return sort.direction === 'ascending' ? order : -order;
+  });
+  return (
+    <G.DataTable
+      label="Lessons"
+      columns={lessonColumns}
+      rows={sorted}
+      renderCell={lessonCell}
+      sort={sort}
+      onSortChange={setSort}
+      selectionMode="multiple"
+      defaultSelectedIds={['l2']}
+      selectAllLabel="Select all lessons"
+      selectRowLabel={(row) => `Select ${row.title}`}
+      emptyContent="No lessons match."
+    />
+  );
+};
+
+export const DataTable: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Sortable with a selected row" direction="column"><SortableTable /></State>
+      <State label="Loading (pending)" direction="column">
+        <G.DataTable label="Lessons loading" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading loadingContent="Loading lessons" emptyContent="No lessons." />
+      </State>
+      <State label="Loading (3 skeleton rows, real headers)" direction="column">
+        <G.DataTable label="Lessons skeleton" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />
+      </State>
+      <State label="Empty" direction="column">
+        <G.DataTable label="No lessons" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} emptyContent="No lessons match these filters." />
+      </State>
+    </Matrix>
+  ),
+};
+
+export const DescriptionList: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="Loading (terms stay, values become skeletons)" direction="column">
+        <G.DescriptionList isLoading items={[{ id: 'plan', term: 'Plan', description: 'Team' }, { id: 'seats', term: 'Seats', description: '8 of 10' }]} />
+      </State>
+      <State label="Loading, stat strip" direction="column">
+        <G.DescriptionList isLoading layout="stat-strip" items={[{ id: 'a', term: 'Revenue', description: '1,200', meta: 'Today' }, { id: 'b', term: 'Users', description: '40', meta: 'Today' }]} />
+      </State>
+      <State label="Columns, divided" direction="column">
+        <G.DescriptionList
+          isDivided
+          items={[
+            { id: 'plan', term: 'Plan', description: 'Team' },
+            { id: 'seats', term: 'Seats', description: '8 of 10' },
+            { id: 'renews', term: 'Renews', description: '1 October 2026' },
+          ]}
+        />
+      </State>
+      <State label="Stacked" direction="column">
+        <G.DescriptionList layout="stacked" items={[{ id: 'owner', term: 'Owner', description: 'Alex Morgan' }, { id: 'created', term: 'Created', description: '2 March 2026' }]} />
+      </State>
+      <State label="Stat strip (one row at 48rem and wider, 2 x 2 below)" direction="column">
+        <G.DescriptionList
+          layout="stat-strip"
+          items={[
+            { id: 'lessons', icon: BookGlyph, term: 'Lessons', description: '12', unit: 'done', meta: 'This month' },
+            { id: 'streak', icon: HomeGlyph, term: 'Streak', description: '9', unit: 'days', meta: 'Best 14' },
+            { id: 'score', term: 'Score', description: '86%', meta: 'Last quiz' },
+            { id: 'time', term: 'Time', description: '4.5', unit: 'h', meta: '7 days' },
+          ]}
+        />
+      </State>
+    </Matrix>
+  ),
+};
+
+const listItems: ReadonlyArray<G.ListBoxItem> = [
+  { id: 'inbox', label: 'Inbox', description: '3 unread', leading: <G.Icon source={BookGlyph} usage="leading" /> },
+  { id: 'drafts', label: 'Drafts' },
+  { id: 'archive', label: 'Archive', trailing: <G.Badge>12</G.Badge> },
+  { id: 'spam', label: 'Spam', isDisabled: true },
+];
+
+const brainNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'brain', label: 'Second brain', size: 'lg', tone: 'accent', isRoot: true },
+  { id: 'people', label: 'People', count: 12, tone: 'success' },
+  { id: 'projects', label: 'Projects', count: 5, tone: 'neutral' },
+  { id: 'ideas', label: 'Ideas', count: 31, tone: 'warning' },
+  { id: 'reading', label: 'Reading list', isPlaceholder: true },
+  { id: 'ada', label: 'Ada', description: 'Mentor', size: 'sm' },
+  { id: 'atlas', label: 'Atlas', size: 'sm', tone: 'accent' },
+  { id: 'journal', label: 'Journal', size: 'sm', isPlaceholder: true },
+];
+const brainEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'e1', source: 'brain', target: 'people' },
+  { id: 'e2', source: 'brain', target: 'projects' },
+  { id: 'e3', source: 'brain', target: 'ideas' },
+  { id: 'e4', source: 'brain', target: 'reading', isPlaceholder: true },
+  { id: 'e5', source: 'people', target: 'ada' },
+  { id: 'e6', source: 'projects', target: 'atlas' },
+  { id: 'e7', source: 'ideas', target: 'journal', isPlaceholder: true },
+];
+
+export const FlowGraph: Story = {
+  render: () => {
+    const Demo = () => {
+      const [selectedId, setSelectedId] = useState<string | null>('projects');
+      return <G.FlowGraph label="Second brain" nodes={brainNodes} edges={brainEdges} selectedId={selectedId} onSelect={setSelectedId} />;
+    };
+    return (
+      <Matrix maxWidth={720}>
+        <State label="Radial, selectable" direction="column"><Demo /></State>
+        <State label="Static, no controls" direction="column">
+          <G.FlowGraph label="Second brain (static)" nodes={brainNodes} edges={brainEdges} height="sm" isInteractive={false} />
+        </State>
+        <State label="Loading" direction="column">
+          <G.FlowGraph label="Second brain (loading)" nodes={[]} edges={[]} isLoading />
+        </State>
+        <State label="Empty" direction="column">
+          <G.FlowGraph label="Empty map" nodes={[]} edges={[]} emptyLabel="Nothing connected yet." />
+        </State>
+      </Matrix>
+    );
+  },
+};
+
+const memberItems: ReadonlyArray<G.ListBoxItem> = [
+  { id: 'alex', label: 'Alex Morgan', description: 'alex@example.com', leading: <G.Avatar name="Alex Morgan" size="sm" isDecorative /> },
+  { id: 'sam', label: 'Sam Lee', description: 'sam@example.com', leading: <G.Avatar name="Sam Lee" size="sm" isDecorative /> },
+  { id: 'kim', label: 'Kim Tran', description: 'kim@example.com', leading: <G.Avatar name="Kim Tran" size="sm" isDecorative />, isDisabled: true },
+];
+
+/** HeroUI's ListBox docs examples: rows with an avatar and a description, single and multiple selection, a disabled row. */
+export const ListBoxWithDescriptions: Story = {
+  name: 'ListBox (avatars, descriptions, disabled row)',
+  render: () => (
+    <Matrix maxWidth={420}>
+      <State label="Single selection" direction="column">
+        <G.ListBox label="Members" items={memberItems} selectionMode="single" defaultSelectedIds={['alex']} />
+      </State>
+      <State label="Multiple selection" direction="column">
+        <G.ListBox label="Reviewers" items={memberItems} selectionMode="multiple" defaultSelectedIds={['alex', 'sam']} />
+      </State>
+    </Matrix>
+  ),
+};
+
+const groupMembers: ReadonlyArray<G.AvatarGroupItem> = [
+  { id: 'alex', name: 'Alex Morgan', seed: 'user-alex' },
+  { id: 'sam', name: 'Sam Lee', seed: 'user-sam' },
+  { id: 'kim', name: 'Kim Tran', seed: 'user-kim' },
+];
+
+const conversationItems: ReadonlyArray<G.ListBoxItem> = [
+  {
+    id: 'study-group',
+    label: 'Study group',
+    description: 'Sam: Please review the shared notes before we meet at seven this evening; the full preview stays accessible.',
+    emphasis: 'unread',
+    trailing: <G.Badge tone="danger">3</G.Badge>,
+    leading: <G.AvatarGroup label="Study group" layout="grid" size="sm" items={groupMembers} overflowLabel={(count) => `${count} more members`} />,
+  },
+  { id: 'alex', label: 'Alex Morgan', description: 'Thanks!', leading: <G.Avatar name="Alex Morgan" seed="user-alex" size="sm" isDecorative /> },
+  {
+    id: 'reading-club',
+    label: 'Reading club',
+    description: 'You: The next chapter is ready.',
+    leading: <G.AvatarGroup label="Reading club" layout="grid" size="sm" items={groupMembers.slice(0, 2)} overflowLabel={(count) => `${count} more members`} />,
+  },
+];
+
+/** Chat rows use member identities and one-line previews; unread emphasis belongs to the selected family's DNA. */
+export const ChatRows: Story = {
+  name: 'ListBox (chat rows, read and unread)',
+  render: () => (
+    <Matrix maxWidth={360}>
+      <State label="Unread strong copy, read normal copy; no group glyph" direction="column">
+        <G.ListBox label="Conversations" items={conversationItems} selectionMode="single" defaultSelectedIds={['study-group']} />
+      </State>
+    </Matrix>
+  ),
+};
+
+/** A selected row that already reads from its fill omits the vendor check. */
+export const ListBoxNoIndicator: Story = {
+  name: 'ListBox (selected fill, no check)',
+  render: () => (
+    <Matrix maxWidth={360}>
+      <State label="selectionIndicator none" direction="column">
+        <G.ListBox label="Conversations" items={conversationItems} selectionMode="single" selectionIndicator="none" defaultSelectedIds={['study-group']} />
+      </State>
+    </Matrix>
+  ),
+};
+
+/** The optional title-leading slot remains available for decorative, non-chat labels. */
+export const ListBoxTitleGlyph: Story = {
+  name: 'ListBox (optional title-line glyph)',
+  render: () => <G.ListBox label="Reading shelves" items={[{ id: 'books', label: 'Reading list', labelLeading: <G.Icon source={BookGlyph} usage="chip" /> }]} />,
+};
+
+export const ListBox: Story = {
+  render: () => (
+    <Matrix maxWidth={360}>
+      <State label="Loading (isLoading)" direction="column">
+        <G.ListBox label="Folders" items={[]} isLoading />
+      </State>
+      <State label="Single selection (selected)" direction="column">
+        <G.ListBox label="Folders" items={listItems} selectionMode="single" defaultSelectedIds={['inbox']} />
+      </State>
+      <State label="Multiple selection" direction="column">
+        <G.ListBox label="Labels" items={listItems} selectionMode="multiple" defaultSelectedIds={['drafts', 'archive']} />
+      </State>
+      <State label="Empty" direction="column">
+        <G.ListBox label="Nothing here" items={[]} emptyContent="No folders yet." />
+      </State>
+    </Matrix>
+  ),
+};
+
+const rowsIn = (canvasElement: HTMLElement, selector: string, minimum: number) =>
+  waitFor(() => {
+    const found = canvasElement.querySelectorAll<HTMLElement>(selector);
+    if (found.length < minimum) throw new Error(`waiting for ${selector}`);
+    return found;
+  });
+
+/** ListBox interactive rows: selected, hovered and keyboard-focused in one frame. */
+export const ListBoxRowStates: Story = {
+  name: 'ListBox (selected, hover, focus rows)',
+  render: () => (
+    <Matrix maxWidth={360}>
+      <State label="Inbox selected, Drafts hovered, Archive keyboard-focused" direction="column">
+        <G.ListBox label="Folders with row states" items={listItems} selectionMode="single" defaultSelectedIds={['inbox']} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const options = await rowsIn(canvasElement, '[role="option"]', 3);
+    await showRowStates(options[1], options[2]);
+  },
+};
+
+/** Selectable DataTable rows: selected, hovered and keyboard-focused in one frame. */
+export const DataTableRowStates: Story = {
+  name: 'DataTable (selected, hover, focus rows)',
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Present simple selected, Past continuous hovered, Conditionals keyboard-focused" direction="column">
+        <G.DataTable
+          label="Lessons with row states"
+          columns={lessonColumns}
+          rows={lessons}
+          renderCell={lessonCell}
+          selectionMode="multiple"
+          defaultSelectedIds={['l2']}
+          selectAllLabel="Select all lessons"
+          selectRowLabel={(row) => `Select ${row.title}`}
+          onRowAction={noop}
+          emptyContent="No lessons."
+        />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const rows = await rowsIn(canvasElement, '[data-grammar-table-row]', 4);
+    await showRowStates(rows[2], rows[3]);
+  },
+};
+
+const PaginationDemo = ({ label, pageCount, initial }: { readonly label: string; readonly pageCount: number; readonly initial: number }) => {
+  const [page, setPage] = useState(initial);
+  return (
+    <G.Pagination
+      label={label}
+      page={page}
+      pageCount={pageCount}
+      onPageChange={setPage}
+      previousLabel="Previous"
+      nextLabel="Next"
+      pageLabel={pageLabel}
+      summary={`Page ${page} of ${pageCount}`}
+    />
+  );
+};
+
+export const Pagination: Story = {
+  render: () => (
+    <Matrix>
+      <State label="First page (previous disabled)"><PaginationDemo label="Short results pages" pageCount={5} initial={1} /></State>
+      <State label="Middle page with ellipses (current)"><PaginationDemo label="Long results pages" pageCount={20} initial={10} /></State>
+      <State label="Last page"><PaginationDemo label="Final results pages" pageCount={20} initial={20} /></State>
+    </Matrix>
+  ),
+};
+
+const steps: ReadonlyArray<G.StepperStep> = [
+  { id: 'account', label: 'Account' },
+  { id: 'profile', label: 'Profile', description: 'Name and photo' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'done', label: 'Done', isDisabled: true },
+];
+
+export const Stepper: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Loading (isSkeleton)" direction="column">
+        <G.Stepper label="Sign-up progress (loading)" steps={steps} currentStepId="profile" isLoading />
+      </State>
+      <State label="Horizontal, current step" direction="column">
+        <G.Stepper label="Sign-up progress" steps={steps} currentStepId="profile" onStepSelect={noop} />
+      </State>
+      <State label="Vertical with an error step" direction="column">
+        <G.Stepper
+          label="Import progress"
+          orientation="vertical"
+          steps={[{ id: 'upload', label: 'Upload' }, { id: 'map', label: 'Map columns', state: 'error', description: 'Two columns are missing.' }, { id: 'review', label: 'Review' }]}
+          currentStepId="map"
+        />
+      </State>
+    </Matrix>
+  ),
+};
+
+const tags: ReadonlyArray<G.TagGroupItem> = [
+  { id: 'grammar', label: 'Grammar' },
+  { id: 'vocab', label: 'Vocabulary' },
+  { id: 'listening', label: 'Listening' },
+  { id: 'archived', label: 'Archived', isDisabled: true },
+];
+
+const RemovableTags = () => {
+  const [items, setItems] = useState(tags);
+  return (
+    <G.TagGroup
+      label="Active filters"
+      items={items}
+      onRemove={(ids) => setItems((current) => current.filter((item) => !ids.includes(item.id)))}
+      removeLabel={(label) => `Remove ${label}`}
+      emptyContent="No filters."
+    />
+  );
+};
+
+export const TagGroup: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Selectable (secondary face + border; selected = accent-soft + accent border)">
+        <G.TagGroup label="Topics" items={tags} selectionMode="multiple" defaultSelectedIds={['grammar']} />
+      </State>
+      <State label="Removable"><RemovableTags /></State>
+      <State label="Off chip (muted outline, still focusable, named off)">
+        <G.TagGroup label="Capabilities" items={[{ id: 'quotes', label: 'Quotes' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'orders', label: 'Order lookup', isOff: true, offLabel: 'off' }]} />
+      </State>
+      <State label="Sizes">
+        <G.TagGroup label="Small tags" size="sm" items={tags.slice(0, 2)} />
+        <G.TagGroup label="Large tags" size="lg" items={tags.slice(0, 2)} />
+      </State>
+    </Matrix>
+  ),
+};
+
+export const Timeline: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="Loading (isSkeleton)" direction="column">
+        <G.Timeline label="Order history" items={[]} isLoading />
+      </State>
+      <State label="States with a current item" direction="column">
+        <G.Timeline
+          label="Order history"
+          items={[
+            { id: 'placed', title: 'Order placed', dateTime: '2026-09-20T09:00', timeLabel: '20 Sep, 09:00', state: 'affirmative' },
+            { id: 'packed', title: 'Packed', dateTime: '2026-09-21T14:30', timeLabel: '21 Sep, 14:30', state: 'affirmative' },
+            { id: 'transit', title: 'In transit', description: 'Arriving tomorrow.', state: 'pending', isCurrent: true },
+            { id: 'delivered', title: 'Delivered', state: 'neutral' },
+          ]}
+        />
+      </State>
+      <State label="Negative item" direction="column">
+        <G.Timeline label="Build log" items={[{ id: 'b1', title: 'Build started', state: 'informative' }, { id: 'b2', title: 'Tests failed', state: 'negative', description: '2 failures.' }]} />
+      </State>
+    </Matrix>
+  ),
+};
+
+const tabItems: ReadonlyArray<G.TabItem> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'lessons', label: 'Lessons', leading: <G.Icon source={BookGlyph} usage="leading" /> },
+  { id: 'members', label: 'Members' },
+];
+
+const TabsDemo = ({ variant = 'primary' }: { readonly variant?: 'primary' | 'secondary' }) => {
+  const [selected, setSelected] = useState('overview');
+  return (
+    <div>
+      <G.Tabs label={`Course sections (${variant})`} variant={variant} items={tabItems} selectedKey={selected} onSelect={setSelected} panelId={(key) => `story-tab-panel-${variant}-${key}`} labelVisibility="always" />
+      {tabItems.map((item) => (
+        <div key={item.id} role="tabpanel" id={`story-tab-panel-${variant}-${item.id}`} aria-label={item.label} hidden={item.id !== selected} style={{ paddingTop: '1rem' }}>
+          <G.Text>{item.label} panel</G.Text>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const Tabs: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="Primary (default): the page's main area switcher" direction="column"><TabsDemo /></State>
+      <State label="Secondary: a pill strip for a drawer, card, dialog or rail" direction="column"><TabsDemo variant="secondary" /></State>
+    </Matrix>
+  ),
+};
+
+const SubnavDemo = ({ label, initialOpen }: { readonly label: string; readonly initialOpen: boolean }) => {
+  const [open, setOpen] = useState(initialOpen);
+  return (
+    <G.Subnav
+      label={label}
+      title="Grammar basics"
+      leading={<G.Icon source={BookGlyph} usage="leading" />}
+      menuIcon={<G.Icon source={MenuGlyph} />}
+      openMenuLabel="Open section menu"
+      closeMenuLabel="Close section menu"
+      isMenuOpen={open}
+      onMenuOpenChange={setOpen}
+      position="static"
+      visibility="always"
+    />
+  );
+};
+
+export const Subnav: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="Menu closed" direction="column"><SubnavDemo label="Lesson sections" initialOpen={false} /></State>
+      <State label="Menu open (expanded)" direction="column"><SubnavDemo label="Course sections" initialOpen /></State>
+    </Matrix>
+  ),
+};

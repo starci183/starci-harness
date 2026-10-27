@@ -1,0 +1,31 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.label"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Label
+dir: label
+anatomy:
+  root: "LabelRoot"
+  parts: []
+  required: []
+  slots: {}
+  embeds: [{"slot":"checkbox","component":"Checkbox"},{"slot":"radio","component":"Radio"}]
+variants:
+  defaults: {"isDisabled":false,"isInvalid":false,"isRequired":false}
+  values: {"isDisabled":["true"],"isInvalid":["true"],"isRequired":["true"]}
+parts:
+  Root: {"impl":"LabelRoot","dataSlot":"label","classes":[],"defaults":{},"values":{},"paints":[]}
+css:
+  files: ["label.css"]
+  classes: ["label","label--disabled","label--invalid","label--required"]
+  dataSlots: ["checkbox","radio"]
+  rules:
+    - {"file":"label.css","selectors":[".label"],"apply":["text-sm","font-medium","text-foreground"]}
+    - {"file":"label.css","selectors":[".label--required","[data-required=\"true\"]:not([role=\"group\"]):not([role=\"radiogroup\"]):not([role=\"checkboxgroup\"])\n  > .label","[data-required=\"true\"]:not([data-slot=\"radio\"]):not([data-slot=\"checkbox\"]) > .label"],"apply":["after:ms-0.5","after:text-danger","after:content-['*']"]}
+    - {"file":"label.css","selectors":[".label--disabled","[data-disabled=\"true\"] .label"],"apply":["status-disabled"]}
+    - {"file":"label.css","selectors":[".label--invalid","[data-invalid=\"true\"] .label","[aria-invalid=\"true\"] .label"],"apply":["text-danger"]}

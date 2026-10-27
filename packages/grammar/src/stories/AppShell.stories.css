@@ -1,0 +1,59 @@
+.app-shell-story-navbar {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.app-shell-story-identity {
+    display: flex;
+    min-width: 0;
+    justify-content: flex-start;
+}
+
+.app-shell-story-search {
+    justify-self: center;
+}
+
+.app-shell-story-actions,
+.app-shell-story-desktop-controls,
+.app-shell-story-drawer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.app-shell-story-drawer-controls {
+    justify-content: space-between;
+}
+
+.app-shell-story-content {
+    display: flex;
+    min-height: 60rem;
+    flex-direction: column;
+    gap: 1rem;
+    padding-block: 1.5rem;
+}
+
+.app-shell-story-mobile-search {
+    display: none;
+}
+
+@media (max-width: 47.999rem) {
+    .app-shell-story-navbar {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+    .app-shell-story-desktop-controls {
+        display: none;
+    }
+
+    .app-shell-story-desktop-search {
+        display: none;
+    }
+
+    .app-shell-story-mobile-search {
+        display: block;
+    }
+}

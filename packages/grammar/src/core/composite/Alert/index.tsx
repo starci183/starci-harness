@@ -1,0 +1,134 @@
+"use client"
+
+import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
+import { useState, type ReactNode } from "react"
+import type { PresentationState } from "../../../common/state.js"
+import { vendorStatusFor } from "../../overlayScope.js"
+import { Button, type ButtonVariant } from "../../primitive/Button/index.js"
+import { CloseButton } from "../../primitive/CloseButton/index.js"
+import { Icon, type IconSource } from "../../primitive/Icon/index.js"
+
+export type AlertUrgency = "polite" | "assertive"
+/**
+ * `surface` (default): the HeroUI white row with the surface shadow. `soft`: the row takes its tone's soft tint at half strength
+ * (`--<tone>-soft` / 50, no shadow), for a notice that must read as part of the region it sits in (owner ruling 2026-10-11).
+ */
+export type AlertAppearance = "surface" | "soft"
+
+export type AlertAction = {
+    readonly label: string
+    readonly onAction: () => void
+    /**
+     * Optional start glyph of the action Button (e.g. a power glyph on "Enable"), drawn by `Icon`
+     * `usage="leading"` as the Button's `startContent`. Decorative: the label stays the name.
+     */
+    readonly icon?: IconSource
+}
+
+type AlertBase = {
+    readonly title: string
+    readonly description?: ReactNode
+    /** Render-neutral meaning of the banner. Default `informative`. */
+    readonly tone?: PresentationState
+    readonly action?: AlertAction
+    /**
+     * How the banner is announced when it appears. Default: `assertive` (`role="alert"`) for a
+     * `negative` tone, `polite` (`role="status"`) for everything else.
+     */
+    readonly urgency?: AlertUrgency
+    readonly appearance?: AlertAppearance
+}
+
+/** A dismissible banner must name its close action; a permanent one has neither prop. */
+type Dismissible = {
+    readonly dismissLabel: string
+    readonly onDismiss?: () => void
+}
+
+type Permanent = {
+    readonly dismissLabel?: never
+    readonly onDismiss?: never
+}
+
+export type AlertProps = AlertBase & (Dismissible | Permanent)
+
+/**
+ * The action Button variant an Alert tone takes, as HeroUI v3's own Alert examples pair them: the accent
+ * Alert carries a `primary` Button ("Refresh"), the danger Alert a `danger` Button ("Retry"). HeroUI has no
+ * success or warning Button variant, so every other tone keeps `secondary`.
+ *
+ * | tone (PresentationState) | vendor status | action variant |
+ * | ------------------------ | ------------- | -------------- |
+ * | informative              | accent        | primary        |
+ * | negative                 | danger        | danger         |
+ * | affirmative              | success       | secondary      |
+ * | cautionary               | warning       | secondary      |
+ * | neutral / pending / unavailable | default | secondary      |
+ */
+const alertActionVariantFor = (tone: PresentationState): ButtonVariant => {
+    const status = vendorStatusFor(tone)
+    if (status === "accent") return "primary"
+    if (status === "danger") return "danger"
+    return "secondary"
+}
+
+/**
+ * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
+ *
+ * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
+ * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
+ * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
+ * The action Button's variant follows the tone (`alertActionVariantFor`, after HeroUI's Alert examples):
+ * informative (accent) -> `primary`, negative (danger) -> `danger`, every other tone -> `secondary`.
+ * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
+ */
+export const Alert = (props: AlertProps) => {
+    const { title, description, tone = "informative", action, urgency, appearance = "surface" } = props
+    const [isDismissed, setIsDismissed] = useState(false)
+    if (isDismissed) return null
+
+    const resolvedUrgency = urgency ?? (tone === "negative" ? "assertive" : "polite")
+    const dismiss = () => {
+        setIsDismissed(true)
+        props.onDismiss?.()
+    }
+
+    return (
+        <HeroAlert
+            data-tier="composite"
+            data-component="Alert"
+            data-grammar-tone={tone}
+            data-grammar-appearance={appearance}
+            data-urgency={resolvedUrgency}
+            data-contract="FEEDBACK-3"
+            role={resolvedUrgency === "assertive" ? "alert" : "status"}
+            status={vendorStatusFor(tone)}
+            className="starci-core-alert"
+        >
+            <HeroAlert.Indicator className="starci-core-alert-indicator">
+                {tone === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
+            </HeroAlert.Indicator>
+            <HeroAlert.Content className="starci-core-alert-content">
+                <HeroAlert.Title className="starci-core-alert-title">{title}</HeroAlert.Title>
+                {description === undefined ? null : (
+                    <HeroAlert.Description className="starci-core-alert-description">{description}</HeroAlert.Description>
+                )}
+            </HeroAlert.Content>
+            {action === undefined && props.dismissLabel === undefined ? null : (
+                <span className="starci-core-alert-actions" data-grammar-alert-actions="true" data-contract="FEEDBACK-2">
+                    {action === undefined ? null : (
+                        <Button
+                            size="sm"
+                            variant={alertActionVariantFor(tone)}
+                            onPress={action.onAction}
+                            {...(action.icon === undefined ? {} : { startContent: <Icon source={action.icon} usage="leading" /> })}
+                        >{action.label}</Button>
+                    )}
+                    {props.dismissLabel === undefined ? null : (
+                        <CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} />
+                    )}
+                </span>
+            )}
+        </HeroAlert>
+    )
+}

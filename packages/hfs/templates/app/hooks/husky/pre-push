@@ -1,0 +1,4 @@
+{{header}}
+# Push gate: fast-forward main with a clean secret scan, annotated v* tags, and bounded ref input.
+# The bundled gate owns the policy; backups and lane refs use the same policy as the runtime.
+node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"

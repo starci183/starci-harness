@@ -1,0 +1,182 @@
+schema: starci/knowledge-source@1
+id: ui.composition.app-shell
+title: App shell
+appliesTo: [ui, frontend]
+family: composition
+purpose: |-
+  Persistent application chrome has one frame owner, predictable navigation and independent scroll regions.
+  Applications compose their selected design system and write layout-only CSS. That design system owns
+  visual anatomy, token values, icon sizes and control geometry under FE-RULE-OWNERSHIP.
+provenance:
+  reviewedAt: 2026-10-25
+  sources:
+    - knowledge/patterns/fe/ui.yaml
+    - knowledge/patterns/fe/css.yaml
+    - knowledge/patterns/fe/index.yaml
+    - knowledge/ui/composition/layout.yaml
+  limitations: |-
+    The owner will refine these rules. Static checks prove source composition only; keyboard behavior,
+    scrolling, responsive visibility, rendered geometry and menu contents require inspection of the running shell.
+rules:
+  - id: FE-APP-SHELL-1
+    title: One shell owns the app frame
+    governs: The shell frame, band and scroll ownership.
+    cases:
+      - id: case-1
+        when: Routed application content has persistent shell chrome
+        assert: |-
+          The selected design system's shell owns a fixed viewport frame: a persistent navbar, an optional
+          sidebar and independent scrolling for the sidebar and main content. The document never scrolls.
+          The header, sidebar and content sit flush, with no gap band between them.
+          Application markup composes that frame through its published layout regions.
+          A fixed shell with navigation shows inline navigation only on wide viewports and provides a
+          leading drawer, either through the shell's navigation-drawer contract or through its compact
+          header. Both opener paths default inline navigation to wide-only visibility; an explicit
+          visibility also resolves to wide-only. The navigation track defaults to intrinsic so a collapsed
+          sidebar leaves no empty track. The selected Grammar owns the component and prop names for
+          these contracts. A hand-built header or nav does not own the app frame.
+      - id: case-2
+        when: The navbar is composed
+        assert: |-
+          The navbar remains at the top of the frame, reads as a continuous surface and has one
+          full-width separator from the content beneath it. The design system supplies its band height.
+    verification:
+      automated: [FE_APP_SHELL_FRAME]
+      manual: [Inspect fixed viewport, flush regions and independent scroll at desktop and mobile widths.]
+  - id: FE-APP-SHELL-2
+    title: Navbar controls share one height
+    governs: Identity, search and every control in the navbar band.
+    cases:
+      - id: case-1
+        when: A control is placed in the navbar
+        assert: |-
+          Every bar control shares the design system's bar-control height. Every icon in this region
+          shares one size chosen from that system's icon scale.
+      - id: case-2
+        when: The left identity opens the workspace switcher
+        assert: |-
+          The workspace identity is one named, keyboard-accessible control. Its mark preserves the
+          supplied asset's proportions and has a meaningful fallback. The workspace name and role
+          subtitle remain legible. Focus is visible and motion follows the user's reduced-motion setting.
+      - id: case-3
+        when: Search occupies the middle of the navbar
+        assert: |-
+          Search is named and reachable through the declared platform shortcut, whose hint is visible.
+          A search control inside a surface stays visually distinct from that surface (ANATOMY-2).
+    verification:
+      automated: [FE_NAVBAR_CONTROL_SIZE]
+      manual: [Inspect identity, search shortcut, icon size, focus and reduced motion.]
+  - id: FE-APP-SHELL-3
+    title: The navbar right cluster has one order
+    governs: The desktop right cluster and its menus.
+    cases:
+      - id: case-1
+        when: The app composes its desktop navbar right cluster
+        assert: |-
+          The order is language, theme, notifications, account. The language menu makes the current
+          choice clear and names each supported language by its autonym. The theme control exposes its
+          current setting accessibly. Notifications expose an unread count and open their own region.
+          The account control shows the user's uploaded identity or the selected Grammar's bundled DiceBear
+          initials fallback (owner:avatar-default-dicebear-initials): the first and last words of the name
+          supply its letters, and the user id seeds its colour, falling back to the name when no id exists.
+      - id: case-2
+        when: The account control opens its menu
+        assert: |-
+          A workspace section shows identity marks and the current selection. An account section shows
+          the account name and its email and role. Sign-out carries danger semantics, as does every
+          destructive menu action. Section boundaries and selection remain visible in both themes and
+          are understandable without colour alone. Labels come from the application's translation catalog.
+      - id: case-3
+        when: A public site (marketing landing, legal pages) composes its own top bar
+        assert: |-
+          Site chrome is not the app shell. A bar hosted by a document-flow Grammar shell
+          (`WorkspaceShell viewport="flow"` without a sidebar) is site chrome, and the app
+          right cluster, which needs a signed-in account, notifications and workspaces, does not
+          apply. The bar carries the brand, in-page or section links and the site's actions, such as a
+          language switch, sign-in and a call to action. The bar and the flow shell are composed in the
+          same module (the site shell composite takes the navigation and actions as slots), so the
+          shell proves what the bar is; a top bar built in its own module has no shell around it
+          and is an app bar. Every control in a site bar still shares the bar-control height
+          (`size="control"`), so FE-APP-SHELL-2 holds there.
+    verification:
+      automated: [FE_NAVBAR_CLUSTER, FE_VENDOR_BOUNDARY]
+      manual: [Inspect menu anatomy, selection indicators, identity fallback, badges and notification regions.]
+  - id: FE-APP-SHELL-4
+    title: Mobile navigation is a drawer below the navbar
+    governs: Compact navbar content, the mobile subnav and drawer ownership.
+    cases:
+      - id: case-1
+        when: The viewport uses the compact shell presentation
+        assert: |-
+          The navbar row contains identity, search, notifications and account. Language and theme move into
+          the drawer. Directly below the navbar is a row of the same band height, with an edge-to-edge
+          divider between the rows. Its only content is a vertically centred, named navigation opener
+          with the design system's target clearance; it opens the sidebar drawer.
+          Inline navigation is hidden at compact widths; the shell's navigation-drawer contract or a
+          compact header containing a leading drawer supplies the opener and the drawer's sidebar.
+          The shell has no tabs in that row and no bottom tab bar.
+      - id: case-2
+        when: The mobile sidebar opens
+        assert: |-
+          The navigation drawer opens from the leading edge and holds all groups plus language and
+          theme. It closes on a destination, backdrop or Escape, traps focus and scrolls independently.
+      - id: case-3
+        when: The viewport reaches desktop
+        assert: The mobile subnav is hidden.
+    verification:
+      automated: [FE_APP_SHELL_FRAME, FE_APP_SHELL_BOTTOM_TABS]
+      manual: [Inspect both widths, drawer dismissal, trapped focus and independent scrolling.]
+  - id: FE-APP-SHELL-5
+    title: Create actions belong on their pages
+    governs: Action placement in the app shell.
+    cases:
+      - id: case-1
+        when: A page offers a create action
+        assert: |-
+          The create action lives on the page whose content it changes and never in the navbar.
+    verification:
+      automated: [FE_NAVBAR_CREATE]
+      manual: []
+  - id: FE-APP-SHELL-6
+    title: Collapsed navigation is an icon rail
+    governs: Expanded groups, collapsed destinations and persisted navigation state.
+    cases:
+      - id: case-1
+        when: The desktop sidebar is expanded
+        assert: |-
+          The sidebar reads as a surface in both themes, remains below the navbar, fills the remaining
+          frame height and scrolls independently. Groups have translated headers. Items have an icon,
+          label and a visible current-destination treatment supplied by the design system.
+      - id: case-2
+        when: The sidebar is collapsed with its keyboard-accessible collapse/expand toggle
+        assert: |-
+          The state is persisted per user. The sidebar becomes a compact vertical icon rail with one
+          icon-only item per destination. Icon size, hit target and current-destination treatment come
+          from the design system. Unread or pending work appears as a count badge. Labels appear as tooltips
+          on hover and focus. Item order matches sidebar groups, with spacing between groups replacing
+          headers; settings-type groups sit at the bottom.
+    verification:
+      automated: []
+      manual: [Inspect both themes, persisted state, keyboard toggle, tooltip focus and badge labels.]
+  - id: FE-APP-SHELL-7
+    title: Conversation navigation is one panel list
+    governs: Chat-page conversation-list composition.
+    cases:
+      - id: case-1
+        when: A chat page shows a conversation-list panel
+        assert: |-
+          The top contains the panel title, a nested search field, then a filter tab row:
+          the filters express the product's conversation categories and unread status.
+          One list is sorted by latest message; its row boxes align to the panel's content edge, while
+          content retains vendor item padding without stacked application padding (PADDING-0).
+          Each row has an avatar, name, time on the right, last message and an unread badge;
+          the open row is highlighted. Group identity remains distinguishable from a person's identity,
+          using the design system's group-identity treatment and a group marker beside its name.
+    verification:
+      automated: []
+      manual: [Inspect latest-message ordering, filters, open-row highlight and panel edge alignment.]
+doesNotDecide: |-
+  Product destinations, permissions and conversation data belong to the app. Layout region ownership is
+  [Layout](layout.yaml); the code boundary is [UI kit](../../patterns/fe/ui.yaml). Nested control variants,
+  panel-list alignment and group-avatar anatomy belong to the selected design system. Component names,
+  props, variants, token values and visual effects belong in that Grammar under FE-RULE-OWNERSHIP.

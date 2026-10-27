@@ -1,0 +1,58 @@
+/** A form constraint failure; the form supplies translated copy for its field. */
+export type InputBoundIssue = {
+    readonly path: readonly (string | number)[]
+    readonly kind: "maxLength" | "maxItems" | "min" | "max"
+    readonly bound: number
+}
+
+/** Checks limits only; the form's zod schema owns required values, types and formats. */
+const fieldBoundIssues = (
+    value: unknown,
+    limits: InputBoundField,
+    path: readonly (string | number)[],
+): InputBoundIssue[] => {
+    const issues: InputBoundIssue[] = []
+    if (typeof value === "string" && limits.maxLength !== undefined && value.length > limits.maxLength) {
+        issues.push({ path, kind: "maxLength", bound: limits.maxLength })
+    }
+    if (Array.isArray(value) && limits.maxItems !== undefined && value.length > limits.maxItems) {
+        issues.push({ path, kind: "maxItems", bound: limits.maxItems })
+    }
+    if (typeof value === "number") {
+        if (limits.min !== undefined && (!Number.isFinite(value) || value < limits.min)) {
+            issues.push({ path, kind: "min", bound: limits.min })
+        }
+        if (limits.max !== undefined && (!Number.isFinite(value) || value > limits.max)) {
+            issues.push({ path, kind: "max", bound: limits.max })
+        }
+    }
+    return issues
+}
+
+/**
+ * Checks one input object's bounds from its zod superRefine callback, so newly declared limits apply automatically.
+ * Compose nested input object schemas with their own bounds refinement; zod prefixes their relative issue paths.
+ * Missing optional values are left to zod. Maximum string length uses UTF-16 units, conservatively stricter than
+ * class-validator. Array item checks stop when the array itself exceeds its maximum size.
+ */
+export const inputBoundsIssues = (
+    bounds: Readonly<Record<string, InputBoundField>>,
+    values: Readonly<Record<string, unknown>>,
+): readonly InputBoundIssue[] => {
+    const issues: InputBoundIssue[] = []
+    for (const [field, limits] of Object.entries(bounds)) {
+        const value = values[field]
+        issues.push(...fieldBoundIssues(value, limits, [field]))
+        if (!Array.isArray(value) || (limits.maxItems !== undefined && value.length > limits.maxItems)) continue
+        const itemLimits: InputBoundField = {
+            maxLength: limits.itemMaxLength,
+            maxItems: limits.itemMaxItems,
+            min: limits.itemMin,
+            max: limits.itemMax,
+        }
+        value.forEach((item: unknown, index: number) => {
+            issues.push(...fieldBoundIssues(item, itemLimits, [field, index]))
+        })
+    }
+    return issues
+}

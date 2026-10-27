@@ -1,0 +1,479 @@
+schema: starci/knowledge-source@1
+id: be.api
+title: Backend api feature
+purpose: |-
+  Given a scenario a request or a background transport triggers, where does it live and how is it written? It is an api
+  feature, `be/src/features/api/<feature>/`, the trigger kind the api apps compose. Its application layer is CQRS: one
+  typed command or query per operation and one handler that owns the scenario, dispatched by a transport directly on the
+  bus. There is no use-case class and no forwarder service. Inside one bounded context the work is synchronous; an event
+  only crosses contexts or carries async work.
+appliesTo:
+  - backend
+family: be
+# The slot ids this topic teaches (knowledge/hfs/slots.yaml); scripts/gates/read-digest.mjs inverts these
+# into the READ-step slot -> pattern-topic map (knowledge/op-gate.yaml kinds), each slot's topics in index.yaml order.
+slots: [be.feature, be.feature.application, be.app.api]
+provenance:
+  reviewedAt: 2026-10-02
+  sources:
+    - knowledge/hfs/README.md
+    - knowledge/hfs/slots.yaml
+    - knowledge/hfs/rules.yaml
+    - owner-locked BE convention 2026-09-30
+    - owner decision 2026-10-02 (features grouped by trigger kind; synchronous inside a context)
+    - owner ruling 2026-10-14 (app composition standard: options, compose/<area>.ts groups, budgets)
+    - https://docs.nestjs.com/recipes/cqrs
+  limitations: |-
+    Static checks prove the shape of a feature, a message, its handler and the dispatch, and that SQL touches only tables its
+    owner may reach. They do not prove that a handler decides the right thing, that a transaction boundary is right, that a
+    context boundary is drawn where the business draws it or that a refusal is chosen over an exception correctly; the
+    service spec of the service the handler calls and the e2e run prove behavior, and design review proves the boundary.
+rules:
+  - id: BE-CQRS-1
+    title: The application folder holds messages, handlers, contracts and support only
+    kind: mandatory
+    hfsRules: [R87, R29]
+    requirement: |-
+      `be/src/features/api/<feature>/application/` holds `<action>.command.ts` or `<action>.query.ts`, `<action>.handler.ts`,
+      `<action>.contracts.ts` and the opt-in `support/` folder of helpers local to the feature. A
+      `*.use-case.ts` file, a forwarder `<op>.service.ts` and a folder named after a protocol do not exist. A read is a
+      query and a write is a command; a handler never serves both.
+    rationale: |-
+      One shape for every operation gives one interception point and one message object, so a reader finds the scenario
+      in the handler and never in a wrapper around it.
+    cases:
+      - id: case-1
+        when: A new write operation
+        write: 'application/start-checkout.command.ts, start-checkout.handler.ts, start-checkout.contracts.ts (the handler has no spec: its service does).'
+      - id: case-2
+        when: A new read operation
+        write: 'application/get-cart.query.ts, get-cart.handler.ts, get-cart.contracts.ts (the handler has no spec: its service does).'
+    verification:
+      automated:
+        - BE_CQRS_SHAPE
+        - BE_READONLY_BOUNDARY
+        - BE_FEATURE_SHAPE
+        - BE_FEATURE_LAYOUT_INVALID
+        - BE_APPLICATION_IMPORTS_TRANSPORT
+        - BE_APPLICATION_TRANSPORT_FRAMEWORK
+      manual:
+        - Confirm each operation is a command or a query and no handler mixes both.
+    relatedExamples: []
+  - id: BE-CQRS-2
+    title: A message is a typed Command or Query carrying one params field
+    kind: mandatory
+    hfsRules: [R87, R37]
+    requirement: |-
+      `export class <Action>Command extends Command<<Action>Result> { constructor(readonly params: ExecuteParams<<Action>Request>) { super() } }`
+      (`Query<R>` for reads). One `readonly params` field, no methods, no defaults. `ExecuteParams<T> = { request: T; principal: Principal }`
+      for an authenticated operation and `PublicExecuteParams<T> = { request: T }` for a `@Public` one, so the type states
+      whether the door is public and the principal is never optional. `Principal = { id: string; roles: ReadonlyArray<Role> }`
+      is owned by `platform/cqrs`. An entity never travels in params.
+    rationale: |-
+      `@nestjs/cqrs` 11 types `execute` with the message's result type, so the compiler proves what the transport gets
+      back, and a principal that cannot be absent removes a class of authorization bugs.
+    cases:
+      - id: case-1
+        when: An authenticated command
+        write: 'export class StartCheckoutCommand extends Command<StartCheckoutResult> { constructor(readonly params: ExecuteParams<StartCheckoutRequest>) { super() } }'
+      - id: case-2
+        when: A public query
+        write: 'export class CheckHealthQuery extends Query<CheckHealthResult> { constructor(readonly params: PublicExecuteParams<CheckHealthRequest>) { super() } }'
+    verification:
+      automated:
+        - BE_CQRS_SHAPE
+        - BE_READONLY_BOUNDARY
+        - BE_ENTITY_IN_CONTRACT
+      manual:
+        - Review that the request carries what the operation needs and nothing of the transport.
+    relatedExamples: []
+  - id: BE-CQRS-3
+    title: A handler overrides process and returns its declared result
+    kind: mandatory
+    hfsRules: [R87, R75, R48, R203]
+    requirement: |-
+      `@CommandHandler(X)` or `@QueryHandler(X)` on a class that `extends ICQRSHandler<X, XResult>` and implements
+      `protected override async process(message)`; it never overrides `execute`. `ICQRSHandler.execute` is load-bearing: it
+      logs `OperationFailed` with the operation name and the error and rethrows, and counts refused outcomes. `<Action>Result`
+      is a plain projection type or an `Outcome<Value, Code>` and the return type of `process` is declared. The handler is
+      thin (R203 `BE_FEATURE_THIN`): its `process` maps the message, makes one delegating call to an injected `*.service`
+      and returns the result, so it has no unit spec. The service owns the work: it opens the one transaction
+      (`this.entityManager.transaction(async (manager) => ...)`), stamps `this.clock.now()` once and passes it down, and it
+      holds the decisions (persisted state, the `where` that holds ownership, nothing written on a refusal), which its
+      `<name>.service.spec.ts` asserts under the per-file coverage law of BE-TEST-13.
+    rationale: |-
+      A single template gives every operation the same failure log and metric, and the service spec pins the decision the
+      handler delegates.
+    verification:
+      automated:
+        - BE_CQRS_SHAPE
+        - BE_READONLY_BOUNDARY
+        - BE_RETURN_TYPE
+        - BE_SPEC_QUALITY
+        - BE_FEATURE_THIN
+      manual:
+        - Confirm the service spec the handler calls asserts refusal paths and ownership, not only that a mock was called.
+    relatedExamples: [api]
+  - id: BE-CQRS-4
+    title: The bus is the only way into a handler; nothing forwards
+    kind: mandatory
+    hfsRules: [R87, R88, R90]
+    requirement: |-
+      A handler is reached only through `commandBus.execute` or `queryBus.execute` from a transport (the transport side is
+      transport.yaml BE-TRANSPORT-2). No `<op>.service.ts` sits between a transport and a handler. Work that stays
+      inside one context is synchronous: the handler calls the domain service in one transaction. A follow-up that must happen
+      anyway or that crosses a context is an event published inside that transaction (event-bus.yaml, BE-API-2), never an
+      in-process event: `EventBus`, `@EventsHandler`, `EventEmitter2`, `@OnEvent` and NATS bridges are not used.
+    rationale: |-
+      A forwarder is pure indirection where logic creeps in, and an in-process event does not survive a crash between the
+      commit and the delivery.
+    cases:
+      - id: case-1
+        when: A resolver needs an operation
+        write: '`constructor(@InjectCommandBus() private readonly commandBus: CommandBus) {}` then `this.commandBus.execute(new StartCheckoutCommand({ request, principal }))`.'
+      - id: case-2
+        when: A follow-up effect in another context after a write
+        write: 'the domain service the handler calls publishes the event with eventBus.publish(event, tx) in its own transaction; a reactor or job consumes it (event-bus.yaml).'
+    verification:
+      automated:
+        - BE_CQRS_SHAPE
+        - BE_READONLY_BOUNDARY
+        - BE_TRANSPORT_SHAPE
+        - BE_INFRA_OWNER
+      manual: []
+    relatedExamples: []
+  - id: BE-API-1
+    title: An api feature has one fixed shape and is composed only by apps
+    kind: mandatory
+    hfsRules: [R29, R28, R30, R31, R45]
+    requirement: |-
+      An api feature is `be/src/features/api/<feature>/` (slot `be.feature`) and holds `index.ts`, `<feature>.module.ts`,
+      `application/` (`be.feature.application`, with the opt-in `support/`, `be.feature.application.support`),
+      `transport/<protocol>/` and, when it has copy, `messages/` (`be.feature.messages`), and nothing else. A protocol lives
+      in `transport/graphql`, `transport/http` (`be.transport.{graphql,http}`, composed by an api app) or
+      `transport/message` (`be.transport.message`, composed by the api app that owns it or by a worker app), each with
+      exactly one Nest module `<feature>-<protocol>.module.ts`, its resolvers, controllers or consumers, their `<action>.mapper.ts` and `dto/` where the protocol has DTOs (shapes in
+      transport.yaml). The feature imports only downward into `src/modules/*`, never another api feature and never another
+      trigger kind such as `features/cli`; only `be/apps/*` composes it (folder.yaml BE-FOLDER-2).
+    rationale: |-
+      Several entry protocols share one operation without importing transport DTOs into the application layer, and an app can
+      compose only the transports it serves.
+    cases:
+      - id: case-1
+        when: An operation reachable over HTTP and GraphQL
+        write: application/place-order.command.ts and its handler once; transport/http/place-order.controller.ts and transport/graphql/place-order.resolver.ts each dispatch it.
+      - id: case-2
+        when: A conversion has substance
+        write: transport/graphql/place-order.mapper.ts with toPlaceOrderType and toPlaceOrderRequest.
+      - id: case-3
+        when: A feature grows past 250 source files
+        write: Split it by product capability into api features, moving shared behavior into a domain capability.
+      - id: case-4
+        when: An api feature imports features/cli/seed/subs/demo.cli.ts to reuse its rows
+        write: 'Refused (BE_FEATURE_IMPORTS_FEATURE): both kinds import the domain capability that owns the rows instead.'
+    verification:
+      automated:
+        - BE_FEATURE_SHAPE
+        - BE_FEATURE_LAYOUT_INVALID
+        - BE_APPLICATION_IMPORTS_TRANSPORT
+        - BE_APPLICATION_TRANSPORT_FRAMEWORK
+        - BE_FEATURE_IMPORTS_FEATURE
+        - BE_PUBLIC_SURFACE
+        - ARCH_OWNER_EXPORT_BYPASS
+        - ARCH_OWNER_EXPORT_STAR
+        - HFS_ALIAS_REEXPORT
+        - ARCH_PACKAGE_EXPORT_BYPASS
+        - BE_FEATURE_NOT_COMPOSED
+        - BE_MODULE_SHAPE
+        - BE_MODULE_HANDLER_REGISTRATION
+        - BE_MODULE_PROVIDER_REREGISTRATION
+      manual:
+        - Review application contracts for request-context, ORM entity and protocol DTO leaks.
+    relatedExamples: []
+  - id: BE-API-2
+    title: Inside one context the work is synchronous; events only cross contexts or carry async work
+    kind: mandatory
+    hfsRules: [R87, R26, R86, R82]
+    requirement: |-
+      A context is one bounded context: one domain capability set under `src/modules/domain/`, which may own one Postgres
+      schema. Work inside one context is synchronous: the handler calls that context's domain service directly, in one
+      transaction it opens, and emits no event to reach code of the same context. An event (an outbox message consumed in
+      `transport/message/`) exists only to cross into another context or to carry work that runs later. A feature never reads
+      or writes another context's tables or state directly; it receives that context's facts through an event or reads a
+      projection its own context owns.
+    rationale: |-
+      An event inside one context turns one atomic decision into a chain that can half-fail, while a direct read of another
+      context's state couples two owners through their storage and bypasses the owner's rules.
+    cases:
+      - id: case-1
+        when: add-cart-item (passing)
+        write: 'AddCartItemHandler opens one transaction and calls `this.cartService.addItem({ manager, buyerId, productId, quantity, at })`; the cart rows and the quantity check commit together, with no event.'
+      - id: case-2
+        when: The order feature needs the payment state (violating)
+        write: 'Refused: PlaceOrderHandler querying the payment tables or calling PaymentService to read whether a payment settled. The payment context publishes PaymentSettled through its outbox, and an order consumer in transport/message records it in an order-owned projection the order handler reads.'
+      - id: case-3
+        when: A confirmation mail after the order commits (async)
+        write: 'The order handler enqueues OrderPlaced in its transaction; the mail runs later from a consumer, never inside the order transaction.'
+    verification:
+      automated:
+        - BE_CQRS_SHAPE
+        - BE_READONLY_BOUNDARY
+        - BE_TIER_DIRECTION
+        - FE_TIER_DIRECTION
+        - ARCH_PACKAGE_IMPORTS_APP
+        - BE_SQL_TABLE_OWNER
+        - BE_TRANSACTION_EXTERNAL_CALL
+      manual:
+        - Confirm each event crosses a context boundary or carries deferred work, and that no handler waits on an event of its own context.
+    relatedExamples: []
+  - id: BE-API-3
+    title: Every operation has an e2e flow on the real app
+    kind: mandatory
+    hfsRules: [R46, R41]
+    requirement: |-
+      Each resolver method and controller action of an api feature is driven by an e2e spec (`src/tests/e2e/<area>/*.e2e-spec.ts`) that boots the
+      app's real AppModule and calls it as a client does: the happy path, the refusal the command declares and the denial of an unauthenticated caller.
+    rationale: |-
+      A transport is thin (R203 `BE_FEATURE_THIN`) and has no logic to unit-test; what can break is the wiring, the guards and the mapping, which only the booted app exercises.
+    cases:
+      - id: case-1
+        when: A new mutation
+        write: 'checkout.e2e-spec.ts signs a shopper in, runs startCheckout, asserts the typed payload, then asserts the same call without a token is refused.'
+    verification:
+      automated:
+        - BE_BACKGROUND_UNOWNED
+        - BE_DEFAULT_DENY
+      manual:
+        - Confirm the spec asserts the error code of each refusal, not only a status.
+    relatedExamples: [api]
+  - id: BE-API-4
+    title: An api app parses env separately and composes in area groups; its options hold values and port bindings only
+    kind: mandatory
+    hfsRules: [R245, R246, R32, R45, R43, R265, R289]
+    requirement: |-
+      An app's `src/` (slot `be.app.api`, and alike `be.app.worker` and `be.app.cli`) holds five app roles, each within the
+      line budget its slot names (owner ruling 2026-10-14):
+      - `main.ts` (80 lines) builds `EnvSource` once, imports and calls `read<App>Env` from `<app>.env.ts`, builds the options
+        and boots the app.
+      - `<app>.env.ts` (150) exports an explicit typed `<App>Env` interface and `read<App>Env(env: EnvSource): <App>Env`
+        (for example `ApiEnv` and `readApiEnv`). It holds fail-fast environment parsing only, via the app's `EnvSource` and
+        unchanged capability `parse<C>Config` helpers, with no localhost or default host fallback. Secrets use `env.secret`:
+        `EnvSource` resolves `<NAME>_FILE` first for `.starcistacks` custody, then plain `<NAME>` when the file key is absent.
+        It holds no logic, module composition, business code or feature imports. Only this app file and `main.ts` may read
+        `process.env` or `EnvSource`; `platform/config` owns the standard `EnvSource` reader. The role name stays
+        `<app>.env.ts`, never `env.ts`; its interface declares its own readonly parsed members, such as
+        `readonly server: ReturnType<typeof parseServerConfig>`, structurally compatible with the app's options.
+      - `<app>.options.ts` (200) holds the env-derived values plus its port bindings: provider maps such as
+        `{ approvalGate: ApprovalGateAdapter }`, with no environment parsing or reads of `process.env` or `EnvSource`.
+        Neither it nor `<app>.env.ts` holds an array
+        listing `*Module` classes, module or queue registrations (`register`, `forRoot`, `registerQueue`) or scheduler entries,
+        or an `imports`, `modules`, `schedulers` or `processors` list. The env file also refuses standalone module or queue
+        registration calls (`BE_APP_OPTIONS_COMPOSITION`).
+      - `compose/<area>.ts` (120) is a composition group: it exports explicitly typed module, DynamicModule, Provider, queue or
+        scheduler lists and maps for one area of the app (the platform, the
+        background mechanisms with their message and queue doors, a product area), as a function of the options when it needs
+        them, and the providers of the area's global ports when it has any. It is composition only: no business logic, no
+        environment read (no `parse<C>Config`, `process.env` or `EnvSource` reads), and its `X.register({ isGlobal: true, ...options.x })` calls
+        count as the app root's registrations (R45).
+      - `app.module.ts` (250) imports the groups and spreads them into its `imports` (`...platformModules(options)`); its own
+        providers bind only the app-wide guards and filter. Module-list literals belong in the compose groups.
+      Resolved composition types establish these roles even when imports are aliased, a registration is saved to a constant,
+      or scheduler definitions use a typed constant array. `starci app add` writes and updates the generated feature's typed
+      area group. A compose group holds no business arrow, branch or other decision that belongs in a tested module.
+      A file over its budget is `BE_APP_COMPOSITION_BUDGET`; the budget is absolute, so an app root that outgrows 250 lines
+      moves an area into a new group, never into the env or options file. An entrypoint over 80 moves its parsing into the env file.
+    rationale: |-
+      A long app root invites moving its module lists into the options file, which then mixes configuration with composition
+      and grows without a bound. One group per area keeps each composition reviewable, the options pure data, and the root a
+      table of contents. The env file keeps typed, fail-fast parsing visible while the entrypoint stays within 80 lines.
+    cases:
+      - id: case-1
+        when: A new api app is scaffolded
+        write: 'apps/api/src/compose/platform.ts exports platformModules(options) (clock, logging, i18n, errors, cqrs, http security, database), and app.module.ts spreads ...platformModules(options) before the domain modules and the guards.'
+      - id: case-2
+        when: The app root passes 250 lines because every module is listed in it
+        write: 'Move one area into apps/<app>/src/compose/<area>.ts (for example compose/background.ts with the event bus, the queue and its schedulers, the jobs and the message and queue doors) and spread it in app.module.ts.'
+      - id: case-3
+        when: 'api.options.ts exports `modules: [...]`, a `BullModule.registerQueue(...)` list or `schedulers: [orderExpirySchedulerOf(...)]`'
+        write: 'Refused (BE_APP_OPTIONS_COMPOSITION): keep only the parsed values (orderExpiry: { everyMs, olderThanMs }) and the port map in the options; the list goes into compose/<area>.ts.'
+      - id: case-4
+        when: An api app reads capability configuration
+        write: 'api.env.ts exports interface ApiEnv and readApiEnv(env: EnvSource): ApiEnv (at most 150 lines); main.ts passes its EnvSource to that reader and builds AppOptions from the parsed values and port bindings within 80 lines. No module list or feature import goes into api.env.ts.'
+    verification:
+      automated:
+        - BE_APP_OPTIONS_COMPOSITION
+        - BE_APP_COMPOSITION_BUDGET
+        - BE_APP_COMPOSITION_ONLY
+        - BE_APP_BUSINESS_ROLE
+        - BE_MODULE_SHAPE
+        - BE_MODULE_HANDLER_REGISTRATION
+        - BE_MODULE_PROVIDER_REREGISTRATION
+        - BE_CONFIG_OWNER
+        - BE_COMPOSITION_UNTYPED
+        - BE_APP_ENV_REQUIRED
+        - BE_APP_MODULE_LIST_INLINE
+      manual:
+        - Confirm each group is one area of the app and holds no decision a capability should own.
+    relatedExamples: [api]
+  - id: BE-OPERATIONS-1
+    title: A versioned operation is declared once in the app's typed operation table
+    kind: mandatory
+    hfsRules: [R95, R88, R23, R278, R304, R305]
+    requirement: |-
+      A versioned operation `<name>@<version>` (for example `sales.policy@1`) that an app serves over one operation route is
+      declared once, in the app's operation table, which `be/apps/<app>/src/operations.ts` exports as `OPERATIONS`. A feature cannot
+      import an app and a feature's contracts hold no call, so the table is made in a `<name>-operations.contracts.ts` of the
+      domain capability that owns the operations, and the app file re-exports it from the capability's public surface. The table is made by
+      `defineOperations` of the platform capability `operations` (`be/src/modules/platform/operations/`, which declares
+      `OperationContract<Input, Output, RefusalCode>`, `query`, `mutation`, `defineOperations`, `OperationRequest<Table>` and
+      `OperationReply<Table>`) and the `OperationValidationPolicy` pipe. Every entry supplies `query({ input, output, refusal? })` or
+      `mutation({ input, output, refusal? })`: input and output are named zod schema exports from bounded `*.schema.ts` files
+      in a domain, platform or integrations owner (R304/R305). The schemas infer the closed input and output types; never
+      `any`, `unknown`, `Record<string, unknown>`, `object`, an unbound generic, a function or `Date`. `refusal` is a readonly
+      list of literal codes, or omitted for an operation that never refuses. The one route of the app takes
+      `@Body(new OperationValidationPolicy(OPERATIONS)) request: OperationRequest<Table>` and answers
+      `Promise<OperationReply<Table>>` of the same table; the wire is `{ operation, requestId, input }` in and `{ operation, requestId,
+      outcome }` out, `outcome` being the canon Outcome `{ kind: "ok", value }` or `{ kind: "refused", code }`. `starci app emit`
+      derives `be/contracts/<app>/openapi.json` (OpenAPI 3.1, `x-operation: "<name>@<version>"`, a oneOf over the operations) with
+      `z.toJSONSchema`: input uses the schema's input representation and output its output representation. Refusal codes
+      remain a closed union checked by TypeScript. `OperationRequest<Table>` describes parsed input, inferred from the input
+      schema's output type; defaults and transforms must agree with what the handler receives. Parsed input and output remain
+      closed JSON types, including after a transform: `any`, `unknown` and `Date` are still refused independently of the wire
+      schema. Root `undefined` and `void` cannot fill the request input or reply value; optional object fields remain valid.
+      Emission evaluates only the schema declarations, whose runtime imports are
+      zod or other `*.schema.ts` modules; bound constants belong in those declaration modules too. Type-only imports are
+      erased. Emission never runs app boot or table module side effects and refuses open schemas (a non-strict `z.object`; use `z.strictObject`) or Zod-unrepresentable
+      values, and publishes a fixed-format string such as `z.uuid()` with its real maximum length. String, array and dictionary bounds must survive conversion as `maxLength`, `maxItems` and `maxProperties`;
+      a custom count refinement that Zod drops is refused rather than emitted as an unbounded dictionary. Prefer finite
+      object fields for operation dictionaries. Custom refinements do not automatically become JSON Schema constraints.
+      Enable `be.contract.openapi` in `hfs.json` under `sides.be.optionalSlots` to own the emitted snapshot. The full `starci app check` fails
+      when the committed file is stale.
+      `OperationRequest<Table>` is erased at runtime and does not give ValidationPipe a DTO to validate. The platform-owned
+      operation pipe validates the envelope, the registered operation name and the selected input schema before dispatch,
+      passes the parsed input onward, and maps malformed requests to `OPERATIONS_INVALID_REQUEST`, an invalid AbstractException
+      answered as HTTP 400 with `{ code, kind, message, params }` by the canon error filter. A plain generic annotation or a
+      pipe for another table proves no validation. Keep zod imports in the schema
+      declaration files; the platform pipe bounds both envelope identifiers, `operation` and `requestId`, to 1..128 characters, the value the emitted contract states. Do not import zod in the transport. Specs validate successful
+      operation output against the declared output schema and cover refused input and declared outcomes; all logic-role files
+      have 100% coverage. The emitted contract is the FE boundary; FE never imports BE schemas and has no specs.
+      A public REST operation in either edition belongs to this nonempty table, and its route decorator supplies its own
+      versioned-operation evidence; a class-level reference does not justify a route absent from the table.
+    rationale: |-
+      The operation set of an app is a contract the front end (`fe/`, through the root codegen) and other consumers generate a client from. A name-to-string registry with `unknown`
+      bodies and results forces every client to hand-type the wire; one typed table gives the client generator, the route and the
+      handlers the same types. Runtime schema parsing closes the generic ValidationPipe gap and carries actual bounds into
+      the emitted contract instead of losing them when TypeScript erases the declaration.
+    cases:
+      - id: case-1
+        when: A versioned query served through the schema-validated table
+        write: |-
+          // modules/domain/order/order-list.schema.ts (R304/R305)
+          export const OrdersListInputSchema = z.strictObject({
+              first: z.number().int().min(1).max(100),
+              after: z.string().max(512).nullish(),
+          })
+          export const OrdersListOutputSchema = z.strictObject({ items: z.array(OrderSummarySchema).max(100).readonly(), ... })
+          // modules/domain/order/order-operations.contracts.ts
+          export const OPERATIONS = defineOperations({
+              "orders.list@1": query({ input: OrdersListInputSchema, output: OrdersListOutputSchema, refusal: [OrderErrorCode.PageSizeInvalid] }),
+          })
+          // be/apps/order/src/operations.ts
+          export { OPERATIONS } from "@modules/domain/order"
+          // features/api/checkout/transport/http/operations.controller.ts
+          @Post("operations")
+          async invoke(
+              @Body(new OperationValidationPolicy(OPERATIONS)) request: OperationRequest<typeof OPERATIONS>,
+          ): Promise<OperationReply<typeof OPERATIONS>> { ... }
+    verification:
+      automated:
+        - BE_OPERATION_CONTRACT
+        - BE_TRANSPORT_SHAPE
+        - HFS_CONTRACT_SNAPSHOT_DRIFT
+        - BE_REST_DOOR_EVIDENCE
+        - BE_REST_ROUTE_UNDECLARED
+        - BE_SCHEMA_PLACE
+        - BE_SCHEMA_BOUNDED
+      manual:
+        - Confirm each refusal code is one the operation's owner can actually answer.
+    relatedExamples: [operations]
+files:
+  - path: src/features/api/<feature>/index.ts
+    slot: be.feature
+    role: The public surface of the feature; only apps import it.
+    rules: [BE_PUBLIC_SURFACE]
+    template: api/feature.index.ts.tpl
+  - path: src/features/api/<feature>/<feature>.options.ts
+    slot: be.feature
+    template: api/feature.options.ts.tpl
+    role: The options of the module (the configurable module base needs a type); empty until the module takes some.
+  - path: src/features/api/<feature>/<feature>.module-definition.ts
+    slot: be.feature
+    template: api/feature.module-definition.ts.tpl
+    role: The configurable-module base of the module, registered as register.
+  - path: src/features/api/<feature>/<feature>.module.ts
+    slot: be.feature
+    role: Composes the application handlers.
+    template: api/feature.module.ts.tpl
+  - path: src/features/api/<feature>/application/<action>.command.ts
+    slot: be.feature.application
+    role: One command (or `.query.ts`) carrying one `params` field.
+    template: api/application.command.ts.tpl
+  - path: src/features/api/<feature>/application/<action>.handler.ts
+    slot: be.feature.application
+    role: Overrides `process` and calls the domain service of its context.
+    template: api/application.handler.ts.tpl
+  - path: src/features/api/<feature>/application/<action>.contracts.ts
+    slot: be.feature.application
+    role: The plain request and result types of the action.
+    template: api/application.contracts.ts.tpl
+  - path: src/features/api/<feature>/transport/graphql/<action>.resolver.ts
+    slot: be.transport.graphql
+    role: The GraphQL door of one operation; dispatches one message.
+    rules: [BE_TRANSPORT_SHAPE, BE_DEFAULT_DENY]
+    template: api/graphql.resolver.ts.tpl
+  - path: src/features/api/<feature>/transport/graphql/dto/<action>.input.ts
+    slot: be.transport.graphql
+    role: The bounded input of the operation.
+    rules: [BE_INPUT_BOUNDED]
+    template: api/graphql.input.ts.tpl
+  - path: src/features/api/<feature>/transport/graphql/dto/<action>.type.ts
+    slot: be.transport.graphql
+    role: The typed output of the operation.
+    template: api/graphql.type.ts.tpl
+  - path: src/features/api/<feature>/transport/graphql/<action>.mapper.ts
+    slot: be.transport.graphql
+    role: Maps the input to the request and the result to the type.
+    template: api/graphql.mapper.ts.tpl
+  - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.options.ts
+    slot: be.transport.graphql
+    template: api/graphql.options.ts.tpl
+    role: The options of the module (the configurable module base needs a type); empty until the module takes some.
+  - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.module-definition.ts
+    slot: be.transport.graphql
+    template: api/graphql.module-definition.ts.tpl
+    role: The configurable-module base of the module, registered as register.
+  - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.module.ts
+    slot: be.transport.graphql
+    role: One module for the whole GraphQL transport of the feature.
+    template: api/graphql.module.ts.tpl
+  - path: src/features/api/<feature>/transport/http/<action>.controller.ts
+    slot: be.transport.http
+    role: A REST door, only where GraphQL cannot serve (health, byte streams, the operation route).
+    optional: true
+    rules: [BE_TRANSPORT_SHAPE, BE_DEFAULT_DENY]
+  - path: src/features/api/<feature>/transport/http/<feature>-http.module.ts
+    slot: be.transport.http
+    role: One module for the whole HTTP transport of the feature.
+    optional: true
+  - path: src/features/api/<feature>/messages/<feature>.messages.ts
+    slot: be.feature.messages
+    role: The keyed vi and en text of the feature.
+    optional: true
+  - path: contracts/<app>/schema.graphql
+    slot: be.contract.graphql
+    role: The emitted GraphQL snapshot of the app; a stale file fails the full check.
+    optional: true
+  - path: src/tests/e2e/<area>/<action>.e2e-spec.ts
+    slot: be.tests.e2e
+    role: The operation on the booted app, refusal and unauthenticated call included.
+    optional: true

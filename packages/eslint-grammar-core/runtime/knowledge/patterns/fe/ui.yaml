@@ -1,0 +1,85 @@
+schema: starci/knowledge-source@1
+id: fe.ui
+title: UI kit
+purpose: |-
+  Frontends compose one explicitly selected Grammar. It owns visual rendering and published component APIs;
+  applications supply product data, content and layout under FE-RULE-OWNERSHIP.
+appliesTo:
+  - frontend
+family: fe
+# The slot ids this topic teaches (knowledge/hfs/slots.yaml); scripts/gates/read-digest.mjs inverts these
+# into the READ-step slot -> pattern-topic map (knowledge/op-gate.yaml kinds), each slot's topics in index.yaml order.
+slots: [fe.components, fe.feature]
+provenance:
+  reviewedAt: 2026-10-25
+  sources:
+    - "knowledge/hfs/fe-stack.yaml"
+    - "knowledge/ui/index.yaml"
+    - "knowledge/ui/composition/app-shell.yaml"
+    - "knowledge/patterns/fe/css.yaml"
+  limitations: |-
+    Static stack and family checks prove declared boundaries and API use. They do not replace inspection of
+    the rendered interface or decide product requirements.
+rules:
+  - id: FE-UI
+    title: Compose the selected Grammar
+    kind: mandatory
+    hfsRules: [R93, R244, R313, R314, R315, R316, R317, R318, R319, R320]
+    requirement: |-
+      Components compose the selected Grammar through its published entry and props; application CSS carries
+      layout only (css.yaml). A missing visual capability is added to that Grammar before the app consumes it.
+      The app does not introduce a competing visual kit. The stack catalog owns dependency choices, and the
+      family owns concrete component names, variants, token values and invocation checks.
+      App shells follow FE-APP-SHELL-1 through FE-APP-SHELL-7 in knowledge/ui/composition/app-shell.yaml.
+    rationale: |-
+      One kit keeps one design language and one token source.
+    cases:
+      - id: case-1
+        date: "2026-10-13"
+        source: owner
+        when: A feature needs a visual capability the selected Grammar lacks
+        write: Extend and release the owning Grammar before consuming it; keep one visual language in the app.
+      - id: case-2
+        date: "2026-10-25"
+        source: owner
+        when: A conversation or group identity represents several people
+        write: |-
+          Show a composite identity based on the actual members, distinguish it from an individual,
+          and follow COLLECTION-3 in knowledge/ui/composition/collection.yaml. The selected family
+          owns its renderer, cell geometry, overflow treatment and fallback API.
+      - id: case-3
+        date: "2026-10-25"
+        source: owner
+        when: A person or identity needs an avatar
+        write: |-
+          Pass the uploaded image when one exists; otherwise the selected Grammar's identity renderer uses
+          bundled DiceBear initials from the first and last words of the name, with colour seeded by the
+          user or identity id when present and by the name otherwise (owner:avatar-default-dicebear-initials).
+          Agent names follow the same free-text rule and add the Grammar's bot badge
+          (owner:agent-avatar-initials-bot-badge). Apps neither declare nor import an avatar-generation
+          library and draw no avatar visuals; the family owns the renderer API (the StarCi recipe is
+          groupIdentity in its playbook).
+    verification:
+      automated:
+        - FE_VENDOR_BOUNDARY
+        - ARCH_GRAMMAR_CONTRACT_INVALID
+        - ARCH_GRAMMAR_EXPORT_BYPASS
+        - FE_STACK_FORBIDDEN
+        - FE_APP_SHELL_FRAME
+        - FE_NAVBAR_CONTROL_SIZE
+        - FE_NAVBAR_CLUSTER
+        - FE_APP_SHELL_BOTTOM_TABS
+        - FE_NAVBAR_CREATE
+        - FE_NESTED_VARIANT
+        - FE_LIST_PANEL_PADDING
+        - FE_GRAMMAR_LAYOUT_ONLY
+        - FE_DIVIDER_FULL_BLEED
+        - FE_BUTTON_INTENT
+        - FE_BUTTON_INTENT_REQUIRED
+        - FE_BUTTON_NO_VARIANT
+        - FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
+        - FE_SINGLE_COMMIT_PER_RENDER
+        - FE_NO_COMMIT_IN_COLLECTION_ITEM
+        - FE_CONTROL_HEIGHT
+      manual: []
+    relatedExamples: [full-app-shell, lite-app-shell]

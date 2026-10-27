@@ -1,0 +1,232 @@
+import { Description as HeroDescription, Dropdown as HeroDropdown, Header as HeroHeader, Kbd as HeroKbd, Label as HeroLabel, Separator as HeroSeparator } from "@heroui/react"
+import type { ReactNode } from "react"
+import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
+import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
+import { Icon, type IconSource } from "../../primitive/Icon/index.js"
+import { kbdChordContent } from "../../primitive/Kbd/index.js"
+
+export type DropdownMenuItemTone = "neutral" | "danger"
+
+/** One command, destination or (inside a selectable section) checkable choice. */
+export type DropdownMenuItem = {
+    readonly kind?: "item"
+    readonly id: string
+    readonly label: string
+    readonly description?: string
+    /** Visible description lines (default one); longer content is clamped with an ellipsis. */
+    readonly descriptionLines?: ItemDescriptionLines
+    /** Shortcut chord drawn with `Kbd`, e.g. `["command", "K"]`. Display only: the app binds the keys. */
+    readonly shortcut?: readonly string[]
+    /** `danger` marks a destructive command. */
+    readonly tone?: DropdownMenuItemTone
+    readonly isDisabled?: boolean
+    /** A destination: the item renders a real link. */
+    readonly href?: string
+    readonly onAction?: () => void
+    /** Nested entries open as a submenu (ArrowRight / Enter / hover open it, ArrowLeft / Escape close it). */
+    readonly submenu?: readonly DropdownMenuEntry[]
+} & (
+    | {
+        /** App-owned glyph; Grammar supplies the canon leading icon size (20px). Mutually exclusive with `mark`. */
+        readonly iconSource?: IconSource
+        readonly mark?: never
+    }
+    | {
+        readonly iconSource?: never
+        /** Decorative identity artwork in the same leading icon box. The item's label supplies its name. */
+        readonly mark?: ReactNode
+    }
+)
+
+/** Checkable items use HeroUI's default checkmark in both selection modes. */
+export type DropdownMenuSelection = {
+    readonly mode: "single" | "multiple"
+    readonly selectedIds: readonly string[]
+    readonly onChange: (selectedIds: readonly string[]) => void
+}
+
+export type DropdownMenuSection = {
+    readonly kind: "section"
+    readonly id: string
+    /** Visible group heading; also the group's accessible name. */
+    readonly label?: string
+    readonly items: readonly DropdownMenuItem[]
+    readonly selection?: DropdownMenuSelection
+}
+
+export type DropdownMenuEntry = DropdownMenuItem | DropdownMenuSection
+
+export type DropdownMenuPlacement = "bottom start" | "bottom end" | "top start" | "top end"
+
+export type DropdownMenuProps = OverlayOpenState & {
+    /**
+     * A Common `Button`/`IconButton` (any React Aria pressable) that opens the menu. It also NAMES the
+     * menu (`aria-labelledby`, the WAI-ARIA menu-button pattern), so give an icon trigger its label.
+     */
+    readonly trigger: ReactNode
+    readonly entries: readonly DropdownMenuEntry[]
+    /** Called with the id of any activated item (after the item's own `onAction`). */
+    readonly onAction?: (id: string) => void
+    readonly placement?: DropdownMenuPlacement
+}
+
+const isSection = (entry: DropdownMenuEntry): entry is DropdownMenuSection => entry.kind === "section"
+
+const collectItems = (entries: readonly DropdownMenuEntry[], into = new Map<string, DropdownMenuItem>()) => {
+    for (const entry of entries) {
+        if (isSection(entry)) collectItems(entry.items, into)
+        else {
+            into.set(entry.id, entry)
+            if (entry.submenu !== undefined) collectItems(entry.submenu, into)
+        }
+    }
+    return into
+}
+
+/**
+ * BRANCH - `DropdownMenu`: a trigger-owned `role="menu"` of commands, links, checkable choices and
+ * submenus.
+ *
+ * React Aria owns the keyboard model (arrow keys, Home/End, typeahead, Enter/Space, ArrowRight into
+ * a submenu, Escape and outside press dismiss, focus returns to the trigger). The menu and every
+ * submenu portal into the nearest Grammar root so the family scope still applies.
+ * Contract: menu FOCUS-2 FOCUS-5; popover LAYOUT-4 BOUNDARY-6 MOTION-2; item FOCUS-1 CTA-2 (ring,
+ * link vs command); a selectable section STATE-1 (app-owned selectedIds).
+ */
+export const DropdownMenu = ({
+    trigger,
+    entries,
+    onAction,
+    placement = "bottom start",
+    ...openState
+}: DropdownMenuProps) => {
+    const presentation = useCollectionItemPresentation()
+    const { anchor, container } = useOverlayContainer("DropdownMenu")
+    const items = collectItems(entries)
+    const handleAction = (key: string | number) => {
+        const id = String(key)
+        items.get(id)?.onAction?.()
+        onAction?.(id)
+    }
+
+    const renderItem = (item: DropdownMenuItem, selectionMode?: DropdownMenuSelection["mode"]): ReactNode => {
+        const tone = item.tone ?? "neutral"
+        const icon = item.iconSource !== undefined ? <Icon source={item.iconSource} usage="leading" />
+            : item.mark === undefined || item.mark === null || item.mark === false || item.mark === "" ? null : (
+                <span aria-hidden="true" className="starci-core-icon" data-usage="leading" data-grammar-menu-mark="true">{item.mark}</span>
+            )
+        const content = (
+            <>
+                {selectionMode === undefined ? null : <HeroDropdown.ItemIndicator />}
+                {item.description === undefined ? icon : icon === null ? null : <div data-grammar-menu-icon-slot="true">{icon}</div>}
+                {item.description === undefined ? <HeroLabel>{item.label}</HeroLabel> : (
+                    <div data-grammar-menu-copy="true">
+                        <HeroLabel>{item.label}</HeroLabel>
+                        <HeroDescription data-grammar-item-description="true" data-grammar-description-lines={item.descriptionLines ?? presentation.descriptionLines}>{item.description}</HeroDescription>
+                    </div>
+                )}
+                {item.shortcut === undefined ? null : (
+                    <HeroKbd data-grammar-menu-shortcut="true" slot="keyboard" variant="light">{kbdChordContent(item.shortcut)}</HeroKbd>
+                )}
+                {item.submenu === undefined ? null : <HeroDropdown.SubmenuIndicator />}
+            </>
+        )
+        const itemElement = (
+            <HeroDropdown.Item
+                key={item.id}
+                id={item.id}
+                aria-label={item.label}
+                textValue={item.label}
+                variant={tone === "danger" ? "danger" : "default"}
+                isDisabled={item.isDisabled ?? false}
+                {...(item.href === undefined ? {} : { href: item.href })}
+                data-grammar-menu-item="true"
+                data-contract="FOCUS-1 CTA-2"
+                data-grammar-tone={tone}
+            >
+                {content}
+            </HeroDropdown.Item>
+        )
+        if (item.submenu === undefined) return itemElement
+        return (
+            <HeroDropdown.SubmenuTrigger key={item.id}>
+                {itemElement}
+                {/*
+                  * No portal container here on purpose: React Aria mounts a submenu popover into the
+                  * root menu popover's own group container, which is already inside the Grammar root.
+                  * Portalling it to the root instead would put it outside that aria-hidden boundary.
+                  */}
+                <HeroDropdown.Popover
+                    data-grammar-overlay-surface="menu"
+                    data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
+                >
+                    <HeroDropdown.Menu
+                        aria-label={item.label}
+                        onAction={handleAction}
+                        data-component="DropdownMenu"
+                        data-grammar-menu-depth="submenu"
+                        data-contract="FOCUS-2 FOCUS-5"
+                    >
+                        {renderEntries(item.submenu)}
+                    </HeroDropdown.Menu>
+                </HeroDropdown.Popover>
+            </HeroDropdown.SubmenuTrigger>
+        )
+    }
+
+    const renderEntry = (entry: DropdownMenuEntry): ReactNode => {
+        if (!isSection(entry)) return renderItem(entry)
+        const selection = entry.selection
+        return (
+            <HeroDropdown.Section
+                key={entry.id}
+                id={entry.id}
+                {...(entry.label === undefined ? {} : { "aria-label": entry.label })}
+                {...(selection === undefined ? {} : {
+                    selectionMode: selection.mode,
+                    selectedKeys: new Set(selection.selectedIds),
+                    onSelectionChange: (keys: "all" | Set<string | number>) => {
+                        selection.onChange(keys === "all" ? entry.items.map((item) => item.id) : Array.from(keys, String))
+                    },
+                })}
+                data-grammar-menu-section="true"
+                data-contract={selection === undefined ? undefined : "STATE-1"}
+            >
+                {entry.label === undefined ? null : <HeroHeader>{entry.label}</HeroHeader>}
+                {entry.items.map((item) => renderItem(item, selection?.mode))}
+            </HeroDropdown.Section>
+        )
+    }
+
+    /** HeroUI divides sections with its own `Separator` between two entries when either one is a section. */
+    const renderEntries = (list: readonly DropdownMenuEntry[]): ReactNode[] => list.flatMap((entry, index) => {
+        const previous = list[index - 1]
+        const needsSeparator = previous !== undefined && (isSection(entry) || isSection(previous))
+        return needsSeparator ? [<HeroSeparator key={`separator-${index}`} />, renderEntry(entry)] : [renderEntry(entry)]
+    })
+
+    return (
+        <HeroDropdown {...overlayOpenProps(openState)}>
+            {trigger}
+            {anchor}
+            {container === null ? null : (
+                <HeroDropdown.Popover
+                    UNSTABLE_portalContainer={container}
+                    placement={placement}
+                    data-grammar-overlay-surface="menu"
+                    data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
+                >
+                    <HeroDropdown.Menu
+                        onAction={handleAction}
+                        data-tier="branch"
+                        data-component="DropdownMenu"
+                        data-grammar-menu-depth="root"
+                        data-contract="FOCUS-2 FOCUS-5"
+                    >
+                        {renderEntries(entries)}
+                    </HeroDropdown.Menu>
+                </HeroDropdown.Popover>
+            )}
+        </HeroDropdown>
+    )
+}

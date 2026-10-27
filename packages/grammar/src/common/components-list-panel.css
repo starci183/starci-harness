@@ -1,0 +1,42 @@
+/* PADDING-0: panel list boxes share the field and tabs edge; HeroUI owns list and item padding. */
+@layer starci-grammar-common {
+    .grammar-common-root .starci-core-list-box[data-grammar-list-inset="panel"] {
+        inline-size: 100%;
+        margin-inline: 0;
+    }
+
+    /* owner:item-description-one-line: clamp the vendor Description slot, preserving its text and paint. */
+    .grammar-common-root [data-slot="description"][data-grammar-item-description="true"] {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        overflow: hidden;
+        white-space: normal;
+        text-overflow: ellipsis;
+    }
+
+    .grammar-common-root [data-slot="description"][data-grammar-description-lines="2"] {
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+
+    .grammar-common-root [data-slot="description"][data-grammar-description-lines="3"] {
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+    }
+
+    .grammar-common-root [data-grammar-sidebar-copy="true"] {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .grammar-common-root [data-grammar-item-label="true"] {
+        max-inline-size: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}

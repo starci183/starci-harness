@@ -1,0 +1,28 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.description"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Description
+dir: description
+anatomy:
+  root: "DescriptionRoot"
+  parts: []
+  required: []
+  slots: {}
+  embeds: []
+variants:
+  defaults: {}
+  values: {}
+parts:
+  Root: {"impl":"DescriptionRoot","dataSlot":"description","classes":[],"defaults":{},"values":{},"paints":[]}
+css:
+  files: ["description.css"]
+  classes: ["description"]
+  dataSlots: []
+  rules:
+    - {"file":"description.css","selectors":[".description"],"apply":["text-xs","text-wrap","wrap-break-word","text-muted"]}

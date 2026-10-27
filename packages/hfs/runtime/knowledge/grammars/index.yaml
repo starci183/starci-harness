@@ -1,0 +1,102 @@
+schema: starci/knowledge-source@1
+id: grammars
+title: Grammar families
+purpose: |
+  Catalog of authored UI Grammar families. Inventory only — not a default-family rule.
+  The selected design specification names the applicable installed family. The app binds that choice
+  explicitly in sides.fe.grammar; the catalog resolves its lint package and component contract.
+  A missing or ambiguous family never silently resolves to a family. DNA snapshots describe the
+  observed implementation; they do not install packages or prove current rendered behavior.
+appliesTo:
+  - grammar
+provenance:
+  limitations: |
+    Component names, tokens and gap tables describe the reference family at observation time.
+    Verify actual package identity/version, exported types, CSS and renderer source in the selected
+    repository before using snapshot APIs or gaps. Record current source references in the selected
+    .starciwork node; an old source census is not current UAT evidence. The current public consumer
+    entry observed for FE work is @starci/grammar/common — confirm installed exports before import.
+    The `common` entry is a DNA snapshot of that semantic entry and nothing more: it declares no palette,
+    no family boundary and no composition playbook, because the entry itself ships none of them.
+guidance:
+  - id: catalog-not-default
+    requirement: |
+      Do not treat this catalog as selecting a default Grammar family. Family choice belongs to the
+      current design specification and its explicit sides.fe.grammar declaration.
+    rationale: |
+      Silent fallback to a family would invent product direction and override an absent/ambiguous design.
+  - id: verify-before-use
+    requirement: |
+      Before applying snapshot APIs or recorded gaps, inspect the selected repository's package
+      identity/version, exported types, CSS and renderer source.
+    rationale: |
+      Snapshots are historical; installed exports may differ. Inventing missing APIs is forbidden.
+  - id: ui-owns-universal
+    requirement: |
+      Common semantics, renderer anatomy, state and accessibility remain owned by knowledge/ui.
+      A family owns its scoped visual realization and promoted idioms; the product owns its facts,
+      content, routes and approved composition.
+      Apply FE-RULE-OWNERSHIP in knowledge/patterns/fe/index.yaml when placing requirements and checks.
+    rationale: |
+      Keeps universal UI law separate from family-scoped DNA and product composition.
+topics:
+  - id: common
+    path: common/DNA.yaml
+    title: Common Grammar — DNA
+    summary: |
+      Generated DNA snapshot of the `@starci/grammar/common` public entry: custom properties,
+      the 110 renderers of its registry, their classes, stamped rule ids and recorded gaps. The DNA owns the observed package
+      version and source inventory. Common supplies anatomy, not colour. The snapshot is drift-checked.
+  - id: core
+    path: core/index.yaml
+    title: Core Grammar
+    summary: |
+      Historical snapshot of the core family — DNA, idioms, playbook (including composing the
+      0.5.0 forms, overlays and navigation chrome) and family boundaries.
+  - id: offset-pop
+    path: offset-pop/index.yaml
+    title: Offset Pop Grammar
+    summary: |
+      Snapshot of the product-neutral Offset Pop family — cream canvas, ink outline plus hard offset
+      shadow, one pink decision accent with a text-safe accent for text — with DNA, idioms, a
+      mobile-first playbook for playful learning or consumer apps, and family boundaries including two
+      decisions flagged for the family owner.
+families:
+  - id: common
+    title: common
+    componentContract:
+      package: '@starci/grammar'
+      entry: '@starci/grammar/common'
+      styleEntry: '@starci/grammar/common.css'
+      peers: [react, '@heroui/react', '@xyflow/react', react-aria-components]
+    packageSnapshot: common/DNA.yaml
+    scope: |
+      DNA snapshot only. This catalog carries no Common-side family boundary, idiom set or composition
+      playbook: `@starci/grammar/common` is the semantic/props entry every visual family is defined over
+      (`defineGrammarFamily`), not a family that ships a palette, so `authority`, `reusableStyle`,
+      `productComposition` and `index` have nothing to name here. Universal semantics, renderer anatomy,
+      state and accessibility remain owned by knowledge/ui.
+  - id: core
+    title: core
+    contractRef: common
+    lint:
+      package: '@starci/eslint-grammar-core'
+      factory: coreGrammarConfig
+      prefix: starci-grammar
+    authority: core/family.yaml
+    packageSnapshot: core/DNA.yaml
+    reusableStyle: core/idioms.yaml
+    productComposition: core/playbook.yaml
+    index: core/index.yaml
+  - id: offset-pop
+    title: offset-pop
+    contractRef: common
+    lint:
+      package: '@starci/eslint-grammar-offset-pop'
+      factory: offsetPopGrammarConfig
+      prefix: starci-grammar
+    authority: offset-pop/family.yaml
+    packageSnapshot: offset-pop/DNA.yaml
+    reusableStyle: offset-pop/idioms.yaml
+    productComposition: offset-pop/playbook.yaml
+    index: offset-pop/index.yaml

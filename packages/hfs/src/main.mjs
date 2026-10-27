@@ -1,0 +1,471 @@
+// The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
+// at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
+//   starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--wiring] [--coverage-from <lcov>]
+//                                            every tracked path has a slot; required files exist; nothing forbidden or
+//                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
+//                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
+//                                            directory, no untracked entry outside an ignored slot; plaintext secrets, the .starcistacks shape, CI
+//                                            and pre-push canon steps, dependency version skew, the contract snapshot and the test, wire and i18n
+//                                            trees; prettier over every tracked file through the repository's own install (sync/format.mjs; not under
+//                                            --fast, and a repository without prettier is a refusal); soft-size backlog (report only); then the whole
+//                                            architecture machine (tiers, owners, clones, dead exports, module registration, the
+//                                            front-end and back-end source rules), each violation a finding with its why.
+//                                            ESLint executes once per side through the installed managed config; the FE config composes
+//                                            the universal canon and the explicitly selected Grammar-family canon.
+//                                            --fast: only what changed since the merge-base with origin/main (else main; --base
+//                                            overrides it); the machine
+//                                            runs on those owners without clones and dead exports. No merge-base is a refusal
+//                                            (exit 2), never a silent full pass. Exit 1 on any error-level finding. The root checks run once and
+//                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
+//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
+//                                            the ONE lint entry (npm run lint): ESLint per side with that side's canon config (per-file rules and
+//                                            the project-graph rules), this check's findings, and stylelint over the fe side, as one starci/lint@1
+//                                            report; --sonar writes the one Sonar import file. Exit 0 clean, 1 findings, 2 a tool could not run (lint/run.mjs).
+//                                            --workspace <dir> (from the current directory) scopes the same lint to one fe workspace: the
+//                                            `lint` script of fe/apps/<app> and fe/packages/<pkg>, run by the turbo lint task.
+//   starci app scaffold <name> [--into <dir>]  a new app <dir>/<name>/: the root (hfs.json, package.json, managed files, .starciwork) and the
+//                                            be/ and fe/ skeletons (scaffold/app.mjs). Accepts an empty unborn main Git root.
+//   starci app explain <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
+//   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mjs):
+//                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
+//   starci app sync (--check | --write) [--cwd <dir>]  the managed files of the root (scripts, husky, CI, .gitignore block, sonar, prettier) and
+//                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mjs
+//   starci app hygiene                             the pre-commit guard: staged .starciwork and .starcistacks paths, the secrets guard over every staged file (read from the index) and a new back-end logic file staged without its unit spec; sync/cli.mjs
+//   starci app coverage merge --out <lcov> <lcov-or-dir>...  the lcov reports of the sharded unit run merged into one (coverage/cli.mjs; the managed CI coverage job)
+//   starci app new service <dir> <name> [--inject <Decorator>=<module>:<Type> | <Class>=<module>]... [--cwd <dir>]
+//                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mjs; <dir> is
+//                                            relative to be/): the spec is built
+//                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
+//                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (ruling:R212/case-1 (owner:lite-production-swarm), amended by ruling:R212/case-4).
+//   starci app new image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mjs); never overwrites
+//   starci app new spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
+//   starci app stack prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs --env <env> [--execute]
+//                                            the Swarm deploy tooling of stack/ (dry run unless --execute; never prints a secret value; see docs/application-stacks.md).
+//   starci app secret init | set <env> <slug> <KEY> [--generate <bytes>] | get <env> <slug> [KEY] --to-file [--reveal]
+//   starci app secret unset <env> <slug> <KEY> [--execute] | rename <env> <slug> <OLD> <NEW> [--execute] | remove <env> <slug> [--execute] [--force-nonempty]
+//   starci app secret materialize <env> | list <env> | verify <env>
+//                                            dotenv custody in .starcistacks, public age rule initialization, private KEY files outside Git;
+//                                            values reach stdout only when get explicitly receives --reveal.
+//   starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name]  reads the value from stdin only.
+//   starci app ci var set <NAME> [--env E] [--value v] | var sync [--execute] | verify [--json]
+//                                            declared GitHub CI custody; verify compares names, scopes and public values.
+//   starci app db baseline | restamp --map <restamp.yaml> | plan
+//                                            preview the database cutover or compare its state with the repo; baseline and restamp mutate only with --apply.
+//   starci app add <api|webhook|realtime|saga|job|reactor|queue|projection> <name> [--event <event> --from <service> --service <Class>=<module>] [--owner <service> --failed <event> --done <event>] [--connection <name>] [--cwd <dir>]
+//                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
+//                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
+//                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mjs). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
+// Every finding names a why code and carries its Vietnamese text. check, lint and explain read the app, never write to it. Exit codes:
+// 0 clean, 1 error findings, 2 a refusal or bad usage.
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isMain } from '../runtime/scripts/lib/is-main.mjs';
+import { changedSince, checkDatabase, checkRepository, explainPath, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
+import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
+import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
+import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
+import { dbPlanMain } from '../runtime/scripts/hfs/db-plan-verb.mjs';
+import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
+import { HFS_DECLARATION_FILE, HfsSlotsError, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { formatFindings } from '../sync/format.mjs';
+import { main as syncMain } from '../sync/cli.mjs';
+import { SyncError, bundledPresets } from '../sync/index.mjs';
+import { managedFindings } from '../sync/managed.mjs';
+import { emitContracts } from '../emit/contracts.mjs';
+import { dbTypesEmitter } from '../emit/db-types.mjs';
+import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
+import { EditionRefusal } from '../scaffold/edition-gate.mjs';
+import { addKind } from '../scaffold/add.mjs';
+import { scaffoldApp } from '../scaffold/app.mjs';
+import { newImages } from '../scaffold/image.mjs';
+import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
+import { eslintRepository, lintRepository, parseLintArgs, printLintText } from '../lint/run.mjs';
+import { writeReport } from '../report/sonar.mjs';
+import { checkEdition } from '../upgrade/check.mjs';
+import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
+import { ACTIONS as STACK_ACTIONS, stackMain as deployStackMain } from '../stack/cli.mjs';
+import { releaseMain } from '../release/index.mjs';
+import { dbMigrateMain } from '../db/migrate.mjs';
+import { dbPostCutoverMain } from '../db/post-cutover.mjs';
+import { dbDumpMain } from '../db/dump.mjs';
+import { dbResetMain } from '../db/reset.mjs';
+import { codemodMain } from '../codemod/button-intent.mjs';
+
+export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'release', 'explain', 'emit', 'new', 'secret', 'ci', 'db', 'hygiene', 'coverage', 'codemod']);
+const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['reset', dbResetMain]]);
+
+const USAGE = `starci app scaffold <name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private] [--cwd <dir>]
+starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [options] [--cwd <dir>]
+starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
+starci app codemod button-intent [--write] [--format json|markdown] [--report <file.json|file.md>] [--cwd <dir>]
+starci app sync (--check | --write) [--cwd <dir>]
+starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--db-types] [--wiring] [--coverage-from <lcov>]
+starci app db baseline [--stamp <version>] [--local] [--apply] [--cwd <dir>]
+starci app db restamp --map <restamp.yaml> [--local] [--apply] [--cwd <dir>]
+starci app db plan [--local] [--json] [--cwd <dir>]
+starci app db dump (--linked | --local | --url-env <NAME>) --out <dir> [--schema-only] [--json] [--cwd <dir>]
+starci app db reset --linked --auth keep|drop --storage keep|drop --backup <receipt.json> [--execute] [--json] [--cwd <dir>]
+starci app db migrate [--execute] [--local | --linked | --url-env <NAME>] [--json] [--cwd <dir>]
+starci app db post-cutover [--execute] [--green-at <ISO> | --owner-confirms-old-app-gone] [--linked | --url-env <NAME>] [--json] [--cwd <dir>]
+starci app release gate [--execute] [--source <ref>] [--tag-prefix <prefix>] [--json] [--cwd <dir>]
+starci app release push [--execute] [--remote <name>] [--json] [--cwd <dir>]
+starci app upgrade [--plan] [--cwd <dir>]
+starci app stack <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
+starci app stack <prepare|doctor|connect|disconnect|build-args|render|deploy|converge|verify|rollback|prune|backup|jobs> --env <env> [--execute] [--json] [--cwd <dir>]
+starci app explain <path> [--cwd <dir>] [--json]
+starci app emit [--cwd <dir>]
+starci app new service <dir> <name> [--inject <binding>...] [--cwd <dir>]
+starci app new spec <file>.service.ts [--cwd <dir>]
+starci app new image [--cwd <dir>]
+starci app secret init [--cwd <dir>]
+starci app secret set <env> <slug> <KEY> [--generate <bytes>] [--cwd <dir>]
+starci app secret get <env> <slug> [KEY] --to-file [--reveal] [--cwd <dir>]
+starci app secret unset <env> <slug> <KEY> [--execute] [--cwd <dir>]
+starci app secret rename <env> <slug> <OLD> <NEW> [--execute] [--cwd <dir>]
+starci app secret remove <env> <slug> [--execute] [--force-nonempty] [--cwd <dir>]
+starci app secret materialize <env> [--cwd <dir>]
+starci app secret list <env> [--cwd <dir>]
+starci app secret verify <env> [--cwd <dir>]
+starci app ci secret set <NAME> [--env E | --dependabot] [--repo owner/name] [--cwd <dir>]
+starci app ci var set <NAME> [--env E] [--value v] [--repo owner/name] [--cwd <dir>]
+starci app ci var sync [--execute] [--repo owner/name] [--cwd <dir>]
+starci app ci verify [--json] [--repo owner/name] [--cwd <dir>]
+starci app hygiene [--cwd <dir>]
+starci app coverage merge --out <lcov> <lcov-or-dir>... [--cwd <dir>]
+`;
+const PER_CODE_LIMIT = 25;
+const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility']);
+/** Flags that may repeat: their values are collected in order. */
+const LIST_FLAGS = new Set(['--inject']);
+const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring']);
+
+function coverageArgument(arg, args, opts) {
+  const inline = arg.startsWith('--coverage-from=');
+  const value = inline ? arg.slice('--coverage-from='.length) : args.next().value;
+  if (!value || value.startsWith('--')) throw new Error('--coverage-from needs a value');
+  if (opts['coverage-from'] !== undefined) throw new Error('--coverage-from may be given only once');
+  opts['coverage-from'] = value;
+}
+
+function valueArgument(arg, args, opts) {
+  const value = args.next().value;
+  if (value === undefined) throw new Error(`${arg} needs a value`);
+  const key = arg.slice(2);
+  opts[key] = LIST_FLAGS.has(arg) ? [...(opts[key] ?? []), value] : value;
+}
+
+function parse(argv) {
+  const opts = { positional: [] };
+  const args = argv.values();
+  for (const arg of args) {
+    if (arg === '--coverage-from' || arg.startsWith('--coverage-from=')) {
+      coverageArgument(arg, args, opts);
+      continue;
+    }
+    if (VALUE_FLAGS.has(arg)) {
+      valueArgument(arg, args, opts);
+    }
+    else if (BOOL_FLAGS.has(arg)) opts[arg.slice(2)] = true;
+    else if (arg.startsWith('--')) throw new Error(`unknown flag ${arg}`);
+    else opts.positional.push(arg);
+  }
+  return opts;
+}
+
+function machineDescription(machine) {
+  if (machine.status !== 'ran') return `skipped, ${machine.reason}`;
+  const owners = machine.paths ? ` (owners ${machine.paths.join(', ')})` : '';
+  return `ran over ${machine.files} source files${owners}`;
+}
+
+function contractDescription(contracts) {
+  if (contracts.status !== 'checked') return `skipped, ${contracts.reason}`;
+  const apps = contracts.apps.map((app) => `${app.app}/${app.artifact} ${app.status}`).join(', ') || 'no api app';
+  return `emitted and compared, ${apps}`;
+}
+
+function printCheckOverview(result, out) {
+  out(`starci app check${result.fast ? ' --fast' : ''} ${result.repoRoot} (profile ${result.profile ?? 'unknown'}, manifest ${result.manifest}, ${result.tracked} tracked paths)\n`);
+  if (result.fast) out(`  ${result.fast.changed} path${result.fast.changed === 1 ? '' : 's'} changed since ${result.fast.base.slice(0, 12)}\n`);
+  out(`  architecture machine: ${machineDescription(result.machine)}\n`);
+  if (result.contracts) out(`  contract snapshots: ${contractDescription(result.contracts)}\n`);
+  if (result.eslint) {
+    const sides = Object.entries(result.eslint.sides).map(([side, run]) => `${side}: ${run.files} files${run.skipped ? ` (${run.skipped})` : ''}`).join(', ');
+    out(`  ESLint: ${sides}\n`);
+    for (const error of result.eslint.errors) out(`  ESLint tool error: ${error}\n`);
+  }
+}
+
+function printFindingGroup(code, list, out) {
+  const first = list[0];
+  if (first.engine === 'eslint') out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}\n`);
+  else out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
+  for (const finding of list.slice(0, PER_CODE_LIMIT)) out(`  - ${finding.message}\n`);
+  if (list.length > PER_CODE_LIMIT) out(`  ... and ${list.length - PER_CODE_LIMIT} more (use --json for all)\n`);
+}
+
+function printCheck(result, out) {
+  const { counts } = result;
+  printCheckOverview(result, out);
+  const byCode = new Map();
+  for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
+  for (const [code, list] of byCode) printFindingGroup(code, list, out);
+  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+}
+
+function printNoSlot(e, out) {
+  out(`  no slot owns this path (${e.code}): ${e.titleVi}\n  ${e.whyVi}\n`);
+  if (e.nearest) out(`  nearest slot ${e.nearest.slot}, pattern ${e.nearest.pattern}; matched ${e.nearest.matchedPrefix || '.'}, then expected ${e.nearest.expectedNext ?? 'nothing'}\n`);
+}
+
+function printExplain(e, out) {
+  out(`${e.path}\n`);
+  if (e.status === 'no-slot') {
+    printNoSlot(e, out);
+    return;
+  }
+  if (e.status === 'ambiguous') { out(`  owned equally by ${e.candidates.join(', ')} (${e.code}): ${e.titleVi}\n`); return; }
+  const owner = e.owner ? `  owner ${e.owner.root} (${e.owner.slot})` : '';
+  const imports = e.allowedImports ? `may import ${e.allowedImports.join(', ')}; ${e.importRule}` : (e.importRule ?? 'not applicable');
+  out(`  slot       ${e.slot}  (${e.pattern})\n  presence   ${e.presence}, ${e.tracking}\n  tier       ${e.tier}${owner}\n`);
+  out(`  imports    ${imports}\n`);
+  out(`  tests      ${e.tests}: ${e.testsMeaning}\n`);
+  if (e.requiredFiles.length) out(`  requires   ${e.requiredFiles.join(', ')}\n`);
+  if (e.goesTo) out(`  belongs at ${e.goesTo}\n`);
+  if (e.rules) out(`  rules      ${e.rules.join(', ')}\n`);
+  if (e.code) out(`  ${e.code}: ${e.titleVi}\n  ${e.whyVi}\n`);
+}
+
+/**
+ * The app pass: slots, managed files, formatter, contract snapshots and the architecture machine's check surface, root and sides.
+ * `only` limits the formatter to those (app-relative) files.
+ */
+async function runCheck({ repoRoot, fast = false, base, only, presets, prettier, dbTypes = false }) {
+  const tracked = trackedFiles(repoRoot);
+  // Managed files of the root and both sides, the .gitignore block and sonar against their render (R04, R05, R11, ...), and prettier
+  // through the app's own install (R19, never under --fast).
+  const extraFindings = [...await managedFindings({ repoRoot, tracked, presets }), ...await checkDatabase({ repoRoot, files: tracked, base, ...(dbTypes ? { emitTypes: dbTypesEmitter() } : {}) }), ...(fast ? [] : await formatFindings({ repoRoot, files: only ?? tracked, prettier }))];
+  // R23 against the be side itself (full pass only): committed snapshots equal what `starci app emit` writes now.
+  let contracts = null;
+  let be = null;
+  try { be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be ?? null; } catch { /* checkRepository reports the unreadable declaration */ }
+  if (be) {
+    if (fast) contracts = { status: 'skipped', reason: '--fast does not emit the apps' };
+    else {
+      const files = tracked.filter((file) => file.startsWith('be/')).map((file) => file.slice('be/'.length));
+      const emitted = contractEmitFindings({ repoRoot: path.join(repoRoot, 'be'), files, repo: be, emit: emitContracts });
+      extraFindings.push(...emitted.findings.map((finding) => ({ ...finding, side: 'be', path: `be/${finding.path}` })));
+      contracts = { status: 'checked', apps: emitted.apps };
+    }
+  }
+  const result = checkRepository({ repoRoot, fast, base, extraFindings });
+  if (contracts) result.contracts = contracts;
+  return result;
+}
+
+/** The nearest folder at or above `dir` that holds hfs.json (the app root of a workspace), or `dir` itself when none does (the lint then refuses it). */
+export function appRootAbove(dir) {
+  for (let at = dir; ; at = path.dirname(at)) {
+    if (fs.existsSync(path.join(at, HFS_DECLARATION_FILE))) return at;
+    if (path.dirname(at) === at) return dir;
+  }
+}
+
+/** `starci app lint`: ESLint per side, the app checks and stylelint over the fe side as one report; see lint/run.mjs. */
+async function lintMain(argv, { cwd, stdout, presets, prettier, runLinter, checkApp = runCheck }) {
+  const opts = parseLintArgs(argv);
+  // --workspace names a folder from the working directory (`starci app lint --workspace .` is an fe workspace script); the app
+  // root is then the nearest folder above it that holds hfs.json, and the workspace is passed on app-relative.
+  const workspaceDir = opts.workspace === undefined ? null : path.resolve(cwd, opts.workspace);
+  const repoRoot = path.resolve(workspaceDir ? appRootAbove(workspaceDir) : cwd);
+  if (workspaceDir) opts.workspace = path.relative(repoRoot, workspaceDir).split(path.sep).join('/');
+  const { report, sonar, exit } = await lintRepository({
+    repoRoot, opts, trackedFiles, runLinter,
+    hfsCheck: (root) => checkApp({ repoRoot: root, only: opts.changed ?? undefined, presets, prettier }),
+  });
+  if (opts.sonar !== undefined) writeReport(path.resolve(cwd, opts.sonar), sonar);
+  if (opts.format === 'json') stdout(`${JSON.stringify(report, null, 2)}
+`); else printLintText(report, stdout);
+  return exit;
+}
+
+/**
+ * The jest preset a new app renders its Sonar exclusions from: the copy this @starci/hfs ships (bundledPresets), the same version the
+ * scaffold pins, so `npx @starci/cli app scaffold` works before any dependency of the app is installed.
+ */
+const scaffoldPresets = () => bundledPresets();
+
+function globalValueArgument(arg, args) {
+  const inline = arg.startsWith('--cwd=') || arg.startsWith('--edition=');
+  const flag = inline ? arg.slice(0, arg.indexOf('=')) : arg;
+  if (flag !== '--cwd' && flag !== '--edition') return null;
+  const value = inline ? arg.slice(arg.indexOf('=') + 1) : args.next().value;
+  if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
+  if (flag === '--edition' && !['full', 'lite'].includes(value)) throw new Error('--edition accepts full or lite');
+  return { flag, value };
+}
+
+function globalOptions(argv, baseCwd) {
+  const options = { argv: [], cwd: baseCwd, quiet: false, help: false, edition: undefined };
+  const args = argv.values();
+  for (const arg of args) {
+    const valued = globalValueArgument(arg, args);
+    if (valued) {
+      if (valued.flag === '--cwd') options.cwd = path.resolve(baseCwd, valued.value);
+      else options.edition = valued.value;
+    } else if (arg === '--quiet') options.quiet = true;
+    else if (arg === '--help') options.help = true;
+    else options.argv.push(arg);
+  }
+  return options;
+}
+
+async function installedStackMain(cwd) {
+  const require = createRequire(path.join(cwd, 'package.json'));
+  let entry;
+  try { entry = require.resolve('@starci/test-world/cli'); } catch {
+    throw new Error('starci app stack needs @starci/test-world installed in the app; run npm install --save-dev @starci/test-world');
+  }
+  const loaded = await import(pathToFileURL(entry).href);
+  const candidate = loaded.main ?? loaded.default?.main;
+  if (typeof candidate !== 'function') throw new Error('@starci/test-world/cli does not export main');
+  return candidate;
+}
+
+function databaseMain(argv, io) {
+  const [verb, ...rest] = argv;
+  const dispatch = DATABASE_VERBS.get(verb);
+  if (!dispatch) throw new Error('starci app db takes baseline, restamp, plan, migrate, post-cutover, dump or reset');
+  return dispatch(rest, io);
+}
+
+function printCheckProofs(result, out) {
+  if (result.wiring) out(`boot wiring: ${result.wiring.status}, ${result.wiring.apps.length} app(s), ${result.wiring.findings.length} failure(s)\n`);
+  if (result.coverage) out(formatCoverageReport(result.coverage));
+}
+
+async function checkMain(opts, { cwd: repoRoot, edition, stdout: out, presets, prettier, checkApp = runCheck, runLinter }) {
+  if (opts.positional.length) throw new Error('starci app check takes no path');
+  if (opts.base !== undefined && opts.fast !== true) throw new Error('--base names the ref --fast compares with; it needs --fast');
+  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, fast: opts.fast === true, base: opts.base, presets, prettier, dbTypes: opts['db-types'] === true }), presets, prettier });
+  const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: opts['coverage-from'] });
+  const changed = opts.fast === true ? changedSince(repoRoot, proof.fast?.base ?? opts.base).files : null;
+  const existing = changed ? changed.filter(file => fs.existsSync(path.join(repoRoot, file))) : [];
+  const eslint = await eslintRepository({ repoRoot, changed, existing, run: runLinter });
+  const findings = [...proof.findings, ...eslint.findings.map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
+  const result = { ...proof, findings, counts: { ...proof.counts, error: proof.counts.error + eslint.findings.length }, eslint: { ...eslint.engine, errors: eslint.errors }, ok: proof.ok && eslint.findings.length === 0 && eslint.errors.length === 0 };
+  if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
+  else { printCheck(result, out); printCheckProofs(result, out); }
+  return eslint.errors.length ? 2 : result.ok ? 0 : 1;
+}
+
+function emitMain(opts, { cwd: repoRoot, stdout: out, run }) {
+  if (opts.positional.length) throw new Error('starci app emit takes no path');
+  const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
+  if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
+  const { written, skipped, standIns } = emitContracts({ repoRoot: path.join(repoRoot, 'be'), declaration: be, run });
+  for (const file of written) out(`wrote be/${file}\n`);
+  const skipSummary = skipped.length ? `, ${skipped.join(', ')} serve no GraphQL` : '';
+  out(`starci app emit: ${written.length} written${skipSummary}\n`);
+  for (const [app, lines] of Object.entries(standIns)) {
+    out(`${app}: ${lines.length} dependenc${lines.length === 1 ? 'y' : 'ies'} of the resolvers could not load here and stood in (no GraphQL type is affected):\n`);
+    for (const line of lines) out(`  ${line}\n`);
+  }
+  return 0;
+}
+
+function newMain(opts, { cwd: repoRoot, stdout: out }) {
+  const [kind, ...args] = opts.positional;
+  let written;
+  if (kind === 'service' && args.length === 2) written = newService({ repoRoot, dir: args[0], name: args[1], inject: opts.inject ?? [] });
+  else if (kind === 'spec' && args.length === 1 && opts.inject === undefined) written = newSpec({ repoRoot, file: args[0] });
+  else if (kind === 'image' && args.length === 0 && opts.inject === undefined) written = newImages({ repoRoot });
+  else throw new Error('starci app new takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
+  for (const file of written) out(`created ${file}\n`);
+  return 0;
+}
+
+function addMain(opts, { cwd: repoRoot, stdout: out }) {
+  const [noun, name, ...extra] = opts.positional;
+  if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'] } });
+  for (const file of created) out(`created ${file}\n`);
+  const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
+  out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);
+  return 0;
+}
+
+async function scaffoldMain(opts, { cwd, edition = 'full', presets, lock, stdout: out }) {
+  const [name, ...extra] = opts.positional;
+  if (!name || extra.length) throw new Error('starci app scaffold takes `<name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private]`');
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, opts.into ?? '.'), edition, presets: presets ?? scaffoldPresets(), ...(opts['registry-visibility'] === undefined ? {} : { registryVisibility: opts['registry-visibility'] }), ...(lock ? { lock } : {}) });
+  out(`starci app scaffold: created ${created} (${files.length} files); next: starci npm ci (the lockfile, then the git hooks through npm run prepare; after a raw npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
+  return 0;
+}
+
+function explainMain(opts, { cwd: repoRoot, stdout: out }) {
+  if (opts.positional.length !== 1) throw new Error('starci app explain takes exactly one path');
+  const explained = explainPath({ repoRoot, input: opts.positional[0] });
+  if (opts.json) out(`${JSON.stringify(explained, null, 2)}\n`); else printExplain(explained, out);
+  return explained.status === 'no-slot' || explained.status === 'ambiguous' ? 1 : 0;
+}
+
+async function upgradeAppMain(argv, { cwd, edition, stdout }) {
+  await checkEdition({ repoRoot: cwd, edition, normal: () => null });
+  return upgradeMain(['--repo', cwd, ...argv], { stdout });
+}
+
+/** The edition `hfs.json` declares, or undefined when it cannot be read (the test-world verbs then decide on their own). */
+function declaredEdition(cwd) {
+  try { return JSON.parse(fs.readFileSync(path.join(cwd, HFS_DECLARATION_FILE), 'utf8')).edition; } catch { return undefined; }
+}
+
+/**
+ * `starci app stack`: the deploy actions (prepare, doctor, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm
+ * tooling of stack/cli.mjs; up, down and status are the full edition's test-world infrastructure.
+ */
+async function stackAppMain(argv, { cwd, edition, stackMain, stdout: out, stderr: err, env, sops, stackIo }) {
+  if (STACK_ACTIONS.includes(argv[0])) return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, ...(sops ? { sops } : {}) });
+  if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app stack up|down|status manage the local test world of the full edition; a lite app starts its local infrastructure with the Supabase CLI');
+  const run = stackMain ?? await installedStackMain(cwd);
+  return run(argv, { cwd, out, err });
+}
+
+const DIRECT_VERBS = new Map([['ci', async (argv, io) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['lint', lintMain], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['release', releaseMain], ['coverage', async (argv, io) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
+const PARSED_VERBS = new Map([['check', checkMain], ['emit', emitMain], ['new', newMain], ['add', addMain], ['scaffold', scaffoldMain], ['explain', explainMain]]);
+
+function dispatchMain(verb, argv, io) {
+  if (verb === 'sync' || verb === 'hygiene') return syncMain([verb, ...argv], io);
+  const direct = DIRECT_VERBS.get(verb);
+  if (direct) return direct(argv, io);
+  return PARSED_VERBS.get(verb)(parse(argv), io);
+}
+
+function errorMessage(error) {
+  if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${error.message}\n`;
+  if (error instanceof ScaffoldError) return `${error.code}: ${error.message}\n`;
+  return `starci app: ${error.message}\n${USAGE}`;
+}
+
+/** `run` injects the Supabase runner, `runLinter` the linter transport, `checkApp` the HFS check and `stackIo` Swarm tools; production defaults execute every check. */
+export async function main(argv, {
+  cwd: baseCwd = process.cwd(), stdout = (s) => process.stdout.write(s), stderr = (s) => process.stderr.write(s), presets, prettier, lock, run, stackMain,
+  env = process.env, stdin, sops, tools, platform, stackIo, runLinter, checkApp,
+} = {}) {
+  try {
+    const global = globalOptions(argv, path.resolve(baseCwd));
+    const [verb, ...rest] = global.argv;
+    const out = global.quiet ? () => {} : stdout;
+    if (global.help) { out(USAGE); return 0; }
+    if (!VERBS.includes(verb)) { stderr(USAGE); return 2; }
+    return await dispatchMain(verb, rest, { cwd: global.cwd, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, sops, tools, platform, stackIo, runLinter, checkApp });
+  } catch (error) {
+    stderr(errorMessage(error));
+    return 2;
+  }
+}
+
+// Run when this file is the entry point, compared by real path. The package itself has no bin; this is useful for local diagnostics.
+if (isMain(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
