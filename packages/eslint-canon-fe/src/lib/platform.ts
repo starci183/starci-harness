@@ -4,14 +4,16 @@
  * function that happens to be called `setTimeout` or `fetch` is not mistaken for the browser's.
  */
 import ts from "typescript"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { AnyContext, Node } from "./rule.ts"
 import { typed } from "./types.ts"
 
 /** True when a declaration sits in the default lib, in a global script declaration file, or in a `declare global` block. */
-const isGlobalDeclaration = (program, declaration) => {
+const isGlobalDeclaration = (program: ts.Program, declaration: ts.Declaration): boolean => {
   const file = declaration.getSourceFile()
   if (program.isSourceFileDefaultLibrary(file)) return true
-  for (let current = declaration.parent; current; current = current.parent) {
-    if (ts.isModuleDeclaration(current) && current.flags & ts.NodeFlags.GlobalAugmentation) return true
+  for (let current: ts.Node | undefined = declaration.parent; current; current = current.parent) {
+    if (ts.isModuleDeclaration(current) && (current.flags & ts.NodeFlags.GlobalAugmentation) !== 0) return true
   }
   return file.isDeclarationFile && !ts.isExternalModule(file)
 }
@@ -23,13 +25,13 @@ const isGlobalDeclaration = (program, declaration) => {
  * @param {object} node - An ESTree identifier, or a member expression (its property is asked).
  * @returns {boolean} Whether every declaration of the symbol is a platform (global, ambient) declaration.
  */
-export const isPlatform = (context, node) => {
+export const isPlatform = (context: AnyContext, node: TSESTree.Identifier | TSESTree.MemberExpression | TSESTree.JSXIdentifier): boolean => {
   const { program, checker, toTs } = typed(context)
   const target = node.type === "MemberExpression" ? node.property : node
   const tsNode = toTs(target)
   if (!tsNode) return false
   const symbol = checker.getSymbolAtLocation(tsNode)
-  const declarations = symbol?.getDeclarations?.() ?? []
+  const declarations = symbol?.getDeclarations() ?? []
   return declarations.length > 0 && declarations.every((declaration) => isGlobalDeclaration(program, declaration))
 }
 
@@ -40,7 +42,7 @@ export const isPlatform = (context, node) => {
  * @param {object} node - An ESTree expression.
  * @returns {boolean} Whether the checker could not decide what the expression is.
  */
-export const isUnresolvedType = (context, node) => {
+export const isUnresolvedType = (context: AnyContext, node: Node): boolean => {
   const { checker, toTs } = typed(context)
   const tsNode = toTs(node)
   if (!tsNode) return true
@@ -55,12 +57,12 @@ export const isUnresolvedType = (context, node) => {
  * @param {object} node - An ESTree expression.
  * @returns {Set<string>} The names of the properties every member of the type could carry.
  */
-export const propertyNamesOf = (context, node) => {
+export const propertyNamesOf = (context: AnyContext, node: Node): Set<string> => {
   const { checker, toTs } = typed(context)
   const tsNode = toTs(node)
-  const names = new Set()
+  const names = new Set<string>()
   if (!tsNode) return names
   const type = checker.getTypeAtLocation(tsNode)
-  for (const part of type.isUnion?.() ? type.types : [type]) for (const property of part.getProperties?.() ?? []) names.add(property.getName())
+  for (const part of type.isUnion() ? type.types : [type]) for (const property of part.getProperties()) names.add(property.getName())
   return names
 }

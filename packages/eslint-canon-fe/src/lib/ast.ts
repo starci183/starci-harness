@@ -5,21 +5,28 @@
  * slightly differently: a rule that treats `` `/a` `` as a string and a sibling that does not
  * disagree about which hrefs are hardcoded.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, SourceCode } from "./rule.ts"
+
+/** True for a value that is an AST node: an object with a string `type`. */
+export const isNode = (value: unknown): value is Node =>
+  typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
 
 /** The JSX attribute called `name` on an opening element, or null. */
-export const attribute = (opening, name) =>
+export const attribute = (opening: TSESTree.JSXOpeningElement, name: string): TSESTree.JSXAttribute | null =>
   opening.attributes.find(
-    (entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === name,
+    (entry): entry is TSESTree.JSXAttribute =>
+      entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === name,
   ) ?? null
 
 /** The expression an attribute carries: a literal, or the inside of `{...}`; null for a bare attribute. */
-export const attributeValue = (entry) => {
+export const attributeValue = (entry: TSESTree.JSXAttribute | null | undefined): Node | null => {
   if (!entry || !entry.value) return null
   return entry.value.type === "JSXExpressionContainer" ? entry.value.expression : entry.value
 }
 
 /** The text of a string literal or of a template with no substitution; null for anything else. */
-export const stringOf = (node) => {
+export const stringOf = (node: Node | null | undefined): string | null => {
   if (!node) return null
   if (node.type === "Literal" && typeof node.value === "string") return node.value
   if (node.type === "TemplateLiteral" && node.expressions.length === 0) return node.quasis[0]?.value.cooked ?? ""
@@ -27,14 +34,14 @@ export const stringOf = (node) => {
 }
 
 /** The leading text of a string literal or template (up to the first substitution); null for anything else. */
-export const leadingTextOf = (node) => {
+export const leadingTextOf = (node: Node | null | undefined): string | null => {
   if (!node) return null
   if (node.type === "TemplateLiteral") return node.quasis[0]?.value.cooked ?? ""
   return stringOf(node)
 }
 
 /** `a.b.c` for a chain of plain member accesses ending in an identifier; null for anything computed. */
-export const calleeName = (node) => {
+export const calleeName = (node: Node | null | undefined): string | null => {
   if (!node) return null
   if (node.type === "Identifier") return node.name
   if (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier") {
@@ -45,14 +52,15 @@ export const calleeName = (node) => {
 }
 
 /** The name of a JSX element for a plain tag or a component; null for a member or namespaced name. */
-export const tagName = (opening) => (opening.name.type === "JSXIdentifier" ? opening.name.name : null)
+export const tagName = (opening: TSESTree.JSXOpeningElement): string | null =>
+  opening.name.type === "JSXIdentifier" ? opening.name.name : null
 
 /** True for a `className` / `class` JSX attribute. */
-export const isClassAttribute = (node) =>
-  node.type === "JSXAttribute" && node.name && (node.name.name === "className" || node.name.name === "class")
+export const isClassAttribute = (node: Node): node is TSESTree.JSXAttribute =>
+  node.type === "JSXAttribute" && Boolean(node.name) && (node.name.name === "className" || node.name.name === "class")
 
 /** Static string carried by a JSX attribute or by a module constant holding a class string. */
-export const staticText = (value) => {
+export const staticText = (value: Node | null | undefined): string | null => {
   if (!value) return null
   if (value.type === "Literal" && typeof value.value === "string") return value.value
   if (value.type === "TemplateLiteral" && value.expressions.length === 0) {
@@ -63,21 +71,22 @@ export const staticText = (value) => {
 }
 
 /** True for a function expression or an arrow function. */
-export const isFunction = (node) => node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression"
+export const isFunction = (node: Node): node is TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression =>
+  node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression"
 
 /**
  * Every node under `root`, depth first, through the visitor keys of the parser in use.
  * `enter` may return `false` to skip a node's children.
  */
-export const walk = (sourceCode, root, enter) => {
+export const walk = (sourceCode: SourceCode, root: Node, enter: (node: Node) => boolean | undefined | void): void => {
   const keys = sourceCode.visitorKeys
-  const visit = (node) => {
+  const visit = (node: Node): void => {
     if (enter(node) === false) return
     for (const key of keys[node.type] ?? []) {
-      const child = node[key]
+      const child: unknown = Reflect.get(node, key)
       if (Array.isArray(child)) {
-        for (const item of child) if (item && typeof item.type === "string") visit(item)
-      } else if (child && typeof child.type === "string") {
+        for (const item of child) if (isNode(item)) visit(item)
+      } else if (isNode(child)) {
         visit(child)
       }
     }
@@ -86,7 +95,7 @@ export const walk = (sourceCode, root, enter) => {
 }
 
 /** True when an identifier called `name` appears anywhere under `root`. */
-export const mentions = (sourceCode, root, name) => {
+export const mentions = (sourceCode: SourceCode, root: Node, name: string): boolean => {
   let found = false
   walk(sourceCode, root, (node) => {
     if (found) return false
