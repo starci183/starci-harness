@@ -1,18 +1,33 @@
+import { readdirSync, statSync } from "node:fs"
+import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { loadStallRules } from "../../harness/stall.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
+import { runAttached } from "../../shared/exec.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { supervisorTick } from "./driver.js"
 import type { SupervisorTick } from "./driver.js"
 
 const sleep = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
 
+const DIST = fileURLToPath(new URL("../..", import.meta.url))
+
+/** The build of the CLI this process runs: the newest modification time of its built modules (dist's .js files), which every build moves. */
+const buildStamp = (): number =>
+    readdirSync(DIST, { recursive: true, encoding: "utf8" })
+        .filter((file) => file.endsWith(".js"))
+        .reduce((newest, file) => Math.max(newest, statSync(join(DIST, file), { throwIfNoEntry: false })?.mtimeMs ?? 0), 0)
+
 /**
  * `starci supervisor watch`: `supervisor tick` in a loop for a foreground terminal, sleeping ops/liveness.yaml stall.watchSeconds
- * between passes and printing each pass's actions as it happens; `--ticks <n>` stops after n passes (default: until killed).
+ * between passes and printing each pass's actions as it happens; `--ticks <n>` stops after n passes (default: until killed). A
+ * long-lived process keeps the modules it loaded, so a new build of its own dist is never ticked with: once the build stands
+ * unchanged for one sleep, the watch runs itself again from the new build (same argv, terminal and environment) and exits
+ * with that process's code.
  */
 export const supervisorWatchVerb = defineVerb({
     path: ["supervisor", "watch"],
-    summary: "run supervisor tick in a loop (every stall.watchSeconds of ops/liveness.yaml) in a foreground terminal",
+    summary: "run supervisor tick in a loop (every stall.watchSeconds of ops/liveness.yaml) in a foreground terminal; it reloads itself on a new build of the CLI",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor"],
@@ -22,13 +37,26 @@ export const supervisorWatchVerb = defineVerb({
         const limit = flags.ticks === undefined ? Infinity : Number(flags.ticks)
         if (limit !== Infinity && (!Number.isInteger(limit) || limit < 1)) throw new Refusal("CLI_USAGE", `--ticks is a whole number above 0, not "${String(flags.ticks)}"`, EXIT_USAGE)
         const seconds = loadStallRules().watchSeconds
+        const loaded = buildStamp()
+        let seen = loaded
         const ticks: SupervisorTick[] = []
-        for (let pass = 1; pass <= limit; pass += 1) {
-            const tick = await supervisorTick(context)
-            ticks.push(tick)
-            const lines = tick.actions.length === 0 ? "" : `\n  ${tick.actions.join("\n  ")}`
-            context.progress(`${new Date().toISOString()} tick ${String(pass)}: ${tick.swept.length === 0 ? "nothing swept" : `swept ${tick.swept.join(", ")}`}${lines}`)
-            if (pass < limit) await sleep(seconds * 1000)
+        while (ticks.length < limit) {
+            const stamp = buildStamp()
+            if (stamp !== loaded && stamp === seen) {
+                context.progress(`${new Date().toISOString()} a new build of ${DIST}: reloading`)
+                process.exit(await runAttached(process.execPath, [...process.execArgv, ...process.argv.slice(1)], process.cwd()))
+            }
+            if (stamp !== loaded) {
+                seen = stamp
+                context.progress(`${new Date().toISOString()} a new build of ${DIST} is being written: no tick until it settles`)
+            } else {
+                const tick = await supervisorTick(context)
+                ticks.push(tick)
+                const lines = tick.actions.length === 0 ? "" : `\n  ${tick.actions.join("\n  ")}`
+                context.progress(`${new Date().toISOString()} tick ${String(ticks.length)}: ${tick.swept.length === 0 ? "nothing swept" : `swept ${tick.swept.join(", ")}`}${lines}`)
+                if (ticks.length >= limit) break
+            }
+            await sleep(seconds * 1000)
         }
         return { data: { ticks: ticks.length, last: ticks.at(-1) ?? null }, message: `supervisor watch: ${String(ticks.length)} tick(s)` }
     },

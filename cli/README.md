@@ -183,7 +183,8 @@ and its `answers` close escalations (the escalating Kernel of another workflow g
 every open decision of its workflow.
 
 **The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
-every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`): `ensureSupervisors` keeps
+every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and runs itself again once a
+new build of the CLI's dist stands, so it never ticks with modules a build replaced): `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
 owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
