@@ -81,7 +81,7 @@ const readManifest = (): Manifest => {
 }
 
 /** Every alternative of a pattern's `{a,b}` groups (nested groups included). */
-const braceVariants = (pattern: string): string[] => {
+export const braceVariants = (pattern: string): string[] => {
     const open = pattern.indexOf("{")
     if (open === -1) return [pattern]
     let depth = 0

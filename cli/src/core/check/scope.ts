@@ -1,11 +1,15 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { parse } from "yaml"
+import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
+import { CONFIG_FILES } from "./canon.js"
+import { braceVariants } from "./sonar-scope.js"
 
 /** One package the check touches and the changed files it owns. */
 export interface ScopeTarget {
@@ -38,8 +42,35 @@ export interface StepResult {
     readonly output: string
 }
 
-/** Repository files whose change reaches every package. */
-const ROOT_WIDE = /^(package-lock\.json|package\.json|tsconfig(\.[a-z]+)?\.json|\.gitattributes)$/
+/**
+ * The app-root slots of contexts/hfs/slots.yaml every side's check reads: the declaration (the lint factories read its
+ * grammar and sides), the package manifest and lockfile, and the line-ending, tool, format and task-graph configuration.
+ */
+const APP_WIDE_SLOTS: readonly string[] = ["app.declaration", "app.package-manifest", "app.lockfile", "app.gitattributes", "app.tool-config", "app.tool-config-optional", "app.tool-config-local", "app.format-config", "app.task-graph"]
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
+
+/** A root file name pattern (`*` stays in the name) as regular expression source. */
+const nameSource = (name: string): string => name.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)).join("[^/]*")
+
+/**
+ * The repository-root files whose change reaches every package that reads them, so every package: the root paths of the
+ * app-wide slots and every config file name of a canon tool (canon.ts CONFIG_FILES). A listed slot the manifest lacks is
+ * refused, so a renamed slot never narrows the widening silently.
+ */
+const appWideFiles = (): RegExp => {
+    const file = join(runtimeRoot(), "contexts", "hfs", "slots.yaml")
+    if (!existsSync(file)) throw new Refusal("CONTEXTS_NOT_FOUND", `no contexts/hfs/slots.yaml under ${runtimeRoot()}`)
+    const parsed: unknown = parse(readFileSync(file, "utf8"))
+    const slots = isRecord(parsed) && Array.isArray(parsed.slots) ? parsed.slots.filter(isRecord) : []
+    const paths = APP_WIDE_SLOTS.flatMap((id) => {
+        const path = slots.find((slot) => slot.id === id)?.path
+        if (typeof path !== "string") throw new Refusal("SLOTS_INVALID", `contexts/hfs/slots.yaml has no slot ${id} with a path`)
+        return braceVariants(path).filter((variant) => !variant.includes("/"))
+    })
+    const names = [...new Set([...paths, ...Object.values(CONFIG_FILES).flat()])]
+    return new RegExp(`^(?:${names.map(nameSource).join("|")})$`)
+}
 
 const LINTABLE = /\.(?:[cm]?[jt]sx?)$/
 
@@ -51,7 +82,7 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
 
 /**
  * Decides what to check: every package with --all, else the packages that own a judged file, the changed ones or, when the
- * diff changes nothing, the tracked files under `paths`; a root-wide file widens to all. A diff and paths both empty leave
+ * diff changes nothing, the tracked files under `paths`; an app-wide configuration file widens to all. A diff and paths both empty leave
  * no package, so nothing runs.
  */
 export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = []): Promise<Scope> => {
@@ -62,7 +93,8 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     if (packages.length === 0) throw new Refusal("CHECK_NO_PACKAGE", `no package.json with a name and version under ${root}`)
     const changed = await changedFiles(root, base)
     const files = changed.length === 0 ? await trackedUnder(root, paths) : changed
-    const widen = all || files.some((file) => ROOT_WIDE.test(file))
+    const appWide = appWideFiles()
+    const widen = all || files.some((file) => appWide.test(file))
     const owned = new Map<WorkspacePackage, string[]>()
     const skipped: string[] = []
     for (const file of files) {

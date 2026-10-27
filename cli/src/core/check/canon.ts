@@ -10,7 +10,7 @@ import type { Scope, ScopeTarget, StepResult } from "./scope.js"
 export type CanonByTool = Readonly<Partial<Record<CanonTool, readonly string[]>>>
 
 /** The files that mark a tool's use in a package; package.json counts when it carries the tool's key. */
-const CONFIG_FILES: Readonly<Record<CanonTool, readonly string[]>> = {
+export const CONFIG_FILES: Readonly<Record<CanonTool, readonly string[]>> = {
     eslint: ["eslint.config.ts", "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs"],
     stylelint: ["stylelint.config.js", "stylelint.config.mjs", "stylelint.config.cjs", "stylelint.config.ts", ".stylelintrc", ".stylelintrc.json", ".stylelintrc.js", ".stylelintrc.cjs", ".stylelintrc.yaml", ".stylelintrc.yml"],
     tsconfig: ["tsconfig.json"],
