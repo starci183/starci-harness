@@ -22,21 +22,19 @@
     "url": "https://github.com/starci183/starci-harness/issues"
   },
   "private": false,
-  "main": "./index.mjs",
-  "types": "./index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.mjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
-    "LICENSE",
-    "*.mjs",
-    "*.d.ts",
+    "dist",
     "runtime/**",
-    "!*.spec.mjs",
+    "LICENSE",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -54,10 +52,15 @@
     "@typescript-eslint/parser": "8.71.0",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "7.1.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "24.19.2"
   },
   "scripts": {
-    "test": "node --test \"*.spec.mjs\""
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run typecheck && node --test \"src/**/*.spec.ts\""
   },
   "publishConfig": {
     "access": "public"

@@ -1,0 +1,5 @@
+{
+  "extends": "@starci/tsconfig/package-cjs.json",
+  "compilerOptions": { "noEmit": true, "rootDir": "." },
+  "include": ["src", "test"]
+}

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false
+  },
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/testing.ts",
+    "src/lib/write-vocabulary.ts",
+    "src/lib/extract-values.ts"
+  ]
+}

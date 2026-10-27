@@ -1,0 +1,176 @@
+/** StarCi scale and theme-token choices; ownership follows FE-RULE-OWNERSHIP. */
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
+import type { Rule } from "eslint"
+import { classTextVisitors } from "@starci/eslint-canon-fe/lib/class-text.mjs"
+import { hfsOf } from "@starci/eslint-canon-fe/lib/hfs.mjs"
+import type { HfsView } from "@starci/eslint-canon-fe/lib/hfs.mjs"
+import { classOf, isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
+import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
+import type { Node, ReaderContext } from "./lib/types.ts"
+
+/**
+ * A fractional step, in any family that measures.
+ *
+ * The rungs are whole and unevenly spaced, so half of one is not "between two rungs" - it is off
+ * the ladder, and it will match nothing else on any screen.
+ */
+const FRACTIONAL =
+  /\b(?:gap|gap-x|gap-y|p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|space-x|space-y|inset|top|bottom|left|right|size|w|h)-\d+\.\d+\b/
+
+/** Large text. Paired with a heavy weight it is a heading, whatever element carries it. */
+const LARGE_TEXT = /\btext-(?:xl|2xl|3xl|4xl|5xl)\b/
+
+/** A heavy weight. */
+const HEAVY_WEIGHT = /\bfont-(?:bold|extrabold|black)\b/
+
+/** A fractional step is off the ladder, not between two rungs. */
+export const noFractionalStep: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A measurement takes a whole rung; a fractional step is off the scale." },
+    schema: [],
+    messages: {
+      fractional:
+        "`{{cls}}` is half a rung. The scale is whole steps, unevenly spaced, so this is not between two rungs - it is off the ladder, and it will match nothing else on any screen. Use the nearest rung; there is no case where the right answer is half of one.",
+    },
+  },
+  create(context) {
+    return classTextVisitors(context, (node, text) => {
+      if (!text) return
+      const hit = text.match(FRACTIONAL)
+      if (hit) context.report({ node, messageId: "fractional", data: { cls: hit[0] } })
+    })
+  },
+})
+
+/** Large text plus a heavy weight is a heading, and headings come from the component that owns both. */
+export const noHandRolledHeading: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A heading comes from the heading component, not from raw type classes." },
+    schema: [],
+    messages: {
+      heading:
+        "Large text and a heavy weight together are a heading, whatever element carries them - and assembled here it is a heading nothing else knows about: the outline a screen reader builds does not contain it, and it stays behind the day the type scale changes. Render the heading component, which owns the tag and the size as one decision.",
+    },
+  },
+  create(context) {
+    return classTextVisitors(context, (node, text) => {
+      if (!text) return
+      if (LARGE_TEXT.test(text) && HEAVY_WEIGHT.test(text)) {
+        context.report({ node, messageId: "heading" })
+      }
+    })
+  },
+})
+
+/**
+ * The class families whose names are PROMISES about a theme token, and the variable each needs.
+ *
+ * Tailwind resolves `max-w-app-lg` by looking for `--container-app-lg`. Nothing warns when that
+ * variable does not exist: the class is emitted, the element gets no width, and the type system
+ * is satisfied because the name IS in the union. That is the failure this rule exists for - a
+ * class can be typesafe and mean nothing at the same time, and the union is exactly what makes
+ * it look settled.
+ *
+ * Only families whose token name is DERIVABLE from the class name are listed. A colour or a
+ * spacing step resolves through Tailwind's own scale as well as the theme, so a rule guessing at
+ * those would report classes that work.
+ */
+/**
+ * Names Tailwind resolves ITSELF, which therefore promise nothing about this theme.
+ *
+ * `min-h-screen` is the viewport, not a variable; so are `full`, `fit`, `auto` and the viewport
+ * units. Reported as unresolved tokens they would send an author to define `--min-height-screen`,
+ * which is a variable nothing reads - the rule would have invented work and broken a working class.
+ * Measured on both repositories the first time this ran: two findings, both wrong, both this list.
+ */
+const TAILWIND_OWN_NAMES = new Set([
+  "screen", "full", "fit", "auto", "none", "min", "max", "prose",
+  "dvh", "svh", "lvh", "dvw", "svw", "lvw", "px",
+])
+const TOKEN_CLASS_FAMILIES: readonly { readonly pattern: RegExp; readonly variable: (name: string) => string }[] = [
+  { pattern: /^max-w-app-([a-z0-9]+)$/, variable: (name) => `--container-app-${name}` },
+  { pattern: /^max-h-([a-z][a-z0-9-]*)$/, variable: (name) => `--max-height-${name}` },
+  { pattern: /^min-h-([a-z][a-z0-9-]*)$/, variable: (name) => `--min-height-${name}` },
+]
+
+/**
+ * The stylesheets an app declares its theme in: the route slot's `globals.css` (`fe.route`, named by its `allows`) and the brand slot's
+ * `brand.css` (`fe.modules.brand`), both with `<app>` filled from the linted file's slot. Null when the file belongs to no app
+ * (a shared package has no theme of its own).
+ */
+/** Every theme read once per lint run. */
+const themeCache = new Map<string, string | null>()
+
+/** The path template of a slot the manifest must declare. */
+const slotPath = (hfs: HfsView, id: string): string => {
+  const slot = hfs.slot(id)
+  if (slot === null) throw new Error(`The slot manifest declares no slot ${id}`)
+  return slot.path
+}
+
+const themeText = (context: ReaderContext): string | null => {
+  const hfs = hfsOf(context)
+  const app = classOf(context).bindings?.app
+  if (app === undefined) return null
+  const candidates = [
+    join(slotPath(hfs, "fe.route").replace("<app>", app), "globals.css"),
+    slotPath(hfs, "fe.modules.brand").replace("<app>", app),
+  ].map((relative) => join(hfs.repoRoot, relative))
+  const key = candidates.join("|")
+  if (!themeCache.has(key)) {
+    const found = candidates.filter((candidate) => existsSync(candidate)).map((candidate) => readFileSync(candidate, "utf8"))
+    themeCache.set(key, found.length > 0 ? found.join("\n") : null)
+  }
+  return themeCache.get(key) ?? null
+}
+
+/** A class naming a token the theme never defines is a class that draws nothing. */
+export const noUnresolvedTokenClass: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A class naming a theme token resolves only when the theme defines it." },
+    schema: [],
+    messages: {
+      unresolved:
+        "`{{value}}` reads as a token this theme defines, and `{{variable}}` is defined nowhere in it. Tailwind emits the class, the element gets nothing, and both the union and the compiler stay happy - which is why this is the one dead class no type can catch. Define `{{variable}}` in the stylesheet, or name a token that exists.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    const theme = themeText(context)
+    // A reader that cannot find the stylesheet stays quiet rather than calling every token dead.
+    if (theme === null) return {}
+    // The visitor hands (node, text) in that order; reversing them here is how a rule reports the
+    // node as its message and the message as its node, and neither complains.
+    const check = (node: Node, value: string | null): void => {
+      for (const raw of String(value).split(/\s+/)) {
+        const bare = raw.replace(/^[a-z-]+:/, "").replace(/^!/, "")
+        for (const family of TOKEN_CLASS_FAMILIES) {
+          const match = family.pattern.exec(bare)
+          if (match === null) continue
+          const name = match[1] ?? ""
+          if (TAILWIND_OWN_NAMES.has(name)) continue
+          const variable = family.variable(name)
+          if (theme.includes(variable)) continue
+          context.report({ node, messageId: "unresolved", data: { value: bare, variable } })
+        }
+      }
+    }
+    return classTextVisitors(context, check)
+  },
+})
+
+/** StarCi scale rules, bound to their knowledge owner. */
+export const rules: Record<string, Rule.RuleModule> = {
+  "no-fractional-step": noFractionalStep,
+  "no-hand-rolled-heading": noHandRolledHeading,
+  "no-unresolved-token-class": noUnresolvedTokenClass,
+}
+
+defineFamilyRules(rules, "knowledge/hfs/rules.yaml#R61")
+
+/** Every family scale rule is mandatory. */
+export const recommended: Record<string, "error"> = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-grammar/${name}`, "error"]))

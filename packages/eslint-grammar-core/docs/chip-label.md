@@ -1,6 +1,6 @@
 # Chip labels start uppercase
 
-Law module: `chip-label.mjs`. Catalogue: R322 FE_CHIP_LABEL_CASE.
+Law module: `chip-label.ts`. Catalogue: R322 FE_CHIP_LABEL_CASE.
 
 A status chip (`StatusDot` with text, a `Badge`, dot or not) is a label read at a glance beside the thing it qualifies, so it starts with an uppercase letter in every language, Vietnamese included. StatusDot capitalises the text it renders; the rule holds the literal where the source writes it.
 

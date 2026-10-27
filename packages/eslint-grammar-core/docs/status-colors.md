@@ -1,8 +1,8 @@
 # Status colours: text and icons take the soft pair
 
-Law module: `status-colors.mjs`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the class-name half of the soft-pair contrast obligation; the brand layer's own contrast is `starci/status-contrast` of @starci/stylelint-canon).
+Law module: `status-colors.ts`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (the class-name half of the soft-pair contrast obligation; the brand layer's own contrast is `starci/status-contrast` of @starci/stylelint-canon).
 
-A status tone has two faces. The solid tone (`--success`) is a fill, with `--success-foreground` ink on it. A status shown as text or as an icon takes the soft pair, the way a HeroUI flat Chip does: `--success-soft-foreground` ink, on `--success-soft` when it sits on a tint. The soft pair is what the brand layer is checked to make readable (3:1 on the tint and on the page); the solid tone reads 3.8:1 or worse on white, so as a text colour it fails. The tones are the grammar's status tones (`success`, `warning`, `danger`, `info`), read from `lib/status-tones.generated.mjs`, which is generated from the grammar with the stylelint vocabulary.
+A status tone has two faces. The solid tone (`--success`) is a fill, with `--success-foreground` ink on it. A status shown as text or as an icon takes the soft pair, the way a HeroUI flat Chip does: `--success-soft-foreground` ink, on `--success-soft` when it sits on a tint. The soft pair is what the brand layer is checked to make readable (3:1 on the tint and on the page); the solid tone reads 3.8:1 or worse on white, so as a text colour it fails. The tones are the grammar's status tones (`success`, `warning`, `danger`, `info`), read from `lib/status-tones.generated.ts`, which is generated from the grammar with the stylelint vocabulary.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

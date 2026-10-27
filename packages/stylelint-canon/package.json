@@ -1,6 +1,6 @@
 {
   "name": "@starci/stylelint-canon",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "The StarCi CSS lint canon (HFS R61): grammar tokens only, raw brand values only in brand.css, no !important, a global sheet that only imports and declares tokens, and no token redefined in a CSS module.",
   "type": "module",
   "license": "MIT",
@@ -16,17 +16,17 @@
   },
   "private": false,
   "exports": {
-    ".": "./index.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "main": "./index.mjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
+    "dist",
+    "!dist/**/*.spec.*",
     "LICENSE",
-    "*.mjs",
-    "lib/*.mjs",
-    "!*.spec.mjs",
-    "!testing.mjs",
-    "!lib/write-vocabulary.mjs",
-    "!lib/extract-values.mjs",
     "CHANGELOG.md",
     "README.md"
   ],
@@ -38,16 +38,22 @@
     "postcss-value-parser": ">=4"
   },
   "devDependencies": {
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "24.19.2",
     "postcss": "8.5.28",
+    "postcss-value-parser": "4.2.0",
     "stylelint": "17.15.0",
-    "postcss-value-parser": "4.2.0"
+    "typescript": "5.9.3"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "test": "node --test \"*.spec.mjs\"",
-    "vocabulary": "node lib/write-vocabulary.mjs"
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run typecheck && node --test \"src/**/*.spec.ts\"",
+    "vocabulary": "node src/lib/write-vocabulary.ts"
   },
   "keywords": [
     "stylelint",

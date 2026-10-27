@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+
+// prettier loads the built entry with require, so the spec does too.
+const require = createRequire(import.meta.url);
+const config: typeof import('../src/index.ts') = require('../dist/index.js');
+
+test('the config is the approved dialect (HFS decision 10, K22)', () => {
+  assert.equal(config.printWidth, 120);
+  assert.equal(config.tabWidth, 4);
+  assert.equal(config.useTabs, false);
+  assert.equal(config.semi, false);
+  assert.equal(config.singleQuote, false);
+  assert.equal(config.trailingComma, 'all');
+});
+
+test('data files keep the two-space convention of package.json and yaml', () => {
+  const data = config.overrides?.find((entry) => entry.files.includes('*.yaml'));
+  assert.ok(data);
+  assert.equal(data.options?.tabWidth, 2);
+  assert.ok(data.files.includes('*.json'));
+});
+
+test('the config sets only options prettier knows, and no plugin (a plugin is a second formatter)', () => {
+  const known = new Set(['printWidth', 'tabWidth', 'useTabs', 'semi', 'singleQuote', 'trailingComma', 'bracketSpacing', 'arrowParens', 'endOfLine', 'overrides']);
+  for (const key of Object.keys(config)) assert.ok(known.has(key), `unexpected option ${key}`);
+  assert.equal('plugins' in config, false);
+});
+
+test('prettier itself accepts the config (prettier is the subject of this spec, a devDependency of the package)', async () => {
+  const prettier = await import('prettier');
+  const out = await prettier.format('const a = {b:1,\n c:"x"};\nfunction f(){return a}', { ...config, parser: 'typescript' });
+  assert.equal(out, 'const a = { b: 1, c: "x" }\nfunction f() {\n    return a\n}\n');
+});

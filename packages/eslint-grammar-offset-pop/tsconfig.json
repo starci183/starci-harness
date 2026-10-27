@@ -1,0 +1,9 @@
+{
+  "extends": "@starci/tsconfig/package-esm.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src"
+  ]
+}
