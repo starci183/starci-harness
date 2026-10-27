@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.1.12 - 2026-10-27
+
+- Changed: owner ruling two-grammars: the bundled Grammar catalog names the core family `core` and carries the one alias table (`familyAliases`: `starci`, `starci-core` -> `core`); the bundled grammar-lint resolver answers by the canonical id, so a front end with `sides.fe.grammar: core` resolves its component contract and lint family. The runtime copy is refreshed from starci-academy-backend/.claude 180193f12 (canon pins: the Grammar family 0.12.15, hfs 4.7.48). No rule changes.
+
 ## 9.1.11 - 2026-10-27
 
 - Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.

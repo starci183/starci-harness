@@ -51,6 +51,6 @@ Regression specs belong to this package. Application front ends and Grammar libr
 
 `runtime/` holds the StarCi runtime files the rules import (the slot manifest and view, the project graph and the
 architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. In this repository it is a
-committed snapshot taken from the legacy runtime (starci-academy-backend/.claude at 7424b89ca), where
+committed snapshot taken from the legacy runtime (starci-academy-backend/.claude at 180193f12), where
 `scripts/hfs/sync-runtime.mjs` generates it; refresh it by running that generator there and copying
 `packages/eslint/fe/runtime/` over this folder. Nothing in this package edits it.

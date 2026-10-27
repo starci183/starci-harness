@@ -66,6 +66,12 @@ topics:
     title: Heritage Grammar
     summary: |
       Generated snapshot of the Heritage family's parity declaration, arrangement, scoped tokens and Common renderers.
+# The one alias table of Grammar family ids (ruling two-grammars, 2026-10-27): `core` is the canonical id of the
+# legacy core grammar; the legacy catalog id `starci` and the DNA id `starci-core` are deprecated spellings that
+# resolve to it. Every reader resolves a selection through scripts/lib/grammar-lint.mjs, never through its own list.
+familyAliases:
+  starci: core
+  starci-core: core
 families:
   - id: heritage
     title: heritage
@@ -85,8 +91,8 @@ families:
       (`defineGrammarFamily`), not a family that ships a palette, so `authority`, `reusableStyle`,
       `productComposition` and `index` have nothing to name here. Universal semantics, renderer anatomy,
       state and accessibility remain owned by knowledge/ui.
-  - id: starci
-    title: starci
+  - id: core
+    title: core
     contractRef: common
     lint:
       package: '@starci/eslint-grammar-starci'
