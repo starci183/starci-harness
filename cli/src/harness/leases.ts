@@ -36,10 +36,14 @@ const TERMINAL_SQL = TERMINAL_STATUSES.map((status) => `'${status}'`).join(", ")
 /** True for a status no transition leaves: the task has ended. */
 export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)
 
-/** Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment; `.` is the whole repository. */
-export const pathsOverlap = (left: string, right: string): boolean => {
-    const a = normaliseRepoPath(left).split("/")
-    const b = normaliseRepoPath(right).split("/")
+/**
+ * Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment; `.` is the
+ * whole repository. With `foldCase` (a repository whose core.ignorecase is true) `Src/A` and `src/a` are one path.
+ */
+export const pathsOverlap = (left: string, right: string, foldCase = false): boolean => {
+    const spell = (path: string): string[] => (foldCase ? normaliseRepoPath(path).toLowerCase() : normaliseRepoPath(path)).split("/")
+    const a = spell(left)
+    const b = spell(right)
     if (a[0] === "." || b[0] === ".") return true
     const shorter = a.length <= b.length ? a : b
     const longer = shorter === a ? b : a
@@ -65,15 +69,20 @@ export const inTransaction = <T>(db: DatabaseSync, work: () => T): T => {
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 
+/** True when the project's repository folds case (core.ignorecase, read once per ledger by openLedger). */
+export const leasesFoldCase = (db: DatabaseSync): boolean => db.prepare("SELECT value FROM meta WHERE key = 'ignorecase'").get()?.value === "true"
+
+// A task that ended but still holds an intent (a reset left to repair) keeps its paths: its tree is not back to HEAD yet.
 const toLease = (row: Record<string, unknown>, at: string): LeaseRow => {
     const taskStatus = text(row.status) as TaskStatus
     const expiresAt = text(row.expires_at)
-    return { path: text(row.path), taskId: text(row.task_id), token: text(row.token), expiresAt, taskStatus, live: !isTerminal(taskStatus), overdue: expiresAt <= at }
+    const held = row.intent !== null && row.intent !== undefined
+    return { path: text(row.path), taskId: text(row.task_id), token: text(row.token), expiresAt, taskStatus, live: held || !isTerminal(taskStatus), overdue: expiresAt <= at }
 }
 
-/** Deletes the leases of tasks that ended, and only those: a lease of a live task is never expired by time. Returns how many it removed. */
+/** Deletes the leases of tasks that ended and hold no intent, and only those: a lease of a live task is never expired by time. Returns how many it removed. */
 export const sweepLeases = (db: DatabaseSync): number => {
-    const swept = db.prepare(`DELETE FROM leases WHERE task_id IN (SELECT id FROM tasks WHERE status IN (${TERMINAL_SQL}))`).run()
+    const swept = db.prepare(`DELETE FROM leases WHERE task_id IN (SELECT id FROM tasks WHERE status IN (${TERMINAL_SQL}) AND intent IS NULL)`).run()
     const count = Number(swept.changes)
     if (count > 0) recordEvent(db, "leases-swept", null, { count })
     return count
@@ -82,7 +91,7 @@ export const sweepLeases = (db: DatabaseSync): number => {
 /** Every lease row, or those of one task, with whether it still holds; a pure read that sweeps nothing. */
 export const listLeases = (db: DatabaseSync, taskId?: string): LeaseRow[] => {
     const at = now()
-    const select = "SELECT leases.*, tasks.status FROM leases JOIN tasks ON tasks.id = leases.task_id"
+    const select = "SELECT leases.*, tasks.status, tasks.intent FROM leases JOIN tasks ON tasks.id = leases.task_id"
     const rows = taskId === undefined ? db.prepare(`${select} ORDER BY leases.path`).all() : db.prepare(`${select} WHERE leases.task_id = ? ORDER BY leases.path`).all(taskId)
     return rows.map((row) => toLease(row, at))
 }
@@ -101,8 +110,9 @@ export const acquireLeases = (db: DatabaseSync, task: TaskRow): LeaseGrant =>
         sweepLeases(db)
         const paths = leasePaths(task)
         const held = listLeases(db).filter((lease) => lease.taskId !== task.id && lease.live)
+        const fold = leasesFoldCase(db)
         for (const path of paths) {
-            const holder = held.find((lease) => pathsOverlap(lease.path, path))
+            const holder = held.find((lease) => pathsOverlap(lease.path, path, fold))
             if (holder !== undefined) {
                 throw new Refusal("LEASE_CONFLICT", `${path} overlaps ${holder.path}, leased by task ${holder.taskId} (${holder.taskStatus}, due ${holder.expiresAt}) until that task ends`)
             }
@@ -129,7 +139,11 @@ export const missingLeases = (db: DatabaseSync, task: TaskRow): string[] => {
     return leasePaths(task).filter((path) => !held.has(path))
 }
 
-/** Fencing: refuses with LEASE_LOST when the task no longer holds every lease of its allowPaths, so a fenced task cannot report work on paths it lost. */
+/**
+ * Fencing: refuses with LEASE_LOST when the task no longer holds every lease of its allowPaths, so a fenced task cannot report
+ * work on paths it lost. The fence is the lease row itself, read next to the task's status compare-and-swap; the grant's
+ * `token` only names a grant in events and listings, and no command takes it as proof.
+ */
 export const assertLeasesHeld = (db: DatabaseSync, task: TaskRow): void => {
     const missing = missingLeases(db, task)
     if (missing.length > 0) {
@@ -142,9 +156,10 @@ export const assertLeasesHeld = (db: DatabaseSync, task: TaskRow): void => {
  * that has ended (LEASE_TASK_LIVE otherwise): set the terminal status first, once its dirty paths were preserved or settled.
  */
 export const releaseLeases = (db: DatabaseSync, taskId: string): number => {
-    const row = db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)
+    const row = db.prepare("SELECT status, intent FROM tasks WHERE id = ?").get(taskId)
     const status = row === undefined ? undefined : (text(row.status) as TaskStatus)
     if (status !== undefined && !isTerminal(status)) throw new Refusal("LEASE_TASK_LIVE", `task ${taskId} is ${status}; its leases are released only once it has ended`)
+    if (row !== undefined && row.intent !== null) throw new Refusal("LEASE_TASK_LIVE", `task ${taskId} still holds intent ${text(row.intent)}; its leases are released once that finished`)
     const released = Number(db.prepare("DELETE FROM leases WHERE task_id = ?").run(taskId).changes)
     if (released > 0) recordEvent(db, "leases-released", taskId, { count: released })
     return released

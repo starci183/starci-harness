@@ -78,17 +78,50 @@ const LOCK_KEY = "settle-lock"
 
 const LOCK_POLL_MS = 500
 
+/** How often the settle lock's holder stamps its heartbeat, and how old a heartbeat may grow before its holder counts as gone. */
+const LOCK_BEAT_MS = 10_000
+
+const LOCK_STALE_MS = 120_000
+
+/** The settle lock row as stored: the verifier and its last heartbeat. */
+interface LockRow extends Verifier {
+    readonly beat: string
+}
+
+const readLock = (db: DatabaseSync): LockRow | undefined => {
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(LOCK_KEY)
+    if (row === undefined) return undefined
+    const value: unknown = JSON.parse(String(row.value))
+    const verifier = asVerifier(value)
+    if (verifier === undefined) return undefined
+    const beat = (value as Record<string, unknown>).beat
+    return { ...verifier, beat: typeof beat === "string" ? beat : verifier.at }
+}
+
+/**
+ * True while the lock's holder lives: its heartbeat is fresh, and on this host its pid still runs. A stale heartbeat frees the
+ * lock even when the pid runs, since Windows reuses pids and a reused pid would otherwise hold the lock forever.
+ */
+const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && verifierAlive(holder)
+
+/** The live holder of the project's settle lock, if any: a verifying task with no live holder has no verifier left. */
+export const settleLockHolder = (db: DatabaseSync): Verifier | undefined => {
+    const holder = readLock(db)
+    return holder !== undefined && holderAlive(holder) ? holder : undefined
+}
+
+const mine = "key = ? AND json_extract(value, '$.task') = ? AND json_extract(value, '$.pid') = ? AND json_extract(value, '$.host') = ?"
+
 /** Takes the lock row if it is free or its holder died; one statement pair under BEGIN IMMEDIATE, so two verifiers never both win. */
 const tryLock = (db: DatabaseSync, me: Verifier): Verifier | undefined => {
     db.exec("BEGIN IMMEDIATE")
     try {
-        const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(LOCK_KEY)
-        const holder = row === undefined ? undefined : asVerifier(JSON.parse(String(row.value)))
-        if (holder !== undefined && verifierAlive(holder)) {
+        const holder = readLock(db)
+        if (holder !== undefined && holderAlive(holder)) {
             db.exec("COMMIT")
             return holder
         }
-        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(LOCK_KEY, JSON.stringify(me))
+        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(LOCK_KEY, JSON.stringify({ ...me, beat: now() }))
         db.exec("COMMIT")
         return undefined
     } catch (error: unknown) {
@@ -111,14 +144,25 @@ const acquireLock = async (db: DatabaseSync, me: Verifier, deadline: number): Pr
 /**
  * Runs `work` while this process holds the project's settle lock (a ledger row), so verifies that settle run one at a time
  * (side serialisation): each builds its candidate on the HEAD the previous one left. A holder whose process died is taken
- * over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing.
+ * over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing. The holder stamps a heartbeat while it
+ * works, so a lock whose holder stopped beating is taken over even when its pid was reused.
  */
 export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, work: () => Promise<T>): Promise<T> => {
     await acquireLock(db, me, Date.now() + waitMs)
+    const keys = [LOCK_KEY, me.task, me.pid, me.host] as const
+    const beat = setInterval(() => {
+        try {
+            db.prepare(`UPDATE meta SET value = json_set(value, '$.beat', ?) WHERE ${mine}`).run(now(), ...keys)
+        } catch {
+            // A busy ledger skips one beat; the next one, well inside the stale window, lands.
+        }
+    }, LOCK_BEAT_MS)
+    beat.unref()
     try {
         return await work()
     } finally {
-        db.prepare("DELETE FROM meta WHERE key = ? AND value = ?").run(LOCK_KEY, JSON.stringify(me))
+        clearInterval(beat)
+        db.prepare(`DELETE FROM meta WHERE ${mine}`).run(...keys)
     }
 }
 

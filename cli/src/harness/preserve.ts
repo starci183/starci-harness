@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
@@ -47,9 +47,11 @@ const freshDir = (root: string, taskId: string): string => {
  * (a binary patch of the tracked changes against HEAD plus copies of its untracked files), records a `task-preserved` event, then puts those paths back to
  * HEAD: tracked files in the patch are checked out from HEAD (or dropped when HEAD has none), copied untracked files are
  * deleted. Nothing outside the allowPaths is read or touched. Call it while the task still holds its leases, before it
- * ends, so no overlapping task can commit the half-done work in between.
+ * ends, so no overlapping task can commit the half-done work in between. `onSaved` runs once the copy and its manifest are on
+ * disk and before anything is reset: a caller records the folder there (or stores the patch for the next attempt), so the
+ * reset never runs ahead of a safe copy. A reset that breaks half-way throws PreserveIncomplete; resetPreserved finishes it.
  */
-export const preserveTaskPaths = async (root: string, task: TaskRow, db: DatabaseSync): Promise<Preserved> => {
+export const preserveTaskPaths = async (root: string, task: TaskRow, db: DatabaseSync, onSaved?: (dir: string) => Promise<void> | void): Promise<Preserved> => {
     const specs = pathspecs(task)
     if (specs.length === 0) return { dir: null, patch: null, tracked: [], untracked: [] }
     const raw = fields(await git(root, ["diff", "--no-renames", "--name-status", "-z", "HEAD", "--", ...specs]))
@@ -71,15 +73,61 @@ export const preserveTaskPaths = async (root: string, task: TaskRow, db: Databas
         mkdirSync(dirname(target), { recursive: true })
         copyFileSync(join(root, file), target)
     }
-    const manifest = { task: task.id, base: "HEAD", head: await git(root, ["rev-parse", "HEAD"]), allowPaths: leasePaths(task), tracked: status, untracked }
-    writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`)
+    const manifest: Manifest = { task: task.id, base: "HEAD", head: await git(root, ["rev-parse", "HEAD"]), allowPaths: leasePaths(task), tracked: status, untracked, phase: "saved" }
+    writeManifest(dir, manifest)
     recordEvent(db, "task-preserved", task.id, { dir, patch, tracked: status, untracked })
+    await onSaved?.(dir)
 
-    // Only after the copy is on disk is the work tree put back: files HEAD knows come back from HEAD, files it does not know leave.
-    const inHead = status.filter((entry) => entry.kind !== "A").map((entry) => entry.path)
-    const added = status.filter((entry) => entry.kind === "A").map((entry) => entry.path)
-    await inOrder(chunks(inHead), (part) => git(root, ["checkout", "HEAD", "--", ...part.map(literal)]))
-    await inOrder(chunks(added), (part) => git(root, ["rm", "-q", "-f", "--", ...part.map(literal)]))
-    for (const file of untracked) rmSync(join(root, file), { force: true })
+    // Only after the copy and its manifest are on disk is the work tree put back.
+    try {
+        await resetPreserved(root, dir)
+    } catch (error: unknown) {
+        throw new PreserveIncomplete(dir, task.id, error instanceof Error ? error.message : String(error))
+    }
     return { dir, patch, tracked, untracked }
+}
+
+/** The manifest of a preserve folder: what was saved, against which HEAD, and whether the paths were put back (`reset`). */
+interface Manifest {
+    readonly task: string
+    readonly base: string
+    readonly head: string
+    readonly allowPaths: readonly string[]
+    readonly tracked: readonly { readonly kind: string; readonly path: string }[]
+    readonly untracked: readonly string[]
+    readonly phase: "saved" | "reset"
+}
+
+const writeManifest = (dir: string, manifest: Manifest): void => {
+    writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`)
+}
+
+/** A preserve that saved the work but could not put every path back (a held file on Windows: EBUSY, EPERM); `dir` holds the copy. */
+export class PreserveIncomplete extends Refusal {
+    public readonly dir: string
+
+    public constructor(dir: string, taskId: string, why: string) {
+        super("PRESERVE_RESET_INCOMPLETE", `the work of task ${taskId} is saved in ${dir}, but its paths were not all put back (${why}); finish with starci task verify ${taskId} --recover`)
+        this.name = "PreserveIncomplete"
+        this.dir = dir
+    }
+}
+
+/** Removal retries for a file Windows still holds (an editor, an indexer, antivirus). */
+const REMOVE = { force: true, recursive: true, maxRetries: 5, retryDelay: 200 } as const
+
+/**
+ * Puts a preserved task's paths back from its manifest.json, idempotently: files the saved HEAD knew come back from it, files
+ * it did not know (staged or untracked) leave, each step a no-op once done. Marks the manifest `reset` when all of it worked,
+ * so a run interrupted half-way is finished by running this again, never by preserving the half-reset tree a second time.
+ */
+export const resetPreserved = async (root: string, dir: string): Promise<void> => {
+    const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Manifest
+    if (manifest.phase === "reset") return
+    const inHead = manifest.tracked.filter((entry) => entry.kind !== "A").map((entry) => entry.path)
+    const added = manifest.tracked.filter((entry) => entry.kind === "A").map((entry) => entry.path)
+    await inOrder(chunks(inHead), (part) => git(root, ["checkout", manifest.head, "--", ...part.map(literal)]))
+    await inOrder(chunks(added), (part) => git(root, ["rm", "-q", "-f", "--cached", "--ignore-unmatch", "--", ...part.map(literal)]))
+    for (const file of [...added, ...manifest.untracked]) rmSync(join(root, file), REMOVE)
+    writeManifest(dir, { ...manifest, phase: "reset" })
 }

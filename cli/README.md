@@ -48,16 +48,30 @@ graph version's nodes with contract hash, node hash, routing hints and retry rou
 `pool_concurrency`, `route_picks`, `budgets` and `budget_raises` (`harness/machine.ts`). Seats and leases stay in the
 project ledger. A new column comes by an additive migration that bumps `LEDGER_VERSION`; migrations never drop.
 
-**Task states.** `TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`:
+**Task states.** `TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`, a
+compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
-failed returns the task to `queued`; a verify with no verdict returns it to `reported` with no try spent.
+failed returns the task to `queued`; a verify with no verdict returns it to `reported` with no try spent. A command
+with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
+verify or result arriving later is refused `TASK_INTENT_HELD`; a cancel refused half-way keeps it and resumes when run
+again), `repair` when a preserve saved the work but could not put every path back (a held file on Windows); a task
+with an intent keeps its leases, and `task verify --recover` finishes the reset from the preserve's `manifest.json`.
+Each task records its checkout (its workflow's worktree, else the one it was sent from; a retry keeps its previous
+task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases fold case when
+the repository's `core.ignorecase` is true; the fence is the lease row read beside the status swap, and a grant's
+token only names the grant.
 
-**Settling.** `task verify` builds a candidate from a clean checkout of HEAD plus the task's `allowPaths` and replays
-every check there, never in the worker's environment. Green commits only those paths (never pushed); red preserves and
-resets them and releases the leases. Settles of one project run one at a time under the settle lock
-(`harness/settle.ts`), so each candidate builds on the HEAD the previous one left and a half-done edit of one task
-never reaches another's checks.
+**Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
+Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's `allowPaths` and
+replays every check there, never in the worker's environment; what the candidate misses is read against the same
+staged snapshot. Green commits only those paths (never pushed) and makes the task done, records its settle commit
+(`tasks.settle_commit`) and releases its leases in one transaction; red preserves and resets them and releases the
+leases. Settles of one project run one at a time under the settle lock (`harness/settle.ts`), so each candidate builds
+on the HEAD the previous one left and a half-done edit of one task never reaches another's checks; its holder stamps
+a heartbeat, so a dead holder whose pid Windows reused is taken over once the beat goes stale. Git is the authority for
+landed: `--recover` on a task stuck in verifying makes it done when its branch carries the settle commit (its message
+and `Starci-Task:` trailer after the HEAD the verify started from), and returns it to `reported` otherwise.
 
 **Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`). Each
 task is a node whose node hash covers its contract hash, its retry round and its dependencies' node hashes, so a
