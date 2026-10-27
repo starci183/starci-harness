@@ -246,7 +246,13 @@ const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<stri
     const context: ContextFile[] = []
     const add = (entry: string, source: Source, shared = false): void => {
         const filled = normaliseContextEntry(fill(entry, values))
-        if (context.some((file) => file.entry === filled)) return
+        const known = context.findIndex((file) => file.entry === filled)
+        // A file the contract names again (its extend) is one the task means to apply, so it is citable even when the base reads it as background.
+        if (known >= 0) {
+            const file = context[known]
+            if (file !== undefined && file.shared && !shared) context[known] = { ...file, shared: false }
+            return
+        }
         const harness = filled.startsWith(HARNESS_PREFIX)
         context.push({ entry: filled, source, harness, path: harness ? filled.slice(HARNESS_PREFIX.length) : filled, shared })
     }
