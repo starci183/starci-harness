@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 6
+export const LEDGER_VERSION = 7
 
 /**
  * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
@@ -82,6 +82,10 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "workflows", column: "kernel_terminal", type: "TEXT", since: 6 },
     { table: "workflows", column: "kernel_terminal_owned", type: "INTEGER", since: 6 },
     { table: "workflows", column: "kernel_closed_at", type: "TEXT", since: 6 },
+    { table: "tasks", column: "intent", type: "TEXT", since: 7 },
+    { table: "tasks", column: "intent_json", type: "TEXT", since: 7 },
+    { table: "tasks", column: "worktree", type: "TEXT", since: 7 },
+    { table: "tasks", column: "settle_commit", type: "TEXT", since: 7 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {
@@ -253,9 +257,29 @@ export const findLedgerId = (root: string): string | undefined => {
     }
 }
 
-/** The repository's ledger id, registered in the host registry on first use; this module is the one writer of `machine.sqlite`. */
+/** The registry row of a project read without any lock or write: its id and the schema version it records; undefined when not registered. */
+const lookUp = (project: Project): { readonly id: string; readonly version: number } | undefined => {
+    const file = machinePath()
+    if (!existsSync(file)) return undefined
+    const db = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
+    try {
+        if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledgers'").get() === undefined) return undefined
+        const row = db.prepare("SELECT ledger_id, schema_version FROM ledgers WHERE repo_common_dir = ?").get(project.key)
+        return row === undefined ? undefined : { id: String(row.ledger_id), version: Number(row.schema_version ?? 0) }
+    } finally {
+        db.close()
+    }
+}
+
+/**
+ * The repository's ledger id, registered in the host registry on first use; this module is the one writer of `machine.sqlite`.
+ * A registered project at this build's version (or newer) is read without a write lock, so opening a ledger never queues on
+ * the host store; only a first registration or a version raise takes BEGIN IMMEDIATE, and a version is never lowered.
+ */
 export const ensureLedgerId = (root: string): string => {
     const project = projectOf(root)
+    const known = lookUp(project)
+    if (known !== undefined && known.version >= LEDGER_VERSION) return known.id
     mkdirSync(stateBase(), { recursive: true })
     const db = connect(machinePath())
     try {
@@ -277,7 +301,7 @@ export const ensureLedgerId = (root: string): string => {
                     now(),
                 )
             } else {
-                db.prepare("UPDATE ledgers SET schema_version = ? WHERE ledger_id = ? AND schema_version IS NOT ?").run(LEDGER_VERSION, id, LEDGER_VERSION)
+                db.prepare("UPDATE ledgers SET schema_version = ? WHERE ledger_id = ? AND (schema_version IS NULL OR schema_version < ?)").run(LEDGER_VERSION, id, LEDGER_VERSION)
             }
             db.exec("COMMIT")
             return id
@@ -304,6 +328,12 @@ export const ledgerPath = (root: string): string | undefined => {
     return file !== undefined && existsSync(file) ? file : undefined
 }
 
+/** The version a ledger's meta records; 0 for a new file (no meta table or no row yet). */
+const metaVersion = (db: DatabaseSync): number => {
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'").get() === undefined) return 0
+    return Number(db.prepare("SELECT value FROM meta WHERE key = 'version'").get()?.value ?? 0)
+}
+
 /**
  * Opens (and creates or migrates) the project's ledger, `<state base>/projects/<ledger_id>/runtime.sqlite`, shared by every
  * linked worktree of the repository; with WAL and a busy timeout for concurrent seats.
@@ -314,12 +344,22 @@ export const openLedger = (root: string): DatabaseSync => {
     const file = join(dir, "runtime.sqlite")
     const db = connect(file)
     try {
+        const recorded = metaVersion(db)
+        if (recorded > LEDGER_VERSION) {
+            throw new Refusal("LEDGER_NEWER", `${file} is ledger version ${String(recorded)}, newer than this build's ${String(LEDGER_VERSION)}; update the harness (cd cli && npm run build) before using it`)
+        }
         db.exec(SCHEMA)
         migrate(db)
-        db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(LEDGER_VERSION))
+        // Written only when it rises, so an older build never lowers it and a current one writes nothing.
+        if (recorded < LEDGER_VERSION) db.prepare("INSERT INTO meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) < CAST(excluded.value AS INTEGER)").run(String(LEDGER_VERSION))
         db.prepare("INSERT INTO meta (key, value) VALUES ('ledger_id', ?) ON CONFLICT(key) DO NOTHING").run(id)
         const own = db.prepare("SELECT value FROM meta WHERE key = 'ledger_id'").get()?.value
         if (own !== id) throw new Refusal("LEDGER_MISMATCH", `${file} carries ledger id ${String(own)}, not ${id}; keep the file and fix the registry`)
+        // Whether git folds case here, read once per ledger: path leases compare under it.
+        if (db.prepare("SELECT 1 FROM meta WHERE key = 'ignorecase'").get() === undefined) {
+            const folds = captureToolSync("git", ["config", "--type=bool", "core.ignorecase"], root).stdout === "true"
+            db.prepare("INSERT INTO meta (key, value) VALUES ('ignorecase', ?) ON CONFLICT(key) DO NOTHING").run(folds ? "true" : "false")
+        }
     } catch (error: unknown) {
         db.close()
         throw error

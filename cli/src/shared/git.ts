@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { Refusal } from "./errors.js"
 import { captureTool, runTool } from "./exec.js"
 
@@ -12,6 +13,35 @@ export const repositoryRoot = async (cwd: string): Promise<string> => {
     const root = await captureTool("git", ["rev-parse", "--show-toplevel"], cwd)
     if (root.exitCode !== 0) throw new Refusal("GIT_NOT_A_REPOSITORY", `${cwd} is not inside a git repository`)
     return root.stdout
+}
+
+/** The repository's common git dir, absolute: the same for every linked worktree of one repository. */
+export const gitCommonDir = async (cwd: string): Promise<string> => git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"])
+
+/** True when two paths name the same folder, however they are spelled (slashes; case on Windows). */
+export const samePath = (left: string, right: string): boolean => {
+    const spell = (path: string): string => {
+        const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+        return process.platform === "win32" ? slashed.toLowerCase() : slashed
+    }
+    return spell(left) === spell(right)
+}
+
+/** True when git compares paths of this repository without case (core.ignorecase), as on Windows and macOS by default. */
+export const ignoresCase = async (cwd: string): Promise<boolean> => (await captureTool("git", ["config", "--type=bool", "core.ignorecase"], cwd)).stdout === "true"
+
+/** The newest commit reachable from `head` (after `since`, when given) whose message is exactly `message`; undefined when none. */
+export const commitWithMessage = async (cwd: string, head: string, message: string, since?: string): Promise<string | undefined> => {
+    const range = since === undefined ? head : `${since}..${head}`
+    const trailer = /^Starci-Task: .+$/m.exec(message)?.[0]
+    const grep = trailer === undefined ? [] : [`--grep=^${trailer.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`]
+    const log = await git(cwd, ["log", "--max-count=200", ...grep, "--format=%H%x1f%B%x1e", range])
+    const wanted = message.trim()
+    for (const entry of log.split("\x1e")) {
+        const [sha = "", body = ""] = entry.split("\x1f")
+        if (sha.trim() !== "" && body.trim() === wanted) return sha.trim()
+    }
+    return undefined
 }
 
 /** The full sha of a revision. */

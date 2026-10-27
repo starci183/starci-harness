@@ -8,6 +8,7 @@ import { acquireLeases, inTransaction } from "../../harness/leases.js"
 import type { LeaseGrant } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { createTask, getTask } from "../../harness/tasks.js"
+import { worktreeSelector } from "../../harness/orca/client.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
 import type { WorkRoot } from "../../harness/work.js"
@@ -144,6 +145,10 @@ export const taskSendVerb = defineVerb({
         if (problems.length > 0) throw new Refusal("CONTRACT_UNFIT", `the contract is not fit to send (see starci contract check):\n${problems.join("\n")}`)
         // A uat task is queued where its Work is, so its run, its record and its harness commit share one repository.
         const root = fromWork?.uat.workRoot.root ?? (await repositoryRoot(context.cwd))
+        // The checkout the task's work lives in (its workflow's worktree wins, see createTask): where a launched worker runs when
+        // --worktree names a folder, else this checkout. An Orca selector names no folder here, so this checkout stands until recordTaskWorktree corrects it.
+        const selector = flags.launch ? worktreeSelector(flags.worktree, context.cwd, root) : undefined
+        const checkout = selector?.startsWith("path:") === true ? await repositoryRoot(selector.slice("path:".length)) : root
         const db = openLedger(root)
         let sent: Omit<SendData, "launch">
         try {
@@ -155,7 +160,7 @@ export const taskSendVerb = defineVerb({
             // The task and its leases land together: a lease conflict leaves no queued task behind.
             const { task, leases } = inTransaction(db, () => {
                 if (retryOf !== undefined) assertRetry(db, contract, retryOf)
-                const created = createTask(db, contract, { ...(workflowId === undefined ? {} : { workflowId }), ...(retryOf === undefined ? {} : { retryOf }) })
+                const created = createTask(db, contract, { worktree: checkout, ...(workflowId === undefined ? {} : { workflowId }), ...(retryOf === undefined ? {} : { retryOf }) })
                 return { task: created, leases: acquireLeases(db, created) }
             })
             sent = { task: task.id, status: task.status, label: task.label, hash: task.contractHash, tryNo: task.tryNo, retryOf: task.retryOf, workflow: task.workflowId, contract: file, leases, root, uat: fromWork?.uat ?? null }
