@@ -1,0 +1,93 @@
+/*
+ * The harness app's brand (FE-CSS-3): the only file with colour values. It sets only tokens the core Grammar declares,
+ * unlayered so they win over the family's own layer, with a light and a dark value each. The look is the Claude app's:
+ * ivory canvas, slate ink, a light warm sidebar, slate primary actions, and clay as a sparing accent only.
+ *
+ *   ivory #FAF9F5 · slate #141413 · secondary text #6B6A64 · sidebar #F0EEE6 · hairline and active item #E5E2D8
+ *   clay #C96442 (attention badge, running and progress, link hover) · running tint #F5ECE6 · terminal #262624
+ *
+ * The core accent is the primary action's fill, so it is slate; the parts that carry "running" or "progress" (a status
+ * dot, a progress or quota bar, a graph node) take clay through the same `--accent` token, scoped to those parts.
+ */
+
+/* ------------------------------------------------------------------ light */
+
+[data-grammar-family="core"] {
+    --starci-core-canvas: #faf9f5;
+    --starci-core-surface: #ffffff;
+    --starci-core-surface-secondary: #f0eee6;
+    --starci-core-surface-tertiary: #e5e2d8;
+    --starci-core-foreground: #141413;
+    --starci-core-muted: #6b6a64;
+    --starci-core-border: #e5e2d8;
+    --starci-core-separator: #e5e2d8;
+    --starci-core-accent: #141413;
+    --starci-core-accent-foreground: #faf9f5;
+    --starci-core-accent-text: #141413;
+    --starci-core-accent-soft: #f5ece6;
+    --starci-core-focus: #c96442;
+    --starci-core-surface-shadow: 0 1px 3px rgb(20 20 19 / 0.06);
+    --starci-core-terminal-background: #262624;
+    --starci-core-terminal-foreground: #faf9f5;
+    --starci-core-terminal-title-foreground: #a6a39a;
+}
+
+/* The sidebar is its own core root inside the page's: light warm, its current item on the hairline tone, its badge clay. */
+[data-grammar-family="core"] [data-grammar-family="core"] {
+    --starci-core-canvas: #f0eee6;
+    --starci-core-surface: #f0eee6;
+    --starci-core-surface-secondary: #e5e2d8;
+    --starci-core-accent: #c96442;
+    --starci-core-accent-foreground: #faf9f5;
+    --starci-core-accent-soft: #e5e2d8;
+    --starci-core-accent-text: #141413;
+}
+
+/* Clay marks work in motion: a running state, a progress or quota bar, a running graph node. */
+[data-grammar-family="core"] :is([data-component="StatusDot"], [data-component="Progress"], [data-component="Meter"], [data-component="FlowGraph"]) {
+    --accent: #c96442;
+    --accent-soft: #f5ece6;
+}
+
+/* A link rests in ink and turns clay under the pointer. */
+[data-grammar-family="core"] :is(a, [data-component="Link"])[data-hovered="true"] {
+    --accent: #c96442;
+}
+
+/* ------------------------------------------------------------------ dark */
+
+[data-grammar-family="core"][data-grammar-theme="dark"],
+[data-grammar-family="core"][data-grammar-theme="dark"] [data-grammar-family="core"] {
+    --starci-core-canvas: #1f1e1d;
+    --starci-core-surface: #262624;
+    --starci-core-surface-secondary: #30302e;
+    --starci-core-surface-tertiary: #3a3936;
+    --starci-core-foreground: #faf9f5;
+    --starci-core-muted: #a6a39a;
+    --starci-core-border: #3a3936;
+    --starci-core-separator: #3a3936;
+    --starci-core-accent: #faf9f5;
+    --starci-core-accent-foreground: #141413;
+    --starci-core-accent-text: #faf9f5;
+    --starci-core-accent-soft: #3d2b23;
+    --starci-core-terminal-background: #1a1918;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-grammar-family="core"][data-grammar-theme="system"],
+    [data-grammar-family="core"][data-grammar-theme="system"] [data-grammar-family="core"] {
+        --starci-core-canvas: #1f1e1d;
+        --starci-core-surface: #262624;
+        --starci-core-surface-secondary: #30302e;
+        --starci-core-surface-tertiary: #3a3936;
+        --starci-core-foreground: #faf9f5;
+        --starci-core-muted: #a6a39a;
+        --starci-core-border: #3a3936;
+        --starci-core-separator: #3a3936;
+        --starci-core-accent: #faf9f5;
+        --starci-core-accent-foreground: #141413;
+        --starci-core-accent-text: #faf9f5;
+        --starci-core-accent-soft: #3d2b23;
+        --starci-core-terminal-background: #1a1918;
+    }
+}

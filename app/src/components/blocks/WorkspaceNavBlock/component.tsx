@@ -50,7 +50,7 @@ export interface WorkspaceNavBlockBaseProps {
 
 const STATUS_PLACEHOLDER = " "
 
-/** Pure half: the dark sidebar (logo, destinations, projects, the host footer). */
+/** Pure half: the light warm sidebar (logo, destinations, projects, the host footer). */
 export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
     const { labels, openDecisions } = props.props
     const groups: SidebarGroup[] = [
@@ -81,8 +81,8 @@ export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
         },
     ]
     return (
-        // The mockup's dark sidebar: a dark Grammar island inside the page's own theme.
-        <CoreGrammarRoot theme="dark" className="app-sidebar-island">
+        // The sidebar is its own Grammar root in the page's theme, so the brand can give it its light warm tokens.
+        <CoreGrammarRoot theme="system" className="app-sidebar-island">
             <Sidebar
                 label={labels.landmark}
                 presentation={props.props.presentation}
