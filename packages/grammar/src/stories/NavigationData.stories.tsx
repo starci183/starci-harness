@@ -212,14 +212,57 @@ const SeatTable = ({ maxWidth }: { readonly maxWidth?: number }) => {
   );
 };
 
+type TopicRow = { readonly id: string; readonly lesson: string; readonly topics: ReadonlyArray<string> };
+const topicRows: ReadonlyArray<TopicRow> = [
+  { id: 't1', lesson: 'Present simple', topics: ['Grammar', 'Vocabulary', 'Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation'] },
+  { id: 't2', lesson: 'Past continuous', topics: ['Grammar', 'Listening'] },
+];
+const topicColumns: ReadonlyArray<G.DataTableColumn<TopicRow>> = [
+  { id: 'lesson', label: 'Lesson', isRowHeader: true },
+  { id: 'topics', label: 'Topics', editor: (row) => <G.TagGroup label={`Topics of ${row.lesson}`} items={row.topics.map((topic) => ({ id: topic, label: topic }))} /> },
+];
+const TopicTable = () => (
+  <div style={{ maxWidth: 480 }}>
+    <G.DataTable label="Lesson topics" columns={topicColumns} rows={topicRows} renderCell={(row) => row.lesson} emptyContent="No lessons." />
+  </div>
+);
+
 export const DataTableRowLinkEditableAndNarrow: Story = {
   name: 'DataTable (row link, editable cells, narrow mode)',
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Whole-row href with editable Select and NumberField cells (wide)" direction="column"><SeatTable /></State>
       <State label="Narrow container: Email and Team collapse under Member as secondary text" direction="column"><SeatTable maxWidth={420} /></State>
+      <State label="A TagGroup editor wraps its chips inside the container" direction="column"><TopicTable /></State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    const tables = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="DataTable"]')];
+    const [wide, narrow, topics] = tables;
+    if (wide === undefined || narrow === undefined || topics === undefined) throw new Error('Three tables must render');
+    await waitFor(() => {
+      for (const table of tables) {
+        const scroll = table.querySelector<HTMLElement>('[data-grammar-table-scroll]');
+        if (scroll === null || scroll.scrollWidth > scroll.clientWidth + 1) throw new Error(`${table.querySelector('table')?.getAttribute('aria-label')}: the table runs past its container (${scroll?.scrollWidth} > ${scroll?.clientWidth})`);
+      }
+      if (narrow.dataset.grammarTableNarrow !== 'true') throw new Error('The 420px table must be in narrow mode');
+      if (narrow.querySelectorAll('[role="columnheader"]').length !== 3) throw new Error('Below collapseBelow the low-priority headers must leave');
+      if (narrow.querySelectorAll('[data-grammar-table-secondary-column="email"]').length !== seatRows.length) throw new Error('Each row must fold Email under Member');
+      if (wide.dataset.grammarTableNarrow !== 'false' || wide.querySelectorAll('[role="columnheader"]').length !== 5) throw new Error('The wide table keeps every column');
+    });
+    // The NumberField editor keeps its own keys: ArrowUp steps the value and focus stays in it; Escape returns to the cell.
+    const input = wide.querySelector<HTMLInputElement>('[data-grammar-cell-editor] input');
+    if (input === null) throw new Error('The Seats editor must render an input');
+    // A click into the editor must not follow the row's href either.
+    const location = window.location.href;
+    await userEvent.click(input);
+    if (window.location.href !== location) throw new Error('A click into an editor must not follow the row link');
+    await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => { if (input.value !== '3') throw new Error(`ArrowUp must step the NumberField, value is ${input.value}`); });
+    if (canvasElement.ownerDocument.activeElement !== input) throw new Error('ArrowUp must keep focus in the editor');
+    await userEvent.keyboard('{Escape}');
+    if (canvasElement.ownerDocument.activeElement?.getAttribute('role') !== 'gridcell') throw new Error('Escape must return focus to the cell');
+  },
 };
 
 export const DataTable: Story = {
