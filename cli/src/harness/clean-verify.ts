@@ -13,6 +13,7 @@ import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { runCheck, strayFiles } from "./run-checks.js"
+import { assertWorktreeHooks } from "./worktree.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
 
@@ -279,6 +280,8 @@ const policyGates = async (root: string, dir: string, changed: readonly string[]
 /** Verifies a task on a clean checkout of HEAD plus its allowPaths, so a dirty or lucky work tree can never turn a check green. */
 export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify> => {
     const { root, contract } = input
+    // A declared hooks folder the task's checkout lacks means its commits skip the product's own gate: nothing verifies.
+    await assertWorktreeHooks(root)
     const base = await resolveSha(root, contract.context.revision)
     const built = await buildCandidate(input)
     const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${input.name}-p${String(process.pid)}-`))
