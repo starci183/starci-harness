@@ -16,6 +16,9 @@ const EVAL_DEPTH = 10
 const EVAL_RECALL_AT = 5
 
 /** The search eval shipped beside this verb's source: real worker questions with the chunk ids that answer them. */
+// A letter outside ASCII marks a question in another language (Vietnamese diacritics, other scripts); ids and names are ASCII.
+const NON_ENGLISH_LETTER = /(?!\p{ASCII})\p{L}/u
+
 const EVAL_FILE = join("cli", "src", "core", "contexts", "search-eval.json")
 
 const evalSchema = z.object({
@@ -112,7 +115,8 @@ const runEval = async (index: LoadedIndex, file: string): Promise<EvalResult> =>
 /**
  * `starci contexts search`: layer two of the context, knowledge looked up on demand. Ranks the chunks of contexts/, the op
  * files, policy/, the starci skill and the harness documents (each a Markdown section or a yaml entry) for a question, by BM25
- * fused with local embeddings when the index carries them, and prints each hit's id, file, line, score and text. A citable
+ * fused with local embeddings when the index carries them, and prints each hit's id, file, line, score and text. The tree is
+ * English, so a question in another language is refused with the hint to translate it first. A citable
  * id is a rule or record id the rules-cited trace accepts from that file. `--check` fails when the built index is stale;
  * `--eval` measures recall@5 and MRR on the eval set.
  */
@@ -152,6 +156,9 @@ export const contextsSearchVerb = defineVerb({
             return { data, message: `${String(result.questions)} question(s), vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: unknown === "" ? 0 : 1 }
         }
         if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or --check or --eval)")
+        if (NON_ENGLISH_LETTER.test(flags.question)) {
+            throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
+        }
         const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical })
         const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
         const head = ranking.fallback === undefined ? `${ranking.mode} ranking` : `lexical ranking (BM25 only: ${ranking.fallback})`

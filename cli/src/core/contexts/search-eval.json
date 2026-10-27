@@ -69,8 +69,8 @@
     { "q": "spacing between related elements", "expect": ["contexts/grammars/common.md#spacing-one-scale-four-relationships", "contexts/ui/presentation.md#space"] },
     { "q": "control height of a default button", "expect": ["control-height-40", "contexts/ui/scale.md#the-ramp", "contexts/ui/scale.md#how-each-component-sits-on-the-ramp"] },
     { "q": "one primary action per surface", "expect": ["CTA-1", "ACTION-1", "HIERARCHY-1"] },
-    { "q": "cách ném lỗi trong backend", "expect": ["BE-ERROR-3", "BE-ERROR-1"] },
-    { "q": "hộp thoại xác nhận khi xoá dữ liệu", "expect": ["CTA-4", "contexts/ui/components/dialog-drawer.md#choose"] },
-    { "q": "chạy migration cơ sở dữ liệu ở đâu", "expect": ["BE-PERSISTENCE-1", "BE-PERSISTENCE-2"] }
+    { "q": "how to throw an error in the backend", "expect": ["BE-ERROR-3", "BE-ERROR-1"] },
+    { "q": "confirmation dialog when deleting data", "expect": ["CTA-4", "contexts/ui/components/dialog-drawer.md#choose"] },
+    { "q": "where do database migrations run", "expect": ["BE-PERSISTENCE-1", "BE-PERSISTENCE-2"] }
   ]
 }
