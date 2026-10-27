@@ -42,6 +42,10 @@
         --starci-core-surface-shadow: 0 8px 28px oklch(21.03% 0.0059 354.13 / 0.07);
         --starci-core-motion-duration: 180ms;
         --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+        /* The Terminal console: dark in both themes. */
+        --starci-core-terminal-background: oklch(20% 0.01 286);
+        --starci-core-terminal-foreground: oklch(92% 0.005 286);
+        --starci-core-terminal-title-foreground: oklch(72% 0.01 286);
 
         /* HeroUI and existing Grammar anatomy resolve through the same DNA. */
         --accent: var(--starci-core-accent);
@@ -53,6 +57,9 @@
         --surface-foreground: var(--starci-core-foreground);
         --surface-secondary: var(--starci-core-surface-secondary);
         --surface-secondary-foreground: var(--starci-core-foreground);
+        --terminal-background: var(--starci-core-terminal-background);
+        --terminal-foreground: var(--starci-core-terminal-foreground);
+        --terminal-title-foreground: var(--starci-core-terminal-title-foreground);
         /*
          * The StarCi tertiary face (a raised band on the secondary surface) is published under the
          * family's own name, never as HeroUI's --surface-tertiary: that vendor variable stays Common's

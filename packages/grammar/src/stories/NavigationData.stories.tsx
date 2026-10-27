@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
-import { waitFor } from 'storybook/test';
+import { userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, HomeGlyph, Matrix, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -212,14 +212,57 @@ const SeatTable = ({ maxWidth }: { readonly maxWidth?: number }) => {
   );
 };
 
+type TopicRow = { readonly id: string; readonly lesson: string; readonly topics: ReadonlyArray<string> };
+const topicRows: ReadonlyArray<TopicRow> = [
+  { id: 't1', lesson: 'Present simple', topics: ['Grammar', 'Vocabulary', 'Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation'] },
+  { id: 't2', lesson: 'Past continuous', topics: ['Grammar', 'Listening'] },
+];
+const topicColumns: ReadonlyArray<G.DataTableColumn<TopicRow>> = [
+  { id: 'lesson', label: 'Lesson', isRowHeader: true },
+  { id: 'topics', label: 'Topics', editor: (row) => <G.TagGroup label={`Topics of ${row.lesson}`} items={row.topics.map((topic) => ({ id: topic, label: topic }))} /> },
+];
+const TopicTable = () => (
+  <div style={{ maxWidth: 480 }}>
+    <G.DataTable label="Lesson topics" columns={topicColumns} rows={topicRows} renderCell={(row) => row.lesson} emptyContent="No lessons." />
+  </div>
+);
+
 export const DataTableRowLinkEditableAndNarrow: Story = {
   name: 'DataTable (row link, editable cells, narrow mode)',
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Whole-row href with editable Select and NumberField cells (wide)" direction="column"><SeatTable /></State>
       <State label="Narrow container: Email and Team collapse under Member as secondary text" direction="column"><SeatTable maxWidth={420} /></State>
+      <State label="A TagGroup editor wraps its chips inside the container" direction="column"><TopicTable /></State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    const tables = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="DataTable"]')];
+    const [wide, narrow, topics] = tables;
+    if (wide === undefined || narrow === undefined || topics === undefined) throw new Error('Three tables must render');
+    await waitFor(() => {
+      for (const table of tables) {
+        const scroll = table.querySelector<HTMLElement>('[data-grammar-table-scroll]');
+        if (scroll === null || scroll.scrollWidth > scroll.clientWidth + 1) throw new Error(`${table.querySelector('table')?.getAttribute('aria-label')}: the table runs past its container (${scroll?.scrollWidth} > ${scroll?.clientWidth})`);
+      }
+      if (narrow.dataset.grammarTableNarrow !== 'true') throw new Error('The 420px table must be in narrow mode');
+      if (narrow.querySelectorAll('[role="columnheader"]').length !== 3) throw new Error('Below collapseBelow the low-priority headers must leave');
+      if (narrow.querySelectorAll('[data-grammar-table-secondary-column="email"]').length !== seatRows.length) throw new Error('Each row must fold Email under Member');
+      if (wide.dataset.grammarTableNarrow !== 'false' || wide.querySelectorAll('[role="columnheader"]').length !== 5) throw new Error('The wide table keeps every column');
+    });
+    // The NumberField editor keeps its own keys: ArrowUp steps the value and focus stays in it; Escape returns to the cell.
+    const input = wide.querySelector<HTMLInputElement>('[data-grammar-cell-editor] input');
+    if (input === null) throw new Error('The Seats editor must render an input');
+    // A click into the editor must not follow the row's href either.
+    const location = window.location.href;
+    await userEvent.click(input);
+    if (window.location.href !== location) throw new Error('A click into an editor must not follow the row link');
+    await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => { if (input.value !== '3') throw new Error(`ArrowUp must step the NumberField, value is ${input.value}`); });
+    if (canvasElement.ownerDocument.activeElement !== input) throw new Error('ArrowUp must keep focus in the editor');
+    await userEvent.keyboard('{Escape}');
+    if (canvasElement.ownerDocument.activeElement?.getAttribute('role') !== 'gridcell') throw new Error('Escape must return focus to the cell');
+  },
 };
 
 export const DataTable: Story = {
@@ -351,23 +394,129 @@ const waveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = [
 
 /** A waves DAG: layered layout, handles on the layout axis, wave headers, nodes that link through the root's router, a custom height. */
 export const FlowGraphWaves: Story = {
-  render: () => {
-    const Demo = () => {
-      const [path, setPath] = useState<string>('(none)');
-      return (
-        <G.GrammarRoot navigate={setPath} useHref={(href: string) => href}>
-          <Matrix maxWidth={900}>
-            <State label={`Left to right, headers above (navigated: ${path})`} direction="column">
-              <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
-            </State>
-            <State label="Top to bottom, lane headers beside" direction="column">
-              <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
-            </State>
-          </Matrix>
-        </G.GrammarRoot>
-      );
+  // The router root keeps the toolbar family: a bare nested GrammarRoot would drop the graph back to Common.
+  render: (_, { globals }) => (
+    <MemoryRouterRoot globals={globals}>
+      <Matrix maxWidth={900}>
+        <State label="Left to right, headers above" direction="column">
+          <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
+        </State>
+        <State label="Top to bottom, lane headers beside" direction="column">
+          <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
+        </State>
+      </Matrix>
+    </MemoryRouterRoot>
+  ),
+  play: async ({ canvasElement }) => {
+    const path = () => canvasElement.querySelector('[data-story-router-path]')?.getAttribute('data-story-router-path');
+    const graphs = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    await waitFor(() => {
+      if (graphs.length !== 2) throw new Error('Two graphs must render');
+      for (const graph of graphs) {
+        if (graph.querySelectorAll('.react-flow__edge').length !== waveEdges.length) throw new Error('Every edge must draw');
+        if (graph.querySelectorAll('[data-grammar-flow-header]').length !== waveHeaders.length) throw new Error('Every header must draw');
+      }
+      const canvas = graphs[0]?.querySelector('.starci-core-flow-graph-canvas');
+      if (canvas === null || canvas === undefined || Math.round(canvas.getBoundingClientRect().height) !== 360) throw new Error('height={360} must give a 360px canvas');
+    });
+    const link = (graph: HTMLElement | undefined, id: string) => {
+      const found = graph?.querySelector<HTMLElement>(`[data-grammar-flow-node="${id}"] [data-grammar-flow-link]`);
+      if (found === null || found === undefined) throw new Error(`Node ${id} must render a link`);
+      return found;
     };
-    return <Demo />;
+    await userEvent.click(link(graphs[0], 'api'));
+    await waitFor(() => { if (path() !== '#/tasks/api') throw new Error(`A click must navigate through the router, got ${path()}`); });
+    link(graphs[1], 'jobs').focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => { if (path() !== '#/tasks/jobs') throw new Error(`Enter must navigate through the router, got ${path()}`); });
+  },
+};
+
+type NavRow = { readonly id: string; readonly href: string; readonly title: string; readonly status: string };
+const navRows: ReadonlyArray<NavRow> = [
+  { id: 'r1', href: '/lessons/1', title: 'Present simple', status: 'Published' },
+  { id: 'r2', href: '/lessons/2', title: 'Past continuous', status: 'Draft' },
+];
+const navColumns: ReadonlyArray<G.DataTableColumn<NavRow>> = [{ id: 'title', label: 'Lesson', isRowHeader: true }, { id: 'status', label: 'Status' }];
+
+/** Client-side navigation: under a root given `navigate`, Link, Button href and a DataTable row href go through the router. */
+// Eight waves, five tasks wide: a contained fit shrinks this below readable text in a 24rem canvas.
+const bigWaveNodes: ReadonlyArray<G.FlowGraphNode> = Array.from({ length: 8 }, (_, wave) => Array.from({ length: 5 }, (_, lane) => ({ id: `w${wave}-${lane}`, label: `Task ${wave + 1}.${lane + 1}` }))).flat();
+const bigWaveEdges: ReadonlyArray<G.FlowGraphEdge> = bigWaveNodes.flatMap((node) => {
+  const [wave, lane] = node.id.slice(1).split('-').map(Number);
+  return wave === undefined || lane === undefined || wave === 7 ? [] : [{ id: `${node.id}>`, source: node.id, target: `w${wave + 1}-${lane}` }];
+});
+const bigWaveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = Array.from({ length: 8 }, (_, wave) => ({ label: `Wave ${wave + 1}`, at: wave }));
+const viewportZoom = (graph: Element | undefined) => {
+  const viewport = graph?.querySelector<HTMLElement>('.react-flow__viewport');
+  return viewport === null || viewport === undefined ? 0 : new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a;
+};
+
+/** A wide, deep TB graph: the readable fit grows the canvas instead of shrinking node text below 12px; `fit="contain"` opts out. */
+export const FlowGraphReadableFit: Story = {
+  name: 'FlowGraph (readable fit and contain)',
+  render: () => (
+    <Matrix maxWidth={1100}>
+      <State label='fit="readable" (default): the 24rem canvas grows to the graph aspect at its width' direction="column">
+        <G.FlowGraph label="Eight waves" nodes={bigWaveNodes} edges={bigWaveEdges} direction="TB" headers={bigWaveHeaders} />
+      </State>
+      <State label='fit="contain": the whole graph shrinks into the 24rem canvas' direction="column">
+        <G.FlowGraph label="Eight waves, contained" nodes={bigWaveNodes} edges={bigWaveEdges} direction="TB" headers={bigWaveHeaders} fit="contain" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const [readable, contained] = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    await waitFor(() => {
+      const label = readable?.querySelector<HTMLElement>('.starci-core-flow-graph-label');
+      if (label === null || label === undefined) throw new Error('The readable graph must render its nodes');
+      const rendered = parseFloat(getComputedStyle(label).fontSize) * viewportZoom(readable);
+      if (rendered < 11.95) throw new Error(`Node text renders at ${rendered.toFixed(2)}px; the readable fit keeps it at 12px or more`);
+      if (readable?.dataset.grammarFlowGrown !== 'true') throw new Error('The readable graph must have grown its canvas');
+      if (viewportZoom(contained) >= viewportZoom(readable)) throw new Error('fit="contain" must shrink the graph into its canvas');
+      const canvas = contained?.querySelector('.starci-core-flow-graph-canvas');
+      if (canvas === null || canvas === undefined || Math.round(canvas.getBoundingClientRect().height) !== 384) throw new Error('fit="contain" keeps the 24rem canvas');
+    }, { timeout: 4000 });
+  },
+};
+
+export const ClientNavigation: Story = {
+  name: 'Client navigation (memory router)',
+  render: (_, { globals }) => (
+    <MemoryRouterRoot globals={globals}>
+      <Matrix maxWidth={560}>
+        <State label="Link and Button href">
+          <G.Link href="/settings">Settings</G.Link>
+          <G.Button intent="neutral" href="/lessons/new">New lesson</G.Button>
+        </State>
+        <State label="DataTable row href" direction="column">
+          <G.DataTable label="Lessons" columns={navColumns} rows={navRows} renderCell={(row, columnId) => (columnId === 'title' ? row.title : row.status)} emptyContent="No lessons." />
+        </State>
+      </Matrix>
+    </MemoryRouterRoot>
+  ),
+  play: async ({ canvasElement }) => {
+    const path = () => canvasElement.querySelector('[data-story-router-path]')?.getAttribute('data-story-router-path');
+    const expectPath = (expected: string, how: string) => waitFor(() => { if (path() !== expected) throw new Error(`${how} must navigate to ${expected}, got ${path()}`); });
+    const pick = (selector: string) => {
+      const found = canvasElement.querySelector<HTMLElement>(selector);
+      if (found === null) throw new Error(`${selector} must render`);
+      return found;
+    };
+    const location = window.location.href;
+    await userEvent.click(pick('a[href="/settings"]'));
+    await expectPath('/settings', 'A Link click');
+    await userEvent.click(pick('a[href="/lessons/new"]'));
+    await expectPath('/lessons/new', 'A Button href click');
+    const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row-link="true"]')];
+    const cell = rows[1]?.querySelector<HTMLElement>('[role="gridcell"], [role="rowheader"]');
+    if (cell === null || cell === undefined) throw new Error('A linked row must render its cells');
+    await userEvent.click(cell);
+    await expectPath('/lessons/2', 'A DataTable row click');
+    rows[0]?.focus();
+    await userEvent.keyboard('{Enter}');
+    await expectPath('/lessons/1', 'Enter on a DataTable row');
+    if (window.location.href !== location) throw new Error('Navigation must stay in-app; the document location changed');
   },
 };
 
@@ -634,6 +783,37 @@ export const TagGroup: Story = {
       </State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    const group = canvasElement.querySelector<HTMLElement>('[data-grammar-tag-reorderable="true"]');
+    if (group === null) throw new Error('The reorderable group must render');
+    const order = () => [...group.querySelectorAll<HTMLElement>('[data-grammar-tag-id]')].map((tag) => tag.dataset.grammarTagId).join(',');
+    const tag = (id: string) => {
+      const found = group.querySelector<HTMLElement>(`[data-grammar-tag-id="${id}"]`);
+      if (found === null) throw new Error(`Tag ${id} must render`);
+      return found;
+    };
+    const announcement = () => canvasElement.querySelector('[data-grammar-tag-announcement]')?.textContent ?? '';
+    await waitFor(() => {
+      if (!tag('grammar').draggable) throw new Error('Reorderable tags must be draggable');
+      const describedBy = group.querySelector('[role="grid"]')?.getAttribute('aria-describedby') ?? '';
+      if (!describedBy.split(' ').some((id) => canvasElement.ownerDocument.getElementById(id)?.textContent?.includes('Alt') === true)) throw new Error('The grid must be described by the reorder instructions');
+    });
+    // Keyboard: Alt+ArrowRight moves the focused tag one place, keeps focus on it and announces the move.
+    await userEvent.click(tag('grammar'));
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    await waitFor(() => { if (order() !== 'vocab,grammar,listening') throw new Error(`Alt+ArrowRight must move Grammar right, order is ${order()}`); });
+    await waitFor(() => { if (announcement() !== 'Grammar moved to position 2 of 3') throw new Error(`The move must be announced, got "${announcement()}"`); });
+    await waitFor(() => { if (canvasElement.ownerDocument.activeElement !== tag('grammar')) throw new Error('Focus must stay on the moved tag'); });
+    // Drag: dropping Listening on Vocabulary moves it to the front.
+    const transfer = new DataTransfer();
+    tag('listening').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+    await waitFor(() => { if (tag('listening').dataset.grammarTagDragging !== 'true') throw new Error('The dragged tag must lift'); });
+    tag('vocab').dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    tag('vocab').dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    tag('listening').dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
+    await waitFor(() => { if (order() !== 'listening,vocab,grammar') throw new Error(`A drop must move Listening to the front, order is ${order()}`); });
+    await waitFor(() => { if (announcement() !== 'Listening moved to position 1 of 3') throw new Error(`The drop must be announced, got "${announcement()}"`); });
+  },
 };
 
 export const Timeline: Story = {

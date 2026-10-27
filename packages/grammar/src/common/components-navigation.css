@@ -779,6 +779,11 @@
         white-space: nowrap;
     }
 
+    /* The reorder layer's event wrapper takes no box: the TagGroup lays out as if it were not there. */
+    .starci-core-tag-group-reorder {
+        display: contents;
+    }
+
     /* Reorderable tags: the grab cursor, the lifted tag and the tag a drop would replace. */
     .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[draggable="true"] {
         cursor: grab;
@@ -865,6 +870,15 @@
         width: max-content;
     }
 
+    /*
+     * A table that hosts editors, or has folded its low columns for a narrow container, fits the container instead:
+     * at max-content an editor's TagGroup never wraps its chips and the folded text never wraps, so the table ran
+     * past its container. It still scrolls sideways once its columns cannot shrink further.
+     */
+    .starci-core-data-table:is([data-grammar-table-editors="true"], [data-grammar-table-narrow="true"]) .starci-core-data-table-content {
+        width: 100%;
+    }
+
     .starci-core-data-table[data-grammar-table-sticky="true"] .starci-core-data-table-header {
         position: sticky;
         z-index: 1;
@@ -926,6 +940,18 @@
         min-width: 0;
     }
 
+    /*
+     * A text input's intrinsic width is its `size` (20 characters, about 11rem), which an auto-layout table takes as the
+     * column's minimum: a NumberField editor alone pushed the table past its container, even in narrow mode. In an editor
+     * cell the input asks for no width of its own and fills its track through its minimum (a percentage minimum does not
+     * count toward the column's intrinsic width), so the column can shrink to the room the table has and the input still
+     * fills what it gets, never less than three characters beside its own inline padding.
+     */
+    .starci-core-data-table-editor input {
+        inline-size: 0;
+        min-inline-size: max(calc(3ch + 1.5rem), 100%);
+    }
+
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
     .starci-core-data-table-secondary {
         display: flex;
@@ -937,11 +963,17 @@
         white-space: normal;
     }
 
+    /* A long value (an email, an id) may break anywhere, so the folded text never sets the first column's minimum. */
     .starci-core-data-table-secondary-item {
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
         gap: 0.25rem;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-data-table-secondary-value {
+        min-width: 0;
     }
 
     .starci-core-data-table-secondary-label::after {
@@ -1479,10 +1511,13 @@
         gap: 0.125rem;
     }
 
+    /* The list title scale (the ListBox and panel row label, text-sm), not whatever size the page body inherits. */
     .starci-core-timeline-title {
         margin: 0;
         overflow-wrap: anywhere;
+        font-size: 0.875rem;
         font-weight: 600;
+        line-height: 1.25rem;
     }
 
     .starci-core-timeline-time,
@@ -1564,6 +1599,8 @@
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
     .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height, 24rem); }
+    /* The readable fit grew the canvas to the graph's aspect at its width rather than shrink the text below 12px. */
+    .starci-core-flow-graph[data-grammar-flow-grown="true"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-grown-height); }
 
     .starci-core-flow-graph-loading > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 

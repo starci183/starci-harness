@@ -2861,6 +2861,14 @@
         max-inline-size: 100%;
     }
 
+    /*
+     * The wrapper takes the keyboard focus ring (the disabled control is faded, so a ring on it would fade too); it takes
+     * the vendor Button's radius, so the ring follows the button's shape instead of drawing a square round a pill.
+     */
+    .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]) {
+        border-radius: calc(var(--radius) * 3);
+    }
+
     .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="fill"]) {
         display: flex;
         inline-size: 100%;
@@ -3574,18 +3582,19 @@
         border-radius: 999px;
     }
 
+    /* The echo is a ring outside the dot (a box-shadow, no fill), so the dot keeps its full tone under it. */
     .starci-core-status-dot-mark[data-echo="true"]::after {
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        background: var(--starci-core-status-dot-light);
+        box-shadow: 0 0 0 1.5px var(--starci-core-status-dot-light);
         content: "";
         animation: starci-core-status-dot-echo 1.6s ease-out infinite;
     }
 
     @keyframes starci-core-status-dot-echo {
-        from { opacity: 0.9; transform: scale(1); }
-        to { opacity: 0; transform: scale(3.2); }
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(2.6); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -3623,24 +3632,25 @@
         overflow-wrap: anywhere;
     }
 
-    /* Terminal: a dark monospace log tail; dark in both themes (a console reads dark). */
+    /*
+     * Terminal: a dark monospace log tail; dark in both themes (a console reads dark). Its colours are family tokens
+     * (`--terminal-background`, `--terminal-foreground`, `--terminal-title-foreground`); bare Common inverts the
+     * system colours.
+     */
     .starci-core-terminal {
-        --starci-core-terminal-bg: oklch(20% 0.01 286);
-        --starci-core-terminal-fg: oklch(92% 0.005 286);
-        --starci-core-terminal-title-fg: oklch(72% 0.01 286);
         display: flex;
         min-width: 0;
         flex-direction: column;
         overflow: hidden;
         border-radius: 0.75rem;
-        background: var(--starci-core-terminal-bg);
-        color: var(--starci-core-terminal-fg);
+        background: var(--terminal-background, CanvasText);
+        color: var(--terminal-foreground, Canvas);
     }
 
     .starci-core-terminal-title {
         padding: 0.5rem 0.75rem;
-        border-block-end: 1px solid color-mix(in srgb, var(--starci-core-terminal-fg) 14%, transparent);
-        color: var(--starci-core-terminal-title-fg);
+        border-block-end: 1px solid color-mix(in srgb, var(--terminal-foreground, Canvas) 14%, transparent);
+        color: var(--terminal-title-foreground, var(--terminal-foreground, Canvas));
         font-size: 0.75rem;
         font-weight: 500;
     }

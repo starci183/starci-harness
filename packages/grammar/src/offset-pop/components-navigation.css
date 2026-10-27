@@ -377,8 +377,12 @@
         box-shadow: 0.125rem 0.1875rem 0 var(--offset-pop-shadow-ink);
     }
 
-    /* Timeline attention: an inked, tone-filled card that sits on the offset shadow, like a raised sticker. */
+    /*
+     * Timeline attention: an inked, tone-filled card that sits on the offset shadow, like a raised sticker. The outline
+     * comes out of Common's 0.5rem padding, so the marker and the copy stay in the column of the other entries.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Timeline"] [data-grammar-attention="true"] {
+        padding: calc(0.5rem - var(--offset-pop-outline-width));
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);
         background: color-mix(in srgb, var(--starci-core-timeline-attention-tone) 55%, var(--surface));
@@ -386,7 +390,10 @@
         color: var(--offset-pop-ink);
     }
 
+    /* The connector is placed from the padding edge, one outline inside the border edge Common measures from. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Timeline"] [data-grammar-attention="true"]:not(:last-child)::before {
+        top: calc(2rem - var(--offset-pop-outline-width));
+        bottom: calc(-0.5rem - var(--offset-pop-outline-width));
         inset-inline-start: calc(1.25rem - var(--offset-pop-outline-width) / 2 + var(--offset-pop-outline-width) * -1);
     }
 

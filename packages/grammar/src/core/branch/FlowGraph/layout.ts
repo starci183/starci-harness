@@ -107,3 +107,38 @@ export const layeredPositions = (
     }
     return { positions, layers }
 }
+
+/**
+ * Where a layered edge turns, as React Flow's smoothstep `stepPosition` (0 at the source, 1 at the target). An edge to
+ * the next layer turns half-way, in the one gap. An edge that skips layers would turn half-way too, which is inside an
+ * intermediate layer, so its cross segment would run under a node there and read as an edge to that node. It turns in
+ * the last gap instead (running along the source's lane through the skipped layers) or, when a node sits in that lane,
+ * in the first gap (running along the target's lane). A node within half a lane gap of the run blocks it.
+ */
+export const layeredStepPosition = (
+    edge: FlowGraphEdge,
+    positions: ReadonlyMap<string, FlowGraphPoint>,
+    layers: ReadonlyMap<string, number>,
+    direction: FlowGraphDirection,
+): number | undefined => {
+    const from = layers.get(edge.source)
+    const to = layers.get(edge.target)
+    const source = positions.get(edge.source)
+    const target = positions.get(edge.target)
+    if (from === undefined || to === undefined || source === undefined || target === undefined) return undefined
+    const span = to - from
+    if (span <= 1) return undefined
+    const acrossOf = (point: FlowGraphPoint) => direction === "LR" ? point.y : point.x
+    const clearance = FLOW_GRAPH_LANE_GAP[direction] / 2
+    const isFree = (across: number) => {
+        for (const [id, layer] of layers) {
+            if (layer <= from || layer >= to) continue
+            const point = positions.get(id)
+            if (point !== undefined && Math.abs(acrossOf(point) - across) < clearance) return false
+        }
+        return true
+    }
+    if (isFree(acrossOf(source))) return 1 - 0.5 / span
+    if (isFree(acrossOf(target))) return 0.5 / span
+    return 1 - 0.5 / span
+}

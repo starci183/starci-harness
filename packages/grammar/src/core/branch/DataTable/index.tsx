@@ -265,6 +265,7 @@ export const DataTable = <Row extends DataTableRow>({
             data-grammar-table-sticky={stickyHeader ? "true" : "false"}
             data-grammar-table-bounded={maxBlockSize === undefined ? "false" : "true"}
             data-grammar-table-narrow={narrow ? "true" : "false"}
+            data-grammar-table-editors={hasEditors ? "true" : "false"}
         >
             <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
                 <HeroTable.Content

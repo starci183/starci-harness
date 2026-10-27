@@ -1,5 +1,6 @@
-import { type ReactNode, type SVGProps } from 'react';
+import { useState, type ReactNode, type SVGProps } from 'react';
 import { userEvent } from 'storybook/test';
+import { GrammarRoot } from '../common/index.js';
 
 /*
  * Story-only fixtures: neutral glyphs, placeholder media and the state-matrix layout used by every
@@ -108,6 +109,29 @@ export type GrammarFamilyGlobal = (typeof GRAMMAR_FAMILIES)[number];
 export const familyScope = (globals: Readonly<Record<string, unknown>>): { 'data-grammar-family'?: string } => {
   const family = globals['grammarFamily'];
   return typeof family === 'string' && family !== 'common' ? { 'data-grammar-family': family } : {};
+};
+
+/**
+ * A tiny memory router for navigation stories: a nested root of the toolbar family and theme, given `navigate`, so
+ * links inside it navigate in-app. The current path is shown in a status line (`data-story-router-path`) that a play
+ * function reads; nothing leaves the page.
+ */
+export const MemoryRouterRoot = ({ globals, children }: { readonly globals: Readonly<Record<string, unknown>>; readonly children: ReactNode }) => {
+  const [path, setPath] = useState('/');
+  const theme = globals['grammarTheme'];
+  return (
+    <GrammarRoot
+      {...familyScope(globals)}
+      theme={theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'light'}
+      navigate={setPath}
+      useHref={(href: string) => href}
+    >
+      <p role="status" data-story-router-path={path} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem' }}>
+        Router path: <code>{path}</code>
+      </p>
+      {children}
+    </GrammarRoot>
+  );
 };
 
 /**
