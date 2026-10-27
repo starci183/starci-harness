@@ -1,0 +1,30 @@
+schema: starci/scenario@1
+id: stories-complete-green
+group: verify
+title: "check stories is green on the shape-slot fixture: every shape of the block has a story and both of its slots a skeleton"
+inject: "nothing: the bench/fixtures/shape-slot app (one block, three shapes in an inventory union, two DataSlot reads, its SlotView and stories) is copied in as it stands"
+expect: "check stories reads the one front-end app hfs.json declares, finds 3 shapes in 1 XShape union, 2 slots in 1 XBaseProps and 4 stories, and is green; --path names the same app and agrees"
+pass:
+  - the verb exits 0 with verdict green
+  - it read the three shapes, the two slots and the four stories of the fixture
+  - --path gives the same verdict
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: copy the shape-slot fixture into the scratch repository
+    write: { path: ".", from: "${ops}/../bench/fixtures/shape-slot/app" }
+  - name: the declared front end is green
+    starci: [check, stories]
+    expect: { exit: 0, contains: '"verdict": "green"' }
+  - name: it read every shape
+    starci: [check, stories]
+    expect: { exit: 0, contains: '"shapes": 3' }
+  - name: it read both slots
+    starci: [check, stories]
+    expect: { exit: 0, contains: '"slots": 2' }
+  - name: it read every story
+    starci: [check, stories]
+    expect: { exit: 0, contains: '"stories": 4' }
+  - name: the app named by path is green too
+    starci: [check, stories, --path, fe/apps/leads]
+    expect: { exit: 0, contains: '"findings": 0' }
