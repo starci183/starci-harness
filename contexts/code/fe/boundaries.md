@@ -9,7 +9,8 @@ and who writes a cookie.
 ## FE-BOUNDARY-1 Error, not-found and loading files mount a feature owner
 
 `app/global-error.tsx` and every `error.tsx` are `"use client"` and render one `*ErrorPage` feature owner with
-`onRetry={props.reset}`; every `loading.tsx` renders one `*LoadingPage` that draws that segment's skeleton; every
+`onRetry={props.reset}`; every `loading.tsx` renders one `*LoadingPage` that draws that segment's page in skeleton
+mode, the only page-level loading view ([README](README.md#data-status-of-a-region) FE-ERROR-1); every
 `not-found.tsx` renders one `*NotFoundPage`; a `Suspense` always has a visible fallback.
 
 Why: without a boundary a render error blanks the page; a boundary that writes its own markup is a second look of the
@@ -74,8 +75,8 @@ Enforced by: R55 (`use-client-only-at-boundary`); the composition is review only
 
 The session cookie is written by the identity client of `modules/auth` or by the back end; a cookie the front end
 writes itself (the locale in `proxy.ts`, a remembered workspace) passes one `as const` options constant of its owning
-module with a literal `httpOnly`, `secure` from `modules/config` and `sameSite` `lax` or `strict`.
+module that states the attributes of [BE-AUTH-3](../be/api-auth.md), with `secure` read from `modules/config`.
 
-Why: a cookie left to defaults is readable by any script and rides cross-site requests.
+Why: one options constant per cookie keeps its attributes in one reviewable place.
 
 Enforced by: R107 (`response-cookie-attributes`).

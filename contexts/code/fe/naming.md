@@ -12,21 +12,21 @@ A unit folder `X` exports `X` from `index.tsx` and, when split, `XBase` from `co
 folder, and a route file's local component is named after its slot (`Page`, `Layout`, `Template`, `Loading`,
 `ErrorBoundary`, `GlobalError`, `NotFound`).
 
-Why: the path predicts the name, and `Base` marks the pure half that only its own `index.tsx` imports.
+Why: the path predicts the name, and `Base` marks the pure half ([function.md](function.md) FE-FUNCTION-2 says who may
+import it).
 
 Enforced by: R91 (`export-matches-folder`, `route-slot-fixed-name`, `no-runtime-namespace`), R92 (`base-import-pair`).
 
 ## FE-NAMING-2 A unit's contract has fixed part names
 
-`XProps` is the connected input; `XBaseProps` is `{ state?, props, on? }`; `XState` names the drawn shapes; a pure
-half's actions are bare verbs inside `on` (`on.retry`, `on.select`), while a flat prop or a local handler that a
+`XProps` is the connected input, `XBaseProps` the pure input and `XShape` its union of drawn shapes, whose meaning is
+[function.md](function.md) FE-FUNCTION-2; a pure half's actions are bare verbs inside `on` (`on.retry`, `on.select`), while a flat prop or a local handler that a
 reader triggers is `onX`, never `handleX`; a boolean field starts with `is` or `has`.
 
 Why: a predictable vocabulary lets a reader find the part they need, and `onX` keeps one name from the declaration to
 the call site.
 
-Enforced by: R92 (`base-props-atom`, `no-data-status-shape`), R91 (`handler-on-prefix`); the `is`/`has` prefix is review
-only.
+Enforced by: R92 (`base-props-atom`), R91 (`handler-on-prefix`); the `is`/`has` prefix is review only.
 
 ## FE-NAMING-3 Class-name exports are UPPER_SNAKE constants built with `cn`
 

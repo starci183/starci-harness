@@ -33,7 +33,8 @@ Enforced by: R26 (`tier-direction`), R27 (`owner-cycle`), R30 (`owner-export-byp
 
 A block that reads data, session, store, locale or the router owns that in its `"use client"` `index.tsx` and renders
 its sibling `XBase`; pages and layouts are server components that resolve copy with `getTranslations` and compose
-blocks, reading no data; composites, branches and leaves take resolved fields and own at most intrinsic interaction.
+blocks, reading no data; composites, branches and leaves own at most intrinsic interaction (the axes each tier holds
+are [function.md](function.md) FE-FUNCTION-2).
 
 Why: each region reads its own data and fails alone, and every pure half can be drawn from a fixture.
 
