@@ -3,7 +3,7 @@
 ## 9.3.0 - 2026-10-28
 
 - Changed (breaking for apps): owner ruling fe-shape-not-state. A pure half takes `{ shape?, props, on? }`; `base-props-atom` refuses the retired `state` key with a message naming the rename, and `no-data-status-shape` reads `XShape` unions (and still the old `XState` names, so a status word is caught during the rename).
-- Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`. No rule changes.
+- Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`.
 
 ## 9.2.0 - 2026-10-27
 
