@@ -14,7 +14,8 @@ import { isRuleId } from "../../harness/contract.js"
  *   the yaml key or record key (`ops/checks.yaml#presets.rules-cited`, `contexts/grammars/contract.yaml#card`).
  */
 
-const EXPLICIT_SUFFIX = /\s*\{#([A-Za-z0-9][A-Za-z0-9._-]*)\}\s*$/
+// The suffix starts at its `{#`; the blanks before it are trimmed with the heading text.
+const EXPLICIT_SUFFIX = /\{#([A-Za-z0-9][A-Za-z0-9._-]*)\}\s*$/
 const HTML_ANCHOR = /<a\s+(?:id|name)=["']([A-Za-z0-9][A-Za-z0-9._-]*)["']\s*>\s*<\/a>/
 const DOTTED_ID = /^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)+$/
 const FILE_EXTENSION = /\.(?:md|ya?ml|json|jsonl|ts|tsx|js|mjs|cjs|css|sh|sql|toml|txt|lock|graphql|env)$/

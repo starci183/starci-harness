@@ -127,46 +127,53 @@ const markdownSections = (lines: readonly string[]): Section[] => {
     return sections
 }
 
+/** A counter of the slugs a file has used: the first use keeps a slug, the n-th repeat gets `-n`, as GitHub numbers them. */
+const slugCounter = (): ((base: string) => string) => {
+    const seen = new Map<string, number>()
+    return (base) => {
+        const count = seen.get(base) ?? 0
+        seen.set(base, count + 1)
+        return count === 0 ? base : base + "-" + String(count)
+    }
+}
+
 /** The GitHub slugs of a Markdown file's headings as written (an explicit `{#id}` included), each deduplicated as GitHub does. */
 const renderedSlugsOf = (path: string, sections: readonly Section[]): string[] => {
-    const seen = new Map<string, number>()
-    return sections
-        .filter((section) => section.level > 0)
-        .map((section) => {
-            const base = slug(section.raw)
-            const count = seen.get(base) ?? 0
-            seen.set(base, count + 1)
-            return `${path}#${count === 0 ? base : `${base}-${String(count)}`}`
-        })
+    const numbered = slugCounter()
+    return sections.filter((section) => section.level > 0).map((section) => `${path}#${numbered(slug(section.raw))}`)
+}
+
+/** The chunk of the text before a file's first heading (its front matter included), named `<path>#top`. */
+const topChunk = (path: string, text: string, anchor: string): Chunk => ({ anchor, aliases: [], citable: false, path, line: 1, scope: scopeOf(path), title: path, text })
+
+/** The chunk of one heading's section: its anchor and the Choice ids its body declares, under the headings above it. */
+const headingChunk = (path: string, section: Section, text: string, fallback: string, parents: readonly string[]): Chunk => {
+    const named = headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
+    return {
+        anchor: named.anchor,
+        aliases: [...new Set([...named.aliases, ...choiceIds(text)])],
+        citable: ruleIdsIn(`# ${section.raw}`).has(named.anchor),
+        path,
+        line: section.line,
+        scope: scopeOf(path),
+        title: [path, ...parents.filter((item) => item !== "")].join(" › "),
+        text: `${"#".repeat(section.level)} ${section.heading}\n${text}`.trim(),
+    }
 }
 
 const markdownChunks = (path: string, sections: readonly Section[]): Chunk[] => {
-    const scope = scopeOf(path)
-    const slugs = new Map<string, number>()
+    const numbered = slugCounter()
     const parents: string[] = []
     const chunks: Chunk[] = []
     for (const section of sections) {
-        if (section.level > 0) {
-            parents.length = Math.min(parents.length, section.level - 1)
-            parents[section.level - 1] = section.heading
-        }
         const text = section.body.join("\n").trim()
-        if (section.level === 0 && text === "") continue
-        const base = section.level === 0 ? "top" : slug(section.heading)
-        const seen = slugs.get(base) ?? 0
-        slugs.set(base, seen + 1)
-        const fallback = seen === 0 ? base : `${base}-${String(seen)}`
-        const named = section.level === 0 ? { anchor: `${path}#${fallback}`, aliases: [] } : headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
-        chunks.push({
-            anchor: named.anchor,
-            aliases: section.level === 0 ? named.aliases : [...new Set([...named.aliases, ...choiceIds(text)])],
-            citable: section.level > 0 && ruleIdsIn(`# ${section.raw}`).has(named.anchor),
-            path,
-            line: section.line,
-            scope,
-            title: [path, ...parents.filter((item) => item !== "")].join(" › "),
-            text: section.level === 0 ? text : `${"#".repeat(section.level)} ${section.heading}\n${text}`.trim(),
-        })
+        if (section.level === 0) {
+            if (text !== "") chunks.push(topChunk(path, text, `${path}#${numbered("top")}`))
+            continue
+        }
+        parents.length = Math.min(parents.length, section.level - 1)
+        parents[section.level - 1] = section.heading
+        chunks.push(headingChunk(path, section, text, numbered(slug(section.heading)), parents))
     }
     return chunks
 }
@@ -226,7 +233,7 @@ const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
     const cuts = yamlCuts(lines)
     const chunks: Chunk[] = []
     const header = lines.slice(0, cuts[0]?.line ?? lines.length).join("\n").trim()
-    if (header !== "") chunks.push({ anchor: `${path}#top`, aliases: [], citable: false, path, line: 1, scope, title: path, text: header })
+    if (header !== "") chunks.push(topChunk(path, header, `${path}#top`))
     for (const [at, cut] of cuts.entries()) {
         const text = lines.slice(cut.line, cuts[at + 1]?.line ?? lines.length).join("\n").trim()
         chunks.push({
