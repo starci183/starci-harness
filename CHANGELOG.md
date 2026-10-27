@@ -6,6 +6,19 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Host driver and stall ladder.** `supervisor tick` (one idempotent pass for a scheduled task) and `supervisor watch`
+  (its loop) keep the seat tree alive with no LLM awake: ensure the Supervisor, sweep its Kernels and their Ops, and for an
+  agent idle at its prompt with work pending (Orca's tui-idle, output and heartbeat signals) nudge it with its loop prompt,
+  then relaunch (or fence) it on another member with a `stalled` outcome and a provider circuit strike of the kind Orca's
+  failure words name (`capacity`, ..., else the new `stall`), then escalate through the relaunch limit.
+
+### Fixed
+
+- A completed launch request whose agent never started its turn is judged by its dispatch (adopted, or fenced and requeued
+  with no try spent), never replayed forever.
+
 ## [1.0.0-alpha.1] - 2026-10-27
 
 The first published version.

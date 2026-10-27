@@ -10,10 +10,12 @@ import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
-import { livenessOf, loadLiveness } from "../../harness/liveness.js"
-import { closeWorker, locateOrca, mailCheck, mailSend, OrcaFailure, requestIdOf, requestShow, terminalList, workerAbandon } from "../../harness/orca/client.js"
-import type { MailMessage, OrcaBinary } from "../../harness/orca/client.js"
-import { isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
+import { inLaunchGrace, livenessOf, loadLiveness } from "../../harness/liveness.js"
+import { closeWorker, locateOrca, mailCheck, mailSend, OrcaFailure, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
+import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
+import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
+import { isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
+import type { SeatRow } from "../../harness/seats.js"
 import { supervisorRecord } from "../../harness/supervisor.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -311,19 +313,126 @@ const fenceIdle = async (root: string, binary: OrcaBinary, cwd: string, snapshot
 }
 
 /**
- * Resolves each effect_unknown launch through Orca with its attempt's request id: completed -> the launch is replayed under the
- * same id (Orca answers the first outcome); pending -> wait; absent past effectUnknownDeadlineMinutes -> a red decision (stuck).
+ * The stall ladder for a workflow's Ops: an Op whose task runs with no result filed, past its launch grace, whose agent Orca
+ * reports idle at its prompt (tui-idle, or no output and no heartbeat for stall.quietMinutes) with no activity for
+ * stall.idleMinutes, is nudged with its loop prompt (once per stall, at most stall.nudgeMax times); a nudge unanswered past
+ * stall.nudgeGraceMinutes, or a stall after the last nudge, fences it (worker-stop, else worker-abandon) and fails its task with
+ * outcome `stalled`, reported to its provider's circuit by the kind Orca's failure words name (else `stall`). The Kernel's red
+ * decision retries it, and the router puts that pool behind every other for the retry.
+ */
+export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: string, workflowId: string, inventory: TerminalInventory | null): Promise<StepAction[]> => {
+    const rules = loadStallRules()
+    const grace = loadLiveness()
+    const snapshot = readSnapshot(root, workflowId)
+    const targets = withLedger(root, (db) =>
+        snapshot.views.flatMap((view) => {
+            if (view.state !== "running" || view.task === null) return []
+            const taskId = view.task.id
+            return seatsOfTask(db, taskId)
+                .filter((seat) => seat.role === "worker" && isSeatOpen(seat) && seat.handle !== null && seat.terminal !== null && !inLaunchGrace(seat, grace) && olderThan(seat.startedAt, rules.idleMinutes))
+                // Orca's terminal list already says it printed lately: active, not asked further.
+                .filter((seat) => !(inventory?.lastOutput.has(seat.terminal ?? "") === true && !olderThan(inventory.lastOutput.get(seat.terminal ?? "") ?? null, rules.idleMinutes)))
+                .map((seat) => ({ key: view.key, task: taskId, seat, nudges: nudgesOf(db, seat.id) }))
+        }),
+    )
+    const done = await inOrder(targets, async ({ key, task, seat, nudges }): Promise<StepAction | null> => {
+        const terminal = seat.terminal ?? ""
+        const signals = await askIdle(binary, cwd, { terminal, handle: seat.handle }, inventory, rules)
+        const lastActive = signals.lastActive ?? seat.startedAt
+        if (signals.idle !== true || !olderThan(lastActive, rules.idleMinutes)) return null
+        const step = stallStep(lastActive, nudges, rules)
+        if (step.kind === "wait") return { key, task, action: "wait", detail: `Op idle at its prompt (${signals.evidence.join("; ")}); ${step.detail}` }
+        if (step.kind === "nudge") {
+            if (!withLedger(root, (db) => claimNudge(db, task, seat.id, step.n, { role: "op", evidence: signals.evidence }))) return null
+            try {
+                await sendNudge(binary, cwd, { id: seat.id, terminal }, step.n, promptOf(rules.prompts.op, { task }))
+            } catch (error: unknown) {
+                return { key, task, action: "problem", detail: `Op stalled; nudge ${String(step.n)} not delivered (${asRefusal(error).code})` }
+            }
+            return { key, task, action: "wait", detail: `Op idle at its prompt (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(rules.nudgeMax)}` }
+        }
+        const kind = stallKindOf(signals.failureText)
+        try {
+            const closed = await closeWorker(binary, seat.handle ?? "", cwd, seat.terminal)
+            const fence = closed.stopped ? `stopped (${closed.stop}), release ${closed.release}` : `abandoned (${await workerAbandon(binary, seat.handle ?? "", cwd, requestIdOf("stall-abandon", seat.id))})`
+            const failed = withLedger(root, (db) =>
+                inTransaction(db, () => {
+                    recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_STOPPED, facts: { stalled: { kind, step: step.detail, evidence: signals.evidence }, closed } })
+                    recordEvent(db, STALL_GAVE_UP, task, { seat: seat.id, role: "op", kind, why: step.detail, failure: signals.failureText })
+                    if (getTask(db, task).status !== "running") return false
+                    const attempt = latestAttempt(db, task)
+                    if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'stalled', ended_at = COALESCE(ended_at, ?) WHERE id = ?").run(now(), attempt.id)
+                    setStatus(db, task, "failed")
+                    releaseLeases(db, task)
+                    recordEvent(db, "task-stalled", task, { seat: seat.id, kind, why: step.detail, fence })
+                    return true
+                }),
+            )
+            if (seat.agent !== null) reportStalled(seat.agent, kind, `Op ${task} ${step.detail}${signals.failureText === null ? "" : `: ${signals.failureText}`}`)
+            return { key, task, action: "lost", detail: `Op stalled (${kind}, ${step.detail}): ${fence}${failed ? "; task failed (stalled)" : ""}` }
+        } catch (error: unknown) {
+            return { key, task, action: "problem", detail: `stalled Op not fenced (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}` }
+        }
+    })
+    return done.filter((action) => action !== null)
+}
+
+/**
+ * A completed launch request whose receipt names a dispatch is judged by that dispatch, never replayed (a replay answers the same
+ * receipt forever): a worker Orca shows started is adopted on the seat (the task runs); one that is gone, or still has not started
+ * its turn (stall.startUnknownStates) past stall.startDeadlineMinutes, was dead on arrival: it is fenced (worker-stop, else
+ * worker-abandon), its attempt closes launch-failed (no try spent), its member reports a `stall` to its provider's circuit, and
+ * the task goes back to the queue, where the router puts that pool behind every other. Anything else waits.
+ */
+const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: string, target: { readonly key: string | null; readonly task: string; readonly seat: SeatRow }, dispatchId: string): Promise<StepAction> => {
+    const { key, task, seat } = target
+    const stall = loadStallRules()
+    const shown = await workerShow(binary, dispatchId, cwd).catch(() => null)
+    const states = shown === null ? [] : [shown.state, shown.observed].filter((state): state is string => state !== null)
+    const gone = states.some((state) => loadLiveness().goneStates.includes(state))
+    const unstarted = states.some((state) => stall.startUnknownStates.includes(state))
+    if (shown?.state != null && !gone && !unstarted && !UNKNOWN_STATES.includes(shown.state)) {
+        withLedger(root, (db) => { inTransaction(db, () => {
+            recordSeat(db, seat.id, { status: shown.state ?? seat.status, handle: dispatchId, terminal: shown.terminal, facts: { adopted: { dispatchId, state: shown.state } } })
+            if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
+            recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state })
+        }); })
+        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${shown.state}, adopted` }
+    }
+    if (!gone && !(unstarted && olderThan(seat.startedAt, stall.startDeadlineMinutes))) return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${states.join("/") || "unknown"}; its worker has not started yet` }
+    const closed = await closeWorker(binary, dispatchId, cwd, shown?.terminal ?? seat.terminal)
+    const fence = closed.stopped ? `stopped (${closed.stop})` : `abandoned (${await workerAbandon(binary, dispatchId, cwd, requestIdOf("doa-abandon", seat.id))})`
+    const requeued = withLedger(root, (db) => inTransaction(db, () => {
+        const attempt = latestAttempt(db, task)
+        if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'launch-failed', ended_at = COALESCE(ended_at, ?) WHERE id = ? AND outcome IS NULL").run(now(), attempt.id)
+        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, facts: { deadOnArrival: { states, failure: shown?.failureText ?? null }, closed } })
+        recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, fence })
+        if (getTask(db, task).status !== "effect_unknown") return false
+        setStatus(db, task, "queued")
+        return true
+    }))
+    if (seat.agent !== null) reportStalled(seat.agent, stallKindOf(shown?.failureText ?? null), `dispatch ${dispatchId} of ${task} never started (${states.join("/") || "no answer"})`)
+    return { key, task, action: "lost", detail: `dispatch ${dispatchId} dead on arrival (${states.join("/") || "no answer"}): ${fence}; attempt launch-failed${requeued ? ", task queued again" : ""}` }
+}
+
+/**
+ * Resolves each effect_unknown launch through Orca with its attempt's request id: completed with a dispatch -> that dispatch is
+ * judged (judgeLaunchedDispatch); completed with none -> the launch is replayed under the same id to read the first outcome;
+ * pending -> wait; absent past effectUnknownDeadlineMinutes -> a red decision (stuck).
  */
 const resolveUnknown = async (root: string, binary: OrcaBinary, cwd: string, snapshot: Snapshot, rules: CoordinatorLiveness): Promise<StepAction[]> => {
     const targets = withLedger(root, (db) =>
         snapshot.views.flatMap((view) => {
             if (view.state !== "launch-unknown" || view.task === null) return []
             const seat = seatsOfTask(db, view.task.id).find((candidate) => isSeatOpen(candidate) && candidate.status === SEAT_LAUNCH_UNKNOWN && candidate.requestId !== null)
-            return seat === undefined ? [] : [{ key: view.key, task: view.task.id, request: seat.requestId ?? "", startedAt: seat.startedAt }]
+            return seat === undefined ? [] : [{ key: view.key, task: view.task.id, request: seat.requestId ?? "", startedAt: seat.startedAt, seat }]
         }),
     )
-    return inOrder(targets, async ({ key, task, request, startedAt }): Promise<StepAction> => {
-        const state = await requestShow(binary, request, cwd).catch(() => "unknown" as const)
+    return inOrder(targets, async ({ key, task, request, startedAt, seat }): Promise<StepAction> => {
+        const shownRequest = await requestShow(binary, request, cwd).catch(() => null)
+        const state = shownRequest?.state ?? "unknown"
+        const dispatchId = shownRequest?.dispatchId ?? seat.handle
+        if (state === "completed" && dispatchId !== null) return judgeLaunchedDispatch(root, binary, cwd, { key, task, seat }, dispatchId)
         if (state === "completed") {
             try {
                 const resumed = await resumeSeat({ root, cwd, task })
@@ -340,7 +449,7 @@ const resolveUnknown = async (root: string, binary: OrcaBinary, cwd: string, sna
     })
 }
 
-/** One deterministic tick: Orca probe and hold, mailbox, the dispatch step, idle fencing and unknown launches. */
+/** One deterministic tick: Orca probe and hold, mailbox, the dispatch step, idle fencing, the Ops' stall ladder and unknown launches. */
 const tick = async (context: VerbContext, root: string, workflowId: string, rules: CoordinatorLiveness): Promise<{ readonly actions: StepAction[]; readonly binary: OrcaBinary | null }> => {
     const runner = readSnapshot(root, workflowId).workflow.header.runner
     const actions: StepAction[] = []
@@ -355,7 +464,8 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
     actions.push(...report.actions)
     if (binary !== null) {
         const after = readSnapshot(root, workflowId)
-        actions.push(...(await fenceIdle(root, binary, context.cwd, after)), ...(await resolveUnknown(root, binary, context.cwd, after, rules)))
+        const inventory = await terminalList(binary, context.cwd).catch(() => null)
+        actions.push(...(await fenceIdle(root, binary, context.cwd, after)), ...(await sweepOpStalls(root, binary, context.cwd, workflowId, inventory)), ...(await resolveUnknown(root, binary, context.cwd, after, rules)))
     }
     const db = openLedger(root)
     let nodes: NodeAction[]
@@ -374,7 +484,7 @@ const inlineTask = (root: string, workflowId: string): string | null => {
 }
 
 /**
- * `kernel next`: the deterministic driver. It returns at once an open decision; otherwise it ticks (mail, step, fences, unknown
+ * `kernel next`: the deterministic driver. It returns at once an open decision; otherwise it ticks (mail, step, fences, stalled Ops, unknown
  * launches) and returns the first decision the ledger calls for, else waits on the Kernel Run's mailbox (re-reading the ledger
  * every nextPollSeconds) until nextWaitSeconds pass and returns idle. An inline workflow never waits: with no decision it
  * returns idle naming the task the chat agent works next.

@@ -1,6 +1,6 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone; and settle liveness. Read by `seat ping`, `workflow step` and `task verify`; nothing
-# here is restated in code.
+# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; and the stall ladder. Read by `seat ping`,
+# `workflow step`, `task verify`, the coordinator drivers and `supervisor tick`; nothing here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -27,13 +27,14 @@ coordinators:
   # A seat's TTL lease: every harness call it makes (attach, next, submit, seat ping) renews it for this long.
   seatLeaseMinutes: 15
   # A Kernel whose lease lapsed and whose workflow recorded no progress for this long (an event of its work, never one of the
-  # Supervisor relaunching it) is stalled; `supervisor next` asks Orca and relaunches it only on Orca's word (gone, or idle
-  # past this long). Unknown is not dead.
+  # Supervisor relaunching it or of the stall ladder) is relaunched on Orca's word (gone, or no output past this long) by
+  # `supervisor next` and `supervisor tick`, whatever work is pending; one idle at its prompt with work pending meets the
+  # shorter `stall` ladder first. Unknown is not dead.
   kernelTtlMinutes: 20
-  # The Supervisor's lease; `supervisor ensure` relaunches it only when Orca says its terminal is gone.
+  # The Supervisor's lease; `supervisor ensure` and `supervisor tick` relaunch it only when Orca says its terminal is gone.
   supervisorTtlMinutes: 30
-  # After this many Kernel relaunches with no progress since the first, the next one pauses the workflow and escalates to the
-  # owner instead.
+  # After this many Kernel relaunches (a stall's included) with no progress since the first, the next one pauses the workflow
+  # and escalates to the owner instead.
   kernelRelaunchMax: 3
   # An effect_unknown launch Orca still holds no receipt for (request-show absent) after this long is stuck: a red decision.
   effectUnknownDeadlineMinutes: 15
@@ -45,3 +46,34 @@ coordinators:
   # How long one `next` blocks before it returns idle, and how often it re-reads the ledger while it waits on mail.
   nextWaitSeconds: 900
   nextPollSeconds: 30
+
+# The stall ladder (orca runner): a seat whose agent sits idle at its prompt while its ledger work is pending. A Supervisor
+# with an open decision, a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
+# failed, lost, launch-unknown), an Op whose task runs with no result filed. Run by `supervisor tick` (Supervisor, Kernels and
+# their Ops), `supervisor next` (Kernels) and `kernel next` (its Ops); judged from Orca's signals only, never a screen.
+stall:
+  # A seat whose last driver call (its lease renewal by attach, next or submit; an Op's last output or heartbeat) is older than
+  # this, with work pending, is asked about.
+  idleMinutes: 3
+  # Orca's word that it is idle: `terminal wait --for tui-idle` satisfied within this many ms, or no terminal output and no
+  # dispatch heartbeat for quietMinutes. Anything Orca does not answer is not idle.
+  tuiIdleWaitMs: 2000
+  quietMinutes: 5
+  # Remedy 1: one nudge per stall (the role's loop prompt, `terminal send`), at most nudgeMax per seat. Remedy 2: a nudge that
+  # brought no driver call within nudgeGraceMinutes, or a seat that stalls again after nudgeMax nudges, is given up: its member
+  # records a `stalled` outcome (the provider circuit takes the kind its Orca failure text names, else `stall`) and a Kernel is
+  # relaunched, an Op fenced (its task fails `stalled`), on another member. Remedy 3: the Kernel relaunch limit escalates.
+  nudgeMax: 2
+  nudgeGraceMinutes: 3
+  # How long `supervisor watch` sleeps between ticks.
+  watchSeconds: 60
+  # A launch Orca completed whose dispatch's worker shows one of these states (worker or observation) never started its turn;
+  # still so this long after the launch, or gone, it was dead on arrival: fenced, its attempt closed launch-failed (no try
+  # spent), a `stall` reported for its member, and the task queued again for another member. A completed request is never replayed.
+  startUnknownStates: [start_unknown, turn_start_unobserved]
+  startDeadlineMinutes: 10
+  # The loop prompts a nudge types; {workflow}, {launch} and {task} are filled in.
+  prompts:
+    supervisor: "Continue your loop: run starci supervisor next --json and answer its decision. Never end your turn while the driver is yours."
+    kernel: "Continue your loop: run starci kernel next {workflow} --json (starci kernel attach {workflow} --launch {launch} first if you never attached) and answer its decision. Never end your turn while the driver is yours."
+    op: "Continue task {task}: finish it within its contract and file it with starci task result {task}."

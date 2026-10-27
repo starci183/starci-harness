@@ -74,7 +74,7 @@ hostProbes:
   browser: [docker, info, --format, "{{.ServerVersion}}"]
 
 # The scored head yields when it was picked maxStreak times in a row, or holds more than maxSharePercent of its tier's
-# running seats.
+# running seats, to the next member the lineage step did not put behind it.
 balance: {maxStreak: 3, maxSharePercent: 70}
 
 # Quota use of a pool's binding window, in percent. A member at exhaustedPercent is never used until the window resets; one
@@ -89,14 +89,15 @@ quota: {reservePercent: 90, exhaustedPercent: 100, maxAgeMinutes: 1440}
 usage: {refreshMinutes: 10, windows: [session, weekly, monthly]}
 
 # Provider circuit: a failure of a kind opens the provider for its cooldown once it has `strikes` of that kind in a row
-# (1 when not named). An open within reopenWindowMinutes of the last one waits reopenFactor times longer, capped at
-# capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
+# (1 when not named). A launch reports rate, quota, capacity, auth or launch; a seat the stall ladder (ops/liveness.yaml
+# `stall`) gives up on reports the kind its Orca failure text names, else `stall`. An open within reopenWindowMinutes of
+# the last one waits reopenFactor times longer, capped at capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
 # Half-open: an open provider is due one probe when its cooldown ends, or probeEveryMinutes after it opened (each failed probe
 # multiplies that by reopenFactor, capped at probeCapMinutes), whichever comes first; a quota circuit at its reset. One pick sends the probe; a success closes
 # the circuit, a failure re-opens it with the backoff. A probe whose outcome never arrives frees the slot after probeLeaseMinutes.
 circuit:
-  cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2}
-  strikes: {launch: 2}
+  cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2, stall: 10}
+  strikes: {launch: 2, stall: 2}
   reopenFactor: 5
   reopenWindowMinutes: 60
   capMinutes: 60
@@ -104,8 +105,9 @@ circuit:
   probeCapMinutes: 240
   probeLeaseMinutes: 30
 
-# Typed launch errors are read for these signals (case-insensitive regular expressions); a certain launch failure with
-# none of them is a `launch` failure. Nothing else is read: no terminal screen is scraped.
+# Typed launch errors, and the failure fields Orca's worker-show gives for a stalled seat (agentWait, error, exit reason), are
+# read for these signals (case-insensitive regular expressions); a certain launch failure with none of them is a `launch`
+# failure, a stalled seat with none a `stall`. Nothing else is read: no terminal screen is scraped.
 failureSignals:
   rate: ["rate.?limit", "too many requests", "\b429\b"]
   quota: ["quota", "usage limit", "credit", "out of tokens", "billing"]
@@ -113,7 +115,7 @@ failureSignals:
   auth: ["unauthori[sz]ed", "\b401\b", "forbidden", "not logged in", "login expired", "invalid api key"]
 
 # Every ended attempt of every registered ledger is recorded per member and label (green or red verdict, timeout, lost,
-# launch failure, mismatch, minutes); the evidence of the last windowDays qualifies and scores a member.
+# stalled, launch failure, mismatch, minutes), and every coordinator seat the stall ladder gave up on (stalled); the evidence of the last windowDays qualifies and scores a member.
 outcomes: {windowDays: 14}
 
 # Qualification of a member for a label, from its verdicts in the outcomes window: `high` and `standard` need at least

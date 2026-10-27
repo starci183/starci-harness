@@ -14,6 +14,7 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  * - route_picks: the router's recent picks per tier, for the balance step's streak and the exploration share.
  * - member_outcomes: every ended attempt of every registered ledger, per member and label, for qualification and scoring.
  * - budgets / budget_raises: a workflow's raised ceilings (keyed by ledger and workflow) and who raised them and why.
+ * - host_events: what the host driver (`supervisor tick`) did to the Supervisor seat (nudges, give-ups), append-only.
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -37,6 +38,8 @@ CREATE TABLE IF NOT EXISTS route_picks (
 CREATE TABLE IF NOT EXISTS budgets (
   ledger_id TEXT NOT NULL, workflow_id TEXT NOT NULL, minutes INTEGER NOT NULL, tries INTEGER NOT NULL, updated_at TEXT NOT NULL,
   PRIMARY KEY (ledger_id, workflow_id));
+CREATE TABLE IF NOT EXISTS host_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, subject TEXT NOT NULL, data_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS budget_raises (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ledger_id TEXT NOT NULL, workflow_id TEXT NOT NULL, by TEXT NOT NULL, reason TEXT NOT NULL,
   minutes_by INTEGER NOT NULL, tries_by INTEGER NOT NULL, at TEXT NOT NULL);

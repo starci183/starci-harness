@@ -4,7 +4,11 @@ import { findLedgerId, now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf, withMachine } from "./machine.js"
 import { loadRouting } from "./routing.js"
 
-/** Attempt outcomes that spent no try: the launch certainly failed, launched the wrong model, or lost its task mid-launch. */
+/**
+ * Attempt outcomes that spent no try and no minutes: the launch certainly failed (a dispatch that never started its turn among
+ * them), launched the wrong model, or lost its task mid-launch. Only attempts burn minutes, from launch to their result or
+ * fence: a workflow waiting on an escalation or a coordinator burns none, and the stall ladder bounds an Op idle at its prompt.
+ */
 const FREE_OUTCOMES: readonly string[] = ["launch-failed", "model-mismatch", "orphaned"]
 
 /** A workflow's minutes and tries: its ceiling (the ops default, or as raised) against what its attempts used. */

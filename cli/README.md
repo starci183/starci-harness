@@ -134,8 +134,7 @@ in machine.sqlite and launches the router's coordinator member (`orca agent laun
 checkout with a prompt naming its brief under `.runtime/` (rendered from `ops/coordinators/`). Its first command,
 `supervisor attach`, binds its terminal as coordinator of a new Run with a `[Supervisor]` task. `supervisor status` reads
 its liveness from Orca, `supervisor stop` closes it, and `supervisor ensure` starts one only when Orca says it is gone
-(or replays a launch whose answer was lost) — for a scheduled task, e.g.
-`schtasks /Create /SC MINUTE /MO 10 /TN StarCiSupervisor /TR "node D:\.claude\cli\dist\main.js supervisor ensure"`.
+(or replays a launch whose answer was lost); the host driver below does the same on every tick.
 `workflow start` of an orca workflow runs only in the Supervisor's terminal (`SUPERVISOR_REQUIRED` elsewhere): it
 makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default `<project state>/worktrees/<workflow>`
 on branch `starci/<workflow>`) and launches the Kernel by `worker-start --run/--parent/--from` into the Supervisor's Run,
@@ -147,10 +146,13 @@ adopts its terminal as coordinator of the workflow's child Run (taken back with 
 `[Kernel] <workflow>` task; every Op launches into that Run (`--run/--parent/--from` of the Kernel) inside the workflow's
 worktree, where verify settles it, so a relaunched Kernel or a retried attempt continues from the code already there.
 
-Coordinators are **episodic**. `kernel next <workflow>` is the deterministic driver: it drains the Kernel Run's mail, steps
+Coordinators decide; deterministic drivers do the rest, and a coordinator never ends its turn while its driver is its own
+(it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
 the workflow (dispatch, verify, close seats), fences an Op Orca reports idle past its budget.minutes (worker-stop, else
-worker-abandon; the task fails with outcome `timeout`), resolves an effect_unknown launch through `request-show` with its
-attempt's request id (completed: replayed; absent past the deadline: stuck), holds the workflow `paused(orca-down)` while
+worker-abandon; the task fails with outcome `timeout`), runs the stall ladder on its Ops (below), resolves an effect_unknown
+launch through `request-show` with its attempt's request id (completed with a dispatch: that dispatch is judged by worker-show,
+adopted when its worker started, fenced and the task queued again with no try spent when it never started its turn past
+`stall.startDeadlineMinutes`; completed with none: replayed; absent past the deadline: stuck), holds the workflow `paused(orca-down)` while
 Orca does not answer, and returns only one decision — `red`, `stale`, `question`, `conflict`, `goal`, `goal-change`,
 `escalation-answer` or `done`, with its evidence and a ledger digest — or `idle` after its wait. `kernel submit <file>`
 applies one command: `workflow-change` (a change file or the whole desired workflow, through `workflow amend`),
@@ -159,10 +161,26 @@ wake-up mail); a command whose content (all but its cmdId, with its change file)
 escalates to the Supervisor (kind harness), and every later submit of it is refused at once (`COMMAND_POISONED`).
 `supervisor next` sweeps the workflows the Supervisor owns in every registered project: a Kernel whose lease lapsed with no
 progress past its TTL (a relaunch is not progress) is relaunched on Orca's word (gone, or idle), and once the relaunch
-limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; it returns the
-oldest `escalation` or `handoff`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
+limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a live Kernel idle at
+its prompt meets the stall ladder; it returns the oldest `escalation` or `handoff`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
 and its `answers` close escalations (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
+
+**The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
+every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`): it ensures the Supervisor
+(started when Orca says it is gone), then, acting for the attached Supervisor (its terminal as `--from`, its lease left to
+its own calls), runs the Kernel sweep of every project with the Ops' stall ladder of each owned workflow, and the Supervisor's
+own ladder. On Windows: `schtasks /Create /SC MINUTE /MO 1 /TN StarCiTick /TR "node D:\.claude\cli\dist\main.js supervisor tick"`.
+The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
+Supervisor decision; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
+renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for
+tui-idle`, or no output in `terminal list` and worker-show and no dispatch heartbeat for `quietMinutes`). It is nudged with its
+role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge, at most `nudgeMax`); a nudge unanswered past
+`nudgeGraceMinutes`, or a stall after the last nudge, gives it up (`stall-gave-up`): its member records a `stalled` outcome and
+its provider circuit the kind worker-show's failure words name by `failureSignals` (capacity, rate, quota, auth), else `stall`;
+a Kernel is relaunched and a Supervisor replaced with that pool behind every other, an Op fenced and its task failed
+`stalled` for the Kernel to retry. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
+with the same decision waiting is left for the owner. Nudges and give-ups are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
 (decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`; `project` for the Supervisor). It is
@@ -180,6 +198,7 @@ provider circuit and its half-open probe, outcomes, qualification, scoring, AIMD
 `coordinators` tiers: a Supervisor or Kernel is routed through the same circuit, quota, probe, scoring and balance as an
 Op; the router's steps are [ops/README.md](../ops/README.md)'s) and
 [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, the Orca answers that prove a worker gone — anything else is
-unknown, never dead — and the `coordinators` block: seat lease, Kernel and Supervisor TTLs, relaunch limit,
-effect-unknown deadline, conflict wait, poisoned-command refusals, and how long `next` waits). `starci route explain` prints a pick step by step,
+unknown, never dead — the `coordinators` block: seat lease, Kernel and Supervisor TTLs, relaunch limit,
+effect-unknown deadline, conflict wait, poisoned-command refusals, and how long `next` waits — and the `stall` block of the
+stall ladder and the host driver). `starci route explain` prints a pick step by step,
 `--coordinator supervisor|kernel` for a coordinator's.

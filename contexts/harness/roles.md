@@ -1,9 +1,10 @@
 # Roles
 
 The owner talks to the host's `[Supervisor]`; each running orca workflow has a `[Kernel] <workflow>` under it, and each
-task attempt an `[Op] <label> (<task id>) - <summary>` under its Kernel, all real Orca agents. Coordinators are episodic: `kernel next` and
+task attempt an `[Op] <label> (<task id>) - <summary>` under its Kernel, all real Orca agents. Coordinators loop: `kernel next` and
 `supervisor next` do the mechanics and hand them one decision, which they answer with one command (`kernel submit`,
-`supervisor submit`); [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs. Inline workflows use the chat
+`supervisor submit`), never ending their turn while the driver is theirs (`supervisor tick` nudges one that does, then
+relaunches it on another model); [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs. Inline workflows use the chat
 agent as Kernel and worker without Orca seats. A role's rights come from each verb's `effect` and `roles` (cli/README.md
 "The verb standard" says when they are enforced).
 

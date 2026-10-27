@@ -1,0 +1,101 @@
+schema: starci/scenario@1
+id: supervisor-idle-after-turn
+group: orca
+title: "the Supervisor ended its turn with an escalation waiting and its Kernel died: the scheduled tick drives the sweep and nudges it"
+inject: >-
+  the Kernel escalates, then its worker exits; the Supervisor agent ended its turn (idle at its prompt, no supervisor next for
+  five minutes) and nobody prompts it; only the owner's scheduled supervisor tick runs, outside every Orca terminal
+expect: >-
+  the tick, acting for the attached Supervisor, relaunches the gone Kernel in the Supervisor's Run (Orca accepts the dispatch
+  from the Supervisor's terminal as coordinator) and nudges the Supervisor once with its loop prompt; a second tick inside the
+  grace adds no nudge and no launch
+pass:
+  - the Kernel is relaunched by the tick, once
+  - exactly one nudge, typed into the Supervisor's terminal, recorded as a host event
+  - no second Supervisor
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: quiet
+        goal: write doc a
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: quiet
+  - file:
+      path: esc.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-quiet-ask-1
+        kind: escalation
+        workflow: quiet
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the product?
+  - seat: kernel:quiet
+    starci: [kernel, submit, "${run}/esc.yaml"]
+  - name: the Kernel dies
+    orca:
+      worker:
+        dispatch: kernel
+        state: exited
+      set:
+        tuiIdle:
+          ${supervisor.terminal}: true
+  - name: 21 minutes pass with no progress; the Supervisor's last call was five minutes ago
+    sql:
+      db: ledger
+      exec: >-
+        UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel';
+        UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', started_at, '-21 minutes');
+        UPDATE events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-21 minutes')
+  - sql:
+      db: machine
+      exec: UPDATE supervisors SET lease_until = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+25 minutes') WHERE ended_at IS NULL
+  - name: the owner's scheduled tick
+    starci: [supervisor, tick]
+    expect:
+      contains: relaunched its Kernel
+  - name: the next tick inside the grace
+    starci: [supervisor, tick]
+    expect:
+      contains: nudged at
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${supervisor.terminal}
+        count: 1
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind = 'stall-nudged'"
+        equals: [1]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM supervisors
+        equals: [1]
