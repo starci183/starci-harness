@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.15.0 - 2026-10-28
+
+- Changed: versioned together with the Grammar lint families 0.15.0 (a minor: `SurfaceCard placement` moves a labelled Core card's label outside unless it is a `panel`), released with the release C pins.
 
 - Added: `SurfaceCard placement` (`floating` default | `panel`), stamped as `data-grammar-surface-placement`. Each family places a card label per placement (ruling card-label-placement-per-grammar). Core: a floating card's label is an unpainted row above the material (the Common anatomy SurfaceListCard shares); a panel card (a docked panel or full-height region of the layout) carries its title inside, as the card header, inset by the surface inset. Offset Pop keeps both outside. Migrate: a Core labelled card that is a docked panel takes `placement="panel"`; every other labelled Core card now draws its label outside the card.
 - Changed: a horizontal `Divider` placed in a card's content region runs full bleed, card edge to card edge (inset 0), with the card inset above and below it.

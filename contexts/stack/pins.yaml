@@ -6,18 +6,19 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.4, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
-  '@starci/grammar': {version: 0.14.0, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
-  '@starci/eslint-canon-be': {version: 3.5.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.3.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.14.0, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.14.0, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
-  '@starci/stylelint-canon': {version: 2.1.0, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
-  '@starci/tsconfig': {version: 2.0.8, group: starci, side: both, install: registry}
-  '@starci/prettier-config': {version: 1.0.5, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.3.7, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/grammar': {version: 0.15.0, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/eslint-canon-be': {version: 3.6.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.4.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.15.0, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.15.0, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/stylelint-canon': {version: 2.2.1, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/tsconfig': {version: 2.1.0, group: starci, side: both, install: registry}
+  '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
+  '@starci/jest-preset': {version: 2.4.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
+  '@starci/ai-router': {version: 0.2.1, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
   starci-harness: {version: 1.1.0-alpha.1, group: starci, side: both, install: registry, why: "the one StarCi command line a product installs; it runs starci app"}
-  '@starci/hfs': {version: 4.9.0, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 4.9.1, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   typescript: {version: 5.9.3, group: tooling, side: both}
   turbo: {version: 2.11.6, group: tooling, side: fe, why: "runs build, dev, lint and typecheck over the fe workspaces"}
   prettier: {version: 3.9.6, group: tooling, side: both}

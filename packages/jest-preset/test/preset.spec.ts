@@ -767,7 +767,7 @@ test("${label} boots with its own Person type", async () => {
 
 interface WorldState { version: number; library?: string; runId: string; slots?: Array<{ slot: number }> }
 
-/** The state file @starci/test-world 1.1.x publishes (protocol 2), with `slots` data slots. */
+/** The state file @starci/test-world 1.1 and later publishes (protocol 2), with `slots` data slots. */
 const worldState = (slots: number): WorldState => ({ version: 2, library: '@starci/test-world@1.1.0', runId: 'r', slots: Array.from({ length: slots }, (_, index) => ({ slot: index + 1 })) });
 
 /**

@@ -4,6 +4,7 @@
 
 - Changed: `@starci/ai-router` joins the ESM-only dependencies jest compiles to CommonJS, so a spec that builds an AppModule registering the AI pool loads it.
 - Fixed: the built declarations name `.js` (`dist/index.d.ts` and `dist/entity-manager.d.ts` named `.ts` files a consumer tsc cannot read).
+- Fixed: the pair-mismatch message names state protocol 2 as test-world 1.1 and later write it, not "test-world 1.1.x"; release C pins this preset beside `@starci/test-world` 1.2.3, which speaks protocol 2.
 
 ## 2.4.0 - 2026-10-28
 

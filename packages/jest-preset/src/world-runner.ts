@@ -30,7 +30,7 @@ import path from "node:path"
 import type TestRunner from "jest-runner"
 import type { Test, TestEvents, TestWatcher, UnsubscribeFn } from "jest-runner"
 
-/** The state-file protocol of `@starci/test-world` this runner speaks (test-world 1.1.x). */
+/** The state-file protocol of `@starci/test-world` this runner speaks (test-world 1.1 and later). */
 const WORLD_STATE_VERSION = 2
 /** The variable that carries the path of the world's state file (set by its globalSetup in this process). */
 const STATE_FILE_ENV = "STARCI_TEST_WORLD_STATE"
@@ -57,7 +57,7 @@ const fieldOf = (value: unknown, name: string): unknown => (typeof value === "ob
 /** The slot count the world published; a missing or foreign state file is a pair mismatch. */
 function worldSlots(env: NodeJS.ProcessEnv = process.env): number {
   const file = env[STATE_FILE_ENV]
-  const fix = `pin @starci/test-world and @starci/jest-preset together as knowledge/hfs/canon-pins.yaml pairs them (${PRESET} speaks state protocol ${WORLD_STATE_VERSION}, @starci/test-world 1.1.x)`
+  const fix = `pin @starci/test-world and @starci/jest-preset together as knowledge/hfs/canon-pins.yaml pairs them (${PRESET} speaks state protocol ${WORLD_STATE_VERSION}, as @starci/test-world 1.1 and later write it)`
   if (file === undefined || file === "") {
     throw runnerError(WORLD_PAIR_MISMATCH, `${STATE_FILE_ENV} is not set: the world's globalSetup published no state file for ${PRESET}; ${fix}`)
   }

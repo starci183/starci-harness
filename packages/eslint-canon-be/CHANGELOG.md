@@ -10,6 +10,9 @@
   `@typescript-eslint/eslint-plugin`).
 - Changed (specs): the front-end canon is loaded through its package entry (`fixtures/sibling-canon.mjs`), not a source
   path; `fixtures/gathered-plugin.mjs` lists law modules by `.mjs` or `.ts`.
+- Changed: the bundled canon pins follow release C (Grammar family 0.15.0, hfs 4.9.1, canon-fe 9.4.0, canon-be 3.6.0,
+  jest-preset 2.4.1, stylelint-canon 2.2.1, tsconfig 2.1.0, prettier-config 1.1.0, and `@starci/ai-router` 0.2.1
+  pinned), so an app installs the released versions without pin drift.
 - Fixed: the built declarations name `.js`, not the `.ts` sources (`tsc` keeps a relative `.ts` specifier in a `.d.ts`).
 
 ## 3.5.0 - 2026-10-27
