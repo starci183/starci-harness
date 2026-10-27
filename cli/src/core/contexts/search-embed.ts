@@ -82,7 +82,7 @@ const importLibrary = async (): Promise<Transformers | string> => {
         const specifier: string = LIBRARY
         return (await import(specifier)) as Transformers
     } catch {
-        return `${LIBRARY} is not installed (an optional dependency of @starci/cli)`
+        return `${LIBRARY} is not installed (an optional dependency of starci-harness)`
     }
 }
 

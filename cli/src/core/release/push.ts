@@ -1,6 +1,5 @@
 import { Refusal } from "../../shared/errors.js"
-import { captureTool } from "../../shared/exec.js"
-import { currentBranch, git, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { captureGit, currentBranch, git, nulPaths, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding } from "../../shared/secrets.js"
 import { defineVerb } from "../../shared/verb.js"
@@ -44,7 +43,7 @@ export const releasePushVerb = defineVerb({
         if ((await currentBranch(root)) !== branch) throw new Refusal("PUSH_NOT_ON_BRANCH", `check out ${branch} first; only ${branch} is pushed`)
         const dirty = await trackedChanges(root)
         if (dirty.length > 0) throw new Refusal("PUSH_DIRTY_TREE", `commit or drop the tracked changes first: ${dirty.slice(0, 5).join(", ")}`)
-        await captureTool("git", ["fetch", "--quiet", remote, branch], root)
+        await captureGit(["fetch", "--quiet", remote, branch], root)
         const remoteRef = `${remote}/${branch}`
         const head = await resolveSha(root, "HEAD")
         const remoteKnown = await refExists(root, remoteRef)
@@ -55,13 +54,13 @@ export const releasePushVerb = defineVerb({
         if (previous !== null && !(await isAncestor(root, previous, head))) throw new Refusal("PUSH_NOT_FAST_FORWARD", `${remoteRef} has commits this branch lacks; merge or rebase onto it first`)
         const base = previous ?? EMPTY_TREE
         const range = previous === null ? [EMPTY_TREE, head] : [`${previous}..${head}`]
-        const files = (await git(root, ["diff", "--name-only", "--diff-filter=AMR", ...range])).split("\n").filter((file) => file !== "")
+        const files = nulPaths(await git(root, ["diff", "--name-only", "-z", "--diff-filter=AMR", ...range]))
         const diff = await git(root, ["diff", "-U0", "--no-color", "--diff-filter=AMR", ...range])
         const encrypted = new Map<string, string>()
         const shownFiles = await Promise.all(
             files
                 .filter((name) => name.endsWith(".enc"))
-                .map(async (file) => ({ file, shown: await captureTool("git", ["show", `${head}:${file}`], root) })),
+                .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
         )
         for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
         const findings = scanDiff(diff, files, (file) => encrypted.get(file))

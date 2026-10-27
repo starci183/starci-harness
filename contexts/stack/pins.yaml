@@ -8,13 +8,13 @@ pins:
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/grammar': {version: 0.12.14, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.4.56, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.1.10, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.1.11, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-starci': {version: 0.12.14, group: starci, side: fe, install: registry, why: "the grammar API lint every grammar inherits (to become eslint-grammar-common with eslint-grammar-core, open-grammar D-7); versioned with the grammar"}
   '@starci/eslint-grammar-offset-pop': {version: 0.12.14, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
-  '@starci/stylelint-canon': {version: 2.0.13, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
-  '@starci/tsconfig': {version: 2.0.7, group: starci, side: both, install: registry}
-  '@starci/prettier-config': {version: 1.0.4, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.3.6, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/stylelint-canon': {version: 2.0.14, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/tsconfig': {version: 2.0.8, group: starci, side: both, install: registry}
+  '@starci/prettier-config': {version: 1.0.5, group: starci, side: both, install: registry}
+  '@starci/jest-preset': {version: 2.3.7, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/cli': {version: 1.7.47, group: starci, side: both, install: registry, why: "the app CLI a product installs"}
   '@starci/hfs': {version: 4.7.47, group: starci, side: both, install: registry, why: "the app implementation behind @starci/cli"}

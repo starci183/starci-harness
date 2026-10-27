@@ -2,10 +2,12 @@
 
 ## Where state lives
 
-- **Harness state** lives under the runtime root (this checkout) in `.runtime/`, git-ignored: `machine.sqlite` for the
+- **Harness state** lives under the runtime root (this checkout, or the folder of an installed `starci-harness`
+  package) in `.runtime/`, git-ignored: `machine.sqlite` for the
   host and `projects/<ledger_id>/` for each project's `runtime.sqlite`, briefs, contracts, outputs, preserved work and
   the prior-work store (`prior/<sha256>.patch`).
-  `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`.
+  `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`; under `npx`, whose
+  package folder is a cache, `STARCI_LOCAL_ROOT` is what keeps the ledgers.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
 - **Product Work** lives in the app repository's `.starciwork/` (Business/SRS, Architecture/SDS, `features/`,
@@ -26,12 +28,14 @@ app's `edition`, and the `policy` profile its gates run under (`policy/quality.y
 of each kind). This repository's own [hfs.json](../../hfs.json) declares the runtime.
 
 An app driven by the harness points its agents here from its own `AGENTS.md` or `CLAUDE.md`, with the absolute path of
-this checkout:
+this checkout; a machine with no checkout runs the published package instead:
 
 ```text
 Before planning or editing, read <harness>/contexts/README.md and follow its load order. Run the harness as
-`node <harness>/cli/dist/main.js` (or `starci` when linked). Harness state lives under <harness>/.runtime,
-never in this repository; this repository's .starciwork/ is product Work only.
+`node <harness>/cli/dist/main.js` (or `starci` when linked); with no checkout on this machine, run
+`npx starci-harness <verb>` with STARCI_LOCAL_ROOT set, and read the contexts through `npx starci-harness contexts search`.
+Harness state lives under <harness>/.runtime (or STARCI_LOCAL_ROOT), never in this repository; this repository's
+.starciwork/ is product Work only.
 ```
 
 When you delegate or change directory, pass the harness path and the project root on explicitly: a task opened in

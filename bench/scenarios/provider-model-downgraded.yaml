@@ -12,9 +12,6 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      set:
-        effectiveModel: haiku
   - file:
       path: wf.yaml
       yaml:
@@ -36,17 +33,16 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - down
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: down
+  - orca:
+      set:
+        effectiveModel: haiku
+  - name: kernel next dispatches
+    seat: kernel:down
+    starci: [kernel, next, down, --wait, "0"]
     expect: {}
   - assert:
       orcaCalls:

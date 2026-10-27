@@ -4,8 +4,7 @@ import { dirname, join, posix, relative, resolve } from "node:path"
 import { parse, stringify } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { captureTool } from "../shared/exec.js"
-import { repositoryRoot } from "../shared/git.js"
+import { captureGit, repositoryRoot } from "../shared/git.js"
 import { locateTree } from "../shared/tree.js"
 import { CONTRACT_SCHEMA, DEFAULT_BUDGET, resolveChecks } from "./contract.js"
 import type { Contract } from "./contract.js"
@@ -545,6 +544,6 @@ export const appendEvidence = (text: string | undefined, record: string, run: Ev
 
 /** The rule of the repository's ignore files that ignores `path`, or undefined when git would track it. */
 export const ignoredBy = async (root: string, path: string): Promise<string | undefined> => {
-    const run = await captureTool("git", ["check-ignore", "-v", "--no-index", "--", path], root)
+    const run = await captureGit(["check-ignore", "-v", "--no-index", "--", path], root)
     return run.exitCode === 0 ? run.stdout : undefined
 }

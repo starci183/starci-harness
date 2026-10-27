@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.8 - 2026-10-27
+
+- Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.
+
 ## 2.0.7 - 2026-10-23
 
 - Changed: `base.json` sets `exactOptionalPropertyTypes`, so every preset (back end, front end, overlays) distinguishes a missing optional property from one that holds `undefined` (owner ruling 2026-10-22, no loosening): `prop?: T` no longer accepts an explicit `undefined`, a type that is passed `undefined` on purpose says `T | undefined` (or declares the field required), and a value that may be absent is spread in only when present. The three example apps, the scaffold skeletons and the runtime packages that extend a preset compile with 0 errors.

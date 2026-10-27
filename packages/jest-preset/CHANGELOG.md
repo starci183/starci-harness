@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.7 - 2026-10-27
+
+- Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.
+
 ## 2.3.6 - 2026-10-25
 - Added: the fake inbox records client operations and sweeps (`clientEntries`, `sweeps`) and the entity-manager and index doubles follow the idempotent client inbox of the alpha.31 cohort; the lite and full example back ends spec against them.
 

@@ -1,8 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
-import { captureTool } from "../../shared/exec.js"
-import { git, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { captureGit, git, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
 import { choosePackage } from "./package-choice.js"
@@ -51,7 +50,7 @@ export const releaseCutVerb = defineVerb({
         const tag = `v${pkg.version}`
         const dirty = await trackedChanges(root)
         if (dirty.length > 0) throw new Refusal("CUT_DIRTY_TREE", `commit or drop the tracked changes first: ${dirty.slice(0, 5).join(", ")}`)
-        await captureTool("git", ["fetch", "--quiet", "--tags", remote, "main"], root)
+        await captureGit(["fetch", "--quiet", "--tags", remote, "main"], root)
         const commit = await resolveSha(root, "HEAD")
         if (!(await refExists(root, `${remote}/main`)) || !(await isAncestor(root, commit, `${remote}/main`))) {
             throw new Refusal("CUT_NOT_ON_REMOTE_MAIN", `push ${commit.slice(0, 9)} to ${remote}/main first (starci release push); a release tags a commit CI already sees`)

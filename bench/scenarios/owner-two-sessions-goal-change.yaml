@@ -2,16 +2,78 @@ schema: starci/scenario@1
 id: owner-two-sessions-goal-change
 group: owner
 title: two sessions send conflicting goal-changes
-inject: goal-change from two chats based on goal@1
-expect: "basedOn serialises: one becomes goal@2, the other STALE"
+inject: two goal-change commands, both based on goal@1, submitted one after the other through the Supervisor
+expect: "basedOn serialises: the first becomes goal@2 and raises the Kernel's goal-change decision; the second is refused STALE and changes nothing"
 pass:
   - one goal_version 2
-  - one refusal
+  - the second refused STALE before admission, no row of it
+  - one Kernel goal-change decision
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
-pending: "S1 replan reconcile: goal@n, goal-change, desired-graph reconcile with keep/continue/stale/rework/redo-live/drop"
-manual:
-  - two goal-change files basedOn 1
-  - submit both
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: chats
+        goal: write doc a
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: chats
+  - file:
+      path: first.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-chat-a-1
+        kind: goal-change
+        workflow: chats
+        project: ${repo}
+        basedOn: {goal: 1}
+        goal: write doc a in English
+  - file:
+      path: second.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-chat-b-1
+        kind: goal-change
+        workflow: chats
+        project: ${repo}
+        basedOn: {goal: 1}
+        goal: write doc a in Vietnamese
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/first.yaml"]
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/second.yaml"]
+    expect:
+      exit: 1
+      code: STALE
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT goal_version FROM workflows
+        equals: [2]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'kernel' AND kind = 'goal-change'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM commands WHERE cmd_id = 'sup-chat-b-1' AND status = 'applied'
+        equals: [0]

@@ -1,0 +1,51 @@
+name: Bug report
+description: A verb, gate or package that does something other than what it says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A security problem goes through SECURITY.md (a private advisory), never an issue. Never paste a secret.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `starci version` (or the package and version under packages/).
+      placeholder: starci 1.0.0-alpha.1 (node 24.x)
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: Operating system, how you run the CLI (checkout, npx, global install) and the runner (orca or inline) when it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command, run with --json when the verb supports it.
+      render: sh
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, refusal code or exit code you got.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What the verb's summary (`starci explain --term <verb>`) or the documentation says should happen, and where it says so.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: The smallest scratch repository steps that show it.

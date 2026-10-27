@@ -3,10 +3,11 @@ id: orca-missing-binary
 group: orca
 title: "Orca is not installed: start refuses cleanly and spends nothing"
 inject: STARCI_ORCA_BIN names a file that does not exist
-expect: the launch refuses ORCA_MISSING; the task stays queued (or returns to queued), no attempt counts as a try, no lease is kept by a dead launch
+expect: "supervisor start refuses ORCA_MISSING and reserves no Supervisor; workflow start refuses too and the workflow stays defined: no task, no attempt, no lease, no seat is spent by a launch that cannot happen"
 pass:
-  - no running task
-  - no seat left starting
+  - supervisor start and workflow start refuse ORCA_MISSING
+  - no Supervisor reserved, the workflow still defined
+  - no attempt, lease or seat
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -40,13 +41,34 @@ steps:
       - workflow
       - define
       - ${run}/wf.yaml
+  - name: supervisor start
+    starci: [supervisor, start]
+    expect:
+      exit: 1
+      code: ORCA_MISSING
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM supervisors
+        equals:
+          - 0
   - name: start
-    starci:
-      - workflow
-      - start
-      - down
-    save: {}
-    expect: {}
+    starci: [workflow, start, down]
+    expect:
+      exit: 1
+      code: ORCA_MISSING
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals:
+          - defined
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT (SELECT COUNT(*) FROM attempts) + (SELECT COUNT(*) FROM leases) + (SELECT COUNT(*) FROM seats)
+        equals:
+          - 0
   - assert:
       sql:
         db: ledger

@@ -2,19 +2,16 @@ schema: starci/scenario@1
 id: orca-garbage-run-create-no-second-run
 group: orca
 title: "run-create answers garbage: the retry replays the same request, never a second Run"
-inject: run-create prints html instead of json once
-expect: the Kernel's Run is unknown, not failed; the next attempt replays the same retry-request id
+inject: the run-create of the Kernel attach prints html instead of json once
+expect: the Kernel attach that met the garbage reply records no Run and fails; the next attach replays run-create under the same retry-request (Orca answers the same Run), never a second Run, and the Op then launches into that Run
 pass:
-  - every run-create carries one retry-request id
+  - the Kernel terminal sent run-create twice under one retry-request id
+  - the Op launches into the one Run
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      rules:
-        - command: run-create
-          fault: garbage
   - file:
       path: wf.yaml
       yaml:
@@ -36,32 +33,45 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - junk
-    save: {}
-    expect: {}
-  - name: step
-    starci:
-      - workflow
-      - step
-      - junk
-    save: {}
-    expect: {}
+  - name: boot the tree, the Kernel not attached yet
+    boot:
+      file: ${run}/wf.yaml
+      workflow: junk
+      attach: false
+  - orca:
+      rules:
+        - command: run-create
+          fault: garbage
+  - name: kernel attach meets garbage
+    seat: kernel:junk
+    starci: [kernel, attach, junk, --launch, "${kernel.junk.launch}"]
+    expect:
+      exit: 1
+  - name: kernel attach again
+    seat: kernel:junk
+    starci: [kernel, attach, junk, --launch, "${kernel.junk.launch}"]
+    save:
+      krun: data.kernel.runId
+  - name: kernel next dispatches
+    seat: kernel:junk
+    starci: [kernel, next, junk, --wait, "0"]
   - assert:
       orcaCalls:
         command: run-create
-        min: 1
-        distinct: retry-request
+        match:
+          from: "${kernel.junk.terminal}"
+        count: 2
   - assert:
       orcaCalls:
         command: run-create
-        max: 1
+        match:
+          from: "${kernel.junk.terminal}"
+        count: 1
         distinct: retry-request
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+          run: "${krun}"
+        count: 1

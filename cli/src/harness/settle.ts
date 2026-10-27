@@ -5,8 +5,8 @@ import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { setTimeout as sleep } from "node:timers/promises"
 import { asRefusal, Refusal } from "../shared/errors.js"
-import { captureTool, headline, pidAlive } from "../shared/exec.js"
-import { currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
+import { headline, pidAlive } from "../shared/exec.js"
+import { captureGit, currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
 import type { CleanVerify } from "./clean-verify.js"
 import type { Contract } from "./contract.js"
 import { now } from "./ledger.js"
@@ -180,7 +180,7 @@ const refreshIndex = async (root: string, paths: readonly string[]): Promise<str
 
 /** One `git reset` of the paths, retried while a held index.lock is the only complaint; undefined when it worked, else the last complaint. */
 const resetIndex = async (root: string, paths: readonly string[], attempt: number): Promise<string | undefined> => {
-    const run = await captureTool("git", ["reset", "-q", "--", ...paths.map((path) => `:(top,literal)${path}`)], root)
+    const run = await captureGit(["reset", "-q", "--", ...paths.map((path) => `:(top,literal)${path}`)], root)
     if (run.exitCode === 0) return undefined
     const last = headline(run.stderr)
     if (!last.includes("index.lock") || attempt >= INDEX_TRIES) return last
@@ -251,7 +251,7 @@ const commitWork = async (root: string, onto: string, parent: string, files: rea
     const scratch = join(tmpdir(), `starci-work-${randomBytes(6).toString("hex")}`)
     const index = `${scratch}.index`
     const indexed = async (args: readonly string[]): Promise<string> => {
-        const run = await captureTool("git", args, root, { env: { GIT_INDEX_FILE: index } })
+        const run = await captureGit(args, root, { env: { GIT_INDEX_FILE: index } })
         if (run.exitCode !== 0) {
             const why = headline(run.stderr) || `exit ${String(run.exitCode)}`
             throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${why}`)
@@ -277,7 +277,7 @@ const commitWork = async (root: string, onto: string, parent: string, files: rea
 
 /** Puts the Work files of a landed commit into the user's work tree and index; best effort, since the branch already moved. */
 const checkoutWork = async (root: string, commit: string, paths: readonly string[]): Promise<string[]> => {
-    const run = await captureTool("git", ["checkout", "-q", commit, "--", ...paths.map(literal)], root)
+    const run = await captureGit(["checkout", "-q", commit, "--", ...paths.map(literal)], root)
     return run.exitCode === 0 ? [] : [`the branch moved, but the Work files were not refreshed in the work tree (${headline(run.stderr)}); \`git checkout HEAD -- ${paths.join(" ")}\` brings them`]
 }
 
@@ -331,7 +331,7 @@ export const settle = async (root: string, built: CleanVerify, task?: TaskRow): 
         }
     }
     if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work }
-    const update = await captureTool("git", ["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
+    const update = await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
     if (update.exitCode !== 0) {
         const after = await resolveSha(root, "HEAD")
         if (after !== built.parent) throw moved(after)
@@ -373,7 +373,7 @@ export const blockWork = async (root: string, task: TaskRow, result: ResultSourc
         const plan = await planWork(root, head, task, binding, outcome)
         const where = outcome.step === undefined ? "" : ` at step ${String(outcome.step)}`
         const commit = await commitWork(root, head, head, plan.files, `work: ${plan.id} blocked${where}\n\nStarci-Task: ${task.id}`)
-        const update = await captureTool("git", ["update-ref", "-m", "starci work", `refs/heads/${branch}`, commit, head], root)
+        const update = await captureGit(["update-ref", "-m", "starci work", `refs/heads/${branch}`, commit, head], root)
         if (update.exitCode !== 0) throw new Refusal("HEAD_MOVED", `${branch} moved while the Work commit was built (${headline(update.stderr)}); nothing was written`)
         const warnings = await checkoutWork(
             root,

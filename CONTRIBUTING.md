@@ -60,7 +60,10 @@ A second copy is a defect even while both agree.
 | how the CLI is built, the verb standard, how the harness inside it works (ledgers, settling, graph, seat launch) | [cli/README.md](cli/README.md), naming the code that implements each |
 | load order | [contexts/README.md](contexts/README.md) |
 | axes, roles, where state lives and how a project is found, hard rules, the owner's harness decisions, open questions | one file each in [contexts/harness/](contexts/README.md#harness) |
-| what the harness is, how it works, the verb groups, CI | [README.md](README.md) |
+| what the harness is, how it works, how to install it, the verb groups, CI | [README.md](README.md) |
+| how a release is published and the secret it needs | CONTRIB-20 below |
+| what each CLI release changed | [CHANGELOG.md](CHANGELOG.md); a package's, its own `CHANGELOG.md` |
+| how to report a vulnerability; the conduct expected | [SECURITY.md](SECURITY.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 | how app code is written | [contexts/](contexts/README.md) |
 | a knowledge ruling | [contexts/decisions/rulings.yaml](contexts/decisions/rulings.yaml) |
 
@@ -128,7 +131,7 @@ A verb is one `defineVerb` in its own file. Refusals throw `Refusal(code, messag
 
 ### CONTRIB-13 No shell
 
-Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through `cli/src/shared/git.ts`.
+Host processes run without a shell through `cli/src/shared/exec.ts`; git goes through the one runner in `cli/src/shared/git.ts`.
 
 ### CONTRIB-14 House style
 
@@ -183,4 +186,14 @@ block the next push.
 
 ### CONTRIB-20 Publishing is CI's
 
-Publishing packages happens in CI on a `v*` tag, with the owner's approval.
+Nothing is published from a workstation. A `v*` tag, pushed with the owner's approval, runs the `publish` job of
+[.github/workflows/ci.yml](.github/workflows/ci.yml): it publishes the CLI (`starci-harness`, from `cli/`) and every
+package under `packages/` whose version is not on npm yet, skipping a private one, with npm provenance, under the
+dist-tag a prerelease version names (`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). A release raises
+the version in the package's `package.json` and adds its entry to its CHANGELOG (the CLI's is
+[CHANGELOG.md](CHANGELOG.md)) before the tag.
+
+The job reads one repository secret, `NPM_TOKEN`: an npm granular access token with read and write on the
+`starci-harness` package and the `@starci` scope (or an automation token of the publishing account). The owner adds it
+once, and again when it expires, with `gh secret set NPM_TOKEN --repo starci183/starci-harness`, pasting the token at
+the prompt; it is never written to a file, a command line or this repository.

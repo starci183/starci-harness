@@ -2,7 +2,7 @@ schema: starci/scenario@1
 id: scale-ledger-contention
 group: scale
 title: sixteen concurrent read and write verbs on one ledger never fail on a lock
-inject: 16 workflow status and 16 seat ping processes at once while a workflow runs
+inject: 16 workflow status and 6 kernel next processes at once while a workflow runs
 expect: every call answers; none fails with database is locked
 pass:
   - every concurrent call exits 0
@@ -42,17 +42,13 @@ steps:
                 args:
                   files:
                     - docs/b.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - busy
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: busy
+  - name: kernel next dispatches
+    seat: kernel:busy
+    starci: [kernel, next, busy, --wait, "0"]
   - starci:
       - workflow
       - status
@@ -60,10 +56,8 @@ steps:
     parallel: 16
     expect:
       exit: 0
-  - starci:
-      - workflow
-      - step
-      - busy
+  - seat: kernel:busy
+    starci: [kernel, next, busy, --wait, "0"]
     parallel: 6
     expect:
       exit: 0

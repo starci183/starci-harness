@@ -1,9 +1,19 @@
 {
   "name": "@starci/eslint-canon-fe",
-  "version": "9.1.10",
+  "version": "9.1.11",
   "description": "Universal front-end lint laws for TypeScript and Next.js, independent of the selected Grammar family.",
   "type": "module",
   "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/eslint-canon-fe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/eslint-canon-fe"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
   "private": false,
   "exports": {
     ".": "./index.mjs",

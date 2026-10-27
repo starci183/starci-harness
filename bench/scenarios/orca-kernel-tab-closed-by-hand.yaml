@@ -1,13 +1,13 @@
 schema: starci/scenario@1
 id: orca-kernel-tab-closed-by-hand
 group: orca
-title: "the owner closes the Kernel tab: the next launch recreates it and takes the Run back"
-inject: every Orca terminal disappears after start; a task is added
-expect: the next dispatch sees the Kernel terminal gone, creates a new [Kernel] terminal and binds it to the same Run with run-use; no second Run
+title: "the owner closes the Kernel tab: the Supervisor relaunches the Kernel, which takes its Run back"
+inject: the Kernel terminal disappears and Orca reports its worker exited after the first Op launched; a task is added; the Kernel lease and progress clock lapse
+expect: no Op launches without a live Kernel (KERNEL_REQUIRED holds the new task); supervisor next relaunches the Kernel on Orca word into the Supervisor Run; the new Kernel attach binds the same child Run with run-use (no second Run) and its kernel next launches the added task into that Run
 pass:
-  - run-create once
-  - run-use at least once
-  - terminal create twice (Kernel, recreated Kernel)
+  - the added task is not launched while the Kernel is gone
+  - two Kernel launches, one child Run (run-create under one retry-request), run-use by the new Kernel
+  - the added task launches into the same Run
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -34,20 +34,25 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - tab
-    save: {}
-  - orca:
-      set:
-        terminals: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: tab
+  - name: kernel next dispatches a
+    seat: kernel:tab
+    starci: [kernel, next, tab, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT kernel_run_id FROM workflows
+      as: krun
+  - name: the owner closes the Kernel tab
+    orca:
+      terminal:
+        handle: ${kernel.tab.terminal}
+        live: false
+      worker:
+        dispatch: kernel
+        state: exited
   - file:
       path: add.yaml
       yaml:
@@ -67,29 +72,53 @@ steps:
                   args:
                     files:
                       - docs/b.md
-  - starci:
-      - workflow
-      - amend
-      - tab
-      - --change
-      - ${run}/add.yaml
+  - starci: [workflow, amend, tab, --change, "${run}/add.yaml"]
+  - name: the owner steps the workflow without a Kernel
+    starci: [workflow, step, tab]
     expect: {}
-  - name: step
-    starci:
-      - workflow
-      - step
-      - tab
-    save: {}
-    expect: {}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1
+  - name: the Kernel lease and the progress clock lapse
+    sql:
+      db: ledger
+      exec: UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel'; UPDATE events SET at = '2020-01-01T00:00:00.000Z'
+  - name: supervisor next relaunches the Kernel
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - name: the new Kernel attaches
+    boot:
+      adopt: tab
+  - name: kernel next dispatches b
+    seat: kernel:tab
+    starci: [kernel, next, tab, --wait, "0"]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2
+        distinct: retry-request
   - assert:
       orcaCalls:
         command: run-create
+        match:
+          objective: workflow tab
         count: 1
+        distinct: retry-request
   - assert:
       orcaCalls:
         command: run-use
+        match:
+          id: "${krun}"
         min: 1
   - assert:
       orcaCalls:
-        command: terminal create
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+          run: "${krun}"
         count: 2

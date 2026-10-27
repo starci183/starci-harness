@@ -1,8 +1,18 @@
 {
   "name": "@starci/tsconfig",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "The StarCi TypeScript configs: base, be (back end), build (back-end emit overlay), next (front-end app) and e2e. Strict, including noImplicitAny.",
   "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/tsconfig#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/tsconfig"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
   "private": false,
   "exports": {
     "./base.json": "./base.json",
