@@ -6,6 +6,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
@@ -20,6 +22,8 @@ export type RadioGroupProps = FieldControlProps & {
     readonly orientation?: ChoiceOrientation
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
     readonly variant?: "primary" | "secondary"
+    /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
+    readonly isSkeleton?: boolean
 }
 
 /*
@@ -35,10 +39,18 @@ export type RadioGroupProps = FieldControlProps & {
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const RadioGroup = ({ isSkeleton = false, ...props }: RadioGroupProps) => isSkeleton
+    ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <RadioGroupControl {...props} />
+
+/**
  * Exactly one of a few visible choices (`role="radiogroup"`). Arrow keys move and select within the
  * group, Tab leaves it - roving focus is the vendor's.
  */
-export const RadioGroup = ({
+const RadioGroupControl = ({
     options,
     value,
     defaultValue,
@@ -46,7 +58,7 @@ export const RadioGroup = ({
     orientation = "vertical",
     variant: requestedVariant,
     ...field
-}: RadioGroupProps) => {
+}: Omit<RadioGroupProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     return (
         <HeroRadioGroup

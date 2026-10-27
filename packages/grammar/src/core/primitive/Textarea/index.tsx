@@ -7,7 +7,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     isFieldInvalid,
     vendorFieldProps,
@@ -44,8 +45,9 @@ export type TextareaProps = FieldControlProps & {
     /** Initial visible lines. The field still grows with the reader's own resize. */
     readonly rows?: number
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real and the field becomes a Skeleton block of the
-     * `rows` height, `aria-hidden` and not focusable; the root is `aria-busy`.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
     /** Also shows a live `count / max` beside the guidance. */
@@ -95,14 +97,21 @@ export const filterMentionOptions = (options: ReadonlyArray<TextareaMentionOptio
  * a rule on the hook adds to the shared anatomy and never has to replace it.
  */
 
+/**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Textarea = ({ isSkeleton = false, ...props }: TextareaProps) => isSkeleton
+    ? <FieldSkeletonScope component="Textarea"><TextareaControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <TextareaControl {...props} />
+
 /** Multi-line text with the shared field anatomy, an optional Enter-to-submit shortcut and optional mention suggestions. */
-export const Textarea = ({
+const TextareaControl = ({
     id,
     placeholder,
     value,
     defaultValue,
     rows = 4,
-    isSkeleton = false,
     maxLength,
     minLength,
     onValueChange,
@@ -113,7 +122,7 @@ export const Textarea = ({
     onPaste,
     autoFocus = false,
     ...field
-}: TextareaProps) => {
+}: Omit<TextareaProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     const [uncontrolledLength, setUncontrolledLength] = useState((defaultValue ?? "").length)
     const length = value === undefined ? uncontrolledLength : value.length
@@ -181,9 +190,6 @@ export const Textarea = ({
 
     const activeId = isOpen ? `${listId}-${suggestions[active]?.id ?? ""}` : undefined
 
-    if (isSkeleton) {
-        return <FieldSkeleton component="Textarea" tier="atom" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} variant={variant} kind="textarea" rows={rows} className="starci-core-textarea" />
-    }
 
     return (
         <HeroTextField

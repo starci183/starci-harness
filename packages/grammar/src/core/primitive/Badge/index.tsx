@@ -41,19 +41,21 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
  * inferred, and defaults to neutral).
  */
 export const Badge = ({ children, startContent, tone = "neutral", isDot = false, isSkeleton = false }: BadgeProps) => {
-    if (isDot && !isSkeleton) {
+    if (isDot) {
         return (
             <StatusDotChip
                 component="Badge"
                 tone={tone === "muted" ? "neutral" : tone}
                 size="sm"
-                extra={{ "data-contract": "TRUTH-1", "data-grammar-badge-dot": "true", "data-loading": "false", "data-badge-tone": tone }}
+                extra={{ "data-contract": "TRUTH-1", "data-grammar-badge-dot": "true", "data-loading": isSkeleton ? "true" : "false", "data-badge-tone": tone }}
+                isSkeleton={isSkeleton}
             >
                 {startContent === undefined ? children ?? " " : <>{startContent}{children}</>}
             </StatusDotChip>
         )
     }
-    const content = isSkeleton ? null : startContent
+    // Skeleton parity: the start content stays laid out as an unseen measured placeholder, so the chip keeps its width.
+    const content = startContent
     return (
         <Chip
             data-tier="atom"

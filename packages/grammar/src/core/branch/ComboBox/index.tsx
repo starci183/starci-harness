@@ -13,6 +13,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
@@ -42,6 +44,8 @@ export type ComboBoxProps = FieldControlProps & {
     readonly menuTrigger?: "input" | "focus" | "manual"
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
     readonly variant?: "primary" | "secondary"
+    /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
+    readonly isSkeleton?: boolean
 }
 
 /*
@@ -57,12 +61,20 @@ export type ComboBoxProps = FieldControlProps & {
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const ComboBox = ({ isSkeleton = false, ...props }: ComboBoxProps) => isSkeleton
+    ? <FieldSkeletonScope component="ComboBox"><ComboBoxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <ComboBoxControl {...props} />
+
+/**
  * Type to filter a list, then pick (combobox / autocomplete).
  *
  * The vendor owns the combobox role, `aria-expanded`, `aria-activedescendant`, arrow/Enter/Escape
  * handling and the "contains" filter. Pending keeps the input editable and marks the list busy.
  */
-export const ComboBox = ({
+const ComboBoxControl = ({
     id,
     options,
     placeholder,
@@ -78,7 +90,7 @@ export const ComboBox = ({
     menuTrigger = "input",
     variant: requestedVariant,
     ...field
-}: ComboBoxProps) => {
+}: Omit<ComboBoxProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
     const { anchor, portalProps } = useGrammarPortal()
     const [chosen, setChosen] = useState<string | null>(defaultValue ?? null)

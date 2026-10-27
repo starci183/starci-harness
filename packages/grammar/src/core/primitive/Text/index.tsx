@@ -76,12 +76,17 @@ const getTextContract = (size: TextSize, resolvedTone: TextTone, showsStartConte
 
 /**
  * The skeleton keeps the size geometry (FONT-1/2/3/5) but its copy is
- * `text-transparent`, so no tone is actually visible to claim.
+ * transparent, so no tone is actually visible to claim.
+ *
+ * Skeleton parity: a loading Text is the same element with the same `as`, size, overflow and start content, so its box is
+ * the ready line's box. Its copy (when passed) stays laid out as a measured placeholder inside a shimmer bar and is not
+ * painted; with no copy the bar takes the size's default width. The start content keeps its place, unpainted.
  */
 const getTextSkeletonContract = (size: TextSize) => FONT_RULE_BY_SIZE[size]
 
-const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
-    className: TEXT_CLASS_NAME,
+/** The shimmer bar inside a loading line: it wraps the copy (or a default width) and never sets the line's own box. */
+const SKELETON_BAR_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
+    className: "starci-core-text-skeleton",
 })
 
 /** One resolved line of copy with explicit semantics, hierarchy and announcement behavior. */
@@ -102,7 +107,7 @@ export const Text = ({
     parentEmphasis,
 }: TextProps) => {
     const resolvedTone = size === "xs" ? "muted" : tone ?? "default"
-    const showsStartContent = startContent != null && !isSkeleton
+    const showsStartContent = startContent != null
 
     return (
         <Element
@@ -124,10 +129,10 @@ export const Text = ({
             aria-live={isSkeleton || live === "off" ? undefined : live}
             aria-atomic={isSkeleton || live === "off" ? undefined : true}
             aria-hidden={isSkeleton || undefined}
-            className={isSkeleton ? SKELETON_CLASS_NAME : TEXT_CLASS_NAME}
+            className={TEXT_CLASS_NAME}
         >
             {showsStartContent ? startContent : null}
-            {isSkeleton ? "\u00a0" : children}
+            {isSkeleton ? <span className={SKELETON_BAR_CLASS_NAME} data-empty={children == null ? "true" : undefined}>{children ?? "\u00a0"}</span> : children}
         </Element>
     )
 }

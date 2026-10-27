@@ -6,7 +6,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
@@ -28,8 +29,9 @@ export type NumberFieldProps = FieldControlProps & {
     /** Defaults to `secondary` inside a Grammar surface and `primary` outside (ANATOMY-2 case-1). */
     readonly variant?: "primary" | "secondary"
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real text and the input group becomes Skeleton geometry of the same size,
-     * `aria-hidden` and not focusable; the root is `aria-busy`. Value, description and error copy are not drawn.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
 }
@@ -41,10 +43,18 @@ export type NumberFieldProps = FieldControlProps & {
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const NumberField = ({ isSkeleton = false, ...props }: NumberFieldProps) => isSkeleton
+    ? <FieldSkeletonScope component="NumberField"><NumberFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <NumberFieldControl {...props} />
+
+/**
  * A number with stepping. The vendor owns `role="spinbutton"`-equivalent semantics on the input,
  * locale parsing, arrow-key and wheel stepping, clamping to min/max and the localized stepper names.
  */
-export const NumberField = ({
+const NumberFieldControl = ({
     id,
     placeholder,
     value,
@@ -56,13 +66,10 @@ export const NumberField = ({
     formatOptions,
     hideSteppers = false,
     variant: requestedVariant,
-    isSkeleton = false,
     ...field
-}: NumberFieldProps) => {
+}: Omit<NumberFieldProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
-    return isSkeleton ? (
-        <FieldSkeleton component="NumberField" tier="atom" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} variant={variant} kind="input" className="starci-core-number-field" />
-    ) : (
+    return (
         <HeroNumberField
             data-tier="atom"
             data-component="NumberField"

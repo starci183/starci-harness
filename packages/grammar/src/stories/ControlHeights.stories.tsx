@@ -62,7 +62,11 @@ export const OneRowAllAtForty: Story = {
         await waitFor(() => {
             for (const row of canvasElement.querySelectorAll<HTMLElement>("[data-story-control-row]")) {
                 for (const selector of ["[data-component=Button]", "[data-component=IconButton]", "[data-component=Switch] [data-grammar-choice-control=switch]"]) {
-                    for (const control of row.querySelectorAll<HTMLElement>(selector)) expect(Math.round(control.getBoundingClientRect().height)).toBe(40)
+                    // A control that draws no box (the Tabs scroll carets while the row does not overflow) is not a standalone control on screen.
+                    for (const control of row.querySelectorAll<HTMLElement>(selector)) {
+                        if (control.getClientRects().length === 0) continue
+                        expect(Math.round(control.getBoundingClientRect().height), control.getAttribute("aria-label") ?? control.textContent ?? "").toBe(40)
+                    }
                 }
             }
         })

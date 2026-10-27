@@ -124,58 +124,42 @@
     }
 
     /*
-     * Loading field (knowledge STATE-8, Select and Textarea `isSkeleton`): the label stays real, the control is one
-     * Skeleton block of the loaded control's height (the select trigger 2.5rem, with the touch floor below; the textarea
-     * `rows` at 1.25rem a line plus its padding, never under the 5rem field minimum). Not focusable: no control exists.
+     * Loading field (knowledge STATE-8) with skeleton parity: the control renders its ready anatomy inside
+     * `.starci-core-field-skeleton-scope` (layout-neutral, inert), so label, description and control box keep the ready
+     * geometry by construction. Every control box in the scope is painted as a Skeleton (the vendor skeleton tint and
+     * shimmer); what it holds - a value, a placeholder, an indicator, a thumb - is not drawn. Its border stays, so a
+     * family's outline keeps the field box.
      */
-    /* The loading root (Field, Select, NumberField, SearchField, SegmentedControl, CheckboxGroup, Switch, Textarea): inert geometry that can shrink inside its row or column. */
-    .starci-core-field-skeleton {
-        min-width: 0;
-        pointer-events: none;
+    .starci-core-field-skeleton-scope { display: contents; }
+
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), .starci-core-input-field, [data-grammar-choice-control], [data-grammar-tag-id]) {
+        position: relative;
+        overflow: hidden;
+        background: color-mix(in oklab, var(--surface-tertiary, #e4e4e7) 70%, transparent) !important;
+        color: transparent !important;
         user-select: none;
     }
 
-    .starci-core-field-skeleton-control { display: block; min-width: 0; }
-
-    .starci-core-field-skeleton-control > .starci-core-skeleton {
-        block-size: 100%;
-        aspect-ratio: auto;
+    /* A control box whose rounded part is inside it (a ComboBox or SegmentedControl group, a Field control slot) takes the field radius. */
+    .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-segmented-control-group, .starci-core-field-control) {
+        border-radius: var(--field-radius, calc(var(--radius, 0.5rem) * 1.5));
     }
 
-    .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="input"]) { block-size: 2.5rem; }
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options), [data-grammar-choice-control], [data-grammar-tag-id]) > * { visibility: hidden; }
+    .starci-core-field-skeleton-scope :is(input, textarea)::placeholder { color: transparent; }
 
-    /* The select trigger is HeroUI's own (min-h-9). */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="select"] { block-size: var(--starci-core-control-min-size, 2.5rem); }
-
-    /* Joined segments: one block, a segment-width (5rem) per option, never wider than the field; `fill` takes the whole row. */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"] {
-        block-size: 2.5rem;
-        inline-size: min(100%, calc(var(--starci-core-skeleton-segments, 2) * 5rem));
+    .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"]:not(.starci-core-choice-group-options, textarea), [data-grammar-choice-control], [data-grammar-tag-id])::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        visibility: visible;
+        background-image: linear-gradient(to right, transparent, var(--surface-tertiary, #e4e4e7), transparent);
+        translate: -100%;
+        animation: skeleton 2s linear infinite;
     }
 
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-width="fill"] { inline-size: 100%; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"][data-grammar-segmented-size="control"] { block-size: var(--starci-core-control-min-size, 2.75rem); }
-
-    /* A checkbox box and a switch track beside their real labels. */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="choice"] { flex: none; block-size: 1rem; inline-size: 1rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"] { flex: none; block-size: 1.25rem; inline-size: 2rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="lg"] { block-size: 1.5rem; inline-size: 3rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="control"] { block-size: var(--starci-core-control-min-size, 2.5rem); inline-size: 4.5rem; }
-
-    .starci-core-field-skeleton-choice-label {
-        color: var(--foreground, CanvasText);
-        font-size: 0.875rem;
-        line-height: 1.25;
-    }
-
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="textarea"] {
-        block-size: max(5rem, calc(var(--starci-core-skeleton-rows, 4) * 1.25rem + 1rem));
-    }
-
-    @media (pointer: coarse), (max-width: 40rem) {
-        .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="select"], [data-grammar-field-skeleton="input"], [data-grammar-field-skeleton="segmented"]) {
-            min-block-size: var(--starci-core-control-min-size, 2.5rem);
-        }
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-field-skeleton-scope :is([data-grammar-field-control="true"], [data-grammar-choice-control])::after { animation: none; content: none; }
     }
 
     .starci-core-combo-box-group,

@@ -2,7 +2,7 @@
 
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
-import { fieldStateAttributes, StaticFieldError, FieldSkeleton, isFieldInvalid, type FieldControlProps } from "../../primitive/Field/index.js"
+import { fieldStateAttributes, StaticFieldError, FieldSkeletonScope, loadingFieldProps, isFieldInvalid, type FieldControlProps } from "../../primitive/Field/index.js"
 
 export type SegmentOption = {
     readonly value: string
@@ -27,8 +27,9 @@ export type SegmentedControlProps = FieldControlProps & {
      */
     readonly size?: SegmentedControlSize
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real text and the segments become one Skeleton block of the same
-     * height (one segment-width per option; `fill` stretches it), `aria-hidden`, nothing focusable; the root is `aria-busy`.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
 }
@@ -39,11 +40,19 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 }
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const SegmentedControl = ({ isSkeleton = false, ...props }: SegmentedControlProps) => isSkeleton
+    ? <FieldSkeletonScope component="SegmentedControl"><SegmentedControlControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <SegmentedControlControl {...props} />
+
+/**
  * One-of-few choice drawn as joined segments (a toggle-button group in single-selection mode, so it
  * is announced as a radio group). A segment is never deselected by pressing it again. With `name`,
  * the selected value is submitted through a hidden input so it works inside a Form.
  */
-export const SegmentedControl = ({
+const SegmentedControlControl = ({
     options,
     value,
     defaultValue,
@@ -59,8 +68,7 @@ export const SegmentedControl = ({
     isDisabled,
     isReadOnly,
     name,
-    isSkeleton = false,
-}: SegmentedControlProps) => {
+}: Omit<SegmentedControlProps, "isSkeleton">) => {
     const id = useId().replaceAll(":", "")
     const [held, setHeld] = useState<string | undefined>(value ?? defaultValue ?? options[0]?.value)
     const selected = value ?? held
@@ -70,9 +78,6 @@ export const SegmentedControl = ({
     const errorId = invalid && errorMessage != null ? `segmented${id}-error` : undefined
     const describedBy = [descriptionId, errorId].filter((part) => part !== undefined).join(" ")
 
-    if (isSkeleton) {
-        return <FieldSkeleton component="SegmentedControl" tier="composite" label={label} isLabelHidden={isLabelHidden} isRequired={isRequired} kind="segmented" count={options.length} fill={width === "fill"} segmentedSize={size} className="starci-core-segmented-control" />
-    }
 
     return (
         <div

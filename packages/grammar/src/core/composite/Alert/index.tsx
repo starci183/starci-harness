@@ -7,6 +7,7 @@ import { vendorStatusFor } from "../../overlayScope.js"
 import { Button, type ButtonVariant } from "../../primitive/Button/index.js"
 import { CloseButton } from "../../primitive/CloseButton/index.js"
 import { Icon, type IconSource } from "../../primitive/Icon/index.js"
+import { SkeletonPlaceholder } from "../../primitive/Skeleton/index.js"
 
 export type AlertUrgency = "polite" | "assertive"
 /**
@@ -37,6 +38,11 @@ type AlertBase = {
      */
     readonly urgency?: AlertUrgency
     readonly appearance?: AlertAppearance
+    /**
+     * Unresolved banner (knowledge STATE-8): the same anatomy in the neutral tone, not announced (no status role), its
+     * glyph, title, description and actions laid out unseen under shimmers, so it keeps the ready box (skeleton parity).
+     */
+    readonly isSkeleton?: boolean
 }
 
 /** A dismissible banner must name its close action; a permanent one has neither prop. */
@@ -83,7 +89,9 @@ const alertActionVariantFor = (tone: PresentationState): ButtonVariant => {
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 export const Alert = (props: AlertProps) => {
-    const { title, description, tone = "informative", action, urgency, appearance = "surface" } = props
+    const { title, description, tone: readyTone = "informative", action, urgency, appearance = "surface", isSkeleton = false } = props
+    const tone: PresentationState = isSkeleton ? "neutral" : readyTone
+    const unseen = (node: ReactNode) => isSkeleton ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
 
@@ -101,7 +109,7 @@ export const Alert = (props: AlertProps) => {
             data-grammar-appearance={appearance}
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
-            role={resolvedUrgency === "assertive" ? "alert" : "status"}
+            {...(isSkeleton ? { "data-loading": "true", "aria-busy": true } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
             status={vendorStatusFor(tone)}
             className="starci-core-alert"
         >
@@ -109,15 +117,16 @@ export const Alert = (props: AlertProps) => {
                 {tone === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
             </HeroAlert.Indicator>
             <HeroAlert.Content className="starci-core-alert-content">
-                <HeroAlert.Title className="starci-core-alert-title">{title}</HeroAlert.Title>
+                <HeroAlert.Title className="starci-core-alert-title">{unseen(title)}</HeroAlert.Title>
                 {description === undefined ? null : (
-                    <HeroAlert.Description className="starci-core-alert-description">{description}</HeroAlert.Description>
+                    <HeroAlert.Description className="starci-core-alert-description">{unseen(description)}</HeroAlert.Description>
                 )}
             </HeroAlert.Content>
             {action === undefined && props.dismissLabel === undefined ? null : (
                 <span className="starci-core-alert-actions" data-grammar-alert-actions="true" data-contract="FEEDBACK-2">
                     {action === undefined ? null : (
                         <Button
+                            isSkeleton={isSkeleton}
                             size="sm"
                             variant={alertActionVariantFor(tone)}
                             onPress={action.onAction}
@@ -125,7 +134,9 @@ export const Alert = (props: AlertProps) => {
                         >{action.label}</Button>
                     )}
                     {props.dismissLabel === undefined ? null : (
-                        <CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} />
+                        isSkeleton
+                            ? <SkeletonPlaceholder shape="circle"><CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} /></SkeletonPlaceholder>
+                            : <CloseButton label={props.dismissLabel} size="sm" onPress={dismiss} />
                     )}
                 </span>
             )}

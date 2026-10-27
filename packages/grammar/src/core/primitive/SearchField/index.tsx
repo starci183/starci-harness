@@ -7,7 +7,8 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    FieldSkeleton,
+    FieldSkeletonScope,
+    loadingFieldProps,
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
@@ -32,8 +33,9 @@ export type SearchFieldProps = FieldControlProps & {
     /** `control` aligns the search box with every other control in the navbar. */
     readonly size?: "md" | "control"
     /**
-     * Initial unresolved content (knowledge STATE-8): the label stays real text and the search box becomes Skeleton geometry of the same size,
-     * `aria-hidden` and not focusable; the root is `aria-busy`. Value, description and error copy are not drawn.
+     * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
+     * description, control box, options) inside an inert, `aria-busy` scope, its control box painted as a Skeleton and its
+     * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isSkeleton?: boolean
     /** Focus left the input. */
@@ -51,10 +53,18 @@ export type SearchFieldProps = FieldControlProps & {
  */
 
 /**
+ * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const SearchField = ({ isSkeleton = false, ...props }: SearchFieldProps) => isSkeleton
+    ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <SearchFieldControl {...props} />
+
+/**
  * A text field whose job is a query: `type="search"`, a clear button, Escape to clear, Enter to
  * submit - all the vendor's. The leading glyph is decoration; the label is the name.
  */
-export const SearchField = ({
+const SearchFieldControl = ({
     id,
     placeholder,
     value,
@@ -66,16 +76,13 @@ export const SearchField = ({
     clearLabel,
     variant: requestedVariant,
     size = "md",
-    isSkeleton = false,
     onBlur,
     onPaste,
     autoFocus = false,
     ...field
-}: SearchFieldProps) => {
+}: Omit<SearchFieldProps, "isSkeleton">) => {
     const variant = useFieldVariant(requestedVariant)
-    return isSkeleton ? (
-        <FieldSkeleton component="SearchField" tier="atom" label={field.label} isLabelHidden={field.isLabelHidden} isRequired={field.isRequired} variant={variant} kind="input" className={size === "control" ? "starci-core-search-field starci-core-control-size" : "starci-core-search-field"} />
-    ) : (
+    return (
         <HeroSearchField
             data-tier="atom"
             data-component="SearchField"

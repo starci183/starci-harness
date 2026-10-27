@@ -148,8 +148,9 @@
         letter-spacing: -.01em;
     }
 
-    /* Avatar / AvatarGroup: ink-ringed faces; the current identity gets a pink ring. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Avatar"] {
+    /* Avatar / AvatarGroup: ink-ringed faces; the current identity gets a pink ring. A loading avatar has no ring: its
+       Skeleton circle already takes the avatar's whole box (skeleton parity). */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Avatar"]:not([data-grammar-skeleton="true"]) {
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
     }
 
@@ -271,9 +272,9 @@
      * ListBox: every option (role="option") is an interactive row - it is the pointer and focus
      * target itself, so its states come from the vendor's attributes on the row, never from an
      * inner link or button (an option may not hold one). At rest the row keeps a transparent 2px
-     * edge so selecting it never shifts the layout.
+     * edge so selecting it never shifts the layout; a loading option keeps the same edge (skeleton parity).
      */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ListBox"] [data-grammar-list-item] {
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ListBox"] :is([data-grammar-list-item], .starci-core-list-box-skeleton-option) {
         border: var(--offset-pop-outline-width) solid transparent;
         border-radius: var(--offset-pop-control-radius);
         font-weight: 700;
