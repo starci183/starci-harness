@@ -46,9 +46,9 @@ Enforced by: R55 (`use-client-only-at-boundary`, `client-no-server-import`, `ser
 
 ## FE-BOUNDARY-3 The client providers are one file under the locale layout
 
-`app/[locale]/providers.tsx` nests, once, the next-intl client provider, the redux provider, the vendor i18n and
-router providers, the theme provider, the grammar root, the SWR configuration keyed by the viewer, the toast region and
-the app-wide side effects (`features/layouts/SideEffectsLayout`, which mounts the `hooks/effects` components); the
+`app/[locale]/providers.tsx` nests, once, the next-intl client provider, the redux provider, the vendor i18n
+provider, the theme provider, the grammar root (given the router's `navigate` and `useHref`, FE-I18N-4), the SWR
+configuration keyed by the viewer, the toast region and the app-wide side effects (`features/layouts/SideEffectsLayout`, which mounts the `hooks/effects` components); the
 locale layout renders it around its children.
 
 Why: one provider stack per app makes the client runtime readable in one file, and keying the SWR cache by the viewer

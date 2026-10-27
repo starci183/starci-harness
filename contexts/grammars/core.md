@@ -36,7 +36,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `accentText`. Pill: the vendor's soft track and white selected segment with the surface shadow |
 | SegmentedControl | Selected segment on `accentSoft` with an accent border |
-| Chip | Badge as the vendor soft chip: tone tint with its soft foreground |
+| Chip | Badge and StatusDot with text as the vendor soft chip: tone tint with its soft foreground |
 | Input | Surface-coloured fill, transparent border, control radius; inside a surface the vendor's neutral fill |
 | Select | As Input; selection indicator at the end; option rows as List |
 | Dialog | Surface material with the soft shadow; vendor backdrop; overlays keep the grammar through the root |

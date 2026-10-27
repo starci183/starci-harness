@@ -31,8 +31,9 @@ Enforced by: R285 (`operations-only-in-swr-hooks`, `swr-only-in-family`), R50 (`
 
 ## FE-IMPORTS-3 Vendor packages have one named owner each
 
-`@heroui/react` is imported for `cn` in a `classNames.ts`, and for the runtime providers (`I18nProvider`,
-`RouterProvider`, the toast region) in `app/[locale]/providers.tsx` and `modules/toast` only; glyph sets only in
+`@heroui/react` is imported for `cn` in a `classNames.ts`, and for the runtime providers (`I18nProvider`, the toast
+region) in `app/[locale]/providers.tsx` and `modules/toast` only (the router reaches the grammar through the grammar
+root, FE-I18N-4); glyph sets only in
 `components/leaves/Icon` ([ui.md](ui.md) FE-ICON); `@supabase/*` only in `modules/auth`; `@apollo/client` only in
 `modules/api`; `axios` only in `modules/api/rest`.
 

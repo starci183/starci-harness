@@ -3,7 +3,7 @@
 Contract: [Input](../../grammars/contract.md#input). Vendor: [Input, TextField](../../vendor/heroui.md#input).
 
 ## Job
-Let the reader type one value, with a persistent label, optional standing hint, and its own error.
+Let the reader type one value, with a persistent label, an optional standing description, and its own error.
 
 ## Choose
 
@@ -28,13 +28,13 @@ stay one column (RESPONSIVE-1).
 
 ## States
 The label is always visible (a placeholder never replaces it). Error lives on the field, once (FEEDBACK-1);
-standing guidance is the hint. Exactly one focus ring, on the field frame. Disabled and skeleton per CTA-3.
+standing guidance is the `description`. Exactly one focus ring, on the field frame. Disabled and skeleton per CTA-3.
 Known field types declare autofill and input-mode hints.
 
 ## Owner split
-- **Grammar owns:** anatomy (label, control, hint, error), the layer treatment, height, focus ring, mobile text size.
+- **Grammar owns:** anatomy (label, description, control, error), the layer treatment, height, focus ring, mobile text size.
 - **Knowledge decides:** which field role, one column in narrow owners, error placement, multi-value as rows.
-- **App author decides:** label, hint and error copy, validation facts, autofill hints.
+- **App author decides:** label, description and error copy, validation facts, autofill hints.
 
 ## Rules
 FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2. Lint: `starci-fe/no-native-form-control`,

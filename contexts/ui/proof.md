@@ -46,7 +46,7 @@ UX-12 apply it to their lens):
 
 | Id | Criterion | Falsified by |
 | --- | --- | --- |
-| A11Y-1 | a field's computed name equals its visible label; hint and error are its description; required, invalid, disabled semantics match the facts; the entry survives revalidation | a placeholder as the only name; a red border without invalid semantics |
+| A11Y-1 | a field's computed name equals its visible label; its `description` and error are its accessible description; required, invalid, disabled semantics match the facts; the entry survives revalidation | a placeholder as the only name; a red border without invalid semantics |
 | A11Y-2 | a glyph-only command's accessible name is its label; decorative glyphs hidden; a meaningful standalone glyph is an image with a name | a tooltip as the only name |
 | A11Y-3 | a measurement exposes name, value and bounds equal to the product fact; an unresolved one renders no progressbar | a named progressbar announcing zero for unknown |
 | A11Y-4 | every interactive target meets `target.coarse` on coarse pointers and `target.fine` on fine pointers, hit area included; every required control works by keyboard; distinctions survive forced colours and colour removal; nothing required clips at zoom, text scaling or narrow width | a target under the floor; a distinction carried by fill alone |

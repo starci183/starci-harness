@@ -22,8 +22,10 @@ Three ideas hold the whole layer together:
 | --- | --- |
 | names a page or section | `Heading`, at the level the outline needs |
 | explains, or states a neutral fact | `Text`, default role, no state |
-| reports an outcome authority settled | `Badge` or another state owner |
-| reports a verified measurement 0-100 | `Progress` / `Meter` with its label and value |
+| names a literal (identifier, path, hash, command) | `Text mono` on its own line, `Code` inside a sentence, `FencedCodeBlock` for a block |
+| tails a live log | `Terminal` |
+| reports an outcome authority settled | `Badge`, `StatusDot` or another state owner |
+| reports a verified measurement 0-100 | `Progress` / `Meter` with its label and value; a `Meter` inside a dense row takes `size="sm"` |
 | the principal figure of an overview cell | `Text` at the leading-value rank (FONT-5) |
 | feels important but matches no role | name the job in the spec first; no type utility stands in for a rank |
 
@@ -211,7 +213,7 @@ ships its own loading and error views. Lint: `starci-fe/no-resting-twin-componen
 
 ### FEEDBACK-1 Correct at the nearest owner
 A field failure lives on that field (`errorMessage` plus `isError` on the same fact), exactly once; standing
-guidance is a `hint` that does not come and go with validation; the entry survives revalidation.
+guidance is the field's `description`, which does not come and go with validation; the entry survives revalidation.
 
 ### FEEDBACK-2 Recover at the smallest owner
 A failed or empty region recovers through its own `EmptyNotice` action, scoped to the failed operation; an unsafe
@@ -313,10 +315,10 @@ inline build.
 
 ### DISCIPLINE-2 Numbers are the heroes of an overview
 Each lead figure is the largest text in its cell, at the leading-value rank in the default tone; its label is
-smaller and muted; its unit is lighter than the value; figures compared across cells use tabular numerals (or the
-gap is recorded). A figure never takes a status colour. A row of key figures is an ordinary card with a stat strip,
-at most `budgets.ribbonCells` cells, never a bare strip on the canvas and never a painted slab. Type counts:
-`type.region`, `type.view`. Proof: TASTE-6.
+smaller and muted; its unit is lighter than the value; figures compared across cells or updated in place use
+tabular numerals (`Text tabular`). A figure never takes a status colour. A row of key figures is an ordinary card
+with a stat strip, at most `budgets.ribbonCells` cells, never a bare strip on the canvas and never a painted slab.
+Type counts: `type.region`, `type.view`. Proof: TASTE-6.
 
 ### DISCIPLINE-3 One signature moment per page
 The spec names the page's one signature moment: the brand art band where the brand record allows its mascot on

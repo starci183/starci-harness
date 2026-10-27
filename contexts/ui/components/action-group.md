@@ -16,6 +16,7 @@ Place several actions together. Two different things look alike here and must no
 | Need | Use |
 | --- | --- |
 | dialog, drawer, form or wizard footer | decision group, trailing edge of the footer |
+| a page decision in thumb reach on a narrow screen | `PinnedActionBar`: the one commit, or a `summary` (a selection count, unsaved changes) with its `dismiss` and `commit` |
 | per-item commands on a row | the row's actions slot; one visible `neutral`, the rest in a [menu](menu.md) |
 | toolbar of peer tools on one object | `ButtonGroup` |
 | choosing one value | not a group of buttons: [segmented-control](segmented-control.md) |

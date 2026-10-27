@@ -37,13 +37,14 @@ the emphasis is spread this way:
 
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never
-replace pending with disabled. A disabled commit never stands in for an empty state (CTA-5).
+replace pending with disabled. A disabled button states why in `disabledReason`. A disabled commit never stands in for an empty state (CTA-5).
 
 ## Owner split
 - **Grammar owns:** variants, the intent x placement map, sizes and their values, the pill shape, pending anatomy,
   the destination/command split by `href`.
 - **Knowledge decides:** which intent the facts give, one commit per view, group order, which step a placement takes.
-- **App author decides:** the label, the handler or `href`, the three facts in the spec. Nothing visual.
+- **App author decides:** the label, the handler or `href`, the disabled reason, the three facts in the spec.
+  Nothing visual.
 
 ## Rules
 CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-fe/button-intent-required`, `button-no-variant`,

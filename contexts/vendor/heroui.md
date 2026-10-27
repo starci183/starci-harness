@@ -67,7 +67,7 @@ primary (solid tone), secondary (neutral fill, toned text; the default), soft (t
 (transparent). Sizes `sm`, `md`, `lg` run about 20 to 28px: chips live below the control scale because they label,
 they are not targets. Badge is the same tone x emphasis (primary, secondary, soft) placed on an Anchor at a corner.
 Tag is the interactive sibling inside a TagGroup, with a required RemoveButton and grid roles, variants `default`
-and `surface`. House: the Badge is the soft small chip; picking among peers is a TagGroup.
+and `surface`. House: the Badge and the StatusDot with text are the soft chip; picking among peers is a TagGroup.
 
 ## Input
 

@@ -98,7 +98,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-FORM One form hook per form, with translated messages and contract bounds · FE-TOAST Every user-started write reports through `modules/toast`
 - [code/fe/function.md](../code/fe/function.md) · 6 KB — What a component, route or page owner takes and returns.
   - sections: FE-FUNCTION-1 A component takes one `props` parameter of a named type · FE-FUNCTION-2 The pure half takes `{ state, props, on }` of atoms · FE-FUNCTION-3 The connected half resolves everything and renders its twin · FE-FUNCTION-4 A lower tier takes narrow resolved fields · FE-FUNCTION-5 The route file adapts; the page owner holds the metadata · FE-FUNCTION-6 A function stays within its budget and free of measured smells
-- [code/fe/i18n.md](../code/fe/i18n.md) · 4 KB — Where readable text lives, how the locale is chosen and how a value is formatted.
+- [code/fe/i18n.md](../code/fe/i18n.md) · 5 KB — Where readable text lives, how the locale is chosen and how a value is formatted.
   - sections: FE-I18N-1 next-intl is written once: routing, request config, navigation · FE-I18N-2 No display text in source · FE-I18N-3 Every locale has the same keys, and every key is read · FE-I18N-4 Navigation is locale-aware and every path comes from `modules/routes` · FE-I18N-5 Each kind of value has one formatting owner
 - [code/fe/imports.md](../code/fe/imports.md) · 2 KB — What a front-end file may import beyond the shared law.
   - sections: FE-IMPORTS-1 The grammar comes from its published entry, imported where it renders · FE-IMPORTS-2 Data enters through hooks · FE-IMPORTS-3 Vendor packages have one named owner each
@@ -139,11 +139,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, auth-callback-shape, avatar-default-dicebear-initials, band-is-first-face and 68 more
 - [grammars/README.md](../grammars/README.md) · 6 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
-- [grammars/common.md](../grammars/common.md) · 9 KB — Common is the layer every grammar is drawn over.
+- [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, four relationships · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 12 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 13 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 16 KB — What every grammar implements.
+- [grammars/contract.yaml](../grammars/contract.yaml) · 18 KB — What every grammar implements.
   - ids: alert, avatar, button, button-group, card, chip, dialog, empty-state, input, list, menu, segmented-control, select, shell, string, tabs
 - [grammars/core.md](../grammars/core.md) · 4 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
@@ -191,7 +191,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/card.md](../ui/components/card.md) · 2 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/chip.md](../ui/components/chip.md) · 2 KB — Contract: Chip.
+- [ui/components/chip.md](../ui/components/chip.md) · 3 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 2 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
