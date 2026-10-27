@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0 - 2026-10-27
+
+- Changed: versioned together with Grammar 0.14.0; the bundled canon pins name the 0.14.0 Grammar family. No rule changes.
+
 ## 0.13.0 - 2026-10-27
 
 - Changed: `@starci/eslint-canon-fe` is a peer dependency (9.2.0), installed by the app beside this package, instead of a nested dependency.
