@@ -21,7 +21,7 @@ This file owns the record families, their lifecycle vocabulary and who writes wh
 A record's `id` is `<family>.<feature>.<name>` with the nesting segments joined by dots (`contract.<f>.<group>.<name>`);
 the folder path is not identity, and every reference between records uses the id.
 
-## Record families
+## PROJECT-WORK-1 Every record belongs to one family
 
 Every leaf record carries `schema`, `id`, `title`, `state`, `activity`, and as needed `refs` (ids it reads),
 `dependsOn`, `blockedBy` (ids that must be done first), `blockers` (impediments in words), `requiresProof` (the
@@ -39,7 +39,7 @@ commands that prove it, each `{required, command, note}`), `change` (`{rev, kind
 | `decision` | `work/policy-decision@1` | a policy question, its options and the owner's outcome | `question`, `options`, `recommendation`, `recommendationReason`, `outcome`, `chosen`, `reason`, `blocks` |
 | `sds` | `work/sds-component@1` | a logical component of the design: responsibility, interfaces, sequence; no repository path until code proves it | `responsibility`, `interfaces`, `owners`, `stateMachine`, `sequence` |
 | `contract` | `work/contract@1` | a synchronous surface one feature provides and others consume | `owner`, `between`, `surface`, `guarantees`, `consumerObligations` |
-| `integration` | `work/integration@1` | the boundary to one external provider, proven only against it | `provider`, `boundary`, `endpoints`, `credential`, `sandbox` |
+| `integration` | `work/integration@1` | the boundary to one external provider, proven only against it | `provider`, `boundary`, `endpoints`, `credential`, `sandbox`, `research` (PROJECT-WORK-4) |
 | `ui` | `work/ui-screen@1` | one screen: route, surface, persona and its interface spec | `brand`, `shell`, `route`, `routeParent`, `surface`, `persona`, `ui`, `direction` (the repository path of its drawn HTML), `assets` (`{slot, summary, file?}`, the artwork the drawing leaves for real art) |
 | `impl/<repository>` | `work/implementation@1` | the code that proves records, in one repository named by `workspace.yaml` | `repository`, `owners` (`{role, path}`, module-root directories, never files), `proves` |
 | `uat` | `work/uat-flow@1` | one acceptance walk in a browser (below) | `entry`, `actor`, `accounts`, `environment`, `steps`, `failurePaths`, `recording`, `effects`, `cleanup` |
@@ -50,7 +50,7 @@ Requirements (`br`, `fr`, `nfr`, `journey`, `data`, `decision`) say what must ho
 and `uat` are the proof. A shared rule, entity or contract has one owning feature, and other features reference its
 id. A family folder exists only when the feature has a record for it.
 
-## State and activity
+## PROJECT-WORK-2 Only leaves carry state, and proof cannot outrun its target
 
 - **Only leaves carry state.** A feature, the catalog and a scope folder derive progress from their records and
   carry none; an acceptance criterion follows its rule.
@@ -64,7 +64,34 @@ id. A family folder exists only when the feature has a record for it.
   when every id in `closedBy` is; a `ui` only when the owner approved the direction its `direction` names. A change to a record
   that was `done` returns its dependents to `todo` until they are proven again.
 
-## Who writes what
+## PROJECT-WORK-3 Requirements and design reason across every case; a decided slice proceeds
+
+A requirement or design record reasons, for the slice it serves, across the main path, the alternatives, the failures
+and the edge cases, with the constraints that bound them: the behaviour, boundaries, contracts, data, authority and
+assumptions a slice depends on are clear enough to build without guessing. A consequential unknown is written down
+(an open question of the feature, a `blockers` line, a `decision` or a `gap` record), never left out. An unresolved
+business, security or data choice blocks only the records and effects it touches, through `blockedBy` on its
+`decision`; a slice that is decided proceeds to code and test, and what they reveal repairs the owning record, whose
+change returns its dependents to `todo` (PROJECT-WORK-2). Breadth is not certainty: the record covers what is
+foreseeable, not every theoretical case.
+
+Why: an omitted case surfaces as a guess in code, and waiting for a complete design blocks the slices that are already
+decided.
+
+## PROJECT-WORK-4 An integration is designed from the provider's current documentation
+
+Before an `integration` record is designed, its author reads the provider's current official documentation for the
+intended use. The record's `research` keeps what that reading found: the primary sources and the date they were read,
+the authentication, account, scope and lifecycle limits the provider supports, the callback or webhook setup it needs
+(BE-WEBHOOK-1 … 4 build it), which prerequisites only the owner can provide, and the live verification plan that proves
+the integration against the provider itself. Missing research sends the work back to the record, never to the owner as
+a bare credential request, and a credential that exists proves nothing about the provider; the live proof runs only when
+it is asked for or before a release. The code the record designs is BE-INFRA-3.
+
+Why: a provider's behaviour changes under its own release cycle; a design from memory or an old example fails where
+the current limits differ, and only a dated source shows when the design must be read again.
+
+## PROJECT-WORK-5 Each writer writes only its part
 
 | writer | writes |
 |---|---|
@@ -88,7 +115,7 @@ screens and is audited and walked; back-end code is tested, proven end to end an
 already satisfies (its state, its drawing, its owners' commits, a receipted run, a green task over it) is skipped, and a
 workflow covering the record carries every other step ([cli/src/harness/lanes.ts](../../cli/src/harness/lanes.ts)).
 
-## UAT flows
+## PROJECT-WORK-6 A UAT flow runs from its record
 
 A flow lives at `features/<f>/uat/<flow>/` and runs from its record: the walk, the accounts and the environment are
 read from Work, never retyped in a script.

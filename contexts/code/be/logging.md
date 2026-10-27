@@ -25,7 +25,7 @@ Each owner declares `<owner>.log-events.ts` (`export enum OrdersLogEvent { ShipF
 member documented); the first argument of a log call is such a member, never a sentence. A failure is logged with the
 caught value as `cause` and plain fields: `this.logger.error(OrdersLogEvent.ShipFailed, cause, { workspaceId, orderId })`.
 No value typed `Secret`, no token, request body or personal identifier is logged. A handler does not log what it
-throws: `ICQRSHandler.execute` logs `OperationFailed` once.
+throws; its base logs it once (BE-CQRS-3).
 
 Why: a stable identity is searchable and alertable, and a cause keeps the stack.
 

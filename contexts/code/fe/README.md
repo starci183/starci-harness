@@ -10,7 +10,8 @@ entries, Prettier, no suppression, no front-end tests) are [shared](../shared/RE
 Read by: an agent before it writes or reviews front-end code (the topic of each slot it touches); a generator
 reads each file's front matter (`slots`, the slot ids it teaches) to map a slot to its topics.
 
-## The placement test (FE-RULE-OWNERSHIP)
+<a id="the-placement-test-fe-rule-ownership"></a>
+## FE-RULE-OWNERSHIP The placement test puts each requirement and its check with one owner
 
 Every requirement and its check is placed by four questions, asked in order:
 
@@ -23,11 +24,7 @@ Every requirement and its check is placed by four questions, asked in order:
 4. Is it checkable on any code whatever the grammar? The universal canon `@starci/eslint-canon-fe` owns the check;
    it names no grammar component, prop, variant or size.
 
-## What the app decides
-
-The app supplies product facts, copy keys, routes, data and layout classes on the boxes it owns. It never makes a
-visual choice: a component, its variant, size, tone, paint, radius or depth is decided by a rule in
-[ui](../../ui/README.md) or resolved by the grammar from context ([ui.md](ui.md) FE-UI-1).
+What the app decides, and that it makes no visual choice, is FE-UI-1 in [ui.md](ui.md).
 
 ## Data status of a region
 
@@ -88,9 +85,5 @@ Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-res
 - **A new route:** [architecture.md](architecture.md), [function.md](function.md) FE-FUNCTION-5,
   [boundaries.md](boundaries.md).
 
-## House rules
-
-Edits follow [contexts/README.md](../../README.md#house-rules-for-editing-contexts) and CONTRIBUTING.md CONTRIB-6: a
-change rewrites the rule where its concept lives, under its one id. What is specific here: every rule states its law in
-one sentence, why, and what enforces it (a lint rule id with its HFS rule, or "review only"); what a lint rule flags is
-the rule's own documentation, not repeated here.
+Every rule here takes the form of [code/README.md](../README.md); an enforcer is a front-end canon or grammar lint
+rule id with its HFS rule, or "review only".

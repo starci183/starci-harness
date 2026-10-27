@@ -1,7 +1,8 @@
 # Full: what differs
 
 Only the differences of a full app from the shared project model ([README.md](README.md)); everything not named here
-is the same in both editions. An `hfs.json` without an edition is full (R212 in [hfs/rules.yaml](../hfs/rules.yaml)).
+is the same in both editions. How the edition is chosen is PROJECT-1 in [README.md](README.md) (R212 in
+[hfs/rules.yaml](../hfs/rules.yaml)).
 Each line names the owner of the fact; the slot, rule or ruling is the authority, not this page.
 
 ## Shape of production

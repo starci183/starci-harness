@@ -60,8 +60,9 @@ Enforced by: `no-secret-default` (R44), R248.
 
 ## BE-CONFIG-4 Secrets live only sealed in the stack
 
-A secret exists only as a sealed `.starcistacks/<env>/secrets/<slug>.enc` member and reaches the process at runtime
-through `<KEY>_FILE`; a decrypted value never enters the app tree, ignored or not. Key lists name slugs, never values.
+A secret is a sealed member of the app's stack, in the custody of PROJECT-STACKS-5
+([project/stacks.md](../../project/stacks.md)), and reaches the process at runtime only through `<KEY>_FILE`, which
+`EnvSource` reads (BE-CONFIG-1). Key lists name slugs, never values.
 
 Why: one sealed location makes custody auditable and keeps plaintext out of history and agent context.
 

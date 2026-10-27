@@ -37,8 +37,9 @@ Enforced by: `feature-layout` (R29), R179, R180, `feature-logic-role` (R264).
 A capability has one `index.ts` at its root and only the parts it owns: module files when it registers providers,
 `<c>.config.ts` and `<c>.options.ts` when configured, `<c>.decorators.ts` for its injectors, ports
 (`<c>.port.ts`), services, policies, mappers, clients, and the sub-folders `errors/`, `messages/` and `persistence/`.
-No nested `index.ts`, no empty folder; the index exports named symbols within the slot's `budget.indexExports`.
+No empty folder; its one index is BE-IMPORTS-1.
 
-Why: one public entry per owner is the only way to change internals without a repository-wide search.
+Why: a capability that holds only what it owns can be moved, replaced or deleted as a unit; its single entry is why
+SHARED-IMPORTS-1 holds.
 
 Enforced by: `no-folder-reexport`, `import-owner-entry` (R30), `slot-undeclared` (R01).

@@ -8,8 +8,8 @@ catch-and-wait loop.
 
 ## BE-RESILIENCE-1 A retry is the job's attempts; a wait goes through the platform timer
 
-Work that may fail transiently runs in a job and is retried by the queue policy of `platform/queue` (bounded attempts
-and backoff; an exhausted job stays failed as the dead letter), so it must be safe to repeat (fenced, claimed through
+Work that may fail transiently runs in a job and is retried by the queue policy of `platform/queue` (BE-QUEUES-2), so
+it must be safe to repeat (fenced, claimed through
 the inbox, or idempotent at the provider). Code that must wait inside a process schedules through the `Timer` port of
 `platform/retry` (`@InjectTimer()`), never `setTimeout` or `node:timers/promises`. A loop that catches and waits does
 not exist outside `platform/retry`.

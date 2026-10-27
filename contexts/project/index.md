@@ -5,11 +5,13 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 12 KB — Read this file first, in this repository or in any app the harness drives.
-  - sections: Load order · Two layers of context · Harness · The boundary model: four owners, one app · Map · Reading order by task · Feedback hardens · House rules for editing contexts
-- [code/README.md](../code/README.md) · 2 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
-  - sections: Read for a coding task
-- [code/be/README.md](../code/be/README.md) · 5 KB — How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to `@starci/eslint-canon-be`.
+- [README.md](../README.md) · 13 KB — Read this file first, in this repository or in any app the harness drives.
+  - sections: Load order · Two layers of context · Harness · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
+- [code/README.md](../code/README.md) · 6 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
+  - sections: Read for a coding task · Review obligations
+  - ids: CODE-REVIEW-1, CODE-REVIEW-2, CODE-REVIEW-3, CODE-REVIEW-4, CODE-REVIEW-5, CODE-REVIEW-6, CODE-REVIEW-7
+- [code/be/README.md](../code/be/README.md) · 9 KB — How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to `@starci/eslint-canon-be`, in the rule form of code/README.md.
+  - sections: BE-MECHANISM-1 Choosing a mechanism: the smallest one the invariant needs
   - ids: Back-end
 - [code/be/api-auth.md](../code/be/api-auth.md) · 5 KB — Which operations are open, who verifies the caller, how input and traffic are bounded and what the API edge trusts.
   - sections: BE-AUTH-1 Default deny through the global guard chain · BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource · BE-AUTH-3 Constant-time comparison and safe cookies · BE-AUTH-4 Every input is validated and bounded; doors are rate-limited · BE-AUTH-6 Lists page by opaque cursor · BE-AUTH-7 The API edge states what it trusts · BE-AUTH-8 Liveness and readiness are different signals
@@ -22,7 +24,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/be/cli.md](../code/be/cli.md) · 3 KB — Where a one-off action (migrate, seed, sync, cleanup, an operator command) lives: a command of the one cli app, laid out as groups and sub-commands, thin and unit-tested.
   - sections: BE-CLI-1 One cli app boots nest-commander and never serves · BE-CLI-2 Commands are groups and sub-commands under `features/cli` · BE-CLI-3 A command delegates once and is unit-tested · BE-CLI-4 Only the cli parses the command line
 - [code/be/comment.md](../code/be/comment.md) · 2 KB — The back-end specifics of comments.
-  - sections: BE-COMMENT-1 On a decorated class the docblock sits after the decorators · BE-COMMENT-3 Members are documented, not only exports · BE-COMMENT-7 Back-end source holds no second language outside the catalogs
+  - sections: BE-COMMENT-1 On a decorated class the docblock sits after the decorators · BE-COMMENT-3 Members are documented, not only exports · BE-COMMENT-7 Back-end catalogs are the owner's messages files and the i18n fixtures slot
 - [code/be/config.md](../code/be/config.md) · 4 KB — Who reads the environment, who parses it and how values reach code: one `EnvSource`, a typed reader per app, a parser per capability, options through injectors, no default for a ...
   - sections: BE-CONFIG-1 One reader of the environment, one reader per app · BE-CONFIG-2 A capability parses its own config; classes read it through the injector · BE-CONFIG-3 No default for a secret or an address · BE-CONFIG-4 Secrets live only sealed in the stack
 - [code/be/domain.md](../code/be/domain.md) · 3 KB — Where a business decision lives: a capability that owns its rules, its tables and its transaction.
@@ -63,7 +65,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-REALTIME-1 A channel is a kind folder with one door · BE-REALTIME-2 A door reads the hub and nothing else; the committing service publishes · BE-REALTIME-3 The topic starts with the principal; membership is enforced on publish · BE-REALTIME-5 A stream resumes, beats and stays unbuffered · BE-REALTIME-7 One hub port, a shared adapter when replicas share traffic · BE-REALTIME-4 Delivery is proven with a real client
 - [code/be/resilience.md](../code/be/resilience.md) · 1 KB — How code retries a transient failure: through the queue's attempts, or through the shared timer, never a hand-written catch-and-wait loop.
   - sections: BE-RESILIENCE-1 A retry is the job's attempts; a wait goes through the platform timer
-- [code/be/saga.md](../code/be/saga.md) · 4 KB — Decides how a flow that spans contexts or services and must be undone when a later step fails is written: a saga feature folder whose orchestrator pairs every step with its ...
+- [code/be/saga.md](../code/be/saga.md) · 3 KB — Decides how a flow that spans contexts or services and must be undone when a later step fails is written: a saga feature folder whose orchestrator pairs every step with its ...
   - sections: BE-SAGA-1 Every step has a compensation, and the orchestrator lists them all · BE-SAGA-2 The state of a run is typed, versioned and moved only through the fenced store · BE-SAGA-3 Every event of a step or compensation is in a vendored contract · BE-SAGA-4 Every compensation path has a spec that injects a failure
 - [code/be/services.md](../code/be/services.md) · 4 KB — Decides where a back-end service lives when a product runs more than one, how images are pinned, how the contract between services is vendored and evolves, and how an asynchronous ...
   - sections: BE-SERVICES-1 A service lives only at be/apps/<service>, and no service imports its sibling · BE-SERVICES-2 Every image of a multi-service stack is pinned · BE-SERVICES-3 The contract between services is vendored and checked against the provider · BE-PERSISTENCE-15 Event contracts evolve only additively · BE-SERVICES-4 Every consumed event has an e2e spec through the world
@@ -77,8 +79,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-TYPING-1 Interfaces for shapes, types for unions and aliases · BE-TYPING-2 Each layer has its own contract · BE-TYPING-3 Mutability follows lifecycle · BE-TYPING-4 Stable values are string enums or literal unions · BE-TYPING-5 A DTO is validated; an unknown payload is narrowed by its owner · BE-TYPING-8 A zod schema lives in its owner's `*.schema.ts` and is bounded
 - [code/be/webhooks.md](../code/be/webhooks.md) · 4 KB — How a delivery a provider POSTs is received: one public door that proves the delivery first and hands it to one domain intake, which records it durably; a job processes it after ...
   - sections: BE-WEBHOOK-1 A webhook is a kind folder with one door, its module and its spec · BE-WEBHOOK-2 The door verifies first, then makes one intake call · BE-WEBHOOK-3 The intake records the receipt; a job processes it after commit · BE-WEBHOOK-4 Three behaviours are proven against a signing fake
-- [code/fe/README.md](../code/fe/README.md) · 7 KB — How the code of a Next.js front end is written: where a unit lives, what its files are called, how a component function is shaped, where data, text and colour come from, how a ...
-  - sections: The placement test (FE-RULE-OWNERSHIP) · What the app decides · Data status of a region · Topics · Reading order · House rules
+- [code/fe/README.md](../code/fe/README.md) · 6 KB — How the code of a Next.js front end is written: where a unit lives, what its files are called, how a component function is shaped, where data, text and colour come from, how a ...
+  - sections: FE-RULE-OWNERSHIP The placement test puts each requirement and its check with one owner · Data status of a region · Topics · Reading order
   - ids: Front-end
 - [code/fe/architecture.md](../code/fe/architecture.md) · 4 KB — The responsibility graph of a Next.js app: who adapts the framework, who owns a scenario, who owns a world, and which way imports point.
   - sections: FE-ARCHITECTURE-1 A route adapts the framework to one feature owner · FE-ARCHITECTURE-2 Imports point down the tiers, through owner entries, without cycles · FE-ARCHITECTURE-3 A world is owned by a connected block, never by a page or a lower tier · FE-ARCHITECTURE-4 Apps never import each other; shared code is a built package · FE-ROUTE The front end serves no API
@@ -112,7 +114,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-TYPING-1 Props are readonly all the way down, and unused props are not declared · FE-TYPING-2 State and modes are literal unions, never enums · FE-TYPING-3 Wire, feature and view types are distinct
 - [code/fe/ui.md](../code/fe/ui.md) · 5 KB — The one place that says what an app may style.
   - sections: FE-UI-1 Compose the selected grammar; the app makes no visual choice · FE-CSS-1 App CSS is layout only · FE-CSS-2 `globals.css` imports in the cascade order · FE-CSS-3 Colour lives in one brand file · FE-ICON One glyph vocabulary through one owner
-- [code/shared/README.md](../code/shared/README.md) · 2 KB — The coding rules both sides of an app follow, back end and front end alike: one rule here replaces a copy on each side.
+- [code/shared/README.md](../code/shared/README.md) · 1 KB — The coding rules both sides of an app follow, back end and front end alike: one rule here replaces a copy on each side.
 - [code/shared/comment.md](../code/shared/comment.md) · 2 KB — Whether a declaration or statement carries a comment and what it says.
   - sections: SHARED-COMMENT-1 Every export carries a docblock that states responsibility · SHARED-COMMENT-2 A line comment sits above its statement and says why · SHARED-COMMENT-3 Source text is English, with no emoji
 - [code/shared/format.md](../code/shared/format.md) · 2 KB — How source text is laid out.
@@ -125,7 +127,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: SHARED-NAMING-1 Identifier case follows what the identifier is · SHARED-NAMING-2 Exports are named; a default export only where a framework loads one · SHARED-NAMING-3 Module-level functions are arrow constants
 - [code/shared/scripts.md](../code/shared/scripts.md) · 3 KB — What an op runs in an app, what the app's CI runs after the push, and who commits.
   - sections: SHARED-SCRIPTS-1 The app's scripts are managed; an op calls them by name · SHARED-SCRIPTS-2 Generated code is produced by its command, never written by hand · SHARED-SCRIPTS-3 CI judges the app after the push · SHARED-SCRIPTS-4 An op never commits; the harness does
-- [code/shared/test.md](../code/shared/test.md) · 3 KB — Which side carries tests, what a coding op tests and what it runs.
+- [code/shared/test.md](../code/shared/test.md) · 2 KB — Which side carries tests, what a coding op tests and what it runs.
   - sections: SHARED-TEST-1 The back end is tested; the front end has no tests · SHARED-TEST-2 An op tests what it changed and runs only those tests · SHARED-TEST-3 An op writes no test kind its edition forbids
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
@@ -166,24 +168,24 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [hfs/slots.yaml](../hfs/slots.yaml) · 91 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta, app.gitattributes, app.github-meta, app.hooks, app.lockfile, app.package-manifest, app.plaintext-env, app.quality-config and 132 more
 - [project/README.md](../project/README.md) · 7 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
-  - sections: What a project is · Life cycle of a piece of work · Where to read for a task · Files
+  - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 75 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
-- [project/lint.md](../project/lint.md) · 8 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
-  - sections: Where a check runs · Packages and gates · Facts no machine checks yet · Moving a fact to a machine · Read with
+- [project/lint.md](../project/lint.md) · 7 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
+  - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · Read with
 - [project/lite.md](../project/lite.md) · 5 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Read with
-- [project/stacks.md](../project/stacks.md) · 9 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed and how ...
-  - sections: One root per app · The manifest · Environments · Ingress · Secret custody · Operations · Local runs · Read with
-- [project/work.md](../project/work.md) · 11 KB — `.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built and how it is accepted.
-  - sections: The tree · Record families · State and activity · Who writes what · Lanes · UAT flows · Read with
+- [project/stacks.md](../project/stacks.md) · 17 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
+  - sections: PROJECT-STACKS-1 One root per app · PROJECT-STACKS-2 The manifest declares everything the app runs and reads · PROJECT-STACKS-3 Two kinds of environment, each with its runbook · PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · PROJECT-STACKS-6 Every runbook declares the same operations · PROJECT-STACKS-7 CI holds names; every value stays with its consumer · PROJECT-STACKS-8 Quality services are declared and required · PROJECT-STACKS-9 A remote application API is consumed, not administered · PROJECT-STACKS-10 Local runs · Read with
+- [project/work.md](../project/work.md) · 13 KB — `.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built and how it is accepted.
+  - sections: The tree · PROJECT-WORK-1 Every record belongs to one family · PROJECT-WORK-2 Only leaves carry state, and proof cannot outrun its target · PROJECT-WORK-3 Requirements and design reason across every case; a decided slice proceeds · PROJECT-WORK-4 An integration is designed from the provider's current documentation · PROJECT-WORK-5 Each writer writes only its part · Lanes · PROJECT-WORK-6 A UAT flow runs from its record · Read with
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 10 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, auth-supabase, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons and 17 more
 - [stack/pins.yaml](../stack/pins.yaml) · 12 KB — The exact version of every shared dependency: one version per dependency for every app and package.
-  - ids: R190
+  - ids: R111, R190
 - [ui/README.md](../ui/README.md) · 5 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
 - [ui/components/README.md](../ui/components/README.md) · 2 KB — One page per component role: **when and how** to use it.

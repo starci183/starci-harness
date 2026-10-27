@@ -41,6 +41,9 @@ Enforced by: `http-needs-timeout`, `http-client-only-in-integrations` (R70, R90)
 `messages/`. It imports platform only, never the domain. A client answers typed results and turns every failure into
 its own error with the cause; it never logs a token.
 
+The folder implements the provider's `integration` record, designed from the provider's current documentation
+(PROJECT-WORK-4 in [project/work.md](../../project/work.md)).
+
 Why: a provider is replaceable only when one folder speaks its protocol and nothing above it knows its wire shapes.
 
 ```ts

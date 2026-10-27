@@ -18,6 +18,3 @@ so they carry no front matter.
 | [imports.md](imports.md) | owner entries and aliases, `import type`, no unused export | SHARED-IMPORTS-1 … 3 |
 | [test.md](test.md) | which side has tests, what an op tests and runs | SHARED-TEST-1 … 3 |
 | [scripts.md](scripts.md) | the app scripts, the CI the app runs, generated code, commits | SHARED-SCRIPTS-1 … 4 |
-
-House rule: one place per rule. A shared rule lives here under one id; feedback hardens it here or turns it into a lint
-rule, and a side topic that needs the same fact links to it.
