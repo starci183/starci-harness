@@ -41,6 +41,15 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
         kind: z.literal("cited"),
         trace: z.array(z.strictObject({ key: z.string().min(1), minItems: z.number().int().min(0), files: z.array(z.string().min(1)) })).optional(),
     }),
+    // The anchor cites (harness/cite.ts): every id resolves, a UI change cites a Choose anchor per Grammar family, grades hold.
+    // resolveChecks fills the rest from the contract; the preset names the kind alone.
+    z.object({
+        kind: z.literal("cite"),
+        harness: z.string().min(1).optional(),
+        required: z.array(z.string().min(1)).optional(),
+        author: z.boolean().optional(),
+        grade: z.boolean().optional(),
+    }),
 ])
 
 /** One primitive check after preset expansion. */
@@ -50,6 +59,8 @@ export type PrimitiveCheck = z.infer<typeof primitiveCheckSchema>
  * Who observed what a check judges. T0: the harness itself (a process it ran on the clean checkout, a probe, CI, the tree).
  * T1: values parsed from files whose digests a T0 receipt holds (a `starci uat run` walk). T2: the worker's own claims (its
  * filed result, a json file it wrote). Only T0 and T1 prove behaviour; a T2 check may make a task red, never green by itself.
+ * A `cite` check is T0: the harness resolves each cited id against the contexts and reads the changed files' imports itself;
+ * it is never behavioural (BEHAVIOURAL_KINDS), so it too can only make a task red.
  */
 export type TrustTier = "T0" | "T1" | "T2"
 

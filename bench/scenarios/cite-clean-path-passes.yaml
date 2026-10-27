@@ -1,0 +1,103 @@
+schema: starci/scenario@1
+id: cite-clean-path-passes
+group: verify
+title: an author that cites the Choose anchor of each family it uses, graded followed by its reviewer, settles green
+inject: none; a draw task held to tabs.choose imports Tabs and cites its Choose anchors, then a review grades every handed cite
+expect: >-
+  the draw task's anchors-cited is green (every cite resolves, the tabs family it imports is cited, the handed id is cited)
+  and it settles with a commit; the review handed the draw's cites grades each followed and settles green too
+pass:
+  - both tasks done; the draw lands one commit with its trailer, the review (which writes nothing) none
+  - anchors-cited green on both tasks
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: clean
+        goal: draw the cart direction and review it
+        runner: inline
+        tasks:
+          - id: draw
+            label: draw
+            summary: draw the cart direction
+            allowPaths: [web/direction]
+            inputs: {grammar: core}
+            cites: [tabs.choose]
+          - id: review
+            label: review
+            summary: review the cart direction against its cites
+            dependsOn: [draw]
+            allowPaths: [web/reviews/cart]
+            inputs: {since: HEAD}
+            cites: [tabs.choose, tabs.choose.page-tabs, STATE-6]
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, clean]
+    save:
+      draw: data.nodes.0.task.id
+  - name: the author reads the Choose section and cites what it decided by
+    worker:
+      task: ${draw}
+      status: done
+      files:
+        web/direction/cart.html: "<main>cart</main>\n"
+        web/direction/cart-tabs.tsx: |
+          import { Tabs } from "@starci/grammar/core"
+
+          export const CartTabs = () => <Tabs />
+      output:
+        summary: the cart direction with page tabs
+        files: [web/direction/cart.html, web/direction/cart-tabs.tsx]
+        direction: web/direction/cart.html
+        rulesApplied: [STATE-6]
+        cites: [tabs.choose, tabs.choose.page-tabs, STATE-6]
+  - name: step settles the draw
+    starci: [workflow, step, clean]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'review'"
+      as: review
+  - name: the reviewer grades every handed cite
+    worker:
+      task: ${review}
+      status: done
+      output:
+        summary: read the cart direction against its cites
+        files: []
+        verdict: passed
+        findings: []
+        rulesApplied: []
+        citeGrades:
+          - {cite: tabs.choose, grade: followed, evidence: "web/direction/cart-tabs.tsx:3 page tabs switch the cart's main area"}
+          - {cite: tabs.choose.page-tabs, grade: followed, evidence: "web/direction/cart-tabs.tsx:3 one page set under the header"}
+          - {cite: STATE-6, grade: not-applicable, evidence: "the direction holds no persistent peer choice yet"}
+  - name: step settles the review
+    starci: [workflow, step, clean]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks ORDER BY created_at"
+        equals:
+          - done
+          - done
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM check_runs WHERE name = 'anchors-cited' AND runner = 'harness' AND attempt_id IS NOT NULL ORDER BY id"
+        equals:
+          - green
+          - green
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${draw}"
+        count: 1
+  # A review changes nothing, so it settles done without a commit (the worker procedure: work that finds nothing to change).
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${review}"
+        count: 0

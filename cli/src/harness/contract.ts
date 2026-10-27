@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
+import { contractCiteProblems, fillCiteCheck } from "./cite.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
 import { loadPolicy, neverRead } from "./policy.js"
@@ -68,6 +69,8 @@ const setupSchema = z.array(z.array(z.string().min(1)).min(1))
  * A task contract: what the receiver may read and write, what to do, and what the result must satisfy. Each of context,
  * input, output and checks has a `base`, owned by the label's op file, and an `extend`, the Kernel's part, which only adds.
  * A contract may pin a copy of the base; `contract check` refuses one that drops or loosens an item of the op's base.
+ * `cites` are the anchor ids the task answers for (harness/cite.ts): an author (an op whose output carries `cites`) must cite
+ * each, a grader (one whose output carries `citeGrades`) must grade each; every one must resolve in the contexts.
  */
 export const contractSchema = z.strictObject({
     schema: z.literal(CONTRACT_SCHEMA),
@@ -83,6 +86,7 @@ export const contractSchema = z.strictObject({
     input: z.strictObject({ summary: z.string().min(1), details: z.string().optional(), base: namedInputsSchema.optional(), extend: namedInputsSchema.optional() }),
     output: z.strictObject({ base: outputKeysSchema.optional(), extend: outputKeysSchema.optional() }).optional(),
     checks: z.strictObject({ base: z.array(checkEntrySchema).optional(), extend: z.array(checkEntrySchema).optional() }).optional(),
+    cites: z.array(z.string().min(1)).optional(),
     budget: budgetSchema,
 })
 
@@ -398,13 +402,15 @@ export const OUTPUT_CHECK = "output"
 
 /**
  * Expands every check of the resolved contract into a primitive one (refusing unknown presets and missing arguments), fills
- * the trace of a `cited` check, and adds the generated `output` check: the filed result carries every required key with its type.
+ * the trace of a `cited` check and the contract's part of a `cite` check, and adds the generated `output` check: the filed result carries every required key with its type.
  */
 export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => {
     const resolved = resolveContract(contract, ops)
     const inputs: CheckArgs = Object.fromEntries(resolved.inputs.map((input) => [input.name, input.value]))
+    const outputKeys = resolved.output.map((item) => item.key)
     const checks = resolved.checks.map(({ entry }, index): ResolvedCheck => {
         const check = expand(entry, index, ops, inputs)
+        if (check.check.kind === "cite") return { ...check, check: { kind: "cite", ...fillCiteCheck(check.check, ops.root, contract.cites, outputKeys) } }
         return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, ops, contract.context.allowPaths) } } : check
     })
     if (resolved.output.length === 0) return checks
@@ -527,7 +533,7 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     } catch (error: unknown) {
         return [...problems, error instanceof Error ? error.message : String(error)]
     }
-    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...budgetProblems(resolved, ops))
+    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...budgetProblems(resolved, ops), ...contractCiteProblems(contract.cites, ops.root))
     try {
         problems.push(...checkProblems(contract, resolved, ops))
     } catch (error: unknown) {

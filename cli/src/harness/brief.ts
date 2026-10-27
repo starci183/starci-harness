@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { Refusal } from "../shared/errors.js"
 import { ROLE_ENV } from "../shared/role.js"
 import type { Role } from "../shared/verb.js"
+import { CITES_KEY, GRADES_KEY, citesBriefSection } from "./cite.js"
 import { contextPath, resolveChecks, resolveContract } from "./contract.js"
 import type { ResolvedOutput } from "./contract.js"
 import { projectDir } from "./ledger.js"
@@ -68,6 +69,11 @@ const describeCheck = (check: PrimitiveCheck): string => {
             const keys = (check.trace ?? []).map((trace) => trace.key)
             return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})`
         }
+        case "cite":
+            return [
+                ...(check.author === true ? [`every id under ${code(CITES_KEY)} resolves, and each Grammar family your changed files import has a Choose anchor cited (${code("<family>.choose")})`] : []),
+                ...(check.grade === true ? [`each handed cite is graded once under ${code(GRADES_KEY)}, and none is violated`] : []),
+            ].join("; ") || "the handed cites resolve"
     }
 }
 
@@ -106,6 +112,9 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
     const prior = priorWorkSection(root, task)
+    // The ids the contract hands this task, each with the text it resolves to, so a grader reads what the author decided by.
+    const handed = citesBriefSection(contract.cites, ops.root, resolved.output.some((item) => item.key === GRADES_KEY))
+    const cites = handed === undefined ? [] : ["### Cites", handed]
     const cli =slashed(fileURLToPath(new URL("../main.js", import.meta.url)))
     const values = { taskId: task.id, contractFile: slashed(files.contract), outputFile: slashed(files.output) }
     const template = fillTemplate(workerProcedure(ops), join(ops.dir, OP_FILES, OPS_README), values)
@@ -142,6 +151,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
             resolved.context.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
+        ...cites,
         "### Output",
         resolved.output.length === 0
             ? `Write ${code(values.outputFile)} as one json object; no key is required.`

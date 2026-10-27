@@ -1,0 +1,77 @@
+schema: starci/scenario@1
+id: cite-ui-without-choose-red
+group: verify
+title: a UI change that imports a Grammar family without citing its Choose anchor is red
+inject: a code worker imports Tabs and Button from the Grammar and cites only the tabs Choose anchor and a rule id
+expect: >-
+  the clean verify reads the changed file's Grammar imports, finds the tabs and button families, and anchors-cited is red
+  naming the button family, while the tabs family, cited, raises nothing; a type-only import asks for nothing
+pass:
+  - anchors-cited is red naming the button family and the file
+  - the cited tabs family and the type-only import raise nothing
+  - the task failed and nothing is committed
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: nochoose
+        goal: build the cart screen
+        runner: inline
+        tasks:
+          - id: code
+            label: code
+            summary: build the cart screen's tabs
+            allowPaths: [web/src/cart]
+            inputs: {side: fe, edition: lite}
+            checks:
+              - preset: tests-pass
+                args: {command: "node --version"}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, nochoose]
+    save:
+      code: data.nodes.0.task.id
+  - name: the worker imports two families and cites one
+    worker:
+      task: ${code}
+      status: done
+      files:
+        web/src/cart/cart-tabs.tsx: |
+          import { Tabs, Button } from "@starci/grammar/core"
+          import type { CardProps } from "@starci/grammar/core"
+          import { type ChipProps } from "@starci/grammar/core"
+
+          export const CartTabs = () => <Tabs><Button>Pay</Button></Tabs>
+      output:
+        summary: the cart tabs
+        files: [web/src/cart/cart-tabs.tsx]
+        rulesApplied: [STATE-6]
+        cites: [tabs.choose, STATE-6]
+  - name: step
+    starci: [workflow, step, nochoose]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: >-
+          SELECT status || ':' || (detail LIKE '%uses Button (web/src/cart/cart-tabs.tsx) but cites no Choose anchor of button%')
+          || ':' || (detail LIKE '%anchor of tabs%') || ':' || (detail LIKE '%anchor of card%') || ':' || (detail LIKE '%anchor of chip%')
+          FROM check_runs WHERE name = 'anchors-cited'
+        equals:
+          - "red:1:0:0:0"
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - failed
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${code}"
+        count: 0

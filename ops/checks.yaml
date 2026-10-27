@@ -1,9 +1,9 @@
 # Named check presets an op file (checks.base) or a contract (checks.extend) names; ops/ops/README.md says how they compose.
-# Each preset expands into one primitive check: command, starci, files, json, probe, uat-flow or cited.
+# Each preset expands into one primitive check: command, starci, files, json, probe, uat-flow, cited or cite.
 # Arguments a preset needs are named in `args`; `{name}` in a value is replaced by the entry's argument, else by the
 # contract's input of that name (so an op's base can name a preset bare and take its arguments from its inputs).
 # Trust tiers (trustTier in cli/src/harness/ops.ts) follow the kind: T0 the harness observes itself (command, starci, files,
-# probe), T1 it reads from a receipted run (uat-flow), T2 is the worker's claim (json, cited). `behavioural: true` is
+# probe, cite), T1 it reads from a receipted run (uat-flow), T2 is the worker's claim (json, cited). `behavioural: true` is
 # allowed only on a T0 or T1 check, which loadOps enforces: a claim may make a task red, never prove it green.
 schema: starci/check-presets@1
 presets:
@@ -93,6 +93,14 @@ presets:
     behavioural: false
     check:
       kind: cited
+  # The anchor cites (cli/src/harness/cite.ts): layer 2 of the Grammar principle, the author's pick of component, variant,
+  # intent and spacing, cited from the Choose sections it read and graded by the reviewer. The harness resolves every id against
+  # the contexts and reads the changed files' Grammar imports itself (T0), yet green proves no behaviour.
+  anchors-cited:
+    summary: every id under cites resolves to a Choose anchor, rule or DNA id of the contexts, each Grammar component family the changed files import has a Choose anchor cited, every id the contract hands is cited (author) or graded once under citeGrades (grader), and no grade is violated
+    behavioural: false
+    check:
+      kind: cite
   probe:
     summary: an http endpoint answers with the expected status
     behavioural: true

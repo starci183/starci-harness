@@ -43,10 +43,17 @@ output:
     files: {type: "string[]", summary: "the repository paths you changed"}
     rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the rules the code follows, from the side's files and the topics the contract adds (never the shared files)"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the code implements"}
+    cites: {type: "string[]", minItems: 0, summary: "the anchor ids you decided by: a Choose anchor (<family>.choose[.<term>]) per Grammar component family you import, plus the DNA and rule ids (R<n>) you applied"}
 checks:
-  base: [check-run-green, paths-only, rules-cited]
+  base: [check-run-green, paths-only, rules-cited, anchors-cited]
   behavioural: true
 ---
 Write the code of the slice and the tests that prove what it changed, in the slots the anatomy slice of your side and edition
 gives and the patterns of the topics you read. Code traces to its Work records and never redefines them: a record that is
 wrong or missing is a `mismatch`, not a guess.
+
+Before you pick a Grammar component, variant, intent or spacing step, search for its Choose section (`starci contexts
+search "<need>" --scope ui`) and read it; decide by it, then list under `cites` the Choose anchor of every component family
+your files import (`tabs.choose`, or a finer `tabs.choose.<term>`), the DNA and rule ids you applied, and every id the
+contract hands you. A family you import with no Choose anchor cited, or an id that resolves to nothing, is red
+(`anchors-cited`); the reviewer then grades each cite against your diff.
