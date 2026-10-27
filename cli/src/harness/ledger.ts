@@ -382,10 +382,27 @@ export const openLedger = (root: string): DatabaseSync => {
     return db
 }
 
-/** Opens the project's ledger only when it exists, creating and migrating nothing; for reads that must leave no ledger behind. */
+/**
+ * Opens the project's ledger only when it exists, for reads that must leave no ledger behind. An existing ledger is brought to
+ * this build's schema first (the same additive tables and columns openLedger adds), so a read never meets a column a newer
+ * build expects; a ledger newer than the build is refused.
+ */
 export const openExistingLedger = (root: string): DatabaseSync | undefined => {
     const file = ledgerPath(root)
-    return file === undefined ? undefined : connect(file)
+    if (file === undefined) return undefined
+    const db = connect(file)
+    try {
+        const recorded = metaVersion(db)
+        if (recorded > LEDGER_VERSION) {
+            throw new Refusal("LEDGER_NEWER", `${file} is ledger version ${String(recorded)}, newer than this build's ${String(LEDGER_VERSION)}; update the harness (cd cli && npm run build) before using it`)
+        }
+        db.exec(SCHEMA)
+        migrate(db)
+    } catch (error: unknown) {
+        db.close()
+        throw error
+    }
+    return db
 }
 
 /** The current time as the ledger stores it. */
