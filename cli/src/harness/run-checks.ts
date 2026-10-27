@@ -9,7 +9,7 @@ import type { Contract, ResolvedCheck } from "./contract.js"
 import { now, openExistingLedger } from "./ledger.js"
 import type { OutputType } from "./ops.js"
 import { TERMINAL_STATUSES } from "./tasks.js"
-import { judgeUatResult, parseUatRecord, runFiles } from "./work.js"
+import { judgeUatWalk, parseUatRecord } from "./work.js"
 
 /** The verdict of one check. */
 export interface CheckOutcome {
@@ -241,8 +241,9 @@ const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly
 }
 
 /**
- * A uat walk: the filed result judged against the Work record of the candidate and the files of the run folder in the source
- * work tree (harness/work.ts judgeUatResult); red names every mismatch, the first failing step first.
+ * A uat walk (T1): the Work record of the candidate against the observations the script wrote during a receipted `starci uat run`
+ * into the run folder of the source work tree, which is git-ignored (harness/work.ts judgeUatWalk). The filed result only has to
+ * agree; red names every mismatch, the first failing step first.
  */
 const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "uat-flow" } }, place: CheckPlace): CheckOutcome => {
     const { record: recordPath, run } = check.check
@@ -252,12 +253,28 @@ const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kin
     if ("problem" in document) return outcome(check, [document.problem], "")
     let judged
     try {
-        judged = judgeUatResult(parseUatRecord(readFileSync(file, "utf8"), recordPath), document.value, new Set(runFiles(join(place.source ?? place.root, run))))
+        judged = judgeUatWalk(parseUatRecord(readFileSync(file, "utf8"), recordPath), join(place.source ?? place.root, run), document.value)
     } catch (error: unknown) {
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
     const problems = judged.problems.map((problem) => problem.text)
-    return outcome(check, judged.failingStep === undefined ? problems : [`first failing step: ${String(judged.failingStep)}`, ...problems], `${document.from} walks every step of ${recordPath} with its screenshots in ${run}`)
+    return outcome(check, judged.failingStep === undefined ? problems : [`first failing step: ${String(judged.failingStep)}`, ...problems], `the receipted run in ${run} walks every step of ${recordPath}, and ${document.from} agrees`)
+}
+
+/**
+ * A command whose exit the filed result's verdict must agree with (T0): the harness runs the suite on the clean checkout, and the
+ * check is green when the worker reported what the run did, passed for exit 0 and failed for any other, so a red suite reported
+ * honestly is a finding and a claim the run contradicts is red.
+ */
+const runVerdictCommand = async (check: ResolvedCheck, argv: readonly string[], key: string, place: CheckPlace, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+    const run = await captureCommand(argv, place.cwd, options)
+    const observed = run.exitCode === 0 ? "passed" : "failed"
+    const document = readJsonDocument(RESULT_FILE, place)
+    const claimed = "problem" in document ? undefined : asRecord(document.value)[key]
+    const ran = `${argv.join(" ")} exited ${String(run.exitCode)} (${observed})${run.timedOut ? ", killed at the deadline" : ""}`
+    if (claimed === observed) return { ...fromRun(check, run), status: "green", detail: `${ran}; the result's ${key} agrees\n${tailOf(run)}` }
+    const why = "problem" in document ? document.problem : `the result's ${key} is ${JSON.stringify(claimed)}, but the harness saw ${observed}`
+    return { ...fromRun(check, run), status: "red", detail: `${ran}; ${why}\n${tailOf(run)}` }
 }
 
 interface ScopeStep {
@@ -318,6 +335,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
         case "command": {
             const argv = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
             try {
+                if (primitive.verdict !== undefined) return await runVerdictCommand(check, argv, primitive.verdict, place, options)
                 return fromRun(check, await captureCommand(argv, place.cwd, options))
             } catch (error: unknown) {
                 return outcome(check, [error instanceof Error ? error.message : String(error)], "")

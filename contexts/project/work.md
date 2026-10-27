@@ -94,10 +94,16 @@ read from Work, never retyped in a script.
 - **Optional** `fixtures.yaml`, `seed.sql`, `cleanup.sql` beside it.
 - **A run** is a `uat` task: the worker writes a short Playwright script from the flow and calls `starci uat run`
   (the pinned image, [ops/uat.yaml](../../ops/uat.yaml)) with `--out` set to `.starciwork/features/<f>/uat/<flow>/runs/<runId>`.
-  Its screenshots, videos and step results land there, beside the record; `runs/` is git-ignored by the Work tree's
-  `.gitignore`, so raw output is never committed. The flow's `evidence.yaml` (`work/evidence@1`, tracked, written
-  only by the settle) cites each run by id, task, verdict and the sha256 of every file, and that link is what lets
-  the flow reach `done`.
+  The script itself writes the observations there during the run: one PNG screenshot per step and `checks.json`, each
+  step's status and the value it read for each check id. `starci uat run` keeps a receipt of the run in the harness
+  state (`.runtime/uat/receipts/`, with its copy `starci-receipt.json` in the folder): the script's digest, the image,
+  the container, its exit code, its start and end, and every file of the folder by sha256, each stored by digest in
+  `.runtime/blobs/sha256/`. The `uat-flow` check judges the walk on `checks.json` and the screenshots as that receipt
+  holds them; a file the run did not write, or one changed after it, counts for nothing, and the worker's own verdict
+  can make the walk red, never green. `runs/` is git-ignored by the Work tree's `.gitignore`, so raw output is never
+  committed. The flow's `evidence.yaml` (`work/evidence@1`, tracked, written only by the settle) cites each run by id,
+  task, verdict and the sha256 of every file, the receipt's copy included; each digest resolves in the harness store
+  after the run folder is gone, and that link is what lets the flow reach `done`.
 - A step that needs a person or an owner authorization (a live charge, a provider's manual check) says so in its
   `action`; a run without that authorization records the step as not walked, never as passed.
 

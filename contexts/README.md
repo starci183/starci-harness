@@ -17,7 +17,7 @@ row starts with [harness/rules.md](harness/rules.md), the rules no task may bend
 |---|---|
 | operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md`, then `starci explain --term <group>` for the verbs you call |
 | work as a worker on one task | the brief the harness rendered for the task (the worker procedure of [ops/ops/README.md](../ops/ops/README.md), then the label's op file `ops/ops/<label>.md`), then the contract it names |
-| plan as a Kernel | the whole tree below in table order: [harness/](#harness), then [project/](project/README.md) and the rows of "Reading order by task" the work touches |
+| plan as a Kernel | [harness/](#harness), [project/README.md](project/README.md), then [project/index.md](project/index.md) (generated: every file of this tree with its size, first sentence, sections and ids) instead of the tree itself; open only the files the tasks need, through the rows of "Reading order by task", and name them in each contract's `context.extend` |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](../CONTRIBUTING.md), then the owner of your surface: [cli/README.md](../cli/README.md), [policy/README.md](../policy/README.md), the header of the `ops/` file you change, and [harness/decisions.md](harness/decisions.md) |
 | author app code or UI | "Reading order by task" below and the files it routes you to; the app's own `hfs.json` and `.starciwork/` |
 | change a gate, a profile, a banned marker or the secret scan | [policy/README.md](../policy/README.md) and the file it names; the code of the gate is under `cli/src/core/check/` |

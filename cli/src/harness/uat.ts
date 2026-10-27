@@ -1,13 +1,14 @@
 import { createHash, randomBytes } from "node:crypto"
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, relative } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureTool, headline } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
+import { stateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
 
 const uatSchema = z.object({
@@ -220,4 +221,106 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
     const removed = (await captureTool("docker", ["container", "inspect", "--format", "{{.Id}}", container], cwd, { timeoutMs: 60_000 })).exitCode !== 0
     if (run.exitCode === DOCKER_RUN_FAILED && !run.timedOut) throw new Refusal("UAT_DOCKER_FAILED", `docker run could not start ${container}: ${headline(run.stderr)}`)
     return { exitCode: run.exitCode, timedOut: run.timedOut, stdout: run.stdout, stderr: run.stderr, durationMs, removed }
+}
+
+/** The copy of its receipt `starci uat run` leaves in the run folder, so a settle that digests the folder cites the receipt. */
+export const RECEIPT_FILE = "starci-receipt.json"
+
+/** What a uat script observed, written by the script into its run folder: `{"steps": [{order, status, screenshot, checks, observed}]}`. */
+export const CHECKS_FILE = "checks.json"
+
+/** The sha256 of a file's bytes, hex. */
+export const fileSha256 = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex")
+
+/** Where the harness store keeps the blob of a digest: `<state base>/blobs/sha256/<first two>/<digest>`, outside every repository. */
+export const blobPath = (digest: string): string => join(stateBase(), "blobs", "sha256", digest.slice(0, 2), digest)
+
+/**
+ * Copies a file into the content-addressed store under its sha256 (once: a blob already there is the same bytes) and returns
+ * the digest, so evidence that cites the digest outlives the git-ignored folder the file came from.
+ */
+export const storeBlob = (path: string): string => {
+    const digest = fileSha256(path)
+    const target = blobPath(digest)
+    if (!existsSync(target)) {
+        mkdirSync(dirname(target), { recursive: true })
+        const partial = `${target}.${randomBytes(4).toString("hex")}.partial`
+        copyFileSync(path, partial)
+        renameSync(partial, target)
+    }
+    return digest
+}
+
+const receiptFileSchema = z.strictObject({
+    path: z.string().min(1),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    size: z.number().int().min(0),
+    mtimeMs: z.number(),
+    // written: the run created or changed it (its size or mtime differ from before the container started).
+    written: z.boolean(),
+})
+
+/** The harness's own record of one `starci uat run`: what ran, in which image, when, how it ended, and every file of its folder by digest. */
+export const uatReceiptSchema = z.strictObject({
+    schema: z.literal("starci/uat-receipt@1"),
+    folder: z.string().min(1),
+    script: z.strictObject({ path: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/) }),
+    image: z.string().min(1),
+    runImage: z.string().min(1),
+    container: z.string().min(1),
+    exitCode: z.number().int(),
+    timedOut: z.boolean(),
+    startedAt: z.string().min(1),
+    endedAt: z.string().min(1),
+    files: z.array(receiptFileSchema),
+})
+
+/** A uat run receipt. */
+export type UatReceipt = z.infer<typeof uatReceiptSchema>
+
+/** A folder as receipts key it: absolute, forward slashes, case-folded on Windows. */
+const folderKey = (folder: string): string => {
+    const full = resolve(folder).replaceAll("\\", "/")
+    return createHash("sha256")
+        .update(process.platform === "win32" ? full.toLowerCase() : full)
+        .digest("hex")
+}
+
+/** Where the harness keeps the receipt of the latest run into `folder`: `<state base>/uat/receipts/<folder key>.json`. */
+export const receiptPath = (folder: string): string => join(stateBase(), "uat", "receipts", `${folderKey(folder)}.json`)
+
+/** The files of the run folder after a run, each stored by digest; `before` holds their stamps from before the container started. */
+export const receiptFiles = (folder: string, before: ReadonlyMap<string, string>): UatReceipt["files"] =>
+    [...fileStamps(folder)]
+        .filter(([path]) => path !== RECEIPT_FILE)
+        .sort(([left], [right]) => Number(left > right) - Number(left < right))
+        .map(([path, stamp]) => {
+            const file = join(folder, path)
+            const stat = statSync(file)
+            return { path, sha256: storeBlob(file), size: stat.size, mtimeMs: stat.mtimeMs, written: before.get(path) !== stamp }
+        })
+
+/** Writes the receipt where the harness keeps it and its copy into the run folder (stored as a blob too); returns the receipt's digest. */
+export const writeReceipt = (receipt: UatReceipt): string => {
+    const text = `${JSON.stringify(uatReceiptSchema.parse(receipt), null, 2)}\n`
+    const kept = receiptPath(receipt.folder)
+    mkdirSync(dirname(kept), { recursive: true })
+    writeFileSync(kept, text)
+    const copy = join(receipt.folder, RECEIPT_FILE)
+    writeFileSync(copy, text)
+    return storeBlob(copy)
+}
+
+/** The receipt the harness keeps for the latest run into `folder` and its digest, or undefined when no run wrote one. */
+export const readReceipt = (folder: string): { readonly receipt: UatReceipt; readonly sha256: string } | undefined => {
+    const file = receiptPath(folder)
+    if (!existsSync(file)) return undefined
+    let raw: unknown
+    try {
+        raw = JSON.parse(readFileSync(file, "utf8"))
+    } catch {
+        return undefined
+    }
+    const parsed = uatReceiptSchema.safeParse(raw)
+    return parsed.success ? { receipt: parsed.data, sha256: fileSha256(file) } : undefined
 }
