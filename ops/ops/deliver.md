@@ -14,7 +14,6 @@ output:
     summary: {type: string, summary: "what was delivered and how it was probed"}
     files: {type: "string[]", summary: "the repository paths you changed, if any"}
     target: {type: string, summary: "the target as it was delivered (version, url or migration id)"}
-  behavioural: false
 checks:
   base: []
   behavioural: true

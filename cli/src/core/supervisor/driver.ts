@@ -5,6 +5,8 @@ import { admitCommand, finishCommand, getDecision, goalVersionOf, openDecisions,
 import type { Command, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
+import { GOAL_CHANGE_SCHEMA, recordGoalChange } from "../../harness/goal.js"
+import type { GoalChange } from "../../harness/goal.js"
 import { launchKernelSeat, startKernel } from "../../harness/kernel.js"
 import { now, openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
@@ -199,15 +201,27 @@ const raiseForKernel = (db: DatabaseSync, root: string, command: Command): strin
     }
     const own: KernelDecisionKind = command.kind === "goal" ? "goal" : command.kind === "goal-change" ? "goal-change" : "done"
     const kind: KernelDecisionKind = answered.some((decision) => decision.workflowId === command.workflow) ? "escalation-answer" : own
-    const goalVersion = command.kind === "goal-change" ? goalVersionOf(db, command.workflow) + 1 : goalVersionOf(db, command.workflow)
+    const goalVersion = goalVersionOf(db, command.workflow)
     return raiseDecision(db, { scope: "kernel", workflowId: command.workflow, kind, subject: command.cmdId, evidence: { project: root, cmdId: command.cmdId, command: command.kind, goal: command.goal ?? null, goalVersion, note: command.note ?? null, answers: command.answers ?? [] } })
 }
 
-const applySupervisor = async (context: VerbContext, root: string, command: Command): Promise<unknown> => {
+const applySupervisor = async (context: VerbContext, root: string, command: Command, sha256: string): Promise<unknown> => {
     if (command.kind === "stop") {
         const stopped = await workflowStopVerb.run({ ...context, cwd: root }, { workflow: command.workflow, graceful: command.mode !== "hard", hard: command.mode === "hard" })
         const decision = (command.answers ?? []).length === 0 ? null : withLedger(root, (db) => raiseForKernel(db, root, command))
         return { stopped: stopped.message.split("\n")[0] ?? "", decision }
+    }
+    if (command.kind === "goal-change") {
+        const change: GoalChange = {
+            schema: GOAL_CHANGE_SCHEMA,
+            workflow: command.workflow,
+            cmdId: command.cmdId,
+            goal: command.goal ?? "",
+            ...(command.basedOn.goal === undefined ? {} : { basedOn: command.basedOn.goal }),
+            ...(command.acceptance === undefined ? {} : { acceptance: command.acceptance }),
+            ...(command.scope === undefined ? {} : { scope: command.scope }),
+        }
+        withLedger(root, (db) => recordGoalChange(db, getWorkflow(db, command.workflow), { change, sha256 }, command.basedOn.goal ?? 0, "supervisor"))
     }
     const decision = withLedger(root, (db) => raiseForKernel(db, root, command))
     return { decision, mail: await wakeKernel(root, context.cwd, command, decision) }
@@ -229,7 +243,7 @@ export const supervisorSubmit = async (context: VerbContext, file: string): Prom
     if (admitted.kind === "replay") return { command: admitted.row, replay: true, project: root }
     let outcome: unknown
     try {
-        outcome = await applySupervisor(context, root, command)
+        outcome = await applySupervisor(context, root, command, parsed.sha256)
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         withLedger(root, (db) => finishCommand(db, "supervisor", command, "failed", { code: refusal.code, message: refusal.message }))

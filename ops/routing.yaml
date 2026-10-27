@@ -49,6 +49,8 @@ pools:
     maxParallel: 10
     labels: [code, test, verify, docs]
     tools: [git, node, docker]
+    # Devin takes no launch-time model: worker-start names none and the attempt records the model Orca attests.
+    modelSelection: false
 
 # Host tools the router checks on this machine (the command must exit 0); a tool without a probe is the pool's own.
 hostProbes:

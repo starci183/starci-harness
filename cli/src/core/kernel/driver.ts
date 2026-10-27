@@ -18,6 +18,8 @@ import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { inOrder } from "../../harness/sequential.js"
+import { workflowActions } from "../../harness/reconcile.js"
+import type { NodeAction } from "../../harness/reconcile.js"
 import { resumeSeat } from "../seat/start.js"
 import { workflowAmendVerb } from "../workflow/amend.js"
 import { readSnapshot, stepWorkflow } from "../workflow/engine.js"
@@ -134,9 +136,10 @@ const LEASE_HOLDER = /leased by task (\S+)/
 /**
  * Raises every decision the ledger now calls for (each fact once): a failed, lost or stuck node is red; a node a worker
  * returned (blocked or mismatch) is a question; a node waiting on another workflow's path lease past conflictMinutes is a
- * conflict; a replan's stale class is stale; a done or stopped workflow is done.
+ * conflict; a node whose dependency's settled result changed under it (reconcile.ts workflowActions) is stale; a done or
+ * stopped workflow is done.
  */
-const raiseDecisions = (root: string, workflowId: string, actions: readonly StepAction[], rules: CoordinatorLiveness): void => { withLedger(root, (db) => { inTransaction(db, () => {
+const raiseDecisions = (root: string, workflowId: string, actions: readonly StepAction[], nodes: readonly NodeAction[], rules: CoordinatorLiveness): void => { withLedger(root, (db) => { inTransaction(db, () => {
             const snapshot = snapshotOf(db, workflowId)
             const raise = (kind: KernelDecisionKind, subject: string, evidence: unknown): string => raiseDecision(db, { scope: "kernel", workflowId, kind, subject, evidence })
             for (const view of snapshot.views) {
@@ -149,12 +152,11 @@ const raiseDecisions = (root: string, workflowId: string, actions: readonly Step
                     raise("question", task.id, { key: view.key, why: view.why, result: task.result, output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null) })
                 }
             }
-            const latest = db.prepare("SELECT graph_version, classification_json FROM graph_versions WHERE workflow_id = ? ORDER BY graph_version DESC LIMIT 1").get(workflowId)
-            if (latest !== undefined) {
-                const rows = JSON.parse(String(latest.classification_json)) as unknown
-                for (const row of Array.isArray(rows) ? (rows as Record<string, unknown>[]) : []) {
-                    if (row.class === "stale") raise("stale", `v${String(latest.graph_version)}:${String(row.key)}`, row)
-                }
+            const stale = nodes.filter((node) => node.action === "stale" && node.task !== null).map((node) => ({ subject: `${node.key}:${node.task ?? ""}`, node }))
+            for (const { subject, node } of stale) raise("stale", subject, { key: node.key, task: node.task, staleDeps: node.staleDeps ?? [], why: node.why })
+            const current = new Set(stale.map((entry) => entry.subject))
+            for (const decision of openDecisions(db, "kernel", workflowId)) {
+                if (decision.kind === "stale" && !current.has(decision.subject)) answerDecision(db, decision.id, "superseded: no longer stale", "kernel")
             }
             for (const action of actions) {
                 const holder = action.action === "wait" && action.detail.startsWith("LEASE_CONFLICT") ? LEASE_HOLDER.exec(action.detail)?.[1] : undefined
@@ -324,7 +326,14 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
         const after = readSnapshot(root, workflowId)
         actions.push(...(await fenceIdle(root, binary, context.cwd, after)), ...(await resolveUnknown(root, binary, context.cwd, after, rules)))
     }
-    raiseDecisions(root, workflowId, actions, rules)
+    const db = openLedger(root)
+    let nodes: NodeAction[]
+    try {
+        nodes = await workflowActions(root, db, workflowId)
+    } finally {
+        db.close()
+    }
+    raiseDecisions(root, workflowId, actions, nodes, rules)
     return { actions, binary }
 }
 
@@ -394,9 +403,18 @@ const applyKernel = async (context: VerbContext, root: string, command: Command,
     if (command.kind === "workflow-change") {
         if (command.change === undefined) return { amended: false, answered: command.answers ?? [] }
         const change = resolve(dir, command.change)
-        const amended = await workflowAmendVerb.run(context, { workflow: command.workflow, change })
-        const data = amended.data as { readonly graphVersion: number; readonly classification: readonly { readonly key: string; readonly class: string }[] }
-        return { amended: true, graphVersion: data.graphVersion, classification: data.classification.map((row) => `${row.key}:${row.class}`) }
+        const list = (values: readonly string[] | undefined): string | undefined => (values === undefined || values.length === 0 ? undefined : values.join(","))
+        const amended = await workflowAmendVerb.run(context, {
+            workflow: command.workflow,
+            desired: undefined,
+            change,
+            "based-on": command.basedOn.graph === undefined ? undefined : String(command.basedOn.graph),
+            "cmd-id": command.cmdId,
+            "keep-effect": list(command.keepEffect),
+            accept: list(command.accept),
+        })
+        const data = amended.data as { readonly graphVersion: number; readonly classification?: readonly { readonly key: string; readonly class: string }[] }
+        return { amended: true, graphVersion: data.graphVersion, classification: (data.classification ?? []).map((row) => `${row.key}:${row.class}`) }
     }
     const kind = command.kind === "handoff" ? "handoff" : "escalation"
     const decision = withLedger(root, (db) =>

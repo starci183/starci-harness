@@ -28,6 +28,7 @@ import { workflowStatusVerb } from "./core/workflow/status.js"
 import { workflowListVerb } from "./core/workflow/list.js"
 import { workflowStepVerb } from "./core/workflow/step.js"
 import { workflowAmendVerb } from "./core/workflow/amend.js"
+import { workflowRegoalVerb } from "./core/workflow/regoal.js"
 import { workflowStopVerb } from "./core/workflow/stop.js"
 import { planShowVerb } from "./core/plan/show.js"
 import { planDiffVerb } from "./core/plan/diff.js"
@@ -91,6 +92,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     workflowListVerb,
     workflowStepVerb,
     workflowAmendVerb,
+    workflowRegoalVerb,
     workflowStopVerb,
     planShowVerb,
     planDiffVerb,

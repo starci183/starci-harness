@@ -12,6 +12,7 @@ import { inTransaction } from "./leases.js"
 import { closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
+import { loadRouting, selectsModel } from "./routing.js"
 import { getSeat, kernelSeatOf, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
 import type { SeatRow } from "./seats.js"
 import { requireSupervisor } from "./supervisor.js"
@@ -142,8 +143,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
         taskTitle: kernelTitle(workflowId),
         worktree: `path:${worktree.replaceAll("\\", "/")}`,
         agent: pick.agent,
-        model: pick.model,
-        effort: pick.effort,
+        ...(selectsModel(loadRouting(), pick.agent) ? { model: pick.model, effort: pick.effort } : {}),
         run: supervisor.run_id,
         parent: supervisor.task_id,
         from: supervisor.terminal,

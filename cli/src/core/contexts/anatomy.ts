@@ -1,9 +1,17 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { runtimeRoot } from "../../harness/ledger.js"
-import { Refusal } from "../../shared/errors.js"
+import { Refusal, UsageError } from "../../shared/errors.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
-import { BEGIN_MARKER, END_MARKER, renderAnatomy, spliceAnatomy } from "./anatomy-render.js"
+import { BEGIN_MARKER, END_MARKER, SLICE_EDITIONS, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
+import { INDEX_FILE, renderIndex } from "./index-render.js"
+
+/** One generated file and how it compares with the generator. */
+interface GeneratedFile {
+    readonly file: string
+    readonly verdict: "green" | "drift" | "written"
+    readonly firstDifference: number | null
+}
 
 interface AnatomyData {
     readonly file: string
@@ -11,6 +19,7 @@ interface AnatomyData {
     readonly verdict: "green" | "drift" | "written" | "printed"
     readonly dangling: readonly string[]
     readonly firstDifference: number | null
+    readonly files: readonly GeneratedFile[]
 }
 
 const lf = (text: string): string => text.replaceAll("\r\n", "\n")
@@ -21,7 +30,7 @@ const generatedOf = (text: string): string => {
     return begin < 0 || end < begin ? "" : text.slice(begin, end + END_MARKER.length)
 }
 
-/** The 1-based line of the block where the file and the generator first disagree, or null when they agree. */
+/** The 1-based line where the file and the generator first disagree, or null when they agree. */
 const firstDifference = (actual: string, expected: string): number | null => {
     if (actual === expected) return null
     const left = actual.split("\n")
@@ -30,45 +39,83 @@ const firstDifference = (actual: string, expected: string): number | null => {
     return (index < 0 ? left.length : index) + 1
 }
 
+/** The whole-file outputs of the generator besides anatomy.md: one slice per edition and side, and the contexts index. */
+const wholeFiles = (knowledge: string): { readonly file: string; readonly text: string }[] => [
+    ...SLICE_EDITIONS.flatMap((edition) => SLICE_SIDES.map((side) => ({ file: join(knowledge, "project", sliceFile(edition, side)), text: renderSlice(knowledge, edition, side) }))),
+    { file: join(knowledge, INDEX_FILE), text: renderIndex(knowledge) },
+]
+
+/** Compares (or, with `write`, rewrites) one whole generated file. */
+const settleWhole = (target: { readonly file: string; readonly text: string }, write: boolean): GeneratedFile => {
+    if (write) {
+        writeFileSync(target.file, target.text)
+        return { file: target.file, verdict: "written", firstDifference: null }
+    }
+    const difference = existsSync(target.file) ? firstDifference(lf(readFileSync(target.file, "utf8")), target.text) : 1
+    return { file: target.file, verdict: difference === null ? "green" : "drift", firstDifference: difference }
+}
+
 /**
  * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
- * pattern front matter. `--check` exits 1 when the file differs from the generator; `--write` rewrites the block. Runtime only
- * (no edition): an app tree never sees it.
+ * pattern front matter, its slices (`anatomy-<edition>-<side>.md`, the app root and one side, which op files read instead of
+ * the whole anatomy) and the contexts index (`project/index.md`, the file a Kernel reads instead of the whole tree). `--check`
+ * exits 1 when any of them differs from the generator; `--write` rewrites them; `--slice` prints one slice. Runtime only (no
+ * edition): an app tree never sees it.
  */
 export const contextsAnatomyVerb = defineVerb({
     path: ["contexts", "anatomy"],
-    summary: "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml; --check fails on drift, --write regenerates",
+    summary: "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml, its per-side slices and the contexts index; --check fails on drift, --write regenerates, --slice prints one slice",
     editions: [],
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/contexts-anatomy@1",
     flags: {
-        check: { kind: "boolean", summary: "exit 1 when contexts/project/anatomy.md differs from what the generator writes" },
-        write: { kind: "boolean", summary: "rewrite the generated block of contexts/project/anatomy.md" },
+        check: { kind: "boolean", summary: "exit 1 when anatomy.md, a slice or the contexts index differs from what the generator writes" },
+        write: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices and the contexts index" },
+        slice: { kind: "boolean", summary: "print the slice of one edition and side (the app root plus that side), as a task reads it" },
+        side: { kind: "string", summary: "the side of --slice: be or fe" },
+        edition: { kind: "string", summary: "the edition of --slice: lite or full" },
     },
     run: (_context, flags) => {
         if (flags.check && flags.write) throw new Refusal("FLAGS_EXCLUSIVE", "pass --check or --write, not both")
         const knowledge = join(runtimeRoot(), "contexts")
         const file = join(knowledge, "project", "anatomy.md")
         if (!existsSync(join(knowledge, "hfs", "slots.yaml"))) throw new Refusal("CONTEXTS_NOT_FOUND", `no contexts/hfs/slots.yaml under ${runtimeRoot()}`)
+        if (flags.slice) {
+            if (flags.check || flags.write) throw new Refusal("FLAGS_EXCLUSIVE", "--slice prints one slice; --check and --write cover every slice")
+            if (flags.side === undefined || flags.edition === undefined) throw new UsageError("--slice needs --side <be|fe> and --edition <lite|full>")
+            const text = renderSlice(knowledge, flags.edition, flags.side)
+            return Promise.resolve({ data: { file: join(knowledge, "project", sliceFile(flags.edition, flags.side)), mode: "print", verdict: "printed", dangling: [], firstDifference: null, files: [] } satisfies AnatomyData, message: text })
+        }
         const { block, dangling } = renderAnatomy(knowledge)
         const note = dangling.length === 0 ? "" : `\nslot rule codes with no rule in hfs/rules.yaml: ${dangling.join(", ")}`
         if (!flags.check && !flags.write) {
-            return Promise.resolve({ data: { file, mode: "print", verdict: "printed", dangling, firstDifference: null } satisfies AnatomyData, message: block + note })
+            return Promise.resolve({ data: { file, mode: "print", verdict: "printed", dangling, firstDifference: null, files: [] } satisfies AnatomyData, message: block + note })
         }
         if (!existsSync(file)) throw new Refusal("ANATOMY_NOT_FOUND", `${file} does not exist`)
         const text = lf(readFileSync(file, "utf8"))
+        const whole = wholeFiles(knowledge)
         if (flags.write) {
             writeFileSync(file, spliceAnatomy(text, block, file))
-            return Promise.resolve({ data: { file, mode: "write", verdict: "written", dangling, firstDifference: null } satisfies AnatomyData, message: `wrote ${file}${note}` })
+            const files = whole.map((target) => settleWhole(target, true))
+            return Promise.resolve({
+                data: { file, mode: "write", verdict: "written", dangling, firstDifference: null, files } satisfies AnatomyData,
+                message: `wrote ${file} and ${String(files.length)} generated file(s): ${files.map((item) => item.file).join(", ")}${note}`,
+            })
         }
         spliceAnatomy(text, block, file)
         const difference = firstDifference(generatedOf(text), block)
-        const data: AnatomyData = { file, mode: "check", verdict: difference === null ? "green" : "drift", dangling, firstDifference: difference }
-        const message =
-            difference === null
-                ? `green: ${file} matches hfs/slots.yaml${note}`
-                : `drift: ${file} differs from the generator at line ${String(difference)} of the generated block; run \`starci contexts anatomy --write\`${note}`
-        return Promise.resolve({ data, message, exitCode: difference === null ? 0 : 1 })
+        const files = whole.map((target) => settleWhole(target, false))
+        const drifted = files.filter((item) => item.verdict === "drift")
+        const green = difference === null && drifted.length === 0
+        const data: AnatomyData = { file, mode: "check", verdict: green ? "green" : "drift", dangling, firstDifference: difference, files }
+        const lines = [
+            ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
+            ...drifted.map((item) => `drift: ${item.file} differs from the generator at line ${String(item.firstDifference)}`),
+        ]
+        const message = green
+            ? `green: ${file}, its ${String(files.length - 1)} slice(s) and the contexts index match the generator${note}`
+            : `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`
+        return Promise.resolve({ data, message, exitCode: green ? 0 : 1 })
     },
 })

@@ -214,7 +214,7 @@ const callOrca = async <T>(binary: OrcaBinary, command: string, flags: OrcaFlags
 /** The routed coordinator launch, with a brief pointer instead of a full prompt in argv. */
 export interface AgentLaunchInput {
     readonly agent: string
-    readonly model: string
+    readonly model?: string | undefined
     readonly effort?: string | undefined
     readonly worktree: string
     readonly prompt: string
@@ -293,7 +293,7 @@ export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<{ r
 }
 
 /** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
-const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
+const TERMINAL_GONE_CODES: ReadonlySet<string> = new Set(["tab_not_found", "terminal_gone", "terminal_handle_stale", "terminal_not_found", "terminal_tab_not_found", "terminal_exited"])
 
 /**
  * `orca terminal close --terminal <handle> --tab`: closes the terminal's whole tab. `closed` when Orca closed it, `gone` when
@@ -369,7 +369,8 @@ export interface WorkerStartInput {
     readonly taskTitle: string
     readonly worktree: string
     readonly agent: string
-    readonly model: string
+    /** Absent for an agent that takes no launch-time model (ops/routing.yaml modelSelection: false). */
+    readonly model?: string | undefined
     readonly effort?: string | undefined
     readonly run?: string | undefined
     readonly parent?: string | undefined

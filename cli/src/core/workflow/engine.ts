@@ -7,10 +7,11 @@ import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
 import { applyPriorWork } from "../../harness/prior.js"
+import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { getTask } from "../../harness/tasks.js"
+import { getTask, recordEvent } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
@@ -142,14 +143,11 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
 }
 
 /** Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. */
-const settleReported = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
-    // One workflow = one worktree: an orca workflow's tasks are verified (and committed) where its Ops wrote them.
-    const worktree = snapshot.workflow.header.runner === "orca" ? withLedger(root, (db) => workflowWorktreeOf(db, snapshot.workflow.id)) : undefined
-    const verifyContext: VerbContext = worktree === undefined ? context : { ...context, cwd: worktree }
+const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
     const reported = snapshot.views.flatMap((view) => (view.state === "reported" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
     return inOrder(reported, async ({ key, task }): Promise<StepAction> => {
         try {
-            const verified = await taskVerifyVerb.run(verifyContext, { task, contract: undefined, record: false, "no-commit": false, recover: false })
+            const verified = await taskVerifyVerb.run(context, { task, contract: undefined, record: false, "no-commit": false, recover: false })
             const data = verified.data as { readonly verdict?: string; readonly status?: string; readonly checks?: readonly { readonly name: string; readonly status: string }[] }
             const red = (data.checks ?? []).filter((check) => check.status === "red").map((check) => check.name)
             const redNote = red.length === 0 ? "" : `; red: ${red.join(", ")} (starci task status ${task})`
@@ -231,10 +229,29 @@ const launchOf = (root: string, workflow: WorkflowRow, node: PlanNode, taskId: s
     return { agent: pick.agent, model: pick.model, effort: effort ?? pick.effort, pick }
 }
 
+/**
+ * The mechanics of a revert node (reconcile.ts revertOf): before its worker starts, the dropped key's commits are reversed in
+ * the checkout once (revertCommits), and the worker checks and files it; a revert that does not apply cleanly is the worker's.
+ */
+const applyRevert = async (root: string, checkout: string, workflowId: string, node: PlanNode, taskId: string): Promise<string | null> => {
+    const { revertOf } = withLedger(root, (db) => priorWorkOf(db, workflowId, node))
+    if (revertOf === undefined || withLedger(root, (db) => db.prepare("SELECT 1 FROM events WHERE kind = 'revert-applied' AND subject = ?").get(taskId)) !== undefined) return null
+    let detail: string
+    try {
+        await revertCommits(checkout, revertOf.commits)
+        detail = `reverted ${String(revertOf.commits.length)} commit(s) of ${revertOf.key} in the checkout`
+    } catch (error: unknown) {
+        detail = `revert of ${revertOf.key} left to the worker: ${asRefusal(error).message}`
+    }
+    withLedger(root, (db) => { recordEvent(db, "revert-applied", taskId, { of: revertOf.key, commits: revertOf.commits, detail }) })
+    return detail
+}
+
 const launchTask = async (context: VerbContext, root: string, workflow: WorkflowRow, node: PlanNode, task: string): Promise<StepAction> => {
     const chosen = launchOf(root, workflow, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
+        await applyRevert(root, withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root, workflow.id, node, task)
         const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen.pick, worktree: workflow.header.worktree })
         const by = chosen.pick === undefined ? "pinned" : `routed (tier ${chosen.pick.tier}, pool ${chosen.pick.pool})`
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} ${by}: ${started.message.split("\n")[0] ?? "launched"}` }
@@ -354,7 +371,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(
             ...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)),
             ...(await checkLiveness(context, root, readSnapshot(root, id))),
-            ...(await settleReported(context, root, readSnapshot(root, id))),
+            ...(await settleReported(context, readSnapshot(root, id))),
             ...(await closeSettledSeats(root, readSnapshot(root, id))),
         )
         snapshot = reconcile(root, id)
@@ -372,6 +389,8 @@ const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void
     const view = snapshot.views.find((candidate) => (candidate.state === "queued" || candidate.state === "running") && candidate.task !== null)
     if (view?.task == null) return
     const id = view.task.id
+    const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
+    if (node !== undefined) await applyRevert(root, root, snapshot.workflow.id, node, id)
     await applyPriorWork(root, root, withLedger(root, (db) => getTask(db, id)))
 }
 

@@ -4,21 +4,22 @@ summary: write the back-end tests of one slice, inside test paths only (the fron
 floor: medium
 hostTools: [git, node]
 context:
+  budget: 30000
   base:
-    - harness:contexts/project/README.md
-    - harness:contexts/project/anatomy.md
-    - harness:contexts/project/lint.md
+    - {file: "harness:contexts/project/README.md", shared: true}
+    - harness:contexts/project/anatomy-{edition}-be.md
+    - {file: "harness:contexts/project/lint.md", shared: true}
     - harness:contexts/project/{edition}.md
-    - harness:contexts/code/README.md
-    - harness:contexts/code/shared/README.md
-    - harness:contexts/code/shared/typing.md
-    - harness:contexts/code/shared/format.md
-    - harness:contexts/code/shared/loosening.md
-    - harness:contexts/code/shared/comment.md
-    - harness:contexts/code/shared/naming.md
-    - harness:contexts/code/shared/imports.md
-    - harness:contexts/code/shared/test.md
-    - harness:contexts/code/shared/scripts.md
+    - {file: "harness:contexts/code/README.md", shared: true}
+    - {file: "harness:contexts/code/shared/README.md", shared: true}
+    - {file: "harness:contexts/code/shared/typing.md", shared: true}
+    - {file: "harness:contexts/code/shared/format.md", shared: true}
+    - {file: "harness:contexts/code/shared/loosening.md", shared: true}
+    - {file: "harness:contexts/code/shared/comment.md", shared: true}
+    - {file: "harness:contexts/code/shared/naming.md", shared: true}
+    - {file: "harness:contexts/code/shared/imports.md", shared: true}
+    - {file: "harness:contexts/code/shared/test.md", shared: true}
+    - {file: "harness:contexts/code/shared/scripts.md", shared: true}
     - harness:contexts/code/be/README.md
     - harness:contexts/code/be/test.md
     - harness:packages/jest-preset/README.md
@@ -29,9 +30,8 @@ output:
   base:
     summary: {type: string, summary: "what the tests prove"}
     files: {type: "string[]", summary: "the test files you wrote"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the testing rules the tests follow"}
+    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the testing rules the tests follow, from the back-end test topics (never the shared files)"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records the tests prove"}
-  behavioural: false
 checks:
   base: [paths-only, rules-cited]
   behavioural: true

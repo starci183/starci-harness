@@ -9,7 +9,7 @@ import { loadOps } from "../../harness/ops.js"
 import { classifyFailure, recordOutcome } from "../../harness/circuit.js"
 import { describeRoute, routeTask, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
-import { loadRouting, poolOfAgent, providerOfAgent } from "../../harness/routing.js"
+import { loadRouting, poolOfAgent, providerOfAgent, selectsModel } from "../../harness/routing.js"
 import {
     LAUNCH_TIMEOUT_MS,
     OrcaFailure,
@@ -111,7 +111,7 @@ const launchRecordSchema = z.object({
         taskTitle: z.string(),
         worktree: z.string(),
         agent: z.string(),
-        model: z.string(),
+        model: z.string().optional(),
         effort: z.string().optional(),
         parent: z.string().optional(),
         from: z.string().optional(),
@@ -153,8 +153,8 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
             taskTitle: `[Op] ${task.id}`,
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
-            model: options.model,
-            ...(options.effort === undefined ? {} : { effort: options.effort }),
+            // An agent that takes no launch-time model (modelSelection: false) runs its own; Orca refuses --model for it.
+            ...(selectsModel(loadRouting(), options.agent) ? { model: options.model, ...(options.effort === undefined ? {} : { effort: options.effort }) } : {}),
             ...(kernel === null ? {} : { parent: kernel.taskId }),
             ...(from === undefined || from === "" ? {} : { from }),
             timeoutMs: options.timeoutMs ?? LAUNCH_TIMEOUT_MS,
@@ -325,7 +325,7 @@ const attestLaunch = async (at: Launching, launched: LaunchOf<"ready">) => {
     const effective = typeof shown === "string" ? started.effective : (shown.effective ?? started.effective)
     const attested = effectiveLaunch(effective)
     const requested = record.start
-    const mismatch = (attested.model !== null && attested.model !== requested.model) || (attested.agent !== null && attested.agent !== requested.agent)
+    const mismatch = (requested.model !== undefined && attested.model !== null && attested.model !== requested.model) || (attested.agent !== null && attested.agent !== requested.agent)
     const ours = stillOurs(db, task.id, attemptId)
     // Orca names a worker tab after its task id; the harness names it by role and task, as every seat it runs is named.
     const terminal = typeof shown === "string" ? started.terminal : (shown.terminal ?? started.terminal)
@@ -352,7 +352,7 @@ const abandonReady = async (at: Launching, launched: LaunchOf<"ready">, attestat
         const after = rolled ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
         throw new Refusal(
             "MODEL_MISMATCH",
-            `requested ${requested.agent} ${requested.model}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
+            `requested ${requested.agent} ${requested.model ?? "(its own model)"}, Orca launched ${attested.agent ?? requested.agent} ${attested.model ?? "(model not named)"}; the worker was closed${closeNote(closed)}\nattempt ${attemptId} closed as model-mismatch; ${after}`,
         )
     }
     throw new Refusal("TASK_LEFT_DURING_LAUNCH", `task ${task.id} became ${getTask(db, task.id).status} while its worker was launching; the worker was closed${closeNote(closed)}`)
@@ -378,7 +378,7 @@ const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omi
     const titled = terminal === null ? "no terminal handle to title" : await terminalRename(binary, terminal, requested.taskTitle, cwd)
     if (titled !== undefined) recordEvent(db, "seat-title-skipped", task.id, { seat: seat.id, reason: titled })
     const data: SeatStartData = { ...base, seat: seatRow, dispatchId: started.dispatchId, effective, attested }
-    const model = attested.model ?? `${requested.model} (not attested)`
+    const model = attested.model ?? `${requested.model ?? "its own model"} (not attested)`
     const under = requested.parent === undefined ? "" : ` under the Kernel task ${requested.parent}`
     return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}${under}; brief ${at.files.brief}` }
 }

@@ -5,7 +5,7 @@ import { basename, join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
-import { changedFiles, git, resolveSha } from "../shared/git.js"
+import { git, resolveSha } from "../shared/git.js"
 import { underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { runCheck, strayFiles } from "./run-checks.js"
@@ -129,10 +129,14 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
         if (plan.whole.length > 0) await gitIndexedOk(root, index, ["add", "-A", "--", ...plan.whole.map(literal)])
         if (plan.trackedOnly.length > 0) await gitIndexedOk(root, index, ["add", "-u", "--", ...plan.trackedOnly.map(literal)])
         const tree = await gitIndexedOk(root, index, ["write-tree"])
+        // What the work tree holds under allowPaths that the staged snapshot does not: read against that same temporary index
+        // (index to work tree, plus files it does not know), so a file is never judged against a second, later look at HEAD.
+        const scope = ["--", ...contract.context.allowPaths.map(literal)]
+        const unstaged = lines(await gitIndexedOk(root, index, ["diff", "--name-only", ...scope]))
+        const unknown = lines(await gitIndexedOk(root, index, ["ls-files", "--others", "--exclude-standard", ...scope]))
         const candidate = await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
         const changed = lines(await git(root, ["diff", "--name-only", parent, candidate]))
-        const dirty = (await changedFiles(root, "HEAD")).filter((file) => underPaths(file, contract.context.allowPaths))
-        const missing = dirty.filter((file) => !changed.includes(file))
+        const missing = [...new Set([...unstaged, ...unknown])].filter((file) => underPaths(file, contract.context.allowPaths)).sort((left, right) => left.localeCompare(right))
         const lands: CheckOutcome = {
             name: "lands",
             kind: "files",
@@ -250,7 +254,9 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
         return { ...built.facts, base, checks, verdict }
     } finally {
-        await removeWorktree(root, dir)
-        await captureTool("git", ["worktree", "prune"], root)
+        // A cleanup that fails (a file Windows still holds: EBUSY) must not replace the verdict; the next verify's
+        // pruneVerifyWorktrees removes the folder once this pid is gone.
+        await removeWorktree(root, dir).catch(() => undefined)
+        await captureTool("git", ["worktree", "prune"], root).catch(() => undefined)
     }
 }

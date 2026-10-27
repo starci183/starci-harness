@@ -61,7 +61,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with this file, [anatomy.md](anatomy.md) and [lint.md](lint.md) → the records the contract names |
+| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with this file, the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and [lint.md](lint.md) → the records the contract names |
 | change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
@@ -73,7 +73,8 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 | file | holds |
 |---|---|
 | [README.md](README.md) | this map: what a project is, the life cycle, where to read |
-| [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for |
+| [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<edition>-<side>.md` (the app root and one side of one edition) are what a task of that side reads |
+| [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [work.md](work.md) | the `.starciwork` record families, their state, who writes what, UAT flows and evidence |

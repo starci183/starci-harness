@@ -4,6 +4,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
+import { scopeSchema } from "./graph.js"
 import { now } from "./ledger.js"
 import { inTransaction } from "./leases.js"
 import { recordEvent } from "./tasks.js"
@@ -31,6 +32,10 @@ const commandSchema = z.strictObject({
     answers: z.array(z.string().min(1)).optional(),
     note: z.string().optional(),
     goal: z.string().min(1).optional(),
+    acceptance: z.array(z.string().min(1)).optional(),
+    scope: scopeSchema.optional(),
+    accept: z.array(z.string().min(1)).optional(),
+    keepEffect: z.array(z.string().min(1)).optional(),
     change: z.string().min(1).optional(),
     escalation: z.strictObject({ kind: z.enum(ESCALATION_KINDS), question: z.string().min(1), paths: z.array(z.string()).optional() }).optional(),
     handoff: z.strictObject({ summary: z.string().min(1) }).optional(),
@@ -114,9 +119,8 @@ export const getCommand = (db: DatabaseSync, cmdId: string): CommandRow | undefi
     return row === undefined ? undefined : toCommand(row)
 }
 
-/** The goal version of a workflow: goal@1 is the defined goal, and every applied goal-change adds one. */
-export const goalVersionOf = (db: DatabaseSync, workflowId: string): number =>
-    1 + Number(db.prepare("SELECT COUNT(*) AS n FROM commands WHERE workflow_id = ? AND kind = 'goal-change' AND status = 'applied'").get(workflowId)?.n ?? 0)
+/** The goal version of a workflow (goal@1 is the defined goal; workflow regoal and a goal-change move it). */
+export const goalVersionOf = (db: DatabaseSync, workflowId: string): number => getWorkflow(db, workflowId).goalVersion
 
 /** The admission of a command: `new` (an intent row is written, apply it), or `replay` of a command already applied. */
 export type Admission = { readonly kind: "new" } | { readonly kind: "replay"; readonly row: CommandRow }

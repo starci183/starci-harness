@@ -41,8 +41,11 @@ const describeCheck = (check: PrimitiveCheck): string => {
     switch (check.kind) {
         case "starci":
             return `${code("starci " + check.args.join(" "))} exits 0`
-        case "command":
-            return `${code(Array.isArray(check.run) ? check.run.join(" ") : check.run)} exits 0`
+        case "command": {
+            const run = code(Array.isArray(check.run) ? check.run.join(" ") : check.run)
+            // A verdict check reruns the suite: green when the result's verdict agrees with its exit, not when it exits 0.
+            return check.verdict === undefined ? `${run} exits 0` : `${run} reruns on the clean checkout and your verdict must agree with its exit`
+        }
         case "files": {
             const parts = [
                 ...(check.onlyAllowPaths === true ? ["nothing outside allowPaths changed since the revision"] : []),

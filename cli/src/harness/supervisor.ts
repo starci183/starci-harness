@@ -9,6 +9,7 @@ import { readMachine, withMachine } from "./machine.js"
 import { agentLaunch, isSelectorNotFound, launchOperationOf, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
 import type { AgentLaunchInput, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
+import { loadRouting, selectsModel } from "./routing.js"
 
 /** The exact title of the host Supervisor's terminal and orchestration task. */
 export const SUPERVISOR_TITLE = "[Supervisor]"
@@ -120,7 +121,7 @@ export const startSupervisor = async (binary: OrcaBinary, cwd: string): Promise<
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const id = randomUUID()
     const prompt = coordinatorBrief({ role: "supervisor", root: runtimeRoot(), launchId: id, agent: pick.agent, model: pick.model })
-    const input: AgentLaunchInput = { agent: pick.agent, model: pick.model, effort: pick.effort, worktree: `path:${runtimeRoot().replaceAll("\\", "/")}`, prompt }
+    const input: AgentLaunchInput = { agent: pick.agent, ...(selectsModel(loadRouting(), pick.agent) ? { model: pick.model, effort: pick.effort } : {}), worktree: `path:${runtimeRoot().replaceAll("\\", "/")}`, prompt }
     withMachine((db) => {
         if (db.prepare("SELECT 1 FROM supervisors WHERE ended_at IS NULL").get() !== undefined) throw new Refusal("SUPERVISOR_RUNNING", "another Supervisor start reserved the host meanwhile")
         db.prepare("INSERT INTO supervisors (id, agent, model, started_at, lease_until, launch_json) VALUES (?, ?, ?, ?, ?, ?)").run(id, pick.agent, pick.model, now(), leaseEnd(loadCoordinatorLiveness().supervisorTtlMinutes), JSON.stringify(input))

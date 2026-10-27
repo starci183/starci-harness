@@ -17,7 +17,7 @@ row starts with [harness/rules.md](harness/rules.md), the rules no task may bend
 |---|---|
 | operate the harness: send a task, run a workflow, verify, push | `skills/starci/SKILL.md`, then `starci explain --term <group>` for the verbs you call |
 | work as a worker on one task | the brief the harness rendered for the task (the worker procedure of [ops/ops/README.md](../ops/ops/README.md), then the label's op file `ops/ops/<label>.md`), then the contract it names |
-| plan as a Kernel | the whole tree below in table order: [harness/](#harness), then [project/](project/README.md) and the rows of "Reading order by task" the work touches |
+| plan as a Kernel | [harness/](#harness), [project/README.md](project/README.md), then [project/index.md](project/index.md) (generated: every file of this tree with its size, first sentence, sections and ids) instead of the tree itself; open only the files the tasks need, through the rows of "Reading order by task", and name them in each contract's `context.extend` |
 | edit the harness itself (`cli/`, `ops/`, `policy/`, these documents) | [CONTRIBUTING.md](../CONTRIBUTING.md), then the owner of your surface: [cli/README.md](../cli/README.md), [policy/README.md](../policy/README.md), the header of the `ops/` file you change, and [harness/decisions.md](harness/decisions.md) |
 | author app code or UI | "Reading order by task" below and the files it routes you to; the app's own `hfs.json` and `.starciwork/` |
 | change a gate, a profile, a banned marker or the secret scan | [policy/README.md](../policy/README.md) and the file it names; the code of the gate is under `cli/src/core/check/` |
@@ -67,7 +67,7 @@ prove it. An agent never re-derives what lint enforces and never invents an API 
 
 | Folder / file | Holds | Read by |
 |---|---|---|
-| [project/](project/README.md) | the map of one StarCi project: app root and sides, Work life cycle, [anatomy](project/anatomy.md) generated from slots, where lint applies, `.starcistacks`, lite and full differences | Kernel (full context), every op through its op file; `starci contexts anatomy --check` keeps the anatomy in step |
+| [project/](project/README.md) | the map of one StarCi project: app root and sides, Work life cycle, [anatomy](project/anatomy.md) generated from slots, where lint applies, `.starcistacks`, lite and full differences | Kernel (through [project/index.md](project/index.md)), every op through its op file; `starci contexts anatomy --check` keeps the anatomy in step |
 | [ui/](ui/README.md) | universal interface decisions: composition, presentation, the size scale, one page per component role, proof | authoring agent (spec, draw, implement), auditor; [ui/proof/thresholds.yaml](ui/proof/thresholds.yaml) by the proof gate |
 | [grammars/](grammars/README.md) | the grammar contract and why each grammar looks as it does; [contract.yaml](grammars/contract.yaml) as data | authoring agent, grammar author; the conformance gate reads `contract.yaml` |
 | [vendor/](vendor/README.md) | what HeroUI ships and what a grammar must keep; [parity.yaml](vendor/parity.yaml), [wrappers.yaml](vendor/wrappers.yaml) | grammar author; the parity gate reads both |

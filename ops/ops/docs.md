@@ -14,7 +14,6 @@ output:
     files: {type: "string[]", summary: "the documents you changed"}
     rulesApplied: {type: "string[]", minItems: 0, cites: context, summary: "the ids of the writing or record rules you applied"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the Work records you wrote or changed"}
-  behavioural: false
 checks:
   base: [paths-only, rules-cited]
   behavioural: false
