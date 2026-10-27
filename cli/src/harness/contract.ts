@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { checkEntrySchema, entryApplies, entryFile, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema } from "./ops.js"
-import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck } from "./ops.js"
+import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
+import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
@@ -114,9 +114,10 @@ const fromLegacy = (legacy: z.infer<typeof legacyContractSchema>): unknown => ({
     budget: legacy.budget,
 })
 
-/** One expected check after expansion, with where it came from and whether it proves behaviour. */
+/** One expected check after expansion: its trust tier, and whether it proves behaviour (never when the tier is T2). */
 export interface ResolvedCheck {
     readonly name: string
+    readonly tier: TrustTier
     readonly behavioural: boolean
     readonly check: PrimitiveCheck
 }
@@ -166,12 +167,13 @@ const sameEntry = (left: CheckEntry, right: CheckEntry): boolean => JSON.stringi
 /** Where a resolved item came from: the op file's base, or the contract (its pinned base or its extend). */
 export type Source = "base" | "extend"
 
-/** One file the task reads, resolved: `harness` files live in the harness checkout, the others in the repository. */
+/** One file the task reads, resolved: `harness` files live in the harness checkout, the others in the repository; a `shared` one is never cited. */
 export interface ContextFile {
     readonly entry: string
     readonly source: Source
     readonly harness: boolean
     readonly path: string
+    readonly shared: boolean
 }
 
 /** One named input with its value. */
@@ -241,13 +243,13 @@ const resolveInputs = (contract: Contract, op: Op, problems: string[]): Resolved
 const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<string, string>>, problems: string[]): ContextFile[] => {
     const { label } = contract
     const context: ContextFile[] = []
-    const add = (entry: string, source: Source): void => {
+    const add = (entry: string, source: Source, shared = false): void => {
         const filled = normaliseContextEntry(fill(entry, values))
         if (context.some((file) => file.entry === filled)) return
         const harness = filled.startsWith(HARNESS_PREFIX)
-        context.push({ entry: filled, source, harness, path: harness ? filled.slice(HARNESS_PREFIX.length) : filled })
+        context.push({ entry: filled, source, harness, path: harness ? filled.slice(HARNESS_PREFIX.length) : filled, shared })
     }
-    for (const entry of op.context.base) if (entryApplies(entry, values)) add(entryFile(entry), "base")
+    for (const entry of op.context.base) if (entryApplies(entry, values)) add(entryFile(entry), "base", entryShared(entry))
     if (contract.context.base !== undefined) {
         const pinned = new Set(contract.context.base.map((entry) => normaliseContextEntry(fill(entry, values))))
         for (const file of context.filter((item) => !pinned.has(item.entry))) problems.push(`context.base drops ${file.entry}, a file of the ${label} op's base`)
@@ -345,13 +347,16 @@ const substitute = (value: unknown, args: CheckArgs): unknown => {
     return value
 }
 
+/** The context files a read trace may cite: every file but the shared ones every task of the label reads anyway. */
+export const citableContext = (resolved: ResolvedContract): ContextFile[] => resolved.context.filter((file) => !file.shared)
+
 /** The trace a `cited` check verifies: each output key that cites, with the context files its ids must come from. */
 const traceOf = (resolved: ResolvedContract, ops: Ops, allowPaths: readonly string[]): { key: string; minItems: number; files: string[] }[] =>
     resolved.output
         .filter((item) => "cites" in item.spec && item.spec.cites !== undefined)
         .map((item) => {
             const work = "cites" in item.spec && item.spec.cites === "work"
-            const files = resolved.context.filter((file) => !work || (!file.harness && underPaths(file.path, [WORK_TREE])))
+            const files = citableContext(resolved).filter((file) => !work || (!file.harness && underPaths(file.path, [WORK_TREE])))
             // Harness files are absolute here; repository files stay relative, read from the checkout the check runs in.
             const read = files.map((file) => (file.harness ? join(ops.root, file.path) : file.path))
             // A Work key may also cite a record the task wrote: its own Work scope is read in the candidate, folders included.
@@ -359,18 +364,26 @@ const traceOf = (resolved: ResolvedContract, ops: Ops, allowPaths: readonly stri
             return { key: item.key, minItems: minItemsOf(item.spec), files: [...read, ...written] }
         })
 
-const expand = (entry: CheckEntry, index: number, ops: Ops): ResolvedCheck => {
-    if ("check" in entry) return { name: `check-${String(index + 1)}:${entry.check.kind}`, behavioural: ["command", "json", "probe", "uat-flow"].includes(entry.check.kind), check: entry.check }
+/**
+ * Expands one entry into its primitive check. A preset's arguments come from the entry, else from the contract's inputs of the
+ * same name. The tier comes from the check's kind; only a T0 or T1 check is behavioural, whatever the preset or entry says.
+ */
+const expand = (entry: CheckEntry, index: number, ops: Ops, inputs: CheckArgs): ResolvedCheck => {
+    if ("check" in entry) {
+        const tier = trustTier(entry.check.kind)
+        return { name: `check-${String(index + 1)}:${entry.check.kind}`, tier, behavioural: tier !== "T2" && BEHAVIOURAL_KINDS.has(entry.check.kind), check: entry.check }
+    }
     const preset = ops.presets[entry.preset]
     if (preset === undefined) throw new Refusal("CONTRACT_UNKNOWN_PRESET", `the checks name an unknown preset: ${entry.preset}; presets: ${Object.keys(ops.presets).join(", ")}`)
-    const args: CheckArgs = "args" in entry ? (entry.args ?? {}) : {}
+    const args: CheckArgs = { ...inputs, ...("args" in entry ? (entry.args ?? {}) : {}) }
     const missing = (preset.args ?? []).filter((name) => !(name in args))
     if (missing.length > 0) throw new Refusal("CONTRACT_PRESET_ARGS", `preset ${entry.preset} needs: ${missing.join(", ")}; write it as ${presetForm(entry.preset, preset.args ?? [])}`)
     const parsed = primitiveCheckSchema.safeParse(substitute(preset.check, args))
     if (!parsed.success) {
         throw new Refusal("CONTRACT_PRESET_ARGS", `preset ${entry.preset} does not expand to a valid check (write it as ${presetForm(entry.preset, preset.args ?? [])}): ${z.prettifyError(parsed.error)}`)
     }
-    return { name: entry.preset, behavioural: preset.behavioural, check: parsed.data }
+    const tier = trustTier(parsed.data.kind)
+    return { name: entry.preset, tier, behavioural: preset.behavioural && tier !== "T2", check: parsed.data }
 }
 
 /** The name of the generated check of the output keys. */
@@ -382,13 +395,15 @@ export const OUTPUT_CHECK = "output"
  */
 export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => {
     const resolved = resolveContract(contract, ops)
+    const inputs: CheckArgs = Object.fromEntries(resolved.inputs.map((input) => [input.name, input.value]))
     const checks = resolved.checks.map(({ entry }, index): ResolvedCheck => {
-        const check = expand(entry, index, ops)
+        const check = expand(entry, index, ops, inputs)
         return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, ops, contract.context.allowPaths) } } : check
     })
     if (resolved.output.length === 0) return checks
     const types: Record<string, OutputType> = Object.fromEntries(resolved.output.map((item) => [item.key, item.spec.type]))
-    return [...checks, { name: OUTPUT_CHECK, behavioural: resolved.op.output.behavioural, check: { kind: "json", file: RESULT_FILE, requiredKeys: Object.keys(types), types } }]
+    // The output is the worker's own claim: its shape can make the task red, never prove what the task did.
+    return [...checks, { name: OUTPUT_CHECK, tier: "T2", behavioural: false, check: { kind: "json", file: RESULT_FILE, requiredKeys: Object.keys(types), types } }]
 }
 
 /** The contract's identity: sha256 of its canonical json, so a replan can tell an unchanged task from a changed one. */
@@ -410,14 +425,39 @@ const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
     for (const item of resolved.output) {
         if (!("cites" in item.spec) || item.spec.cites !== "context" || minItemsOf(item.spec) === 0) continue
         // A repository file may be written by an earlier task, so only an all-harness context can be judged before the work.
-        if (resolved.context.some((file) => !file.harness)) continue
-        const named = resolved.context.some((file) => {
+        const citable = citableContext(resolved)
+        if (citable.some((file) => !file.harness)) continue
+        const named = citable.some((file) => {
             const path = join(ops.root, file.path)
             return existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
         })
-        if (!named) problems.push(`output key ${item.key} must cite at least ${String(minItemsOf(item.spec))} rule id(s), but no context file names one; extend context with the rules the task applies`)
+        if (!named) problems.push(`output key ${item.key} must cite at least ${String(minItemsOf(item.spec))} rule id(s), but no context file it may cite (shared files excluded) names one; extend context with the rules the task applies`)
     }
     return problems
+}
+
+/** The bytes per token the context budget estimates with. */
+export const BYTES_PER_TOKEN = 4
+
+/** The estimated tokens of the context files that exist now: harness files, and repository files under `root` when it is given. */
+export const contextTokens = (resolved: ResolvedContract, ops: Ops, root?: string): { readonly tokens: number; readonly bytes: number; readonly unmeasured: readonly string[] } => {
+    let bytes = 0
+    const unmeasured: string[] = []
+    for (const file of resolved.context) {
+        const path = file.harness ? join(ops.root, file.path) : root === undefined ? undefined : join(root, file.path)
+        if (path === undefined || !existsSync(path)) unmeasured.push(file.entry)
+        else bytes += statSync(path).size
+    }
+    return { tokens: Math.ceil(bytes / BYTES_PER_TOKEN), bytes, unmeasured }
+}
+
+/** The context budget of the op: a context estimated heavier than it is unfit, so a task never starts by reading past its window. */
+const budgetProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
+    const budget = resolved.op.context.budget
+    if (budget === undefined) return []
+    const { tokens, bytes } = contextTokens(resolved, ops)
+    if (tokens <= budget) return []
+    return [`the context is about ${String(tokens)} tokens (${String(bytes)} bytes / ${String(BYTES_PER_TOKEN)}), over the ${resolved.op.label} op's budget of ${String(budget)}; name the topic files the task needs, not whole trees`]
 }
 
 /** Problems of the context files: an unfilled placeholder, a path that is no repository place, a harness file that is missing. */
@@ -445,7 +485,9 @@ const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops)
         const forms = Object.entries(ops.presets)
             .filter(([, preset]) => preset.behavioural)
             .map(([name, preset]) => presetForm(name, preset.args ?? []))
-        problems.push(`label ${contract.label} needs at least one behavioural check; lint and typecheck alone prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`)
+        problems.push(
+            `label ${contract.label} needs at least one behavioural check, one the harness observes itself (T0) or reads from a receipted run (T1); lint, typecheck and the worker's own result (T2) prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`,
+        )
     }
     return problems
 }
@@ -469,7 +511,7 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     } catch (error: unknown) {
         return [...problems, error instanceof Error ? error.message : String(error)]
     }
-    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops))
+    problems.push(...resolved.problems, ...contextProblems(resolved, ops), ...traceProblems(resolved, ops), ...budgetProblems(resolved, ops))
     try {
         problems.push(...checkProblems(contract, resolved, ops))
     } catch (error: unknown) {

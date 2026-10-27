@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path"
-import { containerName, dockerServer, fileStamps, loadUat, prepareImage, RESERVED_ENV_PREFIX, runContainer, tailOf } from "../../harness/uat.js"
-import type { Prepared } from "../../harness/uat.js"
+import { containerName, dockerServer, fileSha256, fileStamps, loadUat, prepareImage, RECEIPT_FILE, receiptFiles, receiptPath, RESERVED_ENV_PREFIX, runContainer, tailOf, writeReceipt } from "../../harness/uat.js"
+import type { Prepared, UatReceipt } from "../../harness/uat.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -18,6 +18,8 @@ interface UatRunData {
     readonly args: readonly string[]
     readonly out: string
     readonly files: readonly string[]
+    readonly receipt: string
+    readonly receiptSha256: string
     readonly exitCode: number
     readonly timedOut: boolean
     readonly removed: boolean
@@ -113,6 +115,7 @@ const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
         `forwards ${forwards}`,
         `env ${env}; args ${args}`,
         `evidence ${data.out}: ${files}`,
+        `receipt ${data.receipt} (sha256 ${data.receiptSha256.slice(0, 12)}), its copy ${RECEIPT_FILE} in the folder`,
         verdictOf(data, timeoutMs),
         `container ${data.container} ${data.removed ? "removed" : "STILL PRESENT (docker rm --force it)"}`,
     ]
@@ -121,7 +124,7 @@ const describeRun = (data: UatRunData, timeoutMs: number): string[] => {
 /** `starci uat run <script>`: runs a Playwright script in the pinned Playwright image, with host ports forwarded on 127.0.0.1 and an evidence folder. */
 export const uatRunVerb = defineVerb({
     path: ["uat", "run"],
-    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green",
+    summary: "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["op", "worker", "agent", "kernel", "supervisor", "owner"],
@@ -151,9 +154,28 @@ export const uatRunVerb = defineVerb({
         const prepared = await prepareImage(config, image, context.cwd, context.progress)
         mkdirSync(out, { recursive: true })
         const before = fileStamps(out)
+        const scriptSha256 = fileSha256(script)
         context.progress(`running ${basename(script)} as ${container} in ${prepared.runImage}${forwardNote(forwards)}`)
+        const startedAt = new Date().toISOString()
         const run = await runContainer({ container, runImage: prepared.runImage, scriptDir, scriptName: basename(script), outDir: out, forwards, timeoutMs, shmSize: config.shmSize, env, args: flags.args }, context.cwd)
-        const files = [...fileStamps(out)].filter(([path, stamp]) => before.get(path) !== stamp).map(([path]) => path).sort((left, right) => Number(left > right) - Number(left < right))
+        const endedAt = new Date().toISOString()
+        // The harness's receipt of what it ran and saw: a uat-flow check reads observations only through it.
+        const stored = receiptFiles(out, before)
+        const receipt: UatReceipt = {
+            schema: "starci/uat-receipt@1",
+            folder: out.replaceAll("\\", "/"),
+            script: { path: script.replaceAll("\\", "/"), sha256: scriptSha256 },
+            image,
+            runImage: prepared.runImage,
+            container,
+            exitCode: run.exitCode,
+            timedOut: run.timedOut,
+            startedAt,
+            endedAt,
+            files: stored,
+        }
+        const receiptSha256 = writeReceipt(receipt)
+        const files = stored.filter((file) => file.written).map((file) => file.path)
         const outPath = fromRoot.replaceAll("\\", "/")
         const data: UatRunData = {
             image,
@@ -166,6 +188,8 @@ export const uatRunVerb = defineVerb({
             args: flags.args,
             out: outPath,
             files,
+            receipt: receiptPath(out).replaceAll("\\", "/"),
+            receiptSha256,
             exitCode: run.exitCode,
             timedOut: run.timedOut,
             removed: run.removed,

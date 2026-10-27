@@ -4,21 +4,22 @@ summary: draw screens, generate assets, grow the Grammar
 floor: hard
 hostTools: [git, node, browser]
 context:
+  budget: 40000
   base:
-    - harness:contexts/project/README.md
-    - harness:contexts/project/anatomy.md
-    - harness:contexts/project/lint.md
+    - {file: "harness:contexts/project/README.md", shared: true}
+    - harness:contexts/project/anatomy-{edition}-fe.md
+    - {file: "harness:contexts/project/lint.md", shared: true}
     - harness:contexts/project/{edition}.md
-    - harness:contexts/code/README.md
-    - harness:contexts/code/shared/README.md
-    - harness:contexts/code/shared/typing.md
-    - harness:contexts/code/shared/format.md
-    - harness:contexts/code/shared/loosening.md
-    - harness:contexts/code/shared/comment.md
-    - harness:contexts/code/shared/naming.md
-    - harness:contexts/code/shared/imports.md
-    - harness:contexts/code/shared/test.md
-    - harness:contexts/code/shared/scripts.md
+    - {file: "harness:contexts/code/README.md", shared: true}
+    - {file: "harness:contexts/code/shared/README.md", shared: true}
+    - {file: "harness:contexts/code/shared/typing.md", shared: true}
+    - {file: "harness:contexts/code/shared/format.md", shared: true}
+    - {file: "harness:contexts/code/shared/loosening.md", shared: true}
+    - {file: "harness:contexts/code/shared/comment.md", shared: true}
+    - {file: "harness:contexts/code/shared/naming.md", shared: true}
+    - {file: "harness:contexts/code/shared/imports.md", shared: true}
+    - {file: "harness:contexts/code/shared/test.md", shared: true}
+    - {file: "harness:contexts/code/shared/scripts.md", shared: true}
     - harness:contexts/ui/README.md
     - harness:contexts/ui/composition.md
     - harness:contexts/ui/scale.md
@@ -34,9 +35,8 @@ output:
   base:
     summary: {type: string, summary: "what you drew or changed"}
     files: {type: "string[]", summary: "the repository paths you changed"}
-    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the ui and pattern rules the screen follows"}
+    rulesApplied: {type: "string[]", minItems: 1, cites: context, summary: "the ids of the ui and pattern rules the screen follows (never the shared files)"}
     workRecords: {type: "string[]", minItems: 1, cites: work, when: work, summary: "the ids of the ui records the screen implements"}
-  behavioural: false
 checks:
   base: [check-run-green, paths-only, rules-cited]
   behavioural: false

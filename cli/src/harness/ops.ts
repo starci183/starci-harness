@@ -17,7 +17,9 @@ export type OutputType = z.infer<typeof outputTypeSchema>
 /** A primitive check: the only kinds `task verify` knows how to run. */
 export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("starci"), args: z.array(z.string()).min(1) }),
-    z.object({ kind: z.literal("command"), run: z.union([z.string().min(1), z.array(z.string()).min(1)]) }),
+    // `verdict` names a key of the filed result that must agree with the exit code the harness observed (0: passed, else
+    // failed), so a suite report is judged by the run itself and the worker's verdict can only make it red.
+    z.object({ kind: z.literal("command"), run: z.union([z.string().min(1), z.array(z.string()).min(1)]), verdict: z.string().regex(/^[A-Za-z]\w*$/).optional() }),
     z.object({ kind: z.literal("files"), onlyAllowPaths: z.boolean().optional(), mustExist: namesSchema.optional() }),
     // `expect` pins values a key must hold, so a report that names its own failure can never pass by carrying the key.
     z.object({
@@ -28,7 +30,7 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
         expect: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
     }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
-    // A uat walk: the worker's filed result judged against a Work record and the files of its run folder (harness/work.ts).
+    // A uat walk: the receipted observations of `starci uat run` in the run folder judged against a Work record (harness/work.ts).
     z.object({ kind: z.literal("uat-flow"), record: z.string().min(1), run: z.string().min(1) }),
     // The read trace: each id the result cites under `key` must be named by one of `files` (resolved by resolveChecks).
     z.object({
@@ -39,6 +41,22 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
 
 /** One primitive check after preset expansion. */
 export type PrimitiveCheck = z.infer<typeof primitiveCheckSchema>
+
+/**
+ * Who observed what a check judges. T0: the harness itself (a process it ran on the clean checkout, a probe, CI, the tree).
+ * T1: values parsed from files whose digests a T0 receipt holds (a `starci uat run` walk). T2: the worker's own claims (its
+ * filed result, a json file it wrote). Only T0 and T1 prove behaviour; a T2 check may make a task red, never green by itself.
+ */
+export type TrustTier = "T0" | "T1" | "T2"
+
+/** The trust tier of a check, by its kind alone, so no preset or contract can declare a claim to be an observation. */
+export const trustTier = (kind: string): TrustTier => {
+    if (kind === "json" || kind === "cited") return "T2"
+    return kind === "uat-flow" ? "T1" : "T0"
+}
+
+/** The kinds a check written out in a contract proves behaviour with: each runs, or reads, what the harness observed. */
+export const BEHAVIOURAL_KINDS: ReadonlySet<string> = new Set(["command", "probe", "uat-flow"])
 
 const argValueSchema = z.union([z.string(), z.number(), z.array(z.string())])
 
@@ -89,10 +107,15 @@ const presetsFileSchema = z.object({ schema: z.literal("starci/check-presets@1")
 /** The inputs every contract carries itself; an op never declares them. */
 export const CONTRACT_INPUTS = ["summary", "details"] as const
 
-/** One file an op reads: a path, or a path that applies only when the named inputs hold one of the listed values. */
+/** One file an op reads: a path, or a path that applies only when the named inputs hold one of the listed values, or a shared one. */
 const contextEntrySchema = z.union([
     z.string().min(1),
-    z.strictObject({ file: z.string().min(1), when: z.record(keyNameSchema, z.union([z.string().min(1), z.array(z.string().min(1)).min(1)])) }),
+    z.strictObject({
+        file: z.string().min(1),
+        when: z.record(keyNameSchema, z.union([z.string().min(1), z.array(z.string().min(1)).min(1)])).optional(),
+        // shared: read by every task of the label for orientation; naming its ids proves no reading, so a read trace never cites them.
+        shared: z.literal(true).optional(),
+    }),
 ])
 
 /** One context entry of an op file. */
@@ -101,9 +124,12 @@ export type ContextEntry = z.infer<typeof contextEntrySchema>
 /** The path of a context entry. */
 export const entryFile = (entry: ContextEntry): string => (typeof entry === "string" ? entry : entry.file)
 
+/** Whether a context entry is shared: read by every task of the label, so its ids are no read trace. */
+export const entryShared = (entry: ContextEntry): boolean => typeof entry !== "string" && entry.shared === true
+
 /** Whether a context entry applies to a contract with these input values. */
 export const entryApplies = (entry: ContextEntry, values: Readonly<Record<string, string>>): boolean =>
-    typeof entry === "string" || Object.entries(entry.when).every(([name, allowed]) => (Array.isArray(allowed) ? allowed : [allowed]).includes(values[name] ?? ""))
+    typeof entry === "string" || Object.entries(entry.when ?? {}).every(([name, allowed]) => (Array.isArray(allowed) ? allowed : [allowed]).includes(values[name] ?? ""))
 
 /** The frontmatter of an op file (`ops/ops/<label>.md`): the base of each part of a contract of that label. */
 const opFrontmatterSchema = z.strictObject({
@@ -113,11 +139,12 @@ const opFrontmatterSchema = z.strictObject({
     hostTools: z.array(z.string().min(1)),
     // `harness:<path>` is a file of the harness checkout, anything else a repository path; `{name}` is an input or `label`.
     // An entry with `when` applies only when every named input holds one of its values (e.g. `side: harness`).
-    context: z.strictObject({ base: z.array(contextEntrySchema) }),
+    // budget: the most tokens the resolved context may hold (estimated as bytes / 4); `contract check` refuses a heavier one.
+    context: z.strictObject({ base: z.array(contextEntrySchema), budget: z.number().int().positive().optional() }),
     input: z.strictObject({ base: z.record(keyNameSchema, z.string().min(1)) }),
-    // behavioural: the generated output check proves behaviour (the output is a suite or flow report), not only its shape.
-    output: z.strictObject({ base: z.record(keyNameSchema, outputSpecSchema), behavioural: z.boolean() }),
-    // behavioural: a contract of this label needs at least one behavioural check, so green never means only "it compiles".
+    // The output is the worker's claim (T2): its generated check judges its shape and never proves behaviour.
+    output: z.strictObject({ base: z.record(keyNameSchema, outputSpecSchema) }),
+    // behavioural: a contract of this label needs a behavioural (T0 or T1) check, so green never means only "it compiles".
     checks: z.strictObject({ base: z.array(checkEntrySchema), behavioural: z.boolean() }),
 })
 
@@ -196,12 +223,18 @@ const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): O
     if (reserved.length > 0) throw invalid(file, `input.base names ${reserved.join(", ")}, which every contract carries itself`)
     const known = new Set(["label", ...Object.keys(op.input.base)])
     const unknown = op.context.base
-        .flatMap((entry) => [...placeholdersOf(entryFile(entry)), ...(typeof entry === "string" ? [] : Object.keys(entry.when))])
+        .flatMap((entry) => [...placeholdersOf(entryFile(entry)), ...(typeof entry === "string" ? [] : Object.keys(entry.when ?? {}))])
         .filter((name) => !known.has(name))
     if (unknown.length > 0) throw invalid(file, `context.base names placeholders no input declares: ${[...new Set(unknown)].join(", ")}`)
     const named = op.checks.base.map((entry) => ("preset" in entry ? entry.preset : undefined)).filter((name): name is string => name !== undefined)
     const missing = named.filter((preset) => !(preset in presets))
     if (missing.length > 0) throw invalid(file, `checks.base names unknown presets: ${missing.join(", ")}`)
+    // A preset of the base written without arguments takes them from the contract's inputs, so the op must declare each one.
+    for (const entry of op.checks.base) {
+        if (!("preset" in entry) || ("args" in entry && entry.args !== undefined)) continue
+        const unfilled = (presets[entry.preset]?.args ?? []).filter((arg) => !known.has(arg))
+        if (unfilled.length > 0) throw invalid(file, `checks.base names ${entry.preset}, whose arguments ${unfilled.join(", ")} no input of input.base gives`)
+    }
     const cites = Object.values(op.output.base).some((spec) => "cites" in spec && spec.cites !== undefined)
     if (cites !== named.includes(CITED_PRESET)) {
         throw invalid(file, cites ? `output.base cites rules, so checks.base must carry ${CITED_PRESET}` : `checks.base carries ${CITED_PRESET} but no output.base key cites`)
@@ -214,6 +247,9 @@ const readOp = (file: string, presets: Readonly<Record<string, CheckPreset>>): O
 /** Loads and validates ops/checks.yaml and every op file of ops/ops/; every preset an op names must exist. */
 export const loadOps = (dir: string = locateOps()): Ops => {
     const presets = readYaml(join(dir, "checks.yaml"), presetsFileSchema).presets
+    // A preset may call itself behavioural only when its check is observed by the harness (T0 or T1).
+    const claimed = Object.entries(presets).filter(([, preset]) => preset.behavioural && trustTier(String(preset.check.kind)) === "T2")
+    if (claimed.length > 0) throw invalid(join(dir, "checks.yaml"), `${claimed.map(([name]) => name).join(", ")} read what the worker claims (T2), so none can be behavioural`)
     const opsDir = join(dir, OP_FILES)
     const files = readdirSync(opsDir).filter((name) => name.endsWith(".md") && name !== OPS_README).sort((a, b) => (a < b ? -1 : Number(a > b)))
     const labels: Record<string, Op> = {}

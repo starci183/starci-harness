@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto"
+import { randomBytes } from "node:crypto"
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { parse, stringify } from "yaml"
@@ -10,6 +10,8 @@ import { locateTree } from "../shared/tree.js"
 import { CONTRACT_SCHEMA, DEFAULT_BUDGET, resolveChecks } from "./contract.js"
 import type { Contract } from "./contract.js"
 import type { Ops } from "./ops.js"
+import { CHECKS_FILE, RECEIPT_FILE, fileSha256, readReceipt, storeBlob } from "./uat.js"
+import type { UatReceipt } from "./uat.js"
 
 /** The folder of a repository that holds its product Work; the repository that has it is a Work root. */
 export const WORK_DIR = ".starciwork"
@@ -217,10 +219,10 @@ const stepLines = (record: UatFlow): string[] =>
     ])
 
 /**
- * The contract@2 of a uat task built from a Work record; the uat op (ops/ops/uat.md) adds its base. Its extend: the run folder
- * `<flow>/runs/<runId>` as its only write path (git-ignored, so raw output never lands), the record and its accounts file
- * (named, never its values) to read, the steps in the details, one `steps` entry per record step, and the walk judged against
- * the record with the run's report and one screenshot per step (uat-flow). `runId` is fresh for a task sent by hand and
+ * The contract@2 of a uat task built from a Work record; the uat op (ops/ops/uat.md) adds its base, whose uat-flow check takes
+ * the `record` and `run` inputs. The run folder `<flow>/runs/<runId>` is its only write path (git-ignored, so raw output never
+ * lands); its extend reads the record and its accounts file (named, never its values), puts the steps in the details and asks
+ * one `steps` entry per record step. `runId` is fresh for a task sent by hand and
  * `<workflow>-<task key>` for a workflow node, so a replan sees the same contract.
  */
 export const uatContract = (file: UatRecordFile, options: { readonly revision: string; readonly runId: string }): Contract => {
@@ -236,23 +238,23 @@ export const uatContract = (file: UatRecordFile, options: { readonly revision: s
         accounts === undefined
             ? "Accounts: the record names no accounts file."
             : `Accounts: ${accounts} names the account of each role; sign in with them and never copy a secret value into the script, the run or the result.`,
-        `Run folder: ${run}. Keep the walk script there (for example ${posix.join(run, "walk.mjs")}); write ${REPORT_FILE} there (what you walked and saw per step) and one screenshot per step under the name below. The folder is git-ignored: the harness cites it by digest in ${place.evidence} when it settles the task.`,
+        `Run folder: ${run}. Keep the walk script there (for example ${posix.join(run, "walk.mjs")}); write ${REPORT_FILE} there (what you walked and saw per step). The folder is git-ignored: the harness keeps a receipt of each run and cites the folder by digest in ${place.evidence} when it settles the task.`,
         "Steps:",
         ...stepLines(record),
-        `Output: besides the keys the brief lists, each entry of steps is {"order": <n>, "status": "passed" | "failed" | "skipped", "screenshot": "<file in the run folder>", "checks": {"<check id>": <observed value>}, "observed": "<what the page showed>"}: one entry per step above, every check id answered with what you observed. The verdict is passed only when every step passed with every check at its expected value; a step you may not walk (an owner authorization is missing) is skipped, never passed.`,
+        `Observations: the script itself, during the run, saves one screenshot per step (page.screenshot, PNG) under the name above and writes ${CHECKS_FILE} in its working directory: {"steps": [{"order": <n>, "status": "passed" | "failed" | "skipped", "screenshot": "<name>", "checks": {"<check id>": <value read from the page>}, "observed": "<what the page showed>"}]}, one entry per step above, every check id answered with the value the script read. The walk is judged on ${CHECKS_FILE} and the screenshots as the run's receipt holds them; a file written or changed outside \`starci uat run\` does not count.`,
+        `Output: besides the keys the brief lists, steps repeats the entries of ${CHECKS_FILE}. The verdict is passed only when every step passed with every check at its expected value; a step you may not walk (an owner authorization is missing) is skipped, never passed.`,
     ].join("\n")
     return {
         schema: CONTRACT_SCHEMA,
         label: "uat",
         context: { revision: options.revision, allowPaths: [run], extend: [place.record, ...(accounts === undefined ? [] : [accounts])] },
-        input: { summary: `walk ${place.id}: ${shortTitle(record.title)}`, details, extend: { flow: place.id, record: place.record, run } },
+        input: { summary: `walk ${place.id}: ${shortTitle(record.title)}`, details, base: { record: place.record, run }, extend: { flow: place.id } },
         output: {
             extend: {
                 verdict: { type: "string", summary: "passed only when every step passed with every check at its expected value, else failed" },
                 steps: { type: "array", minItems: record.steps.length, summary: "one entry per record step: order, status, screenshot, checks, observed" },
             },
         },
-        checks: { extend: [{ preset: "uat-flow", args: { record: place.record, run } }] },
         budget: { ...DEFAULT_BUDGET },
     }
 }
@@ -319,7 +321,10 @@ export interface UatJudgement {
 
 const insideFolder = (file: string): boolean => !file.startsWith("/") && !/^[A-Za-z]:/.test(file) && !file.replaceAll("\\", "/").split("/").includes("..")
 
-const stepProblems = (step: UatFlow["steps"][number], entries: readonly z.infer<typeof uatResultSchema>["steps"][number][], present: ReadonlySet<string>): UatProblem[] => {
+/** Why a step's screenshot does not count, or undefined when it does; the name is relative to the run folder. */
+type ShotProblem = (shot: string) => string | undefined
+
+const stepProblems = (step: UatFlow["steps"][number], entries: readonly z.infer<typeof uatResultSchema>["steps"][number][], shotProblem: ShotProblem): UatProblem[] => {
     const order = step.order
     const at = `step ${String(order)}`
     const entry = entries[0]
@@ -335,35 +340,136 @@ const stepProblems = (step: UatFlow["steps"][number], entries: readonly z.infer<
     const shot = entry.screenshot
     if (shot === undefined) problems.push({ step: order, text: `${at} names no screenshot` })
     else if (!insideFolder(shot)) problems.push({ step: order, text: `${at} screenshot ${shot} lies outside the run folder` })
-    else if (!present.has(posix.normalize(shot.replaceAll("\\", "/")))) problems.push({ step: order, text: `${at} screenshot ${shot} is not in the run folder` })
+    else {
+        const why = shotProblem(posix.normalize(shot.replaceAll("\\", "/")))
+        if (why !== undefined) problems.push({ step: order, text: `${at} screenshot ${shot} ${why}` })
+    }
     return problems
 }
 
-/**
- * Judges a filed result against the record and the run folder's files (`present`, relative to it): the report exists, the
- * result has one entry per record step (none missing, doubled or unknown), every step passed with every check id answered
- * with its expected value and a screenshot in the folder. The verdict must agree: passed exactly when nothing else is wrong.
- */
-export const judgeUatResult = (record: UatFlow, output: unknown, present: ReadonlySet<string>): UatJudgement => {
-    const problems: UatProblem[] = present.has(REPORT_FILE) ? [] : [{ text: `the run folder holds no ${REPORT_FILE}` }]
-    const parsed = uatResultSchema.safeParse(output)
-    if (!parsed.success) return { green: false, problems: [...problems, { text: `the result is no uat walk: ${z.prettifyError(parsed.error)}` }], failingStep: undefined }
-    const result = parsed.data
+/** The problems of every record step against the walked entries, plus entries for steps the record does not have. */
+const walkProblems = (record: UatFlow, steps: z.infer<typeof uatResultSchema>["steps"], shotProblem: ShotProblem): UatProblem[] => {
     const known = new Set(record.steps.map((step) => step.order))
-    for (const entry of result.steps.filter((step) => !known.has(step.order))) problems.push({ text: `the result walks step ${String(entry.order)}, which the record does not have` })
+    const problems: UatProblem[] = steps.filter((entry) => !known.has(entry.order)).map((entry) => ({ text: `the walk answers step ${String(entry.order)}, which the record does not have` }))
     for (const step of ordered(record)) {
         problems.push(
             ...stepProblems(
                 step,
-                result.steps.filter((entry) => entry.order === step.order),
-                present,
+                steps.filter((entry) => entry.order === step.order),
+                shotProblem,
             ),
         )
     }
-    if (problems.length === 0 && result.verdict !== "passed") problems.push({ text: `the result's verdict is ${result.verdict}, though every step matched the record` })
-    if (problems.length > 0 && result.verdict === "passed") problems.push({ text: "the result claims passed, but the walk does not match the record" })
+    return problems
+}
+
+const judgement = (problems: UatProblem[]): UatJudgement => {
     const steps = problems.map((problem) => problem.step).filter((step): step is number => step !== undefined)
     return { green: problems.length === 0, problems, failingStep: steps.length === 0 ? undefined : Math.min(...steps) }
+}
+
+/** The verdict's agreement: a claim of passed over a walk with problems, or of failed over a clean one, is a problem itself. */
+const verdictProblems = (verdict: "passed" | "failed", problems: readonly UatProblem[], whose: string): UatProblem[] => {
+    if (problems.length === 0 && verdict !== "passed") return [{ text: `${whose} verdict is ${verdict}, though every step matched the record` }]
+    if (problems.length > 0 && verdict === "passed") return [{ text: `${whose} verdict claims passed, but the walk does not match the record` }]
+    return []
+}
+
+/**
+ * Judges a filed result by itself (T2) against the record and the run folder's file names (`present`): the report exists, one
+ * entry per step, every check at its expected value, a screenshot named in the folder and an agreeing verdict. It explains
+ * where a red walk stopped; it never makes a walk green, which only the receipted walk does (judgeUatWalk).
+ */
+export const judgeUatResult = (record: UatFlow, output: unknown, present: ReadonlySet<string>): UatJudgement => {
+    const problems: UatProblem[] = present.has(REPORT_FILE) ? [] : [{ text: `the run folder holds no ${REPORT_FILE}` }]
+    const parsed = uatResultSchema.safeParse(output)
+    if (!parsed.success) return judgement([...problems, { text: `the result is no uat walk: ${z.prettifyError(parsed.error)}` }])
+    problems.push(...walkProblems(record, parsed.data.steps, (shot) => (present.has(shot) ? undefined : "is not in the run folder")))
+    return judgement([...problems, ...verdictProblems(parsed.data.verdict, problems, "the result's")])
+}
+
+/** What the script observed, as `starci uat run` receipted it: the steps of checks.json. */
+const observedSchema = z.object({ steps: uatResultSchema.shape.steps })
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+// A PNG opens with its signature and an IHDR chunk whose width and height are not zero.
+const PNG_HEADER_BYTES = 24
+
+/** True when the file is a PNG with a real image header. */
+const isPng = (path: string): boolean => {
+    const bytes = readFileSync(path)
+    if (bytes.length < PNG_HEADER_BYTES || !bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) return false
+    return bytes.toString("latin1", 12, 16) === "IHDR" && bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0
+}
+
+// A file's mtime may trail the container's clock by this much on a bind mount and still be inside the run.
+const WINDOW_SLACK_MS = 5000
+
+/**
+ * Why a file of the run folder is no receipted observation, or undefined when it is: the receipt names it as written during the
+ * run, within the run's window, and the folder still holds those exact bytes.
+ */
+const receiptedProblem = (receipt: UatReceipt, folder: string, name: string): string | undefined => {
+    const entry = receipt.files.find((file) => file.path === name)
+    if (entry === undefined) return "is not in the receipt of the run"
+    if (!entry.written) return "was not written by the run (it was in the folder before the container started)"
+    const start = Date.parse(receipt.startedAt) - WINDOW_SLACK_MS
+    const end = Date.parse(receipt.endedAt) + WINDOW_SLACK_MS
+    if (entry.mtimeMs < start || entry.mtimeMs > end) return `was written at ${new Date(entry.mtimeMs).toISOString()}, outside the run ${receipt.startedAt} .. ${receipt.endedAt}`
+    const file = join(folder, name)
+    if (!existsSync(file)) return "is gone from the run folder"
+    return fileSha256(file) === entry.sha256 ? undefined : "changed after the run (its digest differs from the receipt)"
+}
+
+/** The receipt's own problems: none kept, a run that did not end with exit 0, or a folder copy that is not the harness's. */
+const receiptProblems = (folder: string): { readonly receipt?: UatReceipt; readonly problems: UatProblem[] } => {
+    const kept = readReceipt(folder)
+    if (kept === undefined) return { problems: [{ text: `the run folder has no receipt of \`starci uat run\`; walk it with \`starci uat run <script> --out <run folder>\`, never by hand` }] }
+    const { receipt } = kept
+    const problems: UatProblem[] = []
+    if (receipt.timedOut) problems.push({ text: `the receipted run timed out (${receipt.container})` })
+    else if (receipt.exitCode !== 0) problems.push({ text: `the receipted run exited ${String(receipt.exitCode)} (${receipt.container})` })
+    const copy = join(folder, RECEIPT_FILE)
+    if (!existsSync(copy) || fileSha256(copy) !== kept.sha256) problems.push({ text: `${RECEIPT_FILE} in the run folder is not the receipt the harness keeps` })
+    return { receipt, problems }
+}
+
+/** The receipted checks.json of a run, or the problem that keeps it from counting. */
+const observedOf = (receipt: UatReceipt, folder: string): { readonly steps: z.infer<typeof observedSchema>["steps"] } | { readonly problem: string } => {
+    const why = receiptedProblem(receipt, folder, CHECKS_FILE)
+    if (why !== undefined) return { problem: `${CHECKS_FILE} ${why}; the walk script writes it during the run` }
+    let raw: unknown
+    try {
+        raw = JSON.parse(readFileSync(join(folder, CHECKS_FILE), "utf8"))
+    } catch (error: unknown) {
+        return { problem: `${CHECKS_FILE} is not json: ${error instanceof Error ? error.message : String(error)}` }
+    }
+    const parsed = observedSchema.safeParse(raw)
+    return parsed.success ? { steps: parsed.data.steps } : { problem: `${CHECKS_FILE} is no walk: ${z.prettifyError(parsed.error)}` }
+}
+
+/**
+ * Judges a uat walk on what the harness can stand behind. The steps come from the run folder's checks.json (T1: written by the
+ * script during a `starci uat run` whose receipt holds its digest), each screenshot must be a PNG the run wrote with its digest in
+ * the receipt, and the run must have exited 0. The filed result (T2) only has to agree: its verdict can make the walk red, never green.
+ */
+export const judgeUatWalk = (record: UatFlow, folder: string, claimed: unknown): UatJudgement => {
+    const { receipt, problems } = receiptProblems(folder)
+    if (receipt === undefined) return judgement(problems)
+    if (!existsSync(join(folder, REPORT_FILE))) problems.push({ text: `the run folder holds no ${REPORT_FILE}` })
+    const observed = observedOf(receipt, folder)
+    if ("problem" in observed) return judgement([...problems, { text: observed.problem }])
+    problems.push(
+        ...walkProblems(record, observed.steps, (shot) => {
+            const why = receiptedProblem(receipt, folder, shot)
+            if (why !== undefined) return why
+            return isPng(join(folder, shot)) ? undefined : "is no PNG image"
+        }),
+    )
+    const claim = z.object({ verdict: z.enum(["passed", "failed"]) }).safeParse(claimed)
+    if (!claim.success) return judgement([...problems, { text: "the result names no verdict (passed or failed)" }])
+    return judgement([...problems, ...verdictProblems(claim.data.verdict, problems, "the result's")])
 }
 
 // The tail keeps a trailing comment and a CRLF line end as they are.
@@ -417,9 +523,12 @@ export type EvidenceRun = z.infer<typeof evidenceRunSchema>
 /** A flow's `evidence.yaml` (work/evidence@1): the runs that walked it, oldest first; written only by the harness at settle. */
 const evidenceFileSchema = z.object({ schema: z.literal("work/evidence@1"), record: z.string().min(1), runs: z.array(evidenceRunSchema) })
 
-/** The digests of a run folder's files, for the evidence file. */
-export const digestRun = (folder: string): EvidenceRun["files"] =>
-    runFiles(folder).map((path) => ({ path, sha256: createHash("sha256").update(readFileSync(join(folder, path))).digest("hex") }))
+/**
+ * The digests of a run folder's files, for the evidence file, each file stored under its digest in the harness store
+ * (`<state base>/blobs/sha256/`), so every digest evidence.yaml cites, the receipt's copy included, still resolves to its bytes
+ * after the git-ignored run folder is cleaned.
+ */
+export const digestRun = (folder: string): EvidenceRun["files"] => runFiles(folder).map((path) => ({ path, sha256: storeBlob(join(folder, path)) }))
 
 /** The evidence file's text with `run` appended; `text` is its current content, undefined when the flow has none yet. */
 export const appendEvidence = (text: string | undefined, record: string, run: EvidenceRun, where: string): string => {

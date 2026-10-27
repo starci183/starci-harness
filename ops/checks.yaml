@@ -1,6 +1,10 @@
 # Named check presets an op file (checks.base) or a contract (checks.extend) names; ops/ops/README.md says how they compose.
-# Each preset expands into one primitive check: command, starci, files, json, probe or cited.
-# Arguments a preset needs are named in `args`; `{name}` in a value is replaced by the contract's argument.
+# Each preset expands into one primitive check: command, starci, files, json, probe, uat-flow or cited.
+# Arguments a preset needs are named in `args`; `{name}` in a value is replaced by the entry's argument, else by the
+# contract's input of that name (so an op's base can name a preset bare and take its arguments from its inputs).
+# Trust tiers (trustTier in cli/src/harness/ops.ts) follow the kind: T0 the harness observes itself (command, starci, files,
+# probe), T1 it reads from a receipted run (uat-flow), T2 is the worker's claim (json, cited). `behavioural: true` is
+# allowed only on a T0 or T1 check, which loadOps enforces: a claim may make a task red, never prove it green.
 schema: starci/check-presets@1
 presets:
   check-run-green:
@@ -23,12 +27,21 @@ presets:
       kind: files
       onlyAllowPaths: true
   tests-pass:
-    summary: the named tests (or the tests related to the change) pass
+    summary: the harness runs the named tests (or the tests related to the change) on the clean checkout and they pass
     behavioural: true
     args: [command]
     check:
       kind: command
       run: "{command}"
+  # A verify task reports a suite; the harness reruns it on the clean checkout and the result's verdict must agree with the exit.
+  suite-verdict:
+    summary: the harness reruns the suite on the clean checkout and the result's verdict agrees with its exit (0 passed, else failed)
+    behavioural: true
+    args: [suite]
+    check:
+      kind: command
+      run: "{suite}"
+      verdict: verdict
   files-exist:
     summary: every listed file exists after the task
     behavioural: false
@@ -36,11 +49,11 @@ presets:
     check:
       kind: files
       mustExist: "{files}"
-  # A json check reads a file of the candidate (the clean checkout), relative to the
-  # contract's cwd; the file name @result reads the worker's filed result output from the ledger instead.
+  # A json check reads a file of the candidate (the clean checkout), relative to the contract's cwd; the file name @result
+  # reads the worker's filed result output from the ledger instead. Either is what the worker wrote, so it proves no behaviour.
   json-required:
     summary: a json file the task lands (under allowPaths) exists and carries the required keys
-    behavioural: true
+    behavioural: false
     args: [file, keys]
     check:
       kind: json
@@ -48,15 +61,15 @@ presets:
       requiredKeys: "{keys}"
   result-json:
     summary: the worker's filed result output (task result --output) carries the required keys
-    behavioural: true
+    behavioural: false
     args: [keys]
     check:
       kind: json
       file: "@result"
       requiredKeys: "{keys}"
   result-passed:
-    summary: the worker's filed result says its verdict is passed (a uat that saw the product fail is red)
-    behavioural: true
+    summary: the worker's filed result says its verdict is passed (a worker that saw the product fail turns the task red)
+    behavioural: false
     args: []
     check:
       kind: json
@@ -65,16 +78,18 @@ presets:
       expect: {verdict: passed}
   # The run folder is git-ignored Work (contexts/project/work.md), so it is read in the work tree the candidate came from.
   uat-flow:
-    summary: the worker's filed result walks every step of the Work record, each check at its expected value, with the report and one screenshot per step in the run folder
+    summary: the checks.json and screenshots a receipted starci uat run wrote walk every step of the Work record at its expected values, and the worker's verdict agrees
     behavioural: true
     args: [record, run]
     check:
       kind: uat-flow
       record: "{record}"
       run: "{run}"
-  # The trace of what the worker read: the ids its result cites (rulesApplied, workRecords) come from its context files; a Work record id may also come from the records it wrote under its own Work allowPaths.
+  # The trace of what the worker read: the ids its result cites (rulesApplied, workRecords) come from its context files other
+  # than the shared ones every task of the label reads; a Work record id may also come from the records it wrote under its own
+  # Work allowPaths. A cheap read trace, never evidence of behaviour.
   rules-cited:
-    summary: every rule or Work record id the result cites is named by one of the task's context files (or, for a Work record, by one it wrote in its Work allowPaths), and as many are cited as the op requires
+    summary: every rule or Work record id the result cites is named by one of the task's non-shared context files (or, for a Work record, by one it wrote in its Work allowPaths), and as many are cited as the op requires
     behavioural: false
     check:
       kind: cited
