@@ -1,0 +1,157 @@
+schema: starci/scenario@1
+id: dna-skeleton-parity
+group: verify
+title: "dna check holds the shape-slot loading law: a skeleton render keeps its ready twin's unit and leaf boxes within 1px; a jumping leaf is red with its path"
+inject: "two units rendered twice, loading and ready: the card's skeleton keeps every box, the list's skeleton pushes its second leaf 8px down; served as pages and as a built Storybook"
+expect: "dna check pairs a loading story with its ready twin by parameters.dna (pair, phase loading) and the shape arg, and a `-skeleton` route or file with the one named without the suffix; compares the unit's box and every leaf box by its child-index path, and is red per moved or missing leaf with its path and both boxes; a skeleton with no ready twin opened is red DNA_SKELETON_UNPAIRED"
+pass:
+  - the matching card pair exits 0
+  - the list pair exits 1 on unit.skeleton-parity, naming the moved leaf's path and the 8px move
+  - "the Storybook pairing (parameters.dna pair and phase loading, plus the shape arg) is green for the card, red for the list against its own shape, and red DNA_SKELETON_UNPAIRED for a loading story with no ready story of its shape"
+  - a skeleton page opened without its ready twin is red DNA_SKELETON_UNPAIRED
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: dna/contract.yaml
+      yaml:
+        schema: starci/grammar-contract@1
+        grammars: [core]
+        mustKeep:
+          - id: unit.skeleton-parity
+            law: a unit's skeleton keeps the ready unit's region and every leaf box (shape-slot loading)
+            measure:
+              selector: "[data-grammar-unit]"
+              metric: skeleton-parity
+              expected: { max: 1 }
+  - file:
+      path: dna/site/card.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><link rel="stylesheet" href="unit.css"></head><body>
+        <div data-grammar-family="core"><article data-grammar-unit="card">
+          <span data-slot="title">Distributed systems</span><span data-slot="meta">12 lessons</span><button data-slot="action">Open</button>
+        </article></div></body></html>
+  - file:
+      path: dna/site/card-skeleton.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><link rel="stylesheet" href="unit.css"></head><body>
+        <div data-grammar-family="core"><article data-grammar-unit="card">
+          <span data-slot="title" data-skeleton></span><span data-slot="meta" data-skeleton></span><button data-slot="action" data-skeleton></button>
+        </article></div></body></html>
+  - file:
+      path: dna/site/list.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><link rel="stylesheet" href="unit.css"></head><body>
+        <div data-grammar-family="core"><article data-grammar-unit="list">
+          <span data-slot="title">Recent attempts</span><span data-slot="meta">3 this week</span><button data-slot="action">All</button>
+        </article></div></body></html>
+  - file:
+      path: dna/site/list-skeleton.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><link rel="stylesheet" href="unit.css"></head><body>
+        <div data-grammar-family="core"><article data-grammar-unit="list">
+          <span data-slot="title" data-skeleton></span><span data-slot="meta" data-skeleton style="margin-top: 8px"></span><button data-slot="action" data-skeleton></button>
+        </article></div></body></html>
+  - file:
+      path: dna/site/unit.css
+      content: |
+        body { margin: 24px; font: 14px/20px sans-serif; }
+        [data-grammar-unit] { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 320px; padding: 16px; border: 1px solid #ccc; }
+        [data-slot] { display: block; box-sizing: border-box; width: 200px; height: 20px; overflow: hidden; }
+        [data-slot="action"] { width: 96px; height: 40px; }
+        [data-skeleton] { background: #e5e5e5; border: 0; border-radius: 6px; }
+  - name: the matching skeleton is green
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, "card.html,card-skeleton.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 0
+      contains: "green: 1 element(s) measured on 2 page(s)"
+  - name: the jumping leaf is red on the parity law
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, "list.html,list-skeleton.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red ids: [unit.skeleton-parity]"
+  - name: the finding names the moved leaf's path and the move
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, "list.html,list-skeleton.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: 'article[data-grammar-unit=\"list\"] > span[data-slot=\"meta\"]:nth-of-type(2)\n    skeleton-parity measured \"moved 8px'
+  - name: a skeleton without its ready twin is red
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, card-skeleton.html, --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red DNA_SKELETON_UNPAIRED card-skeleton.html"
+  - file:
+      path: dna/storybook/index.json
+      content: |
+        {"v": 5, "entries": {
+          "unit--card": {"id": "unit--card", "type": "story", "title": "Unit", "name": "Card"},
+          "unit--card-loading": {"id": "unit--card-loading", "type": "story", "title": "Unit", "name": "Card Loading"},
+          "unit--list-recent": {"id": "unit--list-recent", "type": "story", "title": "Unit", "name": "List Recent"},
+          "unit--list-archived": {"id": "unit--list-archived", "type": "story", "title": "Unit", "name": "List Archived"},
+          "unit--list-loading": {"id": "unit--list-loading", "type": "story", "title": "Unit", "name": "List Loading"},
+          "unit--list-orphan": {"id": "unit--list-orphan", "type": "story", "title": "Unit", "name": "List Orphan"},
+          "unit--docs": {"id": "unit--docs", "type": "docs", "title": "Unit", "name": "Docs"}
+        }}
+  - file:
+      path: dna/storybook/iframe.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><link rel="stylesheet" href="unit.css"></head><body><div id="storybook-root"></div>
+        <script>
+        // A stand-in Storybook preview: each story's parameters.dna and shape arg, exposed as __STORYBOOK_PREVIEW__ exposes them.
+        const stories = {
+          "unit--card": { unit: "card", dna: { pair: "unit-card" }, args: {} },
+          "unit--card-loading": { unit: "card", dna: { pair: "unit-card", phase: "loading" }, args: {} },
+          "unit--list-recent": { unit: "list", dna: { pair: "unit-list" }, args: { shape: "recent" } },
+          "unit--list-archived": { unit: "list", dna: { pair: "unit-list" }, args: { shape: "archived" }, wide: true },
+          "unit--list-loading": { unit: "list", dna: { pair: "unit-list", phase: "loading" }, args: { shape: "recent" }, jump: true },
+          "unit--list-orphan": { unit: "list", dna: { pair: "unit-list", phase: "loading" }, args: { shape: "pinned" } },
+        }
+        const id = new URLSearchParams(location.search).get("id") || ""
+        const story = stories[id]
+        const loading = story.dna.phase === "loading"
+        const tag = (name) => (name === "action" ? "button" : "span")
+        const slot = (name, text, extra) => loading
+          ? `<${tag(name)} data-slot="${name}" data-skeleton ${extra || ""}></${tag(name)}>`
+          : `<${tag(name)} data-slot="${name}" ${extra || ""}>${text}</${tag(name)}>`
+        setTimeout(() => {
+          document.getElementById("storybook-root").innerHTML = `<div data-grammar-family="core"><article data-grammar-unit="${story.unit}">`
+            + slot("title", "Title", story.wide ? 'style="width: 280px"' : "") + slot("meta", "Meta", story.jump ? 'style="margin-top: 8px"' : "")
+            + slot("action", "Open") + `</article></div>`
+          window.__STORYBOOK_PREVIEW__ = { currentRender: { story: { id, parameters: { dna: story.dna }, initialArgs: story.args } } }
+        }, 100)
+        </script></body></html>
+  - file:
+      path: dna/storybook/unit.css
+      content: |
+        body { margin: 24px; font: 14px/20px sans-serif; }
+        [data-grammar-unit] { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 320px; padding: 16px; border: 1px solid #ccc; }
+        [data-slot] { display: block; box-sizing: border-box; width: 200px; height: 20px; overflow: hidden; }
+        [data-slot="action"] { width: 96px; height: 40px; }
+        [data-skeleton] { background: #e5e5e5; border: 0; border-radius: 6px; }
+  - name: stories pair by parameters.dna; the card pair is green
+    starci: [dna, check, --storybook, "${run}/dna/storybook", --stories, unit--card, --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 0
+      contains: "green: 1 element(s) measured on 2 page(s)"
+  - name: the list's loading story pairs with the ready story of its shape, not the other shape, and is red
+    starci: [dna, check, --storybook, "${run}/dna/storybook", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red unit.skeleton-parity [core] unit--list-loading ~ unit--list-recent"
+  - name: the moved leaf of the list story is named, and only the meta leaf and what follows it moved
+    starci: [dna, check, --storybook, "${run}/dna/storybook", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: 'span[data-slot=\"meta\"]:nth-of-type(2)\n    skeleton-parity measured \"moved 8px'
+  - name: a loading story with no ready story of its shape is red
+    starci: [dna, check, --storybook, "${run}/dna/storybook", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red DNA_SKELETON_UNPAIRED unit--list-orphan: no ready story of pair unit-list and shape pinned"

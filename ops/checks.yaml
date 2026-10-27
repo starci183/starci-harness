@@ -93,6 +93,16 @@ presets:
     behavioural: false
     check:
       kind: cited
+  # The DNA gate (cli/src/core/dna, measurement shape in cli/src/harness/dna.ts): the harness renders the target in a headless
+  # browser and measures the measured mustKeep laws of contexts/grammars/contract.yaml; a target is a url, a built Storybook
+  # folder, a static folder or one html file, relative to the checkout.
+  dna:
+    summary: the rendered UI keeps every measured DNA law of the Grammar contract (starci dna check), skeleton twins included
+    behavioural: true
+    args: [target]
+    check:
+      kind: starci
+      args: [dna, check, "{target}"]
   probe:
     summary: an http endpoint answers with the expected status
     behavioural: true

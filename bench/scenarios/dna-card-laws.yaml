@@ -1,0 +1,172 @@
+schema: starci/scenario@1
+id: dna-card-laws
+group: verify
+title: "dna check measures the rendered card against the Grammar's DNA laws: the correct page is green, the violating card is red on exactly its four laws"
+inject: "a static page whose core card puts its label inside the surface, insets its divider, draws a 36px md control and nests a surface in a surface, beside a correct page; a fixture grammar contract stands in for contexts/grammars/contract.yaml's measured mustKeep entries"
+expect: "dna check opens each page in a headless browser, finds the Grammar root's family, measures every law that binds it and reports red per law id with the element path and measured vs expected; the correct page (whose offset-pop card keeps its label inside, a law only core holds) is green; a page with no Grammar root is red, never green on nothing measured"
+pass:
+  - the correct page exits 0 with no red id
+  - the violating page exits 1 red on exactly card.label-outside, control.height-md, divider.full-bleed and surface.no-nesting
+  - each finding names the element path and the measured value
+  - a law bound to core is not applied to the offset-pop root
+  - a page without a Grammar root is red DNA_NO_ROOT
+  - a contract with no measured law is refused DNA_NO_LAWS
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: dna/contract.yaml
+      yaml:
+        schema: starci/grammar-contract@1
+        grammars: [core, offset-pop]
+        mustKeep:
+          - id: surface.no-nesting
+            law: no surface sits inside a surface
+            measure:
+              selector: "[data-grammar-surface]"
+              metric: ancestors
+              ref: "[data-grammar-surface]"
+              expected: { equals: 0 }
+        roles:
+          - id: card
+            mustKeep:
+              - one card is one subject
+              - id: card.label-outside
+                law: core puts the card label outside the painted surface
+                families: [core]
+                measure:
+                  selector: "[data-grammar-surface-label]"
+                  metric: outside
+                  ref: "[data-grammar-surface]"
+                  scope: "[data-grammar-surface-card]"
+                  expected: { equals: true }
+          - id: list
+            mustKeep:
+              - id: divider.full-bleed
+                law: a divider inside a surface runs flush to its edges
+                measure:
+                  selector: "[data-grammar-surface] [data-grammar-divider]"
+                  metric: inset
+                  ref: "[data-grammar-surface]"
+                  expected: { equals: 0 }
+          - id: button
+            mustKeep:
+              - id: control.height-md
+                law: a md control is 40px tall (h-10)
+                measure:
+                  selector: "[data-grammar-control-size=md]"
+                  metric: height
+                  expected: { equals: 40 }
+          - id: chip
+            mustKeep:
+              - id: status-dot.chip-padding
+                law: a StatusDot keeps the Chip's inline padding
+                measure:
+                  selector: "[data-grammar-status-dot]"
+                  metric: css
+                  property: padding-left
+                  expected: { equals: 8 }
+  - file:
+      path: dna/prose.yaml
+      yaml:
+        schema: starci/grammar-contract@1
+        grammars: [core]
+        roles:
+          - id: card
+            mustKeep: [one card is one subject]
+  - file:
+      path: dna/site/good.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><title>good</title><style>
+        body { margin: 24px; font: 14px/20px sans-serif; }
+        [data-grammar-surface] { padding: 16px; border: 1px solid #ccc; border-radius: 12px; }
+        [data-grammar-divider] { border: 0; border-top: 1px solid #ccc; margin: 8px -16px; }
+        [data-grammar-control-size] { box-sizing: border-box; height: 40px; padding: 0 16px; }
+        [data-grammar-status-dot] { display: inline-flex; padding: 0 8px; }
+        </style></head><body>
+        <div data-grammar-family="core">
+          <section data-grammar-surface-card="true" data-case="good">
+            <header data-grammar-surface-label="true"><h3>Progress</h3></header>
+            <div data-grammar-surface="true">
+              <p>Three lessons left.</p>
+              <hr data-grammar-divider="bare">
+              <button data-grammar-control-size="md">Continue</button>
+              <span data-grammar-status-dot="true">Live</span>
+            </div>
+          </section>
+        </div>
+        <div data-grammar-family="offset-pop">
+          <section data-grammar-surface-card="true" data-case="offset-label-inside">
+            <div data-grammar-surface="true">
+              <header data-grammar-surface-label="true"><h3>Inside, as offset-pop may</h3></header>
+              <button data-grammar-control-size="md">Open</button>
+            </div>
+          </section>
+        </div>
+        </body></html>
+  - file:
+      path: dna/site/bad.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><title>bad</title><style>
+        body { margin: 24px; font: 14px/20px sans-serif; }
+        [data-grammar-surface] { padding: 16px; border: 1px solid #ccc; border-radius: 12px; }
+        [data-grammar-divider] { border: 0; border-top: 1px solid #ccc; margin: 8px 0; }
+        [data-grammar-control-size] { box-sizing: border-box; height: 36px; padding: 0 16px; }
+        [data-grammar-status-dot] { display: inline-flex; padding: 0 8px; }
+        </style></head><body>
+        <div data-grammar-family="core">
+          <section data-grammar-surface-card="true" data-case="bad">
+            <div data-grammar-surface="true">
+              <header data-grammar-surface-label="true"><h3>Progress</h3></header>
+              <hr data-grammar-divider="bare">
+              <button data-grammar-control-size="md">Continue</button>
+              <div data-grammar-surface="true"><p>A surface in a surface.</p></div>
+              <span data-grammar-status-dot="true">Live</span>
+            </div>
+          </section>
+        </div>
+        </body></html>
+  - file:
+      path: dna/site/bare.html
+      content: |
+        <!doctype html>
+        <html><head><meta charset="utf-8"><title>bare</title></head><body><p>No Grammar root here.</p></body></html>
+  - name: the correct page is green
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, good.html, --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 0
+      contains: "red ids: []"
+  - name: the correct page measured every element
+    starci: [dna, check, "${run}/dna/site/good.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 0
+      contains: "green: 7 element(s) measured on 1 page(s) against 5 law(s)"
+  - name: the violating card is red on exactly its four laws
+    starci: [dna, check, --serve, "${run}/dna/site", --routes, "good.html,bad.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red ids: [card.label-outside, control.height-md, divider.full-bleed, surface.no-nesting]"
+  - name: the control finding names the element and the measured height
+    starci: [dna, check, "${run}/dna/site/bad.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "height measured 36, expected 40 ±0.5"
+  - name: the divider finding names its path
+    starci: [dna, check, "${run}/dna/site/bad.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: 'section[data-grammar-surface-card] > div[data-grammar-surface] > hr[data-grammar-divider=\"bare\"]'
+  - name: a page without a Grammar root is red
+    starci: [dna, check, "${run}/dna/site/bare.html", --contract, "${run}/dna/contract.yaml"]
+    expect:
+      exit: 1
+      contains: "red DNA_NO_ROOT"
+  - name: a contract of prose only is refused
+    starci: [dna, check, "${run}/dna/site/good.html", --contract, "${run}/dna/prose.yaml"]
+    expect:
+      exit: 1
+      code: DNA_NO_LAWS
