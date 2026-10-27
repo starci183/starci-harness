@@ -164,7 +164,10 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
     if (!scope.all && files.length === 0) return skipped(pkg, "lint", "no judged source file")
     // ESLint runs in the folder of the config it resolved, so the config's file globs and ignores match the package's files.
     const fromConfig = toSlash(relative(config.dir, pkg.dir))
-    const rooted = (path: string): string => (fromConfig === "" ? path : path === "." ? fromConfig : `${fromConfig}/${path}`)
+    const rooted = (path: string): string => {
+        if (fromConfig === "") return path
+        return path === "." ? fromConfig : `${fromConfig}/${path}`
+    }
     const paths = (scope.all ? ["."] : files).map(rooted)
     const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], config.dir, options)
     const counted = scope.all ? "whole package" : `${String(files.length)} file(s)`

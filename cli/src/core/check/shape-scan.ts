@@ -94,30 +94,29 @@ const instancesOf = (slot: ShapeSlot, files: readonly string[]): Map<string, Rec
     const instances = new Map<string, Record<string, string>>()
     if (slot.per === undefined) return instances
     const per = compileFolderPrefix(slot.per)
-    const exempt = (slot.exempt ?? []).map((entry) => entry.path)
+    const exempt = new Set((slot.exempt ?? []).map((entry) => entry.path))
     for (const file of files) {
         const hit = per.regex.exec(file)
-        if (hit === null || exempt.includes(hit[0])) continue
+        if (hit === null || exempt.has(hit[0])) continue
         instances.set(hit[0], { ...hit.groups })
     }
     return instances
 }
 
-// A required slot: each of its `requires` (relative to the instance folder of a per slot) holds a file, else its path does.
-const judgeRequired = (tally: Tally, compiled: Compiled, files: readonly string[]): void => {
+type Missing = (path: string, detail: string) => void
+
+// A required slot with no per: each of its `requires` holds a file, else its path does.
+const judgeRequiredOnce = (compiled: Compiled, files: readonly string[], missing: Missing): void => {
     const { slot } = compiled
-    const missing = (path: string, detail: string): void => {
-        if (slot.enforce === "target") judgeTarget(tally, slot, path, "SHAPE_MISSING", detail)
-        else tally.findings.push(finding("SHAPE_MISSING", path, slot.id, detail))
+    for (const required of slot.requires ?? []) {
+        const pattern = compilePattern(required)
+        if (!files.some((file) => pattern.regex.test(file))) missing(required, `required by ${slot.id}: ${slot.holds}`)
     }
-    if (slot.per === undefined) {
-        for (const required of slot.requires ?? []) {
-            const pattern = compilePattern(required)
-            if (!files.some((file) => pattern.regex.test(file))) missing(required, `required by ${slot.id}: ${slot.holds}`)
-        }
-        if (slot.requires === undefined && !files.some((file) => inSlot(compiled, file))) missing(slot.path.join(" | "), `required: ${slot.holds}`)
-        return
-    }
+    if (slot.requires === undefined && !files.some((file) => inSlot(compiled, file))) missing(slot.path.join(" | "), `required: ${slot.holds}`)
+}
+
+// A required per slot: in each instance folder, each of its `requires` (relative to the folder) holds a file, else its path does.
+const judgeRequiredPer = (slot: ShapeSlot, files: readonly string[], missing: Missing): void => {
     for (const [instance, bindings] of instancesOf(slot, files)) {
         if (slot.requires === undefined) {
             const bound = slot.path.map((source) => compilePattern(source, bindings))
@@ -126,9 +125,49 @@ const judgeRequired = (tally: Tally, compiled: Compiled, files: readonly string[
         }
         for (const required of slot.requires) {
             const pattern = compilePattern(required)
-            if (!files.some((file) => file.startsWith(instance) && pattern.regex.test(file.slice(instance.length)))) missing(`${instance}${required}`, `required in every ${slot.per}: ${slot.holds}`)
+            if (!files.some((file) => file.startsWith(instance) && pattern.regex.test(file.slice(instance.length)))) missing(`${instance}${required}`, `required in every ${slot.per ?? ""}: ${slot.holds}`)
         }
     }
+}
+
+// A required slot: a missing file is red, or excepted for a target slot whose dated exception covers the path.
+const judgeRequired = (tally: Tally, compiled: Compiled, files: readonly string[]): void => {
+    const { slot } = compiled
+    const missing: Missing = (path, detail) => {
+        if (slot.enforce === "target") judgeTarget(tally, slot, path, "SHAPE_MISSING", detail)
+        else tally.findings.push(finding("SHAPE_MISSING", path, slot.id, detail))
+    }
+    if (slot.per === undefined) judgeRequiredOnce(compiled, files, missing)
+    else judgeRequiredPer(slot, files, missing)
+}
+
+// Every exception of the manifest is used by a file and within its date; a stale or expired one is a finding.
+const judgeExceptions = (tally: Tally, compiled: readonly Compiled[], today: string): void => {
+    for (const { slot } of compiled) {
+        for (const exception of slot.exceptions ?? []) {
+            if (!tally.used.has(exceptionKey(slot.id, exception))) {
+                tally.findings.push(finding("SHAPE_EXCEPTION_STALE", exception.path, slot.id, `the exception covers nothing any more; remove it from ${SHAPE_MANIFEST}`))
+            }
+            if (exception.until < today) {
+                tally.findings.push(finding("SHAPE_EXCEPTION_EXPIRED", exception.path, slot.id, `the exception ran out on ${exception.until} (owner ${exception.owner}); finish the move or get a new ruling`))
+            }
+        }
+    }
+}
+
+// The slot a file is placed in: a forbidden target slot whose exception covers it, else the first placing slot holding it;
+// undefined when the file is a finding (forbidden, uncovered or unplaced).
+const slotOf = (root: string, ordered: readonly Compiled[], placing: readonly Compiled[], tally: Tally, file: string): ShapeSlot | undefined => {
+    const hit = ordered.find((entry) => inSlot(entry, file) && (entry.slot.jsonKey === undefined || declaresKey(root, file, entry.slot.jsonKey)))
+    if (hit !== undefined) {
+        const detail = `forbidden by ${hit.slot.id}: ${hit.slot.holds} (${hit.slot.rule})`
+        if (hit.slot.enforce === "gate") tally.findings.push(finding("SHAPE_FORBIDDEN", file, hit.slot.id, detail))
+        else if (judgeTarget(tally, hit.slot, file, "SHAPE_TARGET", detail)) return hit.slot
+        return undefined
+    }
+    const home = placing.find((entry) => inSlot(entry, file))
+    if (home === undefined) tally.findings.push(finding("SHAPE_UNPLACED", file, null, `no slot of ${SHAPE_MANIFEST} holds it; move it to its slot or add the slot`))
+    return home?.slot
 }
 
 /**
@@ -151,28 +190,11 @@ export const scanShape = (root: string, manifest: ShapeManifest, files: readonly
         if (slot.generated !== undefined) generated += 1
     }
     for (const file of files) {
-        const hit = ordered.find((entry) => inSlot(entry, file) && (entry.slot.jsonKey === undefined || declaresKey(root, file, entry.slot.jsonKey)))
-        if (hit !== undefined) {
-            const detail = `forbidden by ${hit.slot.id}: ${hit.slot.holds} (${hit.slot.rule})`
-            if (hit.slot.enforce === "gate") tally.findings.push(finding("SHAPE_FORBIDDEN", file, hit.slot.id, detail))
-            else if (judgeTarget(tally, hit.slot, file, "SHAPE_TARGET", detail)) place(hit.slot)
-            continue
-        }
-        const home = placing.find((entry) => inSlot(entry, file))
-        if (home === undefined) tally.findings.push(finding("SHAPE_UNPLACED", file, null, `no slot of ${SHAPE_MANIFEST} holds it; move it to its slot or add the slot`))
-        else place(home.slot)
+        const slot = slotOf(root, ordered, placing, tally, file)
+        if (slot !== undefined) place(slot)
     }
     for (const entry of compiled) if (entry.slot.presence === "required") judgeRequired(tally, entry, files)
-    for (const { slot } of compiled) {
-        for (const exception of slot.exceptions ?? []) {
-            if (!tally.used.has(exceptionKey(slot.id, exception))) {
-                tally.findings.push(finding("SHAPE_EXCEPTION_STALE", exception.path, slot.id, `the exception covers nothing any more; remove it from ${SHAPE_MANIFEST}`))
-            }
-            if (exception.until < today) {
-                tally.findings.push(finding("SHAPE_EXCEPTION_EXPIRED", exception.path, slot.id, `the exception ran out on ${exception.until} (owner ${exception.owner}); finish the move or get a new ruling`))
-            }
-        }
-    }
+    judgeExceptions(tally, compiled, today)
     return {
         root,
         manifest: SHAPE_MANIFEST,
@@ -198,7 +220,10 @@ export const describeShape = (report: ShapeReport): string[] => {
     }
     return [
         `shape: ${report.verdict}; ${String(report.files)} file(s) in ${String(report.slots)} slot(s) of ${report.manifest} ${report.version}, ${String(report.findings.length)} finding(s), ${String(report.excepted.length)} excepted, ${String(report.generated)} generated`,
-        ...report.findings.map((finding) => `${finding.code} ${finding.path}${finding.slot === null ? "" : ` (${finding.slot})`}: ${finding.detail}`),
+        ...report.findings.map((finding) => {
+            const slot = finding.slot === null ? "" : " (" + finding.slot + ")"
+            return `${finding.code} ${finding.path}${slot}: ${finding.detail}`
+        }),
         ...[...byException.values()].map(({ entry, count }) => `excepted until ${entry.until} (${entry.owner}): ${entry.slot} ${entry.exception} covers ${String(count)}`),
     ]
 }

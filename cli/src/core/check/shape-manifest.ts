@@ -94,7 +94,7 @@ export interface CompiledPattern {
     readonly names: readonly string[]
 }
 
-const escapeLiteral = (text: string): string => text.replace(/[.+^$()|[\]\\]/g, "\\$&")
+const escapeLiteral = (text: string): string => text.replace(/[.+^$()|[\]\\]/g, String.raw`\$&`)
 
 // Splits `{a,b}` at its top-level commas, so `{x,{y,z}}` keeps its inner group.
 const alternatives = (body: string): string[] => {
@@ -154,7 +154,7 @@ const expression = (text: string, names: string[], bindings: Readonly<Record<str
             const name = rest.slice(1, close)
             const bound = bindings[name]
             if (bound !== undefined) out += escapeLiteral(bound)
-            else if (names.includes(name)) out += `\\k<${name}>`
+            else if (names.includes(name)) out += String.raw`\k<${name}>`
             else {
                 names.push(name)
                 out += `(?<${name}>[^/]+)`
