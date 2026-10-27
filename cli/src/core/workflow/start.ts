@@ -1,19 +1,19 @@
 import { openLedger } from "../../harness/ledger.js"
+import { startKernel } from "../../harness/kernel.js"
+import { locateOrca } from "../../harness/orca/client.js"
+import { requireSupervisor } from "../../harness/supervisor.js"
 import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { exitOf, kernelActions, reportMessage, stepWorkflow } from "./engine.js"
+import { exitOf, readSnapshot, reportOf, reportMessage, stepWorkflow } from "./engine.js"
 
 /**
- * `starci workflow start <id>`: a defined workflow starts running and takes its first step. orca first makes the workflow's
- * Kernel in Orca once (a `[Kernel] <workflow>` coordinator terminal, its Run and its orchestration task), then dispatches every
- * ready task up to maxParallel and launches their seats nested under that task; inline makes nothing in Orca, queues the first
- * ready task and prints it for the chat agent.
+ * Starts a defined workflow: Orca launches its Kernel agent, whose attach dispatches Ops; inline takes its first step here.
  */
 export const workflowStartVerb = defineVerb({
     path: ["workflow", "start"],
-    summary: "start a defined workflow: orca makes its [Kernel] terminal, Run and task in Orca and dispatches its ready tasks to worker seats under it, inline prints the next task for the chat agent",
+    summary: "start a defined workflow: Orca launches its Kernel agent from the Supervisor terminal; inline prints the next task",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
@@ -23,6 +23,9 @@ export const workflowStartVerb = defineVerb({
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
+        const before = readSnapshot(root, flags.workflow).workflow
+        const binary = before.header.runner === "orca" ? await locateOrca(context.cwd) : undefined
+        if (binary !== undefined) await requireSupervisor(binary, context.cwd)
         const db = openLedger(root)
         const runner = (() => {
             try {
@@ -34,9 +37,12 @@ export const workflowStartVerb = defineVerb({
                 db.close()
             }
         })()
-        const kernel = runner === "orca" ? await kernelActions(context, root, flags.workflow) : []
-        const stepped = await stepWorkflow(context, root, flags.workflow)
-        const report = { ...stepped, actions: [...kernel, ...stepped.actions] }
+        if (runner === "orca" && binary !== undefined) {
+            const kernel = await startKernel(root, context.cwd, flags.workflow, binary)
+            const report = reportOf(root, readSnapshot(root, flags.workflow), kernel.notes.map((detail) => ({ key: null, task: null, action: "kernel", detail })))
+            return { data: report, message: reportMessage(report) }
+        }
+        const report = await stepWorkflow(context, root, flags.workflow)
         return { data: report, message: reportMessage(report), exitCode: exitOf(report) }
     },
 })

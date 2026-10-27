@@ -38,41 +38,49 @@ Run `starci explain` (or `starci explain --term <word>`) for the exact flags of 
 verb for one `{schema, ok, data}` envelope. Exit 0 is done, 1 is refused or red (nothing moved), 2 is bad
 usage. Read every refusal code; never retry blindly.
 
-## Roles in a chat
+## Seats and the owner's channel
 
-The Kernel plans: it writes every contract and the workflow file, sends, steps and verifies. Ops are plain
-workers that run the procedure of their label's op file ([ops/ops/](../../ops/ops/README.md)) on one contract. Until a Kernel seat exists, the chat
-that defines a workflow is its Kernel. Under the `orca` runner the chat never writes product code; under
-`inline` it is Kernel and worker, one task at a time.
+The owner starts the Supervisor once in the runtime checkout with `starci supervisor start`, then talks to its
+`[Supervisor]` terminal. It is the owner's channel and starts each Orca workflow from that terminal. The host-wide
+seat can be inspected with `starci supervisor status` and stopped with `starci supervisor stop`.
+
+Each Orca workflow has a real `[Kernel] <workflow>` agent beneath the Supervisor. The Kernel plans: it writes every
+contract and the workflow file, sends, steps, verifies and amends within budget. Ops run the procedure of their
+label's [op file](../../ops/ops/README.md) on one contract, each titled `[Op] <task>`. A missing Kernel is relaunched
+from the Supervisor terminal with `starci kernel start <workflow>`.
+
+The chat agent outside Orca is Debug: it diagnoses read-only and reports to the Supervisor. Under `inline`, the
+chat is Kernel and worker, one task at a time, without Supervisor or Kernel seats. The role duties and mailbox
+boundary are owned by [roles.md](../../contexts/harness/roles.md).
 
 ## Approvals
 
 Get the owner's OK on the exact artefact before each effect, and reuse it only while scope stays the same:
 
-| Effect | The owner approves |
-| --- | --- |
-| `workflow define`, `workflow start` | the workflow file: goal, runner, tasks, allowPaths, checks, pins |
-| `task send`, `seat start` outside a workflow | the contract |
-| `workflow amend` that adds, removes or widens work | the `plan diff` output |
-| `workflow stop`, `task cancel`, `budget raise`, `provider recover` | the target and the reason |
-| `release push`, `release cut` | the repository, commit and version |
-| `release publish --publish` | every package and version in the plan, each time (npm is public) |
+| Effect                                                             | The owner approves                                               |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `workflow define`, `workflow start`                                | the workflow file: goal, runner, tasks, allowPaths, checks, pins |
+| `task send`, `seat start` outside a workflow                       | the contract                                                     |
+| `workflow amend` that adds, removes or widens work                 | the `plan diff` output                                           |
+| `workflow stop`, `task cancel`, `budget raise`, `provider recover` | the target and the reason                                        |
+| `release push`, `release cut`                                      | the repository, commit and version                               |
+| `release publish --publish`                                        | every package and version in the plan, each time (npm is public) |
 
 Silence, a question or "handle it" is not an OK. A retry or a contract fix inside an accepted goal is the
 Kernel's own call; report it. Never decide for the owner, enter a credential or print a secret.
 
 ## Load only the reference you need
 
-| Request | Read |
-| --- | --- |
-| Turn an owner goal into a workflow and define it | [references/define-workflow.md](references/define-workflow.md) |
-| Start, step, watch, amend or stop a workflow | [references/run-workflow.md](references/run-workflow.md) |
-| Do one task yourself in this chat (inline runner) | [references/inline-task.md](references/inline-task.md) |
-| Know what an Orca worker sees and does | [references/worker.md](references/worker.md) |
-| Write or review front-end UI on a grammar | [references/ui-on-grammar.md](references/ui-on-grammar.md) |
-| Walk flows in a browser with evidence (a `uat` task) | [references/uat.md](references/uat.md) |
-| Router picks, provider circuits, budgets | [references/routing-and-providers.md](references/routing-and-providers.md) |
-| Push, cut, publish, read CI | [references/release.md](references/release.md) |
-| A workflow or task is stuck | [references/debug.md](references/debug.md) |
+| Request                                              | Read                                                                       |
+| ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| Turn an owner goal into a workflow and define it     | [references/define-workflow.md](references/define-workflow.md)             |
+| Start, step, watch, amend or stop a workflow         | [references/run-workflow.md](references/run-workflow.md)                   |
+| Do one task yourself in this chat (inline runner)    | [references/inline-task.md](references/inline-task.md)                     |
+| Know what an Orca worker sees and does               | [references/worker.md](references/worker.md)                               |
+| Write or review front-end UI on a grammar            | [references/ui-on-grammar.md](references/ui-on-grammar.md)                 |
+| Walk flows in a browser with evidence (a `uat` task) | [references/uat.md](references/uat.md)                                     |
+| Router picks, provider circuits, budgets             | [references/routing-and-providers.md](references/routing-and-providers.md) |
+| Push, cut, publish, read CI                          | [references/release.md](references/release.md)                             |
+| A workflow or task is stuck                          | [references/debug.md](references/debug.md)                                 |
 
 Load order: [contexts/README.md](../../contexts/README.md); decisions, roles and open questions: [contexts/harness/](../../contexts/harness/decisions.md). Gates and profiles: [policy/](../../policy/quality.yaml).

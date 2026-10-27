@@ -58,7 +58,7 @@ export const recordProviderEvent = (db: DatabaseSync, provider: string, kind: st
     db.prepare("INSERT INTO provider_events (provider, at, kind, data_json) VALUES (?, ?, ?, ?)").run(provider, at, kind, JSON.stringify(data))
 }
 
-/** The worker seats running now on this host, per member `agent/model` and per agent, across every registered project ledger. */
+/** The worker and coordinator seats running now on this host, per member `agent/model` and per agent, across every registered project ledger. */
 export interface RunningWorkers {
     readonly byMember: ReadonlyMap<string, number>
     readonly byAgent: ReadonlyMap<string, number>
@@ -74,19 +74,27 @@ const NOT_RUNNING: ReadonlySet<string> = new Set([...CLOSED_SEAT_STATUSES, SEAT_
 export const runningWorkers = (): RunningWorkers => {
     const byMember = new Map<string, number>()
     const byAgent = new Map<string, number>()
+    const count = (agent: string, model: string | null): void => {
+        const member = `${agent}/${model ?? "?"}`
+        byMember.set(member, (byMember.get(member) ?? 0) + 1)
+        byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)
+    }
+    const supervisors = readMachine((db) => db.prepare("SELECT agent, model FROM supervisors WHERE ended_at IS NULL").all(), [])
+    for (const seat of supervisors) {
+        const agent = textOf(seat.agent)
+        if (agent !== null) count(agent, textOf(seat.model))
+    }
     const files = readMachine((db) => db.prepare("SELECT file FROM ledgers WHERE state != 'retired'").all().map((row) => textOf(row.file) ?? ""), [])
     for (const file of files) {
         if (file === "" || !existsSync(file)) continue
         let ledger: DatabaseSync | undefined
         try {
             ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
-            for (const row of ledger.prepare("SELECT * FROM seats WHERE role = 'worker'").all()) {
+            for (const row of ledger.prepare("SELECT * FROM seats WHERE role IN ('worker', 'kernel')").all()) {
                 const status = textOf(row.status) ?? ""
                 const agent = textOf(row.agent)
                 if (NOT_RUNNING.has(status) || agent === null || textOf(row.ended_at) !== null) continue
-                const member = `${agent}/${textOf(row.model) ?? "?"}`
-                byMember.set(member, (byMember.get(member) ?? 0) + 1)
-                byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)
+                count(agent, textOf(row.model))
             }
         } catch {
             // A ledger that cannot be opened or read now (locked, damaged) is not counted; the next pick reads it again.

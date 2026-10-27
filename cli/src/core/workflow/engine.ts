@@ -5,7 +5,7 @@ import { openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
-import { closeKernel, ensureKernel } from "../../harness/kernel.js"
+import { closeKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -189,25 +189,10 @@ const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<Step
     return closed.flat()
 }
 
-/**
- * Makes sure an orca workflow has its Kernel in Orca (`[Kernel] <workflow>` terminal, Run and task) and reports what was made.
- * Orca being unable to make it is a problem, not a stop: ops then launch flat.
- */
-export const kernelActions = async (context: VerbContext, root: string, id: string): Promise<StepAction[]> => {
-    try {
-        const binary = await locateOrca(context.cwd)
-        const ensured = await ensureKernel(root, context.cwd, id, binary)
-        return ensured.notes.map((note) => ({ key: null, task: null, action: "kernel", detail: note }))
-    } catch (error: unknown) {
-        const refusal = asRefusal(error)
-        return [{ key: null, task: null, action: "problem", detail: `the Kernel was not made in Orca (${refusal.code}): ${refusal.message}; ops launch flat` }]
-    }
-}
-
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
 export const closeKernelActions = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const { workflow } = snapshot
-    if (workflow.status !== "stopped" || workflow.kernel.terminal === null || workflow.kernel.closedAt !== null) return []
+    if (!["stopped", "done"].includes(workflow.status) || (workflow.kernel.terminal === null && workflow.kernel.dispatchId === null) || workflow.kernel.closedAt !== null) return []
     try {
         const outcome = await closeKernel(root, context.cwd, workflow.id, await locateOrca(context.cwd))
         const failed = outcome.startsWith("error: ")

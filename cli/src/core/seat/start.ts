@@ -141,8 +141,7 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
-            // Seats read as a tree: [Supervisor], then [Kernel] <workflow>, then [Op] <workflow> › <task> under it.
-            taskTitle: clip(`[Op] ${task.workflowId ?? "inline"} › ${task.id} ${task.contract.label}: ${task.contract.input.summary}`),
+            taskTitle: `[Op] ${task.id}`,
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
             model: options.model,
@@ -393,20 +392,13 @@ const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResu
 }
 
 /**
- * The Kernel a workflow task's worker nests under. A real launch first makes sure it exists in Orca (created once, recreated
- * when its terminal is gone); a dry run only reads what is recorded. A Kernel Orca cannot make is an event and the worker
- * launches flat: the tree is how seats read, never a reason not to run a task.
+ * Requires the workflow's attached Kernel before a real launch; a dry run only reads its recorded identity.
  */
 const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, options: SeatStartOptions): Promise<KernelLaunch | null> => {
     if (task.workflowId === null) return null
     const workflowId = task.workflowId
     if (options.dryRun !== true && getWorkflow(db, workflowId).header.runner === "orca") {
-        try {
-            const ensured = await ensureKernel(options.root, options.cwd, workflowId, binary)
-            if (ensured.notes.length > 0) recordEvent(db, "workflow-kernel-ensured", workflowId, { task: task.id, notes: ensured.notes })
-        } catch (error: unknown) {
-            recordEvent(db, "workflow-kernel-unavailable", workflowId, { task: task.id, error: messageOf(error) })
-        }
+        await ensureKernel(options.root, options.cwd, workflowId, binary)
     }
     return launchableKernel(getWorkflow(db, workflowId))
 }

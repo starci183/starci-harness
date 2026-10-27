@@ -13,13 +13,13 @@ brief.
 The front matter is data (`schema: starci/op@1`); the body is the label's own procedure, the part of the work that
 differs from the procedure below. A body never restates the common procedure.
 
-| key | holds |
-|---|---|
-| `summary`, `floor`, `hostTools` | what the label is for, its difficulty floor and the host tools it needs; the router reads the last two ([../README.md](../README.md)) |
-| `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`) |
-| `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |
-| `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary`. `behavioural: true` says the output is itself the evidence of behaviour (a suite or flow report) |
-| `checks.base` | the checks of every task of the label: presets of [../checks.yaml](../checks.yaml), bare or `{preset, args}`. `behavioural: true` makes a contract without a behavioural check unfit |
+| key                             | holds                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `summary`, `floor`, `hostTools` | what the label is for, its difficulty floor and the host tools it needs; the router reads the last two ([../README.md](../README.md))                                                                                                                                                                                                                                                                                                      |
+| `context.base`                  | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be | fe`and CONTRIBUTING.md plus cli/README.md for`side: harness`) |
+| `input.base`                    | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared                                                                                                                                                                                                                                                                                                    |
+| `output.base`                   | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary`. `behavioural: true` says the output is itself the evidence of behaviour (a suite or flow report)                                                                                                                  |
+| `checks.base`                   | the checks of every task of the label: presets of [../checks.yaml](../checks.yaml), bare or `{preset, args}`. `behavioural: true` makes a contract without a behavioural check unfit                                                                                                                                                                                                                                                       |
 
 ## The contract's extend
 
@@ -77,3 +77,37 @@ would make your checks green.
 
 Never commit, push, merge into main, change the contract, edit tests or configs outside allowPaths, or ask the owner.
 The harness verifies your result again on a clean checkout and commits it; a green you did not earn is refused.
+
+### Orca mail
+
+Under the Orca runner, talk only to your Kernel, never to the Supervisor, owner or another Op. Use the terminal,
+Orca task and dispatch ids in your injected Orca preamble; the Orca task id is distinct from the StarCi task id above.
+Upward mail omits `--to` and `--run`: Orca delivers it to your dispatch's owning Run, your Kernel's mailbox.
+The harness ledger holds task state; mail only wakes the Kernel or asks it a question.
+
+```text
+orca orchestration send --from <terminal> --type escalation --subject "Blocked: <reason>" --body "<details>" --task-id <orca-task-id> --dispatch-id <dispatch-id>
+orca orchestration ask --from <terminal> --question "<question for the Kernel>" --timeout-ms 600000
+orca orchestration check --terminal <terminal> --wait --timeout-ms 600000 --json
+orca orchestration reply --from <terminal> --id <message-id> --body "<answer>"
+```
+
+If an `ask` times out, resume that question with `orca orchestration ask --from <terminal> --resume <message-id>`;
+do not ask it again. Process every message in a delivery, then pass `--ack <delivery-id>` on the next `check`.
+The Kernel sends downward guidance to `dispatch:<dispatch-id>` or replies to your question; read it at natural
+checkpoints and immediately before completion. Send a heartbeat every five active minutes, except while blocked
+inside `ask` or `check --wait`:
+
+```text
+orca orchestration send --from <terminal> --type heartbeat --subject alive --task-id <orca-task-id> --dispatch-id <dispatch-id> --phase implementing
+```
+
+After filing the StarCi result, report exactly once to Orca with both ids and an honest outcome (`failed` if the
+requested work is incomplete). The body is three sentences: what you did, what you found, and what remains.
+
+```text
+orca orchestration send --from <terminal> --type worker_done --subject "<status>" --body "<three-sentence summary>" --task-id <orca-task-id> --dispatch-id <dispatch-id> --outcome succeeded
+```
+
+Append `--files-modified <csv>` only when files changed and `--report-path <path>` only for a durable report. After
+`worker_done`, stop working and remain idle. Inline tasks use the StarCi result procedure without Orca mail.

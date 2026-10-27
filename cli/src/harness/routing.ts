@@ -7,6 +7,9 @@ import { locateOps } from "./ops.js"
 
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 
+/** A coordinator seat whose tier is owned by ops/routing.yaml. */
+export type CoordinatorRole = "supervisor" | "kernel"
+
 /** A difficulty by name, from easy to insane. */
 export type Difficulty = z.infer<typeof difficultySchema>
 
@@ -40,6 +43,7 @@ const routingSchema = z.object({
     difficulties: z.tuple([z.literal("easy"), z.literal("medium"), z.literal("hard"), z.literal("insane")]),
     difficultyTier: z.record(difficultySchema, z.string().min(1)),
     labelTiers: z.record(z.string(), z.string().min(1)),
+    coordinators: z.object({ supervisor: z.string().min(1), kernel: z.string().min(1) }),
     tierOrder: z.array(z.string().min(1)).min(1),
     escalateAfterReds: z.number().int().positive(),
     tiers: z.record(z.string(), z.array(memberSchema).min(1)),
@@ -67,7 +71,7 @@ export type Routing = z.infer<typeof routingSchema>
 const problemsOf = (routing: Routing): string[] => {
     const problems: string[] = []
     const tiers = new Set(Object.keys(routing.tiers))
-    for (const tier of [...routing.tierOrder, ...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers)]) {
+    for (const tier of [...routing.tierOrder, ...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers), ...Object.values(routing.coordinators)]) {
         if (!tiers.has(tier)) problems.push(`tier ${tier} is named but not defined under tiers`)
     }
     for (const tier of tiers) if (!routing.tierOrder.includes(tier)) problems.push(`tier ${tier} is missing from tierOrder`)

@@ -7,7 +7,7 @@ import type { OrcaBinary, WorkerClosed } from "./orca/client.js"
 import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
 
-/** Who a seat is. P1 launches workers only; the Kernel and Supervisor seats come later. */
+/** Who a seat is: a worker (an Op), or a workflow's Kernel (one seat row per Kernel launch). The host Supervisor lives in machine.sqlite. */
 export type SeatRole = "worker" | "kernel" | "supervisor" | "debug"
 
 /** The status of a seat whose launch failed and whose leftovers were cleaned up (or never existed). */
@@ -66,6 +66,10 @@ export interface SeatRow {
     readonly lastActivityAt: string | null
     readonly startedAt: string
     readonly endedAt: string | null
+    /** The workflow a Kernel seat coordinates (null for a worker, whose task names it). */
+    readonly workflowId: string | null
+    /** The TTL lease the seat's own harness calls renew (ops/liveness.yaml seatLeaseMinutes); past it the seat is suspect, never dead. */
+    readonly leaseUntil: string | null
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
@@ -93,6 +97,8 @@ const toSeat = (row: Record<string, unknown>): SeatRow => {
         lastActivityAt: optText(row.last_activity_at),
         startedAt: text(row.started_at),
         endedAt: optText(row.ended_at),
+        workflowId: optText(row.workflow_id),
+        leaseUntil: optText(row.lease_until),
     }
 }
 
@@ -131,6 +137,34 @@ export const openSeat = (db: DatabaseSync, seat: SeatOpening): SeatRow => {
     ).run(id, seat.role, seat.agent, seat.model, seat.attemptId, seat.taskId, SEAT_STARTING, seat.requestId, JSON.stringify(seat.launch), now())
     recordEvent(db, "seat-opened", id, { role: seat.role, agent: seat.agent, model: seat.model, taskId: seat.taskId, attempt: seat.attemptId, request: seat.requestId })
     return getSeat(db, id)
+}
+
+/** What a Kernel seat is opened with: the routed member, its workflow, its launch id (the seat id) and request id. */
+export interface KernelSeatOpening {
+    readonly id: string
+    readonly workflowId: string
+    readonly agent: string
+    readonly model: string
+    readonly requestId: string
+    readonly launch: unknown
+}
+
+/** Opens a Kernel seat row in `starting` before its worker-start, so an unknown launch keeps its request id to resolve. */
+export const openKernelSeat = (db: DatabaseSync, seat: KernelSeatOpening): SeatRow => {
+    db.prepare(
+        "INSERT INTO seats (id, role, agent, model, handle, task_id, status, request_id, launch_json, started_at, workflow_id) VALUES (?, 'kernel', ?, ?, NULL, NULL, ?, ?, ?, ?, ?)",
+    ).run(seat.id, seat.agent, seat.model, SEAT_STARTING, seat.requestId, JSON.stringify(seat.launch), now(), seat.workflowId)
+    recordEvent(db, "seat-opened", seat.id, { role: "kernel", agent: seat.agent, model: seat.model, workflow: seat.workflowId, request: seat.requestId })
+    return getSeat(db, seat.id)
+}
+
+/** The open Kernel seat of a workflow (newest first), if any. */
+export const kernelSeatOf = (db: DatabaseSync, workflowId: string): SeatRow | undefined =>
+    db.prepare("SELECT * FROM seats WHERE role = 'kernel' AND workflow_id = ? ORDER BY started_at DESC, id").all(workflowId).map(toSeat).find(isSeatOpen)
+
+/** Renews a seat's TTL lease; every harness call a seat makes (attach, next, submit, ping) renews its own. */
+export const renewSeatLease = (db: DatabaseSync, seatId: string, minutes: number): void => {
+    db.prepare("UPDATE seats SET lease_until = ? WHERE id = ?").run(new Date(Date.now() + minutes * 60_000).toISOString(), seatId)
 }
 
 /** Replaces the launch a seat replays and its worker-start request id (a launch retried under a request id of its own). */

@@ -1,7 +1,9 @@
 # Define a workflow
 
-You are the Kernel for this goal. You write the contracts and the workflow file; the harness validates and
-records them and never invents a task. Nothing is queued before the owner's OK.
+The Kernel owns the detailed plan for this goal: contracts and the workflow file. The Supervisor turns the owner's
+request into a defined workflow and may hand the goal to its Kernel for planning. The harness validates and records
+the plan and never invents a task. Nothing is queued before the owner's OK. The outside chat is Debug; inline
+workflows use the chat as Kernel and worker without Orca seats.
 
 ## 1. Pin the goal
 
