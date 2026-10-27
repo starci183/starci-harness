@@ -46,6 +46,11 @@ jobs:
         run: for dir in packages/*/; do (cd "$dir" && npm ci --no-audit --no-fund); done
       - name: Test packages
         run: for dir in packages/*/; do (cd "$dir" && npm test); done
+      # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar (built by its test
+      # above) as a file: copy; its bundles are built by .github/workflows/app.yml.
+      - name: Typecheck and build the desktop app
+        working-directory: app
+        run: npm ci --no-audit --no-fund && npm run build
       - name: Sonar (new-code gate, policy/quality.yaml ci.sonar-new-code)
         uses: SonarSource/sonarqube-scan-action@v5
         env:

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.14.0 - 2026-10-27
+
+- Added: `StatusDot` (text chip, `echo`, static; one dot-size token, five tones; dot-only variants require `aria-label` and show it in a Tooltip; the text variant is a soft HeroUI `Chip` of the same `size`, so padding and height equal the Chip's, and capitalises its first letter). `Badge isDot` renders through the same anatomy (the `starci-core-badge-dot` class and `CircleFill` dot are gone).
+- Added: `Text` `mono` and `tabular`; inline `Code`; `Meter size="sm"` (thin track); `Timeline` `isAttention` (tone row background); `Badge` tone `muted`; `Terminal` (dark monospace log tail, `role="log"`, `aria-live="polite"`, follows the end unless scrolled up).
+- Added: client-side navigation. Every Grammar root accepts `navigate` and `useHref` and mounts react-aria's `RouterProvider`, so links, `Button href`, `Breadcrumbs`, `ListBox`/`Menu` items and `FlowGraph` nodes navigate without a reload.
+- Added: `FlowGraph` `direction` (`TB` | `LR`), `layout="layered"`, `headers` (layer titles), `height` as a number or CSS length, and node `href`. The radial default is unchanged.
+- Added: `Button disabledReason` shows its words in a Tooltip on hover and keyboard focus of a disabled Button and carries them as its accessible description; `Tooltip` takes `isDisabledTrigger` and `triggerDescribedBy` for a control the platform skips.
+- Added: `PinnedActionBar` takes `summary` (text or node) with `dismiss` and `commit` actions beside the single-command `children` form.
+- Added: `DataTable` rows take `href` (a whole-row link target); columns take `editor` (a field hosted in the cell, keyboard behaviour switches to React Aria's `tab` mode) and `priority` (`low` columns fold into the first column as stacked secondary text below `collapseBelow`, default 640px); `DataTableColumn` is generic over the row type.
+- Added: `TagGroup onReorder` with `reorderInstructions` and `reorderAnnouncement` (drag, or Alt+arrow keys, with a live-region announcement). The vendor TagGroup has no drag-and-drop collection hooks, so Grammar wires native drag events itself.
+- Added: `ListBox descriptionLines` and the `wrap` value of `ItemDescriptionLines`.
+- Changed: `ListBox` descriptions wrap by default; pass `descriptionLines={1}` for the earlier one-line preview.
+- Changed (breaking): `Input` takes `description` instead of `hint`. The package has no deprecation window, so `hint` is removed. Migrate: rename `hint` to `description`.
+- Fixed: the Tabs selection underline follows a changed tab label at once instead of animating its width.
+- Fixed: the `FlowGraph` layered layout spaces nodes by the widest node (`max-inline-size: 14rem`) plus a gap, so two nodes of one `TB` lane or one `LR` layer never overlap; `TB` layers sit 100 graph units apart (was 130), so a deep graph fits its canvas at a readable zoom.
+- Fixed: a `TB` `FlowGraph` lane header ends a gap before the widest node can start (right-aligned, `origin [1, 0.5]`), so a long header never runs under a node; a click on a header no longer selects it as a node.
+- Fixed: a `DataTable` editor fills its column (the hosted field stretches) instead of shrinking to its content.
+- Fixed: a `SurfaceCard` `fact` renders in the muted fact style (`starci-core-surface-fact`) that `SurfaceListCard` uses, instead of an unstyled span inheriting the vendor card header's larger type.
+- Changed: versioned together with the Grammar lint families 0.14.0 (a minor: `Input hint` is removed).
+
 ## 0.13.0 - 2026-10-27
 
 - Removed: the Heritage family (`@starci/grammar/heritage`, `heritage.css`, `HeritageGrammarRoot`, `HERITAGE_DNA`); the package ships two families, Core and Offset Pop, over Common. Migrate: select `core` or `offset-pop`.

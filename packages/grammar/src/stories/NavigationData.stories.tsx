@@ -187,6 +187,41 @@ const SortableTable = () => {
   );
 };
 
+type Seat = { readonly id: string; readonly href?: string; readonly name: string; readonly role: string; readonly seats: number; readonly email: string; readonly team: string };
+const seatRows: ReadonlyArray<Seat> = [
+  { id: 's1', href: '#member-alex', name: 'Alex Morgan', role: 'editor', seats: 2, email: 'alex@example.com', team: 'Grammar' },
+  { id: 's2', href: '#member-sam', name: 'Sam Lee', role: 'viewer', seats: 1, email: 'sam@example.com', team: 'Listening' },
+];
+const roleOptions = [{ id: 'editor', label: 'Editor' }, { id: 'viewer', label: 'Viewer' }];
+const seatColumns = (update: (id: string, patch: Partial<Seat>) => void): ReadonlyArray<G.DataTableColumn<Seat>> => [
+  { id: 'name', label: 'Member', isRowHeader: true },
+  { id: 'role', label: 'Role', editor: (row) => <G.Select label={`Role of ${row.name}`} isLabelHidden options={roleOptions} value={row.role} onValueChange={(id) => update(row.id, { role: id ?? row.role })} /> },
+  { id: 'seats', label: 'Seats', align: 'end', editor: (row) => <G.NumberField label={`Seats for ${row.name}`} isLabelHidden value={row.seats} minValue={0} onValueChange={(value) => update(row.id, { seats: value })} /> },
+  { id: 'email', label: 'Email', priority: 'low' },
+  { id: 'team', label: 'Team', priority: 'low' },
+];
+const seatCell = (row: Seat, columnId: string) => String(row[columnId as keyof Seat] ?? '');
+
+const SeatTable = ({ maxWidth }: { readonly maxWidth?: number }) => {
+  const [rows, setRows] = useState(seatRows);
+  const columns = seatColumns((id, patch) => setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row))));
+  return (
+    <div style={maxWidth === undefined ? undefined : { maxWidth }}>
+      <G.DataTable label="Seats" columns={columns} rows={rows} renderCell={seatCell} emptyContent="No members." />
+    </div>
+  );
+};
+
+export const DataTableRowLinkEditableAndNarrow: Story = {
+  name: 'DataTable (row link, editable cells, narrow mode)',
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Whole-row href with editable Select and NumberField cells (wide)" direction="column"><SeatTable /></State>
+      <State label="Narrow container: Email and Team collapse under Member as secondary text" direction="column"><SeatTable maxWidth={420} /></State>
+    </Matrix>
+  ),
+};
+
 export const DataTable: Story = {
   render: () => (
     <Matrix maxWidth={720}>
@@ -291,6 +326,51 @@ export const FlowGraph: Story = {
   },
 };
 
+const waveNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'schema', label: 'Schema', tone: 'accent', href: '#/tasks/schema' },
+  { id: 'auth', label: 'Auth', href: '#/tasks/auth' },
+  { id: 'api', label: 'API', href: '#/tasks/api' },
+  { id: 'jobs', label: 'Jobs', href: '#/tasks/jobs' },
+  { id: 'ui', label: 'UI', tone: 'success', href: '#/tasks/ui' },
+  { id: 'e2e', label: 'End to end', tone: 'warning', count: 3, href: '#/tasks/e2e' },
+];
+const waveEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'w1', source: 'schema', target: 'api' },
+  { id: 'w2', source: 'auth', target: 'api' },
+  { id: 'w3', source: 'schema', target: 'jobs' },
+  { id: 'w4', source: 'api', target: 'ui' },
+  { id: 'w5', source: 'jobs', target: 'e2e' },
+  { id: 'w6', source: 'ui', target: 'e2e' },
+];
+const waveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = [
+  { label: 'Wave 1', at: 0 },
+  { label: 'Wave 2', at: 1 },
+  { label: 'Wave 3', at: 2 },
+  { label: 'Wave 4', at: 3 },
+];
+
+/** A waves DAG: layered layout, handles on the layout axis, wave headers, nodes that link through the root's router, a custom height. */
+export const FlowGraphWaves: Story = {
+  render: () => {
+    const Demo = () => {
+      const [path, setPath] = useState<string>('(none)');
+      return (
+        <G.GrammarRoot navigate={setPath} useHref={(href: string) => href}>
+          <Matrix maxWidth={900}>
+            <State label={`Left to right, headers above (navigated: ${path})`} direction="column">
+              <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
+            </State>
+            <State label="Top to bottom, lane headers beside" direction="column">
+              <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
+            </State>
+          </Matrix>
+        </G.GrammarRoot>
+      );
+    };
+    return <Demo />;
+  },
+};
+
 const memberItems: ReadonlyArray<G.ListBoxItem> = [
   { id: 'alex', label: 'Alex Morgan', description: 'alex@example.com', leading: <G.Avatar name="Alex Morgan" size="sm" isDecorative /> },
   { id: 'sam', label: 'Sam Lee', description: 'sam@example.com', leading: <G.Avatar name="Sam Lee" size="sm" isDecorative /> },
@@ -308,6 +388,21 @@ export const ListBoxWithDescriptions: Story = {
       <State label="Multiple selection" direction="column">
         <G.ListBox label="Reviewers" items={memberItems} selectionMode="multiple" defaultSelectedIds={['alex', 'sam']} />
       </State>
+    </Matrix>
+  ),
+};
+
+const wrappingItems: ReadonlyArray<G.ListBoxItem> = [
+  { id: 'a', label: 'Release notes', description: 'Everything that changed in this release, including the new grading rules, the renamed lesson types and the fixes to the import flow, written out in full.' },
+  { id: 'b', label: 'Migration guide', description: 'Short note.' },
+];
+
+export const ListBoxDescriptionWrap: Story = {
+  name: 'ListBox (descriptions wrap or keep one line)',
+  render: () => (
+    <Matrix maxWidth={360}>
+      <State label="Default: the description wraps onto as many lines as it needs" direction="column"><G.ListBox label="Documents" items={wrappingItems} /></State>
+      <State label="descriptionLines={1}: one line with an ellipsis" direction="column"><G.ListBox label="Documents, one line" descriptionLines={1} items={wrappingItems} /></State>
     </Matrix>
   ),
 };
@@ -342,7 +437,7 @@ export const ChatRows: Story = {
   render: () => (
     <Matrix maxWidth={360}>
       <State label="Unread strong copy, read normal copy; no group glyph" direction="column">
-        <G.ListBox label="Conversations" items={conversationItems} selectionMode="single" defaultSelectedIds={['study-group']} />
+        <G.ListBox label="Conversations" descriptionLines={1} items={conversationItems} selectionMode="single" defaultSelectedIds={['study-group']} />
       </State>
     </Matrix>
   ),
@@ -354,7 +449,7 @@ export const ListBoxNoIndicator: Story = {
   render: () => (
     <Matrix maxWidth={360}>
       <State label="selectionIndicator none" direction="column">
-        <G.ListBox label="Conversations" items={conversationItems} selectionMode="single" selectionIndicator="none" defaultSelectedIds={['study-group']} />
+        <G.ListBox label="Conversations" descriptionLines={1} items={conversationItems} selectionMode="single" selectionIndicator="none" defaultSelectedIds={['study-group']} />
       </State>
     </Matrix>
   ),
@@ -509,6 +604,19 @@ const RemovableTags = () => {
   );
 };
 
+const ReorderableTags = () => {
+  const [items, setItems] = useState(tags.slice(0, 3));
+  return (
+    <G.TagGroup
+      label="Pinned topics"
+      items={items}
+      onReorder={(ids) => setItems((current) => ids.flatMap((id) => current.filter((item) => item.id === id)))}
+      reorderInstructions="Drag a tag, or hold Alt and press an arrow key, to move it."
+      reorderAnnouncement={(label, position, total) => `${label} moved to position ${position} of ${total}`}
+    />
+  );
+};
+
 export const TagGroup: Story = {
   render: () => (
     <Matrix>
@@ -516,6 +624,7 @@ export const TagGroup: Story = {
         <G.TagGroup label="Topics" items={tags} selectionMode="multiple" defaultSelectedIds={['grammar']} />
       </State>
       <State label="Removable"><RemovableTags /></State>
+      <State label="Reorderable (drag, or Alt+arrow on a focused tag)"><ReorderableTags /></State>
       <State label="Off chip (muted outline, still focusable, named off)">
         <G.TagGroup label="Capabilities" items={[{ id: 'quotes', label: 'Quotes' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'orders', label: 'Order lookup', isOff: true, offLabel: 'off' }]} />
       </State>
@@ -544,6 +653,17 @@ export const Timeline: Story = {
           ]}
         />
       </State>
+      <State label="Attention entry (row background)" direction="column">
+        <G.Timeline
+          label="Deploy"
+          items={[
+            { id: 'a1', title: 'Build passed', state: 'affirmative', timeLabel: '09:00' },
+            { id: 'a2', title: 'Approval needed', state: 'cautionary', isAttention: true, description: 'Waiting for a reviewer.' },
+            { id: 'a3', title: 'Smoke test failed', state: 'negative', isAttention: true, description: '1 failure.' },
+            { id: 'a4', title: 'Release', state: 'neutral' },
+          ]}
+        />
+      </State>
       <State label="Negative item" direction="column">
         <G.Timeline label="Build log" items={[{ id: 'b1', title: 'Build started', state: 'informative' }, { id: 'b2', title: 'Tests failed', state: 'negative', description: '2 failures.' }]} />
       </State>
@@ -569,6 +689,22 @@ const TabsDemo = ({ variant = 'primary' }: { readonly variant?: 'primary' | 'sec
       ))}
     </div>
   );
+};
+
+const RenamingTabs = () => {
+  const [name, setName] = useState('Lessons');
+  const items: ReadonlyArray<G.TabItem> = [{ id: 'overview', label: 'Overview' }, { id: 'lessons', label: name }, { id: 'members', label: 'Members' }];
+  return (
+    <div>
+      <G.Tabs label="Renaming tabs" items={items} selectedKey="lessons" panelId={(key) => `story-rename-panel-${key}`} labelVisibility="always" />
+      <G.Button variant="secondary" onPress={() => setName((current) => (current === 'Lessons' ? 'All lessons and exercises' : 'Lessons'))}>Change the selected tab label</G.Button>
+    </div>
+  );
+};
+
+export const TabsLabelChange: Story = {
+  name: 'Tabs (selected label changes)',
+  render: () => <Matrix><State label="The underline follows the new label width at once" direction="column"><RenamingTabs /></State></Matrix>,
 };
 
 export const Tabs: Story = {

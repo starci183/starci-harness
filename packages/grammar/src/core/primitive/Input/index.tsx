@@ -31,7 +31,8 @@ export type InputProps = {
     readonly placeholder?: string
     readonly defaultValue?: string
     readonly value?: string
-    readonly hint?: ReactNode
+    /** Helper text under the label, like `description` on every other field. It joins the input's accessible description. */
+    readonly description?: ReactNode
     readonly errorMessage?: ReactNode
     readonly isError?: boolean
     readonly isDisabled?: boolean
@@ -76,11 +77,11 @@ const KINDS = {
 /**
  * Core ownership boundary for label, guidance, control state, and validation copy.
  *
- * Layout: the field is a grid of label, hint, control box and error. The error message is the LAST row and reserves no
+ * Layout: the field is a grid of label, description, control box and error. The error message is the LAST row and reserves no
  * space until it exists, so showing or clearing it moves nothing above it: the control box keeps its position and height.
  * A row that puts a trailing action beside the field (an input and a Delete button) aligns that action to the control
  * box, not to the whole field: `[data-grammar-input-control="true"]` is the control box (the input and its in-field
- * actions). Give the row `align-items: start` and align the action to that box (offset by the label and hint above it),
+ * actions). Give the row `align-items: start` and align the action to that box (offset by the label and description above it),
  * so an error appearing under the field never shifts the action.
  */
 export const Input = ({
@@ -94,7 +95,7 @@ export const Input = ({
     placeholder,
     defaultValue,
     value,
-    hint,
+    description,
     errorMessage,
     isError = false,
     isDisabled = false,
@@ -180,7 +181,7 @@ export const Input = ({
             className="starci-core-input"
         >
             <HeroLabel {...(isLabelHidden ? { className: "starci-core-form-label--screen-reader" } : {})}>{label}</HeroLabel>
-            {hint == null ? null : <HeroDescription>{hint}</HeroDescription>}
+            {description == null ? null : <HeroDescription>{description}</HeroDescription>}
             <div
                 className="starci-core-input-control"
                 data-grammar-input-control="true"

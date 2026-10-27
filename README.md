@@ -73,6 +73,7 @@ repositories, so a run survives a closed chat or a dead agent. [contexts/harness
 | [policy/](policy/README.md) | the gates: tiers and profiles, canon packages, banned loosening markers, the secret scan |
 | [contexts/](contexts/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
 | [packages/](packages/README.md) | the packages apps install from npm: the canon (ESLint fe and be, stylelint, tsconfig, prettier, jest), the Grammar and its lint families, `hfs`, the shared libraries (heroicons, event-stream, test-world) and the AI pool router |
+| [app/](app/README.md) | the StarCi Harness desktop app (Tauri, Windows and macOS) over `starci ui`, drawn in the local Grammar |
 | `skills/` | the agent entry for operating the harness (`skills/starci/SKILL.md`) |
 
 ## Build from source
@@ -110,9 +111,10 @@ Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wa
 ## CI
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to main: the CLI's typecheck,
-lint and build, the loosening and secret gates, every package's specs, and the Sonar new-code gate. A `v*` tag also
-publishes the CLI (`starci-harness`) and every package under `packages/` whose version is not yet on npm
-([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20).
+lint and build, the loosening and secret gates, every package's specs, the desktop app's build, and the Sonar new-code
+gate. A `v*` tag also publishes the CLI (`starci-harness`) and every package under `packages/` whose version is not yet
+on npm ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds
+the desktop app's bundles on an `app-v*` tag or a manual run.
 
 ## License
 

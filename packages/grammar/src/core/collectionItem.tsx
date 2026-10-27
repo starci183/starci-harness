@@ -4,11 +4,11 @@ import { createContext, useContext, type ReactNode } from "react"
 import { STARCI_CORE_DNA } from "./dna.js"
 import { OFFSET_POP_DNA } from "../offset-pop/dna.js"
 
-/** Item previews support one, two or three visible lines; their full text remains accessible. */
-export type ItemDescriptionLines = 1 | 2 | 3
+/** Item previews support one, two or three visible lines, or `wrap` to show every line; their full text remains accessible. */
+export type ItemDescriptionLines = 1 | 2 | 3 | "wrap"
 
 type CollectionItemPresentation = {
-    readonly descriptionLines: ItemDescriptionLines
+    readonly descriptionLines: Exclude<ItemDescriptionLines, "wrap">
     readonly unreadWeight: number
 }
 

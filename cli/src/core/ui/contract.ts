@@ -1,6 +1,7 @@
 /**
- * The contract `starci ui` serves, copied from the desktop app (starci-harness-app `src/api/contract.ts`), which keeps its own
- * copy since the app is built without the CLI; a field changes in both copies at once, on the coordinator's call.
+ * The one contract between `starci ui` and the desktop app in `app/`, which imports these types through its `@contract`
+ * path alias (types only, nothing reaches its bundle). The server serves it under http://127.0.0.1:<port>/api with the
+ * bearer token it prints; every write goes through a harness verb, so gates and roles hold.
  *
  *   GET  /api/overview                              -> Overview
  *   GET  /api/workflows/:project/:workflow          -> WorkflowDetail
@@ -76,6 +77,7 @@ export interface WorkflowRow {
     readonly liveOps: number
     readonly parallelCap: number
     readonly kernel: Member | null
+    /** An owner decision on this workflow is open: the workflow waits for the owner. */
     readonly awaitingOwner: boolean
 }
 

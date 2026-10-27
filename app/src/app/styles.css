@@ -1,0 +1,116 @@
+/*
+ * HeroUI once, then exactly one Grammar family (core). Everything below the imports is layout: every colour, type,
+ * radius and shadow comes from the Grammar, and every gap is one of the Grammar's spacing tokens:
+ *   --grammar-region-gap   between the page header and the page's sections, and between sections
+ *   --grammar-section-gap  between the blocks inside one section, and between peer cards
+ *   --grammar-row-gap      between a field and its neighbour inside a row
+ *   --grammar-inline-gap   between inline items (badges, buttons)
+ */
+@import "tailwindcss";
+@import "@heroui/styles";
+@import "@starci/grammar/core/styles.css";
+
+@source "../../node_modules/@starci/grammar/dist";
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+.app-root {
+    min-height: 100%;
+}
+
+/* The routed page: the Grammar page inset on every side. */
+.app-page {
+    padding-block: var(--grammar-page-inset);
+}
+
+/* One page: header, then its sections. */
+.app-page-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-region-gap);
+    min-inline-size: 0;
+}
+
+/* Blocks inside one section or card. */
+.app-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-section-gap);
+    min-inline-size: 0;
+}
+
+/* A tight pair: a line and the quiet line under it. */
+.app-pair {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-inline-gap);
+    min-inline-size: 0;
+}
+
+.app-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--grammar-inline-gap);
+    min-inline-size: 0;
+}
+
+.app-plain-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Peer cards: as many columns as fit. */
+.app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--grammar-section-gap);
+}
+
+/* Two panels side by side when there is room. */
+.app-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    gap: var(--grammar-section-gap);
+    align-items: start;
+}
+
+/* Form fields in two columns when there is room. */
+.app-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: var(--grammar-section-gap) var(--grammar-region-gap);
+    align-items: start;
+}
+
+.app-sidebar-island {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-cell-progress {
+    inline-size: 7.5rem;
+    flex-shrink: 0;
+}
+
+.app-connect {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--grammar-region-gap);
+    min-height: 100dvh;
+}
+
+/* Helper text in two lines: a description, then the config key. */
+.app-lines {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+}

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Chip as HeroChip } from '@heroui/react';
 import { useState } from 'react';
 import { waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
@@ -119,6 +120,7 @@ export const Badge: Story = {
         <G.Badge tone="success">Success</G.Badge>
         <G.Badge tone="warning">Warning</G.Badge>
         <G.Badge tone="danger">Danger</G.Badge>
+        <G.Badge tone="muted">Muted</G.Badge>
       </State>
       <State label="With leading content">
         <G.Badge tone="accent" startContent={<G.Icon source={StarGlyph} usage="chip" />}>Featured</G.Badge>
@@ -128,12 +130,94 @@ export const Badge: Story = {
         <G.Badge tone="success" isDot>Online</G.Badge>
         <G.Badge tone="warning" isDot>Degraded</G.Badge>
         <G.Badge tone="danger" isDot>Down</G.Badge>
+        <G.Badge tone="muted" isDot>paused</G.Badge>
       </State>
       <State label="Skeleton (pending)">
         <G.Badge isSkeleton>Loading</G.Badge>
       </State>
     </Matrix>
   ),
+};
+
+const DOT_SIZES = ['sm', 'md', 'lg'] as const;
+const DOT_TONES = ['neutral', 'accent', 'success', 'warning', 'danger'] as const;
+const PADDING_SIDES = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'] as const;
+
+export const StatusDot: Story = {
+  render: () => (
+    <Matrix>
+      <State label="With text, beside HeroUI Chip at each size" direction="column">
+        {DOT_SIZES.map((size) => (
+          <div key={size} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ width: '2rem' }}>{size}</span>
+            <G.StatusDot size={size} tone="success">online</G.StatusDot>
+            <HeroChip size={size} color="success" variant="soft">Online</HeroChip>
+          </div>
+        ))}
+      </State>
+      <State label="With text, tones">
+        {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone}>{tone}</G.StatusDot>)}
+      </State>
+      <State label="Echo (dot with an expanding ring)">
+        {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone} echo aria-label={`Live, ${tone}`} />)}
+      </State>
+      <State label="Static (dot only)">
+        {DOT_TONES.map((tone) => <G.StatusDot key={tone} tone={tone} aria-label={`Status, ${tone}`} />)}
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      for (const size of DOT_SIZES) {
+        const dot = canvasElement.querySelector(`.starci-core-status-dot-chip[data-size="${size}"]`);
+        const chip = dot?.nextElementSibling;
+        if (!(dot instanceof HTMLElement) || !(chip instanceof HTMLElement)) throw new Error(`${size}: StatusDot and Chip must both render`);
+        const dotStyle = getComputedStyle(dot);
+        const chipStyle = getComputedStyle(chip);
+        for (const side of PADDING_SIDES) {
+          if (dotStyle[side] !== chipStyle[side]) throw new Error(`${size}: ${side} ${dotStyle[side]} differs from Chip ${chipStyle[side]}`);
+        }
+        if (dot.getBoundingClientRect().height !== chip.getBoundingClientRect().height) throw new Error(`${size}: height ${dot.getBoundingClientRect().height} differs from Chip ${chip.getBoundingClientRect().height}`);
+        const label = dot.querySelector('.starci-core-status-dot-label');
+        if (!label || !/^\p{Lu}/u.test(label.textContent ?? '')) throw new Error(`${size}: the label's first letter must be uppercase`);
+        const mark = dot.querySelector('.starci-core-status-dot-mark');
+        if (!(mark instanceof HTMLElement) || !(label instanceof HTMLElement)) throw new Error(`${size}: dot and label must render`);
+        const gap = label.getBoundingClientRect().left - mark.getBoundingClientRect().right;
+        if (Math.abs(gap - 4) > 0.5) throw new Error(`${size}: dot-to-text gap is ${gap}px, expected 4px`);
+      }
+      for (const dot of canvasElement.querySelectorAll('[data-component="StatusDot"][data-variant="echo"], [data-component="StatusDot"][data-variant="static"]')) {
+        if (!dot.getAttribute('aria-label')) throw new Error('A dot-only StatusDot needs an aria-label');
+      }
+    });
+  },
+};
+
+const TerminalDemo = () => {
+  const [count, setCount] = useState(12);
+  const lines = Array.from({ length: count }, (_, index) => `[${String(index).padStart(3, '0')}] step ${index + 1} done`);
+  return (
+    <Matrix maxWidth={520}>
+      <State label="Log tail (follows the end)" direction="column">
+        <G.Terminal title="Deploy log" lines={lines} />
+        <G.Button intent="neutral" onPress={() => setCount((value) => value + 5)}>Append lines</G.Button>
+      </State>
+      <State label="Without a title" direction="column">
+        <G.Terminal label="Build output" lines={['$ npm run build', 'ok']} />
+      </State>
+    </Matrix>
+  );
+};
+
+export const Terminal: Story = {
+  render: () => <TerminalDemo />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const log = canvasElement.querySelector('[role="log"]');
+      if (!(log instanceof HTMLElement)) throw new Error('Terminal must render role="log"');
+      if (log.getAttribute('aria-live') !== 'polite') throw new Error('Terminal must be aria-live polite');
+      if (log.scrollHeight > log.clientHeight && log.scrollHeight - log.scrollTop - log.clientHeight > 8) throw new Error('Terminal must open scrolled to the end');
+    });
+  },
 };
 
 export const Button: Story = {
@@ -430,6 +514,12 @@ export const Text: Story = {
         <G.Text size="md" weight="semibold">Medium semibold</G.Text>
         <G.Text size="metric-lead" weight="semibold">1,284</G.Text>
       </State>
+      <State label="Monospace, tabular figures and inline code" direction="column">
+        <G.Text mono>0f3a9c1 · packages/grammar/src</G.Text>
+        <G.Text tabular>1,111 / 8,888 — digits keep one width</G.Text>
+        <G.Text mono tabular size="sm">00:01:07.250</G.Text>
+        <G.Text>Run <G.Code>npm run build</G.Code> before you publish.</G.Text>
+      </State>
       <State label="Overflow" direction="column">
         <G.Text overflow="truncate">A long sentence that is truncated to a single line when it runs out of room in its container.</G.Text>
         <G.Text overflow="clamp-2">A long paragraph clamped to two lines. It keeps going so that the clamp has something to cut, and it keeps going a little further still to be sure.</G.Text>
@@ -628,6 +718,11 @@ export const Meter: Story = {
       </State>
       <State label="Hidden label" direction="column">
         <G.Meter label="Battery" value={64} isLabelHidden />
+      </State>
+      <State label="Thin track (size sm)" direction="column">
+        <G.Meter label="Storage" value={32} size="sm" />
+        <G.Meter label="Errors" value={95} tone="negative" size="sm" valueLabel="95%" />
+        <G.Meter label="Storage" value={32} size="sm" isSkeleton />
       </State>
       <State label="Segmented count" direction="column">
         <G.Meter label="Capabilities" value={3} maxValue={3} segments={3} valueLabel="3 of 3" />
