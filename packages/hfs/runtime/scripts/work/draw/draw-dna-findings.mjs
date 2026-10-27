@@ -228,7 +228,7 @@ function statusDotFindings(all, rules, add, h) {
 /** The nearest declaration of the dot-size token on the element or an ancestor, in px; null when none is declared. */
 function statusDotTokenPx(el, rules, h) {
   for (const node of [el, ...h.ancestorsOf(el)]) {
-    const px = h.declaredPx(node, h.STATUS_DOT_SIZE_TOKEN, rules);
+    const px = h.declaredPx(node, h.STATUS_DOT_SIZE_PROPERTY, rules);
     if (px != null) return px;
   }
   return null;
@@ -254,7 +254,7 @@ function statusDotFindingFor(el, rules, add, h) {
     || cls.some((c) => /^(ring|shadow|outline)(-|$)/.test(c) && !/^(ring|shadow|outline)-none$/.test(c));
   if (ring) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'status dot with a halo', el, `the status dot is a plain ${h.STATUS_DOT_PX}px solid circle in the tone colour: no box-shadow, ring, outline or border halo (the echo ring is the StatusDot's own)`);
   const px = Math.max(h.declaredPx(el, 'width', rules) ?? 0, h.declaredPx(el, 'height', rules) ?? 0, Number(el.attrs.width) || 0, Number(el.attrs.height) || 0, statusDotTokenPx(el, rules, h) ?? 0);
-  if (px && Math.abs(px - h.STATUS_DOT_PX) > 0.5) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'status dot off its size', el, `the dot declares ${px}px: the status dot is ${h.STATUS_DOT_PX}px, read from ${h.STATUS_DOT_SIZE_TOKEN}, no size variants`);
+  if (px && Math.abs(px - h.STATUS_DOT_PX) > 0.5) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'status dot off its size', el, `the dot declares ${px}px: the status dot is ${h.STATUS_DOT_PX}px, read from ${h.STATUS_DOT_SIZE_PROPERTY}, no size variants`);
 }
 
 function groupedFindings(groups, label) {

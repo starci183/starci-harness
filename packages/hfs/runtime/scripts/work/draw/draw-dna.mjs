@@ -68,10 +68,10 @@ export { anatomyFindings } from './draw-dna-anatomy.mjs';
 export const DRAW_OFF_GRAMMAR_COMPONENT = 'DRAW_OFF_GRAMMAR_COMPONENT';
 export const DRAW_NOTICE_NOT_ALERT = 'DRAW_NOTICE_NOT_ALERT';
 export const DRAW_RATIO_NOT_METER = 'DRAW_RATIO_NOT_METER';
-/** Grammar 0.14 StatusDot (also behind Badge isDot): the dot's class, part, size token and that token's one value. */
+/** Grammar 0.14 StatusDot (also behind Badge isDot): the dot's class, part, size custom property and its one value. */
 const STATUS_DOT_MARK_CLASS = 'starci-core-status-dot-mark';
 const STATUS_DOT_MARK_PART = 'status-dot-mark';
-const STATUS_DOT_SIZE_TOKEN = '--starci-core-status-dot-size';
+const STATUS_DOT_SIZE_PROPERTY = '--starci-core-status-dot-size';
 const STATUS_DOT_PX = 6;
 /** The StatusDot's own anatomy around the mark (root, chip, label): parts of the component, never a dot. */
 const STATUS_DOT_ANATOMY = /^(starci-core-)?status-dot(-chip|-label)?$/;
@@ -432,7 +432,7 @@ function isArtwork(el) {
  */
 const DNA_FINDING_HELPERS = {
   ACTION_COMPONENTS, ALERT_INDICATOR_MAX_PX, ASSET_SLOT_ATTR, BAR_CLASS, COMPONENTS_WITH_DOT, CONTAINERS,
-  DOT_CLASS, STATUS_DOT_ANATOMY, STATUS_DOT_MARK_CLASS, STATUS_DOT_MARK_PART, STATUS_DOT_PX, STATUS_DOT_SIZE_TOKEN, DRAW_ALERT_ANATOMY, DRAW_ASSET_SLOT_UNDECLARED, DRAW_METER_TRACK, DRAW_NOTICE_NOT_ALERT, DRAW_OFF_GRAMMAR_COMPONENT, DRAW_RATIO_NOT_METER,
+  DOT_CLASS, STATUS_DOT_ANATOMY, STATUS_DOT_MARK_CLASS, STATUS_DOT_MARK_PART, STATUS_DOT_PX, STATUS_DOT_SIZE_PROPERTY, DRAW_ALERT_ANATOMY, DRAW_ASSET_SLOT_UNDECLARED, DRAW_METER_TRACK, DRAW_NOTICE_NOT_ALERT, DRAW_OFF_GRAMMAR_COMPONENT, DRAW_RATIO_NOT_METER,
   METER_FULL_WIDTH_SHARE, METER_SEGMENTED_TRACK_PX, METER_SEGMENTS_PROPOSAL, METER_TRACK_PX, METER_SEGMENT_GAP_MAX_PX, NOTICE_CLASS, OUTCOME_STATES,
   PART_ATTR, PROPOSAL_ATTR, RATIO_RX, alertActionVariantFor, ancestorsOf, classesOf, componentNameOf, componentRootOf,
   declaredBackgroundsOf, declaredPx, declsOf, describe, dnaSegment, inComponent, insideSvg, isAction, isArtwork, kebab,
