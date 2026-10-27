@@ -96,7 +96,7 @@ Enforced by: `feature-thin` (R203), `unit-test-colocated` (R47).
 Every test asserts a result, a refusal code or a recorded state, in exact values (ids from `fakeIds()`, dates from
 `FakeClock`), never only that a call happened and never `expect.any(String)`. The outer `describe` names the class, a
 nested one the method, and each `it` is an English sentence of the behaviour (`"reads nothing when membership is
-refused"`). No sleep (integration waits with `waitFor` and a deadline), no skipped or focused test.
+refused"`). No sleep (integration waits with `waitFor` and a deadline); a skipped or focused test is SHARED-LOOSENING-1.
 
 Why: a test that cannot fail for the wrong reason is evidence; a call-count alone is not.
 

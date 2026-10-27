@@ -36,12 +36,11 @@ command.
 
 ## SHARED-TEST-3 An op writes no test kind its edition forbids
 
-A lite app has no e2e world, no browser journeys and no e2e workflow; its boot is proved by compiling the real
-AppModule graph and its contract specs are optional ([project/lite.md](../../project/lite.md) "What CI runs"). A lite op
-therefore writes no `*.e2e-spec.ts` and adds no e2e script, whatever a full-edition rule says.
+An op writes only the test kinds its edition has ([project/lite.md](../../project/lite.md) "What CI runs" lists what
+a lite app lacks), so a lite op writes no `*.e2e-spec.ts` and adds no e2e script, whatever a full-edition rule says.
 
 Why: the slot of a forbidden kind does not exist in a lite tree, so the spec could never be placed or run.
 
 Enforced by: R212 HFS_EDITION_INVALID (forbidden slots present), R272 BE_APP_BOOT_PROOF_MISSING. Open: R32 and R47
-still require the e2e world and the `app` profile's CI tier lists `e2e` for every app
-([decisions/open-core.md](../../decisions/open-core.md), contradiction "R32, R47 vs R212, R272").
+still require the e2e world ([decisions/open-core.md](../../decisions/open-core.md), contradiction "R32, R47 vs R212,
+R272").

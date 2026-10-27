@@ -5,7 +5,7 @@ for each kind of task. It is product-agnostic: a product's own requirements, bra
 records, never this folder. How the harness finds a project and where its state lives is [contexts/harness/state.md](../harness/state.md)
 ("How a project is found", "Where state lives"); this folder never restates it.
 
-## What a project is
+## PROJECT-1 A project is one app root that holds the Work of every side
 
 A StarCi project is one **app root**: the git repository that owns `.starciwork/` and `hfs.json`. Its code has two
 sides, the back end (`be`) and the front end (`fe`), laid out in one of two ways:
@@ -32,7 +32,7 @@ record change that follows it are two tasks.
 A profile left undeclared takes the default of its kind, so a side repository that is only `be` or only `fe`
 declares `"policy": "be"` or `"policy": "fe"`; the key is `policy`, and any other spelling is not read.
 
-## Life cycle of a piece of work
+## PROJECT-2 Work travels from a record to a settled commit
 
 ```text
 Work record          .starciwork record: what must be true (fr, br, sds, contract, ui, uat ...), state todo
@@ -54,8 +54,8 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 - **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed
   by the label's op file; checks cover only what the task
   changed, and the full suite is CI's after the push ([contexts/harness/decisions.md](../harness/decisions.md)).
-- **Settle and state.** Who writes a record's state and what counts as evidence is [work.md](work.md) "Who writes
-  what".
+- **Settle and state.** Who writes a record's state and what counts as evidence is PROJECT-WORK-5 and PROJECT-WORK-6
+  in [work.md](work.md).
 
 ## Where to read for a task
 
@@ -65,8 +65,8 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 | change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
-| run UAT | the flow record (`features/<f>/uat/<flow>/index.yaml`) and [work.md](work.md) "UAT flows" → [stacks.md](stacks.md) for the environment it names → `starci explain --term uat` |
-| add a gate or a rule | [lint.md](lint.md) "Moving a fact to a machine" → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
+| run UAT | the flow record (`features/<f>/uat/<flow>/index.yaml`) and [work.md](work.md) PROJECT-WORK-6 → [stacks.md](stacks.md) for the environment it names → `starci explain --term uat` |
+| add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
 
 ## Files
 

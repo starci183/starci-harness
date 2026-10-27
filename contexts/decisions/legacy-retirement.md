@@ -34,7 +34,7 @@ repeat their rows.
 | `knowledge/hfs/facts.yaml` | OBSOLETE | backs R192, a runtime-only rule (open-core list); prose is held by review here |
 | `knowledge/hfs/ci-standard.yaml` | Owned | the CI workflow template of `packages/hfs/templates` and `policy/quality.yaml` (open-core) |
 | `knowledge/hfs/docker.md` | Owned | `contexts/code/be/services.md`, R187 to R191 in `contexts/hfs/rules.yaml`, the image pins of `contexts/stack/pins.yaml` (C-15) |
-| `knowledge/hfs/peer-integrations.yaml` | MISSING | read by `HFS_PEER_INTEGRATION_MISSING` (R111) from a copy in `packages/hfs/runtime`; no `contexts/` owner (item M-7) |
+| `knowledge/hfs/peer-integrations.yaml` | Owned | `peers` of `contexts/stack/pins.yaml` (M-7); the R111 check still reads its copy in `packages/hfs/runtime` until section 3 repoints it |
 | `knowledge/patterns/be/*` (34) | Owned | `contexts/code/be/*.md`, one topic each; `architecture-check.yaml` is the project graph of `packages/eslint-canon-be` |
 | `knowledge/patterns/fe/*` (41) | Owned | `contexts/code/fe/*.md`; library-only topics are `why` lines of `contexts/stack/fe.yaml` (C-2); css, ui and icon are `code/fe/ui.md` (C-3); redux and zustand are FE-STATE-1, date and number FE-I18N-5 (C-9); multi-app is `code/fe/folder.md` |
 | `knowledge/patterns/repo/*` (10) | Owned | `contexts/code/shared/*.md`, `contexts/project/{README,lite,stacks,lint}.md`, `contexts/stack/pins.yaml`, `policy/security.yaml`, size budgets in `contexts/hfs/slots.yaml` |
@@ -44,9 +44,9 @@ repeat their rows.
 | `knowledge/grammars/common/`, `offset-pop/` | Owned | `contexts/grammars/common.md` (idioms and playbook shapes, D-9), `contract.md`, `contract.yaml`, `offset-pop.md` |
 | `knowledge/grammars/starci/`, `heritage/` | OBSOLETE | removed vocabulary (CONTRIB-15); the family is `core`, `contexts/grammars/core.md`; the open shapes are O-12 |
 | `knowledge/vendor/heroui/*` (65) | Owned | `contexts/vendor/heroui.md`, `parity.yaml`, `wrappers.yaml` |
-| `knowledge/application-stacks.yaml` | Owned, gaps | `contexts/project/stacks.md`; the deployment playbooks are missing (M-3) |
-| `knowledge/architecture-rules.yaml` | MISSING | the review-only architecture obligations (M-2) |
-| `knowledge/design-patterns.yaml` | MISSING | the DP-01 to DP-16 catalog metadata (M-1) |
+| `knowledge/application-stacks.yaml` | Owned | `contexts/project/stacks.md` PROJECT-STACKS-1 to 10 (M-3) |
+| `knowledge/architecture-rules.yaml` | Owned | CODE-REVIEW-1 to 7 of `contexts/code/README.md` (M-2) |
+| `knowledge/design-patterns.yaml` | Owned | BE-MECHANISM-1 of `contexts/code/be/README.md` (M-1) |
 | `knowledge/op-gate.yaml` | OBSOLETE | the legacy READ-CODE-CHECK loop; `ops/ops/code.md` and `ops/checks.yaml` |
 | `knowledge/sonar-gate.yaml` | Owned | `policy/quality.yaml` (`sonar-new-code`) |
 | `knowledge/index.yaml`, `ui/index.yaml` | Owned | `contexts/README.md`, `contexts/ui/README.md` |
@@ -58,11 +58,11 @@ repeat their rows.
 | Rule explainers: `a16-*` (5), `hfs-*` (6), `legacy-*-rule-coverage`, `legacy-runtime-*`, `legacy-monorepo-rules`, `legacy-backend-rules`, `legacy-backlog`, `backend-boundary-proofs`, `backend-cli`, `be-shape-coverage`, `frontend-source-authoring`, `managed-tooling-coverage`, `test-builder-coverage`, `operation-contracts`, `nest-contract-check`, `next-data-lifecycle-check` | Owned or OBSOLETE | the law is `contexts/hfs/rules.yaml`, the check is in its canon package and README; the coverage notes are legacy audit evidence |
 | `architecture.md` | Owned, runtime part OBSOLETE | app architecture: `contexts/code/{fe,be}/architecture.md`; "this repository's own layout": `cli/README.md` |
 | `code-pattern-enforcement.md`, `quality-bar.md` | OBSOLETE | enforcement is `contexts/project/lint.md`, `policy/`; proof is `contexts/ui/proof.md`; coverage scope is R204 and `packages/hfs/README.md` |
-| `design-pattern-catalog.md` | MISSING | M-1 |
-| `application-stacks.md`, `remote-application-api.md`, `repo-presentation.md` | Owned, gaps | `contexts/project/stacks.md`; Swarm, scheduled work, backup, CI variable names, quality services, badges and remote APIs are missing (M-3) |
+| `design-pattern-catalog.md` | Owned | BE-MECHANISM-1 of `contexts/code/be/README.md` (M-1) |
+| `application-stacks.md`, `remote-application-api.md`, `repo-presentation.md` | Owned | `contexts/project/stacks.md` PROJECT-STACKS-3 to 9 (M-3) |
 | `microservices.md` | Owned | `contexts/project/full.md` and `contexts/code/be/{services,messages,saga,webhooks,realtime}.md` |
 | `lite-edition.md` | Owned | `contexts/project/lite.md` |
-| `business-srs.md` | Owned, gap | `contexts/project/work.md`; the breadth of SRS and SDS reasoning is missing (M-6) |
+| `business-srs.md` | Owned | `contexts/project/work.md` PROJECT-WORK-1 and 3 (M-6) |
 | `interface-audit.md` | Owned, gap | `ops/ops/audit.md`, `contexts/ui/proof.md`; the judgement lenses are missing (M-5) |
 | `browser-testing.md`, `assisted-uat.md` | OBSOLETE | `ops/uat.yaml`, `ops/ops/uat.md`, `skills/starci/references/uat.md` |
 | `host-secrets.md`, `runtime-example-secrets.md` | Owned | `policy/security.yaml`, "Secret custody" of `contexts/project/stacks.md` |
@@ -78,7 +78,7 @@ repeat their rows.
 
 | Legacy area | Fate | Harness owner, or reason |
 |---|---|---|
-| `CONTEXT.md` | Owned, gaps | load order: `contexts/README.md`; editions: `contexts/harness/axes.md`, `contexts/project/lite.md`; the front-end standard: `contexts/ui/**`, `contexts/code/fe/**`; the integration-research rule (M-4) and SRS breadth (M-6) are missing; the rest is the legacy operating model |
+| `CONTEXT.md` | Owned | load order: `contexts/README.md`; editions: `contexts/harness/axes.md`, `contexts/project/lite.md`; the front-end standard: `contexts/ui/**`, `contexts/code/fe/**`; integration research: PROJECT-WORK-4 (M-4); SRS breadth: PROJECT-WORK-3 (M-6); the rest is the legacy operating model |
 | `STARCI.md` (untracked, only in the main checkout) | OBSOLETE | removed vocabulary (CONTRIB-15) |
 | `CONTRIBUTING.md`, `README.md` | Owned | `CONTRIBUTING.md`, `README.md` |
 | `skills/starci/**` (13) | OBSOLETE | `skills/starci/SKILL.md` and `references/{define-workflow,run-workflow,debug,uat,release,routing-and-providers,worker,inline-task,ui-on-grammar}.md` |
@@ -109,15 +109,15 @@ names the file in a contract's `context.extend`, `starci contexts search` finds 
 Each is rewritten in the harness voice where its concept lives (CONTRIB-6), never copied, and lands with its ruling
 in [rulings.yaml](rulings.yaml) when it carries one.
 
-| Id | What | Legacy source | Supplements | Effort |
+| Id | What | Legacy source | Owner in the harness | State |
 |---|---|---|---|---|
-| M-1 | The design-pattern selection map: which mechanism (outbox, inbox, saga, lease and fencing, bounded retry, bulkhead, versioned events and the rest of DP-01 to DP-16) a scenario's invariants call for, and that no feature takes every one | `docs/design-pattern-catalog.md`, `knowledge/design-patterns.yaml` | a "Choosing a mechanism" section of `contexts/code/be/README.md`, each entry pointing at the topic that owns its code (`idempotency.md`, `saga.md`, `resilience.md`, `projections.md` ...) | M |
-| M-2 | The architecture obligations only a reviewer can judge (the semantic part, without what `rules.yaml` already decides) | `knowledge/architecture-rules.yaml` | a "Review obligations" section of `contexts/code/README.md` | S |
-| M-3 | Deployment and operations playbooks: Swarm on a VPS and lite production, scheduled work on Swarm, runtime configuration and health, database backup and reset, the CI secret and variable names (names only), the quality services, README status badges, and remote application APIs (consumer, rollout and cluster administration as three contracts) | `docs/application-stacks.md`, `docs/remote-application-api.md`, `docs/repo-presentation.md` | "Operations" and "Ingress" of `contexts/project/stacks.md`; product names removed | M |
-| M-4 | External integration research: read the provider's current official documentation before designing an integration, record its sources, read date, auth and lifecycle limits and a live verification plan in the integration's declaration | `CONTEXT.md` | `contexts/code/be/transport.md` (outbound adapters) and `webhooks.md` | S |
-| M-5 | Interface audit lenses: a symbol is a product claim, the installed grammar outranks a direction's pixels, an intentional departure needs an owner decision, real artwork versus code-native interface | `docs/interface-audit.md` | "Lenses and verdicts" of `contexts/ui/proof.md` | S |
-| M-6 | Breadth of requirement and design reasoning: main, alternative, failure and edge cases, consequential unknowns recorded rather than omitted, a decided slice proceeds | `CONTEXT.md`, `docs/business-srs.md` | `contexts/project/work.md` | S |
-| M-7 | Driver integration peers as data (a driver that needs its runtime peer, R111) | `knowledge/hfs/peer-integrations.yaml` | a `peers` map in `contexts/stack/pins.yaml`, read by the R111 check after section 3 repoints it | S |
+| M-1 | The design-pattern selection map: which mechanism (outbox, inbox, saga, lease and fencing, bounded retry, bulkhead, versioned events and the rest of DP-01 to DP-16) a scenario's invariants call for, and that no feature takes every one | `docs/design-pattern-catalog.md`, `knowledge/design-patterns.yaml` | BE-MECHANISM-1 of `contexts/code/be/README.md`, each row naming the rule that owns its code | done |
+| M-2 | The architecture obligations only a reviewer can judge (the semantic part, without what `rules.yaml` already decides) | `knowledge/architecture-rules.yaml` | CODE-REVIEW-1 to 7, "Review obligations" of `contexts/code/README.md`; the Work and deployment obligations are PROJECT-WORK-1 to 6 and PROJECT-STACKS-6 | done |
+| M-3 | Deployment and operations playbooks: Swarm on a VPS and lite production, scheduled work on Swarm, runtime configuration and health, database backup and reset, the CI secret and variable names (names only), the quality services, README status badges, and remote application APIs (consumer, rollout and cluster administration as three contracts) | `docs/application-stacks.md`, `docs/remote-application-api.md`, `docs/repo-presentation.md` | PROJECT-STACKS-3 (one-manager swarm, scheduled work), 4 (ingress), 6 (start order, releases, backup and reset), 7 (CI names), 8 (quality services, badges), 9 (remote application APIs) of `contexts/project/stacks.md`; product names removed | done |
+| M-4 | External integration research: read the provider's current official documentation before designing an integration, record its sources, read date, auth and lifecycle limits and a live verification plan in the integration's declaration | `CONTEXT.md` | PROJECT-WORK-4 and the `research` field of the `integration` record in `contexts/project/work.md`, where the declaration lives; BE-INFRA-3 and `webhooks.md` cite it | done |
+| M-5 | Interface audit lenses: a symbol is a product claim, the installed grammar outranks a direction's pixels, an intentional departure needs an owner decision, real artwork versus code-native interface | `docs/interface-audit.md` | "Lenses and verdicts" of `contexts/ui/proof.md` | open: `contexts/ui/` is written by its own lane |
+| M-6 | Breadth of requirement and design reasoning: main, alternative, failure and edge cases, consequential unknowns recorded rather than omitted, a decided slice proceeds | `CONTEXT.md`, `docs/business-srs.md` | PROJECT-WORK-3 of `contexts/project/work.md` | done |
+| M-7 | Driver integration peers as data (a driver that needs its runtime peer, R111) | `knowledge/hfs/peer-integrations.yaml` | `peers` of `contexts/stack/pins.yaml`; the R111 check reads it after section 3 repoints it | done |
 
 Two MISSING items are not knowledge and do not go into `contexts/`:
 

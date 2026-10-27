@@ -70,6 +70,24 @@ Every app is built from the grammar package plus this tree and must come out the
 an app could make two ways is a gap: it is closed by a grammar API, a ui rule or a lint rule, never left to the app.
 Adding a grammar means implementing the contract; nothing in `code/` or `ui/` changes.
 
+## Three layers decide an interface
+
+Every interface decision belongs to exactly one of three layers, and no layer does another's job:
+
+1. **DNA, by the machine.** The grammar package gives the components and the constraints that make a grammar what it
+   is (a label outside its card, a full-bleed divider, no surface inside a surface, the control height, chip padding
+   equal to the vendor's), and the gates refuse a violation. These are constraints, never judgement; which constraints
+   a grammar holds and which gate enforces each is owned by [grammars/README.md](grammars/README.md).
+2. **Choice, by the authoring model.** Which component, variant and spacing step goes where is chosen by reading the
+   "Choose" sections of [ui/components](ui/components/README.md) and the rules of [ui/](ui/README.md), and every
+   choice cites the section it followed, so a choice with no citation is a defect, not a preference.
+3. **Taste, by a different reviewer.** Whether the whole screen works is judged by a `review` task on a model other
+   than the author's; its findings route back to the build ([ops/routes.yaml](../ops/routes.yaml)) and never stand
+   in for a gate.
+
+A choice that the machine could decide moves down to layer 1 as a gate ([project/lint.md](project/lint.md)
+PROJECT-LINT-1); a choice only taste can settle stays out of layer 2 rules.
+
 **Generation path for a screen:** read order below → the grammar's API for each role (contract, then the grammar
 file) → the rules that choose (ui composition, components, scale; `code/fe` for the code) → write → lint and gates
 prove it. An agent never re-derives what lint enforces and never invents an API the grammar lacks.

@@ -39,21 +39,17 @@ app's (both sides), `lib` and `runtime` carry no canon. An npm workspace root is
 | `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
 | app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`hfs check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
 | gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication and issues of new code |
-| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; a lite app has no e2e world although the `app` profile lists `e2e` ([lite.md](lite.md) "What CI runs") |
+| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; what a lite app cannot run is [lite.md](lite.md) "What CI runs" |
 
 ## Facts no machine checks yet
 
 These standard facts live only in knowledge; a reviewer (the Kernel judging a result, the owner on taste) holds them.
 Each leaves this list the day a machine checks it.
 
-- **Front-end pattern rules without an enforcer.** A rule in [code/fe](../code/fe/README.md) whose section
-  says review only: FE-NAMING-3, FE-NAMING-4, FE-NAMING-5 (partly), FE-COMMENT-1, FE-TYPING-2,
-  FE-ERROR-4, FE-UPLOAD, FE-STATE-1 (partly), FE-BOUNDARY-3, the FE-FORM bounds and the FE-DATA-KEY helpers. Every
-  back-end pattern rule names its enforcer.
-- **Shared pattern rules held by review.** A rule of [code/shared](../code/shared/README.md) whose "Enforced
-  by" line says review only, on both sides or on one: SHARED-IMPORTS-2 on both sides; SHARED-COMMENT-2,
-  SHARED-NAMING-1 and SHARED-TYPING-3 on the front end; SHARED-NAMING-3 on the back end; SHARED-TYPING-1 for a
-  restated tsconfig flag.
+- **Pattern rules held by review.** Every rule of [code/](../code/README.md) whose `Enforced by:` line says review
+  only, wholly or for one side or part (that line is the one statement of it, never listed here), and the review
+  obligations CODE-REVIEW-1 to 7 of [code/README.md](../code/README.md#review-obligations), which no machine can
+  decide.
 - **Interface decisions.** Which component, rank, ramp step, state coverage and composition a screen uses
   ([contexts/ui](../ui/README.md)); [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) holds the numbers a
   proof gate would read, and no gate of this repository runs it.
@@ -61,17 +57,16 @@ Each leaves this list the day a machine checks it.
   fields per family, id form, leaf-only state, proof that cannot outrun its target. The harness validates a uat flow
   record and its evidence file only when a uat task is sent, judged or settled (`cli/src/harness/work.ts`).
 - **Who writes a record's state.** Outside the uat records the settle writes, a record's state is a `docs` task's edit,
-  held by review ([work.md](work.md) "Who writes what").
-- **The `hfs.json` profile key.** The CLI reads `kind`, `edition` and `policy`; a profile under any other key is
-  silently ignored and the default applies ([README.md](README.md)).
+  held by review (PROJECT-WORK-5 in [work.md](work.md)).
+- **The `hfs.json` profile key.** Its spelling and default are PROJECT-1 in [README.md](README.md); no check refuses
+  a profile under another key.
 - **Pins.** That an app's `@starci/*` and shared dependencies sit at the versions of [stack/pins.yaml](../stack/pins.yaml):
   no harness gate compares them.
-- **The setup commands of a contract.** That a project whose clean checkout lacks generated code declares them in
-  `context.setup` is the contract author's duty; the clean verify only shows its absence as a red check. The project
-  keeps no persistent list of them yet, so each contract restates them (the `prepare` operation of
-  [stacks.md](stacks.md) runs the same commands).
+- **The setup commands of a contract.** That a contract carries them (PROJECT-2 in [README.md](README.md)) is its
+  author's duty; the clean verify only shows their absence as a red check, and the project keeps no persistent list
+  of them yet.
 
-## Moving a fact to a machine
+## PROJECT-LINT-1 A fact a machine can decide moves to the machine
 
 A fact a machine can decide is checked by a machine and kept once: the rule moves into the package or gate that owns
 its kind (the placement test of [code/fe](../code/fe/README.md#the-placement-test-fe-rule-ownership) decides

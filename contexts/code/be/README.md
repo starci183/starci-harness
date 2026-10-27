@@ -1,10 +1,11 @@
 # Back-end patterns
 
 How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to
-`@starci/eslint-canon-be`. Each rule has a stable id, a one-sentence law, its reason and its enforcer: an
-`eslint-canon-be` rule id (with the HFS rule of [hfs/rules.yaml](../../hfs/rules.yaml) it belongs to), an hfs check, or
-"review only". Values (budgets, role lists, owner tables, scenarios) live in [hfs/slots.yaml](../../hfs/slots.yaml)
-and are named, never restated. Rules both sides share are [code/shared](../shared/README.md) and are read first.
+`@starci/eslint-canon-be`, in the rule form of [code/README.md](../README.md). An enforcer here is an
+`eslint-canon-be` rule id with its HFS rule, an hfs check, or "review only". Values (budgets, role lists, owner
+tables, scenarios) live in [hfs/slots.yaml](../../hfs/slots.yaml) and are named, never restated. Rules both sides
+share are [code/shared](../shared/README.md) and are read first. Which consistency or failure mechanism a scenario
+takes is [BE-MECHANISM-1](#be-mechanism-1-choosing-a-mechanism-the-smallest-one-the-invariant-needs) below.
 
 Readers: an authoring op reads the topics of the slots it codes; the anatomy generator reads each file's front matter
 `slots`.
@@ -50,5 +51,37 @@ kind (api, webhooks, realtime, jobs, cli) → domain, persistence → error, typ
 
 Gaps in a numbered range are ids merged into another rule; the id that absorbed them carries the decision.
 
-House rule: one place per rule. Feedback hardens a rule in its one place, or becomes a lint rule or gate in the
-harness; it never becomes a case note beside it.
+## BE-MECHANISM-1 Choosing a mechanism: the smallest one the invariant needs
+
+A scenario takes a consistency or failure mechanism only when one of its invariants calls for it, and then the
+smallest one that holds it; no feature takes every mechanism, and a pattern named in a class or a design record is no
+evidence that its guarantee holds. The design (an `sds` or `contract` record, [project/work.md](../../project/work.md))
+names, per scenario, the question that applied, the mechanism chosen, the simpler one rejected and why, and the
+behaviour that proves it; "not applicable" with its reason is a valid answer. The table maps the question to the
+mechanism; the rule in its last column owns the code and the proof.
+
+| the scenario asks | start with | take more only when | owner |
+| --- | --- | --- | --- |
+| where does the behaviour live? | the capability that owns the rule and its tables, reached through one use case | a provider or protocol needs its own adapter | BE-DOMAIN-1, BE-CQRS-3; BE-INFRA-3 |
+| do reads and writes need different models? | commands and queries on the bus over one database | a read needs another context's data, which only a read model gives | BE-CQRS-1 … 4; BE-PROJECTIONS-1 |
+| can concurrent writes break an invariant? | a constraint or conditional statement in the domain service's transaction | the competing write needs a row lock | BE-FUNCTION-6, BE-PERSISTENCE-10 |
+| can a caller repeat a mutation? | a stable operation identity | the effect must not double (a charge, a message), which takes a replayed committed outcome | BE-IDEMPOTENCY-3 |
+| must a commit lead to a job or an event? | the outbox row written in the same transaction | another context or service must react | BE-PERSISTENCE-5, BE-QUEUES-1; BE-EVENT-BUS-3 |
+| can a delivery arrive twice? | the inbox claim in the receiver's transaction | never less: every delivery is at least once | BE-IDEMPOTENCY-1 |
+| does the work cross independent transactions? | one local transaction, when the steps can share one | a later step can fail after an earlier one committed elsewhere and must be undone | BE-SAGA-1 … 4 |
+| can a stalled or replaced worker still write? | the fenced job row and its guarded writes | the effect is remote, which takes a run key | BE-JOBS-2, BE-JOBS-3 |
+| can a remote call fail transiently? | a required deadline on the call | the call must be retried, which only a job's bounded attempts do | BE-INFRA-2, BE-RESILIENCE-1 |
+| can one failing dependency exhaust the app? | bounded lists, rate tiers and queue concurrency | isolation or a breaker is measured to be needed; no topic owns one, so it is held by review | BE-PERSISTENCE-9, BE-AUTH-4 |
+| can contracts and read models evolve apart? | versioned event classes that only add | a read model must be rebuilt, which replay does | BE-EVENT-BUS-2, BE-PERSISTENCE-15; BE-PROJECTIONS-4 |
+| who may act on this resource? | default deny and the domain service's resource check | never less: every door and job reaches the same check | BE-AUTH-1, BE-AUTH-2 |
+| does a request outlive its connection? | a durable status the client reads again | the client must learn of a change, which a push with resume carries | BE-JOBS-1; BE-REALTIME-5, FE-REALTIME |
+| who owns client state and its cache? | one owner per kind of state and identity-keyed reads | an optimistic write, which needs its rollback | FE-STATE-1, FE-DATA-KEY, FE-DATA-COMMAND |
+| must history rebuild the state? | current-state tables, with an audit row where one is needed | never here: event sourcing is not a mechanism of this standard, and adopting it is an owner ruling | BE-PERSISTENCE-1 |
+| can old and new code run side by side? | migrations as the only schema authority and contracts that only add, expanded before they contract | a backfill is needed, which runs as a fenced job | BE-PERSISTENCE-1, 2, 15; BE-JOBS-2 |
+
+A mechanism that needs a pattern is legal only when `sides.be.patterns` declares it; each topic names its pattern.
+
+Why: every mechanism adds state, failure modes and proof; one taken for its name rather than an invariant is cost
+with no guarantee, and one missing where an invariant needs it is a race no serial test shows.
+
+Enforced by: review only; the declared patterns and each mechanism's shape are checked by the rules of its topic.

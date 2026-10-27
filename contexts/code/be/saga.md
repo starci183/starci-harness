@@ -8,8 +8,7 @@ whose orchestrator pairs every step with its compensation, a versioned and fence
 advance it through the inbox, and events declared in the vendored contracts. A saga folder is legal only when `sides.be.patterns`
 declares `saga`. In lite its events travel on the lite event bus and its state table is a migration; the rules are the same.
 
-Edition: written from the full edition; the lite reference app declares none of these patterns, and whether lite
-admits them is open ([project/lite.md](../../project/lite.md) "Patterns").
+Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
 
 ## BE-SAGA-1 Every step has a compensation, and the orchestrator lists them all
 `features/saga/<saga>/` holds `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and `compensations/<step>.compensation.ts`: every

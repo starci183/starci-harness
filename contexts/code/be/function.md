@@ -23,7 +23,7 @@ Enforced by: review only; races against the real store are an integration spec.
 ## BE-FUNCTION-7 A helper has one owner; units stay within budget
 
 A pure decision is a `<name>.policy.ts` and a pure shape change a `<name>.mapper.ts` beside the service that uses it;
-an ownerless pure helper goes to `platform/primitives`. A helper defined twice is a finding: import the first. Prefer a
+an ownerless pure helper goes where BE-FOLDER-1 places it. A helper defined twice is a finding: import the first. Prefer a
 plain arrow function over a provider class when nothing is injected. A function has at most
 `ruleParams.common.functionLines` lines and seven parameters (an injected constructor excepted; past that, pass a
 named `<Name>Params` object); a file never grows past its slot budget.

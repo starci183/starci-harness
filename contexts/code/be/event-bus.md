@@ -8,8 +8,7 @@ service into the transactional outbox, relayed to the broker, consumed by a thin
 exist at all is BE-DOMAIN-2; the outbox rule is BE-PERSISTENCE-5; dedupe is idempotency.md; contract evolution is
 BE-PERSISTENCE-15.
 
-Edition: written from the full edition; the lite reference app declares none of these patterns, and whether lite
-admits them is open ([project/lite.md](../../project/lite.md) "Patterns").
+Edition: both; how lite carries the bus is [project/lite.md](../../project/lite.md) "Patterns".
 
 ## BE-EVENT-BUS-2 An event is a typed class equal to its vendored contract
 Events are classes in `be/src/modules/events/<service>/<event>.event.ts`, one per file named after the event (`order.placed` is

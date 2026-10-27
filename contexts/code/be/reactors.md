@@ -7,8 +7,7 @@ Decides who listens when another context announces a fact this context must reme
 or triggers a projection recompute. The consumer door is BE-EVENT-BUS-4, its claim BE-IDEMPOTENCY-1, its composition
 BE-BACKGROUND-1, and that it never reaches into the other context BE-PERSISTENCE-11.
 
-Edition: written from the full edition; the lite reference app declares none of these patterns, and whether lite
-admits them is open ([project/lite.md](../../project/lite.md) "Patterns").
+Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
 
 ## BE-REACTORS-1 A reactor is a consumer plus plain CQRS
 `features/reactors/<reactor>/` holds `transport/message/<event>.consumer.ts`, `<reactor>-message.module.ts` and an `application/` of

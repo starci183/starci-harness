@@ -112,7 +112,7 @@ pins:
   '@socket.io/redis-adapter': {version: 8.3.0, group: framework, side: be, why: "the sharded realtime adapter on a declared Redis; platform/realtime only"}
   ioredis: {version: 5.11.1, group: framework, side: be, why: "the one Redis client; held on 5.x because typeorm's peer range excludes 6"}
   '@types/pg': {version: 8.23.1, group: framework, side: be, why: "types of the pg driver"}
-  '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the Express 5 integration @nestjs/apollo loads at boot"}
+  '@as-integrations/express5': {version: 1.1.2, group: framework, side: be, why: "the runtime peer of peers.nestjs-apollo-express5"}
   '@supabase/ssr': {version: 0.12.7, group: framework, side: fe, why: "the lite identity client factory"}
   '@supabase/supabase-js': {version: 2.117.2, group: framework, side: both, why: "the lite identity client and the back end's Auth and Storage integration"}
   jose: {version: 6.2.12, group: framework, side: be, why: "verifies access tokens against the identity provider's JWKS"}
@@ -122,3 +122,11 @@ pins:
 # Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.
 images:
   node: {version: 22.14.0-alpine3.21, why: "the base image of every back-end and front-end Dockerfile"}
+# Runtime peers a driver needs and npm does not install for it (R111): an app whose root package.json depends on every
+# package of `when` (at `major` when named) also declares `requires`. A missing peer passes the type check and the unit
+# specs and fails only when the app boots, so an entry is added the day such a boot failure is found.
+peers:
+  nestjs-apollo-express5:
+    when: [{package: '@nestjs/apollo'}, {package: '@nestjs/platform-express', major: 11}]
+    requires: '@as-integrations/express5'
+    why: "Express 5 serves Apollo Server 5 only through this integration, which @nestjs/apollo loads at boot without depending on it"

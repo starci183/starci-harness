@@ -32,10 +32,10 @@ without its numbering.
 
 Enforced by: `require-public-member-jsdoc` (R109), `require-enum-member-jsdoc`, `no-restated-name-jsdoc` (R89).
 
-## BE-COMMENT-7 Back-end source holds no second language outside the catalogs
+## BE-COMMENT-7 Back-end catalogs are the owner's messages files and the i18n fixtures slot
 
-Back-end source, specs and fixtures included, holds no second language: Vietnamese text lives only in
-`messages/<owner>.messages.ts` catalogs and the `src/tests/fixtures/i18n/` slot.
+The catalogs SHARED-COMMENT-3 admits a second language in are, on the back end, the `messages/<owner>.messages.ts`
+bundles (BE-MESSAGES-1) and the `src/tests/fixtures/i18n/` slot; specs and other fixtures are source like any other.
 
 Why: the catalog is the one place translations are reviewed and resolved by locale.
 
