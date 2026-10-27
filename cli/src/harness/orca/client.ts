@@ -635,6 +635,9 @@ export interface WorkerClosed {
 
 const RELEASED_STATES: ReadonlySet<string> = new Set(["released", "already_released"])
 
+/** The worker-stop answers of a dispatch that has ended for good: Orca will not release it, only retain it. */
+const ENDED_DISPATCH_STATES: ReadonlySet<string> = new Set(["failed", "abandoned"])
+
 const errorText = (error: unknown): string => `error: ${error instanceof Error ? error.message : String(error)}`
 
 const stateOrError = async (step: Promise<string>): Promise<string> => step.catch(errorText)
@@ -654,9 +657,12 @@ const tabOutcome = async (binary: OrcaBinary, settled: boolean, release: string,
 export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string, terminal: string | null = null): Promise<WorkerClosed> => {
     const stop = await stateOrError(workerStop(binary, dispatchId, cwd))
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
-    const settled = RELEASED_STATES.has(release)
+    const released = RELEASED_STATES.has(release)
+    // A dispatch that ended failed or abandoned is settled even when Orca retains its resources: it can never be released, and
+    // its retained terminal stays Orca's (the tab is left as it is).
+    const settled = released || (release === "retained" && ENDED_DISPATCH_STATES.has(stop))
     const stopped = settled || (!stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop))
-    const tab = await tabOutcome(binary, settled, release, terminal, cwd)
+    const tab = await tabOutcome(binary, released, release, terminal, cwd)
     return { dispatchId, stop, release, stopped, settled, terminal, tab }
 }
 
