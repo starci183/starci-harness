@@ -1594,6 +1594,8 @@
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
     .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height, 24rem); }
+    /* The readable fit grew the canvas to the graph's aspect at its width rather than shrink the text below 12px. */
+    .starci-core-flow-graph[data-grammar-flow-grown="true"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-grown-height); }
 
     .starci-core-flow-graph-loading > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 

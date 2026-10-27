@@ -6,15 +6,15 @@ import {
     Handle,
     Position,
     ReactFlow,
-    useNodesInitialized,
     useReactFlow,
+    useStore,
     type Edge,
     type Node,
     type NodeProps,
     type NodeTypes,
 } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
-import { memo, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react"
+import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
 import { FLOW_GRAPH_NODE_MAX_WIDTH, flowGraphRoot, layerCoordinate, layeredPositions, layeredStepPosition, radialPositions } from "./layout.js"
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode } from "./types.js"
@@ -39,6 +39,12 @@ export type FlowGraphProps = {
      * (`"60vh"`, `"48rem"`).
      */
     readonly height?: FlowGraphHeight | number | string
+    /**
+     * How the graph meets its canvas. `readable` (default) never fits below the zoom at which node text renders at 12px:
+     * a graph that would shrink further grows the canvas height to the graph's aspect at the canvas width (the page
+     * scrolls; a graph still too wide pans sideways). `contain` always shrinks the whole graph into the canvas `height`.
+     */
+    readonly fit?: "readable" | "contain"
     /** Pan and zoom. `false` draws a static picture. */
     readonly isInteractive?: boolean
     /** Zoom buttons. Defaults to on while the graph is interactive. */
@@ -124,13 +130,53 @@ const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = 24
 const FIT_OPTIONS = { padding: 0.2, duration: 0 } as const
 
-/** Re-fits the viewport once the nodes are measured, and again whenever the set of nodes or the layout changes. */
-const Refit = ({ signature }: { readonly signature: string }) => {
-    const { fitView } = useReactFlow()
-    const isReady = useNodesInitialized()
+const MAX_ZOOM = 2
+
+/** The smallest node text, in px at zoom 1, per node size (the node CSS: sm 0.75rem, md 0.875rem, lg 1rem). */
+const NODE_TEXT_PX = { sm: 12, md: 14, lg: 16 } as const
+/** Node text never renders below this many px under the `readable` fit. */
+const READABLE_TEXT_PX = 12
+
+/** The zoom at which the smallest node text present renders at {@link READABLE_TEXT_PX}. */
+const readableZoomFor = (nodes: ReadonlyArray<FlowGraphNode>): number =>
+    READABLE_TEXT_PX / Math.min(...nodes.map((node) => NODE_TEXT_PX[node.size ?? "md"]))
+
+/**
+ * Re-fits the viewport once the nodes are measured, and again whenever the set of nodes, the layout or the canvas size
+ * changes. Under a readable zoom, a fit that would go below it asks the canvas to grow to the graph's aspect at the
+ * canvas width first, then fits with the readable zoom as the floor.
+ */
+const Refit = ({ signature, readableZoom, onGrow }: {
+    readonly signature: string
+    readonly readableZoom: number | null
+    readonly onGrow: (height: number) => void
+}) => {
+    const { fitView, getNodes, getNodesBounds } = useReactFlow()
+    // React Flow's useNodesInitialized waits for every node's handle bounds, and a layer header has no handles, so it
+    // never turned true for a graph with headers and the re-fit never ran. Ready means every node has been measured.
+    const isReady = useStore((state) => state.nodeLookup.size > 0 && [...state.nodeLookup.values()].every((node) => (node.measured.width ?? 0) > 0))
+    const width = useStore((state) => state.width)
+    const height = useStore((state) => state.height)
     useEffect(() => {
-        if (isReady) void fitView(FIT_OPTIONS)
-    }, [fitView, isReady, signature])
+        if (!isReady || width === 0 || height === 0) return
+        if (readableZoom === null) {
+            void fitView(FIT_OPTIONS)
+            return
+        }
+        const bounds = getNodesBounds(getNodes())
+        if (bounds.width === 0 || bounds.height === 0) return
+        const pad = 1 + 2 * FIT_OPTIONS.padding
+        const zoomAtWidth = Math.min(width / (bounds.width * pad), MAX_ZOOM)
+        const fitZoom = Math.min(zoomAtWidth, height / (bounds.height * pad))
+        if (fitZoom < readableZoom) {
+            const needed = Math.ceil(bounds.height * pad * Math.max(readableZoom, zoomAtWidth))
+            if (needed > height + 1) {
+                onGrow(needed)
+                return
+            }
+        }
+        void fitView({ ...FIT_OPTIONS, minZoom: readableZoom })
+    }, [fitView, getNodes, getNodesBounds, isReady, signature, readableZoom, width, height, onGrow])
     return null
 }
 
@@ -149,6 +195,7 @@ export const FlowGraph = ({
     selectedId,
     onSelect,
     height = "md",
+    fit = "readable",
     isInteractive = true,
     showControls,
     layout: layoutProp,
@@ -245,6 +292,17 @@ export const FlowGraph = ({
 
     const customHeight = height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
     const controls = showControls ?? isInteractive
+    // The readable fit grows the canvas for one graph; a new set of nodes or layout starts again from `height`.
+    const readableZoom = fit === "readable" && nodes.length > 0 ? readableZoomFor(nodes) : null
+    const [growth, setGrowth] = useState<{ readonly signature: string, readonly height: number } | null>(null)
+    const grownHeight = growth !== null && growth.signature === signature ? growth.height : null
+    const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
+    // A grown canvas is taller than the screen may be: the wheel scrolls the page, the zoom buttons still zoom.
+    const wheelZooms = isInteractive && grownHeight === null
+    const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null ? undefined : {
+        ...(customHeight === undefined ? {} : { "--starci-flow-height": customHeight }),
+        ...(grownHeight === null ? {} : { "--starci-flow-grown-height": `${grownHeight}px` }),
+    } as CSSProperties
 
     return (
         <figure
@@ -256,8 +314,10 @@ export const FlowGraph = ({
             data-grammar-flow-height={customHeight === undefined ? height : "custom"}
             data-grammar-flow-interactive={isInteractive ? "true" : "false"}
             data-grammar-flow-layout={layout}
+            data-grammar-flow-fit={fit}
+            data-grammar-flow-grown={grownHeight === null ? undefined : "true"}
             data-tier="branch"
-            style={customHeight === undefined ? undefined : { "--starci-flow-height": customHeight } as CSSProperties}
+            style={style}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
             onKeyDown={onKeyDown}
         >
@@ -274,7 +334,7 @@ export const FlowGraph = ({
                             elementsSelectable
                             fitView
                             fitViewOptions={FIT_OPTIONS}
-                            maxZoom={2}
+                            maxZoom={MAX_ZOOM}
                             minZoom={0.2}
                             nodeOrigin={[0.5, 0.5]}
                             nodeTypes={NODE_TYPES}
@@ -286,15 +346,15 @@ export const FlowGraph = ({
                             onPaneClick={() => { if (currentId !== null) select(null) }}
                             panOnDrag={isInteractive}
                             panOnScroll={false}
-                            preventScrolling={isInteractive}
+                            preventScrolling={wheelZooms}
                             proOptions={{ hideAttribution: true }}
                             zoomOnDoubleClick={false}
                             zoomOnPinch={isInteractive}
-                            zoomOnScroll={isInteractive}
+                            zoomOnScroll={wheelZooms}
                         >
                             <Background className="starci-core-flow-graph-background" gap={1000} size={0} />
                             {controls ? <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false} /> : null}
-                            <Refit signature={signature} />
+                            <Refit signature={signature} readableZoom={readableZoom} onGrow={onGrow} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

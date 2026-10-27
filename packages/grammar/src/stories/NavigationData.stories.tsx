@@ -440,6 +440,46 @@ const navRows: ReadonlyArray<NavRow> = [
 const navColumns: ReadonlyArray<G.DataTableColumn<NavRow>> = [{ id: 'title', label: 'Lesson', isRowHeader: true }, { id: 'status', label: 'Status' }];
 
 /** Client-side navigation: under a root given `navigate`, Link, Button href and a DataTable row href go through the router. */
+// Eight waves, five tasks wide: a contained fit shrinks this below readable text in a 24rem canvas.
+const bigWaveNodes: ReadonlyArray<G.FlowGraphNode> = Array.from({ length: 8 }, (_, wave) => Array.from({ length: 5 }, (_, lane) => ({ id: `w${wave}-${lane}`, label: `Task ${wave + 1}.${lane + 1}` }))).flat();
+const bigWaveEdges: ReadonlyArray<G.FlowGraphEdge> = bigWaveNodes.flatMap((node) => {
+  const [wave, lane] = node.id.slice(1).split('-').map(Number);
+  return wave === undefined || lane === undefined || wave === 7 ? [] : [{ id: `${node.id}>`, source: node.id, target: `w${wave + 1}-${lane}` }];
+});
+const bigWaveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = Array.from({ length: 8 }, (_, wave) => ({ label: `Wave ${wave + 1}`, at: wave }));
+const viewportZoom = (graph: Element | undefined) => {
+  const viewport = graph?.querySelector<HTMLElement>('.react-flow__viewport');
+  return viewport === null || viewport === undefined ? 0 : new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a;
+};
+
+/** A wide, deep TB graph: the readable fit grows the canvas instead of shrinking node text below 12px; `fit="contain"` opts out. */
+export const FlowGraphReadableFit: Story = {
+  name: 'FlowGraph (readable fit and contain)',
+  render: () => (
+    <Matrix maxWidth={1100}>
+      <State label='fit="readable" (default): the 24rem canvas grows to the graph aspect at its width' direction="column">
+        <G.FlowGraph label="Eight waves" nodes={bigWaveNodes} edges={bigWaveEdges} direction="TB" headers={bigWaveHeaders} />
+      </State>
+      <State label='fit="contain": the whole graph shrinks into the 24rem canvas' direction="column">
+        <G.FlowGraph label="Eight waves, contained" nodes={bigWaveNodes} edges={bigWaveEdges} direction="TB" headers={bigWaveHeaders} fit="contain" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const [readable, contained] = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    await waitFor(() => {
+      const label = readable?.querySelector<HTMLElement>('.starci-core-flow-graph-label');
+      if (label === null || label === undefined) throw new Error('The readable graph must render its nodes');
+      const rendered = parseFloat(getComputedStyle(label).fontSize) * viewportZoom(readable);
+      if (rendered < 11.95) throw new Error(`Node text renders at ${rendered.toFixed(2)}px; the readable fit keeps it at 12px or more`);
+      if (readable?.dataset.grammarFlowGrown !== 'true') throw new Error('The readable graph must have grown its canvas');
+      if (viewportZoom(contained) >= viewportZoom(readable)) throw new Error('fit="contain" must shrink the graph into its canvas');
+      const canvas = contained?.querySelector('.starci-core-flow-graph-canvas');
+      if (canvas === null || canvas === undefined || Math.round(canvas.getBoundingClientRect().height) !== 384) throw new Error('fit="contain" keeps the 24rem canvas');
+    }, { timeout: 4000 });
+  },
+};
+
 export const ClientNavigation: Story = {
   name: 'Client navigation (memory router)',
   render: (_, { globals }) => (
