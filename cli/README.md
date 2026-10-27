@@ -1,11 +1,15 @@
 # The starci CLI
 
-`@starci/cli` is the `starci` command: one TypeScript source on `commander`, built with `tsc` into `dist/`, which git
-never tracks. `npm ci` builds it (`prepare`); `prepublishOnly` gates on typecheck, lint and build, and `prepack` copies
-the runtime's `ops/`, `policy/`, `contexts/` and the jest preset's README into the package (`files` of
-[package.json](package.json)), so a published CLI carries its data and resolves every `harness:` context file of the
-op files from itself. The checks a change must pass
-are in [CONTRIBUTING.md](../CONTRIBUTING.md).
+The npm package `starci-harness` is the `starci` command (its bins `starci` and `starci-harness` are one entry,
+`dist/main.js`): one TypeScript source on `commander`, built with `tsc` into `dist/`, which git never tracks. `npm ci`
+in a checkout builds it (`prepare`, which builds nothing where no `src/` is, as in an installed package);
+`prepublishOnly` gates on typecheck and lint. `npm pack` and `npm publish` build in `prepack` instead (their `prepare`
+builds nothing, as it would run after the copies and index them), which then copies the runtime's `ops/`, `policy/`,
+`contexts/`, `skills/starci/`, the harness documents and `LICENSE` into the package (`files` of
+[package.json](package.json)), with the repository's README as the package's own and this file as `cli/README.md`; `postpack` puts this README back and removes the copies. A published CLI therefore carries its data,
+resolves every `harness:` context file of the op files from itself, and holds the very corpus its search index was
+built from, so `contexts search --check` is green in an installed package too. The checks a change must pass are in
+[CONTRIBUTING.md](../CONTRIBUTING.md); publishing is CI's (CONTRIB-20).
 
 ## Source layout
 

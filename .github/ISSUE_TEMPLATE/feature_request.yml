@@ -1,0 +1,27 @@
+name: Feature request
+description: A verb, check, op or context the harness lacks.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you are trying to do and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The change you want. Prefer a machine check or a verb over a written rule (CONTRIBUTING.md, CONTRIB-10).
+    validations:
+      required: true
+  - type: textarea
+    id: owner
+    attributes:
+      label: Where it lives
+      description: The file that owns the concept today (CONTRIBUTING.md, CONTRIB-4), if you know it.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -4,7 +4,8 @@
    a task's paths when its verify is green. A lane per task isolates better but needs an install and a merge per lane.
    Does the owner confirm the shared worktree?
 2. **`pattern` verbs:** their own group, or inside `app`?
-3. **Package name:** keep `@starci/cli` at 2.x, or a new name while the legacy CLI still runs?
+3. **Placing a feature across running workflows.** Should the Supervisor place it by a path-ownership map kept as data,
+   amending only the workflows that own the touched paths, with the model deciding only what the map cannot place?
 4. **Who pushes.** A worker never pushes, yet `release push` is a core verb of both editions (roles today: owner,
    release, coordinator, lead). Does pushing stay a core verb a role may be granted, or move to the Supervisor, and
    then how does a lite chat agent (role `agent`) push?
