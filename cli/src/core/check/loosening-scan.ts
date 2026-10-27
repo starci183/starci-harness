@@ -1,7 +1,9 @@
 import { neverRead } from "../../harness/policy.js"
 import type { LooseningException, LooseningMarker, Policy } from "../../harness/policy.js"
 import { markerFileKind, markersIn } from "./markers.js"
+import { SONAR_FILE, appFacts, appRootOf, sonarBlock } from "./sonar-scope.js"
 import { readTreeFile, treeFiles } from "./tree-files.js"
+import { resolve } from "node:path"
 
 /** One banned marker in the tree. */
 export interface LooseningFinding {
@@ -40,7 +42,23 @@ const judgeFile = (root: string, policy: Policy, file: string, banned: ReadonlyS
     if ("unread" in read) return read.unread === "too-large" && named !== undefined ? "unjudged" : undefined
     const kind = named ?? markerFileKind(file, read.text.split("\n", 1)[0] ?? "")
     if (kind === undefined) return undefined
-    return markersIn(kind, read.text, banned).map((hit) => ({ file, ...hit }))
+    return markersIn(kind, read.text, banned, kind === "properties" ? { sonarBlock: generatedSonarBlock(root, file) } : {}).map((hit) => ({ file, ...hit }))
+}
+
+/**
+ * The Sonar block `starci app sonar` writes for the app that holds `file` (its sonar-project.properties), or undefined when
+ * the file is no app's Sonar file or the block cannot be derived; then no block is accepted and every exclusion is judged.
+ */
+const generatedSonarBlock = (root: string, file: string): readonly string[] | undefined => {
+    if (file.slice(file.lastIndexOf("/") + 1) !== SONAR_FILE) return undefined
+    try {
+        const appRoot = appRootOf(root, file)
+        if (appRoot === undefined || resolve(appRoot, SONAR_FILE) !== resolve(root, file)) return undefined
+        const app = appFacts(appRoot)
+        return app === undefined ? undefined : sonarBlock(app)
+    } catch {
+        return undefined
+    }
 }
 
 /**
