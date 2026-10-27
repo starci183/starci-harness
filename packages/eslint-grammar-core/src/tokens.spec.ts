@@ -1,0 +1,155 @@
+/** Behavioral witnesses for the StarCi scale and theme-token rules. */
+// proves: FE_STYLE_TOKEN_ONLY@lite FE_STYLE_TOKEN_ONLY@full
+import assert from "node:assert/strict"
+import test from "node:test"
+import { RuleTester } from "eslint"
+import tsParser from "@typescript-eslint/parser"
+import { hfsFromDeclaration } from "@starci/eslint-canon-fe/lib/hfs.mjs"
+import { at, FE_DECLARATION, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { noFractionalStep, noHandRolledHeading, noUnresolvedTokenClass, rules } from "./tokens.ts"
+
+const tester = slotTester()
+const LEAF = at("apps/web/src/components/leaves/Text/index.tsx")
+const CLASS_NAMES = at("apps/web/src/components/leaves/Text/classNames.ts")
+
+test("every rule this law declares is exported under its published name", () => {
+  for (const [name, rule] of Object.entries(rules)) {
+    assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
+  }
+})
+
+test("TOKEN-3: a fractional step is off the ladder, wherever it is written", () => {
+  tester.run("no-fractional-step", noFractionalStep, {
+    valid: [
+      // a file under a src folder that no product slot owns is not judged (the machine's HFS_SLOT_UNDECLARED covers it)
+      { filename: at("apps/web/src/lib/x.ts"), code: "const G = \"gap-1.5\"" },
+      // a script is not product source
+      { filename: at("scripts/x.ts"), code: "const G = \"gap-1.5\"" },
+      { filename: LEAF, code: "const G = \"inline-flex items-center gap-2\"" },
+      { filename: LEAF, code: "const E = () => <p className=\"gap-3 p-4\" />" },
+      // a decimal that is not a measurement
+      { filename: LEAF, code: "const RATIO = \"1.5\"" },
+    ],
+    invalid: [
+      // a shared package's layer folder is product source
+      { filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "const E = () => <p className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] },
+      // markup
+      { filename: LEAF, code: "const E = () => <p className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] },
+      // the shape that hid from every earlier version: a module constant
+      { filename: LEAF, code: "const GLUE = \"inline-flex items-center gap-1.5\"", errors: [{ messageId: "fractional" }] },
+      { filename: LEAF, code: "const CARET = \"size-3.5 shrink-0\"", errors: [{ messageId: "fractional" }] },
+      // and an entry's class array
+      {
+        filename: CLASS_NAMES,
+        code: "const C = { x: { classes: [\"flex\", \"py-1.5\"] } }",
+        errors: [{ messageId: "fractional" }],
+      },
+    ],
+  })
+})
+
+test("TOKEN-5: large text plus a heavy weight is a heading", () => {
+  tester.run("no-hand-rolled-heading", noHandRolledHeading, {
+    valid: [
+      // large text alone is a size decision, not a heading
+      { filename: LEAF, code: "const C = \"text-2xl\"" },
+      // weight alone is emphasis within body text, which the type scale allows
+      { filename: LEAF, code: "const C = \"text-sm font-bold\"" },
+      { filename: LEAF, code: "const C = \"text-base font-medium\"" },
+    ],
+    invalid: [
+      { filename: LEAF, code: "const C = \"text-2xl font-bold\"", errors: [{ messageId: "heading" }] },
+      {
+        filename: LEAF,
+        code: "const E = () => <span className=\"text-xl font-extrabold\">{t}</span>",
+        errors: [{ messageId: "heading" }],
+      },
+    ],
+  })
+})
+
+/** A repository whose stylesheet defines ONE container token, built fresh for this run. */
+const themedRoot = () => {
+  const root = mkdtempSync(join(tmpdir(), "starci-tokens-")).replace(/\\/g, "/")
+  mkdirSync(join(root, "apps/web/src/app"), { recursive: true })
+  mkdirSync(join(root, "apps/web/src/modules/brand"), { recursive: true })
+  mkdirSync(join(root, "apps/admin/src/app"), { recursive: true })
+  writeFileSync(join(root, "apps/admin/src/app/globals.css"), "@theme {\n    --container-app-xs: 20rem;\n}\n", "utf8")
+  writeFileSync(join(root, "apps/web/src/modules/brand/brand.css"), "@theme {\n    --container-app-md: 48rem;\n}\n", "utf8")
+  writeFileSync(
+    join(root, "apps/web/src/app/globals.css"),
+    "@theme {\n    --container-app-sm: 40rem;\n    --max-height-rail: calc(100dvh - 7rem);\n}\n",
+    "utf8",
+  )
+  return root
+}
+
+const THEMED = themedRoot()
+test.after(() => rmSync(THEMED, { recursive: true, force: true }))
+
+/** The typed-fixture declaration rooted at the themed repository, so its files classify by slot there. */
+const themedTester = new RuleTester({
+  languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
+  settings: { starci: { hfs: hfsFromDeclaration(appDeclaration("fe", FE_DECLARATION), THEMED) } },
+})
+
+test("TOKEN-9: a class naming a theme token is dead unless the theme defines it", () => {
+  themedTester.run("no-unresolved-token-class", noUnresolvedTokenClass, {
+    valid: [
+      // The token exists, so the class means what it says.
+      { filename: `${THEMED}/apps/web/src/features/pages/Reader/component.tsx`, code: 'const M = "mx-auto max-w-app-sm"' },
+      { filename: `${THEMED}/apps/web/src/features/layouts/Rail/component.tsx`, code: 'const R = "max-h-rail overflow-y-auto"' },
+      // the brand slot's stylesheet is part of the app's theme
+      { filename: `${THEMED}/apps/web/src/features/pages/Reader/component.tsx`, code: 'const M = "max-w-app-md"' },
+      // Tailwind's own scale, not a theme promise: nothing here is derivable from a variable name.
+      { filename: `${THEMED}/apps/web/src/features/pages/Reader/component.tsx`, code: 'const S = "max-w-sm gap-4 text-muted"' },
+      // Outside src, this is somebody else\'s rule to enforce.
+      { filename: `${THEMED}/scripts/report.mjs`, code: 'const M = "max-w-app-xl"' },
+      // A file under a src folder that no product slot owns is not product source (the old `/src/` test judged it).
+      { filename: `${THEMED}/apps/web/src/lib/x.ts`, code: 'const M = "max-w-app-xl"' },
+    ],
+    invalid: [
+      // another app has its own stylesheet: this one's token does not resolve there
+      { filename: `${THEMED}/apps/admin/src/features/pages/Reader/component.tsx`, code: 'const M = "max-w-app-sm"', errors: [{ messageId: "unresolved" }] },
+      {
+        filename: `${THEMED}/apps/web/src/features/pages/Reader/component.tsx`,
+        code: 'const M = "mx-auto max-w-app-xl"',
+        errors: [{ messageId: "unresolved", data: { value: "max-w-app-xl", variable: "--container-app-xl" } }],
+      },
+      {
+        filename: `${THEMED}/apps/web/src/features/layouts/Rail/component.tsx`,
+        code: 'const R = "max-h-drawer"',
+        errors: [{ messageId: "unresolved" }],
+      },
+    ],
+  })
+})
+
+for (const edition of ["lite", "full"]) {
+  test(`R61 ${edition} enforces the Grammar scale and resolves declared theme tokens`, () => {
+    const declaration = { ...appDeclaration("fe", FE_DECLARATION), edition }
+    const hfs = hfsFromDeclaration(declaration, THEMED)
+    assert.equal(hfs.edition, edition)
+    const editionTester = new RuleTester({
+      languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
+      settings: { starci: { hfs } },
+    })
+    const filename = `${THEMED}/apps/web/src/components/leaves/Text/index.tsx`
+    editionTester.run("no-fractional-step", noFractionalStep, {
+      valid: [{ filename, code: 'const classes = "gap-2 p-4"' }],
+      invalid: [{ filename, code: 'const classes = "gap-1.5"', errors: [{ messageId: "fractional" }] }],
+    })
+    editionTester.run("no-hand-rolled-heading", noHandRolledHeading, {
+      valid: [{ filename, code: 'const classes = "text-sm font-bold"' }],
+      invalid: [{ filename, code: 'const classes = "text-2xl font-bold"', errors: [{ messageId: "heading" }] }],
+    })
+    editionTester.run("no-unresolved-token-class", noUnresolvedTokenClass, {
+      valid: [{ filename, code: 'const classes = "max-w-app-sm"' }],
+      invalid: [{ filename, code: 'const classes = "max-w-app-missing"', errors: [{ messageId: "unresolved" }] }],
+    })
+  })
+}

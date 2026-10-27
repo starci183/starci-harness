@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0 - 2026-10-28
+
+- Changed: the source is TypeScript in `src/` (rules in `src/*.ts`, helpers in `src/lib/*.ts`, specs beside them as `*.spec.ts`), built to `dist/` by `tsc`; `main`, `types` and `exports` point at `dist/`. The generated vocabulary files are now `src/lib/vocabulary.generated.ts` and `src/lib/grammar-values.generated.ts`, and `npm run vocabulary` writes them (and the core Grammar lint's `status-tones.generated.ts`). No rule or behaviour changed; the exported names and the `"."` specifier are unchanged.
+
 ## 2.1.0 - 2026-10-27
 
 - Removed: the Heritage family: `@starci/grammar/heritage(.css)` is no longer a Grammar stylesheet import and `--heritage-*` is no longer a family token prefix. The grammar CSS snapshot and the generated vocabulary are refreshed from Grammar 0.13.0.

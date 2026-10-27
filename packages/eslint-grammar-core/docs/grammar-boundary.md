@@ -1,6 +1,6 @@
 # Grammar boundary
 
-Law module: `grammar-boundary.mjs`. Catalogue: R62 FE_NATIVE_FORM_CONTROL (the grammar owns the element).
+Law module: `grammar-boundary.ts`. Catalogue: R62 FE_NATIVE_FORM_CONTROL (the grammar owns the element).
 
 Page structure and text are composed from `@starci/grammar` (or the repository's `<family>-ui` package), not drawn as raw HTML.
 

@@ -1,6 +1,6 @@
 {
   "name": "@starci/prettier-config",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "The one StarCi Prettier config: 120 columns, 4 spaces, no semicolons, double quotes, trailing commas everywhere.",
   "license": "MIT",
   "author": "starci183",
@@ -14,19 +14,20 @@
     "url": "https://github.com/starci183/starci-harness/issues"
   },
   "private": false,
-  "main": "index.cjs",
-  "types": "index.d.cts",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.cts",
-      "default": "./index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
+    "dist",
     "LICENSE",
-    "index.cjs",
-    "index.d.cts",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public"
@@ -35,9 +36,15 @@
     "prettier": ">=3"
   },
   "scripts": {
-    "test": "node --test \"*.spec.mjs\""
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run build && npm run typecheck && node --test \"test/**/*.spec.ts\""
   },
   "devDependencies": {
-    "prettier": "3.9.6"
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "24.19.2",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3"
   }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0 - 2026-10-28
+
+- Changed: the source is TypeScript in `src/`, built to CommonJS JavaScript in `dist/` (`npm run build`; `prepack` builds), and the declarations are emitted from it instead of hand-written; `main`, `types` and every export (`.`, `./mock`, `./clock`, `./entity-manager`, `./ids`, `./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox`, `./builders`, `./merge`) point into `dist/`. No rule or behaviour changed; the specifiers are unchanged. The files jest loads by path are now `dist/world-runner.js`, `dist/unit-metadata.js`, `dist/unit-metadata.generated.js` (the coverage anchor, copied byte for byte from `assets/`) and `dist/lcov.js`; `@starci/jest-preset/merge` now has types.
+- Changed: `starciJestConfig` returns `StarciJestConfig` (jest's `Config` with `projects` all objects, a custom reporter path allowed in `coverageReporters` and a `coverageThreshold` keyed by glob only), the type its value always had; `createMock` takes a factory called with the property name; the package specs are `test/*.spec.ts` and load the built `dist/`.
+
 ## 2.3.7 - 2026-10-27
 
 - Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.

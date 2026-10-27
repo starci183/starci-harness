@@ -1,0 +1,974 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
+
+import os from 'node:os';
+import path from 'node:path';
+import type { EntityManager } from 'typeorm';
+import type { FakeCacheKey } from '../src/cache.ts';
+import type { EventBusOperation } from '../src/event-bus.ts';
+
+const require = createRequire(import.meta.url);
+// The specs load the BUILT dist, the way jest loads the preset.
+const preset: typeof import('../src/index.ts') = require('../dist/index.js');
+type Project = ReturnType<typeof preset.starciJestConfig>['projects'][number];
+/** TS2345 (an argument the parameter does not accept), TS2322 (a value the type does not accept) and TS2339 (a property the type does not have). */
+const EXPECTED_ARGUMENT_CODE = 2345;
+const EXPECTED_NOT_ASSIGNABLE_CODE = 2322;
+const EXPECTED_MISSING_MEMBER_CODE = 2339;
+const TS_KEY = String.raw`^.+\.ts$`;
+/** Removes a scratch folder; a jest child that is still shutting down can hold it for a moment on Windows. */
+const removeTree = (dir: string): void => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+const distPath = (file: string): string => require.resolve(`../dist/${file}`);
+// The @types folder that holds the jest types this package's own install resolves (a devDependency), never a path above it.
+const jestTypeRoot = (): string => path.dirname(path.dirname(require.resolve('@types/jest/package.json')));
+
+/** `starciJestConfig` called the way a managed repository config could get it wrong: with an option the types refuse. */
+const configOf = (options: unknown): ReturnType<typeof preset.starciJestConfig> => Reflect.apply(preset.starciJestConfig, undefined, [options]);
+
+/** The `[transformer, options]` pair of a project's TypeScript transform. */
+function transformOf(project: Project): [string, Record<string, unknown>] {
+  const entry = project.transform?.[TS_KEY];
+  if (!Array.isArray(entry)) throw new Error(`${String(project.displayName)} has no TypeScript transform pair`);
+  return entry;
+}
+
+/** The project of a config by its display name. */
+function named(config: ReturnType<typeof preset.starciJestConfig>, name: string): Project {
+  const project = config.projects.find((candidate) => candidate.displayName === name);
+  assert.ok(project, name);
+  return project;
+}
+
+/** The `calls` a stand-in function recorded. */
+const callsOf = (fn: unknown): unknown[][] => {
+  const calls: unknown = Reflect.get(Object(fn), 'calls');
+  assert.ok(Array.isArray(calls));
+  return calls;
+};
+
+// The config is read from a repository root (jest runs there): the default one below has a test world, so all four
+// projects exist; `withoutWorld` is a repository whose world is not written yet.
+// The coverage scope the managed jest.config.js passes (starci app sync renders it from the slot manifest): roots, the logic roles measured in them, the none directories inside a root.
+const SCOPE = { roots: ['src/modules/domain/*/', 'src/modules/platform/*/'], roles: ['service', 'guard'], excludes: ['src/modules/domain/*/persistence/**'] };
+const OPTIONS = { coverage: SCOPE };
+const withWorld = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-world-'));
+fs.mkdirSync(path.join(withWorld, 'src', 'tests', 'world'), { recursive: true });
+fs.writeFileSync(path.join(withWorld, 'src', 'tests', 'world', 'global-setup.ts'), 'export default async () => {}\n');
+const withoutWorld = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-noworld-'));
+const home = process.cwd();
+process.chdir(withWorld);
+test.after(() => { process.chdir(home); fs.rmSync(withWorld, { recursive: true, force: true }); fs.rmSync(withoutWorld, { recursive: true, force: true }); });
+
+test('a repository without a declared lite proof lane or test world gets the unit project only', () => {
+  process.chdir(withoutWorld);
+  try {
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).projects.map((p) => p.displayName), ['unit']);
+  } finally {
+    process.chdir(withWorld);
+  }
+  assert.deepEqual(preset.starciJestConfig(OPTIONS).projects.map((p) => p.displayName), ['unit', 'integration', 'e2e', 'contract']);
+});
+
+/** An app-shaped fixture: the jest config runs in be/, below hfs.json. */
+function proofRepo(edition: string | undefined): { root: string; be: string; put: (file: string, source: string) => void } {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-proof-'));
+  const be = path.join(root, 'be');
+  const put = (file: string, source: string): void => {
+    const target = path.join(be, file);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, source);
+  };
+  if (edition) fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ edition }));
+  put('apps/.keep', '');
+  put('src/tests/tsconfig.json', JSON.stringify({ compilerOptions: { module: 'commonjs', target: 'es2022', isolatedModules: true } }));
+  return { root, be, put };
+}
+
+function proofConfig(be: string): ReturnType<typeof preset.starciJestConfig> {
+  const previous = process.cwd();
+  process.chdir(be);
+  try {
+    return preset.starciJestConfig(OPTIONS);
+  } finally {
+    process.chdir(previous);
+  }
+}
+
+test('lite creates integration and contract projects only for matching specs, without a world or e2e project', () => {
+  const { root, be, put } = proofRepo('lite');
+  try {
+    for (const name of ['integration', 'contract']) fs.mkdirSync(path.join(be, 'src/tests', name), { recursive: true });
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
+    put('src/tests/integration/queue/helper.spec.ts', '');
+    put('src/tests/contract/provider/helper.integration-spec.ts', '');
+    put('src/tests/e2e/api/boot.e2e-spec.ts', '');
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
+    put('src/tests/integration/queue/delivery.integration-spec.ts', '');
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit', 'integration']);
+    put('src/tests/contract/provider/nested/payload.contract-spec.ts', '');
+    const config = proofConfig(be);
+    assert.deepEqual(config.projects.map((project) => project.displayName), ['unit', 'integration', 'contract']);
+    for (const project of config.projects.slice(1)) {
+      assert.deepEqual(project.testMatch, [`**/src/tests/${String(project.displayName)}/**/*.${String(project.displayName)}-spec.ts`]);
+      assert.equal(transformOf(project)[1].tsconfig, 'src/tests/tsconfig.json');
+      for (const option of ['runner', 'globalSetup', 'globalTeardown', 'setupFilesAfterEnv']) assert.equal(option in project, false, option);
+    }
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('full and undeclared repositories without a world keep unit-only config even when proof specs exist', () => {
+  const { root, be, put } = proofRepo('full');
+  const declaration = path.join(root, 'hfs.json');
+  try {
+    put('src/tests/integration/queue/delivery.integration-spec.ts', '');
+    put('src/tests/contract/provider/payload.contract-spec.ts', '');
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
+    fs.rmSync(declaration);
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
+    fs.writeFileSync(declaration, '{');
+    assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('jest runs selected lite integration and contract specs with TypeScript and no world state', () => {
+  const { root, be, put } = proofRepo('lite');
+  try {
+    for (const name of ['integration', 'contract']) put(`src/tests/${name}/proof/pass.${name}-spec.ts`, 'const value: number = 42; test("proof", () => expect(value).toBe(42));\n');
+    // Resolve peer modules from this spec's install, preserving the preset's transform settings.
+    put('jest.config.js', `const config = require(${JSON.stringify(distPath('index.js'))}).starciJestConfig(${JSON.stringify(OPTIONS)})
+for (const project of config.projects) {
+  delete project.preset
+  for (const entry of Object.values(project.transform)) entry[0] = require.resolve(entry[0])
+}
+module.exports = config
+`);
+    const jestPackage = require.resolve('jest/package.json');
+    const result = spawnSync(process.execPath, [path.join(path.dirname(jestPackage), 'bin', 'jest.js'), '--selectProjects', 'integration', 'contract', '--runInBand', '--ci', '--json', '--outputFile', path.join(be, 'report.json'), '--cacheDirectory', path.join(be, '.jest-cache')], {
+      cwd: be, encoding: 'utf8', env: { ...process.env, NODE_PATH: path.dirname(path.dirname(jestPackage)) }, timeout: 120_000,
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const report: { numPassedTestSuites: number; numPassedTests: number } = JSON.parse(fs.readFileSync(path.join(be, 'report.json'), 'utf8'));
+    assert.equal(report.numPassedTestSuites, 2);
+    assert.equal(report.numPassedTests, 2);
+    assert.equal(fs.existsSync(path.join(be, 'src/tests/world')), false);
+  } finally {
+    removeTree(root);
+  }
+});
+const { createMock }: typeof import('../src/mock.ts') = require('../dist/mock.js');
+
+/** A stand-in for jest.fn(): a callable that records calls. mock<T>() must work with any factory. */
+interface FakeFn {
+  (...args: unknown[]): unknown;
+  calls: unknown[][];
+  impl?: (...args: unknown[]) => unknown;
+  mockReturnValue(value: unknown): FakeFn;
+}
+function fakeFn(): FakeFn {
+  const fn: FakeFn = Object.assign((...args: unknown[]): unknown => { fn.calls.push(args); return fn.impl?.(...args); }, {
+    calls: [] as unknown[][],
+    mockReturnValue(value: unknown): FakeFn { fn.impl = () => value; return fn; },
+  });
+  return fn;
+}
+const mock = createMock(fakeFn);
+
+test('mock<T>() yields one stable function per property, created on first read', () => {
+  interface Repo { find(id: string): unknown; save(): unknown }
+  const repo = mock<Repo>();
+  assert.equal(typeof repo.find, 'function');
+  assert.equal(repo.find, repo.find);
+  assert.notEqual(repo.find, repo.save);
+  repo.find.mockReturnValue(42);
+  assert.equal(repo.find('a'), 42);
+  assert.deepEqual(callsOf(repo.find), [['a']]);
+});
+
+test('mock<T>(overrides) lets a provided value win over a generated function', () => {
+  interface Clock { now(): number; name: string; other(): void }
+  const clock = mock<Clock>({ now: () => 7, name: 'utc' });
+  assert.equal(clock.now(), 7);
+  assert.equal(clock.name, 'utc');
+  assert.equal(typeof clock.other, 'function');
+});
+
+test('mock<T>() is not thenable, so awaiting or returning it from an async function does not hang', async () => {
+  const service = mock<{ then?: unknown }>();
+  assert.equal(service.then, undefined);
+  assert.equal(await Promise.resolve(service), service);
+  const wrapped = await (async () => service)();
+  assert.equal(wrapped, service);
+});
+
+test('mock<T>() survives string conversion, JSON, symbols and the `in` operator', () => {
+  const service = mock<{ id: number; missing: unknown }>({ id: 1 });
+  assert.equal(String(service), '[object Object]');
+  assert.equal(JSON.stringify(service), '{"id":1}');
+  assert.equal(Reflect.get(service, Symbol.toPrimitive), undefined);
+  assert.equal('id' in service, true);
+  assert.equal('missing' in service, false);
+  void service.missing;
+  assert.equal('missing' in service, true);
+});
+
+test('assigning a property replaces the generated function', () => {
+  const service = mock<{ run(): string }>();
+  const first = service.run;
+  Reflect.set(service, 'run', () => 'real');
+  assert.equal(service.run(), 'real');
+  assert.notEqual(service.run, first);
+});
+
+test('the default mock needs the jest runtime and says so outside it', () => {
+  assert.throws(() => preset.mock<{ anything: unknown }>().anything, /needs the jest runtime/);
+});
+
+test('starciJestConfig is unit + integration + e2e + contract, ts-jest, diagnostics false (K20), isolatedModules from the tsconfig', () => {
+  const config = preset.starciJestConfig(OPTIONS);
+  assert.deepEqual(config.projects.map((p) => p.displayName), ['unit', 'integration', 'e2e', 'contract']);
+  for (const project of config.projects) {
+    const [name, options] = transformOf(project);
+    assert.equal(name, project.displayName === 'unit' ? distPath('unit-metadata.js') : 'ts-jest');
+    assert.equal(options.diagnostics, false);
+    assert.equal(Boolean(options.astTransformers), project.displayName === 'unit');
+    assert.equal('isolatedModules' in options, false, 'the deprecated ts-jest option is not set; the tsconfig carries it');
+  }
+  // The unit project overlays compiler options over the repository tsconfig; the other projects use the file as it is.
+  const [, unit] = transformOf(named(config, 'unit'));
+  assert.deepEqual(unit.tsconfig, { isolatedModules: true, importHelpers: true, sourceMap: true });
+  assert.deepEqual(preset.UNIT_COMPILER_OPTIONS, { isolatedModules: true, importHelpers: true, sourceMap: true });
+  for (const project of config.projects.slice(1)) assert.equal(typeof transformOf(project)[1].tsconfig, 'string');
+  assert.equal(new RegExp(String.raw`^.+\.ts$`).test('a.ts'), true);
+  assert.equal(new RegExp(String.raw`^.+\.ts$`).test('a.tsx'), false);
+});
+
+test('starciJestConfig takes ONE option, the coverage scope starci app sync renders: it refuses to run without it, and any other option changes nothing', () => {
+  assert.equal(preset.starciJestConfig.length, 1);
+  assert.throws(() => Reflect.apply(preset.starciJestConfig, undefined, []), /needs the coverage scope starci app sync renders/);
+  assert.throws(() => preset.starciJestConfig({ coverage: { roots: ['src/'], roles: [], excludes: [] } }), /needs the coverage scope/, 'a scope that measures no role is refused');
+  assert.throws(() => configOf({ coverage: { roots: 'src/', roles: ['service'], excludes: [] } }), /needs the coverage scope/);
+  const tuned = configOf({ coverage: SCOPE, moduleNameMapper: { '^@x/(.*)$': '<rootDir>/x/$1' }, e2e: { globalSetup: 'x' }, unit: { setupFiles: ['x'] } });
+  assert.deepEqual(tuned, preset.starciJestConfig(OPTIONS), 'an argument other than the scope changes nothing');
+  assert.notEqual(named(preset.starciJestConfig(OPTIONS), 'unit').moduleNameMapper, named(preset.starciJestConfig(OPTIONS), 'unit').moduleNameMapper);
+});
+
+test('every project maps exactly the three aliases the managed tsconfig.json declares', () => {
+  const expected = { '^@features/(.*)$': '<rootDir>/src/features/$1', '^@modules/(.*)$': '<rootDir>/src/modules/$1', '^@tests/(.*)$': '<rootDir>/src/tests/$1' };
+  assert.deepEqual(preset.MODULE_NAME_MAPPER, expected);
+  for (const project of preset.starciJestConfig(OPTIONS).projects) assert.deepEqual(project.moduleNameMapper, expected);
+});
+
+test('coverage is measured by v8, not istanbul', () => {
+  assert.equal(preset.starciJestConfig(OPTIONS).coverageProvider, 'v8');
+});
+
+test('the unit project matches *.spec.ts only and never a file of src/tests/{world,integration,e2e,contract}', () => {
+  const unit = named(preset.starciJestConfig(OPTIONS), 'unit');
+  assert.deepEqual(unit.testMatch, ['**/*.spec.ts']);
+  const ignored = (file: string): boolean => (unit.testPathIgnorePatterns ?? []).some((pattern) => new RegExp(pattern).test(file));
+  for (const folder of ['world', 'integration', 'e2e', 'contract']) {
+    assert.equal(ignored(`/r/src/tests/${folder}/a/x.spec.ts`), true, folder);
+    assert.equal(ignored(`${path.parse(withWorld).root}r\\src\\tests\\${folder}\\a\\x.spec.ts`), true, folder);
+  }
+  assert.equal(ignored('/r/src/features/x/y.spec.ts'), false);
+  assert.equal(ignored('/r/src/tests/fixtures/database.spec.ts'), false);
+});
+
+test('a spec file of a layer is matched whatever the checkout path holds, a dot-named folder on a Windows path included', () => {
+  const { globsToMatcher, replacePathSepForGlob }: typeof import('jest-util') = require('jest-util');
+  const config = preset.starciJestConfig(OPTIONS);
+  const file = ['D:', 'Repositories', 'host', '.claude', 'examples', 'app', 'be', 'src', 'tests', 'contract', 'billing', 'events.contract-spec.ts'].join(path.win32.sep);
+  const matches = (project: Project, name: string): boolean => globsToMatcher(project.testMatch ?? [])(replacePathSepForGlob(name));
+  assert.equal(matches(named(config, 'contract'), file), true, 'the contract spec under a dot-named folder is found');
+  assert.equal(matches(named(config, 'e2e'), file), false, 'a contract spec is not an e2e spec');
+});
+
+test('each test kind is its own project, matched by folder and suffix together; contract is never unit or e2e', () => {
+  const config = preset.starciJestConfig(OPTIONS);
+  assert.deepEqual(named(config, 'integration').testMatch, ['**/src/tests/integration/**/*.integration-spec.ts']);
+  assert.deepEqual(named(config, 'e2e').testMatch, ['**/src/tests/e2e/**/*.e2e-spec.ts']);
+  assert.deepEqual(named(config, 'contract').testMatch, ['**/src/tests/contract/**/*.contract-spec.ts']);
+  for (const name of ['integration', 'e2e', 'contract']) {
+    const project = named(config, name);
+    assert.equal(project.runner, preset.WORLD_RUNNER, `${name} runs every file in a process of its own`);
+    assert.equal('maxWorkers' in project, false, `${name}: maxWorkers is a global option, a project never carries it`);
+    assert.equal(transformOf(project)[1].tsconfig, 'src/tests/tsconfig.json', name);
+    assert.equal(project.globalSetup, '<rootDir>/src/tests/world/global-setup.ts', name);
+    assert.equal(project.globalTeardown, '<rootDir>/src/tests/world/global-teardown.ts', name);
+    assert.equal('setupFilesAfterEnv' in project, false, name);
+  }
+  const unit = named(config, 'unit');
+  assert.deepEqual(transformOf(unit)[1].tsconfig, { isolatedModules: true, importHelpers: true, sourceMap: true });
+  assert.equal('globalSetup' in unit, false, 'unit specs need no world');
+  assert.equal('runner' in unit, false, 'unit specs run on the stock runner');
+  assert.equal(path.basename(preset.WORLD_RUNNER), 'world-runner.js');
+  assert.deepEqual(preset.TEST_KIND_FOLDERS, ['world', 'integration', 'e2e', 'contract']);
+});
+
+test('coverage is measured on the logic roles of the rendered roots only, with a per-file threshold of 100', () => {
+  const globs = preset.collectCoverageFrom(SCOPE);
+  assert.deepEqual(globs.filter((g) => !g.startsWith('!')), ['src/modules/domain/*/**/*.{service,guard}.ts', 'src/modules/platform/*/**/*.{service,guard}.ts']);
+  for (const excluded of ['src/modules/domain/*/persistence/**', '**/dist/**', '**/coverage/**']) {
+    assert.ok(globs.includes(`!${excluded}`), `${excluded} is outside the denominator`);
+  }
+  assert.equal(preset.rootGlob('src/', ['service']), 'src/**/*.service.ts', 'one role needs no braces');
+  const coverageThreshold = preset.starciJestConfig(OPTIONS).coverageThreshold ?? {};
+  assert.ok(Object.keys(coverageThreshold).length <= 1, 'the measured roots share one glob threshold group');
+  assert.equal('global' in coverageThreshold, false, 'coverage is checked per file, never as a global average');
+  for (const glob of Object.keys(coverageThreshold)) assert.deepEqual(coverageThreshold[glob], { lines: 100, branches: 100, functions: 100, statements: 100 });
+});
+
+test('empty roots have no threshold and populated roots share one glob with every metric held at 100', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-roles-'));
+  const previous = process.cwd();
+  try {
+    process.chdir(root);
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {});
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'a.service.ts'), 'export {};\n');
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
+      './src/modules/domain/*/**/*.{service,guard}.ts': { lines: 100, branches: 100, functions: 100, statements: 100 },
+    });
+    assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.{service,guard}.ts'), true);
+    assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.guard.ts'), false, 'no guard yet');
+    assert.equal(preset.hasCoverageSubjects(root, 'src/modules/platform/*/**/*.{service,guard}.ts'), false, 'no platform capability yet');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'domain', 'a', 'deep'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'domain', 'a', 'deep', 'auth.guard.ts'), 'export {};\n');
+    assert.equal(preset.hasCoverageSubjects(root, 'src/modules/domain/*/**/*.guard.ts'), true, '** spans directories');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'platform', 'node_modules', 'x'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'platform', 'node_modules', 'x', 'x.service.ts'), 'export {};\n');
+    assert.equal(preset.hasCoverageSubjects(root, 'src/modules/platform/**/*.service.ts'), false, 'dependencies are never subjects');
+    fs.mkdirSync(path.join(root, 'src', 'modules', 'platform', 'a'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'platform', 'a', 'a.guard.ts'), 'export {};\n');
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).coverageThreshold, {
+      './{src/modules/domain/*/**/*.{service,guard}.ts,src/modules/platform/*/**/*.{service,guard}.ts}':
+        { lines: 100, branches: 100, functions: 100, statements: 100 },
+    });
+    assert.deepEqual(preset.starciJestConfig(OPTIONS).collectCoverageFrom, preset.collectCoverageFrom(SCOPE), 'threshold grouping preserves the full rendered collection scope');
+  } finally {
+    process.chdir(previous);
+    removeTree(root);
+  }
+});
+
+test('no project sets a test timeout: a unit spec runs under the jest default and a world spec sets its own through useTestWorld', () => {
+  const config = preset.starciJestConfig(OPTIONS);
+  assert.equal(config.testTimeout, undefined);
+  for (const project of config.projects) assert.equal(Reflect.get(project, 'testTimeout'), undefined, `${String(project.displayName)} keeps the jest default`);
+});
+
+test('the unit run writes the lcov Sonar imports, keeps the text summary, and renders no coverage exclusion', () => {
+  assert.equal(Reflect.get(preset, 'sonarCoverageExclusions'), undefined);
+  assert.equal(preset.sonarExclusions(), '**/*.spec.ts,**/*.e2e-spec.ts,**/dist/**,**/coverage/**');
+  const config = preset.starciJestConfig(OPTIONS);
+  assert.ok(config.coverageReporters.some((reporter) => Array.isArray(reporter) && reporter[0] === distPath('lcov.js')), 'lcov is the report Sonar imports (sonar.javascript.lcov.reportPaths)');
+  assert.ok(config.coverageReporters.includes('text-summary'));
+  assert.equal(config.coverageDirectory, 'coverage');
+  // The scope is NOT a constant of the preset: starci app sync derives it from the slot manifest (scripts/hfs/coverage-scope.mjs) into the repository's jest.config.js.
+  assert.equal(Reflect.get(preset, 'COVERAGE_SOURCES'), undefined);
+});
+
+/**
+ * Compiles `fixtures` (names of fixture files beside this spec, each written to the scratch folder as `<name>.ts`) with
+ * the declaration files in `declarations` (the built `dist/*.d.ts`), as an app's strict tsc would. Answers the diagnostics as `{ file, line, code }`
+ * so a spec can assert an error from the compiler output itself: no directive in a fixture hides one.
+ */
+const compileFixtures = ({ declarations, fixtures, stubs = {} }: { declarations: string[]; fixtures: string[]; stubs?: Record<string, string> }): Array<{ file: string | null; line: number | null; code: number; text: string }> => {
+  const ts: typeof import('typescript') = require('typescript');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-types-'));
+  try {
+    for (const file of declarations) fs.copyFileSync(path.join(import.meta.dirname, '..', 'dist', file), path.join(dir, file));
+    for (const [module, fixture] of Object.entries(stubs)) {
+      fs.mkdirSync(path.join(dir, 'node_modules', module), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'node_modules', module, 'index.d.ts'), fs.readFileSync(new URL(fixture, import.meta.url), 'utf8'));
+    }
+    const roots = fixtures.map((name) => {
+      const target = path.join(dir, `${name}.ts`);
+      fs.writeFileSync(target, fs.readFileSync(new URL(`${name}.fixture`, import.meta.url), 'utf8'));
+      return target;
+    });
+    const program = ts.createProgram(roots, {
+      strict: true, noEmit: true, types: ['jest'], typeRoots: [jestTypeRoot()],
+      module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext, target: ts.ScriptTarget.ES2022,
+    });
+    return ts.getPreEmitDiagnostics(program).map((d) => ({
+      file: d.file === undefined ? null : path.basename(d.file.fileName, '.ts'),
+      line: d.file === undefined ? null : d.file.getLineAndCharacterOfPosition(d.start ?? 0).line + 1,
+      code: d.code,
+      text: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
+    }));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+test('the mock<T>() types replace `as unknown as`: typed jest.Mock members, assignable to T', () => {
+  const problems = compileFixtures({ declarations: ['mock.d.ts'], fixtures: ['probe-mock'] });
+  assert.deepEqual(problems, []);
+});
+
+test('the mock<T>() types reject a stub of the wrong shape and a member the interface does not have, as the compiler reports them', () => {
+  const problems = compileFixtures({ declarations: ['mock.d.ts'], fixtures: ['probe-mock-rejected'] });
+  assert.deepEqual(problems.map(({ file, line, code }) => ({ file, line, code })), [
+    { file: 'probe-mock-rejected', line: 4, code: EXPECTED_ARGUMENT_CODE },
+    { file: 'probe-mock-rejected', line: 5, code: EXPECTED_MISSING_MEMBER_CODE },
+  ]);
+});
+
+const { FakeClock }: typeof import('../src/clock.ts') = require('../dist/clock.js');
+
+test('FakeClock starts at a chosen instant and holds still until moved', () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  assert.equal(clock.now().toISOString(), '2026-01-01T00:00:00.000Z');
+  assert.equal(clock.now().toISOString(), '2026-01-01T00:00:00.000Z');
+});
+
+test('FakeClock.advance moves the clock by a duration, forward or back', () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  clock.advance(1000);
+  assert.equal(clock.now().toISOString(), '2026-01-01T00:00:01.000Z');
+  clock.advance(-500);
+  assert.equal(clock.now().toISOString(), '2026-01-01T00:00:00.500Z');
+});
+
+test('FakeClock.set moves the clock to a new instant', () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  clock.set('2030-06-15T12:00:00.000Z');
+  assert.equal(clock.now().toISOString(), '2030-06-15T12:00:00.000Z');
+});
+
+test('FakeClock with no argument starts at the real now, once, at construction', () => {
+  const before = Date.now();
+  const clock = new FakeClock();
+  const after = Date.now();
+  const started = clock.now().getTime();
+  assert.ok(started >= before && started <= after);
+});
+
+// ---- the double kit -------------------------------------------------------------------------------------------------
+
+const { createEntityManagerKit }: typeof import('../src/entity-manager.ts') = require('../dist/entity-manager.js');
+require('../dist/matchers.js'); // loads without a jest runtime
+
+// A jest.fn stand-in with mockResolvedValue and a default implementation, enough to drive the kit outside jest.
+function stubFn(implementation?: (...args: never[]) => unknown): unknown {
+  const body: (...args: unknown[]) => unknown = implementation === undefined ? () => undefined : (...args) => Reflect.apply(implementation, undefined, args);
+  const fn = Object.assign((...args: unknown[]): unknown => { fn.calls.push(args); return fn.impl(...args); }, {
+    calls: [] as unknown[][],
+    impl: body,
+    mockResolvedValue(value: unknown) { fn.impl = async () => value; return fn; },
+    mockImplementation(impl: (...args: unknown[]) => unknown) { fn.impl = impl; return fn; },
+  });
+  return fn;
+}
+const { mockEntityManager, fakeTransaction } = createEntityManagerKit(stubFn);
+
+class Order { id = ''; }
+class Payment { id = ''; }
+
+test('mockEntityManager: a stubbed method answers for its entity, and an unstubbed one throws an error naming the method', async () => {
+  const order = new Order();
+  const em = mockEntityManager({ findOne: [Order, order] });
+  assert.equal(await em.findOne(Order, { where: { id: 'a' } }), order);
+  assert.deepEqual(callsOf(em.findOne), [[Order, { where: { id: 'a' } }]]);
+  assert.throws(() => em.save({}), /mockEntityManager: em\.save\(\) was called but this spec did not stub it/);
+  assert.throws(() => em.query('select 1'), /em\.query\(\)/);
+  await assert.rejects(em.findOne(Payment, {}), /em\.findOne\(Payment\) was called but this spec stubbed em\.findOne only for Order/);
+});
+
+test('mockEntityManager: pairs of one method answer per entity, in order, and the last answer repeats; query matches its sql', async () => {
+  const first = new Order();
+  const second = new Order();
+  const em = mockEntityManager({ findOne: [[Order, first], [Order, second], [Payment, null]], query: ['select 1', [{ n: 1 }]] });
+  assert.equal(await em.findOne(Order, {}), first);
+  assert.equal(await em.findOne(Order, {}), second);
+  assert.equal(await em.findOne(Order, {}), second);
+  assert.equal(await em.findOne(Payment, {}), null);
+  assert.deepEqual(await em.query('select 1'), [{ n: 1 }]);
+  await assert.rejects(em.query('select 2'), /em\.query\("select 2"\)/);
+});
+
+test('mockEntityManager: create builds an entity without a stub, the double is not thenable, a malformed stub is refused', async () => {
+  const em = mockEntityManager();
+  const built = em.create(Order, { id: 'o-1' });
+  assert.ok(built instanceof Order);
+  assert.equal(built.id, 'o-1');
+  assert.equal(await Promise.resolve(em), em);
+  assert.throws(() => Reflect.apply(mockEntityManager, undefined, [{ count: 3 }]), /must be \[Entity, result\]/);
+});
+
+test('fakeTransaction: runs the callback with a scoped view, records a commit and the writes it made', async () => {
+  const tx = fakeTransaction(mockEntityManager({ save: [Order, new Order()], query: ['update t set a = 1', []] }));
+  const seen: EntityManager[] = [];
+  const result = await tx.em.transaction(async (manager) => { seen.push(manager); await manager.query('update t set a = 1'); return manager.save(Order, {}); });
+  assert.ok(result instanceof Order);
+  assert.notEqual(seen[0], tx.em);
+  assert.deepEqual(tx.outcomes, ['commit']);
+  assert.equal(tx.commits, 1);
+  assert.equal(tx.rollbacks, 0);
+  assert.deepEqual(tx.committedWrites.map((write) => write.method), ['query', 'save']);
+  assert.deepEqual(tx.rolledBackWrites, []);
+});
+
+test('fakeTransaction: a throwing callback is rolled back, its writes are reported as discarded and the error is rethrown', async () => {
+  const tx = fakeTransaction(mockEntityManager({ insert: [Order, {}], query: ['select 1', []] }));
+  await assert.rejects(tx.em.transaction('SERIALIZABLE', async (manager) => { await manager.insert(Order, {}); await manager.query('select 1'); throw new Error('boom'); }), /boom/);
+  await tx.em.transaction(async (manager) => manager.query('select 1'));
+  assert.deepEqual(tx.outcomes, ['rollback', 'commit']);
+  assert.equal(tx.rollbacks, 1);
+  assert.deepEqual(tx.rolledBackWrites.map((write) => write.method), ['insert']);
+  assert.deepEqual(tx.committedWrites, []);
+  await assert.rejects(Reflect.apply(tx.em.transaction, tx.em, []), /needs a callback/);
+});
+
+test('fakeTransaction: a nested transaction reuses the same scoped view', async () => {
+  const tx = fakeTransaction();
+  const nested = await tx.em.transaction(async (outer) => outer.transaction(async (inner) => inner === outer));
+  assert.equal(nested, true);
+});
+
+// ---- behavioural fakes ------------------------------------------------------------------------------------------------
+
+const { fakeCache }: typeof import('../src/cache.ts') = require('../dist/cache.js');
+const { fakeLock }: typeof import('../src/lock.ts') = require('../dist/lock.js');
+const { recordingEventBus }: typeof import('../src/event-bus.ts') = require('../dist/event-bus.js');
+const { recordingQueueOutbox }: typeof import('../src/queue.ts') = require('../dist/queue.js');
+
+const PROFILE: FakeCacheKey = { name: 'member.profile', ttl: { seconds: 300 }, parse: (stored) => (typeof stored === 'object' && stored !== null ? stored : null) };
+
+test('fakeCache: a typed entry round-trips as JSON, has a ttl, and expires when the clock advances', async () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  const cache = fakeCache(clock);
+  assert.equal(await cache.get({ key: PROFILE, args: ['m-1'] }), null);
+  await cache.set({ key: PROFILE, args: ['m-1'], value: { name: 'An', at: new Date('2026-01-01T00:00:00.000Z') } });
+  assert.deepEqual(await cache.get({ key: PROFILE, args: ['m-1'] }), { name: 'An', at: '2026-01-01T00:00:00.000Z' });
+  assert.equal(cache.has('member.profile:m-1'), true);
+  assert.equal(cache.ttlOf('member.profile:m-1'), 300);
+  clock.advance(299_500);
+  assert.equal(cache.ttlOf({ key: PROFILE, args: ['m-1'] }), 1);
+  clock.advance(500);
+  assert.equal(cache.has({ key: PROFILE, args: ['m-1'] }), false);
+  assert.equal(cache.ttlOf('member.profile:m-1'), null);
+  assert.equal(await cache.get({ key: PROFILE, args: ['m-1'] }), null);
+  assert.deepEqual(cache.keys(), []);
+});
+
+test('fakeCache: parse narrows a stored value; del and clear remove; the cache-manager shape works; a bad ttl or clock is refused', async () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  const cache = fakeCache(clock);
+  await cache.set({ key: PROFILE, args: ['m-2'], value: 'not an object' });
+  assert.equal(await cache.get({ key: PROFILE, args: ['m-2'] }), null);
+  await cache.set('plain', { a: 1 }, 1000);
+  await cache.set('forever', 1);
+  assert.deepEqual(await cache.get('plain'), { a: 1 });
+  assert.equal(cache.ttlOf('forever'), null);
+  assert.equal(cache.has('forever'), true);
+  assert.equal(await cache.get('absent'), null);
+  clock.advance(1000);
+  assert.equal(cache.has('plain'), false);
+  await cache.del('forever');
+  assert.equal(cache.has('forever'), false);
+  await cache.set('x', 1, 5000);
+  cache.clear();
+  assert.deepEqual(cache.keys(), []);
+  await assert.rejects(cache.set('bad', 1, 0), /ttl of bad must be positive/);
+  assert.throws(() => Reflect.apply(fakeCache, undefined, [undefined]), /pass the FakeClock/);
+});
+
+test('fakeLock: grants, refuses a second holder, renews for the same holder, releases only the current grant, frees on ttl expiry', async () => {
+  const clock = new FakeClock('2026-01-01T00:00:00.000Z');
+  const lock = fakeLock(clock);
+  const first = await lock.acquire({ name: 'job', holder: 'a', ttlMs: 1000 });
+  assert.deepEqual(first, { name: 'job', holder: 'a', fence: 1 });
+  assert.ok(first);
+  assert.equal(await lock.acquire({ name: 'job', holder: 'b', ttlMs: 1000 }), null);
+  assert.deepEqual(await lock.acquire({ name: 'job', holder: 'a', ttlMs: 1000 }), { name: 'job', holder: 'a', fence: 1 });
+  assert.equal(lock.isHeld('job'), true);
+  assert.equal(lock.holderOf('job'), 'a');
+  await lock.release({ grant: { name: 'job', holder: 'b', fence: 1 } });
+  assert.equal(lock.isHeld('job'), true);
+  await lock.release({ grant: first });
+  assert.equal(lock.isHeld('job'), false);
+  assert.equal(lock.holderOf('job'), null);
+  const second = await lock.acquire({ name: 'job', holder: 'b', ttlMs: 1000 });
+  assert.equal(second?.fence, 2);
+  clock.advance(1000);
+  assert.equal(lock.isHeld('job'), false);
+  assert.equal((await lock.acquire({ name: 'job', holder: 'a', ttlMs: 1000 }))?.fence, 3);
+  assert.equal(lock.fenceOf('job'), 3);
+  assert.equal(lock.fenceOf('other'), null);
+});
+
+test('fakeLock: an explicit `at` wins and no clock is refused without one', async () => {
+  const lock = fakeLock();
+  const at = new Date('2026-01-01T00:00:00.000Z');
+  assert.ok(await lock.acquire({ name: 'n', holder: 'a', ttlMs: 10, at }));
+  assert.equal(await lock.acquire({ name: 'n', holder: 'b', ttlMs: 10, at: new Date(at.getTime() + 5) }), null);
+  assert.ok(await lock.acquire({ name: 'n', holder: 'b', ttlMs: 10, at: new Date(at.getTime() + 10) }));
+  assert.equal(lock.isHeld('n'), true);
+  await assert.rejects(lock.acquire({ name: 'x', holder: 'a', ttlMs: 1 }), /pass the FakeClock/);
+});
+
+class PlacedEvent { static eventName = 'order.placed'; readonly eventId: string; constructor(eventId: string) { this.eventId = eventId; } }
+class ShippedEvent { static eventName = 'order.shipped'; readonly eventId: string; constructor(eventId: string) { this.eventId = eventId; } }
+
+test('recordingEventBus: keeps one event per (name, id), remembers every publication and whether it was inside a transaction', async () => {
+  const bus = recordingEventBus();
+  assert.equal(bus.allInTransaction, false);
+  const tx = fakeTransaction(mockEntityManager());
+  const placed = new PlacedEvent('e-1');
+  await tx.em.transaction(async (manager) => { await bus.publish(placed, manager); await bus.publish(placed, manager); });
+  await bus.publish(new ShippedEvent('e-1'), tx.em);
+  assert.equal(bus.writes.length, 3);
+  assert.deepEqual(bus.events.map((event) => Reflect.get(event.constructor, 'eventName')), ['order.placed', 'order.shipped']);
+  assert.deepEqual(bus.eventsOf(PlacedEvent), [placed]);
+  assert.deepEqual(bus.entries.map((entry) => entry.inTransaction), [true, true, false]);
+  assert.equal(bus.allInTransaction, false);
+  bus.clear();
+  assert.deepEqual(bus.events, []);
+});
+
+test('recordingEventBus read side: scripted pending retries, dead letters, requeue and one-shot failures', async () => {
+  const bus = recordingEventBus();
+  assert.equal(await bus.pendingRetries(PlacedEvent), 0);
+  bus.setPendingRetries(2);
+  assert.equal(await bus.pendingRetries(PlacedEvent), 2);
+  const letter = { id: 'd-1', eventName: 'order.placed', eventId: 'e-1', reason: 'boom', attempts: 3 };
+  bus.queueDeadLetters(letter, { ...letter, id: 'd-2', eventName: 'order.shipped' });
+  assert.deepEqual(await bus.deadLetters(PlacedEvent), [letter]);
+  await bus.requeue('d-1');
+  assert.deepEqual(bus.requeued, ['d-1']);
+  const boom = new Error('down');
+  const calls: Array<[EventBusOperation, () => Promise<unknown>]> = [
+    ['publish', () => bus.publish(new PlacedEvent('z'), {})],
+    ['pendingRetries', () => bus.pendingRetries(PlacedEvent)],
+    ['deadLetters', () => bus.deadLetters(PlacedEvent)],
+    ['requeue', () => bus.requeue('d-1')],
+  ];
+  await Promise.all(calls.map(async ([operation, call]) => {
+    bus.failNext(operation, boom);
+    await assert.rejects(call(), /down/, operation);
+    await call();
+  }));
+  bus.failNext('requeue', boom);
+  bus.clear();
+  assert.deepEqual([bus.requeued, bus.writes], [[], []]);
+  assert.equal(await bus.pendingRetries(PlacedEvent), 0);
+  await bus.requeue('after-clear');
+});
+
+const { fakeInbox }: typeof import('../src/inbox.ts') = require('../dist/inbox.js');
+test('fakeInbox: the first claim of a pair wins, a repeat loses until the claim is released, a seen pair is a redelivery, one-shot failures reject once', async () => {
+  const inbox = fakeInbox();
+  assert.equal(await inbox.claim('sepay', 'e-1'), true);
+  assert.equal(await inbox.claim('sepay', 'e-1'), false);
+  assert.equal(await inbox.claim('mail', 'e-1'), true, 'the pair is (source, eventId), not the event id alone');
+  assert.deepEqual(inbox.claims, [{ source: 'sepay', eventId: 'e-1' }, { source: 'sepay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
+  assert.deepEqual(inbox.claimed, [{ source: 'sepay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
+  await inbox.release('sepay', 'e-1');
+  assert.deepEqual(inbox.released, [{ source: 'sepay', eventId: 'e-1' }]);
+  assert.equal(await inbox.claim('sepay', 'e-1'), true, 'a released claim is processed again');
+  inbox.seen('sepay', 'e-2');
+  assert.equal(await inbox.claim('sepay', 'e-2'), false);
+  inbox.failNext('claim', new Error('db down'));
+  await assert.rejects(() => inbox.claim('sepay', 'e-3'), /db down/);
+  assert.equal(await inbox.claim('sepay', 'e-3'), true, 'the failure is one-shot and the failed call claimed nothing');
+  inbox.failNext('release', new Error('db down'));
+  await assert.rejects(() => inbox.release('sepay', 'e-3'), /db down/);
+  inbox.clear();
+  assert.deepEqual([inbox.claims, inbox.claimed, inbox.released], [[], [], []]);
+  assert.equal(await inbox.claim('sepay', 'e-1'), true);
+});
+
+test('recordingQueueOutbox: records every job with its manager, by queue, and fails once when scripted', async () => {
+  const outbox = recordingQueueOutbox();
+  assert.equal(outbox.allInTransaction, false);
+  const tx = fakeTransaction(mockEntityManager());
+  await tx.em.transaction(async (manager) => { await outbox.write(manager, 'mail', { to: 'a' }); });
+  await outbox.write(tx.em, 'sms', { to: 'b' });
+  assert.deepEqual(outbox.jobs, [{ queue: 'mail', payload: { to: 'a' } }, { queue: 'sms', payload: { to: 'b' } }]);
+  assert.deepEqual(outbox.jobsOf('mail'), [{ queue: 'mail', payload: { to: 'a' } }]);
+  assert.deepEqual(outbox.entries.map((entry) => entry.inTransaction), [true, false]);
+  assert.equal(outbox.allInTransaction, false);
+  const boom = new Error('down');
+  outbox.failNext('write', boom);
+  await assert.rejects(outbox.write({}, 'mail', {}), /down/);
+  await outbox.write({}, 'mail', {});
+  outbox.clear();
+  assert.deepEqual(outbox.jobs, []);
+});
+
+test('the index exports the whole kit and the package.json declares typeorm as an optional peer only', () => {
+  for (const name of ['mock', 'mockEntityManager', 'fakeTransaction', 'FakeClock', 'fakeIds', 'fakeCache', 'fakeLock', 'recordingEventBus', 'recordingQueueOutbox', 'builder']) assert.equal(typeof Reflect.get(preset, name), 'function', name);
+  const pkg: { peerDependenciesMeta: { typeorm: { optional: boolean } }; dependencies?: Record<string, string> } = require('../package.json');
+  assert.equal(pkg.peerDependenciesMeta.typeorm.optional, true);
+  assert.equal(Object.keys(pkg.dependencies ?? {}).length, 0);
+  for (const file of ['entity-manager.js', 'ids.js', 'matchers.js', 'mock.js', 'clock.js', 'cache.js', 'lock.js', 'event-bus.js', 'queue.js', 'builders.js', 'world-runner.js']) {
+    assert.doesNotMatch(fs.readFileSync(new URL(`../dist/${file}`, import.meta.url), 'utf8'), /require\(["'](typeorm|@nestjs)/, `${file} pulls in no infra`);
+  }
+});
+
+const KIT_DECLARATIONS = ['mock.d.ts', 'entity-manager.d.ts', 'ids.d.ts', 'matchers.d.ts', 'clock.d.ts'];
+
+test('the kit types: mockEntityManager() is assignable to EntityManager with no cast, stubs are typed, the matchers and ids type-check', () => {
+  const problems = compileFixtures({ declarations: KIT_DECLARATIONS, fixtures: ['probe-kit'], stubs: { typeorm: 'typeorm-stub.fixture' } });
+  assert.deepEqual(problems, []);
+});
+
+test('the kit types reject a result of the wrong type, a method the double cannot stub, a stub without the entity class and a member EntityManager does not have, as the compiler reports them', () => {
+  const problems = compileFixtures({ declarations: KIT_DECLARATIONS, fixtures: ['probe-kit-rejected'], stubs: { typeorm: 'typeorm-stub.fixture' } });
+  assert.deepEqual(problems.map(({ file, line, code }) => ({ file, line, code })), [
+    { file: 'probe-kit-rejected', line: 4, code: EXPECTED_NOT_ASSIGNABLE_CODE },
+    { file: 'probe-kit-rejected', line: 5, code: EXPECTED_NOT_ASSIGNABLE_CODE },
+    { file: 'probe-kit-rejected', line: 6, code: EXPECTED_NOT_ASSIGNABLE_CODE },
+    { file: 'probe-kit-rejected', line: 7, code: EXPECTED_MISSING_MEMBER_CODE },
+  ]);
+});
+
+// -- e2e isolation: a real jest run of the preset's e2e project ----------------------------------------------------------
+// A stand-in for @nestjs/graphql's type registry, with its exact mechanism: the storage lives on the process global
+// (`global.GqlTypeMetadataStorage || (global.GqlTypeMetadataStorage = new Storage())`) and two different classes under one
+// type name are refused with the error a Nest boot reports. The globalSetup loads it in jest's main process, as the test
+// world's migrate step loads the application's modules there.
+const FAKE_GRAPHQL = `"use strict"
+class TypeMetadataStorageHost {
+  constructor() { this.types = new Map() }
+  add(name, target) {
+    const known = this.types.get(name)
+    if (known !== undefined && known !== target) throw new Error('Cannot determine a GraphQL output type for the "' + name + '": two classes declare it')
+    this.types.set(name, target)
+  }
+}
+const globalRef = global
+exports.TypeMetadataStorage = globalRef.GqlTypeMetadataStorage || (globalRef.GqlTypeMetadataStorage = new TypeMetadataStorageHost())
+exports.ObjectType = (name) => (target) => { exports.TypeMetadataStorage.add(name, target); return target }
+`;
+// Each file logs `start <label> <slot> <pid>` and, a little later, `end <label> <slot> <pid>` to timeline.log at the repository
+// root, so a spec can see which files ran at the same time, in which process and on which data slot.
+const E2E_SPEC = (label: string): string => `const { ObjectType } = require("fake-graphql")
+const fs = require("fs")
+const log = (event) => fs.appendFileSync(require("path").join(process.cwd(), "timeline.log"), event + " ${label} " + process.env.STARCI_TEST_WORLD_SLOT + " " + process.pid + String.fromCharCode(10))
+class Person {}
+ObjectType("Person")(Person)
+test("${label} boots with its own Person type", async () => {
+  log("start")
+  await new Promise((resolve) => setTimeout(resolve, 1500))
+  expect(require("fake-graphql").TypeMetadataStorage.types.get("Person")).toBe(Person)
+  log("end")
+})
+`;
+
+interface WorldState { version: number; library?: string; runId: string; slots?: Array<{ slot: number }> }
+
+/** The state file @starci/test-world 1.1.x publishes (protocol 2), with `slots` data slots. */
+const worldState = (slots: number): WorldState => ({ version: 2, library: '@starci/test-world@1.1.0', runId: 'r', slots: Array.from({ length: slots }, (_, index) => ({ slot: index + 1 })) });
+
+/**
+ * A repository with the preset's jest config, a world that loads the registry in the main process and publishes `state` as
+ * its state file (as the test world's globalSetup does), and three e2e files.
+ */
+function isolationRepo({ stockRunner, state = worldState(2) }: { stockRunner: boolean; state?: WorldState }): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'preset-isolation-'));
+  const put = (file: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  put('package.json', JSON.stringify({ name: 'isolation-fixture', private: true }));
+  put('node_modules/fake-graphql/package.json', JSON.stringify({ name: 'fake-graphql', main: 'index.js' }));
+  put('node_modules/fake-graphql/index.js', FAKE_GRAPHQL);
+  // The fixture's files are plain JavaScript, so ts-jest is not needed: its preset and transform are dropped, nothing else changes.
+  put('jest.config.js', `const config = require(${JSON.stringify(distPath('index.js'))}).starciJestConfig({ coverage: { roots: ['src/modules/*/'], roles: ['service'], excludes: [] } })
+for (const project of config.projects) {
+  delete project.preset
+  project.transform = {}
+  ${stockRunner ? 'delete project.runner' : ''}
+}
+module.exports = config
+`);
+  put('src/tests/world/global-setup.ts', `module.exports = async () => {
+  require("fake-graphql")
+  const file = require("path").join(process.cwd(), "world-state.json")
+  require("fs").writeFileSync(file, ${JSON.stringify(JSON.stringify(state))})
+  process.env.STARCI_TEST_WORLD_STATE = file
+}
+`);
+  put('src/tests/world/global-teardown.ts', 'module.exports = async () => {}\n');
+  put('apps/.keep', ''); // the preset's roots are src/ and apps/
+  put('src/tests/e2e/people/first.e2e-spec.ts', E2E_SPEC('the first file'));
+  put('src/tests/e2e/people/second.e2e-spec.ts', E2E_SPEC('the second file'));
+  put('src/tests/e2e/people/third.e2e-spec.ts', E2E_SPEC('the third file'));
+  return root;
+}
+
+/** Runs the repository's jest (the preset's peer) on the e2e project and answers its exit status and output. */
+function spawnE2e(root: string, extra: string[]): { status: number | null; output: string } {
+  const jestPackage = require.resolve('jest/package.json');
+  const jestBin = path.join(path.dirname(jestPackage), 'bin', 'jest.js');
+  const result = spawnSync(process.execPath, [jestBin, '--selectProjects', 'e2e', '--ci', '--json', '--outputFile', path.join(root, 'report.json'), '--cacheDirectory', path.join(root, '.jest-cache'), ...extra], {
+    cwd: root,
+    encoding: 'utf8',
+    // the fixture resolves jest (and the world runner its jest-runner) from the same installation as this spec
+    env: { ...process.env, NODE_PATH: path.dirname(path.dirname(jestPackage)) },
+    timeout: 240_000,
+  });
+  const error = result.error ? '\n' + result.error.message : '';
+  return { status: result.status, output: `${result.stdout}\n${result.stderr}${error}` };
+}
+
+interface JestReport { testResults: Array<{ name: string; status: string; message: string }> }
+
+/** Runs the repository's jest on the e2e project and answers its JSON report. */
+function runE2e(root: string, extra: string[]): { status: number | null; report: JestReport; output: string } {
+  fs.rmSync(path.join(root, 'report.json'), { force: true });
+  const { status, output } = spawnE2e(root, extra);
+  assert.equal(fs.existsSync(path.join(root, 'report.json')), true, `jest wrote no report:\n${output}`);
+  return { status, report: JSON.parse(fs.readFileSync(path.join(root, 'report.json'), 'utf8')), output };
+}
+
+const resultsOf = (report: JestReport): Record<string, { status: string; message: string }> => Object.fromEntries(report.testResults.map((file) => [path.basename(file.name), { status: file.status, message: file.message }]));
+
+interface TimelineEvent { event: string; label: string; slot: string; pid: string }
+
+/** The timeline the files logged: `{ event, label, slot, pid }` in the order they happened. */
+function timelineOf(root: string): TimelineEvent[] {
+  return fs.readFileSync(path.join(root, 'timeline.log'), 'utf8').trim().split(/\r?\n/).map((line) => {
+    const words = line.split(' ');
+    return { event: words[0] ?? '', label: words.slice(1, -2).join(' '), slot: words.at(-2) ?? '', pid: words.at(-1) ?? '' };
+  });
+}
+
+/** The largest number of files that ran at the same time, and every set of labels that overlapped with their slots. */
+function concurrencyOf(events: TimelineEvent[]): number {
+  const running = new Map<string, TimelineEvent>();
+  let widest = 0;
+  for (const entry of events) {
+    if (entry.event === 'start') {
+      for (const other of running.values()) assert.notEqual(other.slot, entry.slot, `${entry.label} started on slot ${entry.slot} while ${other.label} held it`);
+      running.set(entry.label, entry);
+      widest = Math.max(widest, running.size);
+    } else running.delete(entry.label);
+  }
+  return widest;
+}
+
+test('e2e isolation: in one preset run, three e2e files that each register a GraphQL type named Person all pass, even with --runInBand', () => {
+  const root = isolationRepo({ stockRunner: false });
+  try {
+    for (const extra of [[], ['--runInBand'], ['--maxWorkers=2']]) {
+      const { status, report, output } = runE2e(root, extra);
+      const results = resultsOf(report);
+      assert.deepEqual(Object.keys(results).sort((left, right) => left.localeCompare(right)), ['first.e2e-spec.ts', 'second.e2e-spec.ts', 'third.e2e-spec.ts'], `${extra.join(' ')}\n${output}`);
+      for (const [file, result] of Object.entries(results)) assert.equal(result.status, 'passed', `${extra.join(' ') || 'default'}: ${file}: ${result.message}`);
+      assert.equal(status, 0, output);
+    }
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('e2e isolation is the runner: on the stock in-band runner the same files collide on the process-global registry', () => {
+  const root = isolationRepo({ stockRunner: true });
+  try {
+    const { status, report } = runE2e(root, ['--runInBand']);
+    const results = resultsOf(report);
+    // jest orders the files itself: whichever runs first passes, the one after it inherits the registry and fails to boot.
+    const outcomes = Object.values(results).map((result) => result.status).sort((left, right) => left.localeCompare(right));
+    assert.deepEqual(outcomes, ['failed', 'failed', 'passed']);
+    assert.match(Object.values(results).find((result) => result.status === 'failed')?.message ?? '', /Cannot determine a GraphQL output type/);
+    assert.equal(status, 1);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('the world runner runs up to min(--maxWorkers, slots) files at once, each in its own process, never two on one slot', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(2) });
+  try {
+    const widths: Array<[string[], number]> = [[['--maxWorkers=3'], 2], [['--maxWorkers=2'], 2], [['--maxWorkers=1'], 1], [['--runInBand'], 1]];
+    for (const [extra, width] of widths) {
+      fs.rmSync(path.join(root, 'timeline.log'), { force: true });
+      const { status, output } = runE2e(root, extra);
+      assert.equal(status, 0, output);
+      const events = timelineOf(root);
+      assert.equal(events.length, 6, output);
+      const timeline = events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', ');
+      assert.equal(concurrencyOf(events), width, `${extra.join(' ')}: ${timeline}`);
+      for (const entry of events) assert.ok(['1', '2'].slice(0, width).includes(entry.slot), `${entry.label} ran on slot ${entry.slot}`);
+      assert.equal(new Set(events.map((entry) => entry.pid)).size, 3, 'each file ran in a process of its own');
+    }
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('the world runner widens with the slots the world provisioned: three slots run three files at once', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(3) });
+  try {
+    const { status, output } = runE2e(root, ['--maxWorkers=3']);
+    assert.equal(status, 0, output);
+    const events = timelineOf(root);
+    assert.equal(concurrencyOf(events), 3, events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', '));
+    assert.deepEqual([...new Set(events.map((entry) => entry.slot))].sort((left, right) => left.localeCompare(right)), ['1', '2', '3']);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('a state file of another test-world protocol is a typed pair mismatch naming both versions, never a fallback mode', () => {
+  const states: WorldState[] = [{ version: 1, runId: 'r' }, { version: 3, library: '@starci/test-world@9.0.0', runId: 'r', slots: [{ slot: 1 }] }];
+  for (const state of states) {
+    const root = isolationRepo({ stockRunner: false, state });
+    try {
+      const { status, output } = spawnE2e(root, ['--maxWorkers=2']);
+      assert.notEqual(status, 0, output);
+      assert.match(output, /JEST_PRESET_WORLD_PAIR_MISMATCH/);
+      const pkg: { version: string } = require('../package.json');
+      const version = pkg.version.replaceAll('.', String.raw`\.`);
+      assert.match(output, new RegExp(`@starci/jest-preset@${version}`));
+      assert.match(output, state.library === undefined ? /@starci\/test-world before 1\.1\.0/ : /@starci\/test-world@9\.0\.0/);
+      assert.match(output, /canon-pins/);
+      assert.equal(fs.existsSync(path.join(root, 'timeline.log')), false, 'no file ran');
+    } finally {
+      removeTree(root);
+    }
+  }
+});
+
+
+test('the unit metadata transformer preserves emitted JavaScript and leaves source metadata calls mapped', () => {
+  const ts: typeof import('typescript') = require('typescript');
+  const transformer: typeof import('../src/unit-metadata.ts') = require('../dist/unit-metadata.js');
+  const source = `import { Dep } from "./dep"
+declare function decorate(target: Function): void
+@decorate
+export class Service { constructor(readonly dep: Dep) {} }
+function __metadata(_key: string, value: unknown) { return value }
+__metadata("design:paramtypes", [Math.random() ? Object : String])
+`;
+  const options = { fileName: 'service.ts', compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, experimentalDecorators: true, emitDecoratorMetadata: true, isolatedModules: true, importHelpers: true, sourceMap: true } };
+  const original = ts.transpileModule(source, options);
+  const transformed = ts.transpileModule(source, { ...options, transformers: { after: [transformer.factory({ configSet: { compilerModule: ts } })] } });
+  assert.equal(transformed.outputText, original.outputText, 'runtime behavior is byte-for-byte unchanged');
+  assert.notEqual(transformed.sourceMapText, original.sourceMapText);
+  assert.match(transformed.outputText, /typeof .*Dep/);
+  const sourceCall = 'function __metadata(_key: string, value: unknown) { return value }; __metadata("design:paramtypes", [Math.random() ? Object : String])';
+  const sourceOriginal = ts.transpileModule(sourceCall, options);
+  const sourceTransformed = ts.transpileModule(sourceCall, { ...options, transformers: { after: [transformer.factory({ configSet: { compilerModule: ts } })] } });
+  assert.equal(sourceTransformed.sourceMapText, sourceOriginal.sourceMapText, 'source metadata calls keep every mapping');
+});
+
+test('no file the package ships or compiles as a fixture carries an inline suppression: a type probe asserts its error from the compiler output', () => {
+  const directive = new RegExp(['@ts-(expect-error|ignore|nocheck)', 'eslint-disable', '(c8|v8|istanbul) ignore', 'NOSONAR'].join('|'));
+  const root = path.join(import.meta.dirname, '..');
+  // the sources the build ships, the data it copies and the fixtures a type probe compiles
+  const files = ['src', 'assets', 'test']
+    .flatMap((folder) => fs.readdirSync(path.join(root, folder), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && !entry.name.endsWith('.spec.ts') && entry.name !== 'package.json')
+      .map((entry) => path.join(folder, entry.name)));
+  assert.ok(files.includes(path.join('test', 'probe-kit.fixture')) && files.includes(path.join('assets', 'unit-metadata.generated.js')), 'the scan reaches the fixtures and the generated anchor');
+  for (const name of files) assert.doesNotMatch(fs.readFileSync(path.join(root, name), 'utf8'), directive, `${name} suppresses nothing`);
+});

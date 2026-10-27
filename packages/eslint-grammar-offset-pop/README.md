@@ -33,3 +33,5 @@ through this package under the `starci-grammar/` namespace with unchanged IDs, c
 Consuming apps migrate in their own release.
 
 `npm test` runs package regression specs. Grammar and application front ends carry no specs.
+
+The source is TypeScript in `src/`; `npm run build` emits `dist/`, which the package ships beside `runtime/`. The spec resolves `@starci/eslint-grammar-core` through its built `dist/`, so build that package first (`npm run build` in `packages/eslint-grammar-core`), then `npm install` here.

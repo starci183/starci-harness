@@ -42,10 +42,11 @@ jobs:
         run: node cli/dist/main.js check secrets --all
       - name: Harness shape (contexts/hfs/harness.yaml)
         run: node cli/dist/main.js check shape
-      # Specs read sibling packages by relative path and the Grammar lint packages install siblings as file: copies
-      # (packages/README.md), so every package is installed before any is tested.
-      - name: Install packages
-        run: for dir in packages/*/; do (cd "$dir" && npm ci --no-audit --no-fund); done
+      # Specs read sibling packages by relative path and the Grammar lint packages install siblings as file: copies,
+      # which npm packs from the sibling's folder (its dist/ included), so every package is installed and built, in
+      # folder order, before any is tested (packages/README.md, build convention).
+      - name: Install and build packages
+        run: for dir in packages/*/; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
       - name: Test packages
         run: for dir in packages/*/; do (cd "$dir" && npm test); done
       # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar (built by its test

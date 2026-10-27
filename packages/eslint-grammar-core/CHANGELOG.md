@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (0.15.0 with the Grammar family)
+
+- Unreleased: the Grammar family (`grammar`, `eslint-grammar-core`, `eslint-grammar-offset-pop`) keeps one version and `packages/grammar` is outside this lane, so the minor bump to 0.15.0 lands with the family's release; the package stays 0.14.0 until then.
+- Changed: the source is TypeScript in `src/`, built to `dist/` (`npm run build`; `prepack` builds); the package ships `dist/`, `runtime/` and `docs/` and no hand-written JavaScript or `index.d.ts` (the build emits the declarations, with the same public types). No rule or behaviour changed; the exports and specifiers (`.` and the default plugin) are unchanged.
+- Changed: the specs are `src/*.spec.ts`, typechecked first by `npm test`.
+
 ## 0.14.0 - 2026-10-27
 
 - Changed: versioned together with Grammar 0.14.0; the bundled canon pins name the 0.14.0 Grammar family.

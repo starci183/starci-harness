@@ -19,7 +19,7 @@ and the exclusions. A repository has no other jest setting to tune.
   `src/tests/{world,integration,e2e,contract}/`), `integration` (`src/tests/integration/**/*.integration-spec.ts`), `e2e`
   (`src/tests/e2e/**/*.e2e-spec.ts`) and `contract` (`src/tests/contract/**/*.contract-spec.ts`). The last three compile against
   `src/tests/tsconfig.json`, start the one test world through `globalSetup`/`globalTeardown`
-  (`src/tests/world/global-setup.ts`, `global-teardown.ts`) and run on the world runner (`world-runner.cjs`, `WORLD_RUNNER`): every
+  (`src/tests/world/global-setup.ts`, `global-teardown.ts`) and run on the world runner (`world-runner.js`, `WORLD_RUNNER`): every
   spec file in a worker process of its own and never in band, so nothing the globalSetup or another file left on a process global
   (a framework registry such as `@nestjs/graphql`'s type metadata) reaches the file; and up to `min(--maxWorkers, slots)` files at
   once, each bound to its own data slot of `@starci/test-world` 1.1.0 (`STARCI_TEST_WORLD_SLOT`), never two files on one slot,
@@ -37,8 +37,8 @@ and the exclusions. A repository has no other jest setting to tune.
   `ruleParams.be.logicRoles` role inside a measured slot must reach 100 on every metric (an average never passes). The
   managed `test` script runs the unit project with `--coverage` and fails below it. Coverage is measured by v8, which counts the
   real source. The unit project overlays `isolatedModules: true`, `importHelpers: true` and `sourceMap: true` on the repository tsconfig, so ts-jest
-  transpiles each file without building a type program. `unit-metadata.cjs`, a ts-jest wrapper and after-transformer, maps
-  only synthetic `typeof value === "function" ? value : Object` guards inside TypeScript's generated `__metadata("design:paramtypes", ...)` calls to the dedicated `unit-metadata.generated.cjs` coverage anchor. Their runtime guards remain unchanged, including
+  transpiles each file without building a type program. `unit-metadata.js`, a ts-jest wrapper and after-transformer, maps
+  only synthetic `typeof value === "function" ? value : Object` guards inside TypeScript's generated `__metadata("design:paramtypes", ...)` calls to the dedicated `unit-metadata.generated.js` coverage anchor. Their runtime guards remain unchanged, including
   the fallback to `Object` for an undefined or non-class dependency; generated branches are not attributed to source parameters.
   The wrapper restores that second source after ts-jest emits its map. The anchor ignores generated guards only and is omitted from LCOV. Application source calls and guards remain measured. Source maps are enabled even when the build config disables them.
   Source conditionals, including branches on the same constructor line, still count toward per-file 100 coverage. Decorator helpers

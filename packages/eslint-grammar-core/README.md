@@ -49,3 +49,6 @@ Offset Pop inherits the Common component contract through `@starci/eslint-gramma
 Its own adapter selects that family and reuses these implementations.
 
 Regression checks live in this ESLint package. The Grammar and consuming app front ends carry no specs.
+
+The source is TypeScript in `src/` (`src/lib/` holds the shared readers, `src/vendor.d.ts` types the untyped canon and runtime
+JavaScript it imports); `npm run build` emits `dist/`, which is what the package ships beside `runtime/` and `docs/`.
