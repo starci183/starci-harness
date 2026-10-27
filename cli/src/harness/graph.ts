@@ -555,7 +555,8 @@ export const STUCK_STATES: readonly NodeState[] = ["failed", "returned", "lost",
 /** The node states whose task is live: dispatched and not ended. */
 export const LIVE_STATES: readonly NodeState[] = ["queued", "running", "launch-unknown", "lost", "reported", "returned", "verifying"]
 
-const taskState = (task: NodeTask): NodeState => {
+/** The state of a node from the ledger task carrying it; a reported task whose result is not done is returned to the Kernel. */
+export const taskState = (task: NodeTask): NodeState => {
     switch (task.status) {
         case "queued":
             return "queued"

@@ -14,9 +14,8 @@ import type { SeatRow } from "../../harness/seats.js"
 import { getTask, recordEvent } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
-import { loadRouting } from "../../harness/routing.js"
 import type { RoutePick } from "../../harness/router.js"
-import { createNodeTask, derivedStatus, DISPATCHING, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
+import { createNodeTask, derivedStatus, DISPATCHING, parallelSlots, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
 import type { Snapshot, WorkflowRow, WorkflowStatus, WorkflowTask } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
@@ -298,7 +297,7 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
     const { workflow } = snapshot
     const actions: StepAction[] = []
     const orca = workflow.header.runner === "orca"
-    const slots = orca ? Math.min(workflow.header.maxParallel ?? Infinity, loadRouting().workflowParallel) : 1
+    const slots = parallelSlots(workflow.header)
     let free = slots - snapshot.live
     for (const view of snapshot.views) {
         if (view.state !== "ready") continue
@@ -322,7 +321,7 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
 }
 
 /**
- * Dispatches ready nodes in dependency order while the workflow has free slots (the workflow file's maxParallel, else ops/routing.yaml workflowParallel, never above it, for orca, one for inline) and
+ * Dispatches ready nodes in dependency order while the workflow has free slots (parallelSlots of harness/workflow.ts) and
  * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
  * gets its seat: the new ones, and any left queued by a launch that certainly failed or a refused route.
  */

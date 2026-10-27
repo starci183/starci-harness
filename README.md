@@ -94,7 +94,7 @@ a folder outside any StarCi tree show every verb. The groups:
 
 | group | for |
 |---|---|
-| (top), `check`, `release` | the host and the tree, the scoped gates, push, tag, publish and CI status |
+| (top), `check`, `release` | the host and the tree, the local API the desktop app reads (`ui`), the scoped gates, push, tag, publish and CI status |
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
 | `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |

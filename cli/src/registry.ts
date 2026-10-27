@@ -69,6 +69,7 @@ import { hostUninstallVerb } from "./core/host/uninstall.js"
 import { configListVerb } from "./core/config/list.js"
 import { configGetVerb } from "./core/config/get.js"
 import { configSetVerb } from "./core/config/set.js"
+import { uiVerb } from "./core/ui/serve.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -147,6 +148,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     configListVerb,
     configGetVerb,
     configSetVerb,
+    uiVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */

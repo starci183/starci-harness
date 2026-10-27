@@ -165,7 +165,7 @@ export interface FlowPlace {
 }
 
 /** The role (be, fe) workspace.yaml gives an impl record's repository, if it names it. */
-const roleOf = (ref: WorkRef, repo: string): string | undefined => {
+export const roleOf = (ref: WorkRef, repo: string): string | undefined => {
     if (ref.family !== "impl") return undefined
     const repository = ref.id.split(".")[2]
     const workspace = readYamlFile(join(repo, WORK, "workspace.yaml"))

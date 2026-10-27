@@ -5,6 +5,7 @@ import type { Contract } from "./contract.js"
 import { LIVE_STATES, storedHeader, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { recordFirstGoal } from "./goal.js"
+import { loadRouting } from "./routing.js"
 import { now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
 import { acquireLeases, inTransaction } from "./leases.js"
@@ -97,6 +98,9 @@ export const isLiveTask = (task: WorkflowTask): boolean => LIVE_TASK_STATUSES.ha
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 
 const optText = (value: unknown): string | null => (value === null || value === undefined ? null : text(value))
+
+/** A workflow's parallel slots: the workflow file's maxParallel, else ops/routing.yaml workflowParallel, never above it, for orca; one for inline. */
+export const parallelSlots = (header: WorkflowHeader): number => (header.runner === "orca" ? Math.min(header.maxParallel ?? Infinity, loadRouting().workflowParallel) : 1)
 
 /** True when the ledger has the workflow graph tables; a read verb on a ledger older than version 4 sees no workflow. */
 export const hasGraphTables = (db: DatabaseSync): boolean => db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plan_nodes'").get() !== undefined
