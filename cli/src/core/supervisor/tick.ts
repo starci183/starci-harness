@@ -21,7 +21,7 @@ export const supervisorTickVerb = defineVerb({
         const swept = await supervisorTick(context)
         const open = openFeedback(loadFeedbackRules())
         const feedback = { open: open.open.map((item) => item.id), overdue: open.overdue.map((item) => item.id) }
-        const line = feedback.open.length === 0 ? [] : [`owner feedback open: ${feedback.open.map((id) => `${id}${feedback.overdue.includes(id) ? " (overdue)" : ""}`).join(", ")}`]
+        const line = feedback.open.length === 0 ? [] : [`owner feedback open: ${feedback.open.map((id) => (feedback.overdue.includes(id) ? id + " (overdue)" : id)).join(", ")}`]
         return { data: { ...swept, feedback }, message: [`supervisor tick: swept ${swept.swept.length === 0 ? "nothing" : swept.swept.join(", ")}`, ...swept.actions, ...line].join("\n") }
     },
 })
