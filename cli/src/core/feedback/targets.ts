@@ -52,7 +52,7 @@ const resolveRule = (target: string): { readonly target: string; readonly eviden
     if (rule === undefined) throw unresolved("rule", target, `${file} has no rule ${target}`)
     const built = (rule.enforcers ?? []).filter((enforcer) => enforcer.status !== "planned")
     if (built.length === 0) throw unresolved("rule", target, `${target} (${rule.code}) has no built enforcer`)
-    return { target, evidence: `${target} ${rule.code} enforced by ${built.map((enforcer) => `${enforcer.kind} ${enforcer.id}`).join(", ")}` }
+    return { target, evidence: `${target} ${rule.code} enforced by ${built.map((enforcer) => enforcer.kind + " " + enforcer.id).join(", ")}` }
 }
 
 /** An anchor the contexts search corpus resolves: a citable id or `<path>#<anchor>`. */
