@@ -151,7 +151,5 @@ rule of this plugin that no catalog entry names. There is no second table here.
 ## The runtime copy
 
 `runtime/` holds the StarCi runtime files the rules import (the slot manifest and view, the project graph and the
-architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. In this repository it is a
-committed snapshot taken from the legacy runtime (starci-academy-backend/.claude at 7424b89ca), where
-`scripts/hfs/sync-runtime.mjs` generates it; refresh it by running that generator there and copying
-`packages/eslint/be/runtime/` over this folder. Nothing in this package edits it.
+architecture machine it runs, the Sonar syntax rules), byte for byte at their runtime paths. It is committed source of
+this package, edited in place ([packages/README.md](../README.md) says how the bundled copies move together).

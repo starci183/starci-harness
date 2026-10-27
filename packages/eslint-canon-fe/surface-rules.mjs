@@ -4,7 +4,7 @@ import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./l
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.mjs"
 import { reactHookOf } from "./lib/react.mjs"
 
-const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|heritage|offset-pop))?$/
+const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const SURFACES = new Set([
   "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",

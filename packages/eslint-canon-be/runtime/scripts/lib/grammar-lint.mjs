@@ -4,12 +4,25 @@ import { parseYamlCached } from './yaml-cached.mjs';
 
 const CATALOG_FILE = new URL('../../knowledge/grammars/index.yaml', import.meta.url);
 
+function readCatalog() {
+  return parseYamlCached(fs.readFileSync(CATALOG_FILE, 'utf8'));
+}
+
 function selectedFamily(family) {
   if (typeof family !== 'string' || !family.trim()) throw new Error('sides.fe.grammar must explicitly name the selected Grammar family');
-  const catalog = parseYamlCached(fs.readFileSync(CATALOG_FILE, 'utf8'));
+  const catalog = readCatalog();
   const matches = (catalog.families ?? []).filter(entry => entry.id === family);
   if (matches.length !== 1) throw new Error(`Grammar family ${family} has no declared lint contract in knowledge/grammars/index.yaml`);
   return { catalog, selected: matches[0] };
+}
+
+/**
+ * Resolve a selection to its declared family id; only a catalog family id resolves, there are no aliases.
+ * @param {string} family - The id an app or caller names (sides.fe.grammar).
+ * @returns {{ id: string }} The declared family id.
+ */
+export function resolveGrammarFamily(family) {
+  return Object.freeze({ id: selectedFamily(family).selected.id });
 }
 
 /** The explicitly selected authored family entry; callers share the catalog lookup rather than inferring a family. */
@@ -24,13 +37,13 @@ export function grammarLintFor(family) {
     throw new Error(`Grammar family ${family} has no declared lint contract in knowledge/grammars/index.yaml`);
   }
   const lint = selected.lint;
-  if (lint.package === null) return Object.freeze({ family, package: null });
+  if (lint.package === null) return Object.freeze({ family: selected.id, package: null });
   if (typeof lint.package !== 'string' || !lint.package.startsWith('@starci/eslint-grammar-')
     || typeof lint.factory !== 'string' || !/^[a-zA-Z][a-zA-Z0-9]*$/.test(lint.factory)
     || typeof lint.prefix !== 'string' || !/^[a-z][a-z0-9-]*$/.test(lint.prefix)) {
     throw new Error(`Grammar family ${family} has an invalid lint contract in knowledge/grammars/index.yaml`);
   }
-  return Object.freeze({ family, package: lint.package, factory: lint.factory, prefix: lint.prefix });
+  return Object.freeze({ family: selected.id, package: lint.package, factory: lint.factory, prefix: lint.prefix });
 }
 
 /** The selected family's shared component/export contract, resolved through its catalog reference. */

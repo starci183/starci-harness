@@ -4,7 +4,7 @@ import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./l
 import { typedPropertyStrings } from "./lib/typed-class-values.mjs"
 import ts from "typescript"
 
-const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|heritage|offset-pop))?$/
+const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const BUTTONS = new Set(["Button", "IconButton"])
 const DIALOGS = new Set(["AlertDialog", "ConfirmDialog"])
 const ITEMS = new Set(["CollectionItem", "ItemActions", "ListItem", "ListRow", "ListBox.Item", "GridList.Item", "Table.Row", "TableRow"])

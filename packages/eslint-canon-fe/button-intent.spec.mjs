@@ -78,7 +78,7 @@ for (const edition of ["lite", "full"]) {
         fixture('const props={variant:"outline",intent:"neutral"}; const Page=()=> <Button {...props} />', "FE_BUTTON_NO_VARIANT"),
         fixture('const props={inner:{variant:"ghost"}}; const Page=()=> <Button {...props.inner} />', "FE_BUTTON_NO_VARIANT"),
         fixture('const props={variant:"outline"}; const Page=()=> <Button {...{...props}} />', "FE_BUTTON_NO_VARIANT"),
-        { code: 'import {Button as Action} from "@starci/grammar/heritage"; const Page=()=> <Action variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
+        { code: 'import {Button as Action} from "@starci/grammar/offset-pop"; const Page=()=> <Action variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
         { code: 'import * as G from "@starci/grammar/offset-pop"; const Page=()=> <G.Button variant="primary" />', errors: [{ messageId: "FE_BUTTON_NO_VARIANT" }] },
       ],
     })

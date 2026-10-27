@@ -2,7 +2,7 @@
  * The app declaration of a fixture: a product is one app repository whose hfs.json declares both sides, so a back-end fixture
  * declares its be side (`fields`: apps, optionalSlots, connections, reads) beside the smallest front end.
  */
-const OTHER = { be: { apps: [{ name: "core", kind: "api" }] }, fe: { grammar: "starci", apps: [{ name: "web", kind: "next" }] } }
+const OTHER = { be: { apps: [{ name: "core", kind: "api" }] }, fe: { grammar: "core", apps: [{ name: "web", kind: "next" }] } }
 
 /**
  * @param {"be" | "fe"} side - The side the fixture is about.
@@ -13,5 +13,5 @@ export const appDeclaration = (side, fields) => ({
     hfs: 3,
     kind: "app",
     project: "fixture",
-    sides: { ...OTHER, [side]: { ...(side === "fe" ? { grammar: "starci" } : {}), ...fields } },
+    sides: { ...OTHER, [side]: { ...(side === "fe" ? { grammar: "core" } : {}), ...fields } },
 })

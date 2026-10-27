@@ -12,7 +12,7 @@ import { fail } from './slot-errors.mjs';
 
 const HFS_RULES_FILE = 'knowledge/hfs/rules.yaml';
 const RULE_GATES = Object.freeze(['pre-commit', 'pre-push', 'settle', 'land', 'ci', 'sonar', 'runtime']);
-const ENFORCER_FAMILIES = Object.freeze(['eslint-be', 'eslint-fe', 'eslint-grammar-starci', 'stylelint', 'machine', 'hfs', 'work-validate', 'sonar', 'runtime']);
+const ENFORCER_FAMILIES = Object.freeze(['eslint-be', 'eslint-fe', 'eslint-grammar-core', 'stylelint', 'machine', 'hfs', 'work-validate', 'sonar', 'runtime']);
 const RULE_KINDS = Object.freeze(['codemod', 'lint', 'check', 'design']);
 const FINDING_CODE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$/;
 const ENFORCER_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -346,7 +346,7 @@ export function loadRuleCatalog({ root = skillRoot, file = path.join(root, HFS_R
     /** The catalogued why code of a lint finding's rule id (`starci-be/<id>`, `starci-fe/<id>`), or undefined. */
     lintCode: (ruleId) => {
       const [plugin, id] = String(ruleId ?? '').split('/');
-      const kind = (plugin === 'starci-be' && 'eslint-be') || (plugin === 'starci-fe' && 'eslint-fe') || (plugin === 'starci-grammar' && 'eslint-grammar-starci') || null;
+      const kind = (plugin === 'starci-be' && 'eslint-be') || (plugin === 'starci-fe' && 'eslint-fe') || (plugin === 'starci-grammar' && 'eslint-grammar-core') || null;
       return kind ? list.find((rule) => rule.enforcers.some((enforcer) => enforcer.kind === kind && enforcer.id === id))?.code : undefined;
     },
     /** The rules one enforcer judges, e.g. forEnforcer('eslint-be', 'error-home'). */

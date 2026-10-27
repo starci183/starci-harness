@@ -6,7 +6,7 @@
  *
  * Only structure, rhythm and the touch floor live here. Paint resolves through the semantic
  * variables every family binds (`--field-*`, `--accent`, `--danger`, `--muted`, `--focus`,
- * `--border`), so Core, Heritage and Offset Pop each get their own look without a Common colour.
+ * `--border`), so Core and Offset Pop each get their own look without a Common colour.
  * Spacing uses the Common 4px scale (0.25 / 0.5 / 0.75 / 1 / 1.5rem).
  *
  * `!important` appears only on the few declarations the vendor's field roots also set (display and
@@ -119,7 +119,7 @@
     .starci-core-textarea-control {
         width: 100%;
         min-width: 0;
-        min-height: 5rem;
+        min-height: var(--starci-core-control-min-size, 2.5rem);
         resize: vertical;
     }
 
@@ -145,7 +145,7 @@
     .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="input"]) { block-size: 2.5rem; }
 
     /* The select trigger is HeroUI's own (min-h-9). */
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="select"] { block-size: 2.25rem; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="select"] { block-size: var(--starci-core-control-min-size, 2.5rem); }
 
     /* Joined segments: one block, a segment-width (5rem) per option, never wider than the field; `fill` takes the whole row. */
     .starci-core-field-skeleton-control[data-grammar-field-skeleton="segmented"] {
@@ -160,7 +160,7 @@
     .starci-core-field-skeleton-control[data-grammar-field-skeleton="choice"] { flex: none; block-size: 1rem; inline-size: 1rem; }
     .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"] { flex: none; block-size: 1.25rem; inline-size: 2rem; }
     .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="lg"] { block-size: 1.5rem; inline-size: 3rem; }
-    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="control"] { block-size: var(--starci-core-control-min-size, 2.75rem); inline-size: 4.875rem; }
+    .starci-core-field-skeleton-control[data-grammar-field-skeleton="switch"][data-grammar-switch-size="control"] { block-size: var(--starci-core-control-min-size, 2.5rem); inline-size: 4.5rem; }
 
     .starci-core-field-skeleton-choice-label {
         color: var(--foreground, CanvasText);
@@ -174,7 +174,7 @@
 
     @media (pointer: coarse), (max-width: 40rem) {
         .starci-core-field-skeleton-control:is([data-grammar-field-skeleton="select"], [data-grammar-field-skeleton="input"], [data-grammar-field-skeleton="segmented"]) {
-            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+            min-block-size: var(--starci-core-control-min-size, 2.5rem);
         }
     }
 
@@ -310,24 +310,26 @@
 
     /*
      * --- Switch size "control" ---
-     * HeroUI's `lg` switch scaled to the shared control height (2.75rem) so a theme switch lines up with the IconButtons and the avatar of a
+     * HeroUI's `lg` switch scaled to the shared control height (2.5rem, 40px) so a theme switch lines up with the IconButtons and the avatar of a
      * bar. Keyed on the stamps the component emits (`data-grammar-switch-size`, `data-grammar-switch-thumb`), never on vendor class names.
      * The geometry is `!important` because consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide
      * against the vendor `.switch--*` size rules. The on position is a margin (as HeroUI's own thumb), the percentage resolving against
      * the track: 100% - thumb - inset.
      */
     [data-component="Switch"][data-grammar-switch-size="control"] {
-        --grammar-switch-height: var(--starci-core-control-min-size, 2.75rem);
-        --grammar-switch-width: 4.875rem;
+        --grammar-switch-height: var(--starci-core-control-min-size, 2.5rem);
+        --grammar-switch-width: 4.5rem;
         --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
     }
 
-    [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-choice-control="switch"] {
+    [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-track] {
         inline-size: var(--grammar-switch-width) !important;
+        block-size: var(--grammar-switch-height) !important;
     }
 
     [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-thumb] {
         inline-size: var(--grammar-switch-thumb) !important;
+        block-size: var(--grammar-switch-thumb) !important;
         align-items: center;
         justify-content: center;
     }
@@ -559,7 +561,7 @@
         .starci-core-list-option,
         .starci-core-button-group > *,
         .starci-core-field-control > :where(input:not([type="checkbox"], [type="radio"], [type="range"]), select) {
-            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+            min-block-size: var(--starci-core-control-min-size, 2.5rem);
         }
 
         .starci-core-number-field-step,
@@ -568,16 +570,16 @@
         .starci-core-date-trigger,
         .starci-core-calendar-nav,
         .starci-core-calendar-cell {
-            min-inline-size: var(--starci-core-control-min-size, 2.75rem);
-            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+            min-inline-size: var(--starci-core-control-min-size, 2.5rem);
+            min-block-size: var(--starci-core-control-min-size, 2.5rem);
         }
 
         .starci-core-slider-thumb::after {
             position: absolute;
             inset-block-start: 50%;
             inset-inline-start: 50%;
-            width: var(--starci-core-control-min-size, 2.75rem);
-            height: var(--starci-core-control-min-size, 2.75rem);
+            width: var(--starci-core-control-min-size, 2.5rem);
+            height: var(--starci-core-control-min-size, 2.5rem);
             translate: -50% -50%;
             content: "";
         }

@@ -48,7 +48,7 @@ for (const edition of ["lite", "full"]) {
         { code: grammar + 'const helper = () => <SearchField variant="secondary" />; const Page = () => <SurfaceCard>{helper()}</SurfaceCard>', errors: [variant] },
         { code: grammar + 'const Page = ({ SurfaceCard }) => <SurfaceCard><SearchField variant="primary" /></SurfaceCard>', errors: [variant] },
         { code: grammar + 'const Page = () => <SurfaceCard>{rows.map(row => <SearchField key={row.id} variant="primary" />)}</SurfaceCard>', errors: [variant] },
-        { code: 'import { SearchField as Search } from "@starci/grammar/heritage"; const Page = () => <Search variant="primary" />', errors: [variant] },
+        { code: 'import { SearchField as Search } from "@starci/grammar/offset-pop"; const Page = () => <Search variant="primary" />', errors: [variant] },
         { code: 'import * as G from "@starci/grammar/core"; const Page = () => <G.SearchField variant="secondary" />', errors: [variant] },
         { code: grammar + 'const choice = "secondary"; const Page = () => <SearchField variant={choice} />', errors: [variant] },
         { code: grammar + 'const Page = () => <SearchField variant={active ? "secondary" : "primary"} />', errors: [variant] },

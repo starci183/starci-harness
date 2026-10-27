@@ -29,7 +29,7 @@ gates:
 enforcerKinds:
   eslint-be: a rule of the plugin @starci/eslint-canon-be (id without the plugin prefix)
   eslint-fe: a universal rule of @starci/eslint-canon-fe (id without the plugin prefix)
-  eslint-grammar-starci: a selected Grammar family rule sharing the common component API, resolved through the family canon binding (id without the plugin prefix; FE-RULE-OWNERSHIP)
+  eslint-grammar-core: a selected Grammar family rule sharing the common component API, resolved through the family canon binding (id without the plugin prefix; FE-RULE-OWNERSHIP)
   stylelint: a rule of the @starci/stylelint-canon package
   machine: a check of the architecture machine (scripts/hfs/architecture), which reads the import graph
   hfs: a check of the hfs CLI that reads the repository tree, configuration, contracts or catalogs
@@ -1273,49 +1273,49 @@ rules:
       - {kind: stylelint, id: breakpoint-scale}
       - {kind: stylelint, id: source-resolves}
       - {kind: eslint-fe, id: no-raw-brand-value}
-      - {kind: eslint-grammar-starci, id: no-fractional-step}
+      - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-starci, id: no-hand-rolled-heading}
-      - {kind: eslint-grammar-starci, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-starci, id: no-heading-tag-outside-heading-component}
-      - {kind: eslint-grammar-starci, id: status-text-uses-soft-foreground}
+      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
+      - {kind: eslint-grammar-core, id: no-unresolved-token-class}
+      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
+      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
     proves:
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
       - {path: packages/eslint/fe/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
     exemplifiedBy:
       - {path: packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/globals.css, edition: lite}
       - {path: packages/hfs/templates/fe/skeleton/apps/app/src/app/globals.css, edition: full}
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
       - {path: packages/eslint/fe/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
     witness:
       - {path: packages/stylelint/source-resolves.spec.mjs, editions: [lite, full], codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
       - {path: packages/eslint/fe/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
-      - {path: packages/eslint/grammar-starci/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/status-colors.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/typography.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
+      - {path: packages/eslint/grammar-core/tokens.spec.mjs, editions: [lite, full], codes: [FE_STYLE_TOKEN_ONLY]}
   - id: R62
     code: "FE_NATIVE_FORM_CONTROL"
     editions: [lite, full]
     docs: [docs/architecture.md#r62, knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     proves:
-      - {path: packages/eslint/grammar-starci/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
+      - {path: packages/eslint/grammar-core/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
       - {path: packages/eslint/fe/r62-native-controls-coverage.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
+      - {path: packages/eslint/grammar-core/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
       - {path: packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppHomePage/component.tsx, edition: lite}
       - {path: packages/hfs/templates/fe/skeleton/apps/__app__/src/components/blocks/SignInForm/component.tsx, edition: full}
       - {path: packages/eslint/fe/r62-native-controls-coverage.spec.mjs, editions: [lite, full]}
     witness:
-      - {path: packages/eslint/grammar-starci/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
+      - {path: packages/eslint/grammar-core/r62-structural-elements-coverage.spec.mjs, editions: [lite, full], codes: [FE_NATIVE_FORM_CONTROL]}
       - {path: packages/eslint/fe/r62-native-controls-coverage.spec.mjs, edition: lite, codes: [FE_NATIVE_FORM_CONTROL, FE_NATIVE_IMAGE]}
       - {path: packages/eslint/fe/r62-native-controls-coverage.spec.mjs, edition: full, codes: [FE_NATIVE_FORM_CONTROL, FE_NATIVE_IMAGE]}
     law: "Product tiers compose the selected Grammar renderers for form controls, images and structural elements that the Grammar owns; they never reproduce those renderers with raw HTML."
@@ -1325,7 +1325,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-native-form-control}
       - {kind: eslint-fe, id: no-native-img}
-      - {kind: eslint-grammar-starci, id: no-raw-structural-element}
+      - {kind: eslint-grammar-core, id: no-raw-structural-element}
       - {kind: eslint-fe, id: image-has-size}
 
   - id: R63
@@ -1878,7 +1878,7 @@ rules:
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}
-      - {kind: eslint-grammar-starci, id: slot-status-through-slotview}
+      - {kind: eslint-grammar-core, id: slot-status-through-slotview}
       - {kind: eslint-fe, id: presentational-purity}
       - {kind: eslint-fe, id: connected-block-has-presentational-twin}
       - {kind: eslint-fe, id: no-resting-twin-component}
@@ -1891,18 +1891,18 @@ rules:
     editions: [lite, full]
     docs: [docs/architecture.md#r92, knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     proves:
-      - {path: packages/eslint/grammar-starci/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
+      - {path: packages/eslint/grammar-core/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
       - {path: packages/eslint/fe/r92-fetch-barrel.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r92-component-surface-coverage.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r56-r92-graph-coverage.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
+      - {path: packages/eslint/grammar-core/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
       - {path: packages/hfs/templates/fe/skeleton/apps/__app__/src/components/blocks/SignInForm/component.tsx, editions: [lite, full]}
       - {path: packages/eslint/fe/r92-fetch-barrel.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r92-component-surface-coverage.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r56-r92-graph-coverage.spec.mjs, editions: [lite, full]}
     witness:
-      - {path: packages/eslint/grammar-starci/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
+      - {path: packages/eslint/grammar-core/r92-slot-status-coverage.spec.mjs, editions: [lite, full], codes: [FE_COMPONENT_API]}
       - {path: packages/eslint/fe/r92-fetch-barrel.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r92-component-surface-coverage.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r56-r92-graph-coverage.spec.mjs, editions: [lite, full]}
@@ -1913,29 +1913,29 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_VENDOR_BOUNDARY", "ARCH_GRAMMAR_CONTRACT_INVALID", "ARCH_GRAMMAR_EXPORT_BYPASS"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-vendor-icon-outside-icon-leaf}
-      - {kind: eslint-grammar-starci, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-starci, id: no-off-scale-glyph-size}
-      - {kind: eslint-grammar-starci, id: no-icon-size-class}
-      - {kind: eslint-grammar-starci, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-starci, id: no-decorative-icon-in-metric-cell}
-      - {kind: eslint-grammar-starci, id: vendor-primitive-has-named-owner}
+      - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
+      - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
+      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
+      - {kind: eslint-grammar-core, id: no-icon-size-class}
+      - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
+      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
+      - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar, at: scripts/hfs/architecture/frontend-grammar.mjs}
     editions: [lite, full]
     docs: ["docs/code-pattern-enforcement.md#r93-vendor-and-grammar-ownership", knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     templateNa: "Vendor boundary violations and installed Grammar package contracts are checked against consumer ownership; no managed template scaffolds a vendor install or a forbidden import."
     proves:
-      - packages/eslint/grammar-starci/r93-vendor-coverage.spec.mjs
+      - packages/eslint/grammar-core/r93-vendor-coverage.spec.mjs
       - packages/eslint/fe/r93-grammar-ownership.spec.mjs
-      - packages/eslint/grammar-starci/menu-entries.spec.mjs
+      - packages/eslint/grammar-core/menu-entries.spec.mjs
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/r93-vendor-coverage.spec.mjs, editions: [lite, full]}
+      - {path: packages/eslint/grammar-core/r93-vendor-coverage.spec.mjs, editions: [lite, full]}
       - {path: packages/eslint/fe/r93-grammar-ownership.spec.mjs, editions: [lite, full]}
-      - {path: packages/eslint/grammar-starci/menu-entries.spec.mjs, editions: [lite, full]}
+      - {path: packages/eslint/grammar-core/menu-entries.spec.mjs, editions: [lite, full]}
     witness:
-      - {path: packages/eslint/grammar-starci/menu-entries.spec.mjs, editions: [lite, full], codes: [FE_VENDOR_BOUNDARY]}
-      - {path: packages/eslint/grammar-starci/r93-vendor-coverage.spec.mjs, editions: [lite, full], codes: [FE_VENDOR_BOUNDARY]}
+      - {path: packages/eslint/grammar-core/menu-entries.spec.mjs, editions: [lite, full], codes: [FE_VENDOR_BOUNDARY]}
+      - {path: packages/eslint/grammar-core/r93-vendor-coverage.spec.mjs, editions: [lite, full], codes: [FE_VENDOR_BOUNDARY]}
       - {path: packages/eslint/fe/r93-grammar-ownership.spec.mjs, editions: [lite, full], codes: [ARCH_GRAMMAR_CONTRACT_INVALID, ARCH_GRAMMAR_EXPORT_BYPASS]}
   - id: R94
     code: "FE_SLOT_FILE_ROLE"
@@ -5006,20 +5006,20 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-copy-in-call}
       - {kind: eslint-fe, id: no-alert}
-      - {kind: eslint-grammar-starci, id: no-inline-svg-outside-brand-mark-leaf}
+      - {kind: eslint-grammar-core, id: no-inline-svg-outside-brand-mark-leaf}
     editions: [lite, full]
     docs: [docs/quality-bar.md#r286, knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
     exemplifiedBy:
       - {path: packages/eslint/fe/translation.spec.mjs, editions: [lite, full], codes: [FE_COPY_IN_CALL, FE_NO_ALERT]}
-      - {path: packages/eslint/grammar-starci/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
+      - {path: packages/eslint/grammar-core/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
       - {path: packages/hfs/templates/fe/skeleton/apps/__app__/src/components/leaves/Icon/index.tsx, editions: [lite, full]}
       - {path: packages/hfs/templates/fe/skeleton/apps/__app__/src/modules/toast, editions: [lite, full]}
     proves:
       - {path: packages/eslint/fe/translation.spec.mjs, editions: [lite, full], codes: [FE_COPY_IN_CALL, FE_NO_ALERT]}
-      - {path: packages/eslint/grammar-starci/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
+      - {path: packages/eslint/grammar-core/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
     witness:
       - {path: packages/eslint/fe/translation.spec.mjs, editions: [lite, full], codes: [FE_COPY_IN_CALL, FE_NO_ALERT]}
-      - {path: packages/eslint/grammar-starci/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
+      - {path: packages/eslint/grammar-core/icon.spec.mjs, editions: [lite, full], codes: [FE_ICON_INLINE_SVG]}
 
   - id: R287
     code: "FE_CALLBACK_SHAPE"
@@ -5476,19 +5476,19 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_FRAME"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: app-shell-frame}
+      - {kind: eslint-grammar-core, id: app-shell-frame}
     editions: [lite, full]
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - {path: knowledge/ui/composition/app-shell.yaml, editions: [lite, full]}
     proves:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
       - {path: examples/full-app/fe/apps/app/src/features/layouts/ShopLayout/component.tsx, edition: full}
       - {path: examples/lite-app/fe/apps/web/src/features/layouts/WorkspaceLayout/component.tsx, edition: lite}
     witness:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_FRAME]}
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R314
     code: "FE_NAVBAR_CONTROL_SIZE"
@@ -5497,19 +5497,19 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CONTROL_SIZE"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: navbar-control-size}
+      - {kind: eslint-grammar-core, id: navbar-control-size}
     editions: [lite, full]
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - {path: knowledge/ui/composition/app-shell.yaml, editions: [lite, full]}
     proves:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
       - {path: examples/full-app/fe/packages/ecommerce-ui/src/branches/WorkspaceNavbar/component.tsx, edition: full}
       - {path: examples/lite-app/fe/apps/web/src/components/branches/Navbar/component.tsx, edition: lite}
     witness:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CONTROL_SIZE]}
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R315
     code: "FE_NAVBAR_CLUSTER"
@@ -5518,19 +5518,19 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CLUSTER"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: navbar-cluster}
+      - {kind: eslint-grammar-core, id: navbar-cluster}
     editions: [lite, full]
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - {path: knowledge/ui/composition/app-shell.yaml, editions: [lite, full]}
     proves:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
       - {path: examples/full-app/fe/packages/ecommerce-ui/src/branches/WorkspaceNavbar/component.tsx, edition: full}
       - {path: examples/lite-app/fe/apps/web/src/components/branches/Navbar/component.tsx, edition: lite}
     witness:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CLUSTER]}
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R316
     code: "FE_APP_SHELL_BOTTOM_TABS"
@@ -5539,19 +5539,19 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_BOTTOM_TABS"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-shell-bottom-tabs}
+      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
     editions: [lite, full]
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - {path: knowledge/ui/composition/app-shell.yaml, editions: [lite, full]}
     proves:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
       - {path: examples/full-app/fe/apps/app/src/features/layouts/ShopLayout/component.tsx, edition: full}
       - {path: examples/lite-app/fe/apps/web/src/features/layouts/WorkspaceLayout/component.tsx, edition: lite}
     witness:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_APP_SHELL_BOTTOM_TABS]}
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R317
     code: "FE_NAVBAR_CREATE"
@@ -5560,19 +5560,19 @@ rules:
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NAVBAR_CREATE"]
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-navbar-create}
+      - {kind: eslint-grammar-core, id: no-navbar-create}
     editions: [lite, full]
     docs:
       - knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP
       - {path: knowledge/ui/composition/app-shell.yaml, editions: [lite, full]}
     proves:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
     exemplifiedBy:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
       - {path: examples/full-app/fe/packages/ecommerce-ui/src/branches/WorkspaceNavbar/component.tsx, edition: full}
       - {path: examples/lite-app/fe/apps/web/src/components/branches/Navbar/component.tsx, edition: lite}
     witness:
-      - {path: packages/eslint/grammar-starci/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
+      - {path: packages/eslint/grammar-core/app-shell.spec.mjs, editions: [lite, full], codes: [FE_NAVBAR_CREATE]}
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R318
     code: "FE_NESTED_VARIANT"

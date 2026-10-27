@@ -12,7 +12,7 @@ const grammarComponent = (context, opening, expected) => {
   const binding = importOf(context, root);
   if (
     !binding ||
-    !/^@starci\/grammar(?:\/(?:common|core|heritage|offset-pop))?$/.test(
+    !/^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/.test(
       binding.source,
     )
   )
