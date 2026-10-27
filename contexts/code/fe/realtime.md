@@ -24,8 +24,8 @@ Enforced by: R50 (`fetch-only-in-api-client`: `EventSource` and native WebSocket
 `modules/api/sse/clients/event-stream.ts` creates the one instance over the identity client's token and refresh;
 a stream operation `modules/api/sse/<area>/stream-<channel>.ts` follows a channel with `{ signal, onOpen, onPush,
 report }` and narrows each frame with a guard; `hooks/swr/api/sse/subscriptions/useSubscribe<Channel>Swr.ts` starts it
-in `useSWRSubscription` under a key holding the tenant and viewer ids, revalidates every read the channel feeds on
-(re)open, revalidates the reads a push makes stale, and aborts in its cleanup; a token never travels in the URL.
+in `useSWRSubscription` under its key ([data.md](data.md) FE-DATA-KEY), revalidates every read the channel feeds on
+(re)open, revalidates the reads a push makes stale, and aborts in its cleanup; the token travels as [BE-REALTIME-3](../be/realtime.md) says.
 
 Why: the query carries the state and the stream only its changes, so revalidating on open closes the gap a reconnect
 leaves, and one subscription per channel avoids duplicate listeners and leaked connections.

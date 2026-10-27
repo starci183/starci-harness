@@ -302,6 +302,11 @@ rulings:
     status: live
     ruling: "Front-end wire types are generated from the back-end contract snapshot, never typed by hand."
     owner: "contexts/code/fe/transport.md FE-WIRE-GENERATED"
+  - id: fe-shape-not-state
+    date: '2026-10-28'
+    status: live
+    ruling: "A front-end unit has three axes named shape, slot and error, and the code uses those words: the pure half takes `{ shape?, props, on? }` with an `XShape` union of drawn shapes (never data-status words), switched on exhaustively, one story per member (`args: { shape }`); `state` on a pure half is refused, with no alias. Owner's words (2026-10-28, translated): 'so change state to shape; settled: shape, state, error; settled, fix all of .claude and nivo'."
+    owner: "contexts/code/fe/function.md FE-FUNCTION-2, FE-FUNCTION-7; lint R92"
   - id: event-stream-package
     date: '2026-10-26'
     status: live

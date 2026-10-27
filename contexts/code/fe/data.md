@@ -9,8 +9,8 @@ How a unit reads and writes server data and which store owns which state. Librar
 ## FE-DATA-SWR One SWR hook per operation, and it returns the feature's data
 
 Each `modules/api` operation has one `hooks/swr` wrapper: a query uses `useSWR` (an on-demand read `useSWRMutation`),
-passes SWR's abort `signal` to the operation, throws when the answer has no data and returns the field the feature
-reads; a status that changes on the server refreshes by exactly one door, an SWR `refreshInterval` that returns `0`
+passes SWR's abort `signal` to the operation, fails as [error.md](error.md) FE-ERROR-2 says and returns the field the
+feature reads; a status that changes on the server refreshes by exactly one door, an SWR `refreshInterval` that returns `0`
 once settled or a push ([realtime.md](realtime.md)); no unit fetches in an effect or runs its own timer.
 
 Why: cache identity, deduplication and revalidation are one decision per resource; a unit that calls the transport

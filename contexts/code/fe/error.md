@@ -26,9 +26,10 @@ Enforced by: R51 (`no-failure-collapse`, `one-outcome-union`, `client-maps-auth-
 
 ## FE-ERROR-3 Hard stops where silence would be wrong
 
-`throw new Error(...)` marks what the code cannot continue without: an answer with no data, a required environment
-value missing when `modules/config` is read (no localhost fallback), a part rendered outside its owner; every `catch`
-handles, maps or rethrows, and no `console` call stands in for handling.
+`throw new Error(...)` marks what the code cannot continue without: an answer with no data (FE-ERROR-2), a required
+environment value missing when `modules/config` is read (no default, by [BE-CONFIG-3](../be/config.md)), a part
+rendered outside its owner; a `catch` follows [SHARED-LOOSENING-1](../shared/loosening.md), and no `console` call
+stands in for handling.
 
 Why: a silent fallback ships a broken screen that looks working; a throw lands in a boundary or a toast where it is seen.
 

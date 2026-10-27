@@ -31,17 +31,24 @@ visual choice: a component, its variant, size, tone, paint, radius or depth is d
 
 ## Data status of a region
 
-FE-ERROR-1: a region that reads data shows its status through the one status view, in its own place, by one recipe
-in every app and grammar. A read is folded into a
+FE-ERROR-1: the slot axis of [function.md](function.md) FE-FUNCTION-2. A region that reads data shows its status
+through the one status view, in its own place, by one recipe in every app and grammar. A read is folded into a
 `DataSlot<T>` (`items`, `isLoading`, `isError`, `isForbidden`; none set means empty) by `slotOfSwr`, and `mapSlot`
-carries the status over to the view made of its items. The pure half renders the region through the one status view
-`components/composites/SlotView` in the region's place, inside the unchanged surface: while loading it draws the
-ready tree from a `placeholder` value of the same shape with `isSkeleton`; on error the failure notice with a retry
-that re-runs exactly that read; on forbidden the notice for a primary region (`forbidden="notice"`) or nothing for a
-secondary one (`"hide"`); empty shows the region's empty sentence. A part that only waits passes its flag down
-(`isSkeleton`, `isLoading`) and rests as itself; a pure block never branches on a status flag. The copy comes from the
-shared status namespace through `useSlotLabels`. A signed-out viewer never reaches a region: the proxy and the session
-gate send them to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
+carries the status over to the view made of its items. The pure half renders the region through
+`components/composites/SlotView` in the region's place, inside the unchanged surface: on error the failure notice with a
+retry that re-runs exactly that read; on forbidden the notice for a primary region (`forbidden="notice"`) or nothing
+for a secondary one (`"hide"`); empty shows the region's empty sentence. The copy comes from the shared status
+namespace through `useSlotLabels`. A signed-out viewer never reaches a region: the proxy and the session gate send them
+to sign-in. A missing resource behind a route is `notFound()` in the page owner, never a region status.
+
+Loading is skeleton parity, end to end: `slot.isLoading` makes `SlotView` call `children(placeholder, true)`, so the
+loading tree is the ready tree drawn from a `placeholder` value of the same shape, with the same boxes. `isSkeleton` is
+passed down to every leaf, and each leaf draws the grammar's skeleton in its own box 
+([ui composition](../../ui/composition.md) STATE-8). The one allowed `isSkeleton` branch hides a part that cannot be drawn
+without real data (`{isSkeleton ? null : <OrderDisclosure ... />}`); a part that only waits (a button, a field) takes
+its flag and rests as itself, and no branch picks between two different elements. A pure block never branches on a
+status flag, and nothing draws a page-level loading view except the route's `*LoadingPage` ([boundaries.md](boundaries.md)
+FE-BOUNDARY-1).
 
 ```tsx
 <SlotView slot={props.props.leads} placeholder={LEADS_PLACEHOLDER} labels={props.props.slotLabels} onRetry={props.on.retry}>
@@ -50,14 +57,15 @@ gate send them to sign-in. A missing resource behind a route is `notFound()` in 
 ```
 
 Owners, one copy each: `DataSlot` and `SlotLabels` in `modules/types`, `slotOfSwr`/`mapSlot`/`loadingSlot` in
-`hooks/slot/slot.shared.ts`, `useSlotLabels` in `hooks/slot`, the view in `components/composites/SlotView`. The look
-of each notice and skeleton is the grammar's.
+`hooks/slot/slot.shared.ts`, `useSlotLabels` in `hooks/slot`, the view in `components/composites/SlotView`, a region's
+placeholder beside the pure half that draws it. The look of each notice and skeleton is the grammar's.
 
-Why: a region that draws its own loading, error or empty branch is one more variant somebody has to draw, and it
-drifts from every other region's.
+Why: a region that draws its own loading, error or empty branch is one more variant somebody has to draw, and a
+skeleton that is not the ready tree jumps when the data lands.
 
 Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-resting-branch-at-call-site`,
-`no-resting-twin-component`, `no-data-status-shape`).
+`no-resting-twin-component`, `no-data-status-shape`); the DNA gate `skeleton-parity` compares the loading tree with
+the ready tree.
 
 ## Topics
 
@@ -66,7 +74,7 @@ Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-res
 | [architecture.md](architecture.md) | tiers and their direction, who owns a world, apps and packages, the front end serves no API | FE-ARCHITECTURE-1..4, FE-ROUTE |
 | [folder.md](folder.md) | the source root, the file set of a unit, hooks and modules folders, apps and packages | FE-FOLDER-1..4, FE-APPS-1, FE-PACKAGES-1..3 |
 | [naming.md](naming.md) | unit, contract, class-name, hook, operation, key and file names | FE-NAMING-1..5 |
-| [function.md](function.md) | the connected and pure halves, `{ state, props, on }`, lower tiers, route files, page owners | FE-FUNCTION-1..6 |
+| [function.md](function.md) | the connected and pure halves, `{ shape?, props, on? }`, the shape, slot and error axes per tier, every shape member drawn and storied, route files, page owners | FE-FUNCTION-1..7 |
 | [imports.md](imports.md) | the grammar entry, data through hooks, vendor imports | FE-IMPORTS-1..3 |
 | [typing.md](typing.md) | readonly props, literal unions, wire vs feature vs view | FE-TYPING-1..3 |
 | [comment.md](comment.md) | field and decision comments | FE-COMMENT-1 |
