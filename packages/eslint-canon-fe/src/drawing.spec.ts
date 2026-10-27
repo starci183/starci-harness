@@ -204,7 +204,7 @@ test("only the sibling index reaches the pure half, and it never re-exports XBas
   tester.run("base-import-pair", baseImportPair, {
     valid: [
       { filename: BLOCK_INDEX, code: "import { HandoffBlockBase } from \"./component\"" },
-      { filename: BLOCK_INDEX, code: "export type { HandoffBlockState } from \"./component\"" },
+      { filename: BLOCK_INDEX, code: "export type { HandoffBlockShape } from \"./component\"" },
       { filename: PAGE, code: "import { HandoffBlock } from \"@/components/blocks/sales/HandoffBlock\"" },
       // a sibling `./component` outside a split tier is an ordinary module
       { filename: at("apps/web/src/modules/utils/index.ts"), code: "import { x } from \"./component\"" },
@@ -224,19 +224,70 @@ test("a shape union never lists a data status or open/closed", () => {
   assert.doesNotThrow(() => {
   tester.run("no-data-status-shape", noDataStatusShape, {
     valid: [
-      { filename: BLOCK, code: "export type HandoffBlockState = \"prepared\" | \"sent\" | \"returned\"" },
-      { filename: OVERLAY, code: "export type SendOverlayState = \"form\" | \"confirm\"" },
-      { filename: BLOCK_INDEX, code: "export type HandoffBlockState = \"pending\" | \"ready\"" },
+      { filename: BLOCK, code: "export type HandoffBlockShape = \"prepared\" | \"sent\" | \"returned\"" },
+      { filename: OVERLAY, code: "export type SendOverlayShape = \"form\" | \"confirm\"" },
+      { filename: BLOCK_INDEX, code: "export type HandoffBlockShape = \"pending\" | \"ready\"" },
       // a `component.tsx` outside every split tier names no drawn shapes
-      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "export type BadgeState = \"pending\" | \"ready\"" },
-      { filename: at("apps/web/src/modules/components/blocks/Card/component.tsx"), code: "export type CardState = \"pending\"" },
+      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "export type BadgeShape = \"pending\" | \"ready\"" },
+      { filename: at("apps/web/src/modules/components/blocks/Card/component.tsx"), code: "export type CardShape = \"pending\"" },
     ],
     invalid: [
-      { filename: BLOCK, code: "export type ExampleBlockState = \"pending\" | \"ready\" | \"failed\"", errors: [{ messageId: "status" }, { messageId: "status" }] },
-      { filename: OVERLAY, code: "export type DrawerState = \"closed\" | \"ready\"", errors: [{ messageId: "status" }] },
-      { filename: FEATURE_PAGE, code: "export type OperatePageState = \"view\" | \"loading\"", errors: [{ messageId: "status" }] },
+      { filename: BLOCK, code: "export type ExampleBlockShape = \"pending\" | \"ready\" | \"failed\"", errors: [{ messageId: "status" }, { messageId: "status" }] },
+      { filename: OVERLAY, code: "export type DrawerShape = \"closed\" | \"ready\"", errors: [{ messageId: "status" }] },
+      { filename: FEATURE_PAGE, code: "export type OperatePageShape = \"view\" | \"loading\"", errors: [{ messageId: "status" }] },
     ],
   })
 
+  })
+})
+
+test("the pure half's input is `shape`: the old `state` key is refused and renamed by the fix", () => {
+  assert.doesNotThrow(() => {
+    tester.run("base-props-atom-shape", basePropsAtom, {
+      valid: [
+        { filename: BLOCK, code: "export const HandoffBlockBase = (props: { shape?: HandoffBlockShape; props: { readonly id: string }; on?: { readonly retry: () => void } }) => <div />" },
+        { filename: BLOCK, code: "export const HandoffBlockBase = (props: { props: { readonly id: string } }) => <div />" },
+      ],
+      invalid: [
+        {
+          filename: BLOCK,
+          code: "export const HandoffBlockBase = (props: { state: HandoffBlockShape; props: {}; on: {} }) => <div />",
+          output: "export const HandoffBlockBase = (props: { shape: HandoffBlockShape; props: {}; on: {} }) => <div />",
+          errors: [{ messageId: "renamed" }],
+        },
+        {
+          filename: BLOCK,
+          code: "type HandoffBlockBaseProps = { readonly state?: \"sent\"; readonly props: {} }\nexport const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />",
+          output: "type HandoffBlockBaseProps = { readonly shape?: \"sent\"; readonly props: {} }\nexport const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />",
+          errors: [{ messageId: "renamed" }],
+        },
+      ],
+    })
+  })
+})
+
+test("a shape is never a status, written as an interface, an inline object or a flag", () => {
+  assert.doesNotThrow(() => {
+    tester.run("no-data-status-shape-forms", noDataStatusShape, {
+      valid: [
+        { filename: BLOCK, code: "export interface HandoffBlockShape { readonly layout: \"wide\" | \"narrow\" }" },
+        { filename: BLOCK, code: "export const HandoffBlockBase = (props: { shape: \"form\" | \"confirm\"; props: { readonly isOpen: boolean } }) => <div />" },
+        { filename: BLOCK, code: "export const HandoffBlockBase = (props: { shape: HandoffBlockShape; props: {} }) => <div />" },
+        // the connected half may hold status: only the pure half draws shapes
+        { filename: BLOCK_INDEX, code: "export interface HandoffBlockShape { readonly isLoading: boolean }" },
+      ],
+      invalid: [
+        { filename: BLOCK, code: "export interface HandoffBlockShape { readonly isRenewing: boolean }", errors: [{ messageId: "flag" }] },
+        { filename: BLOCK, code: "export interface HandoffBlockShape { readonly phase: \"ready\" | \"loading\" }", errors: [{ messageId: "status" }] },
+        { filename: BLOCK, code: "export type PayDrawerShape = { readonly step: \"pay\" | \"done\"; readonly isOpen: boolean }", errors: [{ messageId: "flag" }] },
+        { filename: BLOCK, code: "export type HandoffBlockShape = \"sent\" | { readonly expanded: boolean }", errors: [{ messageId: "flag" }] },
+        {
+          filename: BLOCK,
+          code: "export const BillingOverviewBase = (props: { shape: { readonly isRenewing: boolean }; props: {} }) => <div />",
+          errors: [{ messageId: "flag" }],
+        },
+        { filename: OVERLAY, code: "export const SendOverlayBase = (props: { shape: \"form\" | \"closed\"; props: {} }) => <div />", errors: [{ messageId: "status" }] },
+      ],
+    })
   })
 })

@@ -1,12 +1,12 @@
 /**
  * The rules that hold the drawing law (the `drawing` slot role: a surface's pure `component.tsx`).
  *
- * TWO AXES, AND ONLY ONE IS DRAWN. A surface's `state` is its SHAPE: a layout the owner approves as
+ * TWO AXES, AND ONLY ONE IS DRAWN. A surface's `shape` is its SHAPE: a layout the owner approves as
  * one drawing. A slot's data status (loading, forbidden, error, empty) is not a shape; it is a
  * status recipe applied per resource, and it is never a drawn shape. Mixing the two is what made
  * every block ship four hand-drawn variants that disagreed with each other.
  *
- * THE PURE HALF TAKES ATOMS. `component.tsx` receives `{ state, props, on }`: `props` is data
+ * THE PURE HALF TAKES ATOMS. `component.tsx` receives `{ shape?, props, on? }`: `props` is data
  * (strings, numbers, booleans, arrays, plain objects), `on` is actions whose arguments are data,
  * and feature composition may also take named `render` callbacks inside `props` to render supplied
  * blocks. A layout alone also takes `children`, because the router puts the page there.
@@ -19,7 +19,7 @@
  * never wrong, beyond it.
  */
 
-import type { TSESTree } from "@typescript-eslint/utils"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { classifyImport, roleOfFile } from "./lib/scope.ts"
 
@@ -97,7 +97,8 @@ const keyOf = (member: TSESTree.TypeElement): unknown => {
 export const basePropsAtom = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A pure `XBase` takes `state`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
+    docs: { description: "A pure `XBase` takes `shape`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
+    fixable: "code",
     schema: [],
     messages: {
       tree:
@@ -107,7 +108,9 @@ export const basePropsAtom = defineRule({
       onData:
         "`on.{{key}}` is not an action. `on` holds functions only; data belongs in `props`.",
       member:
-        "`{{key}}` is not part of the pure contract. A pure half takes `state`, `props` and `on`{{children}}.",
+        "`{{key}}` is not part of the pure contract. A pure half takes `shape`, `props` and `on`{{children}}.",
+      renamed:
+        "`state` is the old name of the pure half's shape. A pure half takes `{ shape?, props, on? }`: rename the key to `shape` and its union `XState` to `XShape`.",
     },
   },
   create(context) {
@@ -219,7 +222,16 @@ export const basePropsAtom = defineRule({
         for (const member of membersOf(annotation, types)) {
           const key = keyOf(member)
           const type = memberType(member)
-          if (key === "state") continue
+          if (key === "shape") continue
+          if (key === "state") {
+            const stateKey = "key" in member ? member.key : undefined
+            context.report({
+              node: member,
+              messageId: "renamed",
+              ...(stateKey?.type === "Identifier" ? { fix: (fixer: TSESLint.RuleFixer) => fixer.replaceText(stateKey, "shape") } : {}),
+            })
+            continue
+          }
           if (key === "props") checkData(type, "props", new Set())
           else if (key === "on") checkActions(type)
           else if (key === "children" && tier === "layouts") continue
@@ -299,22 +311,49 @@ const DATA_STATUS = new Set([
   "skeleton", "closed", "idle", "refreshing", "retrying",
 ])
 
-/** A surface's `XState` names shapes only. */
+/** The name of a pure half's shape union: `XShape`. */
+const SHAPE_NAME = /^[A-Z][A-Za-z0-9]*Shape$/
+
+/** A boolean member that names a status or an open/closed lifecycle: `isOpen`, `isLoading`, `isRenewing`. */
+const STATUS_FLAG = /^is[A-Z]/
+
+/** A surface's `XShape` names drawn shapes only: no data status, no open/closed, no status flag. */
 export const noDataStatusShape = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "`XState` of a pure half names drawn shapes, never a data status or open/closed." },
+    docs: { description: "`XShape` of a pure half (a union, an interface or an inline `shape` object) names drawn shapes, never a data status, open/closed or a status flag." },
     schema: [],
     messages: {
       status:
         "`{{name}}` lists \"{{value}}\" as a shape. Loading, forbidden, error and empty describe resource status: pass them as data to the owned status renderer. Open/closed is a boolean atom. A shape is a layout the owner approves as one drawing.",
+      flag:
+        "`{{name}}` carries the flag `{{key}}`. A shape names a drawing, never a status or open/closed flag: a read's status goes through its DataSlot and SlotView, a pending mutation is a prop of its control, and open/closed is a boolean atom in `props`.",
     },
   },
   create(context) {
     if (!pureHalf(context)) return {}
+    const checkMembers = (name: string, members: readonly TSESTree.TypeElement[]): void => {
+      for (const member of members) {
+        const key = keyOf(member)
+        const type = memberType(member)
+        if ((typeof key === "string" && STATUS_FLAG.test(key)) || type?.type === "TSBooleanKeyword") {
+          context.report({ node: member, messageId: "flag", data: { name, key: String(key) } })
+        } else if (type !== undefined) {
+          check(name, type)
+        }
+      }
+    }
     const check = (name: string, node: TSESTree.TypeNode): void => {
+      if (node.type === "TSTypeLiteral") {
+        checkMembers(name, node.members)
+        return
+      }
       const members = node.type === "TSUnionType" ? node.types : [node]
       for (const member of members) {
+        if (member.type === "TSTypeLiteral") {
+          checkMembers(name, member.members)
+          continue
+        }
         const value = member.type === "TSLiteralType" && "value" in member.literal ? member.literal.value : undefined
         if (typeof value === "string" && DATA_STATUS.has(value)) {
           context.report({ node: member, messageId: "status", data: { name, value } })
@@ -323,7 +362,15 @@ export const noDataStatusShape = defineRule({
     }
     return {
       TSTypeAliasDeclaration(node) {
-        if (/^[A-Z][A-Za-z0-9]*State$/.test(node.id.name)) check(node.id.name, node.typeAnnotation)
+        if (SHAPE_NAME.test(node.id.name)) check(node.id.name, node.typeAnnotation)
+      },
+      TSInterfaceDeclaration(node) {
+        if (SHAPE_NAME.test(node.id.name)) checkMembers(node.id.name, node.body.body)
+      },
+      TSPropertySignature(node) {
+        const type = node.typeAnnotation?.typeAnnotation
+        if (keyOf(node) !== "shape" || type === undefined || type.type === "TSTypeReference") return
+        check("shape", type)
       },
     }
   },

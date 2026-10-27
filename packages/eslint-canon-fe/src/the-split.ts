@@ -44,16 +44,22 @@ const REACHES_FOR_THE_WORLD =
 export const presentationalPurity = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "The drawing half takes resolved props: no request, no store, no translation." },
+    docs: { description: "The drawing half takes resolved props: no request, no store, no translation, no import (type or value) from `@/hooks`." },
     schema: [],
     messages: {
       reaches:
         "`{{name}}(...)` reaches for the world from the drawing half. This file must be renderable from a fixture - that is what makes it testable without standing the world up first, and it is the whole reason the split exists. Move the call to `index.tsx` and pass the result down as a settled situation.",
+      hookType:
+        "`{{source}}` lends the drawing half a type derived from a hook. The pure half declares its own atom view types (strings, numbers, booleans, plain objects, a DataSlot per read); a hook-derived type ties it to the world it must be renderable without.",
     },
   },
   create(context) {
     if (!isDrawingHalf(context)) return {}
     return {
+      ImportDeclaration(node) {
+        const source = node.source.value
+        if (source === "@/hooks" || source.startsWith("@/hooks/")) context.report({ node, messageId: "hookType", data: { source } })
+      },
       CallExpression(node) {
         const callee = node.callee
         if (!callee || callee.type !== "Identifier") return

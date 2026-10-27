@@ -35,6 +35,9 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       // the connected half is supposed to reach for the world
       { filename: CONNECTED, code: "const quest = useQueryMyDailyQuestSwr()" },
       { filename: CONNECTED, code: "const t = useTranslations(\"quest\")" },
+      { filename: CONNECTED, code: "import type { QuestView } from \"@/hooks/quest\"" },
+      // the drawing half declares its atom types itself, or reads them from modules/types
+      { filename: DRAWING, code: "import type { QuestView } from \"@/modules/types\"" },
       // and so is a hook
       { filename: HOOK, code: "const data = useSWR(key, fetcher)" },
       // a call that merely looks similar is not reaching for anything
@@ -47,6 +50,10 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
     ],
     invalid: [
       { filename: DRAWING, code: "const q = useQueryMyDailyQuestSwr()", errors: [{ messageId: "reaches" }] },
+      // a hook-derived type ties the drawing half to the world as surely as the call
+      { filename: DRAWING, code: "import type { useQuestView } from \"@/hooks/quest\"", errors: [{ messageId: "hookType" }] },
+      { filename: DRAWING, code: "import type { QuestView } from \"@/hooks\"", errors: [{ messageId: "hookType" }] },
+      { filename: DRAWING, code: "import { useQuestView } from \"@/hooks/quest\"", errors: [{ messageId: "hookType" }] },
       { filename: DRAWING, code: "const t = useTranslations(\"quest\")", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const r = queryResolveRoute({ request })", errors: [{ messageId: "reaches" }] },

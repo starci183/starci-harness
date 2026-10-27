@@ -50,7 +50,7 @@ for (const edition of ["lite", "full"] as const) {
       invalid: [{filename: COMPONENT, code: "type Props = Omit<Base, 'className'>", errors: [{messageId: "utility"}]}],
     })
     tester.run("base-props-atom", ruleOf(drawing, "base-props-atom"), {
-      valid: [{filename: BLOCK, code: 'export type HandoffBlockBaseProps = { readonly state: "sent"; readonly props: {readonly id: string}; readonly on: {readonly retry: () => void} }; export const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />;'}],
+      valid: [{filename: BLOCK, code: 'export type HandoffBlockBaseProps = { readonly shape: "sent"; readonly props: {readonly id: string}; readonly on: {readonly retry: () => void} }; export const HandoffBlockBase = (props: HandoffBlockBaseProps) => <div />;'}],
       invalid: [{filename: BLOCK, code: 'export const HandoffBlockBase = (props: {label: string}) => <div />', errors: [{messageId: "member"}]}],
     })
     tester.run("base-import-pair", ruleOf(drawing, "base-import-pair"), {
@@ -58,8 +58,8 @@ for (const edition of ["lite", "full"] as const) {
       invalid: [{filename: INDEX, code: 'export { HandoffBlockBase } from "./component"', errors: [{messageId: "reexport"}]}],
     })
     tester.run("no-data-status-shape", ruleOf(drawing, "no-data-status-shape"), {
-      valid: [{filename: BLOCK, code: 'export type HandoffBlockState = "sent" | "returned"'}],
-      invalid: [{filename: BLOCK, code: 'export type HandoffBlockState = "pending"', errors: [{messageId: "status"}]}],
+      valid: [{filename: BLOCK, code: 'export type HandoffBlockShape = "sent" | "returned"'}],
+      invalid: [{filename: BLOCK, code: 'export type HandoffBlockShape = "pending"', errors: [{messageId: "status"}]}],
     })
     tester.run("presentational-purity", ruleOf(split, "presentational-purity"), {
       valid: [{filename: BLOCK, code: 'export const X = (props: P) => <div>{props.label}</div>'}],
