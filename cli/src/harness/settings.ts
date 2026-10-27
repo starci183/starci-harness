@@ -5,6 +5,7 @@ import { isMap, isScalar, isSeq, parseDocument } from "yaml"
 import type { Document, ToStringOptions } from "yaml"
 import { Refusal, asRefusal } from "../shared/errors.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
+import { loadFeedbackRules } from "./feedback.js"
 import { loadHost } from "./host.js"
 import { LANES_SCHEMA, loadLanes } from "./lanes.js"
 import { loadLiveness } from "./liveness.js"
@@ -22,7 +23,7 @@ const SETTINGS: Readonly<Record<string, (dir: string) => unknown>> = {
     routing: (dir) => loadRouting(dir),
     lanes: (dir) => ({ schema: LANES_SCHEMA, lanes: loadLanes(loadOps(dir)) }),
     routes: (dir) => ({ schema: ROUTES_SCHEMA, routes: loadRoutes(loadOps(dir)) }),
-    liveness: (dir) => ({ ...loadLiveness(dir), coordinators: loadCoordinatorLiveness(dir), stall: loadStallRules(dir) }),
+    liveness: (dir) => ({ ...loadLiveness(dir), coordinators: loadCoordinatorLiveness(dir), stall: loadStallRules(dir), feedback: loadFeedbackRules(dir) }),
     checks: (dir) => ({ presets: loadOps(dir).presets }),
     host: (dir) => loadHost(dir),
     uat: (dir) => loadUat(dir),

@@ -1,0 +1,122 @@
+schema: starci/scenario@1
+id: feedback-close-requires-a-target
+group: owner
+title: owner feedback is recorded verbatim in the host ledger, closes only on a target that resolves, and goes red when it stays open too long
+inject: >-
+  owner feedback added, then closed on targets that do not resolve (a sha of no commit, a commit outside the kind's folder, a rule
+  that does not exist, an anchor and a scenario that do not exist, a kind that is no kind), then on one target of each kind that
+  does; an item given weeks ago left open
+expect: >-
+  feedback add records an id, the words as given, the day and status open in machine.sqlite, and the same words on the same day
+  are one item; feedback close refuses FEEDBACK_TARGET_UNRESOLVED or FEEDBACK_TARGET_KIND and leaves the item open; it closes on a
+  grammar, cli or app commit touching that folder, an enforced rule, a contexts anchor and a bench scenario; feedback check is red
+  FEEDBACK_OPEN_OVERDUE for the old open item, supervisor tick names it, and closing it turns the check green; nothing is written
+  into the repository
+pass:
+  - add records the item open with its words and day, once
+  - every unresolvable target is refused and the item stays open
+  - a target of each kind closes an item with its evidence
+  - a closed item cannot be closed again on another target
+  - check is red FEEDBACK_OPEN_OVERDUE past feedback.openMaxDays and green once it closes
+  - supervisor tick lists the open item
+  - the scratch repository stays clean
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: record one feedback
+    starci: [feedback, add, "Chip label must start uppercase", --on, "2026-10-27"]
+    expect: { exit: 0, contains: '"id": "fb-2026-10-27-1"' }
+  - name: the same words on the same day are the same item
+    starci: [feedback, add, "Chip label must start uppercase", --on, "2026-10-27"]
+    expect: { exit: 0, contains: '"created": false' }
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM owner_feedback WHERE status = 'open' AND words = 'Chip label must start uppercase'
+        equals: [1]
+  - name: a day after today is refused
+    starci: [feedback, add, "from the future", --on, "2999-01-01"]
+    expect: { exit: 1, code: FEEDBACK_DATE_INVALID }
+  - name: a kind that is no kind
+    starci: [feedback, close, fb-2026-10-27-1, --kind, app-store, --target, x]
+    expect: { exit: 1, code: FEEDBACK_TARGET_KIND }
+  - name: a sha of no commit
+    starci: [feedback, close, fb-2026-10-27-1, --kind, grammar, --target, "0000000deadbeef"]
+    expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
+  - name: an app commit given as a grammar commit touches nothing under packages/grammar
+    starci: [feedback, close, fb-2026-10-27-1, --kind, grammar, --target, cb0c8c65]
+    expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
+  - name: a rule that does not exist
+    starci: [feedback, close, fb-2026-10-27-1, --kind, rule, --target, R99999]
+    expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
+  - name: an anchor no chunk carries
+    starci: [feedback, close, fb-2026-10-27-1, --kind, context, --target, "contexts/ui/no-such-file.md#nothing"]
+    expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
+  - name: a scenario that does not exist
+    starci: [feedback, close, fb-2026-10-27-1, --kind, bench, --target, no-such-scenario]
+    expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
+  - name: an unknown item
+    starci: [feedback, close, fb-1999-01-01-1, --kind, rule, --target, R322]
+    expect: { exit: 1, code: FEEDBACK_UNKNOWN }
+  - name: every refusal left it open
+    assert:
+      sql:
+        db: machine
+        query: SELECT status FROM owner_feedback WHERE id = 'fb-2026-10-27-1'
+        equals: [open]
+  - name: list shows it with its words
+    starci: [feedback, list]
+    expect: { exit: 0, contains: '"words": "Chip label must start uppercase"' }
+  - name: an enforced rule closes it
+    starci: [feedback, close, fb-2026-10-27-1, --kind, rule, --target, R322]
+    expect: { exit: 0, contains: "chip-label-starts-uppercase" }
+  - name: a closed item is not closed again on another target
+    starci: [feedback, close, fb-2026-10-27-1, --kind, bench, --target, feedback-close-requires-a-target]
+    expect: { exit: 1, code: FEEDBACK_ALREADY_CLOSED }
+  - starci: [feedback, add, "grammar target", --on, "2026-10-27"]
+    expect: { exit: 0, contains: '"id": "fb-2026-10-27-2"' }
+  - name: a grammar commit touching packages/grammar closes it
+    starci: [feedback, close, fb-2026-10-27-2, --kind, grammar, --target, 0032ad8e]
+    expect: { exit: 0, contains: "under packages/grammar/" }
+  - starci: [feedback, add, "cli target", --on, "2026-10-27"]
+    expect: { exit: 0 }
+  - name: a cli commit touching cli/ closes it
+    starci: [feedback, close, fb-2026-10-27-3, --kind, cli, --target, 496fdfe5]
+    expect: { exit: 0, contains: "under cli/" }
+  - starci: [feedback, add, "app target", --on, "2026-10-27"]
+    expect: { exit: 0 }
+  - name: an app commit touching app/ closes it
+    starci: [feedback, close, fb-2026-10-27-4, --kind, app, --target, cb0c8c65]
+    expect: { exit: 0, contains: "under app/" }
+  - starci: [feedback, add, "context target", --on, "2026-10-27"]
+    expect: { exit: 0 }
+  - name: a contexts anchor that resolves closes it
+    starci: [feedback, close, fb-2026-10-27-5, --kind, context, --target, chip-label-uppercase]
+    expect: { exit: 0, contains: "contexts/decisions/rulings.yaml" }
+  - starci: [feedback, add, "bench target", --on, "2026-10-27"]
+    expect: { exit: 0 }
+  - name: a bench scenario closes it
+    starci: [feedback, close, fb-2026-10-27-6, --kind, bench, --target, feedback-close-requires-a-target]
+    expect: { exit: 0, contains: "bench scenario feedback-close-requires-a-target" }
+  - name: nothing open, nothing gone
+    starci: [feedback, check]
+    expect: { exit: 0, contains: '"total": 6' }
+  - name: an item given weeks ago and left open
+    starci: [feedback, add, "an old request nobody closed", --on, "2026-09-01"]
+    expect: { exit: 0, contains: '"id": "fb-2026-09-01-1"' }
+  - name: the check is red past openMaxDays
+    starci: [feedback, check]
+    expect: { exit: 1, contains: '"code": "FEEDBACK_OPEN_OVERDUE"' }
+  - name: the tick lists the open item
+    starci: [supervisor, tick]
+    expect: { exit: 0, contains: '"overdue": [' }
+  - name: the overdue item is the old one
+    starci: [supervisor, tick]
+    expect: { exit: 0, contains: '"fb-2026-09-01-1"' }
+  - starci: [feedback, close, fb-2026-09-01-1, --kind, rule, --target, R322]
+    expect: { exit: 0 }
+  - name: closed, the check is green again
+    starci: [feedback, check]
+    expect: { exit: 0, contains: '"open": 0' }
+  - name: the ledger lives under the state base, never in the repository
+    assert: { gitClean: true }

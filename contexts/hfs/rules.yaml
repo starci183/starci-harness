@@ -1088,7 +1088,7 @@ rules:
       - {kind: eslint-fe, id: props-fields-readonly}
   - id: R111
     code: HFS_PEER_INTEGRATION_MISSING
-    law: An app declares the runtime peer every driver integration pair of contexts/hfs/peer-integrations.yaml requires.
+    law: An app declares the runtime peer every driver integration pair of contexts/stack/pins.yaml#peers requires.
     failureCodes:
       - HFS_PEER_INTEGRATION_MISSING
     enforcers:
@@ -1590,7 +1590,7 @@ rules:
       - {kind: eslint-fe, id: no-server-action}
   - id: R244
     code: FE_STACK_FORBIDDEN
-    law: A front end depends on no package that contexts/hfs/fe-stack.yaml forbids for a concern, and avatar generation stays inside the Grammar.
+    law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, and avatar generation stays inside the Grammar.
     failureCodes:
       - FE_STACK_FORBIDDEN
     enforcers:
@@ -1977,7 +1977,7 @@ rules:
       - {kind: eslint-fe, id: callback-shape}
   - id: R288
     code: FE_STACK_UNLISTED
-    law: Every direct front-end dependency is listed in contexts/hfs/fe-stack.yaml or declared with a reason, and every product Next app declares the catalog's core packages.
+    law: Every direct front-end dependency is listed in contexts/stack/fe.yaml or declared with a reason, and every product Next app declares the catalog's core packages.
     failureCodes:
       - FE_STACK_UNLISTED
       - FE_STACK_CORE_MISSING
@@ -2075,7 +2075,7 @@ rules:
       - {kind: hfs, id: fe-build-args}
   - id: R301
     code: CI_STANDARD
-    law: App CI follows the one CI standard of contexts/hfs/ci-standard.yaml, delivered only through the app sync.
+    law: App CI follows the one CI standard of packages/hfs/templates/app/ci-workflows, delivered only through the app sync.
     failureCodes:
       - CI_STANDARD
     enforcers:
@@ -2218,3 +2218,16 @@ rules:
       - FE_CHIP_LABEL_CASE
     enforcers:
       - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+
+# Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
+# (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
+# dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
+# red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
+pending:
+  - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: FE_SIZE_BUDGET, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_AGENT_DATA_TRACKED, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_CI_E2E_AUTOMATIC, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_IDENTITY_CUSTODY, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_SCRIPT_ONE_OFF, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

@@ -281,6 +281,21 @@ export const renderAnatomy = (knowledge: string): AnatomyRender => {
     return { block: lines.join("\n"), dangling: [...dangling].sort(byCodeUnit) }
 }
 
+/**
+ * The rule codes slots name that resolve to no rule of hfs/rules.yaml, each with the slots naming it, over every slot of
+ * slots.yaml (whether a tree shows it or not): the gaps the anatomy gate judges.
+ */
+export const slotRuleGaps = (knowledge: string): ReadonlyMap<string, readonly string[]> => {
+    const sources = readSources(knowledge)
+    const gaps = new Map<string, string[]>()
+    for (const slot of sources.slots) {
+        const dangling = new Set<string>()
+        rulesOf(slot, sources.rules, dangling)
+        for (const code of dangling) addTo(gaps, code, slot.id)
+    }
+    return new Map([...gaps].sort(([left], [right]) => byCodeUnit(left, right)))
+}
+
 /** The editions a slice is cut for. */
 export const SLICE_EDITIONS: readonly string[] = EDITIONS
 

@@ -7,6 +7,7 @@
 #   status    live | proposed (written, awaiting the owner; the gate that depends on it stays red)
 #   absorbs   ids of earlier rulings this one replaced; a citation of an absorbed id resolves to this entry
 #   pins      digests a gate compares against; only a ruling records a pin
+#   covers    the gaps a ruling holds pending in hfs/rules.yaml's `pending` list (a slot rule code or a rule id); only a ruling lists them
 # A new ruling replaces the entry it amends (replace, never append). Decisions taken by an agent and not yet
 # confirmed live in decisions/open-*.md; when the owner confirms one, it moves here and its row there is deleted.
 # Harness, release and process rulings (supervisor, release waves, push policy, loosening, draw loop) are not
@@ -496,6 +497,12 @@ rulings:
     status: live
     ruling: "The harness CLI is proven by the bench and by runs of the built CLI, not by unit coverage: Sonar analyses cli/src for issues and duplication and excludes it from coverage only."
     owner: "CONTRIBUTING.md CONTRIB-1; sonar-project.properties"
+  - id: rules-pending-enforcers-2026-10-27
+    date: '2026-10-27'
+    status: live
+    ruling: "The slot rule codes in covers name checks hfs/rules.yaml has no rule for yet; each stays pending in the rule catalog's owner section, not red, until a rule with a built enforcer carries it, and no code joins the list without a new ruling."
+    owner: "contexts/hfs/rules.yaml (pending); cli/src/core/contexts/anatomy-gate.ts"
+    covers: [BE_E2E_FLOW, FE_DATA_FRESHNESS, FE_SIZE_BUDGET, HFS_AGENT_DATA_TRACKED, HFS_CI_E2E_AUTOMATIC, HFS_IDENTITY_CUSTODY, HFS_SCRIPT_ONE_OFF]
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.
