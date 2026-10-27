@@ -16,19 +16,19 @@ const INPUT = at("src/features/api/checkout/transport/graphql/dto/client-effectf
 const UNRELATED_INPUT = at("src/features/api/checkout/transport/graphql/dto/unrelated.input.ts")
 const RESOLVER = at("src/features/api/checkout/transport/graphql/check-idempotency.resolver.ts")
 const HEAD = 'import { Command, Query } from "@nestjs/cqrs"\nimport { Effectful } from "@modules/platform/inbox"\nimport type { ExecuteParams } from "@modules/platform/cqrs"\n'
-const command = (request, { head = HEAD, mark = "@Effectful()", base = "Command" } = {}) => `${head}${mark}\nclass C extends ${base}<void> { constructor(readonly params: ExecuteParams<${request}>) { super() } }`
+const command = (request: string, { head = HEAD, mark = "@Effectful()", base = "Command" } = {}) => `${head}${mark}\nclass C extends ${base}<void> { constructor(readonly params: ExecuteParams<${request}>) { super() } }`
 const SERVICE_HEAD = 'import "@features/api/checkout/application/client-effectful.handler"\nimport type { EntityManager } from "typeorm"\nimport type { Inbox } from "@modules/platform/inbox"\n'
-const service = (body, { inbox = "Inbox", manager = "EntityManager", extra = "" } = {}) => `${SERVICE_HEAD}${extra}\nexport class ClientEffectfulService { constructor(private readonly manager: ${manager}, private readonly inbox: ${inbox}, private readonly other: EntityManager) {} async place(params: { personId: string; idempotencyKey: string }): Promise<void> { ${body} } private async work(): Promise<void> {} }`
+const service = (body: string, { inbox = "Inbox", manager = "EntityManager", extra = "" } = {}) => `${SERVICE_HEAD}${extra}\nexport class ClientEffectfulService { constructor(private readonly manager: ${manager}, private readonly inbox: ${inbox}, private readonly other: EntityManager) {} async place(params: { personId: string; idempotencyKey: string }): Promise<void> { ${body} } private async work(): Promise<void> {} }`
 const ENVELOPE = '{ principalId: params.personId, operation: "checkout.place", idempotencyKey: params.idempotencyKey, request: {} }'
 const run = (envelope = ENVELOPE, manager = "tx", effect = "async () => this.work()") => `this.inbox.runClient(${envelope}, ${manager}, ${effect})`
 const transaction = (execution = run()) => `return this.manager.transaction((tx) => ${execution})`
 const HANDLER_HEAD = 'import { CommandHandler } from "@nestjs/cqrs"\nimport { ClientEffectfulCommand } from "@features/api/checkout/application/client-effectful.command"\nimport { ClientEffectfulService } from "@modules/domain/order/client-effectful.service"\n'
-const handler = (body) => `${HANDLER_HEAD}@CommandHandler(ClientEffectfulCommand) class H { constructor(private readonly orders: ClientEffectfulService) {} process(command: ClientEffectfulCommand) { ${body} } }`
+const handler = (body: string) => `${HANDLER_HEAD}@CommandHandler(ClientEffectfulCommand) class H { constructor(private readonly orders: ClientEffectfulService) {} process(command: ClientEffectfulCommand) { ${body} } }`
 const VALIDATORS = 'import { IsString, IsUUID, MinLength, MaxLength, IsOptional, ValidateIf } from "class-validator"\n'
 const DTO_REACHED = 'import "@features/api/checkout/transport/graphql/client-effectful.resolver"\n'
-const input = (validation, type = "!: string") => `${DTO_REACHED}${VALIDATORS}export class ClientEffectfulInput { ${validation} idempotencyKey${type} }`
-const resolution = (validation, key = "input.idempotencyKey") => `${VALIDATORS}import { ClientEffectfulCommand } from "@features/api/checkout/application/client-effectful.command"\nclass Input { ${validation} idempotencyKey!: string }\nfunction dispatch(input: Input) { return new ClientEffectfulCommand({ principal: { id: "person" }, request: { idempotencyKey: ${key} } }) }`
-const mappedResolution = (mapper, argument = "input", validation = "@IsUUID()") => resolution(validation)
+const input = (validation: string, type = "!: string") => `${DTO_REACHED}${VALIDATORS}export class ClientEffectfulInput { ${validation} idempotencyKey${type} }`
+const resolution = (validation: string, key = "input.idempotencyKey") => `${VALIDATORS}import { ClientEffectfulCommand } from "@features/api/checkout/application/client-effectful.command"\nclass Input { ${validation} idempotencyKey!: string }\nfunction dispatch(input: Input) { return new ClientEffectfulCommand({ principal: { id: "person" }, request: { idempotencyKey: ${key} } }) }`
+const mappedResolution = (mapper: string, argument = "input", validation = "@IsUUID()") => resolution(validation)
     .replace("function dispatch", `${mapper}\nfunction dispatch`)
     .replace("request: { idempotencyKey: input.idempotencyKey }", `request: toRequest(${argument})`)
 

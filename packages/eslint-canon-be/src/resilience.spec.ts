@@ -13,7 +13,7 @@ const SRC = at("src/modules/integrations/mailer/mail.client.ts")
 const SPEC = at("src/modules/integrations/mailer/mail.client.spec.ts")
 const AXIOS = 'import axios from "axios"\nimport { HttpService } from "@nestjs/axios"\n'
 
-const inBothEditions = (cases) => ["lite", "full"].flatMap((edition) => cases.map((entry) => ({
+const inBothEditions = <T extends object>(cases: readonly T[]) => ["lite", "full"].flatMap((edition) => cases.map((entry) => ({
   ...entry,
   settings: { starci: { hfs: { ...fixtureHfs(), edition } } },
 })))
@@ -124,7 +124,7 @@ test("R81: a loop that catches an error and waits goes through platform/retry", 
       // a helper that does not wait is not a wait, whatever its name says
       { name: "r81 4", filename: SRC, code: `${HELPER}for (const id of ids) { try { run(id) } catch (error) { report(label(id)) } }` },
       // the wait of the platform/retry owner is the sanctioned one
-      { name: "r81 5", filename: SRC, code: `${HELPER}for (const id of ids) { try { run(id) } catch (error) { await pause(1) } }`, name: "sanctioned pause" },
+      { filename: SRC, code: `${HELPER}for (const id of ids) { try { run(id) } catch (error) { await pause(1) } }`, name: "sanctioned pause" },
       // the shared helper itself may loop, catch and wait
       { name: "r81 6", filename: RETRY_SRC, code: "for (let i = 0; i < max; i++) { try { return await fn() } catch (e) { await new Promise((resolve) => setTimeout(resolve, 5)) } }" },
       // a timer in a nested function of a loop with no catch

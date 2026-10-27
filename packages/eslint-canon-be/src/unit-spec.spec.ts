@@ -158,7 +158,7 @@ test("no-return-only-generic: a helper of a spec or a fixture is not a cast with
 })
 
 /** A service spec that provides one token with one value. */
-const provide = (token, value, head = "") => `import { mock, mockEntityManager, fakeTransaction, FakeClock, fakeIds, fakeCache, fakeLock, recordingEventBus, recordingQueueOutbox, fakeInbox, builder } from "@starci/jest-preset"\n${head}\nexport const provider = { provide: ${token}, useValue: ${value} }`
+const provide = (token: string, value: string, head = "") => `import { mock, mockEntityManager, fakeTransaction, FakeClock, fakeIds, fakeCache, fakeLock, recordingEventBus, recordingQueueOutbox, fakeInbox, builder } from "@starci/jest-preset"\n${head}\nexport const provider = { provide: ${token}, useValue: ${value} }`
 
 test("spec-infra-double-from-kit: a provider takes its value from the kit double the token calls for", () => {
     assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
@@ -236,7 +236,10 @@ test("the token table is the manifest's, not the rule's", () => {
     const table = fixtureHfs().ruleParams.specDoubles
     assert.equal(table.kit, "@starci/jest-preset")
     assert.deepEqual(table.doubles.map((entry) => entry.double).sort((left, right) => left < right ? -1 : Number(left > right)), ["FakeClock", "builder", "fakeCache", "fakeIds", "fakeInbox", "fakeLock", "fakeTransaction", "mockEntityManager", "recordingEventBus", "recordingQueueOutbox"])
-    assert.equal(table.fallback.double, "mock")
+    // `fallback` is manifest data the shared `specDoubles` type does not name
+    const fallback: unknown = Reflect.get(table, "fallback")
+    assert.ok(typeof fallback === "object" && fallback !== null && "double" in fallback, "the manifest declares a fallback double")
+    assert.equal(fallback.double, "mock")
 })
 
 for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edition} real sibling function subjects are values and collaborators still require kit doubles`, () => {
@@ -244,7 +247,7 @@ for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edit
     const settings = { starci: { hfs } }
     const filename = at("src/modules/domain/order/function-subject.mapper.spec.ts")
     const functions = 'import { doubled, total as sum } from "./function-subject.mapper"\n'
-    const subject = (value) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
+    const subject = (value: string) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
     assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename, settings, code: subject("doubled") },
@@ -264,7 +267,7 @@ for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edit
 test("spec-infra-double-from-kit: a function subject beside constants, enums, re-exports and overloads is judged by its callable subset (A1)", () => {
     const filename = at("src/modules/domain/order/mixed-subject.mapper.spec.ts")
     const functions = 'import { pad, shout } from "./mixed-subject.mapper"\n'
-    const subject = (value) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
+    const subject = (value: string) => `${functions}const SUBJECT = Symbol("subject")\nconst provider = { provide: SUBJECT, useValue: ${value} }`
     assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename, code: subject("pad") },
@@ -306,7 +309,7 @@ test("a value-object subject is built with new, a decorated or token-injected su
 })
 
 test("a value-role spec parses a real boundary schema without a testing module; a misnamed logic file keeps the rule", () => {
-    const parse = (name) => [`import { subject } from "./${name}.schema"`, 'it("rejects an empty input", () => expect(subject.safeParse({}).success).toBe(false))'].join("\n")
+    const parse = (name: string) => [`import { subject } from "./${name}.schema"`, 'it("rejects an empty input", () => expect(subject.safeParse({}).success).toBe(false))'].join("\n")
     const noModule = { messageId: "noModule" }
     assert.doesNotThrow(() => { tester.run("spec-builds-with-testing-module", specBuildsWithTestingModule, {
         // the sibling is a zod schema file of the domain tier holding values and types only
@@ -332,7 +335,7 @@ test("a value-role spec parses a real boundary schema without a testing module; 
 
 test("spec-infra-double-from-kit: a member of a kit mock object is a kit double (A3)", () => {
     const base = 'import { mock, mockEntityManager } from "@starci/jest-preset"\ntype Open = (url: string) => void\n'
-    const provide = (token, value) => `${base}const provider = { provide: ${token}, useValue: ${value} }`
+    const provide = (token: string, value: string) => `${base}const provider = { provide: ${token}, useValue: ${value} }`
     assert.doesNotThrow(() => { tester.run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [
             { filename: SPEC, code: provide("GATEWAY_SOCKET_FACTORY", "mock<{ open: Open }>().open") },
@@ -458,7 +461,9 @@ for (const edition of ["lite", "full"]) {
         }) })
     })
     test(`R281 ${edition}: every logic role refuses a test with zero assertions even beside an asserted test`, () => {
-        const filenames = [SPEC, at("src/features/cli/migrate/subs/run.cli.spec.ts"), ...hfs.ruleParams.logicRoles.map((role) => at(`src/modules/platform/checks/subject.${role}.spec.ts`))]
+        const logicRoles = hfs.ruleParams.logicRoles
+        assert.ok(logicRoles !== undefined, "the manifest declares the logic roles")
+        const filenames = [SPEC, at("src/features/cli/migrate/subs/run.cli.spec.ts"), ...logicRoles.map((role) => at(`src/modules/platform/checks/subject.${role}.spec.ts`))]
         assert.doesNotThrow(() => { tester.run("spec-behavior-assertion", specBehaviorAssertion, {
             valid: filenames.map((filename) => ({ filename, settings, code: 'it("returns a result", () => expect(subject.run()).toEqual({ accepted: true }))\ntest("rejects invalid input", async () => { await expect(subject.run("invalid")).rejects.toThrow("invalid") })' })),
             invalid: filenames.map((filename) => ({ filename, settings, code: 'it("runs without assertions", () => { subject.run() })\ntest("returns a result", () => expect(subject.run()).toEqual({ accepted: true }))', errors: [{ messageId: "zeroAssertions" }] })),

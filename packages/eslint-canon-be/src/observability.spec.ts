@@ -25,7 +25,7 @@ const PRELUDE = [
   "declare const fake: Fake",
   "declare const cause: unknown",
 ].join("\n")
-const withPrelude = (body) => `${PRELUDE}\n${body}`
+const withPrelude = (body: string) => `${PRELUDE}\n${body}`
 
 test("every rule this law declares is exported under its published name, at error, with no exemption list", () => {
   for (const [name, rule] of Object.entries(rules)) {

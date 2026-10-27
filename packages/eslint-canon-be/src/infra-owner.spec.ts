@@ -8,7 +8,6 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { projectFixture } from "../fixtures/project/tester.mjs"
@@ -16,8 +15,9 @@ import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixt
 import { httpClientOnlyInIntegrations, infraImportOwner, rules } from "./infra-owner.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { thirdPartyImportOwner } from "./third-party-owner.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: fixtureHfs() } },
 })
@@ -47,7 +47,7 @@ test("the table comes from the slot manifest and nothing else", () => {
     const table = fixtureHfs().ruleParams.infraOwners
     assert.deepEqual(table.fetch, ["platform/http"])
     assert.deepEqual(table["@nestjs/config"], [])
-    const bare = new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" } })
+    const bare = canonRuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" } })
     assert.throws(() => bare.run("infra-import-owner", infraImportOwner, { valid: [{ filename: DOMAIN, code: "export const a = 1" }], invalid: [] }), /settings\.starci\.hfs/)
 })
 
@@ -165,7 +165,7 @@ test("infra-import-owner under lite: the queue and Redis libraries keep full's o
     const liteHfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT)
     assert.deepEqual(liteHfs.ruleParams.infraOwners.bullmq, fixtureHfs().ruleParams.infraOwners.bullmq)
     assert.deepEqual(liteHfs.ruleParams.infraOwners.kafkajs, [])
-    const lite = new RuleTester({
+    const lite = canonRuleTester({
         languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
         settings: { starci: { hfs: liteHfs } },
     })

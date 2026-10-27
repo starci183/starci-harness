@@ -4,6 +4,8 @@
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import type { TestContext } from "node:test"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const OWN_SQL = "src/modules/domain/purchase/persistence/purchase.sql.ts"
 const FOREIGN_SQL = "src/modules/domain/purchase/persistence/foreign.sql.ts"
@@ -50,7 +52,7 @@ const DATABASE_TYPES = `export type Database = {
 }
 `
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R86 accepts bounded own-table SQL and rejects foreign writes and unbounded reads in ${edition}`, (t) => {
         const files = { ...FILES }
         if (edition === "full") Object.assign(files, ENTITIES)
@@ -61,7 +63,7 @@ for (const edition of ["lite", "full"]) {
             rootFiles: { "supabase/types/database.types.ts": DATABASE_TYPES },
         })
         t.after(fixture.cleanup)
-        fixture.tester.run("sql-owner", rules["sql-owner"], {
+        fixture.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
             valid: [
                 { filename: fixture.at(OWN_SQL), code: FILES[OWN_SQL] },
                 // a table named for the capability and an underscore (realtime_events of platform/realtime)
@@ -86,29 +88,39 @@ for (const edition of ["lite", "full"]) {
 }
 
 const KEY_SQL = "src/modules/domain/purchase/persistence/key.sql.ts"
-const sqlRead = (text) => `import { sql } from '../../../platform/database';\nexport const READ = sql\`${text}\`;\n`
-const keyRead = (where) => sqlRead(`SELECT id FROM public.purchase WHERE ${where}`)
+const sqlRead = (text: string) => `import { sql } from '../../../platform/database';\nexport const READ = sql\`${text}\`;\n`
+const keyRead = (where: string) => sqlRead(`SELECT id FROM public.purchase WHERE ${where}`)
 const COMPOSITE_TABLE = "CREATE TABLE public.purchase (workspace_id uuid NOT NULL, id text NOT NULL, PRIMARY KEY (workspace_id, id));"
 const KEY_LOOKUP = "workspace_id = $1 AND id = $2"
 
+/** The key lookups and queries one Supabase key check reads, over its migrations (and an archived migration it must ignore). */
+interface SupabaseKeyCase {
+    readonly migrations: readonly string[]
+    readonly valid?: readonly string[]
+    readonly validSql?: readonly string[]
+    readonly invalid?: readonly string[]
+    readonly invalidSql?: readonly string[]
+    readonly archived?: string
+}
+
 /** The real Supabase authority: generated table identity plus ordered, tracked migration constraints. */
-const checkSupabaseKeys = (t, { migrations, valid = [], validSql = [], invalid = [KEY_LOOKUP], invalidSql = [], archived = "" }) => {
+const checkSupabaseKeys = (t: TestContext, { migrations, valid = [], validSql = [], invalid = [KEY_LOOKUP], invalidSql = [], archived = "" }: SupabaseKeyCase) => {
     const validFiles = Object.fromEntries([
-        ...valid.map((where, index) => [KEY_SQL.replace("key.sql", `valid-${index}.sql`), keyRead(where)]),
-        ...validSql.map((text, index) => [KEY_SQL.replace("key.sql", `valid-query-${index}.sql`), sqlRead(text)]),
+        ...valid.map((where, index): [string, string] => [KEY_SQL.replace("key.sql", `valid-${index}.sql`), keyRead(where)]),
+        ...validSql.map((text, index): [string, string] => [KEY_SQL.replace("key.sql", `valid-query-${index}.sql`), sqlRead(text)]),
     ])
     const invalidFiles = Object.fromEntries([
-        ...invalid.map((where, index) => [KEY_SQL.replace("key.sql", `invalid-${index}.sql`), keyRead(where)]),
-        ...invalidSql.map((text, index) => [KEY_SQL.replace("key.sql", `invalid-query-${index}.sql`), sqlRead(text)]),
+        ...invalid.map((where, index): [string, string] => [KEY_SQL.replace("key.sql", `invalid-${index}.sql`), keyRead(where)]),
+        ...invalidSql.map((text, index): [string, string] => [KEY_SQL.replace("key.sql", `invalid-query-${index}.sql`), sqlRead(text)]),
     ])
     const rootFiles = {
         "supabase/types/database.types.ts": DATABASE_TYPES,
-        ...Object.fromEntries(migrations.map((sql, index) => [`supabase/migrations/20261024000${String(index).padStart(3, "0")}_keys.sql`, sql])),
+        ...Object.fromEntries(migrations.map((sql, index): [string, string] => [`supabase/migrations/20261024000${String(index).padStart(3, "0")}_keys.sql`, sql])),
         ...(archived ? { "supabase/migrations/_archive/20261023000000_keys.sql": archived } : {}),
     }
     const fixture = projectFixture({ edition: "lite", files: { ...FILES, ...validFiles, ...invalidFiles }, rootFiles })
     t.after(fixture.cleanup)
-    fixture.tester.run("sql-owner", rules["sql-owner"], {
+    fixture.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
         valid: Object.entries(validFiles).map(([file, code]) => ({ filename: fixture.at(file), code })),
         invalid: Object.entries(invalidFiles).map(([file, code]) => ({ filename: fixture.at(file), code, errors: [{ message: /BE_SQL_TABLE_OWNER/ }] })),
     })

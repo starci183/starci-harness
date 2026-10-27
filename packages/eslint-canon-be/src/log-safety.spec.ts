@@ -17,7 +17,7 @@ const PRELUDE = [
     "declare const holder: Pii<string>",
     "declare const cause: unknown",
 ].join("\n")
-const withPrelude = (body) => `${PRELUDE}\n${body}`
+const withPrelude = (body: string) => `${PRELUDE}\n${body}`
 
 test("no-secret-in-log: the Logger port takes no Secret or Pii value and no credential or personal name", () => {
     tester.run("no-secret-in-log", noSecretInLog, {
@@ -67,7 +67,7 @@ const ERRORS = [
     "declare function mask(value: string): string",
     "",
 ].join("\n")
-const withErrors = (body) => `${ERRORS}${body}`
+const withErrors = (body: string) => `${ERRORS}${body}`
 
 test("no-secret-in-error: a constructed error carries no Secret value and no text named like a credential", () => {
     tester.run("no-secret-in-error", noSecretInError, {

@@ -19,7 +19,7 @@ const HEAD = [
     "declare const FIND_ORDERS: SqlText",
     "",
 ].join("\n")
-const sqlCase = (body) => HEAD + body
+const sqlCase = (body: string) => HEAD + body
 
 for (const edition of ["lite", "full"]) {
     test(`R36 sql-text-only accepts SqlText and rejects misplaced SQL in ${edition}`, () => {

@@ -13,8 +13,6 @@ const UNIT = at("src/modules/domain/order/order.service.spec.ts")
 const INTEGRATION = at("src/tests/integration/order/place-order.integration-spec.ts")
 const E2E = at("src/tests/e2e/checkout/place-order.e2e-spec.ts")
 const CONTRACT = at("src/tests/contract/sepay/sepay.contract-spec.ts")
-const HELPER = at("src/tests/world/contract.client.ts")
-const WORLD_SPEC = at("src/tests/world/contract.client.spec.ts")
 // the runners are the test globals: unresolved names, exactly as in a real spec
 const RUNNERS = ""
 const SANDBOX = "declare const sandbox: { describe(name: string, body: () => void): void }\n"

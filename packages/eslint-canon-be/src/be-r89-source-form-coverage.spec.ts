@@ -4,7 +4,6 @@
 // proves: BE_PUBLIC_CONTRACT_FORM@full
 // The lint enforcers of R89; its repository enforcer (`source-suffix` of `starci app check`) is proved in packages/hfs/src/be-r89-source-suffix.spec.mjs.
 import test from 'node:test';
-import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import { appDeclaration } from '../fixtures/app.mjs';
 import { projectFixture } from '../fixtures/project/tester.mjs';
@@ -15,6 +14,7 @@ import { noBareVerbExport, noDefaultExport, noVendorModuleFactoryName, noVersion
 import { noTestDoubleInSource } from './service-deps.ts';
 import { noConstEnum, noInlineObjectType, noInlineParamType } from './type-safety.ts';
 import { rules as graphRules } from './project-graph.ts';
+import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.mjs";
 
 const domain = at('src/modules/domain/order/order.service.ts');
 const suffixGood = 'src/features/api/orders/application/cancel-order.command.ts';
@@ -52,10 +52,10 @@ const files = {
   ].join('\n'),
 };
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`R89 ${edition} accepts documented named source and rejects forbidden forms`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-    const tester = new RuleTester({
+    const tester = canonRuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs } },
     });
@@ -113,15 +113,15 @@ for (const edition of ['lite', 'full']) {
     const fixture = projectFixture({ edition, files });
     t.after(fixture.cleanup);
     const tester = fixture.tester;
-    tester.run('source-suffix', graphRules['source-suffix'], {
+    tester.run('source-suffix', ruleNamed(graphRules, 'source-suffix'), {
       valid: [{ filename: fixture.at(suffixGood), code: files[suffixGood] }],
       invalid: [{ filename: fixture.at(suffixBad), code: files[suffixBad], errors: [{ messageId: 'finding' }] }],
     });
-    tester.run('source-names', graphRules['source-names'], {
+    tester.run('source-names', ruleNamed(graphRules, 'source-names'), {
       valid: [{ filename: fixture.at(nameGood), code: files[nameGood] }],
       invalid: [{ filename: fixture.at(nameBad), code: files[nameBad], errors: [{ messageId: 'finding' }] }],
     });
-    tester.run('public-contract-form', graphRules['public-contract-form'], {
+    tester.run('public-contract-form', ruleNamed(graphRules, 'public-contract-form'), {
       valid: [{ filename: fixture.at(contractGood), code: files[contractGood] }],
       invalid: [{ filename: fixture.at(contractBad), code: files[contractBad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }] }],
     });
@@ -131,15 +131,15 @@ for (const edition of ['lite', 'full']) {
     const fixture = projectFixture({ edition, files });
     t.after(fixture.cleanup);
     const policy = { filename: fixture.at(topicPolicy), code: topicBuilder };
-    fixture.tester.run('source-suffix', graphRules['source-suffix'], {
+    fixture.tester.run('source-suffix', ruleNamed(graphRules, 'source-suffix'), {
       valid: [policy],
       invalid: [{ filename: fixture.at(topicSuffix), code: topicBuilder, errors: [{ messageId: 'finding' }] }],
     });
-    fixture.tester.run('source-names', graphRules['source-names'], {
+    fixture.tester.run('source-names', ruleNamed(graphRules, 'source-names'), {
       valid: [policy],
       invalid: [{ filename: fixture.at(nameBad), code: files[nameBad], errors: [{ messageId: 'finding' }] }],
     });
-    fixture.tester.run('public-contract-form', graphRules['public-contract-form'], {
+    fixture.tester.run('public-contract-form', ruleNamed(graphRules, 'public-contract-form'), {
       valid: [policy],
       invalid: [{ filename: fixture.at(contractBad), code: files[contractBad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }] }],
     });

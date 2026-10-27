@@ -24,25 +24,36 @@ import path from "node:path"
 import { parseYaml } from "../runtime/engine/yaml.mjs"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const EXPORT = "export const value = 1;\n"
-const SHIPPED = parseYaml(fs.readFileSync(path.join(import.meta.dirname, "..", "runtime", "knowledge", "hfs", "slots.yaml"), "utf8"))
-const TEMPLATE = SHIPPED.slots.find((slot) => slot.id === "repo.build-output")
+/** Whether a parsed YAML value is a mapping. */
+const isMapping = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === "object" && value !== null
+
+/** The shipped manifest as parsed: a mapping with its `slots` list (anything else stops the spec, as reading `.slots` of it would). */
+const manifestOf = (value: unknown) => {
+    if (!isMapping(value) || !Array.isArray(value.slots)) throw new TypeError("the shipped slots.yaml has no slots list")
+    const slots: readonly unknown[] = value.slots
+    return { manifest: value, slots }
+}
+
+const { manifest: SHIPPED, slots: SHIPPED_SLOTS } = manifestOf(parseYaml(fs.readFileSync(path.join(import.meta.dirname, "..", "runtime", "knowledge", "hfs", "slots.yaml"), "utf8")))
+const TEMPLATE = SHIPPED_SLOTS.filter(isMapping).find((slot) => slot.id === "repo.build-output")
 
 /** The shipped manifest with two be slots of the same specificity over `src/twin/<name>/`. */
 const twinManifest = () => {
-    const twin = (id, name) => ({ ...TEMPLATE, id, profiles: ["be"], path: `src/twin/<${name}>/` })
-    return JSON.stringify({ ...SHIPPED, slots: [...SHIPPED.slots, twin("be.twin.left", "left"), twin("be.twin.right", "right")] })
+    const twin = (id: string, name: string) => ({ ...TEMPLATE, id, profiles: ["be"], path: `src/twin/<${name}>/` })
+    return JSON.stringify({ ...SHIPPED, slots: [...SHIPPED_SLOTS, twin("be.twin.left", "left"), twin("be.twin.right", "right")] })
 }
 
 /** The one finding the rule reports on the visited file: its code and the machine's own sentence. */
-const finding = (code, sentence) => ({ message: `[${code}] ${sentence}` })
+const finding = (code: string, sentence: string) => ({ message: `[${code}] ${sentence}` })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`${edition}: a TypeScript file no slot owns is HFS_SLOT_UNDECLARED, one a slot owns is not`, (t) => {
         const f = projectFixture({ edition, files: { "src/stray/thing.ts": EXPORT, "src/modules/domain/stock/index.ts": EXPORT } })
         t.after(f.cleanup)
-        f.tester.run("slot-undeclared", rules["slot-undeclared"], {
+        f.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
             valid: [{ filename: f.at("src/modules/domain/stock/index.ts"), code: EXPORT }],
             invalid: [{ filename: f.at("src/stray/thing.ts"), code: EXPORT, errors: [finding("HFS_SLOT_UNDECLARED", "src/stray/thing.ts matches no slot; nearest slot be.tool-config (src/tests/tsconfig.json), matched src then expected tests")] }],
         })
@@ -52,13 +63,13 @@ for (const edition of ["lite", "full"]) {
         const webhook = "src/features/webhooks/sepay/transport/http/sepay.webhook.ts"
         const rejected = projectFixture({ edition, files: { [webhook]: EXPORT } })
         t.after(rejected.cleanup)
-        rejected.tester.run("slot-undeclared", rules["slot-undeclared"], {
+        rejected.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
             valid: [{ filename: rejected.at("apps/core/src/main.ts"), code: EXPORT }],
             invalid: [{ filename: rejected.at(webhook), code: EXPORT, errors: [finding("HFS_SLOT_NOT_ENABLED", `${webhook} belongs to be.feature.webhooks.http, an opt-in slot hfs.json neither lists in optionalSlots nor implies through an app kind`)] }],
         })
         const accepted = projectFixture({ edition, files: { [webhook]: EXPORT }, declaration: { patterns: ["webhooks"] } })
         t.after(accepted.cleanup)
-        accepted.tester.run("slot-undeclared", rules["slot-undeclared"], {
+        accepted.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
             valid: [{ filename: accepted.at(webhook), code: EXPORT }],
             invalid: [],
         })
@@ -68,13 +79,13 @@ for (const edition of ["lite", "full"]) {
         const twin = "src/twin/one/a.ts"
         const gap = projectFixture({ edition, files: { [twin]: EXPORT, "src/modules/domain/stock/index.ts": EXPORT }, manifestText: twinManifest() })
         t.after(gap.cleanup)
-        gap.tester.run("slot-undeclared", rules["slot-undeclared"], {
+        gap.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
             valid: [{ filename: gap.at("src/modules/domain/stock/index.ts"), code: EXPORT }],
             invalid: [{ filename: gap.at(twin), code: EXPORT, errors: [{ message: /^\[HFS_SLOT_AMBIGUOUS\] src\/twin\/one\/a\.ts is owned equally by be\.twin\.left, be\.twin\.right$/ }] }],
         })
         const shipped = projectFixture({ edition, files: { [twin]: EXPORT } })
         t.after(shipped.cleanup)
-        shipped.tester.run("slot-undeclared", rules["slot-undeclared"], {
+        shipped.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
             valid: [{ filename: shipped.at("apps/core/src/main.ts"), code: EXPORT }],
             invalid: [{ filename: shipped.at(twin), code: EXPORT, errors: [finding("HFS_SLOT_UNDECLARED", `${twin} matches no slot; nearest slot be.tests.world.kit (src/tests/world/kit/), matched src then expected tests`)] }],
         })

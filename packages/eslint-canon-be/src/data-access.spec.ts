@@ -33,7 +33,7 @@ const E2E_SPEC = at("src/tests/e2e/checkout/place-order.e2e-spec.ts")
 const ENTITY = at("src/modules/domain/order/persistence/entities/order.entity.ts")
 
 const TYPEORM = 'import { DataSource, EntityManager, QueryRunner, Repository, TreeRepository } from "typeorm"\ndeclare class OrderEntity {}\n'
-const constructorOf = (parameter) => `${TYPEORM}class S { constructor(${parameter}) {} }`
+const constructorOf = (parameter: string) => `${TYPEORM}class S { constructor(${parameter}) {} }`
 
 test("every rule this law declares is exported under its published name", () => {
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
@@ -173,7 +173,7 @@ test("DATA-3: an entity names its table", () => {
 test("R83: everything inside a transaction receives the transactional manager", () => {
   assert.doesNotThrow(() => {
       const head = `${TYPEORM}class H {\n constructor(private readonly entityManager: EntityManager, private readonly clock: Date) {}\n async run() {\n`
-      const inside = (body) => `${head}${body}\n }\n}`
+      const inside = (body: string) => `${head}${body}\n }\n}`
       tester.run("no-outer-manager-in-transaction", noOuterManagerInTransaction, {
           valid: [
               // the callback uses only the manager it was handed, under any name
@@ -226,7 +226,7 @@ test("R82: no transaction spans an external call", () => {
   assert.doesNotThrow(() => {
       const head = `${TYPEORM}import { StripeClient } from "@modules/integrations/stripe/stripe.client"\nimport { PayOsGateway } from "@modules/integrations/payos/payos.gateway"\nimport { HttpClient } from "@modules/platform/http/http.client"\nimport { EventBus as MessagePublisher } from "@modules/platform/event-bus/event-bus.port"\nimport { HttpClient as LocalClient } from "@modules/domain/order/http.client"\n`
       const S = `${head}class S {\n constructor(private readonly entityManager: EntityManager, private readonly stripe: StripeClient, private readonly payos: PayOsGateway, private readonly http: HttpClient, private readonly publisher: MessagePublisher, private readonly local: LocalClient, private readonly deps: { stripe: StripeClient }) {}\n`
-      const inside = (body) => `${S} async run() { ${body} }\n}`
+      const inside = (body: string) => `${S} async run() { ${body} }\n}`
       tester.run("no-external-call-in-transaction", noExternalCallInTransaction, {
           valid: [
               // only the transactional manager

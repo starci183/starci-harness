@@ -15,7 +15,7 @@ const HEAD = [
     "declare const messages: { get(key: string): string }",
     "class PlanNotFoundError extends Error {}",
 ].join("\n")
-const code = (body) => HEAD + "\n" + body
+const code = (body: string) => HEAD + "\n" + body
 
 for (const edition of ["lite", "full"]) {
     test(`R78 valid catalog lookups and invalid literal user copy in ${edition}`, () => {

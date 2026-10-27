@@ -9,19 +9,21 @@
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import type { TestContext } from "node:test"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const EXPORT = "export const value = 1;\n"
 
 /** A repository of `rels` (every file holds EXPORT): `good(rel)` is a clean case, `bad(rel)` one finding on line 1. */
-const scene = (t, rels, options = {}) => {
-    const files = Object.fromEntries(rels.map((rel) => [rel, EXPORT]))
+const scene = (t: TestContext, rels: readonly string[], options = {}) => {
+    const files = Object.fromEntries(rels.map((rel: string) => [rel, EXPORT]))
     const f = projectFixture({ files, ...options })
     t.after(f.cleanup)
-    const at = (rel) => ({ filename: f.at(rel), code: EXPORT })
+    const at = (rel: string) => ({ filename: f.at(rel), code: EXPORT })
     return {
         tester: f.tester,
-        good: (rel) => at(rel),
-        bad: (rel, line = 1) => ({ ...at(rel), errors: [{ messageId: "finding", line }] }),
+        good: (rel: string) => at(rel),
+        bad: (rel: string, line = 1) => ({ ...at(rel), errors: [{ messageId: "finding", line }] }),
     }
 }
 
@@ -33,7 +35,7 @@ test("a TypeScript file is owned by exactly one slot of the repository", (t) => 
         "src/features/api/orders/application/cancel-order.command.ts",
         "src/tests/world/kit/poll.ts",
     ])
-    s.tester.run("slot-undeclared", rules["slot-undeclared"], {
+    s.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {
         valid: [
             s.good("src/modules/domain/stock/index.ts"),
             s.good("src/modules/domain/stock/stock.service.ts"),
@@ -79,7 +81,7 @@ test("a source file name is index.ts, main.ts, a migration or <kebab-name>.<suff
         "apps/core/src/compose/platform.ts",
         "apps/core/src/compose/Bad_Group.ts",
     ])
-    s.tester.run("source-suffix", rules["source-suffix"], {
+    s.tester.run("source-suffix", ruleNamed(rules, "source-suffix"), {
         valid: [
             s.good("apps/core/src/main.ts"),
             s.good("apps/core/src/core.options.ts"),
@@ -136,7 +138,7 @@ test("a spec file lives in one of the four test layers and nowhere else", (t) =>
         "tools/seed.spec.ts",
         "scripts/rotate-logs.mjs",
     ])
-    s.tester.run("spec-placement", rules["spec-placement"], {
+    s.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
         valid: [
             s.good("src/modules/domain/billing/invoice.service.ts"),
             s.good("src/modules/domain/billing/invoice.service.spec.ts"),
@@ -155,7 +157,7 @@ test("a spec file lives in one of the four test layers and nowhere else", (t) =>
 test("a misplaced spec that is not TypeScript is not on the lint surface: it stays in starci app check", (t) => {
     const f = projectFixture({ files: { "tools/x.spec.mjs": "export {}\n", "scripts/probe.test.cjs": "module.exports = {}\n", "src/modules/domain/billing/invoice.service.ts": EXPORT, "src/features/api/orders/place-order.spec.ts": EXPORT } })
     t.after(f.cleanup)
-    f.tester.run("spec-placement", rules["spec-placement"], {
+    f.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
         valid: [
             { filename: f.at("tools/x.spec.mjs"), code: "export {}\n" },
             { filename: f.at("scripts/probe.test.cjs"), code: "module.exports = {}\n" },

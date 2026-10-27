@@ -29,7 +29,7 @@ const E2E_SPEC = at("src/tests/e2e/checkout/place-order.e2e-spec.ts")
 
 const COMPOSITION = 'import { injector, type TypedParameterDecorator } from "@modules/platform/composition/injector"\n'
 const INJECTOR = `import { getEntityManagerToken } from "@nestjs/typeorm"\nimport type { EntityManager } from "typeorm"\n${COMPOSITION}`
-const declaration = (name, token = "PRIMARY_CONNECTION") =>
+const declaration = (name: string, token = "PRIMARY_CONNECTION") =>
     `${INJECTOR}export const ${name} = (): TypedParameterDecorator<EntityManager> => injector(getEntityManagerToken(${token}))`
 
 test("every rule this law declares is exported under its published name", () => {

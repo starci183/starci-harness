@@ -10,6 +10,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, BE_DECLARATION, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
+import type { HfsView } from "./lib/hfs.ts"
 import {
   importOwnerEntry,
   noFolderReexport,
@@ -100,15 +101,24 @@ test("R30: an owner does not reach itself through its own alias", () => {
 })
 
 /** An index that names `count` symbols from one file. */
-const namesFrom = (count) => `export { ${Array.from({ length: count }, (_, index) => `N${index}`).join(", ")} } from './names'`
+/** The budget of the slot a file belongs to, the slot proven to exist. */
+const slotBudgetOf = (hfs: HfsView, filename: string) => {
+  const id = hfs.slotOf(filename)
+  assert.ok(id !== null, `${filename} has a slot`)
+  const slot = hfs.slot(id)
+  assert.ok(slot, `slot ${id} is declared`)
+  return slot.budget
+}
+
+const namesFrom = (count: number) => `export { ${Array.from({ length: count }, (_, index) => `N${index}`).join(", ")} } from './names'`
 
 test("R30: the data-sources integration entry uses its resolved slot budget of 80; domain entries retain 60", () => {
   const hfs = fixtureHfs()
   assert.equal(hfs.slotOf(IN_DATA_SOURCES_INDEX), "be.integrations")
   assert.equal(hfs.ownerOf(IN_DATA_SOURCES_INDEX), "src/modules/integrations/data-sources")
-  assert.equal(hfs.slot(hfs.slotOf(IN_DATA_SOURCES_INDEX)).budget.indexExports, 80)
+  assert.equal(slotBudgetOf(hfs, IN_DATA_SOURCES_INDEX)?.indexExports, 80)
   assert.equal(hfs.slotOf(IN_PLAN_INDEX), "be.domain")
-  assert.equal(hfs.slot(hfs.slotOf(IN_PLAN_INDEX)).budget.indexExports, 60)
+  assert.equal(slotBudgetOf(hfs, IN_PLAN_INDEX)?.indexExports, 60)
 
   tester.run("no-folder-reexport integration budget", noFolderReexport, {
     valid: Array.from({ length: 20 }, (_, index) => ({ filename: IN_DATA_SOURCES_INDEX, code: namesFrom(61 + index) })),
@@ -120,13 +130,15 @@ test("R30: the data-sources integration entry uses its resolved slot budget of 8
 })
 
 test("R30: a provider-specific integration slot inherits the integrations tier budget", () => {
-  const declaration = { ...BE_DECLARATION, connections: BE_DECLARATION.connections.map(connection => ({ ...connection, provider: "supabase" })) }
+  const connections = BE_DECLARATION.connections
+  assert.ok(connections, "the fixture declares connections")
+  const declaration = { ...BE_DECLARATION, connections: connections.map(connection => ({ ...connection, provider: "supabase" })) }
   const hfs = fixtureHfs(declaration)
   const filename = at("src/modules/integrations/supabase/index.ts")
   assert.equal(hfs.classify(filename).status, "owned")
   assert.equal(hfs.slotOf(filename), "be.integrations.supabase")
   assert.equal(hfs.tierOf(filename), "integrations")
-  assert.equal(hfs.slot(hfs.slotOf(filename)).budget, undefined)
+  assert.equal(slotBudgetOf(hfs, filename), undefined)
 
   typedTester({ declaration }).run("no-folder-reexport provider budget", noFolderReexport, {
     valid: [{ filename, code: namesFrom(80) }],

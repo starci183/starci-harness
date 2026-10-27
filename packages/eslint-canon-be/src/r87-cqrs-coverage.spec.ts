@@ -9,6 +9,7 @@ import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/te
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { executeParamsShape, handlerIsThin, handlerOverridesProcess, messageCarriesParamsOnly, messageTypedResult, noEventBus, noUseCase } from "./cqrs.ts"
 import { rules as graphRules } from "./project-graph.ts"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const APPLICATION = "src/features/api/plan/application"
 const COMMAND = at(`${APPLICATION}/place-order.command.ts`)
@@ -28,7 +29,7 @@ export class PlaceOrderCommand extends Command<string> {
     ${members}
 }`
 
-const handler = (body) => `${HANDLER_IMPORTS}
+const handler = (body: string) => `${HANDLER_IMPORTS}
 @CommandHandler(PlaceOrderCommand)
 class PlaceOrderHandler extends ICQRSHandler<PlaceOrderCommand, string> {
     constructor(private readonly orders: OrderService) { super() }
@@ -53,7 +54,7 @@ import { ChangeOrderCommand } from "./change-order.command"
 `,
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     const declaration = { ...appDeclaration("be", BE_DECLARATION), edition }
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration(declaration, TYPED_ROOT) })
 
@@ -143,7 +144,7 @@ export class PlaceOrderCommand extends Command<string> {
     test(`${edition} readonly-boundary accepts readonly messages and rejects mutable messages`, (t) => {
         const fixture = projectFixture({ files: READONLY_FILES, edition })
         t.after(fixture.cleanup)
-        fixture.tester.run("readonly-boundary", graphRules["readonly-boundary"], {
+        fixture.tester.run("readonly-boundary", ruleNamed(graphRules, "readonly-boundary"), {
             valid: [{ filename: fixture.at(READONLY_COMMAND), code: READONLY_FILES[READONLY_COMMAND] }],
             invalid: [{
                 filename: fixture.at(MUTABLE_COMMAND),

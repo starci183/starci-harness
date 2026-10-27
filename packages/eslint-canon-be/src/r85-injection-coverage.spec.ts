@@ -19,6 +19,7 @@ import {
     noModuleRef,
     noStringToken,
 } from "./injection.ts"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const SERVICE = at("src/modules/domain/order/order.consumer.ts")
 const DECORATORS = at("src/modules/platform/clock/probe.decorators.ts")
@@ -30,7 +31,7 @@ export const CLOCK: unique symbol = Symbol("platform.clock")
 /** Injects the Clock port. Parameter type: Clock. */
 `
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R85 accepts valid owner injectors and rejects raw injection in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         assert.equal(hfs.edition, edition)
@@ -113,7 +114,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)
-        assert.doesNotThrow(() => { fixture.tester.run("injection-token-exported", graphRules["injection-token-exported"], {
+        assert.doesNotThrow(() => { fixture.tester.run("injection-token-exported", ruleNamed(graphRules, "injection-token-exported"), {
             valid: [{ filename: fixture.at(goodDecorator), code: files[goodDecorator] }],
             invalid: [{ filename: fixture.at(badDecorator), code: files[badDecorator], errors: [{ message: /BE_RAW_INJECT/ }] }],
         }) })

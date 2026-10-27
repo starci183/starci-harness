@@ -1,7 +1,6 @@
 // proves: BE_SPEC_QUALITY@lite
 // proves: BE_SPEC_QUALITY@full
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.mjs"
@@ -20,8 +19,9 @@ import {
     noMarkerModelStub,
     noModelCallInE2e,
 } from "./testing.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
 })
 const typed = typedTester()

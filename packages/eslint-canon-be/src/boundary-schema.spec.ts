@@ -172,9 +172,9 @@ for (const edition of ["lite", "full"]) {
 for (const edition of ["lite", "full"]) {
   test(`${edition} R304: a schema file holds zod values and types, nothing that runs`, () => {
     assert.doesNotThrow(() => {
-      const code = (...rows) => rows.join(String.fromCharCode(10))
-      const bad = (source, problem) => ({ filename: SCHEMA, code: source, errors: [{ messageId: "logic", data: { problem } }] })
-      const notZod = (name) => `${name} is not a zod schema (a schema file declares only zod chains and types)`
+      const code = (...rows: string[]): string => rows.join(String.fromCharCode(10))
+      const bad = (source: string, problem: string) => ({ filename: SCHEMA, code: source, errors: [{ messageId: "logic", data: { problem } }] })
+      const notZod = (name: string) => `${name} is not a zod schema (a schema file declares only zod chains and types)`
       ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) }).run("schema-file-values-only", schemaFileValuesOnly, {
           valid: [
               { filename: SCHEMA, code: code(Z, "export const a = z.object({ id: z.string().max(5) })", "export type A = z.infer<typeof a>") },

@@ -2,13 +2,22 @@ import test from "node:test"
 import { readFileSync } from "node:fs"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
+
+/** The text of a fixture file the spec wrote (a spec naming a file it did not write fails here, as the tester would). */
+const textAt = (files: Readonly<Record<string, string>>, rel: string) => {
+    const text = files[rel]
+    if (text === undefined) throw new Error(`no fixture file ${rel}`)
+    return text
+}
 
 /** The cases of one repository: `rels` are clean files, `lines` maps a violating file to the lines the machine names. */
-const ok = (f, files, rels) => rels.map((rel) => ({ filename: f.at(rel), code: files[rel] }))
-const bad = (f, files, lines) => Object.entries(lines).map(([rel, at]) => ({
+const ok = (f: ProjectFixture, files: Readonly<Record<string, string>>, rels: readonly string[]) => rels.map((rel: string) => ({ filename: f.at(rel), code: textAt(files, rel) }))
+const bad = (f: ProjectFixture, files: Readonly<Record<string, string>>, lines: Readonly<Record<string, readonly number[]>>) => Object.entries(lines).map(([rel, at]) => ({
     filename: f.at(rel),
-    code: files[rel],
-    errors: at.map((line) => ({ messageId: "finding", line })),
+    code: textAt(files, rel),
+    errors: at.map((line: number) => ({ messageId: "finding", line })),
 }))
 
 const nestTypes = {
@@ -38,7 +47,7 @@ test("an import goes only to a tier the slot matrix allows", () => {
         "src/features/api/http/app-link.ts": 'export * from "../../../../apps/core/src/app.module"\n',
     }
     const f = projectFixture({ files })
-    f.tester.run("tier-direction", rules["tier-direction"], {
+    f.tester.run("tier-direction", ruleNamed(rules, "tier-direction"), {
         valid: [...ok(f, files, [
             "apps/core/src/app.module.ts",
             "src/features/api/a/index.ts",
@@ -71,7 +80,7 @@ test("owners never import each other in a cycle", () => {
         "src/modules/domain/r/index.ts": "export const r = 1;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("owner-cycle", rules["owner-cycle"], {
+    f.tester.run("owner-cycle", ruleNamed(rules, "owner-cycle"), {
         valid: [...ok(f, files, ["src/modules/domain/p/index.ts", "src/modules/domain/q/index.ts", "src/modules/domain/r/index.ts"])],
         invalid: [...bad(f, files, {
             "src/modules/domain/x/index.ts": [1],
@@ -94,7 +103,7 @@ test("a feature never imports another feature, type-only imports included", () =
         "src/modules/integrations/mail/index.ts": "export const i = 1;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("feature-imports-feature", rules["feature-imports-feature"], {
+    f.tester.run("feature-imports-feature", ruleNamed(rules, "feature-imports-feature"), {
         valid: [...ok(f, files, [
             "src/features/api/b/index.ts",
             "src/features/api/d/index.ts",
@@ -127,7 +136,7 @@ test("a feature file sits in the folder its role names", () => {
         "src/features/api/billing/application/invoice-schema.handler.ts": 'import { EntitySchema } from "typeorm"; const make=()=>new EntitySchema({name:"invoice"}); export const schema=make();\n',
     }
     const f = projectFixture({ files })
-    f.tester.run("feature-layout", rules["feature-layout"], {
+    f.tester.run("feature-layout", ruleNamed(rules, "feature-layout"), {
         valid: [...ok(f, files, [
             "src/features/api/orders/index.ts",
             "src/features/api/orders/orders.module.ts",
@@ -167,7 +176,7 @@ test("application code never imports transport code, directly or through a chain
         "src/features/api/orders/application/invalid-protocol.use-case.ts": 'import { Body, Input } from "../shared/protocol"; @Input() export class InvalidProtocolUseCase { execute(@Body() input:unknown){ return input } }\n',
     }
     const f = projectFixture({ files })
-    f.tester.run("application-never-imports-transport", rules["application-never-imports-transport"], {
+    f.tester.run("application-never-imports-transport", ruleNamed(rules, "application-never-imports-transport"), {
         valid: [...ok(f, files, [
             "src/features/api/orders/application/valid.use-case.ts",
             "src/features/api/orders/application/valid-cjs.use-case.ts",
@@ -202,7 +211,7 @@ test("another owner is imported only through its index entry, and an entry never
         "src/features/api/a/index.ts": "import { XEntity } from '../../../modules/domain/x/persistence/entities/x.entity';\nexport const a = XEntity;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("owner-export-bypass", rules["owner-export-bypass"], {
+    f.tester.run("owner-export-bypass", ruleNamed(rules, "owner-export-bypass"), {
         valid: [...ok(f, files, [
             "src/features/api/orders/public.ts",
             "src/features/api/orders/internal.ts",
@@ -236,7 +245,7 @@ test("every feature owner is composed into an app by a runtime import", () => {
         "src/modules/integrations/unused/index.ts": "export const unused = 1;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("feature-not-composed", rules["feature-not-composed"], {
+    f.tester.run("feature-not-composed", ruleNamed(rules, "feature-not-composed"), {
         valid: [...ok(f, files, [
             "apps/core/src/app.module.ts",
             "src/features/api/foo/index.ts",
@@ -252,7 +261,7 @@ test("every feature owner is composed into an app by a runtime import", () => {
     f.cleanup()
 })
 
-const tsconfig = (paths, include = ["src/**/*", "apps/**/*", "packages/**/*"]) => JSON.stringify({
+const tsconfig = (paths: Readonly<Record<string, readonly string[]>>, include = ["src/**/*", "apps/**/*", "packages/**/*"]) => JSON.stringify({
     compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", baseUrl: ".", paths, noEmit: true, experimentalDecorators: true },
     include,
 })
@@ -271,7 +280,7 @@ test("a package never imports an app", () => {
         "packages/ui/src/clean.ts": "export const clean = 1\n",
     }
     const f = projectFixture({ files, apps: [{ name: "api", kind: "api" }] })
-    f.tester.run("package-imports-app", rules["package-imports-app"], {
+    f.tester.run("package-imports-app", ruleNamed(rules, "package-imports-app"), {
         valid: [...ok(f, files, [
             "apps/api/src/main.ts",
             "apps/api/src/contract.ts",
@@ -296,7 +305,7 @@ test("a package is imported only through its declared exports", () => {
         "packages/ui/src/private/index.ts": "export const Private = 1\n",
     }
     const f = projectFixture({ files, apps: [{ name: "api", kind: "api" }] })
-    f.tester.run("package-export-bypass", rules["package-export-bypass"], {
+    f.tester.run("package-export-bypass", ruleNamed(rules, "package-export-bypass"), {
         valid: [...ok(f, files, [
             "apps/api/src/app.module.ts",
             "packages/ui/src/index.ts",
@@ -355,7 +364,7 @@ test("every owner export and every production file is reached by a root", () => 
         "packages/shared/src/orphan.ts": "export const orphan = 1;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("dead-exports", rules["dead-exports"], {
+    f.tester.run("dead-exports", ruleNamed(rules, "dead-exports"), {
         valid: [...ok(f, files, [
             "apps/core/src/app.module.ts",
             "apps/core/src/main.ts",
@@ -399,7 +408,7 @@ test("an integration spec counts as a consumer of its own provider's integration
         "src/tests/e2e/pay/pay.e2e-spec.ts": "import { onlyE2e } from '../../../modules/integrations/pay';\nit('uses', () => { expect(onlyE2e).toBe(3); });\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("dead-exports", rules["dead-exports"], {
+    f.tester.run("dead-exports", ruleNamed(rules, "dead-exports"), {
         valid: [...ok(f, files, ["apps/core/src/app.module.ts", "apps/core/src/main.ts", "src/modules/integrations/mail/index.ts"])],
         invalid: [...bad(f, files, { "src/modules/integrations/pay/index.ts": [3, 4] })],
     })
@@ -407,22 +416,26 @@ test("an integration spec counts as a consumer of its own provider's integration
 })
 
 /** A function of `statements + 4` lines whose shape never repeats inside one body; a copy with other names and literals is a clone. */
-const helper = (name, statements, { literal = 1, variable = "value", offset = 0 } = {}) => {
-    const chain = (i) => ` + ${literal}`.repeat(i % 7)
+const helper = (name: string, statements: number, { literal = 1, variable = "value", offset = 0 } = {}) => {
+    const chain = (i: number) => ` + ${literal}`.repeat(i % 7)
     const patterns = [
-        (i) => `  const ${variable}${i} = input.items[${i}] ?? ${literal}${chain(i)};`,
-        (i) => `  if (${variable}${i - 1} > ${literal + i}${chain(i)}) total += ${variable}${i - 1};`,
-        (i) => `  total = total * ${literal + 2} + ${i}${chain(i)};`,
-        (i) => `  for (const entry of input.items) { total += entry * ${literal + i}${chain(i)}; }`,
-        (i) => `  while (total > ${literal + i}${chain(i)}) total -= ${i};`,
-        (i) => `  total = Math.max(total, input.items.length + ${literal + i}${chain(i)});`,
-        (i) => `  input.items.push(total % ${literal + i + 1}${chain(i)});`,
-        (i) => `  total += input.items.reduce((sum, item) => sum + item * ${literal + i}${chain(i)}, 0);`,
-        (i) => `  if (!input.items.length) return ${literal + i}${chain(i)};`,
-        (i) => `  total = input.items.map((item) => item + ${literal + i}${chain(i)}).length;`,
-        (i) => `  try { total += JSON.parse(String(${i}${chain(i)})); } catch { total = ${literal}; }`,
+        (i: number) => `  const ${variable}${i} = input.items[${i}] ?? ${literal}${chain(i)};`,
+        (i: number) => `  if (${variable}${i - 1} > ${literal + i}${chain(i)}) total += ${variable}${i - 1};`,
+        (i: number) => `  total = total * ${literal + 2} + ${i}${chain(i)};`,
+        (i: number) => `  for (const entry of input.items) { total += entry * ${literal + i}${chain(i)}; }`,
+        (i: number) => `  while (total > ${literal + i}${chain(i)}) total -= ${i};`,
+        (i: number) => `  total = Math.max(total, input.items.length + ${literal + i}${chain(i)});`,
+        (i: number) => `  input.items.push(total % ${literal + i + 1}${chain(i)});`,
+        (i: number) => `  total += input.items.reduce((sum, item) => sum + item * ${literal + i}${chain(i)}, 0);`,
+        (i: number) => `  if (!input.items.length) return ${literal + i}${chain(i)};`,
+        (i: number) => `  total = input.items.map((item) => item + ${literal + i}${chain(i)}).length;`,
+        (i: number) => `  try { total += JSON.parse(String(${i}${chain(i)})); } catch { total = ${literal}; }`,
     ]
-    const body = Array.from({ length: statements }, (_, i) => patterns[(i + offset) % patterns.length](i))
+    const body = Array.from({ length: statements }, (_, i) => {
+        const pattern = patterns[(i + offset) % patterns.length]
+        if (pattern === undefined) throw new RangeError(`no statement pattern at ${i + offset}`)
+        return pattern(i)
+    })
     return `export function ${name}(input: { items: number[] }) {\n  let total = 0;\n${body.join("\n")}\n  return total;\n}\n`
 }
 
@@ -437,7 +450,7 @@ test("a block of production code never repeats elsewhere in the owner graph", ()
         "src/modules/domain/one/one.contracts.ts": helper("again", 26, { literal: 6, variable: "item", offset: 2 }),
     }
     const f = projectFixture({ files })
-    f.tester.run("duplicate-code", rules["duplicate-code"], {
+    f.tester.run("duplicate-code", ruleNamed(rules, "duplicate-code"), {
         valid: [...ok(f, files, [
             "src/modules/domain/beta/beta.service.ts",
             "src/modules/domain/gamma/gamma.service.ts",
@@ -464,7 +477,7 @@ test("uniform entry files are not compared, the same bodies in other files are a
         "apps/other/src/app.module.ts": helper("composeOther", 26, { literal: 5, variable: "item" }),
     }
     const f = projectFixture({ files, apps })
-    f.tester.run("duplicate-code", rules["duplicate-code"], {
+    f.tester.run("duplicate-code", ruleNamed(rules, "duplicate-code"), {
         valid: [...ok(f, files, [
             "apps/core/src/main.ts",
             "apps/other/src/main.ts",
@@ -494,7 +507,7 @@ test("a symbol name is declared once across the production source", () => {
         "src/modules/domain/w/local.ts": "export default 3;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("duplicate-symbol", rules["duplicate-symbol"], {
+    f.tester.run("duplicate-symbol", ruleNamed(rules, "duplicate-symbol"), {
         valid: [...ok(f, files, [
             "src/modules/domain/x/index.ts",
             "src/modules/domain/x/used.ts",
@@ -521,7 +534,7 @@ test("a function, a type and an enum declared again under a public name are dupl
         "src/modules/domain/z/private.ts": "export function used() { return 2; }\nexport type Shape = string;\nexport class Kind {}\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("duplicate-symbol", rules["duplicate-symbol"], {
+    f.tester.run("duplicate-symbol", ruleNamed(rules, "duplicate-symbol"), {
         valid: [...ok(f, files, ["src/modules/domain/x/index.ts", "src/modules/domain/z/private.ts"])],
         invalid: [...bad(f, files, {
             "src/modules/domain/x/used.ts": [1],
@@ -557,7 +570,7 @@ test("an owner entry re-exports a symbol under its own name, never through an al
         "src/modules/domain/y/same.ts": "export const same = 1;\n",
     }
     const f = projectFixture({ files })
-    f.tester.run("alias-reexport", rules["alias-reexport"], {
+    f.tester.run("alias-reexport", ruleNamed(rules, "alias-reexport"), {
         valid: [...ok(f, files, [
             "src/modules/domain/x/inner.ts",
             "src/modules/domain/x/plain.ts",
@@ -610,7 +623,7 @@ test("an exported const, type or interface that only renames another declaration
         ].join("\n"),
     }
     const f = projectFixture({ files })
-    f.tester.run("alias-reexport", rules["alias-reexport"], {
+    f.tester.run("alias-reexport", ruleNamed(rules, "alias-reexport"), {
         valid: [...ok(f, files, [
             "src/modules/domain/x/original.ts",
             "src/modules/domain/x/base.ts",
@@ -623,7 +636,7 @@ test("an exported const, type or interface that only renames another declaration
 
 test("scaffold env templates declare their own fields, while an empty options extension remains an alias", (t) => {
     // The scaffold env templates of @starci/hfs, rendered for the app "api": fixtures/scaffold-env/<edition>/...
-    const template = (relative) => readFileSync(new URL(`../fixtures/scaffold-env/${relative}`, import.meta.url), "utf8")
+    const template = (relative: string) => readFileSync(new URL(`../fixtures/scaffold-env/${relative}`, import.meta.url), "utf8")
     const modules = {
         "tsconfig.json": JSON.stringify({
             compilerOptions: {
@@ -656,7 +669,7 @@ test("scaffold env templates declare their own fields, while an empty options ex
         ].join("\n"),
     }
     const apps = [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }]
-    const make = (edition, env) => projectFixture({ edition, apps, files: { ...modules, ...env } })
+    const make = (edition: "full" | "lite", env: Readonly<Record<string, string>>) => projectFixture({ edition, apps, files: { ...modules, ...env } })
     const lite = {
         "apps/api/src/api.env.ts": template("lite/apps/api/src/api.env.ts"),
         "apps/api/src/api.options.ts": template("lite/apps/api/src/api.options.ts"),
@@ -667,10 +680,10 @@ test("scaffold env templates declare their own fields, while an empty options ex
         "apps/api/src/api.options.ts": template("full/apps/api/src/api.options.ts"),
         "apps/cli/src/cli.env.ts": template("full/apps/cli/src/cli.env.ts"),
     }
-    for (const [edition, files] of [["lite", lite], ["full", full]]) {
+    for (const [edition, files] of [["lite", lite], ["full", full]] as const) {
         const f = make(edition, files)
         t.after(f.cleanup)
-        f.tester.run(`${edition} scaffold alias-reexport`, rules["alias-reexport"], {
+        f.tester.run(`${edition} scaffold alias-reexport`, ruleNamed(rules, "alias-reexport"), {
             valid: ok(f, files, ["apps/api/src/api.env.ts", "apps/cli/src/cli.env.ts"]),
             invalid: [],
         })
@@ -678,7 +691,7 @@ test("scaffold env templates declare their own fields, while an empty options ex
     const aliasFiles = { ...lite, "apps/api/src/api.env.ts": 'import type { ApiOptions } from "./api.options"\nexport interface ApiEnv extends ApiOptions {}\n' }
     const alias = make("lite", aliasFiles)
     t.after(alias.cleanup)
-    alias.tester.run("empty env extension alias-reexport", rules["alias-reexport"], {
+    alias.tester.run("empty env extension alias-reexport", ruleNamed(rules, "alias-reexport"), {
         valid: [],
         invalid: bad(alias, aliasFiles, { "apps/api/src/api.env.ts": [2] }),
     })
@@ -695,7 +708,7 @@ test("no feature kind imports another kind: the kinds meet through the event bus
         "src/modules/platform/config/index.ts": "export const p = 1;\n",
     }
     const f = projectFixture({ files, declaration: { patterns: ["event-bus", "fenced-job"] } })
-    f.tester.run("kind-isolation", rules["kind-isolation"], {
+    f.tester.run("kind-isolation", ruleNamed(rules, "kind-isolation"), {
         valid: [...ok(f, files, [
             "src/features/reactors/stock/index.ts",
             "src/features/api/orders/index.ts",

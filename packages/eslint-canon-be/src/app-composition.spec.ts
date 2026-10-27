@@ -14,9 +14,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import tsParser from "@typescript-eslint/parser"
+import type { RuleTester } from "eslint"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.mjs"
+import type { CanonTests } from "../fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
+import type { RuleModule } from "./lib/rule.ts"
 import { appCompositionTyped, appEnvRequired, appFileBudget, appModuleListInline, appOptionsCompositionFree, rules } from "./app-composition.ts"
 
 const tester = typedTester()
@@ -28,12 +31,12 @@ const MAIN = at("apps/api/src/main.ts")
 const MODULE = at("src/modules/domain/plan/plan.module.ts")
 
 /** Env-role cases replace an imported file; each case must start from the on-disk fixture graph. */
-const isolatedCases = (cases) => Object.fromEntries(Object.entries(cases).map(([kind, fixtures]) => [
-    kind, fixtures.map((fixture) => ({ ...fixture, before: () => tsParser.clearCaches() })),
-]))
+const isolated = <Case extends RuleTester.ValidTestCase>(fixture: Case): Case => ({ ...fixture, before: () => tsParser.clearCaches() })
+const isolatedCases = (cases: { readonly valid: readonly RuleTester.ValidTestCase[]; readonly invalid: readonly RuleTester.InvalidTestCase[] }): CanonTests =>
+    ({ valid: cases.valid.map(isolated), invalid: cases.invalid.map(isolated) })
 
 /** A source of `count` lines. */
-const lines = (count) => `${Array.from({ length: count }, (_, index) => `export const line${index} = ${index}`).join("\n")}\n`
+const lines = (count: number) => `${Array.from({ length: count }, (_, index) => `export const line${index} = ${index}`).join("\n")}\n`
 
 test("every rule this law declares is exported as a rule", () => {
   assert.doesNotThrow(() => {
@@ -44,13 +47,13 @@ test("every rule this law declares is exported as a rule", () => {
 })
 
 test("composition findings carry machine-code prefixes for the HFS lint runner", () => {
-    const expected = [
+    const expected: ReadonlyArray<readonly [RuleModule, Readonly<Record<string, string>>]> = [
         [appCompositionTyped, { outside: "BE_COMPOSITION_UNTYPED", group: "BE_COMPOSITION_UNTYPED", business: "BE_APP_BUSINESS_ROLE" }],
         [appEnvRequired, { shape: "BE_APP_ENV_REQUIRED", inline: "BE_APP_ENV_REQUIRED", delegate: "BE_APP_ENV_REQUIRED" }],
         [appModuleListInline, { inline: "BE_APP_MODULE_LIST_INLINE" }],
     ]
     for (const [rule, codes] of expected) {
-        for (const [message, code] of Object.entries(codes)) assert.ok(rule.meta.messages[message].startsWith(`[${code}] `))
+        for (const [message, code] of Object.entries(codes)) assert.ok(rule.meta.messages[message]?.startsWith(`[${code}] `))
     }
 })
 
@@ -135,11 +138,15 @@ for (const edition of ["lite", "full"]) {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         assert.equal(hfs.edition, edition)
         const typed = ruleTester({ root: TYPED_ROOT, hfs })
-        const example = (filename, code, messageId) => ({
-            filename,
-            code: `${contracts}\n${code}`,
-            ...(messageId ? { errors: [{ messageId }] } : {}),
-        })
+        function example(filename: string, code: string): RuleTester.ValidTestCase
+        function example(filename: string, code: string, messageId: string): RuleTester.InvalidTestCase
+        function example(filename: string, code: string, messageId?: string): RuleTester.ValidTestCase | RuleTester.InvalidTestCase {
+            return {
+                filename,
+                code: `${contracts}\n${code}`,
+                ...(messageId ? { errors: [{ messageId }] } : {}),
+            }
+        }
         typed.run("app-composition-typed", appCompositionTyped, {
             valid: [
                 example(ENV, `export interface ApiEnv { readonly allowedOrigins: string[]; readonly everyMs: number }
@@ -283,7 +290,7 @@ for (const edition of ["lite", "full"]) {
       assert.doesNotThrow(() => {
           const root = mkdtempSync(join(tmpdir(), "starci-compose-"))
           t.after(() => rmSync(root, { recursive: true, force: true }))
-          const fixture = (file, code) => {
+          const fixture = (file: string, code: string) => {
               const full = join(root, file)
               mkdirSync(join(full, ".."), { recursive: true })
               writeFileSync(full, code)

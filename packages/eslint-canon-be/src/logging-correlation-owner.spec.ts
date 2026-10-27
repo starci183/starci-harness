@@ -2,17 +2,18 @@
 // proves: BE_INFRA_OWNER@full
 /** Logger correlation owns async context exclusively, including from the test composition root. */
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { infraImportOwner } from "./infra-owner.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 const logging = at("src/modules/platform/logging/correlation.service.ts")
 const domain = at("src/modules/domain/order/order.service.ts")
+const namedAsyncImport = 'import { AsyncLocalStorage } from "node:async_hooks"; export { AsyncLocalStorage }'
 const asyncImports = [
-    'import { AsyncLocalStorage } from "node:async_hooks"; export { AsyncLocalStorage }',
+    namedAsyncImport,
     'import { AsyncLocalStorage as Storage } from "async_hooks"; export { Storage }',
     'import * as hooks from "node:async_hooks"; export const store = new hooks.AsyncLocalStorage()',
     'export const load = () => import("async_hooks")',
@@ -26,7 +27,7 @@ const asyncImports = [
 for (const edition of ["lite", "full"]) {
     test(`BE-LOGGING-4 ${edition}: async context belongs only to logging and CLS is refused everywhere`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        const tester = new RuleTester({
+        const tester = canonRuleTester({
             languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
             settings: { starci: { hfs } },
         })
@@ -47,7 +48,7 @@ for (const edition of ["lite", "full"]) {
                     "src/tests/world/use-test-world.ts",
                     "src/tests/world/kit/context.ts",
                     "src/tests/integration/logging/correlation.integration-spec.ts",
-                ].map((file) => ({ filename: at(file), code: asyncImports[0], errors: [{ messageId: "foreign" }] })),
+                ].map((file) => ({ filename: at(file), code: namedAsyncImport, errors: [{ messageId: "foreign" }] })),
                 ...[logging, domain, at("src/tests/world/use-test-world.ts")].map((filename) => ({
                     filename,
                     code: 'import { ClsService } from "nestjs-cls"; export { ClsService }',

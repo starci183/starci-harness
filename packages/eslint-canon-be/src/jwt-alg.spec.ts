@@ -23,10 +23,9 @@ test("R260 BE_JWT_ALG_PINNED exports the registered rule at error", () => {
     assert.equal(recommended["starci-be/jwt-alg-pinned"], "error")
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R260 BE_JWT_ALG_PINNED accepts literal secure algorithms and rejects unsigned/shared-secret verification (${edition})`, () => {
-        const declaration = appDeclaration("be", { apps: [{ name: "api", kind: "api" }] })
-        declaration.edition = edition
+        const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }] }), edition }
         const settings = { starci: { hfs: hfsFromDeclaration(declaration, at("")) } }
         assert.doesNotThrow(() => {
             typedTester().run("jwt-alg-pinned", jwtAlgPinned, {

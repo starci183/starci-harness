@@ -30,7 +30,7 @@ const QUERY = [
     "const LIST_ROWS_MAX = 50",
     "",
 ].join("\n")
-const query = (body) => QUERY + body
+const query = (body: string) => QUERY + body
 
 const HTTP = [
     'import axios from "axios"',
@@ -40,7 +40,7 @@ const HTTP = [
     "const TIMEOUT_MS = 1000",
     "",
 ].join("\n")
-const http = (body) => HTTP + body
+const http = (body: string) => HTTP + body
 
 const LOG = [
     'import type { Logger } from "@modules/platform/logging/logging.port"',
@@ -55,7 +55,7 @@ const LOG = [
     "declare function mask(value: string): string",
     "",
 ].join("\n")
-const log = (body) => LOG + body
+const log = (body: string) => LOG + body
 
 const ERROR = [
     'import { Secret } from "@modules/platform/config/env-source.config"',
@@ -64,7 +64,7 @@ const ERROR = [
     "declare function mask(value: string): string",
     "",
 ].join("\n")
-const error = (body) => ERROR + body
+const error = (body: string) => ERROR + body
 
 for (const edition of ["lite", "full"]) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)

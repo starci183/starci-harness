@@ -2,7 +2,6 @@
 // proves: BE_KIND_ISOLATION@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { appDeclaration, archFixture, ts } from '../fixtures/arch-fixture.mjs';
 import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
@@ -10,6 +9,8 @@ import { buildHfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs
 import { checkTiers } from '../runtime/scripts/hfs/architecture/tiers.mjs';
 import { projectFixture } from '../fixtures/project/tester.mjs';
 import { rules } from './project-graph.ts';
+import type { TestContext } from "node:test"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const declaration = { apps: [{ name: 'core', kind: 'api' }], patterns: ['event-bus', 'fenced-job'] };
 const passingFiles = {
@@ -25,7 +26,7 @@ const violatingFiles = {
   'src/features/jobs/typed/index.ts': "import type { Stock } from '../../reactors/stock';\nexport type Send = Stock;\n",
 };
 
-function machineFixture(t, edition, files) {
+function machineFixture(t: TestContext, edition: "full" | "lite", files: Readonly<Record<string, string>>) {
   return archFixture(t, {
     declaration,
     files: {
@@ -35,7 +36,7 @@ function machineFixture(t, edition, files) {
   });
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition} direct tiers rejects imports across trigger kinds`, t => {
     const root = machineFixture(t, edition, { ...passingFiles, ...violatingFiles });
     const config = loadArchitectureConfig(root);
@@ -56,7 +57,7 @@ for (const edition of ['lite', 'full']) {
       const files = { ...passingFiles, ...violatingFiles };
       const fixture = projectFixture({ edition, declaration, files });
       t.after(fixture.cleanup);
-      fixture.tester.run('kind-isolation', rules['kind-isolation'], {
+      fixture.tester.run('kind-isolation', ruleNamed(rules, 'kind-isolation'), {
         valid: [
           { filename: fixture.at('src/features/jobs/clean/index.ts'), code: passingFiles['src/features/jobs/clean/index.ts'] },
           { filename: fixture.at('src/features/reactors/stock/index.ts'), code: passingFiles['src/features/reactors/stock/index.ts'] },

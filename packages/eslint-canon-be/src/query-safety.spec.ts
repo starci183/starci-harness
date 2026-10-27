@@ -31,7 +31,7 @@ const HEAD = [
     "declare const owner: string",
     "",
 ].join("\n")
-const code = (body) => `${HEAD}${body}`
+const code = (body: string) => `${HEAD}${body}`
 
 test("every rule this law declares is exported under its published name", () => {
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)

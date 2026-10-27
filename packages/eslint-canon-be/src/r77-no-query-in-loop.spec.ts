@@ -14,7 +14,7 @@ const HEAD = [
     "declare class OrderEntity {}",
     "declare const ids: string[]",
 ].join("\n")
-const code = (body) => HEAD + "\n" + body
+const code = (body: string) => HEAD + "\n" + body
 
 for (const edition of ["lite", "full"]) {
     test(`R77 valid batch reads and invalid queries per element in ${edition}`, () => {

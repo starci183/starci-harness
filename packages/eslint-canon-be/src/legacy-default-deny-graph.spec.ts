@@ -2,21 +2,22 @@
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
-const appModule = (guards) => [
+const appModule = (guards: readonly string[]) => [
     'import { Module } from "@nestjs/common"',
     'import { APP_GUARD } from "@nestjs/core"',
     'import { ThrottlerGuard } from "@nestjs/throttler"',
     'import { CsrfOriginGuard } from "../../../src/modules/platform/http-security"',
     'import { AuthGuard, CredentialGuard } from "../../../src/modules/domain/identity"',
-    "@Module({ providers: [" + guards.map((name) => "{ provide: APP_GUARD, useClass: " + name + " }").join(", ") + "] })",
+    "@Module({ providers: [" + guards.map((name: string) => "{ provide: APP_GUARD, useClass: " + name + " }").join(", ") + "] })",
     "export class AppModule {}",
     "",
 ].join("\n")
 const VALID = appModule(["ThrottlerGuard", "CsrfOriginGuard", "CredentialGuard", "AuthGuard"])
 const INVALID = appModule(["ThrottlerGuard", "CsrfOriginGuard", "CredentialGuard"])
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R41 app guard valid and invalid cases in ${edition}`, (t) => {
         const fixture = projectFixture({
             edition,
@@ -33,7 +34,7 @@ for (const edition of ["lite", "full"]) {
             },
         })
         t.after(fixture.cleanup)
-        fixture.tester.run("default-deny-app-guard", rules["default-deny-app-guard"], {
+        fixture.tester.run("default-deny-app-guard", ruleNamed(rules, "default-deny-app-guard"), {
             valid: [{ filename: fixture.at("apps/core/src/app.module.ts"), code: VALID }],
             invalid: [{ filename: fixture.at("apps/unguarded/src/app.module.ts"), code: INVALID, errors: [{ messageId: "finding" }] }],
         })

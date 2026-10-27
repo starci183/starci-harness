@@ -9,6 +9,7 @@ import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { oneConnectionPerDatabase } from "./connections.ts"
 import { rules } from "./project-graph.ts"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const DATABASE = "src/modules/platform/database"
 const PRIMARY = `${DATABASE}/primary.connection.ts`
@@ -23,7 +24,7 @@ const FILES = {
     [`${DATABASE}/billing.config.ts`]: "export const billingConfig = () => ({ host: process.env.BILLING_HOST });\n",
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R84 accepts database-owned construction and rejects a domain connection in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         assert.equal(hfs.edition, edition)
@@ -43,7 +44,7 @@ for (const edition of ["lite", "full"]) {
             ] },
         })
         t.after(fixture.cleanup)
-        assert.doesNotThrow(() => { fixture.tester.run("connection-map", rules["connection-map"], {
+        assert.doesNotThrow(() => { fixture.tester.run("connection-map", ruleNamed(rules, "connection-map"), {
             valid: [{ filename: fixture.at(PRIMARY), code: FILES[PRIMARY] }],
             invalid: [{ filename: fixture.at(BILLING), code: FILES[BILLING], errors: [{ message: /BE_CONNECTION_DUPLICATE/ }] }],
         }) })

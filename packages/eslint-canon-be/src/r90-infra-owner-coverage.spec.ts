@@ -1,12 +1,12 @@
 // proves: BE_INFRA_OWNER@lite
 // proves: BE_INFRA_OWNER@full
 import test from 'node:test';
-import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import { appDeclaration } from '../fixtures/app.mjs';
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.mjs';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { httpClientOnlyInIntegrations, infraImportOwner } from './infra-owner.ts';
+import { canonRuleTester } from "../fixtures/rule-tester.mjs";
 
 const domain = at('src/modules/domain/order/order.service.ts');
 const httpOwner = at('src/modules/platform/http/http.client.ts');
@@ -21,7 +21,7 @@ const httpCall = [
 for (const edition of ['lite', 'full']) {
   test(`R90 ${edition} accepts owning infrastructure and rejects foreign raw clients`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-    const tester = new RuleTester({
+    const tester = canonRuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs } },
     });

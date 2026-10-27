@@ -3,10 +3,11 @@
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./index.ts"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const SOURCE = "export const value = 1;\n"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R102 ${edition}: unit specs belong beside services and operational folders hold no specs`, (t) => {
         const fixture = projectFixture({
             edition,
@@ -19,7 +20,7 @@ for (const edition of ["lite", "full"]) {
         })
         t.after(fixture.cleanup)
 
-        fixture.tester.run("spec-placement", rules["spec-placement"], {
+        fixture.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
             valid: [
                 { filename: fixture.at("src/modules/domain/billing/invoice.service.ts"), code: SOURCE },
                 { filename: fixture.at("src/modules/domain/billing/invoice.service.spec.ts"), code: SOURCE },

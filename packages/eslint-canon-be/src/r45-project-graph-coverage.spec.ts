@@ -8,6 +8,9 @@ import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import type { TestContext } from "node:test"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const NEST_TYPES = {
     "node_modules/@nestjs/common/package.json": '{"name":"@nestjs/common","types":"index.d.ts"}',
@@ -16,9 +19,9 @@ const NEST_TYPES = {
     "node_modules/@nestjs/cqrs/index.d.ts": "export declare function CommandHandler(message: unknown): ClassDecorator; export declare function QueryHandler(message: unknown): ClassDecorator;\n",
 }
 const APP_MODULE = "apps/core/src/app.module.ts"
-const source = (f, rel) => ({ filename: f.at(rel), code: fs.readFileSync(f.at(rel), "utf8") })
-const violation = (f, rel, ...messages) => ({ ...source(f, rel), errors: messages.map((message) => ({ message })) })
-const repo = (t, edition, files, options = {}) => {
+const source = (f: ProjectFixture, rel: string) => ({ filename: f.at(rel), code: fs.readFileSync(f.at(rel), "utf8") })
+const violation = (f: ProjectFixture, rel: string, ...messages: RegExp[]) => ({ ...source(f, rel), errors: messages.map((message) => ({ message })) })
+const repo = (t: TestContext, edition: "full" | "lite", files: Readonly<Record<string, string>>, options: { readonly apps?: readonly { readonly name: string; readonly kind: string }[] } = {}) => {
     const f = projectFixture({ edition, ...options, files: { ...NEST_TYPES, ...files } })
     t.after(f.cleanup)
     return f
@@ -30,7 +33,7 @@ const REGISTER_MODULES = {
     "src/modules/domain/billing/index.ts": "export { BillingModule } from './billing.module';\n",
     "src/modules/domain/billing/billing.module.ts": "import { Module } from '@nestjs/common'; @Module({}) export class BillingModule { static register(options: { isGlobal: boolean }) { return { module: BillingModule, ...options }; } }\n",
 }
-const registeredApp = (imports) => "import { Module } from '@nestjs/common';\n"
+const registeredApp = (imports: string) => "import { Module } from '@nestjs/common';\n"
     + "import { ConfigModule } from '../../../src/modules/platform/config';\n"
     + "import { BillingModule } from '../../../src/modules/domain/billing';\n"
     + `@Module({ imports: [${imports}] }) export class AppModule {}\n`
@@ -56,7 +59,7 @@ const REGISTERED_PROVIDERS = {
     [ORDERS_MODULE]: 'import { Module } from "@nestjs/common"; import { CatalogModule } from "../../../modules/domain/catalog/catalog.module"; import { CreateOrderHandler } from "./application/create.handler"; @Module({imports:[CatalogModule],providers:[CreateOrderHandler]}) export class OrdersModule {}\n',
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R45 register-once ${edition}: each capability is registered once`, (t) => {
         const duplicateApp = "apps/duplicate/src/app.module.ts"
         const f = repo(t, edition, {
@@ -67,7 +70,7 @@ for (const edition of ["lite", "full"]) {
         }, {
             apps: [{ name: "core", kind: "api" }, { name: "duplicate", kind: "api" }],
         })
-        f.tester.run("register-once", rules["register-once"], {
+        f.tester.run("register-once", ruleNamed(rules, "register-once"), {
             valid: [source(f, APP_MODULE)],
             invalid: [violation(f, duplicateApp, /registered more than once/)],
         })
@@ -78,7 +81,7 @@ for (const edition of ["lite", "full"]) {
             ...TRANSPORT_FEATURE,
             [SECOND_TRANSPORT_MODULE]: "import { Module } from '@nestjs/common'; @Module({imports:[]}) export class RunModule {}\n",
         })
-        f.tester.run("module-per-transport", rules["module-per-transport"], {
+        f.tester.run("module-per-transport", ruleNamed(rules, "module-per-transport"), {
             valid: [source(f, TRANSPORT_MODULE)],
             invalid: [violation(f, SECOND_TRANSPORT_MODULE, /second module/, /Nest module declared in/)],
         })
@@ -94,7 +97,7 @@ for (const edition of ["lite", "full"]) {
             "src/features/api/orders/application/stray.command.ts": "export class StrayCommand {}\n",
             [STRAY_HANDLER]: 'import { CommandHandler } from "@nestjs/cqrs"; import { StrayCommand } from "./stray.command"; @CommandHandler(StrayCommand) export class StrayHandler {}\n',
         })
-        f.tester.run("module-registration", rules["module-registration"], {
+        f.tester.run("module-registration", ruleNamed(rules, "module-registration"), {
             valid: [source(f, billingModule), source(f, HANDLER), source(f, ORDERS_MODULE)],
             invalid: [
                 violation(f, CATALOG_MODULE, /registered again by CatalogModule/),

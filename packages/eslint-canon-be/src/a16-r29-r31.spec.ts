@@ -13,26 +13,36 @@ import { projectFixture } from '../fixtures/project/tester.mjs';
 import { rules } from './project-graph.ts';
 import { checkFeatureShape } from '../runtime/scripts/hfs/architecture/feature-shape.mjs';
 import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
+import type { TestContext } from "node:test"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const FEATURE = 'src/features/api/orders';
 const VALUE = 'export const value = 1;\n';
 const runtimeRoot = fileURLToPath(new URL('../runtime/', import.meta.url));
-const shape = f => checkFeatureShape({
+const shape = (f: ProjectFixture) => checkFeatureShape({
   config: { root: f.root }, graph: { resolver: openHfs({ root: runtimeRoot, repoRoot: f.root }) },
 });
 
-function fixture(t, edition, files) {
+function fixture(t: TestContext, edition: "full" | "lite", files: Readonly<Record<string, string>>) {
   const result = projectFixture({ edition, files });
   t.after(result.cleanup);
   return result;
 }
 
-const passing = (f, files, rel) => ({ filename: f.at(rel), code: files[rel] });
-const violating = (f, files, rel, code) => ({
+/** The text of a fixture file the spec wrote (a spec naming a file it did not write fails here, as the tester would). */
+const textAt = (files: Readonly<Record<string, string>>, rel: string) => {
+  const text = files[rel];
+  if (text === undefined) throw new Error(`no fixture file ${rel}`);
+  return text;
+};
+
+const passing = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string) => ({ filename: f.at(rel), code: textAt(files, rel) });
+const violating = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string, code: string) => ({
   ...passing(f, files, rel), errors: [{ message: new RegExp(code), line: 1 }],
 });
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`passing ${edition} feature files occupy their allowed slots`, t => {
     const files = {
       [`${FEATURE}/index.ts`]: VALUE,
@@ -60,7 +70,7 @@ for (const edition of ['lite', 'full']) {
       const bad = `${FEATURE}/orders.controller.ts`;
       const files = { [`${FEATURE}/index.ts`]: VALUE, [good]: VALUE, [bad]: VALUE };
       const f = fixture(t, edition, files);
-      f.tester.run('feature-layout', rules['feature-layout'], {
+      f.tester.run('feature-layout', ruleNamed(rules, 'feature-layout'), {
         valid: [passing(f, files, good)],
         invalid: [violating(f, files, bad, 'BE_FEATURE_LAYOUT_INVALID')],
       });
@@ -80,7 +90,7 @@ for (const edition of ['lite', 'full']) {
         [`${FEATURE}/transport/http/orders.controller.ts`]: 'export const controller = 1;\n',
       };
       const f = fixture(t, edition, files);
-      f.tester.run('application-never-imports-transport', rules['application-never-imports-transport'], {
+      f.tester.run('application-never-imports-transport', ruleNamed(rules, 'application-never-imports-transport'), {
         valid: [passing(f, files, good)],
         invalid: [
           violating(f, files, adapter, 'BE_APPLICATION_IMPORTS_TRANSPORT'),

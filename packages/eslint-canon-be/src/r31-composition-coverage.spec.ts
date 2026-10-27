@@ -3,8 +3,9 @@
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.mjs';
 import { rules } from './project-graph.ts';
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition} passing composed transport and violating orphan transport in a reached feature`, () => {
     const reached = 'src/features/api/orders/transport/http/orders-http.module.ts';
     const orphan = 'src/features/api/orders/transport/graphql/orders-graphql.module.ts';
@@ -17,7 +18,7 @@ for (const edition of ['lite', 'full']) {
     };
     const fixture = projectFixture({ edition, files });
     try {
-      fixture.tester.run('feature-not-composed', rules['feature-not-composed'], {
+      fixture.tester.run('feature-not-composed', ruleNamed(rules, 'feature-not-composed'), {
         valid: [{ filename: fixture.at(reached), code: files[reached] }],
         invalid: [{ filename: fixture.at(orphan), code: files[orphan], errors: [{ messageId: 'finding' }] }],
       });

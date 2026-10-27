@@ -39,7 +39,7 @@ const SERVICES = `import { OrderService } from "@modules/domain/order"
 `
 
 /** A feature door class whose `handle` holds the given body. */
-const door = (body, { imports = SERVICES, ctor = "private readonly orders: OrderService", params = "input: { orderId: string }" } = {}) => `${imports}
+const door = (body: string, { imports = SERVICES, ctor = "private readonly orders: OrderService", params = "input: { orderId: string }" } = {}) => `${imports}
 export class Door {
     constructor(${ctor}) {}
 
@@ -53,7 +53,7 @@ import { OrderService } from "@modules/domain/order"
 class PlaceOrderCommand { constructor(readonly orderId: string) {} }
 `
 
-const WEBHOOK_DOOR = (body) => `import { WebhookSignatureService } from "@modules/platform/http-security"
+const WEBHOOK_DOOR = (body: string) => `import { WebhookSignatureService } from "@modules/platform/http-security"
 import { PaymentService } from "@modules/domain/payment"
 export class Door {
     constructor(private readonly signature: WebhookSignatureService, private readonly payments: PaymentService) {}
@@ -64,7 +64,7 @@ export class Door {
 }`
 
 /** A signed provider door with a typed domain verifier and a separate intake. */
-const DOMAIN_WEBHOOK_DOOR = (body, { post = true, declaration = false } = {}) => `import { Controller, Post } from "@nestjs/common"
+const DOMAIN_WEBHOOK_DOOR = (body: string, { post = true, declaration = false } = {}) => `import { Controller, Post } from "@nestjs/common"
 import { PaymentService } from "@modules/domain/payment"
 import { PaymentWebhookVerifier } from "@modules/domain/payment/payment-verifier.service"
 ${declaration ? 'import { webhookVerifiers } from "./payment-http.module"' : ""}
@@ -80,14 +80,16 @@ export class Door {
 
 test("every rule this law declares is exported under its published name", () => {
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
-    assert.match(featureLogicRole.meta.messages.logic, /^\[HFS_FEATURE_LOGIC_ROLE\] /)
+    const logic = featureLogicRole.meta.messages.logic
+    assert.ok(logic)
+    assert.match(logic, /^\[HFS_FEATURE_LOGIC_ROLE\] /)
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`feature-logic-role: non-door feature roles cannot hide logic in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         assert.equal(hfs.edition, edition)
-        const support = (role) => at(`src/features/api/checkout/application/support/price.${role}.ts`)
+        const support = (role: string) => at(`src/features/api/checkout/application/support/price.${role}.ts`)
         const data = `export interface PriceInput { readonly id: string }
 export type PriceResult = Readonly<{ id: string }>
 export const PRICE_LABELS = { accepted: "accepted", rejected: "rejected", offset: -1 } as const
@@ -476,7 +478,7 @@ for (const edition of ["lite", "full"]) {
       assert.doesNotThrow(() => {
           const root = mkdtempSync(join(tmpdir(), "starci-feature-thin-facade-"))
           t.after(() => rmSync(root, { recursive: true, force: true }))
-          const fixture = (file, code) => {
+          const fixture = (file: string, code: string) => {
               const filename = join(root, file)
               mkdirSync(dirname(filename), { recursive: true })
               writeFileSync(filename, code)
@@ -499,7 +501,7 @@ for (const edition of ["lite", "full"]) {
           fixture("src/modules/domain/status/chain.ts", 'export * from "./nested"')
           fixture("src/modules/domain/status/deceptive.mapper.ts", 'export { loadState as mapState } from "./status.service"')
           const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, root)
-          const mapping = (name, source, imported = "mapState") => {
+          const mapping = (name: string, source: string, imported = "mapState") => {
               const code = `import { ${imported} as toState } from "${source}"
   export const toTransport = (value: string) => toState(value)`
               return { filename: fixture(`src/features/api/checkout/transport/graphql/${name}.mapper.ts`, code), code }
@@ -524,7 +526,7 @@ for (const edition of ["lite", "full"]) {
           }
           const parsed = ts.parseJsonConfigFileContent(config, ts.sys, root)
           const program = ts.createProgram(parsed.fileNames, parsed.options)
-          const withProgram = (candidate) => ({
+          const withProgram = <T extends object>(candidate: T) => ({
               ...candidate,
               languageOptions: { parserOptions: { projectService: false, programs: [program] } },
           })

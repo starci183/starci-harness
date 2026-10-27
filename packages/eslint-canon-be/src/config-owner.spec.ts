@@ -15,7 +15,7 @@ import { configParsedInMain, noDirectEnvRead, noSecretDefault, secretCompareTimi
 
 const CONFIG_MODULE = "@modules/platform/config"
 /** An import line with its source spliced in, so the case text holds no literal import source. */
-const importLine = (names, source) => ["import {", names, "} fro" + "m", JSON.stringify(source)].join(" ") + String.fromCharCode(10)
+const importLine = (names: string, source: string) => ["import {", names, "} fro" + "m", JSON.stringify(source)].join(" ") + String.fromCharCode(10)
 const NEST_CONFIG = "@nestjs/" + "config"
 const DOTENV = "dot" + "env"
 const tester = typedTester()
@@ -26,6 +26,8 @@ const MAIN = at("apps/api/src/main.ts")
 const ENV = at("apps/api/src/api.env.ts")
 const OPTIONS = at("apps/api/src/api.options.ts")
 const GROUP = at("apps/api/src/compose/platform.ts")
+/** The lite edition's one connection, on a managed provider (a declared field the fixture's connection type does not name). */
+const PRIMARY_CONNECTION = { name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "schema", provider: "supabase" }
 
 // proves: BE_CONFIG_OWNER@lite BE_CONFIG_OWNER@full
 for (const edition of ["lite", "full"]) {
@@ -33,7 +35,7 @@ for (const edition of ["lite", "full"]) {
         const hfs = edition === "lite" ? hfsFromDeclaration({
             ...appDeclaration("be", {
                 ...BE_DECLARATION,
-                connections: [{ name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "schema", provider: "supabase" }],
+                connections: [PRIMARY_CONNECTION],
             }),
             edition,
         }, TYPED_ROOT) : fixtureHfs()

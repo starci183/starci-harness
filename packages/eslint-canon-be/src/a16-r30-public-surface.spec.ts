@@ -15,15 +15,23 @@ import { projectFixture } from "../fixtures/project/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { importOwnerEntry, noFolderReexport, noRelativeCapabilityEscape, noSelfModuleAlias } from "./module-layering.ts"
 import { rules as beGraphRules } from "./project-graph.ts"
-import { rules as feGraphRules } from "../../eslint-canon-fe/project-graph.mjs"
+import { fePlugin } from "../fixtures/sibling-canon.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const plan = at("src/modules/domain/plan/plan.service.ts")
 const planIndex = at("src/modules/domain/plan/index.ts")
 const integrationIndex = at("src/modules/integrations/data-sources/index.ts")
 const feature = at("src/features/api/checkout/application/place.handler.ts")
-const namedExports = count => "export { " + Array.from({ length: count }, (_, index) => "Name" + index).join(", ") + " } from './names'"
+const namedExports = (count: number) => "export { " + Array.from({ length: count }, (_, index) => "Name" + index).join(", ") + " } from './names'"
 
-const aliasFiles = base => ({
+/** The text of a fixture file the test wrote (a missing one is a broken fixture, not a case). */
+const fileCode = (files: Readonly<Record<string, string>>, rel: string): string => {
+    const code = files[rel]
+    if (code === undefined) throw new Error(`no fixture file ${rel}`)
+    return code
+}
+
+const aliasFiles = (base: string) => ({
     [base + "/index.ts"]: "export { Original, Shape } from './original'\n",
     [base + "/original.ts"]: "export class Original {}\nexport interface Shape { readonly id: string }\n",
     [base + "/aliases.ts"]: [
@@ -36,7 +44,7 @@ const aliasFiles = base => ({
     ].join("\n"),
 })
 
-const packageFiles = profile => ({
+const packageFiles = (profile: "be" | "fe") => ({
     "../package.json": JSON.stringify({ private: true, workspaces: [profile + "/packages/*", ...(profile === "fe" ? ["fe/apps/*"] : [])] }),
     "tsconfig.json": JSON.stringify({
         compilerOptions: {
@@ -52,7 +60,7 @@ const packageFiles = profile => ({
     "packages/ui/src/private/index.ts": "export const Private = 1\n",
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R30 ${edition} accepts valid owner entries and rejects invalid public-surface syntax`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const tester = ruleTester({ root: TYPED_ROOT, hfs })
@@ -103,7 +111,7 @@ for (const edition of ["lite", "full"]) {
         }
         const f = projectFixture({ edition, files })
         t.after(f.cleanup)
-        f.tester.run("owner-export-bypass", beGraphRules["owner-export-bypass"], {
+        f.tester.run("owner-export-bypass", ruleNamed(beGraphRules, "owner-export-bypass"), {
             valid: [{ filename: f.at("src/modules/domain/task/task.service.ts"), code: files["src/modules/domain/task/task.service.ts"] }],
             invalid: [
                 { filename: f.at("src/modules/domain/deep/deep.service.ts"), code: files["src/modules/domain/deep/deep.service.ts"], errors: [{ message: /\[ARCH_OWNER_EXPORT_BYPASS\]/, line: 1 }] },
@@ -123,7 +131,7 @@ for (const edition of ["lite", "full"]) {
         }
         const f = projectFixture({ profile: "fe", edition, files })
         t.after(f.cleanup)
-        f.tester.run("owner-export-bypass", feGraphRules["owner-export-bypass"], {
+        f.tester.run("owner-export-bypass", ruleNamed(fePlugin.rules, "owner-export-bypass"), {
             valid: [{ filename: f.at("apps/web/src/hooks/shop/index.ts"), code: files["apps/web/src/hooks/shop/index.ts"] }],
             invalid: [
                 { filename: f.at("apps/web/src/hooks/orders/index.ts"), code: files["apps/web/src/hooks/orders/index.ts"], errors: [{ message: /\[ARCH_OWNER_EXPORT_BYPASS\]/, line: 1 }] },
@@ -137,9 +145,9 @@ for (const edition of ["lite", "full"]) {
         const files = aliasFiles(base)
         const f = projectFixture({ edition, files })
         t.after(f.cleanup)
-        f.tester.run("alias-reexport", beGraphRules["alias-reexport"], {
-            valid: [{ filename: f.at(base + "/index.ts"), code: files[base + "/index.ts"] }],
-            invalid: [{ filename: f.at(base + "/aliases.ts"), code: files[base + "/aliases.ts"], errors: [
+        f.tester.run("alias-reexport", ruleNamed(beGraphRules, "alias-reexport"), {
+            valid: [{ filename: f.at(base + "/index.ts"), code: fileCode(files, base + "/index.ts") }],
+            invalid: [{ filename: f.at(base + "/aliases.ts"), code: fileCode(files, base + "/aliases.ts"), errors: [
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 2 },
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 3 },
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 4 },
@@ -153,9 +161,9 @@ for (const edition of ["lite", "full"]) {
         const files = aliasFiles(base)
         const f = projectFixture({ profile: "fe", edition, files })
         t.after(f.cleanup)
-        f.tester.run("alias-reexport", feGraphRules["alias-reexport"], {
-            valid: [{ filename: f.at(base + "/index.ts"), code: files[base + "/index.ts"] }],
-            invalid: [{ filename: f.at(base + "/aliases.ts"), code: files[base + "/aliases.ts"], errors: [
+        f.tester.run("alias-reexport", ruleNamed(fePlugin.rules, "alias-reexport"), {
+            valid: [{ filename: f.at(base + "/index.ts"), code: fileCode(files, base + "/index.ts") }],
+            invalid: [{ filename: f.at(base + "/aliases.ts"), code: fileCode(files, base + "/aliases.ts"), errors: [
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 2 },
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 3 },
                 { message: /\[HFS_ALIAS_REEXPORT\]/, line: 4 },
@@ -172,7 +180,7 @@ for (const edition of ["lite", "full"]) {
         }
         const f = projectFixture({ edition, files, apps: [{ name: "api", kind: "api" }] })
         t.after(f.cleanup)
-        f.tester.run("package-export-bypass", beGraphRules["package-export-bypass"], {
+        f.tester.run("package-export-bypass", ruleNamed(beGraphRules, "package-export-bypass"), {
             valid: [{ filename: f.at("apps/api/src/app.module.ts"), code: files["apps/api/src/app.module.ts"] }],
             invalid: [{ filename: f.at("apps/api/src/main.ts"), code: files["apps/api/src/main.ts"], errors: [{ message: /\[ARCH_PACKAGE_EXPORT_BYPASS\]/, line: 2 }] }],
         })
@@ -186,7 +194,7 @@ for (const edition of ["lite", "full"]) {
         }
         const f = projectFixture({ profile: "fe", edition, files })
         t.after(f.cleanup)
-        f.tester.run("package-export-bypass", feGraphRules["package-export-bypass"], {
+        f.tester.run("package-export-bypass", ruleNamed(fePlugin.rules, "package-export-bypass"), {
             valid: [{ filename: f.at("apps/web/src/app/page.tsx"), code: files["apps/web/src/app/page.tsx"] }],
             invalid: [{ filename: f.at("apps/web/src/app/peeking.tsx"), code: files["apps/web/src/app/peeking.tsx"], errors: [{ message: /\[ARCH_PACKAGE_EXPORT_BYPASS\]/, line: 2 }] }],
         })

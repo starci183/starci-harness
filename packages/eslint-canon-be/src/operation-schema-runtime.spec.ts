@@ -20,7 +20,7 @@ const OPERATIONS = defineOperations({ "plan.read@1": ${ENTRY} })
 const OTHER = defineOperations({ "plan.other@1": ${ENTRY} })
 type Table = typeof OPERATIONS
 `
-const route = (body) => `@Controller("operations") class C { @Post() async invoke(${body} request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`
+const route = (body: string) => `@Controller("operations") class C { @Post() async invoke(${body} request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`
 
 for (const edition of ["lite", "full"]) {
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) })
@@ -124,7 +124,7 @@ for (const edition of ["lite", "full"]) {
 
     test(`R95 ${edition}: accepts optional fields and parsed defaults but rejects absent root input and output values`, () => {
         const owner = at("src/modules/platform/operations/registered.contracts.ts")
-        const absent = (label) => ({ messageId: "type", data: { label, why: "undefined or void at the root" } })
+        const absent = (label: string) => ({ messageId: "type", data: { label, why: "undefined or void at the root" } })
         tester.run("operation-contract-decidable", operationContractDecidable, {
             valid: [
                 ...[owner, TABLE].flatMap((filename) => [

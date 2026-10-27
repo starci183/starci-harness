@@ -5,11 +5,11 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 import { asyncNeedsAwait, rules } from "./async-discipline.ts"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
 })
 const SRC = "src/modules/domain/plan/plan.service.ts"

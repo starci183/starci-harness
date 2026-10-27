@@ -4,14 +4,21 @@
 // proves: ARCH_OWNER_CYCLE@lite ARCH_OWNER_CYCLE@full
 // proves: BE_FEATURE_IMPORTS_FEATURE@lite BE_FEATURE_IMPORTS_FEATURE@full
 import test from "node:test"
+import type { RuleTester } from "eslint"
 import bePlugin from "./index.ts"
-import fePlugin from "../../eslint-canon-fe/index.mjs"
+import { fePlugin } from "../fixtures/sibling-canon.mjs"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 import { projectFixture } from "../fixtures/project/tester.mjs"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
 
-const good = (fixture, files, rel) => ({ filename: fixture.at(rel), code: files[rel] })
-const bad = (fixture, files, rel, message) => ({ ...good(fixture, files, rel), errors: [{ message, line: 1 }] })
+const good = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, rel: string): RuleTester.ValidTestCase => {
+    const code = files[rel]
+    if (code === undefined) throw new Error(`no fixture file ${rel}`)
+    return { filename: fixture.at(rel), code }
+}
+const bad = (fixture: ProjectFixture, files: Readonly<Record<string, string>>, rel: string, message: RegExp): RuleTester.InvalidTestCase => ({ ...good(fixture, files, rel), errors: [{ message, line: 1 }] })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R26 backend tier direction accepts downward edges and rejects upward edges in ${edition}`, (t) => {
         const files = {
             "src/features/api/orders/index.ts": "import { config } from '../../../modules/platform/config';\nexport const orders = config;\n",
@@ -20,7 +27,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)
-        fixture.tester.run("tier-direction", bePlugin.rules["tier-direction"], {
+        fixture.tester.run("tier-direction", ruleNamed(bePlugin.rules, "tier-direction"), {
             valid: [good(fixture, files, "src/features/api/orders/index.ts")],
             invalid: [bad(fixture, files, "src/modules/domain/orders/index.ts", /BE_TIER_DIRECTION/)],
         })
@@ -35,13 +42,13 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ edition, profile: "fe", files })
         t.after(fixture.cleanup)
-        fixture.tester.run("tier-direction", fePlugin.rules["tier-direction"], {
+        fixture.tester.run("tier-direction", ruleNamed(fePlugin.rules, "tier-direction"), {
             valid: [good(fixture, files, "apps/web/src/features/pages/home/index.tsx")],
             invalid: [bad(fixture, files, "apps/web/src/modules/catalog/index.ts", /FE_TIER_DIRECTION/)],
         })
     })
 
-    for (const profile of ["be", "fe"]) {
+    for (const profile of ["be", "fe"] as const) {
         test(`R26 ${profile} packages accept internal imports and reject type-only app imports in ${edition}`, (t) => {
             const files = {
                 "../package.json": JSON.stringify({ private: true, workspaces: [profile + "/packages/*"] }),
@@ -55,12 +62,11 @@ for (const edition of ["lite", "full"]) {
                 "packages/ui/src/clean.ts": "import { value } from './value';\nexport const clean = value;\n",
                 "packages/ui/src/value.ts": "export const value = 1;\n",
             }
-            const apps = [{ name: "demo", kind: "api" }]
-            if (profile === "fe") apps[0].kind = "next"
+            const apps = [{ name: "demo", kind: profile === "fe" ? "next" : "api" }]
             const fixture = projectFixture({ edition, profile, files, apps })
             t.after(fixture.cleanup)
             const plugin = profile === "be" ? bePlugin : fePlugin
-            fixture.tester.run("package-imports-app", plugin.rules["package-imports-app"], {
+            fixture.tester.run("package-imports-app", ruleNamed(plugin.rules, "package-imports-app"), {
                 valid: [good(fixture, files, "packages/ui/src/clean.ts")],
                 invalid: [bad(fixture, files, "packages/ui/src/index.ts", /ARCH_PACKAGE_IMPORTS_APP/)],
             })
@@ -78,7 +84,7 @@ for (const edition of ["lite", "full"]) {
             const fixture = projectFixture({ edition, profile, files })
             t.after(fixture.cleanup)
             const plugin = profile === "be" ? bePlugin : fePlugin
-            fixture.tester.run("owner-cycle", plugin.rules["owner-cycle"], {
+            fixture.tester.run("owner-cycle", ruleNamed(plugin.rules, "owner-cycle"), {
                 valid: [good(fixture, files, base + "a/index.ts")],
                 invalid: [bad(fixture, files, base + "x/index.ts", /ARCH_OWNER_CYCLE/)],
             })
@@ -96,7 +102,7 @@ for (const edition of ["lite", "full"]) {
         }
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)
-        fixture.tester.run("feature-imports-feature", bePlugin.rules["feature-imports-feature"], {
+        fixture.tester.run("feature-imports-feature", ruleNamed(bePlugin.rules, "feature-imports-feature"), {
             valid: [good(fixture, files, "src/features/api/clean/index.ts")],
             invalid: [
                 bad(fixture, files, "src/features/api/a/index.ts", /BE_FEATURE_IMPORTS_FEATURE/),

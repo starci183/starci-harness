@@ -20,14 +20,14 @@ import type { EventBus } from "@modules/platform/event-bus/event-bus.port"
 import { PaymentService as Processor } from "@modules/domain/payment"
 import { CommandBus as Commands } from "@nestjs/cqrs"
 `
-const service = (body, { parameter = "eventId: string", inbox = "Inbox", className = "DeliveryService", door = true } = {}) => `${door ? DOOR_IMPORT : ""}${head}
+const service = (body: string, { parameter = "eventId: string", inbox = "Inbox", className = "DeliveryService", door = true } = {}) => `${door ? DOOR_IMPORT : ""}${head}
 export class ${className} {
     constructor(private readonly seen: ${inbox}, private readonly database: EntityManager, private readonly events: EventBus, private readonly processor: Processor, private readonly commands: Commands) {}
     async receive(${parameter}): Promise<void> { ${body} }
     private async work(): Promise<void> {}
 }`
 const claim = 'if (!(await this.seen.claim("provider", eventId))) return; await this.work()'
-const transaction = (body) => `return this.database.transaction(async (tx) => { ${body} })`
+const transaction = (body: string) => `return this.database.transaction(async (tx) => { ${body} })`
 
 test("R263 inbox rule is exported and enabled through the webhook law", () => {
     assert.equal(rules["webhook-inbox-key"], webhookInboxKey)

@@ -10,12 +10,12 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { noBareVerbExport, noDefaultExport, noVendorModuleFactoryName, noVersionInName, rules } from "./naming.ts"
 import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,
@@ -152,7 +152,7 @@ test("NAME-5: an exported function names its object", () => {
 })
 
 test("R89: named exports only; the Jest global setup of the e2e setup folder is the one default export", () => {
-  const slotTester = new RuleTester({
+  const slotTester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: fixtureHfs() } },
   })

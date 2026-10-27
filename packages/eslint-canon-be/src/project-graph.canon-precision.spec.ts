@@ -5,8 +5,17 @@ import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
 import { runGit } from "../runtime/scripts/api/git/lib.mjs"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
-const source = (f, files, rel) => ({ filename: f.at(rel), code: files[rel] })
+/** The text of a fixture file the spec wrote (a spec naming a file it did not write fails here, as the tester would). */
+const textAt = (files: Readonly<Record<string, string>>, rel: string) => {
+    const text = files[rel]
+    if (text === undefined) throw new Error(`no fixture file ${rel}`)
+    return text
+}
+
+const source = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string) => ({ filename: f.at(rel), code: textAt(files, rel) })
 
 test("dead-exports counts the index copy of a new unit spec even after its working copy is removed", (t) => {
     const entry = "src/modules/domain/catalog/index.ts"
@@ -16,7 +25,7 @@ test("dead-exports counts the index copy of a new unit spec even after its worki
     }
     const f = projectFixture({ files })
     t.after(f.cleanup)
-    const git = (args) => {
+    const git = (args: readonly string[]) => {
         const result = runGit(args, { cwd: f.root })
         assert.ifError(result.error)
         assert.equal(result.status, 0, result.stderr)
@@ -31,13 +40,13 @@ test("dead-exports counts the index copy of a new unit spec even after its worki
     fs.mkdirSync(path.dirname(f.at(untracked)), { recursive: true })
     fs.writeFileSync(f.at(untracked), "import { untrackedOnly } from '../catalog';\nit('is not in this commit', () => { expect(untrackedOnly).toBeDefined(); });\n")
 
-    f.tester.run("dead-exports", rules["dead-exports"], {
+    f.tester.run("dead-exports", ruleNamed(rules, "dead-exports"), {
         valid: [],
         invalid: [{ ...source(f, files, entry), errors: [{ messageId: "finding", line: 3 }] }],
     })
 })
 
-const handler = (name) => [
+const handler = (name: string) => [
     "import { CommandHandler } from '@nestjs/cqrs';",
     "import { ICQRSHandler } from '@modules/platform/cqrs';",
     "import { InjectLogger, type Logger } from '@modules/platform/logging';",
@@ -61,7 +70,7 @@ const handler = (name) => [
     "",
 ].join("\n")
 
-const business = (name) => [
+const business = (name: string) => [
     `export function ${name}(input: { items: number[]; limit: number }) {`,
     "    let total = input.items[0] ?? 0;",
     "    const count = input.items.length + input.limit;",
@@ -90,7 +99,7 @@ test("duplicate-code accepts canon handler wiring while still finding copied bus
     }
     const f = projectFixture({ files })
     t.after(f.cleanup)
-    f.tester.run("duplicate-code", rules["duplicate-code"], {
+    f.tester.run("duplicate-code", ruleNamed(rules, "duplicate-code"), {
         valid: [
             source(f, files, "src/features/api/alpha/application/alpha.handler.ts"),
             source(f, files, "src/features/api/beta/application/beta.handler.ts"),
@@ -98,5 +107,5 @@ test("duplicate-code accepts canon handler wiring while still finding copied bus
         ],
         invalid: [{ ...source(f, files, "src/modules/domain/alpha/alpha.service.ts"), errors: [{ messageId: "finding", line: 1 }] }],
     })
-    assert.ok("finding" in rules["duplicate-code"].meta.messages, "duplicate-code keeps its finding message")
+    assert.ok("finding" in ruleNamed(rules, "duplicate-code").meta.messages, "duplicate-code keeps its finding message")
 })

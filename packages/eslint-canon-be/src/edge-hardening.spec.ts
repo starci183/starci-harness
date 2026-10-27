@@ -2,12 +2,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { RuleTester } from "eslint"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { at, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
 import { corsAllowlist, securityHeaders, trustProxy, recommended, rules } from "./edge-hardening.ts"
 import plugin, { lawOwners, ruleDeclarations, ruleOwners, recommended as pluginRecommended } from "./index.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 const MAIN = at("apps/api/src/main.ts")
 const HEAD = 'import { NestFactory } from "@nestjs/core"; const app = await NestFactory.create(AppModule);\n'
@@ -19,17 +19,17 @@ express.disable("x-powered-by"); express.set("trust proxy", 1);`
 const HELPER = `${HEAD}import { applyHttpSecurity as applyEdge } from "@modules/platform/http-security/edge-security.service";
 applyEdge(app, options.httpSecurity, { trustProxy: 1 });`
 
-const tester = (edition) => {
+const tester = (edition: "full" | "lite") => {
     const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }] }), edition }
-    return new RuleTester({
+    return canonRuleTester({
         languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
         settings: { starci: { hfs: hfsFromDeclaration(declaration, TYPED_ROOT) } },
     })
 }
-const entry = (code) => ({ filename: MAIN, code })
-const refusal = (code) => ({ ...entry(code), errors: [{ messageId: "boundary" }] })
+const entry = (code: string) => ({ filename: MAIN, code })
+const refusal = (code: string) => ({ ...entry(code), errors: [{ messageId: "boundary" }] })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`BE_CORS_ALLOWLIST ${edition}: explicit config or exact literal origins pass; wildcard, open and missing CORS fail`, () => {
       assert.doesNotThrow(() => {
           tester(edition).run("cors-allowlist", corsAllowlist, {

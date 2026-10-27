@@ -13,11 +13,11 @@ const HEAD = [
     'import type { EntityManager } from "typeorm"',
     "interface Delivery { eventId: string; amount: number }",
 ].join("\n")
-const service = (body) => HEAD
+const service = (body: string) => HEAD
     + "\nclass BillingService { constructor(private readonly inbox: Inbox, private readonly manager: EntityManager) {}"
     + "\nasync handle(delivery: Delivery) { " + body + " }"
     + "\nprivate async work(): Promise<void> {} }"
-const delegated = (helper) => HEAD
+const delegated = (helper: string) => HEAD
     + "\nclass BillingService { constructor(private readonly inbox: Inbox, private readonly manager: EntityManager) {}"
     + "\nhandle(delivery: Delivery) { return this.manager.transaction((tx) => this.handleInTransaction(delivery, tx)) }"
     + "\nprivate async handleInTransaction(delivery: Delivery, manager: EntityManager) { " + helper + " } }"

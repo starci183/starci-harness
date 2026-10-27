@@ -86,7 +86,7 @@ export class OrderStatusGateway {
 }`
 
 /** The same typed rule surface is exercised in each edition. */
-const editionTester = (edition) => {
+const editionTester = (edition: "full" | "lite") => {
     const declaration = { ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["realtime"] }), edition }
     return ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration(declaration, TYPED_ROOT) })
 }
@@ -190,7 +190,7 @@ test("realtime-topic-scope: the topic is built from the principal parameter", ()
     }) })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`realtime-shape: ${edition} permits a principal-typed server push stream`, () => {
         assert.doesNotThrow(() => { editionTester(edition).run("realtime-shape", realtimeShape, {
             valid: [

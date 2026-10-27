@@ -4,6 +4,7 @@ import { BE_DECLARATION, at, typedTester } from "../fixtures/typed/tester.mjs"
 import { hfsOf } from "./lib/hfs.ts"
 import { isWebhookDomainServiceType } from "./lib/webhook-verifiers.ts"
 import { webhookForbiddenReferences, webhookIntakeDispatchesCommand } from "./lib/webhook-handoff.ts"
+import type { RuleModule } from "./lib/rule.ts"
 
 const tester = typedTester({ declaration: { ...BE_DECLARATION, patterns: ["webhooks"] } })
 const DOOR = at("src/features/webhooks/sepay/transport/http/sepay.webhook.ts")
@@ -11,7 +12,7 @@ const MODULE = at("src/features/webhooks/sepay/transport/http/sepay-http.module.
 const SURFACE = "@modules/domain/payment/payment-dispatch.surface"
 
 /** Exercise the shared checks without repeating webhook route and acknowledgement assertions. */
-const handoff = {
+const handoff: RuleModule = {
     meta: { type: "problem", schema: [], messages: { reference: "Forbidden webhook bus or feature handler import.", dispatch: "Webhook intake dispatches a command." } },
     create(context) {
         const hfs = hfsOf(context)
@@ -27,7 +28,7 @@ const handoff = {
     },
 }
 
-const intake = (method, service = "PaymentDispatchService") => `import { ${service} } from "@modules/domain/payment/payment-dispatch.service"
+const intake = (method: string, service ="PaymentDispatchService") => `import { ${service} } from "@modules/domain/payment/payment-dispatch.service"
 export class Door {
     constructor(private readonly payments: ${service}) {}
     async receive(body: object): Promise<void> { await this.payments.${method}(body) }

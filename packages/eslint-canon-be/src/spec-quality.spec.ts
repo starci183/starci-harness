@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { at, fixtureHfs } from "../fixtures/typed/tester.mjs"
 import { rules, specNoSourceRead } from "./spec-quality.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: fixtureHfs() } },
 })

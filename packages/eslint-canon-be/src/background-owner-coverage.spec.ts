@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { ruleNamed } from "../fixtures/rule-tester.mjs"
 
 const owned = "src/features/api/owned/transport/message/owned.consumer.ts"
 const orphan = "src/features/api/orphan/transport/message/orphan.consumer.ts"
@@ -15,11 +16,11 @@ const files = {
     [orphan]: "export class OrphanConsumer {}\n",
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R46 ${edition}: composed consumers pass and unowned consumers are refused`, (t) => {
         const fixture = projectFixture({ edition, files })
         t.after(fixture.cleanup)
-        fixture.tester.run("background-unowned", rules["background-unowned"], {
+        fixture.tester.run("background-unowned", ruleNamed(rules, "background-unowned"), {
             valid: [{ filename: fixture.at(owned), code: fs.readFileSync(fixture.at(owned), "utf8") }],
             invalid: [{
                 filename: fixture.at(orphan),

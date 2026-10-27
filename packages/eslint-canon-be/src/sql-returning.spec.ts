@@ -3,6 +3,7 @@
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const GOOD = "src/modules/domain/stock/persistence/stock.sql.ts"
 const BAD = "src/modules/domain/stock/persistence/stock-bad.sql.ts"
@@ -28,11 +29,11 @@ const FILES = {
     ].join("\n"),
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`sql-returning accepts valid row results and rejects invalid bare RETURNING in ${edition}`, (t) => {
         const fixture = projectFixture({ edition, files: FILES })
         t.after(fixture.cleanup)
-        fixture.tester.run("sql-returning", rules["sql-returning"], {
+        fixture.tester.run("sql-returning", ruleNamed(rules, "sql-returning"), {
             valid: [{ filename: fixture.at(GOOD), code: FILES[GOOD] }],
             invalid: [{
                 filename: fixture.at(BAD),

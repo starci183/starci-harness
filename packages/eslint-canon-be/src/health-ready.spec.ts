@@ -5,37 +5,37 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import tsParser from "@typescript-eslint/parser"
-import { RuleTester } from "eslint"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { healthSignals, readyReal, rules } from "./health-ready.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const fixtures = []
+const fixtures: string[] = []
 test.after(() => { for (const root of fixtures) fs.rmSync(root, { recursive: true, force: true }) })
 const fixture = () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "starci-health-ready-"))
     fixtures.push(root)
     return root
 }
-const put = (root, filename, code) => {
+const put = (root: string, filename: string, code: string) => {
     const target = path.join(root, filename)
     fs.mkdirSync(path.dirname(target), { recursive: true })
     fs.writeFileSync(target, code)
     return target
 }
-const declaration = (edition) => ({ ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }, { name: "worker", kind: "worker" }] }), edition })
-const testerOf = (root, edition) => new RuleTester({
+const declaration = (edition: "full" | "lite") => ({ ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }, { name: "worker", kind: "worker" }] }), edition })
+const testerOf = (root: string, edition: "full" | "lite") => canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: hfsFromDeclaration(declaration(edition), root) } },
 })
-const ready = (body, constructor = "constructor(private readonly required: RequiredProbe) {}", route = "ready") => `@Controller("health") class ReadyController { ${constructor} @Get("${route}") ready() { ${body} } }`
+const ready = (body: string, constructor = "constructor(private readonly required: RequiredProbe) {}", route = "ready") => `@Controller("health") class ReadyController { ${constructor} @Get("${route}") ready() { ${body} } }`
 const bounded = "return Promise.race([this.required.check(), new Promise((resolve, reject) => setTimeout(() => reject(new Error('unavailable')), 1000))])"
 const liveController = '@Controller("health") export class LiveController { @Get("live") live() { return { ok: true } } }'
 const readyController = ready(bounded).replace("class ReadyController", "export class ReadyController")
 
-const queryReadinessFixture = (change = {}) => {
+const queryReadinessFixture = (change: Readonly<Record<string, (code: string) => string>> = {}) => {
     const root = fixture()
-    const files = {
+    const files: Readonly<Record<string, string>> = {
         "src/features/api/system-health/application/required.query.ts": "export class RequiredQuery {}",
         "src/modules/platform/cqrs/handler.ts": "export abstract class HandlerBase { execute() { return this.process() } protected abstract process(): Promise<unknown> }",
         "src/modules/platform/database/probe.ts": 'import type { EntityManager } from "typeorm"; export class DatabaseProbe { constructor(private readonly database: EntityManager) {} async probe() { await this.database.transaction(() => Promise.resolve()) } }',
@@ -59,7 +59,7 @@ test("R262 exports the two rules", () => {
     assert.deepEqual(Object.keys(rules), ["ready-real", "health-signals"])
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`BE_READY_REAL@${edition}: a registered query handler consumes the typed timer and actual required probe`, () => {
         const passing = queryReadinessFixture()
         assert.doesNotThrow(() => {
@@ -74,26 +74,26 @@ for (const edition of ["lite", "full"]) {
                 testerOf(aliased.root, edition).run("ready-real", readyReal, { valid: [{ filename: aliased.filename, code: aliased.code }], invalid: [] })
             })
         }
-        const mutations = [
-            ["src/features/api/system-health/system-health.module.ts", (code) => code.replace("providers:[RequiredHandler]", "providers:[]")],
-            ["src/features/api/system-health/transport/http/health-http.module.ts", (code) => code.replace("imports:[HealthModule]", "imports:[]")],
-            ["src/features/api/system-health/application/required.handler.ts", (code) => code.replace("@QueryHandler(RequiredQuery)", "")],
-            ["src/features/api/system-health/application/required.handler.ts", (code) => code.replace("@QueryHandler(RequiredQuery)", "class OtherQuery {} @QueryHandler(OtherQuery)")],
-            ["src/features/api/system-health/application/required.handler.ts", (code) => code.replace("return this.readiness.probeRequired()", "return Promise.resolve({ok:true})")],
-            ["src/modules/platform/cqrs/handler.ts", (code) => code.replace("return this.process()", "this.process(); return Promise.resolve({ok:true})")],
-            ["src/modules/platform/database/probe.ts", (code) => code.replace("await this.database.transaction(() => Promise.resolve())", "return Promise.resolve()")],
-            ["src/modules/platform/http-security/readiness.ts", (code) => code.replace("this.database.probe(), failure", "Promise.resolve({ok:true}), failure")],
-            ["src/modules/platform/http-security/readiness.ts", (code) => code.replace("TIMEOUT));", "0));")],
-            ["src/modules/platform/http-security/readiness.ts", (code) => code.replace('reject(new Error("timeout"))', "resolve({ok:true})")],
-            ["src/modules/platform/retry/timer.ts", (code) => code.replace("delayMs: number", "delayMs: string")],
+        const mutations: [string, (code: string) => string][] = [
+            ["src/features/api/system-health/system-health.module.ts", (code: string) => code.replace("providers:[RequiredHandler]", "providers:[]")],
+            ["src/features/api/system-health/transport/http/health-http.module.ts", (code: string) => code.replace("imports:[HealthModule]", "imports:[]")],
+            ["src/features/api/system-health/application/required.handler.ts", (code: string) => code.replace("@QueryHandler(RequiredQuery)", "")],
+            ["src/features/api/system-health/application/required.handler.ts", (code: string) => code.replace("@QueryHandler(RequiredQuery)", "class OtherQuery {} @QueryHandler(OtherQuery)")],
+            ["src/features/api/system-health/application/required.handler.ts", (code: string) => code.replace("return this.readiness.probeRequired()", "return Promise.resolve({ok:true})")],
+            ["src/modules/platform/cqrs/handler.ts", (code: string) => code.replace("return this.process()", "this.process(); return Promise.resolve({ok:true})")],
+            ["src/modules/platform/database/probe.ts", (code: string) => code.replace("await this.database.transaction(() => Promise.resolve())", "return Promise.resolve()")],
+            ["src/modules/platform/http-security/readiness.ts", (code: string) => code.replace("this.database.probe(), failure", "Promise.resolve({ok:true}), failure")],
+            ["src/modules/platform/http-security/readiness.ts", (code: string) => code.replace("TIMEOUT));", "0));")],
+            ["src/modules/platform/http-security/readiness.ts", (code: string) => code.replace('reject(new Error("timeout"))', "resolve({ok:true})")],
+            ["src/modules/platform/retry/timer.ts", (code: string) => code.replace("delayMs: number", "delayMs: string")],
             ["src/modules/platform/retry/timer.ts", () => "type Run = string; type Stop = () => void; export interface Timer { schedule(callback: Run, delayMs: number): Stop }"],
             ["src/modules/platform/retry/timer.ts", () => "type Run = () => void; type Stop = string; export interface Timer { schedule(callback: Run, delayMs: number): Stop }"],
             ["src/modules/platform/retry/timer.ts", () => "type Run = Stop; type Stop = Run; export interface Timer { schedule(callback: Run, delayMs: number): Stop }"],
-            ["src/modules/platform/retry/host-timer.ts", (code) => code.replace("setTimeout(callback, delayMs)", "setTimeout(() => undefined, delayMs)")],
-            ["src/modules/platform/retry/host-timer.ts", (code) => code.replace("setTimeout(callback, delayMs)", "setTimeout(callback, 1000)")],
-            ["src/modules/platform/retry/retry.module.ts", (code) => code.replace("provide:TIMER", "provide:OTHER")],
-            ["src/modules/platform/retry/retry.module.ts", (code) => code.replace("useClass:HostTimer", "useClass:MissingTimer")],
-            ["src/features/api/system-health/transport/http/ready.controller.ts", (code) => code.replace("return this.bus.execute(new RequiredQuery())", "this.bus.execute(new RequiredQuery()); return {ok:true}")],
+            ["src/modules/platform/retry/host-timer.ts", (code: string) => code.replace("setTimeout(callback, delayMs)", "setTimeout(() => undefined, delayMs)")],
+            ["src/modules/platform/retry/host-timer.ts", (code: string) => code.replace("setTimeout(callback, delayMs)", "setTimeout(callback, 1000)")],
+            ["src/modules/platform/retry/retry.module.ts", (code: string) => code.replace("provide:TIMER", "provide:OTHER")],
+            ["src/modules/platform/retry/retry.module.ts", (code: string) => code.replace("useClass:HostTimer", "useClass:MissingTimer")],
+            ["src/features/api/system-health/transport/http/ready.controller.ts", (code: string) => code.replace("return this.bus.execute(new RequiredQuery())", "this.bus.execute(new RequiredQuery()); return {ok:true}")],
         ]
         for (const [filename, mutate] of mutations) {
             const failing = queryReadinessFixture({ [filename]: mutate })

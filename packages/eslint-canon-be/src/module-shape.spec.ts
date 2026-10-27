@@ -260,7 +260,7 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative defi
 const LEDGER = at("src/modules/domain/ledger/ledger.module.ts")
 const HOURS = at("src/features/api/hours/hours.module.ts")
 const HOURS_HTTP = at("src/features/api/hours/transport/http/hours-http.module.ts")
-const FROM = (name) => `import { ConfigurableModuleClass } from "./${name}.module-definition"\n`
+const FROM = (name: string) => `import { ConfigurableModuleClass } from "./${name}.module-definition"\n`
 
 test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a sibling definition and options file, extends its ConfigurableModuleClass and is imported only through register; an invalid one is refused", () => {
     assert.doesNotThrow(() => {

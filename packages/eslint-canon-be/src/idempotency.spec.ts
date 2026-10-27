@@ -12,7 +12,7 @@ const PRELUDE = [
     'import type { Inbox as Lookalike } from "@modules/domain/order/lookalike.service"',
     "interface Delivery { eventId: string; amount: number }",
 ].join("\n")
-const withPrelude = (body) => `${PRELUDE}\n${body}`
+const withPrelude = (body: string) => `${PRELUDE}\n${body}`
 
 test("a service method that takes a delivery claims the event on the Inbox port first and returns on false", () => {
     tester.run("inbox-dedupe-required", inboxDedupeRequired, {
@@ -95,7 +95,7 @@ test("a service method that takes a delivery claims the event on the Inbox port 
     })
 })
 
-const transactionService = (body, { asynchronous = false, managerType = "EntityManager", inboxType = "Inbox", declarations = "" } = {}) =>
+const transactionService = (body: string, { asynchronous = false, managerType = "EntityManager", inboxType = "Inbox", declarations = "" } = {}) =>
     PRELUDE + '\nimport type { EntityManager } from "typeorm"\n' + declarations
     + "\nclass C {\n    constructor(private readonly em: " + managerType + ", private readonly other: EntityManager, private readonly inbox: " + inboxType + ") {}"
     + "\n    " + (asynchronous ? "async " : "") + "handle(m: Delivery) { " + body + " }\n    private async work(): Promise<void> {}\n}"
@@ -155,7 +155,7 @@ test("delivery claims first with the actual EntityManager callback and cannot es
 })
 
 const CLAIM_FIRST = "const key = keyOf(m.eventId); if (!(await this.inbox.claim('billing', key, manager))) return this.read(manager); return this.work(manager)"
-const delegatedService = (delivery, helper = CLAIM_FIRST, {
+const delegatedService = (delivery: string, helper = CLAIM_FIRST, {
     runner = "EntityManager", asynchronous = false, helperAccess = "private", declarations = "",
     helperName = "handleInTransaction", helperParams = "m: Delivery, manager: EntityManager", helperAsync = true,
     members = "", subclasses = "", constructorBody = "",

@@ -20,7 +20,7 @@ const PRELUDE = [
     "class NotAnException { constructor(readonly text: string) {} }",
     "class FakeError { constructor(readonly text: string) {} }",
 ].join("\n")
-const withPrelude = (body) => `${PRELUDE}\n${body}`
+const withPrelude = (body: string) => `${PRELUDE}\n${body}`
 
 test("exception, notification and response copy come from the messages catalog", () => {
     tester.run("user-copy-through-catalog", userCopyThroughCatalog, {

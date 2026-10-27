@@ -5,15 +5,15 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { recommended, rules } from "./sonar-parity.ts"
+import { canonRuleTester, ruleNamed } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
 })
-const rule = (name) => SONAR_SYNTAX_RULES[name]
+const rule = (name: string) => ruleNamed(SONAR_SYNTAX_RULES, name)
 const LOOP = "async function a(items) { for (const item of items) await send(item) }"
 
 test("the law publishes each shared rule at error under its own name", () => {
@@ -148,7 +148,7 @@ test("S7763: an import that is only handed on is re-exported with export from", 
 
 test("S107: at most seven parameters; the constructor of an injectable class is a dependency list and is spared", () => {
     const eight = "a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number"
-    assert.doesNotThrow(() => { tester.run("max-params", SONAR_SYNTAX_RULES["max-params"], {
+    assert.doesNotThrow(() => { tester.run("max-params", ruleNamed(SONAR_SYNTAX_RULES, "max-params"), {
         valid: [
             "function seven(a, b, c, d, e, f, g) { return a }",
             `@Injectable() class Service { constructor(${eight}) {} }`,

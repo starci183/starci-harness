@@ -1,35 +1,38 @@
 // proves: HFS_FUNCTION_BUDGET@lite HFS_FUNCTION_BUDGET@full
 import assert from "node:assert/strict"
 import test from "node:test"
-import { Linter, RuleTester } from "eslint"
+import { TSESLint } from "@typescript-eslint/utils"
 import tsParser from "@typescript-eslint/parser"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { TYPED_ROOT } from "../fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import plugin, { lawOwners, recommended, ruleDeclarations, ruleOwners, rules as publishedRules } from "./index.ts"
 import { functionLineBudget, rules } from "./function-budget.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 /** A real declared HFS edition; the common parameter is supplied until C08 updates the manifest. */
-const fixtureHfs = (edition, max = 80) => {
+const fixtureHfs = (edition: "full" | "lite", max = 80) => {
+    // the connection carries a provider, a field the fixture's declared connection shape does not list
+    const primary = { name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "supabase" }
     const declaration = appDeclaration("be", {
         apps: [{ name: "core", kind: "api" }],
-        connections: [{ name: "primary", envPrefix: "PRIMARY_DB", owner: "core", isolation: "schema", provider: "supabase" }],
+        connections: [primary],
     })
     const hfs = hfsFromDeclaration({ ...declaration, edition }, TYPED_ROOT)
     return { ...hfs, ruleParams: { ...hfs.ruleParams, functionLines: max } }
 }
 
 /** Exactly `count` physical body lines, with comments and blanks making up the interior. */
-const body = (count, newline = "\n") => ["{", ...Array.from({ length: count - 2 }, (_, index) => index % 2 === 0 ? "// counted comment" : ""), "}"].join(newline)
-const expression = (count) => ["[", ...Array(count - 2).fill("1,"), "]"].join("\n")
-const error = (lines, max = 80) => ({ messageId: "lines", data: { lines, max } })
-const languageOptions = { parser: tsParser, ecmaVersion: 2022, sourceType: "module" }
+const body = (count: number, newline = "\n") => ["{", ...Array.from({ length: count - 2 }, (_, index) => index % 2 === 0 ? "// counted comment" : ""), "}"].join(newline)
+const expression = (count: number) => ["[", ...Array(count - 2).fill("1,"), "]"].join("\n")
+const error = (lines: number, max = 80) => ({ messageId: "lines", data: { lines, max } })
+const languageOptions = { parser: tsParser, ecmaVersion: 2022, sourceType: "module" } as const
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`be ${edition}: HFS_FUNCTION_BUDGET accepts 80 body lines and refuses 81 across function forms`, () => {
         const hfs = fixtureHfs(edition)
         assert.equal(hfs.edition, edition)
-        const tester = new RuleTester({ languageOptions, settings: { starci: { hfs } } })
+        const tester = canonRuleTester({ languageOptions, settings: { starci: { hfs } } })
         tester.run("function-line-budget", functionLineBudget, {
             valid: [
                 { code: `function work() ${body(80)}` },
@@ -68,7 +71,7 @@ for (const edition of ["lite", "full"]) {
 
     test(`be ${edition}: HFS_FUNCTION_BUDGET reads the common functionLines parameter`, () => {
       assert.doesNotThrow(() => {
-          const tester = new RuleTester({ languageOptions, settings: { starci: { hfs: fixtureHfs(edition, 3) } } })
+          const tester = canonRuleTester({ languageOptions, settings: { starci: { hfs: fixtureHfs(edition, 3) } } })
           tester.run("function-line-budget", functionLineBudget, {
               valid: [{ code: `function work() ${body(3)}` }],
               invalid: [{ code: `function work() ${body(4)}`, errors: [error(4, 3)] }],
@@ -84,7 +87,8 @@ for (const edition of ["lite", "full"]) {
         assert.equal(lawOwners.filter((law) => law === "function-budget").length, 1)
         assert.deepEqual(ruleDeclarations.filter(({ name }) => name === "function-line-budget"), [{ law: "function-budget", name: "function-line-budget" }])
         assert.equal(recommended["starci-be/function-line-budget"], "error")
-        const linter = new Linter()
+        // typescript-eslint's Linter is ESLint's own class under the types that accept the canon plugin
+        const linter = new TSESLint.Linter()
         const messages = linter.verify(`function work() ${body(81)}`, [{
             languageOptions,
             settings: { starci: { hfs: fixtureHfs(edition) } },
@@ -92,16 +96,19 @@ for (const edition of ["lite", "full"]) {
             rules: { "starci-be/function-line-budget": recommended["starci-be/function-line-budget"] },
         }])
         assert.equal(messages.length, 1)
-        assert.equal(messages[0].ruleId, "starci-be/function-line-budget")
-        assert.match(messages[0].message, /HFS_FUNCTION_BUDGET/)
+        const [message] = messages
+        assert.ok(message)
+        assert.equal(message.ruleId, "starci-be/function-line-budget")
+        assert.match(message.message, /HFS_FUNCTION_BUDGET/)
     })
 }
 
 test("be: the owner-decided cap remains active before C08 adds functionLines to the manifest", () => {
   assert.doesNotThrow(() => {
-      const hfs = fixtureHfs("full")
-      delete hfs.ruleParams.functionLines
-      const tester = new RuleTester({ languageOptions, settings: { starci: { hfs } } })
+      const full = fixtureHfs("full")
+      const { functionLines: _cap, ...ruleParams } = full.ruleParams
+      const hfs = { ...full, ruleParams }
+      const tester = canonRuleTester({ languageOptions, settings: { starci: { hfs } } })
       tester.run("function-line-budget", functionLineBudget, {
           valid: [{ code: `function work() ${body(80)}` }],
           invalid: [{ code: `function work() ${body(81)}`, errors: [error(81)] }],

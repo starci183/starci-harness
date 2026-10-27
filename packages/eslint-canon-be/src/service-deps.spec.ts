@@ -27,7 +27,7 @@ const MIGRATION = at("src/modules/domain/order/persistence/migrations/1730000000
 
 const NEST = 'import { Injectable } from "@nestjs/common"\n'
 const TYPEORM = 'import { DataSource, EntityManager, QueryRunner, Repository } from "typeorm"\n'
-const provider = (parameter, head = "") =>
+const provider = (parameter: string, head = "") =>
     `${NEST}${head}\ndeclare const InjectTimeout: () => ParameterDecorator\nabstract class Port { abstract run(): void }\nclass Clock {}\n@Injectable()\nclass S { constructor(${parameter}) {} }`
 
 test("every rule this law declares is exported under its published name", () => {

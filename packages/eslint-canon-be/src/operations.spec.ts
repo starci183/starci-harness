@@ -76,7 +76,7 @@ test("operation-route-driven-by-table: a route takes OperationRequest<Table> and
 })
 
 test("the message of a half-typed route names the missing side", () => {
-    assert.match(operationRouteDrivenByTable.meta.messages.half, /OperationRequest<Table>/)
+    assert.match(operationRouteDrivenByTable.meta.messages.half ?? "", /OperationRequest<Table>/)
 })
 
 for (const edition of ["lite", "full"]) {

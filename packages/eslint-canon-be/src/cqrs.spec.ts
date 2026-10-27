@@ -9,9 +9,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.mjs"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { executeParamsShape, handlerIsThin, handlerOverridesProcess, messageCarriesParamsOnly, messageTypedResult, noEventBus, noUseCase, rules } from "./cqrs.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 const tester = typedTester()
 const APP = "src/features/api/plan/application"
@@ -33,7 +33,7 @@ test("every rule this law declares is exported under its published name", () => 
 })
 
 test("a rule that needs the slot view refuses to run without it", () => {
-    const bare = new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" } })
+    const bare = canonRuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" } })
     assert.throws(() => bare.run("no-use-case", noUseCase, { valid: [{ filename: HANDLER, code: "export const a = 1" }], invalid: [] }), /settings\.starci\.hfs/)
 })
 
@@ -88,7 +88,7 @@ class PlaceOrderCommand { constructor(readonly params: { id: string; flag: boole
 `
 
 /** A handler class whose constructor is `ctor` and whose `process` body is `body`. */
-const thin = (ctor, body) => `${THIN_HEAD}
+const thin = (ctor: string, body: string) => `${THIN_HEAD}
 @CommandHandler(PlaceOrderCommand) class H extends ICQRSHandler<PlaceOrderCommand, string> {
   constructor(${ctor}) { super() }
   protected override async process(command: PlaceOrderCommand): Promise<string> { ${body} }

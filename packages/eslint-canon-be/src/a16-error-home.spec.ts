@@ -8,6 +8,7 @@ import { appDeclaration } from '../fixtures/app.mjs';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { errorFamilyShape, errorHome, throwDomainError } from './error-handling.ts';
 import { rules } from './project-graph.ts';
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 const service = at('src/modules/domain/plan/plan.service.ts');
 const home = at('src/modules/domain/plan/errors/plan.error.ts');
@@ -19,7 +20,7 @@ export const PLAN_ERROR_KINDS: Record<PlanErrorCode, ErrorKind> = { [PlanErrorCo
 export class PlanError extends DomainError<PlanErrorCode> {}
 `;
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
     test(`${edition}: valid owner error family and invalid placement, thrown value and family shape`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
         assert.equal(hfs.edition, edition);
@@ -51,7 +52,7 @@ for (const edition of ['lite', 'full']) {
           };
           const f = projectFixture({ edition, files });
           t.after(f.cleanup);
-          f.tester.run('error-code-unique', rules['error-code-unique'], {
+          f.tester.run('error-code-unique', ruleNamed(rules, 'error-code-unique'), {
               valid: [{ filename: f.at('src/modules/domain/purchase/errors/purchase.error.ts'), code: files['src/modules/domain/purchase/errors/purchase.error.ts'] }],
               invalid: [{ filename: f.at('src/modules/domain/plan/errors/plan.error.ts'), code: files['src/modules/domain/plan/errors/plan.error.ts'], errors: [{ messageId: 'finding' }] }],
           });

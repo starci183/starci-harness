@@ -1,23 +1,23 @@
 // proves: BE_APP_OPTIONS_COMPOSITION@lite BE_APP_OPTIONS_COMPOSITION@full
 // proves: BE_APP_COMPOSITION_BUDGET@lite BE_APP_COMPOSITION_BUDGET@full
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { appOptionsCompositionFree, appFileBudget } from "./app-composition.ts"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { at, BE_DECLARATION, TYPED_ROOT } from "../fixtures/typed/tester.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 const env = at("apps/api/src/api.env.ts")
 const options = at("apps/api/src/api.options.ts")
 const group = at("apps/api/src/compose/platform.ts")
 const root = at("apps/api/src/app.module.ts")
 const main = at("apps/api/src/main.ts")
-const sourceLines = (count) => Array.from({ length: count }, () => "export {};").join("\n") + "\n"
+const sourceLines = (count: number) => Array.from({ length: count }, () => "export {};").join("\n") + "\n"
 
 for (const edition of ["lite", "full"]) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-    const tester = new RuleTester({
+    const tester = canonRuleTester({
         languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
         settings: { starci: { hfs } },
     })

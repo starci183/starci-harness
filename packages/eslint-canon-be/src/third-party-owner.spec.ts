@@ -3,7 +3,7 @@
 /** R279: every declared SDK has one integration owner in both editions; pure libraries remain usable in domain logic. */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { Linter } from "eslint"
+import { TSESLint } from "@typescript-eslint/utils"
 import tsParser from "@typescript-eslint/parser"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { infraImportOwner } from "./infra-owner.ts"
@@ -18,7 +18,16 @@ const DEPENDENCIES = {
     axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@supabase/supabase-js": "1.0.0", jose: "1.0.0",
 }
 
-const fixtureFor = ({ edition, files = {}, manifest = {} }) => projectFixture({
+/** The settings entry of a RuleTester's own config (ESLint keeps it as the internal `testerConfig` array). */
+const testerSettingsOf = (tester: object): Record<string, unknown> | undefined => {
+    const testerConfig: unknown = Reflect.get(tester, "testerConfig")
+    const entries: readonly unknown[] = Array.isArray(testerConfig) ? testerConfig : []
+    const entry = entries.find((item) => typeof item === "object" && item !== null && "settings" in item && Boolean(item.settings))
+    const settings: unknown = typeof entry === "object" && entry !== null && "settings" in entry ? entry.settings : undefined
+    return typeof settings === "object" && settings !== null ? { ...settings } : undefined
+}
+
+const fixtureFor = ({ edition, files = {}, manifest = {} }: { edition: "lite" | "full"; files?: Readonly<Record<string, string | null>>; manifest?: Readonly<Record<string, unknown>> }) => projectFixture({
     edition,
     files,
     rootFiles: { "package.json": JSON.stringify({ name: "sdk-owner-fixture", private: true, dependencies: DEPENDENCIES, ...manifest }) },
@@ -29,7 +38,7 @@ test("R279 publishes exactly one rule at error", () => {
     assert.deepEqual(recommended, { "starci-be/third-party-import-owner": "error" })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`R279 ${edition}: declared SDKs cannot be imported outside an integration; pure libraries pass`, () => {
         const fixture = fixtureFor({ edition })
         try {
@@ -123,10 +132,10 @@ for (const edition of ["lite", "full"]) {
     test(`R279 ${edition}: adding this rule preserves the existing infrastructure table`, () => {
         const fixture = fixtureFor({ edition })
         try {
-            const settings = fixture.tester.testerConfig.find((entry) => entry.settings)?.settings
-            const linter = new Linter({ cwd: fixture.root })
-            const config = [{ files: ["**/*.ts"], languageOptions: { parser: tsParser }, settings, plugins: { be: { rules: { sdk: thirdPartyImportOwner, infra: infraImportOwner } } }, rules: { "be/sdk": "error", "be/infra": "error" } }]
-            const verify = (code, filename) => linter.verify(code, config, { filename: fixture.at(filename) })
+            const settings = testerSettingsOf(fixture.tester)
+            const linter = new TSESLint.Linter({ cwd: fixture.root })
+            const config: TSESLint.FlatConfig.ConfigArray = [{ files: ["**/*.ts"], languageOptions: { parser: tsParser }, ...(settings === undefined ? {} : { settings }), plugins: { be: { rules: { sdk: thirdPartyImportOwner, infra: infraImportOwner } } }, rules: { "be/sdk": "error", "be/infra": "error" } }]
+            const verify = (code: string, filename: string) => linter.verify(code, config, { filename: fixture.at(filename) })
             assert.deepEqual(verify('import axios from "axios"; export { axios }', "src/modules/platform/http/http.client.ts"), [])
             assert.deepEqual(verify('import sdk from "openai"; export { sdk }', MAILER), [])
             assert.deepEqual(verify('import axios from "axios"; export { axios }', DOMAIN).map((message) => message.ruleId), ["be/infra"])

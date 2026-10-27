@@ -1,9 +1,9 @@
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { noInlineSuppression } from "./suppression.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     linterOptions: { noInlineConfig: true },
 })

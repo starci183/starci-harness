@@ -3,6 +3,7 @@
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.mjs';
 import { rules } from './project-graph.ts';
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 /** platform/errors with an ExceptionFilter and a GraphQL formatError (the package carries its own copy: its tests run without the repository around it). */
 const errorsFiles = {
@@ -11,7 +12,7 @@ const errorsFiles = {
   'src/modules/platform/errors/format-error.ts': 'export const formatError = (error: unknown): unknown => error;\n',
 };
 
-const appModule = (providers, imports) => `import { Module } from '@nestjs/common';
+const appModule = (providers: string, imports: string) => `import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { GraphQLModule } from '@nestjs/graphql';
 import { AllExceptionsFilter, formatError } from '../../../src/modules/platform/errors';
@@ -21,7 +22,7 @@ export class AppModule {}
 const filter = '{ provide: APP_FILTER, useClass: AllExceptionsFilter }';
 const graphql = 'GraphQLModule.forRoot({ formatError })';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
     test(`${edition}: valid masked error registration and invalid missing filter or GraphQL mapper`, (t) => {
         const files = {
             ...errorsFiles,
@@ -39,7 +40,7 @@ for (const edition of ['lite', 'full']) {
             files,
         });
         t.after(f.cleanup);
-        f.tester.run('error-masked', rules['error-masked'], {
+        f.tester.run('error-masked', ruleNamed(rules, 'error-masked'), {
             valid: [{ filename: f.at('apps/good/src/app.module.ts'), code: files['apps/good/src/app.module.ts'] }],
             invalid: [
                 { filename: f.at('apps/missing-filter/src/app.module.ts'), code: files['apps/missing-filter/src/app.module.ts'], errors: [{ messageId: 'finding' }] },

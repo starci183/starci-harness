@@ -1,5 +1,6 @@
 // proves: BE_SPEC_QUALITY@lite
 // proves: BE_SPEC_QUALITY@full
+import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.mjs"
 import { appDeclaration } from "../fixtures/app.mjs"
@@ -8,6 +9,7 @@ import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { rules as graphRules } from "./project-graph.ts"
 import { specTypedEntityManager } from "./spec-quality.ts"
 import { specNoSkip } from "./spec-no-skip.ts"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 import {
     noReturnOnlyGeneric,
     specBuildsWithTestingModule,
@@ -40,7 +42,7 @@ const SERVICE = [
     "  constructor(@InjectClock() private readonly clock: object, @InjectCache() private readonly cache: object, private readonly prices: PriceService) {}",
     "}",
 ].join("\n")
-const providerSpec = (providers) => [
+const providerSpec = (providers: string) => [
     "import { Test } from '@nestjs/testing';",
     "import { CartService } from './cart.service';",
     "import { PriceService } from './price.service';",
@@ -49,7 +51,7 @@ const providerSpec = (providers) => [
     `  await Test.createTestingModule({ providers: [${providers}] }).compile();`,
     "});",
 ].join("\n")
-const capability = (name, providers) => ({
+const capability = (name: string, providers: string) => ({
     [`src/modules/domain/${name}/index.ts`]: "export { CartService } from './cart.service';\nexport { CLOCK, CACHE } from './cart.decorators';\n",
     [`src/modules/domain/${name}/cart.decorators.ts`]: DECORATORS,
     [`src/modules/domain/${name}/cart.service.ts`]: SERVICE,
@@ -57,7 +59,7 @@ const capability = (name, providers) => ({
     [`src/modules/domain/${name}/cart.service.spec.ts`]: providerSpec(providers),
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const settings = { starci: { hfs } }
 
@@ -133,9 +135,14 @@ for (const edition of ["lite", "full"]) {
         t.after(fixture.cleanup)
         const passing = "src/modules/domain/provided/cart.service.spec.ts"
         const violating = "src/modules/domain/missing/cart.service.spec.ts"
-        fixture.tester.run("unit-spec-providers", graphRules["unit-spec-providers"], {
-            valid: [{ filename: fixture.at(passing), code: files[passing] }],
-            invalid: [{ filename: fixture.at(violating), code: files[violating], errors: [{ messageId: "finding" }] }],
+        const codeOf = (path: string) => {
+            const code = files[path]
+            assert.ok(code !== undefined, `${path} is a file of the fixture`)
+            return code
+        }
+        fixture.tester.run("unit-spec-providers", ruleNamed(graphRules, "unit-spec-providers"), {
+            valid: [{ filename: fixture.at(passing), code: codeOf(passing) }],
+            invalid: [{ filename: fixture.at(violating), code: codeOf(violating), errors: [{ messageId: "finding" }] }],
         })
     })
 }

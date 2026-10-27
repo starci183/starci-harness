@@ -2,18 +2,21 @@ import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import type { TestContext } from "node:test"
+import type { ProjectFixture } from "../fixtures/project/tester.mjs"
+import { ruleNamed } from '../fixtures/rule-tester.mjs';
 
 /** One repository per rule: the case list is the files of the repository, the code of a case is the text of its file. */
-const source = (f, files, rel) => ({ filename: f.at(rel), code: files[rel] ?? fs.readFileSync(f.at(rel), "utf8") })
-const valid = (f, files, rels) => rels.map((rel) => source(f, files, rel))
-const invalid = (f, files, expected) => Object.entries(expected).map(([rel, lines]) => ({ ...source(f, files, rel), errors: lines.map((line) => ({ messageId: "finding", line })) }))
+const source = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string) => ({ filename: f.at(rel), code: files[rel] ?? fs.readFileSync(f.at(rel), "utf8") })
+const valid = (f: ProjectFixture, files: Readonly<Record<string, string>>, rels: readonly string[]) => rels.map((rel: string) => source(f, files, rel))
+const invalid = (f: ProjectFixture, files: Readonly<Record<string, string>>, expected: Readonly<Record<string, readonly number[]>>) => Object.entries(expected).map(([rel, lines]) => ({ ...source(f, files, rel), errors: lines.map((line: number) => ({ messageId: "finding", line })) }))
 const EXPORT = "export const value = 1;\n"
 
 // ---------------------------------------------------------------------------------------------------------------------
 // test-world-files (BE_TEST_TOPOLOGY)
 // ---------------------------------------------------------------------------------------------------------------------
 /** The app-root stack declaration (`.starcistacks/` lives at the app root, beside hfs.json): projectFixture rootFiles. */
-const stack = (services) => ({
+const stack = (services: Readonly<Record<string, string>>) => ({
     ".starcistacks/application-stacks.yaml": [
         "schema: starci/application-stacks@1",
         "components:",
@@ -27,7 +30,7 @@ const stack = (services) => ({
     ].join("\n"),
     ".starcistacks/dev/infra/compose/compose.yaml": ["services:", ...Object.entries(services).map(([name, image]) => `  ${name}:\n    image: ${image}`), ""].join("\n"),
 })
-const fake = (name) => ({ [`src/tests/world/fakes/${name}/server.ts`]: EXPORT })
+const fake = (name: string) => ({ [`src/tests/world/fakes/${name}/server.ts`]: EXPORT })
 
 test("test-world-files: the test world holds its fixed files, fakes/, kit/ and role-suffixed helpers, and fakes nothing the stack runs real", (t) => {
     const files = {
@@ -59,7 +62,7 @@ test("test-world-files: the test world holds its fixed files, fakes/, kit/ and r
     const rootFiles = stack({ postgres: "postgres:16", redis: "redis:7", keycloak: "quay.io/keycloak/keycloak:26.0", inference: "ghcr.io/acme/vllm-proxy:1.0", mailpit: "axllent/mailpit:v1.20" })
     const f = projectFixture({ files, rootFiles, declaration: { optionalSlots: [] } })
     t.after(f.cleanup)
-    f.tester.run("test-world-files", rules["test-world-files"], {
+    f.tester.run("test-world-files", ruleNamed(rules, "test-world-files"), {
         valid: valid(f, files, [
             "src/tests/world/global-setup.ts",
             "src/tests/world/global-teardown.ts",
@@ -96,7 +99,7 @@ test("test-world-files: without a mail host in the stack the smtp fake stays leg
     }
     const f = projectFixture({ files, rootFiles: stack({ postgres: "postgres:16", redis: "redis:7" }), declaration: { optionalSlots: [] } })
     t.after(f.cleanup)
-    f.tester.run("test-world-files", rules["test-world-files"], {
+    f.tester.run("test-world-files", ruleNamed(rules, "test-world-files"), {
         valid: valid(f, files, ["src/tests/world/fakes/smtp/server.ts", "src/tests/world/test-world.config.ts"]),
         invalid: [...invalid(f, files, { "src/tests/world/fakes/cache/server.ts": [1] })],
     })
@@ -122,7 +125,7 @@ const SERVICE = [
     "}",
     "",
 ].join("\n")
-const specOf = (providers) => [
+const specOf = (providers: string) => [
     "import { Test } from '@nestjs/testing';",
     "import { CartService } from './cart.service';",
     "import { PriceService } from './price.service';",
@@ -133,7 +136,7 @@ const specOf = (providers) => [
     "",
 ].join("\n")
 const GOOD_PROVIDERS = "CartService, { provide: CLOCK, useValue: {} }, { provide: CACHE_TOKEN, useValue: {} }, PriceService"
-const capability = (name, { spec, decorators = DECORATORS, service = SERVICE, index = "export { CartService } from './cart.service';\nexport { CLOCK, CACHE } from './cart.decorators';\n" }) => ({
+const capability = (name: string, { spec, decorators = DECORATORS, service = SERVICE, index = "export { CartService } from './cart.service';\nexport { CLOCK, CACHE } from './cart.decorators';\n" }: { readonly spec: string; readonly decorators?: string; readonly service?: string; readonly index?: string }) => ({
     [`src/modules/domain/${name}/index.ts`]: index,
     [`src/modules/domain/${name}/cart.decorators.ts`]: decorators,
     [`src/modules/domain/${name}/cart.service.ts`]: service,
@@ -159,7 +162,7 @@ const SPEC_FILES = {
 test("unit-spec-providers: the providers of a unit spec equal the constructor dependencies of its service", (t) => {
     const f = projectFixture({ files: SPEC_FILES })
     t.after(f.cleanup)
-    f.tester.run("unit-spec-providers", rules["unit-spec-providers"], {
+    f.tester.run("unit-spec-providers", ruleNamed(rules, "unit-spec-providers"), {
         valid: valid(f, SPEC_FILES, ["src/modules/domain/good/cart.service.spec.ts", "src/modules/domain/good/cart.service.ts", "src/modules/domain/good/cart.decorators.ts"]),
         invalid: [...invalid(f, SPEC_FILES, {
             "src/modules/domain/extra/cart.service.spec.ts": [6],
@@ -182,7 +185,7 @@ const functionSpec = ({ provider = "{ provide: SUBJECT, useValue: { total, doubl
     "});",
 ].join("\n")
 
-const functionCapability = (name, options) => ({
+const functionCapability = (name: string, options?: Parameters<typeof functionSpec>[0]) => ({
     [`src/modules/domain/${name}/numbers.service.ts`]: "export const total = (left: number, right: number) => left + right;\nexport function doubled(value: number) { return value * 2; }\n",
     [`src/modules/domain/${name}/numbers.service.spec.ts`]: functionSpec(options),
 })
@@ -198,7 +201,7 @@ const helperFunctionSpec = [
     "it('uses the helper result', async () => { const subject = await build(); expect(subject.total(2, 3)).toBe(5); });",
 ].join("\n")
 
-for (const edition of ["lite", "full"]) test(`unit-spec-providers: ${edition} pure functions are real Nest subject values and the retrieved subject is used`, (t) => {
+for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${edition} pure functions are real Nest subject values and the retrieved subject is used`, (t) => {
     const files = {
         ...functionCapability("functions-good"),
         ...functionCapability("functions-fake", { provider: "{ provide: SUBJECT, useValue: { total: () => 5, doubled } }" }),
@@ -216,7 +219,7 @@ for (const edition of ["lite", "full"]) test(`unit-spec-providers: ${edition} pu
     }
     const f = projectFixture({ files, edition })
     t.after(f.cleanup)
-    f.tester.run("unit-spec-providers", rules["unit-spec-providers"], {
+    f.tester.run("unit-spec-providers", ruleNamed(rules, "unit-spec-providers"), {
         valid: valid(f, files, ["src/modules/domain/functions-good/numbers.service.spec.ts", "src/modules/domain/functions-helper/numbers.service.spec.ts"]),
         invalid: invalid(f, files, {
             "src/modules/domain/functions-fake/numbers.service.spec.ts": [5],
@@ -236,7 +239,7 @@ for (const edition of ["lite", "full"]) test(`unit-spec-providers: ${edition} pu
 test("injection-token-exported: an Inject<Thing>() over an exported token is fine, over a private token it is refused on its decorator", (t) => {
     const f = projectFixture({ files: SPEC_FILES })
     t.after(f.cleanup)
-    f.tester.run("injection-token-exported", rules["injection-token-exported"], {
+    f.tester.run("injection-token-exported", ruleNamed(rules, "injection-token-exported"), {
         valid: valid(f, SPEC_FILES, [
             "src/modules/domain/good/cart.decorators.ts",
             "src/modules/domain/good/cart.service.ts",
@@ -258,12 +261,12 @@ const databaseFiles = {
     [`${DATABASE}/sql.ts`]: 'export const sql = (strings: TemplateStringsArray, ...values: unknown[]): string => strings.join("?") + values.length;\n',
     [`${DATABASE}/database.module.ts`]: "import { Module } from '@nestjs/common';\n@Module({})\nexport class DatabaseModule {\n  static register(options: { connections: { name: string }[] }) { return { module: DatabaseModule, ...options }; }\n}\n",
 }
-const connectionFiles = (name, prefix, constant) => ({
+const connectionFiles = (name: string, prefix: string, constant: string) => ({
     [`${DATABASE}/${name}.connection.ts`]: `export const ${constant}_CONNECTION = "${name}";\n`,
-    [`${DATABASE}/${name}.decorators.ts`]: `import { getEntityManagerToken } from '@nestjs/typeorm';\nimport { ${constant}_CONNECTION } from './${name}.connection';\ndeclare function injector(token: unknown): unknown;\nexport const Inject${name[0].toUpperCase()}${name.slice(1)}EntityManager = () => injector(getEntityManagerToken(${constant}_CONNECTION));\n`,
+    [`${DATABASE}/${name}.decorators.ts`]: `import { getEntityManagerToken } from '@nestjs/typeorm';\nimport { ${constant}_CONNECTION } from './${name}.connection';\ndeclare function injector(token: unknown): unknown;\nexport const Inject${name.charAt(0).toUpperCase()}${name.slice(1)}EntityManager = () => injector(getEntityManagerToken(${constant}_CONNECTION));\n`,
     [`${DATABASE}/${name}.config.ts`]: `export const ${name}Config = () => ({ host: process.env.${prefix}_HOST, port: process.env.${prefix}_PORT, name: process.env.${prefix}_NAME });\n`,
 })
-const appModule = (names) => `import { Module } from '@nestjs/common';
+const appModule = (names: readonly string[]) => `import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../src/modules/platform/database';
 import { PRIMARY_CONNECTION } from '../../../src/modules/platform/database/primary.connection';
 import { AGENTOS_CONNECTION } from '../../../src/modules/platform/database/agentos.connection';
@@ -306,7 +309,7 @@ test("connection-map: one connection file set per declared connection, one regis
         apps: [{ name: "core", kind: "api" }, { name: "worker", kind: "worker" }, { name: "cli", kind: "cli" }],
     })
     t.after(f.cleanup)
-    f.tester.run("connection-map", rules["connection-map"], {
+    f.tester.run("connection-map", ruleNamed(rules, "connection-map"), {
         valid: valid(f, CONNECTION_FILES, [
             `${DATABASE}/agentos.connection.ts`,
             `${DATABASE}/agentos.decorators.ts`,
@@ -331,10 +334,10 @@ test("connection-map: one connection file set per declared connection, one regis
 // ---------------------------------------------------------------------------------------------------------------------
 // sql-owner (BE_SQL_TABLE_OWNER)
 // ---------------------------------------------------------------------------------------------------------------------
-const entityFiles = (name, table, columns = "") => ({
+const entityFiles = (name: string, table: string, columns = "") => ({
     [`src/modules/domain/${name}/index.ts`]: `export const ${name} = 1;\n`,
     [`src/modules/domain/${name}/persistence/entities/${name}.entity.ts`]:
-        `import { Column, Entity, PrimaryColumn } from 'typeorm';\n@Entity("${table}")\nexport class ${name[0].toUpperCase()}${name.slice(1)}Entity {\n  @PrimaryColumn({ name: 'id', type: 'uuid' }) id!: string;\n${columns}}\n`,
+        `import { Column, Entity, PrimaryColumn } from 'typeorm';\n@Entity("${table}")\nexport class ${name.charAt(0).toUpperCase()}${name.slice(1)}Entity {\n  @PrimaryColumn({ name: 'id', type: 'uuid' }) id!: string;\n${columns}}\n`,
 })
 const SQL_FILES = {
     ...databaseFiles,
@@ -369,7 +372,7 @@ export const JOINED = sql\`INSERT INTO purchases (id) SELECT u.id FROM users u J
 test("sql-owner: bounded reads, own writes and reads of an importable owner pass; a foreign write, an unknown table, an unbounded SELECT and an upward read do not", (t) => {
     const f = projectFixture({ files: SQL_FILES })
     t.after(f.cleanup)
-    f.tester.run("sql-owner", rules["sql-owner"], {
+    f.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
         valid: valid(f, SQL_FILES, [
             "src/modules/domain/purchase/persistence/purchase.sql.ts",
             "src/modules/domain/purchase/other.ts",
@@ -484,7 +487,7 @@ import { ChangeOrderCommand } from './change-order.command';
     // a transport input is data, not a message: its mutable field is never a readonly-boundary finding
     [`${O}/mutable.input.ts`]: "export class MutableInput { value!:string }\n",
 }
-const contractFixture = (t) => {
+const contractFixture = (t: TestContext) => {
     const f = projectFixture({ files: CONTRACT_FILES })
     t.after(f.cleanup)
     return f
@@ -492,7 +495,7 @@ const contractFixture = (t) => {
 
 test("public-contract-form: a public signature is typed by a named contract, never inline or untyped", (t) => {
     const f = contractFixture(t)
-    f.tester.run("public-contract-form", rules["public-contract-form"], {
+    f.tester.run("public-contract-form", ruleNamed(rules, "public-contract-form"), {
         valid: valid(f, CONTRACT_FILES, [
             `${O}/create-order.service.ts`,
             `${O}/find-orders.service.ts`,
@@ -511,7 +514,7 @@ test("public-contract-form: a public signature is typed by a named contract, nev
 
 test("readonly-boundary: an injected dependency and a message are readonly, a DTO is not a message", (t) => {
     const f = contractFixture(t)
-    f.tester.run("readonly-boundary", rules["readonly-boundary"], {
+    f.tester.run("readonly-boundary", ruleNamed(rules, "readonly-boundary"), {
         valid: valid(f, CONTRACT_FILES, [
             `${O}/valid-injection.service.ts`,
             `${O}/create-order.command.ts`,
@@ -558,7 +561,7 @@ const NAME_FILES = {
 test("source-names: the names and forms inside a source file follow its role", (t) => {
     const f = projectFixture({ files: NAME_FILES })
     t.after(f.cleanup)
-    f.tester.run("source-names", rules["source-names"], {
+    f.tester.run("source-names", ruleNamed(rules, "source-names"), {
         valid: valid(f, NAME_FILES, [
             `${C}/system-clock.service.ts`,
             `${C}/clock.port.ts`,
@@ -612,7 +615,7 @@ export const TWO = sql\`SELECT 1; UPDATE stock_items SET qty = 0 WHERE id = $1 R
 test("sql-returning: a CTE-wrapped RETURNING, an INSERT RETURNING and plain writes pass; an UPDATE or DELETE returning rows directly does not", (t) => {
     const f = projectFixture({ files: RETURNING_FILES })
     t.after(f.cleanup)
-    f.tester.run("sql-returning", rules["sql-returning"], {
+    f.tester.run("sql-returning", ruleNamed(rules, "sql-returning"), {
         valid: valid(f, RETURNING_FILES, ["src/modules/domain/stock/persistence/stock.sql.ts"]),
         invalid: [...invalid(f, RETURNING_FILES, { "src/modules/domain/stock/persistence/stock-bad.sql.ts": [2, 3, 4] })],
     })

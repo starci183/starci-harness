@@ -3,25 +3,25 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { runGit } from "../runtime/scripts/api/git/lib.mjs"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { BE_DECLARATION } from "../fixtures/typed/tester.mjs"
 import { appDeclaration } from "../fixtures/app.mjs"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { fileSizeGrowth } from "./size-budget.ts"
 import { lines, sizeGrowthSharedSpec } from "../fixtures/size-growth.mjs"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 // Probe paths of a throwaway git repository with one empty commit: no file of it has a recorded size, so a file over the budget is born over it.
 // (The rule reads the recorded size from git; a package tested from a copy without git history would answer "unavailable".)
 const probeRoot = mkdtempSync(join(tmpdir(), "starci-be-budget-probe-"))
 after(() => rmSync(probeRoot, { recursive: true, force: true }))
-const probeGit = (...args) => runGit(args, { dir: probeRoot, config: { "user.email": "t@example.com", "user.name": "t" } })
+const probeGit = (...args: string[]) => runGit(args, { dir: probeRoot, config: { "user.email": "t@example.com", "user.name": "t" } })
 probeGit("init", "-q", "-b", "main")
 probeGit("commit", "-q", "--allow-empty", "-m", "seed")
-const at = (relative) => join(probeRoot, relative)
+const at = (relative: string) => join(probeRoot, relative)
 const fixtureHfs = () => hfsFromDeclaration(appDeclaration("be", BE_DECLARATION), probeRoot)
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs: fixtureHfs() } },
 })

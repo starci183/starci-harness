@@ -10,7 +10,6 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { BE_DECLARATION, at, fixtureHfs, typedTester } from "../fixtures/typed/tester.mjs"
 import {
@@ -22,9 +21,10 @@ import {
   rules,
   unitTestColocated,
 } from "./testing.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
 /** Rules that need only slots: the parser is untyped, so any number of virtual files may be linted. */
-const tester = new RuleTester({
+const tester = canonRuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
   settings: { starci: { hfs: fixtureHfs() } },
 })
@@ -32,7 +32,7 @@ const tester = new RuleTester({
 const typed = typedTester()
 
 /** The same slots with the feature kinds enabled: a webhook or realtime door carries its own spec beside it. */
-const kinds = new RuleTester({
+const kinds = canonRuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
   settings: { starci: { hfs: fixtureHfs({ ...BE_DECLARATION, patterns: ["webhooks", "realtime"] }) } },
 })

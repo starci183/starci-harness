@@ -8,7 +8,6 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import {
   explicitHandlerReturnType,
@@ -18,8 +17,9 @@ import {
   noInlineParamType,
   rules,
 } from "./type-safety.ts"
+import { canonRuleTester } from "../fixtures/rule-tester.mjs"
 
-const tester = new RuleTester({
+const tester = canonRuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,

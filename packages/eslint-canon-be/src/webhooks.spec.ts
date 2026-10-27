@@ -34,8 +34,18 @@ export class W {
 
 const PROVEN = "this.signature.verify({ rawBody: body, signature })"
 
+/** The parts of a webhook door a case overrides. */
+interface DoorOptions {
+    readonly ctor?: string
+    readonly body?: string
+    readonly decorators?: string
+    readonly extra?: string
+    readonly imports?: string
+    readonly returned?: string
+}
+
 /** A webhook class with the given constructor and handler body, a signed webhook by default. */
-const door = ({ ctor = "private readonly signature: WebhookSignatureService, private readonly payments: PaymentService", body, decorators = "@Post()\n    @Public({ reason: PublicReason.SignedWebhook })", extra = "", imports = "", returned = "void" } = {}) => `${HEAD}${imports}
+const door = ({ ctor = "private readonly signature: WebhookSignatureService, private readonly payments: PaymentService", body, decorators = "@Post()\n    @Public({ reason: PublicReason.SignedWebhook })", extra = "", imports = "", returned = "void" }: DoorOptions = {}) => `${HEAD}${imports}
 @Controller("webhooks/payment")
 export class PaymentWebhook {
     constructor(${ctor}) {}
@@ -55,7 +65,7 @@ const DOMAIN_PROVEN = "this.proof.assertDelivery({ body, signature })"
 const ASYNC_DOMAIN_PROVEN = "await this.proof.verifyDelivery({ body, signature })"
 
 /** An aliased domain verifier and an intake: recognition comes from its declared type and method symbol. */
-const domainDoor = (options = {}) => door({
+const domainDoor = (options: DoorOptions = {}) => door({
     imports: DOMAIN_IMPORTS,
     ctor: "private readonly proof: DeliveryProof, private readonly payments: PaymentService",
     body: `${DOMAIN_PROVEN}\n        await this.payments.acceptNotification(body)`,

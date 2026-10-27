@@ -12,8 +12,11 @@ const OTHER_SLOT = at("src/features/api/payment/transport/http/payment.webhook.t
 const SPEC = at("src/features/webhooks/payment/transport/http/payment.webhook.spec.ts")
 
 test("R263 scope findings carry their runtime failure code", () => {
-    assert.match(webhookScope.meta.messages.scope, /^\[BE_WEBHOOK_SCOPE\] /)
-    assert.match(webhookScope.meta.messages.intake, /^\[BE_WEBHOOK_SCOPE\] /)
+    const { scope, intake } = webhookScope.meta.messages
+    assert.ok(scope)
+    assert.ok(intake)
+    assert.match(scope, /^\[BE_WEBHOOK_SCOPE\] /)
+    assert.match(intake, /^\[BE_WEBHOOK_SCOPE\] /)
 })
 
 for (const edition of ["lite", "full"]) {
@@ -35,7 +38,7 @@ export class PaymentController {
 }`
         const error = [{ messageId: "scope" }]
         const intakeError = [{ messageId: "intake" }]
-        const through = (method) => `import { PaymentIntakeService } from "@modules/domain/payment/payment-receipt.service"
+        const through = (method: string) => `import { PaymentIntakeService } from "@modules/domain/payment/payment-receipt.service"
 export class Door { constructor(private readonly intake: PaymentIntakeService) {} async receive(id: string): Promise<void> { await this.intake.${method}(id) } }`
         ruleTester({ root: TYPED_ROOT, hfs }).run("webhook-scope", webhookScope, {
             valid: [
