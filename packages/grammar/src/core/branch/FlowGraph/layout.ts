@@ -54,9 +54,16 @@ export const radialPositions = (nodes: ReadonlyArray<FlowGraphNode>, edges: Read
     return positions
 }
 
-/** Distance between layers along the direction, and between nodes inside one layer. */
-export const FLOW_GRAPH_LAYER_GAP = { TB: 130, LR: 240 } as const
-export const FLOW_GRAPH_LANE_GAP = { TB: 220, LR: 90 } as const
+/** The widest a node draws (`.starci-core-flow-graph-node` `max-inline-size: 14rem`), in graph units. */
+export const FLOW_GRAPH_NODE_MAX_WIDTH = 224
+
+/**
+ * Centre-to-centre distance between layers along the direction, and between nodes inside one layer. Wherever nodes sit
+ * side by side (`TB` lanes, `LR` layers) the step is the widest node plus a gap, so two nodes never overlap; along `TB`
+ * the step leaves an edge room to turn between rows of one-line nodes.
+ */
+export const FLOW_GRAPH_LAYER_GAP = { TB: 100, LR: FLOW_GRAPH_NODE_MAX_WIDTH + 64 } as const
+export const FLOW_GRAPH_LANE_GAP = { TB: FLOW_GRAPH_NODE_MAX_WIDTH + 24, LR: 90 } as const
 
 /** The coordinate of layer `index` along the layer axis (y for `TB`, x for `LR`). */
 export const layerCoordinate = (index: number, direction: FlowGraphDirection): number => index * FLOW_GRAPH_LAYER_GAP[direction]

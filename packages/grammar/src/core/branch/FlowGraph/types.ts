@@ -16,9 +16,9 @@ export type FlowGraphNode = {
     readonly isRoot?: boolean
     /** A slot not filled yet: dashed outline, muted. */
     readonly isPlaceholder?: boolean
-    /** Where the node sits in `layout="manual"`, as its centre in graph units. */
     /** Makes the node a link. It navigates through the root's router (`navigate`/`useHref`) and is one keyboard stop (Enter). */
     readonly href?: string
+    /** Where the node sits in `layout="manual"`, as its centre in graph units. */
     readonly position?: { readonly x: number, readonly y: number }
 }
 

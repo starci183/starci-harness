@@ -7,6 +7,7 @@ import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { assertPresentationState, treatmentFor, type PresentationState } from "../../state.js"
 import { VerticalScrollRegion } from "../../composite/VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../primitive/Label/index.js"
+import { surfaceFactClassName } from "../SurfaceListCard/classNames.js"
 import {
     getSurfaceCardClassName,
     getSurfaceContentClassName,
@@ -243,7 +244,9 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             {label === undefined ? null : (
                 <Card.Header className={surfaceLabelClassName ?? ""} data-contract="GAP-2" data-grammar-surface-label="true">
                     <Label as={`h${headingLevel}`} id={headingId}>{label}</Label>
-                    <ButtonPlacementProvider placement="chrome">{labelEnd ?? (fact === undefined ? null : <span>{fact}</span>)}</ButtonPlacementProvider>
+                    <ButtonPlacementProvider placement="chrome">{labelEnd ?? (fact === undefined ? null : (
+                        <span className={surfaceFactClassName} data-grammar-surface-depth={depth} data-contract={`TONE-2 ${depth === "nested" ? "FONT-1" : "FONT-2"}`}>{fact}</span>
+                    ))}</ButtonPlacementProvider>
                 </Card.Header>
             )}
             {highlightedSurface}
