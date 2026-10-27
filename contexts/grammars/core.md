@@ -32,7 +32,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 
 | Role | core |
 |---|---|
-| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; a card floating in content carries its label outside the material, above it; a docked panel carries its title inside as its header (ruling `card-label-placement-per-grammar`); a nested surface is unraised, border without shadow; dividers run full-bleed |
+| Card | White material; top depth shadow without border, nested depth border without shadow (ruling `surfacecard-always-painted`); surface radius; label outside the material, an unpainted row above the card (ruling `card-label-placement-per-grammar`) |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `accentText`. Pill: the vendor's soft track and white selected segment with the surface shadow |
