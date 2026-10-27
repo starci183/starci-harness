@@ -25,8 +25,8 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
    (`harness/usage.ts`: every window of `usage.windows` per pool, the most-used one as the pool's quota with its reset; an
    ok reading closes a circuit opened for auth, or for quota with headroom; Codex's own session rollout stands in when Orca
    gives no Codex reading; a platform with no source, Devin among them, is unknown and judged by its outcomes) and records every ended attempt of every
-   registered ledger per member and label (`harness/outcomes.ts`: green or red verdict, timeout, lost, launch failure,
-   mismatch, minutes). `starci provider sync` does both at once; `provider report` records one outcome or reading by hand.
+   registered ledger per member and label (`harness/outcomes.ts`: green or red verdict, timeout, lost, stalled, launch
+   failure, mismatch, minutes), with every coordinator seat the stall ladder gave up on (stalled, under its role as label). `starci provider sync` does both at once; `provider report` records one outcome or reading by hand.
 1. **Tier.** `labelTiers[label]` when the label is named there, else `difficultyTier` of the higher of the task's
    difficulty and the label's floor. A lineage that reaches `escalateAfterReds` contract-red attempts moves one step up
    `tierOrder`; an infrastructure failure keeps the tier.
@@ -38,16 +38,17 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
    tier, the task looks one tier up (`ROUTE_UNQUALIFIED` at the top).
 3. **Quota.** A member at `exhaustedPercent` of its binding window is dropped until that window resets; one at
    `reservePercent` only while a member below it is left. No reading, a stale one or one past its reset is unknown and kept.
-4. **Lineage.** One contract-red attempt of this task on a pool puts that member behind every other.
+4. **Lineage.** One contract-red attempt of this task on a pool, or a seat of this lineage (a task's attempts, a
+   coordinator's relaunch) that the stall ladder gave up on, puts that pool's members behind every other.
 5. **Probe.** A provider whose circuit is half-open (`circuit`: its cooldown ended, or its probe interval passed) takes this
    pick as its one probe; the probe is marked in flight until its launch reports, and a success closes the circuit.
 6. **Score.** Every member left is ordered by expected success over expected cost: the Beta posterior mean of its green
-   rate for the label (`scoring.prior` plus its verdicts; timeouts and lost workers count against it) over its mean
+   rate for the label (`scoring.prior` plus its verdicts; timeouts, lost and stalled workers count against it) over its mean
    minutes on the label (over `scoring.costMinutes`), times `1 + paceWeight` per unit its quota burns ahead of its
    window's clock. With probability `exploreSharePercent`, and only while explore picks hold less than that share of the
    tier's recent picks, the order uses a Thompson sample instead of the mean.
 7. **Balance.** The scored head picked `maxStreak` times in a row, or holding more than `maxSharePercent` of its tier's
-   running seats, yields to the next.
+   running seats, yields to the next, never to a member the lineage step put behind it.
 8. **Pick.** The head is chosen, by `probe`, `score`, `explore` or `balance`. The pick record (the chain after each step,
    every dropped member with its reason, the scores, the exploration roll, the probe) is stored on the attempt, and
    dispatch reuses it.

@@ -293,15 +293,57 @@ const terminalCreateSchema = z.looseObject({ terminal: z.looseObject({ handle: z
 export const terminalCreate = async (binary: OrcaBinary, input: { readonly worktree: string; readonly title: string }, cwd: string): Promise<string> =>
     (await callOrcaArgv(binary, orcaToolArgv("terminal", "create", { worktree: input.worktree, title: input.title }), "orca terminal create", terminalCreateSchema, cwd, ORCA_TIMEOUT_MS)).terminal.handle
 
-const terminalListSchema = z.looseObject({ terminals: z.array(z.looseObject({ handle: z.string() })), truncated: z.boolean().optional() })
+// Orca writes a time as epoch milliseconds or as text; anything that is not a valid time is no evidence.
+const isoOf = (value: number | string | null | undefined): string | null => {
+    if (value === null || value === undefined) return null
+    const time = new Date(value)
+    return Number.isNaN(time.getTime()) ? null : time.toISOString()
+}
+
+const terminalListSchema = z.looseObject({ terminals: z.array(z.looseObject({ handle: z.string(), lastOutputAt: z.union([z.number(), z.string()]).nullish() })), truncated: z.boolean().optional() })
 
 /** How many terminals one `terminal list` reads; a list Orca truncated proves no absence. */
 const TERMINAL_LIST_LIMIT = "1000"
 
-/** `orca terminal list`: the handles of the live Orca terminals, and whether Orca truncated the list (then absence proves nothing). */
-export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<{ readonly handles: ReadonlySet<string>; readonly truncated: boolean }> => {
+/** The live Orca terminals: their handles, when each last printed (ISO, null when Orca does not say), and whether Orca truncated the list. */
+export interface TerminalInventory {
+    readonly handles: ReadonlySet<string>
+    readonly lastOutput: ReadonlyMap<string, string | null>
+    readonly truncated: boolean
+}
+
+/** `orca terminal list`: the live Orca terminals with their last output time, and whether Orca truncated the list (then absence proves nothing). */
+export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<TerminalInventory> => {
     const result = await callOrcaArgv(binary, orcaToolArgv("terminal", "list", { limit: TERMINAL_LIST_LIMIT }), "orca terminal list", terminalListSchema, cwd, ORCA_TIMEOUT_MS)
-    return { handles: new Set(result.terminals.map((terminal) => terminal.handle)), truncated: result.truncated === true }
+    return {
+        handles: new Set(result.terminals.map((terminal) => terminal.handle)),
+        lastOutput: new Map(result.terminals.map((terminal) => [terminal.handle, isoOf(terminal.lastOutputAt)])),
+        truncated: result.truncated === true,
+    }
+}
+
+const terminalWaitSchema = z.looseObject({ wait: z.looseObject({ satisfied: z.boolean().nullish() }).nullish() })
+
+/**
+ * `orca terminal wait --for tui-idle`: Orca's word whether the agent in a terminal sits idle at its prompt. `idle` when the wait is
+ * satisfied within `waitMs`, `busy` when Orca answers that it timed out (the agent works, or blocks in a command such as a
+ * driver's wait), `unknown` for anything else: an unknown answer is never idle.
+ */
+export const terminalWaitIdle = async (binary: OrcaBinary, handle: string, waitMs: number, cwd: string): Promise<"idle" | "busy" | "unknown"> => {
+    try {
+        const result = await callOrcaArgv(binary, orcaToolArgv("terminal", "wait", { terminal: handle, for: "tui-idle", "timeout-ms": String(waitMs) }), "orca terminal wait", terminalWaitSchema, cwd, waitMs + ORCA_TIMEOUT_MS)
+        return result.wait?.satisfied === true ? "idle" : "busy"
+    } catch (error: unknown) {
+        return error instanceof OrcaFailure && error.orcaCode === "timeout" ? "busy" : "unknown"
+    }
+}
+
+/**
+ * `orca terminal send --text <text> --enter --retry-request <id>`: types one prompt into an agent's terminal and submits it (the
+ * stall ladder's nudge). The request id binds the prompt to the terminal, so a replay after a lost answer never types it twice.
+ */
+export const terminalSend = async (binary: OrcaBinary, input: { readonly terminal: string; readonly text: string; readonly retryRequest: string }, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("terminal", "send", { terminal: input.terminal, text: input.text, enter: true, "retry-request": input.retryRequest }), "orca terminal send", z.unknown(), cwd, ORCA_TIMEOUT_MS)
 }
 
 /** Orca's answers that a terminal handle names nothing any more: the terminal (or its tab) is gone already. */
@@ -486,10 +528,11 @@ export const effectiveLaunch = (effective: unknown): EffectiveLaunch => {
 }
 
 const workerShowSchema = z.looseObject({
-    dispatch: z.looseObject({ id: z.string().nullish(), assigneeHandle: z.string().nullish() }).nullish(),
+    dispatch: z.looseObject({ id: z.string().nullish(), assigneeHandle: z.string().nullish(), lastHeartbeatAt: z.union([z.number(), z.string()]).nullish() }).nullish(),
     worker: z
         .looseObject({
             state: z.string().nullish(),
+            lastHeartbeatAt: z.union([z.number(), z.string()]).nullish(),
             agentTerminalHandle: z.string().nullish(),
             startOptions: effectiveSchema.nullish(),
             start_options: z.string().nullish(),
@@ -511,13 +554,32 @@ export interface WorkerShown {
     readonly effective: unknown
     readonly observed: string | null
     readonly lastOutputAt: string | null
+    /** The dispatch's (else the worker's) last heartbeat as Orca records it; null when Orca does not say. */
+    readonly heartbeatAt: string | null
+    /** What Orca's structured fields say of why the worker waits or failed (agentWait, error, exit reason); null when none. */
+    readonly failureText: string | null
 }
 
-// Orca writes a time as epoch milliseconds or as text; anything that is not a valid time is no evidence.
-const isoOf = (value: number | string | null | undefined): string | null => {
-    if (value === null || value === undefined) return null
-    const time = new Date(value)
-    return Number.isNaN(time.getTime()) ? null : time.toISOString()
+/** The fields of a worker-show reply that say why a worker waits or failed; a terminal screen is never one of them. */
+const FAILURE_FIELDS: readonly (readonly string[])[] = [
+    ["observation", "agentWait"],
+    ["observation", "error"],
+    ["worker", "error"],
+    ["worker", "lastError"],
+    ["worker", "exitReason"],
+    ["dispatch", "error"],
+    ["dispatch", "lastError"],
+    ["dispatch", "failure"],
+]
+
+const fieldAt = (value: unknown, path: readonly string[]): unknown =>
+    path.reduce<unknown>((current, key) => (typeof current === "object" && current !== null && key in current ? (current as Record<string, unknown>)[key] : undefined), value)
+
+const failureTextOf = (result: unknown): string | null => {
+    const parts = FAILURE_FIELDS.map((path) => fieldAt(result, path))
+        .filter((value) => value !== undefined && value !== null)
+        .map((value) => (typeof value === "string" ? value : JSON.stringify(value)))
+    return parts.length === 0 ? null : parts.join(" | ")
 }
 
 // Older receipts carry the launch as a json string in worker.start_options; malformed text is no attestation.
@@ -537,6 +599,8 @@ export const workerShow = async (binary: OrcaBinary, dispatchId: string, cwd: st
     return {
         observed: result.observation?.status ?? null,
         lastOutputAt: isoOf(result.observation?.lastOutputAt ?? result.terminal?.lastOutputAt),
+        heartbeatAt: isoOf(result.dispatch?.lastHeartbeatAt ?? result.worker?.lastHeartbeatAt),
+        failureText: failureTextOf(result),
         dispatchId: result.dispatch?.id ?? dispatchId,
         state: result.worker?.state ?? null,
         terminal: result.worker?.agentTerminalHandle ?? result.dispatch?.assigneeHandle ?? null,
@@ -606,13 +670,30 @@ export const workerAbandon = async (binary: OrcaBinary, dispatchId: string, cwd:
 /** What request-show says of one mutation request: it landed (completed), is still running (pending) or Orca holds no receipt (absent). */
 export type RequestState = "completed" | "pending" | "absent" | "unknown"
 
-const requestShowSchema = z.looseObject({ state: z.string().nullish(), status: z.string().nullish(), request: z.looseObject({ state: z.string().nullish() }).nullish() })
+const receiptSchemaOfRequest = z.looseObject({ dispatchId: z.string().nullish() })
 
-/** `orca orchestration request-show --request <id>`: read-only; absent is not proof that nothing happened. */
-export const requestShow = async (binary: OrcaBinary, requestId: string, cwd: string): Promise<RequestState> => {
+const requestShowSchema = z.looseObject({
+    state: z.string().nullish(),
+    status: z.string().nullish(),
+    request: z.looseObject({ state: z.string().nullish() }).nullish(),
+    receipt: receiptSchemaOfRequest.nullish(),
+})
+
+/** What request-show says of one request: its state, and the dispatch its receipt names (null when it names none). */
+export interface RequestShown {
+    readonly state: RequestState
+    readonly dispatchId: string | null
+}
+
+/**
+ * `orca orchestration request-show --request <id>`: read-only; absent is not proof that nothing happened. A completed request's
+ * receipt may itself say outcome_unknown (the input was submitted, the agent's turn start was never observed): its dispatch,
+ * not a replay of the request, says what became of the worker.
+ */
+export const requestShow = async (binary: OrcaBinary, requestId: string, cwd: string): Promise<RequestShown> => {
     const result = await callOrca(binary, "request-show", { request: requestId }, requestShowSchema, cwd)
     const state = result.state ?? result.status ?? result.request?.state ?? null
-    return state === "completed" || state === "pending" || state === "absent" ? state : "unknown"
+    return { state: state === "completed" || state === "pending" || state === "absent" ? state : "unknown", dispatchId: result.receipt?.dispatchId ?? null }
 }
 
 /** One message of an Orca delivery, read loosely: the harness acts on its type and its sender (the terminal handle that sent it, null when Orca names none), the ledger stays the state. */

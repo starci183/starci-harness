@@ -9,6 +9,7 @@ import { readMachine, withMachine } from "./machine.js"
 import { agentLaunch, isSelectorNotFound, launchOperationOf, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
 import type { AgentLaunchInput, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
+import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
 
 /** The exact title of the host Supervisor's terminal and orchestration task. */
@@ -50,13 +51,21 @@ export type AttachedSupervisor = SupervisorRecord & { readonly terminal: string;
 export const inSupervisorTerminal = (seat: SupervisorRecord | null): seat is AttachedSupervisor =>
     seat?.terminal != null && seat.run_id !== null && seat.task_id !== null && process.env.ORCA_TERMINAL_HANDLE === seat.terminal
 
-/** Requires the recorded Supervisor's own terminal, refusing SUPERVISOR_REQUIRED anywhere else; renews its lease. */
-export const requireSupervisor = async (binary: OrcaBinary, cwd: string): Promise<AttachedSupervisor> => {
-    const seat = supervisorRecord()
-    if (!inSupervisorTerminal(seat)) throw new Refusal("SUPERVISOR_REQUIRED", "run this from the Supervisor's terminal; the owner starts it once with starci supervisor start")
+/** True when the Supervisor record is attached: its terminal, Run and task are known (wherever the caller runs). */
+export const isAttached = (seat: SupervisorRecord | null): seat is AttachedSupervisor => seat?.terminal != null && seat.run_id !== null && seat.task_id !== null
+
+/**
+ * Requires the recorded Supervisor's own terminal, refusing SUPERVISOR_REQUIRED anywhere else, and renews its lease. The host
+ * driver (`supervisor tick`) passes the attached record it acts for: it dispatches with the Supervisor's identity, and renews
+ * nothing, since the lease measures the Supervisor's own calls.
+ */
+export const requireSupervisor = async (binary: OrcaBinary, cwd: string, acting?: AttachedSupervisor): Promise<AttachedSupervisor> => {
+    const seat = acting ?? supervisorRecord()
+    if (acting === undefined && !inSupervisorTerminal(seat)) throw new Refusal("SUPERVISOR_REQUIRED", "run this from the Supervisor's terminal; the owner starts it once with starci supervisor start")
+    if (!isAttached(seat) || supervisorRecord()?.id !== seat.id) throw new Refusal("SUPERVISOR_REQUIRED", "no attached Supervisor; the owner starts it once with starci supervisor start")
     const live = await terminalList(binary, cwd)
     if (!live.truncated && !live.handles.has(seat.terminal)) throw new Refusal("SUPERVISOR_REQUIRED", "the Supervisor terminal is gone; run starci supervisor ensure")
-    renewSupervisorLease(seat.id)
+    if (acting === undefined) renewSupervisorLease(seat.id)
     return seat
 }
 
@@ -112,12 +121,12 @@ const sendLaunch = async (binary: OrcaBinary, cwd: string, id: string, input: Ag
  * the runtime checkout, pointing it at its brief under .runtime. A second start while one is alive refuses SUPERVISOR_RUNNING;
  * an unknown launch keeps its reservation (and the operation id to replay) instead of launching twice.
  */
-export const startSupervisor = async (binary: OrcaBinary, cwd: string): Promise<SupervisorRecord> => {
+export const startSupervisor = async (binary: OrcaBinary, cwd: string, stalled: readonly RouteMember[] = []): Promise<SupervisorRecord> => {
     const status = await supervisorStatus(binary, cwd)
     const previous = status.supervisor
     if (previous !== null && status.liveness !== "gone") throw new Refusal("SUPERVISOR_RUNNING", `the Supervisor is ${status.liveness}; starci supervisor status, or stop it first`)
     if (previous !== null) withMachine((db) => db.prepare("UPDATE supervisors SET ended_at = ? WHERE id = ? AND ended_at IS NULL").run(now(), previous.id))
-    const pick = pickCoordinator("supervisor")
+    const pick = pickCoordinator("supervisor", { stalled })
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const id = randomUUID()
     const prompt = coordinatorBrief({ role: "supervisor", root: runtimeRoot(), launchId: id, agent: pick.agent, model: pick.model })
@@ -141,7 +150,7 @@ export interface SupervisorEnsured {
 }
 
 /**
- * Keeps one Supervisor alive (the Windows Task Scheduler entry runs this): absent or gone by Orca's word -> start; a reserved
+ * Keeps one Supervisor alive (`supervisor ensure`, and every `supervisor tick`): absent or gone by Orca's word -> start; a reserved
  * launch with an unknown answer -> replay it with its operation id; no operation id past the effect-unknown deadline -> stuck
  * (reported, never relaunched blind); alive or unknown -> nothing. Unknown is not dead.
  */

@@ -230,7 +230,7 @@ export const closeKernelActions = async (context: VerbContext, root: string, sna
  */
 const launchOf = (root: string, node: PlanNode, taskId: string): RoutePick | Refusal => {
     const lineage = withLedger(root, (db) => lineageOf(db, taskId))
-    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, risk: node.route.risk })
+    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: node.route.risk })
     return pick instanceof RouteRefusal ? new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("; ")) : pick
 }
 

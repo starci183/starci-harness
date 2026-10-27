@@ -5,14 +5,15 @@ import { readMachine, textOf, withMachine } from "./machine.js"
 import type { Qualification, Routing } from "./routing.js"
 
 /**
- * How one ended attempt counts for its member: a green or red verdict, a timeout (fenced past its budget), lost (the worker
- * went away), a launch that certainly failed, or a model mismatch. A cancelled or unjudged attempt does not count.
+ * How one ended attempt counts for its member: a green or red verdict, a timeout (fenced past its budget), stalled (given up
+ * by the stall ladder: idle at its prompt with its work pending), lost (the worker went away), a launch that certainly
+ * failed, or a model mismatch. A cancelled or unjudged attempt does not count.
  */
-export type OutcomeClass = "green" | "red" | "timeout" | "lost" | "launch" | "mismatch"
+export type OutcomeClass = "green" | "red" | "timeout" | "lost" | "stalled" | "launch" | "mismatch"
 
-const CLASSES: readonly OutcomeClass[] = ["green", "red", "timeout", "lost", "launch", "mismatch"]
+const CLASSES: readonly OutcomeClass[] = ["green", "red", "timeout", "lost", "stalled", "launch", "mismatch"]
 
-const BY_OUTCOME: Readonly<Record<string, OutcomeClass>> = { timeout: "timeout", orphaned: "lost", "launch-failed": "launch", "model-mismatch": "mismatch" }
+const BY_OUTCOME: Readonly<Record<string, OutcomeClass>> = { timeout: "timeout", orphaned: "lost", stalled: "stalled", "launch-failed": "launch", "model-mismatch": "mismatch" }
 
 /** The class of an attempt from its verdict, else its ended outcome; null while it has neither. */
 export const classOf = (verdict: string | null, outcome: string | null): OutcomeClass | null => {
@@ -77,18 +78,35 @@ export const recordMemberOutcomes = (routing: Routing, at: string = now()): numb
     })
 }
 
+/**
+ * Records a coordinator seat the stall ladder gave up on as a `stalled` outcome of its member, with its role as the label: a
+ * Kernel or Supervisor has no attempt row, so its seat is the evidence (keyed `seat:<id>` beside the ledger's attempts).
+ */
+export const recordSeatOutcome = (seat: { readonly ledger: string; readonly id: string; readonly agent: string; readonly model: string | null; readonly role: string; readonly startedAt: string }, at: string = now()): void => {
+    const minutes = (Date.parse(at) - Date.parse(seat.startedAt)) / 60_000
+    withMachine((db) =>
+        db
+            .prepare(
+                `INSERT INTO member_outcomes (ledger, attempt_id, member, pool, label, class, minutes, ended_at) VALUES (?, ?, ?, ?, ?, 'stalled', ?, ?)
+                 ON CONFLICT(ledger, attempt_id) DO NOTHING`,
+            )
+            .run(seat.ledger, `seat:${seat.id}`, `${seat.agent}/${seat.model ?? "?"}`, seat.agent, seat.role, Number.isFinite(minutes) ? minutes : null, at),
+    )
+}
+
 /** A member's evidence for one label in the outcomes window: its counts per class and the mean minutes of its worked attempts. */
 export interface MemberEvidence {
     readonly green: number
     readonly red: number
     readonly timeout: number
     readonly lost: number
+    readonly stalled: number
     readonly launch: number
     readonly mismatch: number
     readonly meanMinutes: number | null
 }
 
-const EMPTY: MemberEvidence = { green: 0, red: 0, timeout: 0, lost: 0, launch: 0, mismatch: 0, meanMinutes: null }
+const EMPTY: MemberEvidence = { green: 0, red: 0, timeout: 0, lost: 0, stalled: 0, launch: 0, mismatch: 0, meanMinutes: null }
 
 /** The evidence of every member and label in the outcomes window, keyed `member label`; the `*` label is a member's whole record. */
 export const memberEvidence = (db: DatabaseSync | undefined, routing: Routing, at: string = now()): ReadonlyMap<string, MemberEvidence> => {
@@ -98,7 +116,7 @@ export const memberEvidence = (db: DatabaseSync | undefined, routing: Routing, a
         const kind = CLASSES.find((known) => known === textOf(row.class))
         if (kind === undefined) continue
         for (const key of [`${textOf(row.member) ?? ""} ${textOf(row.label) ?? ""}`, `${textOf(row.member) ?? ""} *`]) {
-            const entry = counts.get(key) ?? { evidence: { green: 0, red: 0, timeout: 0, lost: 0, launch: 0, mismatch: 0 }, minutes: [] }
+            const entry = counts.get(key) ?? { evidence: { green: 0, red: 0, timeout: 0, lost: 0, stalled: 0, launch: 0, mismatch: 0 }, minutes: [] }
             entry.evidence[kind] += 1
             const minutes = row.minutes === null ? null : Number(row.minutes)
             if (minutes !== null && (kind === "green" || kind === "red" || kind === "timeout")) entry.minutes.push(minutes)
@@ -123,10 +141,10 @@ export const qualificationOf = (routing: Routing, evidence: MemberEvidence, tier
     return verified < standard.verified && startStandard.includes(tier) ? "standard" : "probation"
 }
 
-/** The Beta posterior of a member's green rate for a label: the prior plus its greens, and its reds, timeouts and lost workers. */
+/** The Beta posterior of a member's green rate for a label: the prior plus its greens, and its reds, timeouts, lost and stalled workers. */
 export const posteriorOf = (routing: Routing, evidence: MemberEvidence): { readonly alpha: number; readonly beta: number } => ({
     alpha: routing.scoring.prior.green + evidence.green,
-    beta: routing.scoring.prior.red + evidence.red + evidence.timeout + evidence.lost,
+    beta: routing.scoring.prior.red + evidence.red + evidence.timeout + evidence.lost + evidence.stalled,
 })
 
 /** A standard normal draw (Box-Muller) from a uniform source. */

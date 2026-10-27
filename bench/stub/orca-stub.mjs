@@ -2,7 +2,9 @@
 // in a copy of node named orca(.exe), which the runner points STARCI_ORCA_BIN at; anywhere else it returns at once.
 // It answers the subset of the orca CLI the harness client calls (the coordinator tree included: agent launch, Runs bound to
 // a coordinator terminal, tasks, workers nested under a parent, request-show, the mailboxes of check and send), records every
-// call, and replays the faults the scenario scripted in its state file (STARCI_BENCH_ORCA). It never launches anything.
+// call, and replays the faults the scenario scripted in its state file (STARCI_BENCH_ORCA). Its idle signals are scripted too:
+// `tuiIdle` (terminal wait --for tui-idle), `lastOutput` (terminal list), `idleSince`, `heartbeat` and `agentWait` (worker-show),
+// and `terminal send` keeps every prompt typed by its retry-request in `typed`. It never launches anything.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename } from "node:path"
 import { createHash } from "node:crypto"
@@ -101,11 +103,14 @@ const defaults = (command, flags, state) => {
             const title = flags["task-title"]
             const kind = typeof title === "string" && title.startsWith("[Kernel]") ? "kernel" : "op"
             state.dispatches[key] = { dispatchId, terminal, title, kind, run: flags.run ?? null, parent: flags.parent ?? null, state: "ready", replays: (known?.replays ?? -1) + 1 }
-            state.workers[dispatchId] = state.workers[dispatchId] ?? "ready"
+            // `newWorkerState` scripts the state a new worker starts in (start_unknown: Orca submitted the prompt, the turn never began).
+            state.workers[dispatchId] = state.workers[dispatchId] ?? state.newWorkerState ?? "ready"
             if (known === undefined) state.terminals[terminal] = true
             const taskId = idOf("otask", key)
             state.tasks[taskId] = { run: flags.run ?? null, title }
             remember(state, flags)
+            // request-show reads the receipt back: the dispatch the request made.
+            if (typeof flags["retry-request"] === "string") state.receipts = { ...(state.receipts ?? {}), [flags["retry-request"]]: { dispatchId } }
             const effective = { agent: state.effectiveAgent ?? flags.agent, model: state.effectiveModel ?? flags.model }
             return { ok: true, result: { dispatchId, taskId, runId: flags.run ?? null, state: "ready", worker: { agentTerminalHandle: terminal, state: "ready" }, launch: { effective } } }
         }
@@ -114,7 +119,16 @@ const defaults = (command, flags, state) => {
             if (worker === undefined) return refuse("dispatch_not_found", "no such dispatch")
             const terminal = Object.values(state.dispatches).find((entry) => entry.dispatchId === flags.dispatch)?.terminal ?? null
             const idle = state.idleSince?.[flags.dispatch]
-            return { ok: true, result: { dispatch: { id: flags.dispatch }, worker: { state: worker, agentTerminalHandle: terminal }, observation: { status: worker, ...(idle === undefined ? {} : { lastOutputAt: idle }) } } }
+            const heartbeat = state.heartbeat?.[flags.dispatch]
+            const agentWait = state.agentWait?.[flags.dispatch]
+            return {
+                ok: true,
+                result: {
+                    dispatch: { id: flags.dispatch, ...(heartbeat === undefined ? {} : { lastHeartbeatAt: heartbeat }) },
+                    worker: { state: worker, agentTerminalHandle: terminal },
+                    observation: { status: worker, ...(idle === undefined ? {} : { lastOutputAt: idle }), ...(agentWait === undefined ? {} : { agentWait }) },
+                },
+            }
         }
         case "worker-stop":
             if (state.workers[flags.dispatch] !== undefined) state.workers[flags.dispatch] = "stopped"
@@ -128,7 +142,8 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: { state: "abandoned" } }
         case "request-show": {
             const known = state.requests[flags.request]
-            return { ok: true, result: { state: known ?? "absent" } }
+            const receipt = state.receipts?.[flags.request]
+            return { ok: true, result: { state: known ?? "absent", ...(known === undefined || receipt === undefined ? {} : { receipt }) } }
         }
         case "check": {
             // The coordinator's mailbox (its Run): --ack acknowledges a delivery, the reply is the oldest unacknowledged batch.
@@ -162,7 +177,24 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: { terminal: { handle } } }
         }
         case "terminal list":
-            return { ok: true, result: { terminals: Object.keys(state.terminals).filter((handle) => state.terminals[handle]).map((handle) => ({ handle })) } }
+            return { ok: true, result: { terminals: Object.keys(state.terminals).filter((handle) => state.terminals[handle]).map((handle) => ({ handle, lastOutputAt: state.lastOutput?.[handle] ?? null })) } }
+        case "terminal show":
+            if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            return { ok: true, result: { terminal: { handle: flags.terminal, lastOutputAt: state.lastOutput?.[flags.terminal] ?? null, agentWait: null } } }
+        case "terminal wait": {
+            // tui-idle is satisfied for a terminal the scenario marked idle at its prompt; any other wait times out as Orca's does.
+            if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            if (flags.for === "tui-idle" && state.tuiIdle?.[flags.terminal] === true) return { ok: true, result: { wait: { handle: flags.terminal, condition: "tui-idle", satisfied: true, status: "running", exitCode: null } } }
+            return refuse("timeout", "timeout")
+        }
+        case "terminal send": {
+            // A nudge typed into a terminal; the same retry-request is one prompt, never typed twice.
+            if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            const key = flags["retry-request"] ?? String(state.calls)
+            state.typed = state.typed ?? {}
+            if (state.typed[key] === undefined) state.typed[key] = { terminal: flags.terminal, text: flags.text, enter: flags.enter === true }
+            return { ok: true, result: { accepted: true, retryRequest: key } }
+        }
         case "terminal close":
             if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
             state.terminals[flags.terminal] = false

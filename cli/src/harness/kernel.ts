@@ -12,10 +12,12 @@ import { inTransaction } from "./leases.js"
 import { closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
+import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
 import { getSeat, kernelSeatOf, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
 import type { SeatRow } from "./seats.js"
 import { requireSupervisor } from "./supervisor.js"
+import type { AttachedSupervisor } from "./supervisor.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow, recordKernel } from "./workflow.js"
 import type { KernelRecord, WorkflowRow } from "./workflow.js"
@@ -136,6 +138,16 @@ export const ensureKernel = async (root: string, cwd: string, workflowId: string
     return { kernel: workflow.kernel, seat: null, worktree: null, notes: [] }
 }
 
+/**
+ * How a Kernel start runs: `replace` fences a Kernel Orca still shows, `acting` is the attached Supervisor the host driver acts
+ * for (else the caller must be its terminal), `stalled` the members whose seats of this workflow the stall ladder gave up on.
+ */
+export interface KernelStartOptions {
+    readonly replace?: boolean
+    readonly acting?: AttachedSupervisor
+    readonly stalled?: readonly RouteMember[]
+}
+
 /** What a start does with a Kernel seat that is still open: refuse while Orca shows it alive, else fence it first. */
 const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: OrcaBinary, replace: boolean): Promise<string> => {
     if (seat.handle === null) throw new Refusal("KERNEL_STARTING", `Kernel seat ${seat.id} has a launch whose outcome is not known yet (request ${seat.requestId ?? "-"}); supervisor next resolves it through Orca`)
@@ -152,12 +164,12 @@ const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: 
 
 /**
  * Launches the routed Kernel agent as a child dispatch in the Supervisor's Run (worker-start --run/--parent/--from, title
- * `[Kernel] <workflow>`) inside the workflow's one worktree; only the Supervisor's own terminal may call it. A seat row is
- * reserved first with the attempt's request id, so an unknown launch is resolved through Orca and never launched twice.
- * `replace` fences a Kernel Orca still shows (supervisor next, after Orca reported it idle past its TTL).
+ * `[Kernel] <workflow>`) inside the workflow's one worktree; only the Supervisor's own terminal, or the host driver acting for
+ * it, may call it. A seat row is reserved first with the attempt's request id, so an unknown launch is resolved through Orca and
+ * never launched twice. `replace` fences a Kernel Orca still shows (idle past its TTL, or given up by the stall ladder).
  */
-export const startKernel = async (root: string, cwd: string, workflowId: string, binary: OrcaBinary, options: { readonly replace?: boolean } = {}): Promise<KernelEnsured> => {
-    const supervisor = await requireSupervisor(binary, cwd)
+export const startKernel = async (root: string, cwd: string, workflowId: string, binary: OrcaBinary, options: KernelStartOptions = {}): Promise<KernelEnsured> => {
+    const supervisor = await requireSupervisor(binary, cwd, options.acting)
     const workflow = withRecord(root, (db) => getWorkflow(db, workflowId))
     if (workflow.header.runner !== "orca") throw new Refusal("KERNEL_INLINE", "an inline workflow has no Orca Kernel seat: the chat agent is its Kernel")
     if (!["running", "blocked", "paused"].includes(workflow.status)) throw new Refusal("KERNEL_NOT_RUNNING", `workflow ${workflowId} is ${workflow.status}; start a defined workflow with starci workflow start`)
@@ -173,7 +185,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     if (open !== undefined) notes.push(await retireOpenSeat(root, cwd, open, binary, options.replace === true))
     if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open === undefined) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
-    const pick = pickCoordinator("kernel")
+    const pick = pickCoordinator("kernel", { stalled: options.stalled ?? [] })
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const launchId = `k-${randomUUID().slice(0, 8)}`
     const spec = coordinatorBrief({ role: "kernel", root, workflowId, launchId, agent: pick.agent, model: pick.model, worktree })

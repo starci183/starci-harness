@@ -25,7 +25,8 @@ export interface RouteMember {
 /**
  * What the router needs to pick: the label, an optional measured difficulty (a name or 1..4; the label's floor raises it), the
  * 1-based attempt number in the task's lineage, the contract-red attempts so far (their members, or just their count) and the
- * task's risk tags (any of routing.yaml qualification.riskTags makes it high-risk).
+ * task's risk tags (any of routing.yaml qualification.riskTags makes it high-risk), and the members of its lineage the stall ladder
+ * gave up on (a task's stalled attempts, a coordinator's stalled seat being relaunched).
  */
 export interface RouteInput {
     readonly label: string
@@ -34,6 +35,7 @@ export interface RouteInput {
     readonly attempt: number
     readonly previousRed?: number | readonly RouteMember[] | undefined
     readonly risk?: readonly string[] | undefined
+    readonly stalled?: readonly RouteMember[] | undefined
 }
 
 /** One member a step dropped, and why. */
@@ -328,7 +330,7 @@ const scoreOf = (facts: Facts, input: RouteInput, candidate: Candidate, tier: st
         qualification: qualificationIn(facts, input, candidate, tier),
         green: evidence.green,
         red: evidence.red,
-        worker: evidence.timeout + evidence.lost,
+        worker: evidence.timeout + evidence.lost + evidence.stalled,
         expected,
         minutes,
         pace: candidate.pace,
@@ -477,9 +479,10 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
         return new RouteRefusal("TOKENS_OUT", `every member of tier ${record.tier} is out of quota${resetAt === null ? "" : "; the earliest reset is " + resetAt}: ${droppedText(record, "quota")}`, record, resetAt)
     }
 
-    // 3. Lineage: a pool with one contract-red attempt of this task goes behind every other member.
-    const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1)
-    stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red: ${demoted.map((candidate) => candidate.id).join(", ")}`)
+    // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind every other member.
+    const stalledPools = new Set((input.stalled ?? []).map((member) => member.agent))
+    const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1 || stalledPools.has(candidate.pool))
+    stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red or a stall: ${demoted.map((candidate) => candidate.id).join(", ")}`)
 
     // 4. Probe: a half-open provider gets this one launch (never a high-risk task's), so no provider stays dark past its probe time.
     const probe = funded.find((candidate) => candidate.circuit.open && candidate.circuit.probe === "due")
@@ -492,7 +495,8 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     const head = ordered[0]
     if (probe === undefined && head !== undefined && ordered.length > 1) {
         const reason = balanceReason(routing, head, ordered, facts.recent(record.tier))
-        const next = ordered[1]
+        // Balance never yields to a member the lineage put behind the head.
+        const next = ordered.slice(1).find((candidate) => demoted.includes(head) || !demoted.includes(candidate))
         if (reason !== null && next !== undefined) {
             chosen = next
             by = "balance"
@@ -546,8 +550,8 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
 }
 
 /** Routes a coordinator through the shared circuit, capacity, quota, probe, scoring and balance pipeline. */
-export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
-    pickRoute({ label: role, coordinator: role, attempt: 1 }, { record: options.record ?? true })
+export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean; readonly stalled?: readonly RouteMember[] } = {}): RoutePick | RouteRefusal =>
+    pickRoute({ label: role, coordinator: role, attempt: 1, stalled: options.stalled }, { record: options.record ?? true })
 
 /** What `simulateRoute` counted over its picks: each member's picks, how many explored and probed, and the refusals. */
 export interface RouteSimulation {
@@ -590,11 +594,12 @@ export const recordPick = (db: DatabaseSync, attemptId: string, pick: RoutePick)
     db.prepare("UPDATE attempts SET pick_json = ? WHERE id = ?").run(JSON.stringify(pick), attemptId)
 }
 
-/** A task's lineage as the router reads it: the attempts of the task and the tasks it retries, their contract-red members, and its risk tags. */
+/** A task's lineage as the router reads it: the attempts of the task and the tasks it retries, their contract-red and stalled members, and its risk tags. */
 export interface Lineage {
     readonly label: string
     readonly attempts: number
     readonly reds: readonly RouteMember[]
+    readonly stalled: readonly RouteMember[]
     readonly risk: readonly string[]
 }
 
@@ -608,24 +613,29 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
     return Array.isArray(risk) ? risk.filter((tag): tag is string => typeof tag === "string") : []
 }
 
-/** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red. */
+/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, or a worker that never started. */
+const STALLED_OUTCOMES: readonly string[] = ["stalled", "launch-failed"]
+
+/** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
     const task = getTask(db, taskId)
     const reds: RouteMember[] = []
+    const stalled: RouteMember[] = []
     let attempts = 0
     const seen = new Set<string>()
     let current: string | null = task.id
     while (current !== null && !seen.has(current)) {
         seen.add(current)
-        for (const row of db.prepare("SELECT agent, model, verdict FROM attempts WHERE task_id = ? ORDER BY seq").all(current)) {
+        for (const row of db.prepare("SELECT agent, model, verdict, outcome FROM attempts WHERE task_id = ? ORDER BY seq").all(current)) {
             attempts += 1
             const agent = textOf(row.agent)
             const model = textOf(row.model)
             if (textOf(row.verdict) === "red" && agent !== null && model !== null) reds.push({ agent, model })
+            if (STALLED_OUTCOMES.includes(textOf(row.outcome) ?? "") && agent !== null && model !== null) stalled.push({ agent, model })
         }
         current = getTask(db, current).retryOf
     }
-    return { label: task.label, attempts, reds, risk: task.workflowId === null ? [] : riskOf(db, task.id) }
+    return { label: task.label, attempts, reds, stalled, risk: task.workflowId === null ? [] : riskOf(db, task.id) }
 }
 
 /** Routes the next attempt of a queued task from its ledger: its label, attempt number, contract-red lineage and risk. */
@@ -641,7 +651,7 @@ export const routeTask = (root: string, taskId: string, options: { readonly reco
     } finally {
         db.close()
     }
-    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, risk: lineage.risk }, { record: options.record ?? true })
+    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: lineage.risk }, { record: options.record ?? true })
 }
 
 const fixed = (value: number): string => value.toFixed(2)

@@ -43,7 +43,9 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   launch` (a terminal handle, replayed by `--retry-launch`), run-create and run-use (a Run bound to its coordinator
   terminal), task-create, worker-start (refused unless `--from` is the coordinator of `--run` and `--parent` a task of
   it), worker show, stop, release and abandon, request-show, `orchestration check` and `send` (one mailbox per Run or
-  dispatch, deliveries acked), terminal create, list, close and rename, and repo add. It dedupes by retry-request like Orca,
+  dispatch, deliveries acked), terminal create, list, close and rename, and repo add, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
+  terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
+  dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
   outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone, mail a seat sent. No real Orca is ever launched.
@@ -79,6 +81,11 @@ design asks for.
 | [crash-op-mid-edit](scenarios/crash-op-mid-edit.yaml) | crash | an Op dies with half its edit written | semi | pending |  |
 | [crash-supervisor-dies](scenarios/crash-supervisor-dies.yaml) | crash | the Supervisor seat dies with handoffs and escalations pending | automated | pass | 2026-10-27 |
 | [crash-verifying-orphan](scenarios/crash-verifying-orphan.yaml) | crash | the CLI died mid-verify: the next step returns the task to reported and verifies it | automated | pass | 2026-10-27 |
+| [coordinator-stall-model-capacity](scenarios/coordinator-stall-model-capacity.yaml) | orca | a Kernel stops at its prompt after a model-capacity error: the tick nudges it, then relaunches it on another member with the first one's circuit open | automated | pass | 2026-10-27 |
+| [kernel-holding-on-open-escalation](scenarios/kernel-holding-on-open-escalation.yaml) | orca | a Kernel escalates and ends its turn while its workflow still has work it can drive: the tick nudges it | automated | pass | 2026-10-27 |
+| [nudge-storm-bounded](scenarios/nudge-storm-bounded.yaml) | orca | a Kernel that answers each nudge and stalls again, under a storm of ticks: nudges stay bounded, then it is relaunched | automated | pass | 2026-10-27 |
+| [op-stall-nudge](scenarios/op-stall-nudge.yaml) | orca | an Op stops at its prompt with its task unfiled: its Kernel's driver nudges it once, and the nudge restarts it | automated | pass | 2026-10-27 |
+| [orca-dead-on-arrival-launch](scenarios/orca-dead-on-arrival-launch.yaml) | orca | Orca completed an Op's launch but the agent never started its turn: the dispatch is judged, fenced, and the task relaunched on another member | automated | pass | 2026-10-27 |
 | [orca-down-pauses-workflow](scenarios/orca-down-pauses-workflow.yaml) | orca | Orca stops answering mid-run: the Kernel driver pauses the workflow (orca-down) and lifts only that pause when Orca is back | automated | pass | 2026-10-27 |
 | [orca-duplicate-step-no-double-launch](scenarios/orca-duplicate-step-no-double-launch.yaml) | orca | eight concurrent steps of one workflow launch each task once | automated | pass | 2026-10-27 |
 | [orca-garbage-run-create-no-second-run](scenarios/orca-garbage-run-create-no-second-run.yaml) | orca | run-create answers garbage: the retry replays the same request, never a second Run | automated | pass | 2026-10-27 |
@@ -91,6 +98,7 @@ design asks for.
 | [orca-slow-reply](scenarios/orca-slow-reply.yaml) | orca | Orca answers slower than the process deadline | automated | pending |  |
 | [orca-worker-exited](scenarios/orca-worker-exited.yaml) | orca | Orca reports the worker exited: the task becomes effect_unknown (lost), never silently running | automated | pass | 2026-10-27 |
 | [orca-worker-idle-forever](scenarios/orca-worker-idle-forever.yaml) | orca | an Op sits idle past its budget minutes | automated | pending |  |
+| [supervisor-idle-after-turn](scenarios/supervisor-idle-after-turn.yaml) | orca | the Supervisor ended its turn with an escalation waiting and its Kernel died: the scheduled tick drives the sweep and nudges it | automated | pass | 2026-10-27 |
 | [provider-all-down](scenarios/provider-all-down.yaml) | provider | every provider is down: dispatch holds with a named reason, no launch, no busy loop | automated | pass | 2026-10-27 |
 | [provider-auth-revoked](scenarios/provider-auth-revoked.yaml) | provider | a provider's auth is revoked (org disabled): its circuit opens and the router routes around it | automated | pass | 2026-10-27 |
 | [provider-launch-failure-strikes](scenarios/provider-launch-failure-strikes.yaml) | provider | repeated launch failures open the provider circuit | automated | pending |  |
