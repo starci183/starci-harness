@@ -262,6 +262,7 @@ const sidebarGroups: ReadonlyArray<G.SidebarGroup> = [
       { id: 'home', label: 'Home', source: HomeGlyph },
       { id: 'lessons', label: 'Lessons', source: BookGlyph, badge: 12, badgeLabel: '12 unread lessons' },
       { id: 'progress', label: 'Progress', source: ChartGlyph },
+      { id: 'agent', label: 'Grading agent', source: UserGlyph, trailing: <G.StatusDot tone="success" echo aria-label="Running" /> },
     ],
   },
   {
@@ -279,7 +280,7 @@ const SidebarDemo = ({ initialCollapsed }: { readonly initialCollapsed: boolean 
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [selected, setSelected] = useState('lessons');
   return (
-    <div style={{ height: 420, display: 'flex' }}>
+    <div style={{ height: 480, display: 'flex' }}>
       <G.Sidebar
         label={initialCollapsed ? 'Workspace (collapsed)' : 'Workspace'}
         groups={sidebarGroups}
@@ -304,6 +305,15 @@ export const Sidebar: Story = {
       <State label="Collapsed" direction="column"><SidebarDemo initialCollapsed /></State>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    // The item's name is its label (aria-label), so a trailing StatusDot must reach it as the description.
+    await waitFor(() => {
+      const item = canvasElement.querySelector<HTMLElement>('[data-key="agent"], [id$="agent"][role="option"], [aria-label="Grading agent"]');
+      if (item === null) throw new Error('The agent item must render');
+      const described = (item.getAttribute('aria-describedby') ?? '').split(' ').map((id) => canvasElement.ownerDocument.getElementById(id)).filter((node) => node !== null);
+      if (!described.some((node) => node.querySelector('[aria-label="Running"]') !== null)) throw new Error('The trailing status must be the item\'s description');
+    });
+  },
 };
 
 const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolean }) => {

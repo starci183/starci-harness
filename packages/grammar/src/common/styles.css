@@ -3632,24 +3632,25 @@
         overflow-wrap: anywhere;
     }
 
-    /* Terminal: a dark monospace log tail; dark in both themes (a console reads dark). */
+    /*
+     * Terminal: a dark monospace log tail; dark in both themes (a console reads dark). Its colours are family tokens
+     * (`--terminal-background`, `--terminal-foreground`, `--terminal-title-foreground`); bare Common inverts the
+     * system colours.
+     */
     .starci-core-terminal {
-        --starci-core-terminal-bg: oklch(20% 0.01 286);
-        --starci-core-terminal-fg: oklch(92% 0.005 286);
-        --starci-core-terminal-title-fg: oklch(72% 0.01 286);
         display: flex;
         min-width: 0;
         flex-direction: column;
         overflow: hidden;
         border-radius: 0.75rem;
-        background: var(--starci-core-terminal-bg);
-        color: var(--starci-core-terminal-fg);
+        background: var(--terminal-background, CanvasText);
+        color: var(--terminal-foreground, Canvas);
     }
 
     .starci-core-terminal-title {
         padding: 0.5rem 0.75rem;
-        border-block-end: 1px solid color-mix(in srgb, var(--starci-core-terminal-fg) 14%, transparent);
-        color: var(--starci-core-terminal-title-fg);
+        border-block-end: 1px solid color-mix(in srgb, var(--terminal-foreground, Canvas) 14%, transparent);
+        color: var(--terminal-title-foreground, var(--terminal-foreground, Canvas));
         font-size: 0.75rem;
         font-weight: 500;
     }

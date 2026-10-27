@@ -58,6 +58,10 @@
         --offset-pop-surface-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--offset-pop-shadow-ink);
         --offset-pop-motion-duration: 140ms;
         --offset-pop-motion-easing: cubic-bezier(.2, .8, .2, 1);
+        /* The Terminal console: an ink panel with canvas text and a yellow title. */
+        --offset-pop-terminal-background: var(--offset-pop-ink);
+        --offset-pop-terminal-foreground: var(--offset-pop-canvas);
+        --offset-pop-terminal-title-foreground: var(--offset-pop-yellow);
 
         /* The composite motion value every family transition reads; reduced motion replaces it. */
         --offset-pop-transition: var(--offset-pop-motion-duration) var(--offset-pop-motion-easing);
@@ -72,6 +76,9 @@
         --surface-foreground: var(--offset-pop-foreground);
         --surface-secondary: var(--offset-pop-surface-secondary);
         --surface-secondary-foreground: var(--offset-pop-foreground);
+        --terminal-background: var(--offset-pop-terminal-background);
+        --terminal-foreground: var(--offset-pop-terminal-foreground);
+        --terminal-title-foreground: var(--offset-pop-terminal-title-foreground);
         --muted: var(--offset-pop-muted);
         --border: var(--offset-pop-border);
         --separator: var(--offset-pop-separator);
@@ -220,9 +227,6 @@
      * notched the corners), so the shadow takes the family's pink.
      */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Terminal"] {
-        --starci-core-terminal-bg: var(--offset-pop-ink);
-        --starci-core-terminal-fg: var(--offset-pop-canvas);
-        --starci-core-terminal-title-fg: var(--offset-pop-yellow);
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);
         box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-pink);

@@ -1506,10 +1506,13 @@
         gap: 0.125rem;
     }
 
+    /* The list title scale (the ListBox and panel row label, text-sm), not whatever size the page body inherits. */
     .starci-core-timeline-title {
         margin: 0;
         overflow-wrap: anywhere;
+        font-size: 0.875rem;
         font-weight: 600;
+        line-height: 1.25rem;
     }
 
     .starci-core-timeline-time,

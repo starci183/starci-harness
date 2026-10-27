@@ -28,6 +28,10 @@ export type SidebarItem = {
     /** Visible description lines in the expanded sidebar (default one). */
     readonly descriptionLines?: ItemDescriptionLines
     readonly source?: IconSource
+    /**
+     * Trailing content, such as a `StatusDot`. The item's accessible name is its label, so the trailing content is
+     * referenced as its description (`aria-describedby`): a status beside the label is announced with it.
+     */
     readonly trailing?: ReactNode
     /** Unread or pending count, visible in both the expanded sidebar and the icon rail. */
     readonly badge?: number | string
@@ -172,6 +176,8 @@ export const Sidebar = ({
                         {group.items.map((item) => {
                             const badgeText = iconButtonBadgeText(item.badge, item.badgeMax)
                             const accessibleLabel = badgeText === null ? item.label : `${item.label}, ${item.badgeLabel ?? badgeText}`
+                            // aria-label replaces the item's content as its name, so the trailing status is its description.
+                            const trailingId = collapsed || item.trailing == null ? undefined : `${tooltipId}-trailing-${item.id.replaceAll(/\s/gu, "-")}`
                             return (
                             <ListBox.Item
                                 key={item.id}
@@ -183,7 +189,7 @@ export const Sidebar = ({
                                 data-contract={collapsed ? "TONE-1 SURFACE-4" : "GAP-3 TONE-1 SURFACE-4"}
                                 aria-label={accessibleLabel}
                                 render={(props) => {
-                                    const describedBy = [props["aria-describedby"], collapsed && tooltip?.id === item.id ? tooltipId : undefined].filter(Boolean).join(" ") || undefined
+                                    const describedBy = [props["aria-describedby"], trailingId, collapsed && tooltip?.id === item.id ? tooltipId : undefined].filter(Boolean).join(" ") || undefined
                                     return "href" in props ? <a {...props} aria-describedby={describedBy} /> : <div {...props} aria-describedby={describedBy} />
                                 }}
                                 onHoverStart={(event) => showTooltip(event.target, item, "hover")}
@@ -201,7 +207,7 @@ export const Sidebar = ({
                                     </div>
                                 )}
                                 {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge starci-core-sidebar-item-badge" data-grammar-sidebar-badge="true">{badgeText}</span>}
-                                {collapsed || item.trailing == null ? null : <span className={sidebarItemTrailingClassName}>{item.trailing}</span>}
+                                {trailingId === undefined ? null : <span id={trailingId} className={sidebarItemTrailingClassName}>{item.trailing}</span>}
                             </ListBox.Item>
                         )})}
                     </ListBox.Section>,
