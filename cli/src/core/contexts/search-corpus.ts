@@ -13,13 +13,13 @@ export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack"
 export type SearchScope = (typeof SEARCH_SCOPES)[number]
 
 /** Bumped whenever chunking changes, so an index built by another chunker reads as stale. */
-export const CHUNKER_VERSION = 2
+export const CHUNKER_VERSION = 3
 
 /** One searchable piece of the corpus: a Markdown section or a yaml entry, named by the anchor a worker cites. */
 export interface Chunk {
     /**
-     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or record id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
-     * `control-height-40`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
+     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or decision id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
+     * `two-grammars`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
      */
     readonly anchor: string
     /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */
@@ -221,11 +221,11 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
     return cuts
 }
 
-/** A yaml cut's anchor: an id-shaped record id stands alone; a plain record key (`card`) or a key is qualified by the file. */
+/** A yaml cut's anchor: a rule or decision id stands alone (isAnchorId); a record key (`button-group`) or a key is qualified by the file. */
 const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[]; readonly citable: boolean } => {
     if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [], citable: false }
     const qualified = `${path}#${cut.key}.${cut.id}`
-    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
+    return isAnchorId(cut.id, scopeOf(path) === "decisions") ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
 }
 
 const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {

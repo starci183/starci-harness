@@ -9,9 +9,11 @@ import { isRuleId } from "../../harness/contract.js"
  * - a dotted id opening a heading, `### tabs.choose.level: page or region` (a file name such as `hfs.json` is no id);
  * - a rule id in a heading, `## R12 ...`, `### DNA-CORE-LABEL-OUTSIDE`: its first token with a digit, else an upper-case id
  *   the heading opens with;
- * - a yaml entry's `id:` value, when it has the shape of an id (a plain word such as `card` is a record key, not an id);
+ * - a yaml entry's `id:` value, when it names a rule or a decision (isAnchorId); an id that names a record (`card`,
+ *   `button-group`) is a record key;
  * - else the fallback: the file and the GitHub slug of the heading (`contexts/ui/components/tabs.md#choose`), or the file and
- *   the yaml key or record key (`ops/checks.yaml#presets.rules-cited`, `contexts/grammars/contract.yaml#card`).
+ *   the yaml key, with the record key of an entry (`ops/checks.yaml#presets.rules-cited`,
+ *   `contexts/grammars/contract.yaml#roles.button-group`).
  */
 
 // The suffix starts at its `{#`; the blanks before it are trimmed with the heading text.
@@ -33,14 +35,19 @@ export const slug = (heading: string): string =>
 export const isDottedId = (token: string): boolean => DOTTED_ID.test(token) && !FILE_EXTENSION.test(token)
 
 const CASE_PART = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+const WORD_ID = /^[a-z]+(?:-[a-z]+)*$/
 
 /**
- * True when `id` may stand alone as an anchor: a rule id (a letter and a digit or hyphen), a dotted id, or either with
- * `/`-joined parts (`STATE-8/loading-keeps-anatomy`, `R212/case-4`); a plain word is a record key.
+ * True when a yaml entry's `id` may stand alone as an anchor: a rule id with a digit or a capital (`R12`,
+ * `DNA-CORE-LABEL-OUTSIDE`), a dotted id (`app.readme`), either with `/`-joined parts (`STATE-8/loading-keeps-anatomy`,
+ * `R212/case-4`), or a lower-case word id where it names a decision, a ruling of the decisions scope (`two-grammars`). A
+ * lower-case word anywhere else (`card`, `button-group`, `impl-fe`) names a record, which two files may both key, and is a
+ * record key.
  */
-export const isAnchorId = (id: string): boolean => {
+export const isAnchorId = (id: string, decision: boolean): boolean => {
     const [head = "", ...rest] = id.split("/")
-    return (isRuleId(head) || isDottedId(head)) && rest.every((part) => CASE_PART.test(part))
+    const named = isDottedId(head) || (isRuleId(head) && (decision || !WORD_ID.test(head)))
+    return named && rest.every((part) => CASE_PART.test(part))
 }
 
 /** A heading split into its display text and the explicit anchor it closes with or carries as an HTML anchor. */

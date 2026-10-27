@@ -28,7 +28,7 @@
     { "q": "where does display text go, no hardcoded strings in components", "expect": ["FE-I18N-2"] },
     { "q": "form validation messages with react-hook-form", "expect": ["FE-FORM", "contexts/stack/fe.yaml#concerns.forms"] },
     { "q": "which icon set may the front end use", "expect": ["FE-ICON", "contexts/stack/fe.yaml#concerns.icons", "heroicons-family-icon-set"] },
-    { "q": "default avatar when a user has no picture", "expect": ["avatar-default-dicebear-initials", "avatar-illustration", "contexts/ui/components/identity-mark.md#choose"] },
+    { "q": "default avatar when a user has no picture", "expect": ["avatar-default-dicebear-initials", "contexts/stack/fe.yaml#concerns.avatar-illustration", "contexts/ui/components/identity-mark.md#choose"] },
     { "q": "button variant follows the intent", "expect": ["button-variant-follows-intent", "contexts/grammars/contract.md#intent-x-placement---variant", "contexts/grammars/contract.yaml#intent"] },
     { "q": "tabs or segmented control to switch views", "expect": ["contexts/ui/components/segmented-control.md#choose", "contexts/ui/components/tabs.md#choose"] },
     { "q": "what to show when a list has no data", "expect": ["contexts/ui/components/empty-state.md#choose", "contexts/ui/components/empty-state.md#job", "STATE-3", "empty-region-keeps-drawing"] },
