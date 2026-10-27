@@ -36,7 +36,10 @@ type FlagValue = string | boolean | readonly string[] | undefined
 const spellingOf = (name: string, spec: FlagSpec): string => (spec.positional === true || spec.kind === "rest" ? name : `--${name}`)
 
 /** The text values of a flag: one for a string, each for a list or rest, none for a boolean or an absent flag. */
-const textsOf = (value: FlagValue): readonly string[] => (typeof value === "string" ? [value] : typeof value === "object" ? value : [])
+const textsOf = (value: FlagValue): readonly string[] => {
+    if (typeof value === "string") return [value]
+    return typeof value === "object" ? value : []
+}
 
 /** Refuses a value outside its flag's schema as usage, naming the flag and never echoing the value. */
 const checkChoice = (name: string, spec: FlagSpec, schema: z.ZodType<string>, value: FlagValue): void => {
