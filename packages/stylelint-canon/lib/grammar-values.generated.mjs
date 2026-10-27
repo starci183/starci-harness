@@ -61,6 +61,7 @@ export const GRAMMAR_VALUES = {
       "--separator": "oklch(92% 0.004 286.32)",
       "--separator-secondary": "color-mix(in oklab, var(--surface) 85%, var(--surface-foreground) 15%)",
       "--separator-tertiary": "color-mix(in oklab, var(--surface) 81%, var(--surface-foreground) 19%)",
+      "--starci-core-status-dot-size": "6px",
       "--success": "oklch(73.29% 0.1935 150.81)",
       "--success-foreground": "oklch(21.03% 0.0059 285.89)",
       "--success-hover": "color-mix(in oklab, var(--success) 90%, var(--success-foreground) 10%)",

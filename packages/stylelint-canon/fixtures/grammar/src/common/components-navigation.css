@@ -779,6 +779,21 @@
         white-space: nowrap;
     }
 
+    /* Reorderable tags: the grab cursor, the lifted tag and the tag a drop would replace. */
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[draggable="true"] {
+        cursor: grab;
+    }
+
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[data-grammar-tag-dragging="true"] {
+        opacity: 0.5;
+        cursor: grabbing;
+    }
+
+    .starci-core-tag-group[data-grammar-tag-reorderable="true"] .starci-core-tag[data-grammar-tag-drop-target="true"] {
+        outline: 2px solid var(--accent, Highlight);
+        outline-offset: 2px;
+    }
+
     /*
      * Selectable chips (0.9.6, selectionMode single or multiple): a group of choices carries a 1px inset ring,
      * --border when unselected and --accent when selected. The chip face, hover and selected paint are HeroUI's own.
@@ -890,6 +905,42 @@
 
     .starci-core-data-table-cell-content {
         box-sizing: border-box;
+    }
+
+    /* A whole-row link target reads as one pressable row. */
+    .starci-core-data-table-row[data-grammar-table-row-link="true"] {
+        cursor: pointer;
+    }
+
+    /* An editor cell hosts a field; the field keeps its own control height and may not widen past the column. */
+    .starci-core-data-table-editor {
+        display: flex;
+        min-width: 0;
+        max-inline-size: 100%;
+        align-items: center;
+        white-space: normal;
+    }
+
+    /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */
+    .starci-core-data-table-secondary {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        margin-block-start: 0.25rem;
+        color: var(--muted, GrayText);
+        font-size: 0.875em;
+        white-space: normal;
+    }
+
+    .starci-core-data-table-secondary-item {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .starci-core-data-table-secondary-label::after {
+        content: ":";
     }
 
     .starci-core-drag-item {
@@ -1379,6 +1430,34 @@
         background: currentColor;
     }
 
+    /*
+     * Attention entry: the whole row takes a tone background (the marker alone is too small to catch the eye). The
+     * row grows 0.5rem each side and gives the same back as negative margin, so the markers and the copy keep their
+     * column; the connector moves with the padding and reaches the next entry.
+     */
+    .starci-core-timeline-item[data-grammar-attention="true"] {
+        --starci-core-timeline-attention-tone: var(--warning, CanvasText);
+        margin-inline: -0.5rem;
+        margin-block-end: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 0.75rem;
+        background: color-mix(in oklab, var(--starci-core-timeline-attention-tone) 14%, transparent);
+    }
+
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="negative"] { --starci-core-timeline-attention-tone: var(--danger, CanvasText); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="affirmative"] { --starci-core-timeline-attention-tone: var(--success, CanvasText); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--info, CanvasText); }
+
+    .starci-core-timeline-item[data-grammar-attention="true"]:not(:last-child)::before {
+        top: 2rem;
+        bottom: -0.5rem;
+        inset-inline-start: calc(1.25rem - 1px);
+    }
+
+    .starci-core-timeline-item[data-grammar-attention="true"] .starci-core-timeline-marker {
+        background: transparent;
+    }
+
     /* Loading timeline (knowledge STATE-8): static mark and connector tint, three Skeleton lines of the entry's rhythm. */
     .starci-core-timeline-skeleton-marker > .starci-core-skeleton { inline-size: 1rem; block-size: 1rem; }
     .starci-core-timeline[data-loading="true"] .starci-core-timeline-item:not(:last-child)::before { background: color-mix(in srgb, var(--foreground, CanvasText) 9%, transparent); }
@@ -1479,6 +1558,7 @@
 
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
+    .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height, 24rem); }
 
     .starci-core-flow-graph-loading > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
@@ -1567,6 +1647,36 @@
         font-size: 0.875rem;
         line-height: 1.25;
     }
+
+    .starci-core-flow-graph-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-inline-size: 0;
+        border-radius: inherit;
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .starci-core-flow-graph-node:has(.starci-core-flow-graph-link:focus-visible) {
+        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline-offset: 2px;
+    }
+
+    .starci-core-flow-graph-header {
+        padding: 0.125rem 0.625rem;
+        color: var(--muted, GrayText);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .starci-core-flow-graph-header[data-direction="TB"] { text-align: end; }
 
     .starci-core-flow-graph-node[data-size="sm"] { padding: 0.25rem 0.625rem; font-size: 0.75rem; }
     .starci-core-flow-graph-node[data-size="lg"] { padding: 0.625rem 1.25rem; font-size: 1rem; font-weight: 600; }
