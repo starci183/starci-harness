@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.1 - 2026-10-28
+
+- Changed: `@starci/ai-router` joins the ESM-only dependencies jest compiles to CommonJS, so a spec that builds an AppModule registering the AI pool loads it.
+- Fixed: the built declarations name `.js` (`dist/index.d.ts` and `dist/entity-manager.d.ts` named `.ts` files a consumer tsc cannot read).
+
 ## 2.4.0 - 2026-10-28
 
 - Changed: the source is TypeScript in `src/`, built to CommonJS JavaScript in `dist/` (`npm run build`; `prepack` builds), and the declarations are emitted from it instead of hand-written; `main`, `types` and every export (`.`, `./mock`, `./clock`, `./entity-manager`, `./ids`, `./matchers`, `./cache`, `./lock`, `./event-bus`, `./queue`, `./inbox`, `./builders`, `./merge`) point into `dist/`. No rule or behaviour changed; the specifiers are unchanged. The files jest loads by path are now `dist/world-runner.js`, `dist/unit-metadata.js`, `dist/unit-metadata.generated.js` (the coverage anchor, copied byte for byte from `assets/`) and `dist/lcov.js`; `@starci/jest-preset/merge` now has types.

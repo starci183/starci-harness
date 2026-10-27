@@ -10,6 +10,7 @@
   `@typescript-eslint/eslint-plugin`).
 - Changed (specs): the front-end canon is loaded through its package entry (`fixtures/sibling-canon.mjs`), not a source
   path; `fixtures/gathered-plugin.mjs` lists law modules by `.mjs` or `.ts`.
+- Fixed: the built declarations name `.js`, not the `.ts` sources (`tsc` keeps a relative `.ts` specifier in a `.d.ts`).
 
 ## 3.5.0 - 2026-10-27
 

@@ -6,6 +6,7 @@
 - Changed: `base-props-atom` fixes the retired `state` key by renaming it `shape`; `no-data-status-shape` also reads an `interface XShape`, an inline `shape: { ... }` object and a boolean status member (`isOpen`, `isRenewing`) in a shape, and still the old `XState` names.
 - Changed: `presentational-purity` also refuses an import from `@/hooks` in a pure half, `import type` included.
 - Added: the shape-slot law (R92): `exhaustive-shape-switch` (a pure half's branch on `props.shape` / `shape` draws every `XShape` member; no default stands in for one), `no-data-status-prop` (no `isLoading`, `isError`, `isForbidden`, `isFailed` or `failure` prop below SlotView; a leaf takes only `isSkeleton`), `region-reads-through-slot` (a connected half that calls an `*Swr` hook folds the read into a DataSlot; a pure half that takes a DataSlot renders SlotView) and `branch-intrinsic-state` (a branch keeps interaction state only; a leaf calls no hook).
+- Fixed: the built declarations name `.js`, not the `.ts` sources (`tsc` keeps a relative `.ts` specifier in a `.d.ts`).
 
 ## 9.3.0 - 2026-10-28
 

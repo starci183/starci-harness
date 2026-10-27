@@ -47,6 +47,13 @@ jobs:
       # folder order, before any is tested (packages/README.md, build convention).
       - name: Install and build packages
         run: for dir in packages/*/; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
+      # tsc keeps a source's relative `.ts` specifier in the declarations it emits; a consumer's tsc cannot read those, so a
+      # built package's .d.ts names `.js` only (packages/README.md, build convention).
+      - name: Declarations name .js
+        run: |
+          if grep -rnE "(from |import\()[\"']\.\.?/[^\"']+\.ts[\"']" packages/*/dist --include=*.d.ts; then
+            echo "a built declaration imports a .ts specifier"; exit 1
+          fi
       - name: Test packages
         run: for dir in packages/*/; do (cd "$dir" && npm test); done
       # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar (built by its test

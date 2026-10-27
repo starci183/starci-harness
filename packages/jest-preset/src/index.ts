@@ -103,9 +103,10 @@ function transform(tsconfig: string | Record<string, unknown>): Record<string, [
  * The runtime dependencies of a back end that ship ECMAScript modules only: jest's CommonJS runtime cannot load them, so their
  * files are compiled to CommonJS like the repository's own (ts-jest with `allowJs`) instead of being skipped as node_modules.
  * `jose` is the Supabase access-token verifier of every lite back end (be.integrations.supabase); a lite app keeps full's unit
- * run (ruling:R212/case-1, amended by ruling:R212/case-4), so a spec that imports its guard must load it.
+ * run (ruling:R212/case-1, amended by ruling:R212/case-4), so a spec that imports its guard must load it. `@starci/ai-router`
+ * is the AI pool module a back end registers in its AppModule, so a spec that builds the AppModule must load it.
  */
-const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose"])
+const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose", String.raw`@starci[\\/]ai-router`])
 const ESM_DEPENDENCY_TRANSFORM = String.raw`^.+[\\/]node_modules[\\/](?:${ESM_ONLY_DEPENDENCIES.join("|")})[\\/].+\.js$`
 
 function esmDependencyTransform(): Record<string, [string, Record<string, unknown>]> {
