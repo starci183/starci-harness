@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0 - 2026-10-27
+
+- Changed: versioned together with Grammar 0.14.0; `@starci/eslint-grammar-core` 0.14.0 is the peer dependency and the bundled canon pins name the 0.14.0 Grammar family. Offset Pop is unchanged.
+
 ## 0.13.0 - 2026-10-27
 
 - Changed: versioned together with Grammar 0.13.0; `@starci/eslint-grammar-core` 0.13.0 is a peer dependency, installed by the app beside this package. Offset Pop is unchanged and refuses `core`.

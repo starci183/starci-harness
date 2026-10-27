@@ -912,13 +912,18 @@
         cursor: pointer;
     }
 
-    /* An editor cell hosts a field; the field keeps its own control height and may not widen past the column. */
+    /* An editor cell hosts a field; the field keeps its own control height and fills the column, never wider. */
     .starci-core-data-table-editor {
         display: flex;
         min-width: 0;
         max-inline-size: 100%;
         align-items: center;
         white-space: normal;
+    }
+
+    .starci-core-data-table-editor > * {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */

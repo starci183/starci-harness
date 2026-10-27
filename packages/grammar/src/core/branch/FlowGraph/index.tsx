@@ -16,7 +16,7 @@ import {
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
-import { flowGraphRoot, layerCoordinate, layeredPositions, radialPositions } from "./layout.js"
+import { FLOW_GRAPH_NODE_MAX_WIDTH, flowGraphRoot, layerCoordinate, layeredPositions, radialPositions } from "./layout.js"
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode } from "./types.js"
 
 export { layeredPositions, radialPositions } from "./layout.js"
@@ -121,7 +121,7 @@ FlowGraphHeaderView.displayName = "FlowGraphHeaderView"
 
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView }
 const HEADER_OFFSET = 70
-const HEADER_SIDE_OFFSET = 150
+const HEADER_SIDE_GAP = 24
 const FIT_OPTIONS = { padding: 0.2, duration: 0 } as const
 
 /** Re-fits the viewport once the nodes are measured, and again whenever the set of nodes or the layout changes. */
@@ -199,7 +199,9 @@ export const FlowGraph = ({
             return {
                 id: `grammar-flow-header-${index}`,
                 type: "flowGraphHeader",
-                position: flowDirection === "LR" ? { x: along, y: minY - HEADER_OFFSET } : { x: minX - HEADER_SIDE_OFFSET, y: along },
+                // A TB lane header ends a gap before the widest node can start, so a long title never runs under a node.
+                position: flowDirection === "LR" ? { x: along, y: minY - HEADER_OFFSET } : { x: minX - FLOW_GRAPH_NODE_MAX_WIDTH / 2 - HEADER_SIDE_GAP, y: along },
+                ...(flowDirection === "LR" ? {} : { origin: [1, 0.5] as [number, number] }),
                 data: { label: header.label, direction: flowDirection },
                 draggable: false,
                 connectable: false,
@@ -275,7 +277,7 @@ export const FlowGraph = ({
                             nodesConnectable={false}
                             nodesDraggable={false}
                             nodesFocusable
-                            onNodeClick={(_event, node) => select(node.id)}
+                            onNodeClick={(_event, node) => { if (node.type === "flowGraph") select(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
                             panOnDrag={isInteractive}
                             panOnScroll={false}
