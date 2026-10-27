@@ -9,6 +9,7 @@ import type { ResolvedOutput } from "./contract.js"
 import { projectDir } from "./ledger.js"
 import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
+import { priorWorkSection } from "./prior.js"
 import type { TaskRow } from "./tasks.js"
 
 /** The files one worker brief is made of, all in the project's state folder outside the repository (see briefsDir). */
@@ -93,14 +94,16 @@ const describeOutput = (item: ResolvedOutput): string => {
 
 /**
  * Renders the brief a worker reads: the common procedure of ops/ops/README.md, then the task's op and its resolved contract
- * (base then extend) in plain words; `role` is who works it (an Orca worker, or the inline chat agent).
+ * (base then extend) in plain words, with a "Prior work" section when earlier tasks of the same key left work (prior.ts);
+ * `role` is who works it (an Orca worker, or the inline chat agent).
  */
 export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefFiles, role: Role = "worker"): string => {
     const { contract } = task
     const resolved = resolveContract(contract, ops)
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
-    const cli = slashed(fileURLToPath(new URL("../main.js", import.meta.url)))
+    const prior = priorWorkSection(root, task)
+    const cli =slashed(fileURLToPath(new URL("../main.js", import.meta.url)))
     const values = { taskId: task.id, contractFile: slashed(files.contract), outputFile: slashed(files.output) }
     const template = fillTemplate(workerProcedure(ops), join(ops.dir, OP_FILES, OPS_README), values)
     const procedure = fillTemplate(op.procedure, op.file, values)
@@ -123,6 +126,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         ]
             .map((fact) => `- ${fact}`)
             .join("\n"),
+        ...(prior === undefined ? [] : ["### Prior work", prior]),
         `### The ${contract.label} op`,
         procedure,
         "### Input",

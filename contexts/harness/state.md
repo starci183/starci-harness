@@ -3,7 +3,8 @@
 ## Where state lives
 
 - **Harness state** lives under the runtime root (this checkout) in `.runtime/`, git-ignored: `machine.sqlite` for the
-  host and `projects/<ledger_id>/` for each project's `runtime.sqlite`, briefs, contracts, outputs and preserved work.
+  host and `projects/<ledger_id>/` for each project's `runtime.sqlite`, briefs, contracts, outputs, preserved work and
+  the prior-work store (`prior/<sha256>.patch`).
   `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
