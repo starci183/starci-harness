@@ -8,15 +8,16 @@ import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { imageHasSize, noNativeFormControl, noNativeImg, rules } from "./native-controls.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 
-const tester = new RuleTester({
+const tester = canonTester(new RuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,
     sourceType: "module",
     parserOptions: { ecmaFeatures: { jsx: true } },
   },
-})
+}))
 
 const BLOCK = "src/components/blocks/Feed/index.tsx"
 

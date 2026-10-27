@@ -13,15 +13,15 @@ const tester = slotTester()
 
 const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
 const SHARED = at("apps/web/src/hooks/course/course.shared.ts")
-const react = (code) => `import { useState } from "react"\n${code}`
+const react = (code: string): string => `import { useState } from "react"\n${code}`
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R56: canonical theme hooks preserve import identity (${edition})`, () => {
   assert.doesNotThrow(() => {
     const filename = at("apps/web/src/hooks/theme/useGrammarTheme.ts")
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
-    const entry = (code) => ({ filename, code, settings })
-    const refused = (code) => ({ ...entry(code), errors: [{ messageId: "fake" }] })
+    const entry = (code: string) => ({ filename, code, settings })
+    const refused = (code: string) => ({ ...entry(code), errors: [{ messageId: "fake" }] })
     tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
       valid: [
         entry('import { useTheme } from "next-themes"; export const useGrammarTheme = () => useTheme()'),
@@ -152,12 +152,12 @@ test("FE-HOOKS-2: each hooks family holds the files its slot names, one hook per
   })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R56: zero-hook, default-export and fake use* files are refused (${edition})`, () => {
   assert.doesNotThrow(() => {
     const settings = { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } }
-    const entry = (code, filename = HOOK) => ({ filename, code, settings })
-    const refused = (code, messageId, filename = HOOK) => ({ ...entry(code, filename), errors: [{ messageId }] })
+    const entry = (code: string, filename = HOOK) => ({ filename, code, settings })
+    const refused = (code: string, messageId: string, filename = HOOK) => ({ ...entry(code, filename), errors: [{ messageId }] })
     tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
       valid: [
         entry(react("export const useCourse = () => useState(1)")),

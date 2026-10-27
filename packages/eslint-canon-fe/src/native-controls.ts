@@ -12,13 +12,14 @@
  * control. If the grammar lacks the control, the fix is to add it to the grammar, not to draw one here.
  */
 
+import { defineRule, type Rules, type Recommended } from "./lib/rule.ts"
 import { attribute } from "./lib/ast.ts"
 
 /** Intrinsic elements a reader operates, that the grammar renders for the product. */
 const NATIVE = new Set(["select", "input", "textarea", "button"])
 
 /** No native form control in product source. */
-export const noNativeFormControl = {
+export const noNativeFormControl = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Use the grammar's renderers; never a bare select, input, textarea or button." },
@@ -36,12 +37,12 @@ export const noNativeFormControl = {
       },
     }
   },
-}
+})
 
 // -- NATIVE-2 --------------------------------------------------------------------------------------
 
 /** No bare `<img>`; the framework's image owns size, format, lazy loading and layout shift. */
-export const noNativeImg = {
+export const noNativeImg = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Use `next/image`, never a bare `<img>`." },
@@ -58,12 +59,12 @@ export const noNativeImg = {
       },
     }
   },
-}
+})
 
 // -- NATIVE-3 --------------------------------------------------------------------------------------
 
 /** Every `next/image` reserves its space: a size, or `fill` inside a sized parent with `sizes`. */
-export const imageHasSize = {
+export const imageHasSize = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`next/image` carries `width` and `height`, or `fill` with `sizes`." },
@@ -95,14 +96,14 @@ export const imageHasSize = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "no-native-form-control": noNativeFormControl,
   "no-native-img": noNativeImg,
   "image-has-size": imageHasSize,
 }
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

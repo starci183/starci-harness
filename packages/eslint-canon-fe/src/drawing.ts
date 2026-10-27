@@ -19,6 +19,8 @@
  * never wrong, beyond it.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { classifyImport, roleOfFile } from "./lib/scope.ts"
 
 import { inSplitTier, pureHalf } from "./lib/drawing-scope.ts"
@@ -31,7 +33,24 @@ const RENDER_RESULT_TYPE = /^(?:ReactNode|ReactElement|JSX\.Element)$/
 const RENDER_PROP_NAME = /^render(?:[A-Z][A-Za-z0-9]*)?$/
 
 /** The printed name of a type reference, qualified names included. */
-const typeNameOf = (node) => {
+/** A type the pure contract is read from: a type node, or the body of a local interface. */
+type TypeShape = TSESTree.TypeNode | TSESTree.TSInterfaceBody
+
+/** The local type declarations of a file, by name. */
+type LocalTypes = Map<string, TypeShape>
+
+/** The declared type of a parameter, or undefined. */
+const parameterType = (parameter: TSESTree.Parameter | undefined): TSESTree.TypeNode | undefined =>
+  parameter !== undefined && "typeAnnotation" in parameter ? parameter.typeAnnotation?.typeAnnotation : undefined
+
+/** The name of a parameter that is a plain identifier, or undefined. */
+const parameterName = (parameter: TSESTree.Parameter): string | undefined => ("name" in parameter ? parameter.name : undefined)
+
+/** The declared type of a member of an object type, or undefined. */
+const memberType = (member: TSESTree.TypeElement): TSESTree.TypeNode | undefined =>
+  "typeAnnotation" in member ? member.typeAnnotation?.typeAnnotation : undefined
+
+const typeNameOf = (node: { readonly typeName?: TSESTree.EntityName } | null | undefined): string => {
   const name = node?.typeName
   if (!name) return ""
   if (name.type === "Identifier") return name.name
@@ -40,9 +59,9 @@ const typeNameOf = (node) => {
 }
 
 /** Every type this file declares, by name, so references can be followed locally. */
-const collectLocalTypes = (program) => {
-  const types = new Map()
-  const visit = (statement) => {
+const collectLocalTypes = (program: TSESTree.Program): LocalTypes => {
+  const types: LocalTypes = new Map()
+  const visit = (statement: TSESTree.ProgramStatement): void => {
     const declaration = statement?.type === "ExportNamedDeclaration" ? statement.declaration : statement
     if (declaration?.type === "TSTypeAliasDeclaration") types.set(declaration.id.name, declaration.typeAnnotation)
     if (declaration?.type === "TSInterfaceDeclaration") types.set(declaration.id.name, declaration.body)
@@ -52,7 +71,7 @@ const collectLocalTypes = (program) => {
 }
 
 /** The members of an object-shaped type node, following local names and intersections. */
-const membersOf = (node, types, seen = new Set()) => {
+const membersOf = (node: TypeShape | null | undefined, types: LocalTypes, seen: Set<string> = new Set()): TSESTree.TypeElement[] => {
   if (!node) return []
   if (node.type === "TSTypeLiteral") return node.members
   if (node.type === "TSInterfaceBody") return node.body
@@ -67,15 +86,18 @@ const membersOf = (node, types, seen = new Set()) => {
 }
 
 /** The key a property signature declares. */
-const keyOf = (member) => (member.key?.type === "Identifier" ? member.key.name : member.key?.value)
+const keyOf = (member: TSESTree.TypeElement): unknown => {
+  const key = "key" in member ? member.key : undefined
+  return key?.type === "Identifier" ? key.name : key !== undefined && "value" in key ? key.value : undefined
+}
 
 // -- DRAWING-1 ----------------------------------------------------------------------------------
 
 /** The pure half takes atom data and actions; feature composition may receive named render callbacks. */
-export const basePropsAtom = {
+export const basePropsAtom = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A pure `XBase` takes `shape`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
+    docs: { description: "A pure `XBase` takes `state`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
     schema: [],
     messages: {
       tree:
@@ -85,22 +107,20 @@ export const basePropsAtom = {
       onData:
         "`on.{{key}}` is not an action. `on` holds functions only; data belongs in `props`.",
       member:
-        "`{{key}}` is not part of the pure contract. A pure half takes `shape`, `props` and `on`{{children}}.",
-      renamed:
-        "`state` is the retired name of the drawn shape: rename it `shape` (owner ruling fe-shape-not-state).",
+        "`{{key}}` is not part of the pure contract. A pure half takes `state`, `props` and `on`{{children}}.",
     },
   },
   create(context) {
     const tier = pureHalf(context)
     if (!tier) return {}
-    let types = new Map()
+    let types: LocalTypes = new Map()
 
     /** Resolve render results locally; an optional empty result does not make data a render prop. */
-    const isRenderResult = (node, seen = new Set()) => {
+    const isRenderResult = (node: TypeShape | null | undefined, seen: Set<string> = new Set()): boolean => {
       if (!node) return false
       if (node.type === "TSUnionType") {
-        const empty = (part) => ["TSNullKeyword", "TSUndefinedKeyword"].includes(part.type)
-          || part.type === "TSLiteralType" && part.literal.value === null
+        const empty = (part: TSESTree.TypeNode): boolean => ["TSNullKeyword", "TSUndefinedKeyword"].includes(part.type)
+          || part.type === "TSLiteralType" && "value" in part.literal && part.literal.value === null
         return node.types.some((part) => isRenderResult(part, new Set(seen)))
           && node.types.every((part) => empty(part) || isRenderResult(part, new Set(seen)))
       }
@@ -111,21 +131,21 @@ export const basePropsAtom = {
       return isRenderResult(types.get(name), new Set(seen).add(name))
     }
 
-    const checkRenderCallback = (node, path, allowed) => {
+    const checkRenderCallback = (node: TSESTree.TSFunctionType | TSESTree.TSMethodSignature, path: string, allowed: boolean): boolean => {
       if (!allowed || !isRenderResult(node.returnType?.typeAnnotation)) return false
-      for (const parameter of node.params ?? node.parameters ?? []) {
-        checkData(parameter.typeAnnotation?.typeAnnotation, `${path}(${parameter.name ?? "arg"})`, new Set(), false, true)
+      for (const parameter of node.params) {
+        checkData(parameterType(parameter), `${path}(${parameterName(parameter) ?? "arg"})`, new Set(), false, true)
       }
       return true
     }
 
-    const checkDataReference = (node, path, seen, renderProp, renderParameter) => {
+    const checkDataReference = (node: TSESTree.TSTypeReference, path: string, seen: Set<string>, renderProp: boolean, renderParameter: boolean): void => {
       const name = typeNameOf(node)
       if (NON_ATOM_TYPE.test(renderParameter ? name.replace(/^React\./, "") : name)) {
         context.report({ node, messageId: "tree", data: { path, type: name } })
         return
       }
-      for (const argument of node.typeArguments?.params ?? node.typeParameters?.params ?? []) checkData(argument, path, seen, false, renderParameter)
+      for (const argument of node.typeArguments?.params ?? []) checkData(argument, path, seen, false, renderParameter)
       if (types.has(name) && !seen.has(name)) {
         const nextSeen = renderProp || renderParameter ? new Set(seen) : seen
         nextSeen.add(name)
@@ -133,18 +153,18 @@ export const basePropsAtom = {
       }
     }
 
-    const checkDataMember = (member, path, seen, renderParameter) => {
-      const memberPath = `${path}.${keyOf(member)}`
-      const allowsRender = tier !== "blocks" && path === "props" && RENDER_PROP_NAME.test(keyOf(member))
+    const checkDataMember = (member: TSESTree.TypeElement, path: string, seen: Set<string>, renderParameter: boolean): void => {
+      const memberPath = `${path}.${String(keyOf(member))}`
+      const allowsRender = tier !== "blocks" && path === "props" && RENDER_PROP_NAME.test(String(keyOf(member)))
       if (member.type === "TSMethodSignature") {
         if (!checkRenderCallback(member, memberPath, allowsRender)) context.report({ node: member, messageId: "action", data: { path: memberPath } })
       } else if (member.type === "TSPropertySignature") {
-        checkData(member.typeAnnotation?.typeAnnotation, memberPath, seen, allowsRender, renderParameter)
+        checkData(memberType(member), memberPath, seen, allowsRender, renderParameter)
       }
     }
 
     /** Walk a data type: report trees and functions anywhere inside it. */
-    const checkData = (node, path, seen, renderProp = false, renderParameter = false) => {
+    const checkData = (node: TypeShape | null | undefined, path: string, seen: Set<string>, renderProp = false, renderParameter = false): void => {
       if (!node) return
       switch (node.type) {
         case "TSFunctionType":
@@ -166,23 +186,23 @@ export const basePropsAtom = {
           return
         case "TSTypeLiteral":
         case "TSInterfaceBody":
-          for (const member of node.members ?? node.body) checkDataMember(member, path, seen, renderParameter)
+          for (const member of node.type === "TSTypeLiteral" ? node.members : node.body) checkDataMember(member, path, seen, renderParameter)
           return
         default:
       }
     }
 
     /** Walk `on`: every member is a function whose parameters are data. */
-    const checkActions = (node) => {
+    const checkActions = (node: TypeShape | undefined): void => {
       for (const member of membersOf(node, types)) {
         const key = keyOf(member)
-        const type = member.type === "TSMethodSignature" ? member : member.typeAnnotation?.typeAnnotation
+        const type = member.type === "TSMethodSignature" ? member : memberType(member)
         if (type?.type !== "TSFunctionType" && type?.type !== "TSMethodSignature") {
           context.report({ node: member, messageId: "onData", data: { key } })
           continue
         }
-        for (const parameter of type.params ?? type.parameters ?? []) {
-          checkData(parameter.typeAnnotation?.typeAnnotation, `on.${key}(${parameter.name ?? "arg"})`, new Set())
+        for (const parameter of type.params) {
+          checkData(parameterType(parameter), `on.${String(key)}(${parameterName(parameter) ?? "arg"})`, new Set())
         }
       }
     }
@@ -195,15 +215,11 @@ export const basePropsAtom = {
         if (node.id?.type !== "Identifier" || !/^[A-Z][A-Za-z0-9]*Base$/.test(node.id.name)) return
         const fn = node.init
         if (fn?.type !== "ArrowFunctionExpression" && fn?.type !== "FunctionExpression") return
-        const annotation = fn.params?.[0]?.typeAnnotation?.typeAnnotation
+        const annotation = parameterType(fn.params[0])
         for (const member of membersOf(annotation, types)) {
           const key = keyOf(member)
-          const type = member.typeAnnotation?.typeAnnotation
-          if (key === "shape") continue
-          if (key === "state") {
-            context.report({ node: member, messageId: "renamed" })
-            continue
-          }
+          const type = memberType(member)
+          if (key === "state") continue
           if (key === "props") checkData(type, "props", new Set())
           else if (key === "on") checkActions(type)
           else if (key === "children" && tier === "layouts") continue
@@ -218,12 +234,15 @@ export const basePropsAtom = {
       },
     }
   },
-}
+})
+
+/** The name of an export specifier's identifier; undefined for a string-literal name. */
+const identifierName = (node: TSESTree.Identifier | TSESTree.StringLiteral): string | undefined => (node.type === "Identifier" ? node.name : undefined)
 
 // -- DRAWING-2 ----------------------------------------------------------------------------------
 
 /** Only the sibling `index.tsx` (and its specs) may reach `component.tsx`; only `X` leaves the folder. */
-export const baseImportPair = {
+export const baseImportPair = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A pure `component.tsx` is imported only by its sibling `index.tsx`, which never re-exports `XBase`." },
@@ -239,9 +258,9 @@ export const baseImportPair = {
     const isOwnIndex = roleOfFile(context) === "entry"
     const inTier = inSplitTier(context)
     // An import reaches a pure half when the file it resolves to has the `drawing` role of its slot.
-    const reachesPure = (source) => classifyImport(context, source)?.role === "drawing"
+    const reachesPure = (source: string): boolean => classifyImport(context, source)?.role === "drawing"
 
-    const check = (node, source) => {
+    const check = (node: Node, source: unknown): void => {
       if (typeof source !== "string" || !reachesPure(source)) return
       const isSibling = /^\.\/[^/]+$/.test(source)
       if (isSibling && isOwnIndex) return
@@ -262,15 +281,15 @@ export const baseImportPair = {
         check(node, source)
         if (!isOwnIndex || !inTier || node.exportKind === "type") return
         for (const specifier of node.specifiers ?? []) {
-          const name = specifier.exported?.name ?? specifier.local?.name
-          if (specifier.exportKind !== "type" && /^[A-Z][A-Za-z0-9]*Base$/.test(name)) {
+          const name = identifierName(specifier.exported) ?? identifierName(specifier.local)
+          if (specifier.exportKind !== "type" && name !== undefined && /^[A-Z][A-Za-z0-9]*Base$/.test(name)) {
             context.report({ node: specifier, messageId: "reexport", data: { name } })
           }
         }
       },
     }
   },
-}
+})
 
 // -- DRAWING-3 ----------------------------------------------------------------------------------
 
@@ -280,11 +299,11 @@ const DATA_STATUS = new Set([
   "skeleton", "closed", "idle", "refreshing", "retrying",
 ])
 
-/** A surface's `XShape` names shapes only. */
-export const noDataStatusShape = {
+/** A surface's `XState` names shapes only. */
+export const noDataStatusShape = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "`XShape` of a pure half names drawn shapes, never a data status or open/closed." },
+    docs: { description: "`XState` of a pure half names drawn shapes, never a data status or open/closed." },
     schema: [],
     messages: {
       status:
@@ -293,10 +312,10 @@ export const noDataStatusShape = {
   },
   create(context) {
     if (!pureHalf(context)) return {}
-    const check = (name, node) => {
-      const members = node?.type === "TSUnionType" ? node.types : [node]
+    const check = (name: string, node: TSESTree.TypeNode): void => {
+      const members = node.type === "TSUnionType" ? node.types : [node]
       for (const member of members) {
-        const value = member?.type === "TSLiteralType" ? member.literal?.value : undefined
+        const value = member.type === "TSLiteralType" && "value" in member.literal ? member.literal.value : undefined
         if (typeof value === "string" && DATA_STATUS.has(value)) {
           context.report({ node: member, messageId: "status", data: { name, value } })
         }
@@ -304,18 +323,18 @@ export const noDataStatusShape = {
     }
     return {
       TSTypeAliasDeclaration(node) {
-        if (/^[A-Z][A-Za-z0-9]*(?:Shape|State)$/.test(node.id.name)) check(node.id.name, node.typeAnnotation)
+        if (/^[A-Z][A-Za-z0-9]*State$/.test(node.id.name)) check(node.id.name, node.typeAnnotation)
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "base-props-atom": basePropsAtom,
   "base-import-pair": baseImportPair,
   "no-data-status-shape": noDataStatusShape,
 }
 
 /** Every FE canon rule is an error; existing debt is fixed before adoption. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

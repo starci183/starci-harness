@@ -13,15 +13,17 @@
  * once, by its name.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { isProductSource } from "./lib/scope.ts"
 
 /** True when a type node is the `unknown` keyword. */
-const isUnknown = (node) => Boolean(node) && node.type === "TSUnknownKeyword"
+const isUnknown = (node: Node | null | undefined): boolean => Boolean(node) && node?.type === "TSUnknownKeyword"
 
 // -- TYPE-SAFETY-1 ---------------------------------------------------------------------------------
 
 /** A cast through `unknown` erases what the compiler knew, at the seam where it mattered. */
-export const noDoubleCast = {
+export const noDoubleCast = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No cast through `unknown`; it turns checking off at the boundary." },
@@ -43,12 +45,12 @@ export const noDoubleCast = {
       },
     }
   },
-}
+})
 
 // -- TYPE-SAFETY-2 ---------------------------------------------------------------------------------
 
 /** True for `as const`, the one assertion that narrows without claiming anything. */
-const isConstAssertion = (type) => type.type === "TSTypeReference" && type.typeName.type === "Identifier" && type.typeName.name === "const"
+const isConstAssertion = (type: TSESTree.TypeNode): boolean => type.type === "TSTypeReference" && type.typeName.type === "Identifier" && type.typeName.name === "const"
 
 /**
  * A type assertion is a claim the compiler cannot check, made at the place it was going to check.
@@ -57,7 +59,7 @@ const isConstAssertion = (type) => type.type === "TSTypeReference" && type.typeN
  * to it), and `satisfies` (it checks). The cast through `unknown` to a real type is refused by
  * `no-double-cast`, so this rule leaves the outer half of that pair to it and reports each once.
  */
-export const noTypeAssertion = {
+export const noTypeAssertion = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No `as T` or `<T>x`; narrow with a check, a guard or a parser." },
@@ -70,7 +72,7 @@ export const noTypeAssertion = {
   create(context) {
     if (!isProductSource(context)) return {}
     const source = context.sourceCode ?? context.getSourceCode()
-    const report = (node) =>
+    const report = (node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion): void =>
       context.report({ node, messageId: "assertion", data: { type: source.getText(node.typeAnnotation) } })
     return {
       TSAsExpression(node) {
@@ -85,12 +87,12 @@ export const noTypeAssertion = {
       },
     }
   },
-}
+})
 
 // -- TYPE-SAFETY-3 ---------------------------------------------------------------------------------
 
 /** `x!` says a value is present without proving it. */
-export const noNonNullAssertion = {
+export const noNonNullAssertion = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No non-null assertion (`x!`); prove the value is there." },
@@ -104,12 +106,12 @@ export const noNonNullAssertion = {
     if (!isProductSource(context)) return {}
     return { TSNonNullExpression: (node) => context.report({ node, messageId: "bang" }) }
   },
-}
+})
 
 // -- TYPE-SAFETY-4 ---------------------------------------------------------------------------------
 
 /** `any` switches checking off for everything it touches. */
-export const noExplicitAny = {
+export const noExplicitAny = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No `any`; use a real type or `unknown` and narrow." },
@@ -123,10 +125,10 @@ export const noExplicitAny = {
     if (!isProductSource(context)) return {}
     return { TSAnyKeyword: (node) => context.report({ node, messageId: "any" }) }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "no-double-cast": noDoubleCast,
   "no-type-assertion": noTypeAssertion,
   "no-non-null-assertion": noNonNullAssertion,
@@ -144,4 +146,4 @@ export const rules = {
  * rules, which a consuming repository already has: `@typescript-eslint/no-explicit-any` and
  * `@typescript-eslint/array-type` with the generic default.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

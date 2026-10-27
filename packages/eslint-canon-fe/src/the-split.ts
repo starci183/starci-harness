@@ -11,17 +11,19 @@
  * that splits, so the slot does the scoping and the rule needs no configuration.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Rules, type Recommended } from "./lib/rule.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { fileOf, inSlot, kindOfFile, roleOfFile } from "./lib/scope.ts"
 
 /** The drawing half: the file the slot gives the role `drawing` (`component.tsx` of a component, feature or shared-package owner). */
-const isDrawingHalf = (context) => roleOfFile(context) === "drawing"
+const isDrawingHalf = (context: AnyContext): boolean => roleOfFile(context) === "drawing"
 
 /** A connected block entrypoint (the `entry` of a block owner) and the public name its folder fixes. */
-const connectedBlock = (context) => {
+const connectedBlock = (context: AnyContext): string | null => {
   if (!inSlot(context, "fe.components") || kindOfFile(context) !== "blocks" || roleOfFile(context) !== "entry") return null
   const name = hfsOf(context).relative(fileOf(context)).split("/").slice(-2)[0]
-  return /^[A-Z][A-Za-z0-9]*$/.test(name) ? name : null
+  return name !== undefined && /^[A-Z][A-Za-z0-9]*$/.test(name) ? name : null
 }
 
 /**
@@ -39,7 +41,7 @@ const REACHES_FOR_THE_WORLD =
 // -- SPLIT-1 ---------------------------------------------------------------------------------------
 
 /** The drawing half receives everything and asks for nothing. */
-export const presentationalPurity = {
+export const presentationalPurity = defineRule({
   meta: {
     type: "problem",
     docs: { description: "The drawing half takes resolved props: no request, no store, no translation." },
@@ -60,12 +62,12 @@ export const presentationalPurity = {
       },
     }
   },
-}
+})
 
 // -- SPLIT-5 ---------------------------------------------------------------------------------------
 
 /** A connected block delegates every render path to its exact pure twin. */
-export const connectedBlockHasPresentationalTwin = {
+export const connectedBlockHasPresentationalTwin = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A connected block index renders only its exact `XBase` twin from component.tsx." },
@@ -86,9 +88,9 @@ export const connectedBlockHasPresentationalTwin = {
     if (!block) return {}
 
     const twin = `${block}Base`
-    const worldBindings = new Set()
-    const rendered = []
-    const calledTwin = []
+    const worldBindings = new Set<string>()
+    const rendered: { readonly name: string; readonly node: TSESTree.JSXOpeningElement }[] = []
+    const calledTwin: TSESTree.CallExpression[] = []
     let importsTwin = false
     let readsWorld = false
     let rendersTwin = false
@@ -97,8 +99,8 @@ export const connectedBlockHasPresentationalTwin = {
       ImportDeclaration(node) {
         const source = typeof node.source?.value === "string" ? node.source.value : ""
         for (const specifier of node.specifiers || []) {
-          const imported = specifier.imported?.name
-          const local = specifier.local?.name
+          const imported = specifier.type === "ImportSpecifier" && specifier.imported.type === "Identifier" ? specifier.imported.name : undefined
+          const local = specifier.local.name
           if (source === "./component" && imported === twin && local === twin) importsTwin = true
           if (imported && local && REACHES_FOR_THE_WORLD.test(imported)) worldBindings.add(local)
         }
@@ -137,10 +139,10 @@ export const connectedBlockHasPresentationalTwin = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "presentational-purity": presentationalPurity,
   "connected-block-has-presentational-twin": connectedBlockHasPresentationalTwin,
 }
@@ -152,4 +154,4 @@ export const rules = {
  * should expect each report to be a real move rather than a deletion - the call has to go
  * somewhere, and where it goes is the other half.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

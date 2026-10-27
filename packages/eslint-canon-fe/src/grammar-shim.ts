@@ -7,6 +7,8 @@
  * it, wrapping it in an app component and type-only re-exports are not shims. Source inside the Grammar package itself
  * is out of scope: its entries re-export its components by design.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { unwrap, variableOf } from "./lib/bindings.ts"
@@ -17,17 +19,19 @@ const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/|$)/
 const GRAMMAR_PACKAGE = "@starci/grammar"
 
 /** The manifest name of the package owning each directory, read once per directory. */
-const packageNames = new Map()
+const packageNames = new Map<string, string | null>()
 
 /** The `name` of the nearest `package.json` that declares one, or null at the filesystem root. */
-const packageNameOf = (directory) => {
-  if (packageNames.has(directory)) return packageNames.get(directory)
+const packageNameOf = (directory: string): string | null => {
+  const known = packageNames.get(directory)
+  if (known !== undefined) return known
   const parent = dirname(directory)
   const manifest = resolve(directory, "package.json")
-  let name = null
+  let name: string | null = null
   if (existsSync(manifest)) {
     try {
-      const declared = JSON.parse(readFileSync(manifest, "utf8")).name
+      const parsed: unknown = JSON.parse(readFileSync(manifest, "utf8"))
+      const declared = typeof parsed === "object" && parsed !== null && "name" in parsed ? parsed.name : undefined
       if (typeof declared === "string") name = declared
     } catch {
       name = null
@@ -39,23 +43,31 @@ const packageNameOf = (directory) => {
 }
 
 /** True for a type-only import or export, declaration-wide or per specifier; a type is no component to shim. */
-const typeOnly = (...nodes) => nodes.some((node) => node.importKind === "type" || node.exportKind === "type")
+const typeOnly = (...nodes: Node[]): boolean =>
+  nodes.some((node) => ("importKind" in node && node.importKind === "type") || ("exportKind" in node && node.exportKind === "type"))
+
+/** A Grammar import: the module it comes from and the name it binds there. */
+interface GrammarImport {
+  readonly source: string
+  readonly name: string
+}
 
 /** The Grammar import an identifier binds, `{ source, name }`, or null for a local, foreign or type-only binding. */
-const grammarImportOf = (context, identifier) => {
+const grammarImportOf = (context: AnyContext, identifier: TSESTree.Identifier): GrammarImport | null => {
   const definition = variableOf(context, identifier)?.defs.find((entry) => entry.type === "ImportBinding")
-  if (!definition) return null
+  if (!definition || definition.type !== "ImportBinding") return null
+  if (definition.parent.type !== "ImportDeclaration") throw new TypeError("Cannot read properties of undefined (reading 'value')")
   const source = String(definition.parent.source.value)
   if (!GRAMMAR_SOURCE.test(source) || typeOnly(definition.parent, definition.node)) return null
   const specifier = definition.node
-  const name = specifier.type === "ImportSpecifier" ? specifier.imported.name ?? String(specifier.imported.value) : identifier.name
+  const name = specifier.type === "ImportSpecifier" ? spelled(specifier.imported) : identifier.name
   return { source, name }
 }
 
 /** The Grammar import an exported value is exactly (`X`, `G.X`), or null for anything computed or wrapped. */
-const grammarValueOf = (context, expression) => {
-  let node = unwrap(expression)
-  const path = []
+const grammarValueOf = (context: AnyContext, expression: Node): GrammarImport | null => {
+  let node: Node | null | undefined = unwrap(expression)
+  const path: string[] = []
   while (node?.type === "MemberExpression" && !node.computed && node.property.type === "Identifier") {
     path.unshift(node.property.name)
     node = unwrap(node.object)
@@ -67,9 +79,9 @@ const grammarValueOf = (context, expression) => {
 }
 
 /** The name an export specifier spells, identifier or string literal. */
-const spelled = (node) => node.name ?? String(node.value)
+const spelled = (node: TSESTree.Identifier | TSESTree.StringLiteral): string => (node.type === "Identifier" ? node.name : String(node.value))
 
-const grammarShim = {
+const grammarShim = defineRule({
   meta: {
     type: "problem",
     docs: { description: "R321: an app never re-exports a Grammar export under its own name; a Grammar defect is reported to the Grammar, not shimmed in the app." },
@@ -81,7 +93,7 @@ const grammarShim = {
   create(context) {
     const filename = resolve(context.cwd, context.physicalFilename)
     if (packageNameOf(dirname(filename)) === GRAMMAR_PACKAGE) return {}
-    const report = (node, name, source) => context.report({ node, messageId: "FE_GRAMMAR_SHIM", data: { name: name === null ? "every export" : `\`${name}\``, source } })
+    const report = (node: Node, name: string | null, source: string): void => context.report({ node, messageId: "FE_GRAMMAR_SHIM", data: { name: name === null ? "every export" : `\`${name}\``, source } })
     return {
       ExportAllDeclaration(node) {
         const source = String(node.source.value)
@@ -114,10 +126,10 @@ const grammarShim = {
       },
     }
   },
-}
+})
 
 /** The one rule of the law. */
-export const rules = { "no-grammar-shim": grammarShim }
+export const rules: Rules = { "no-grammar-shim": grammarShim }
 
 /** The rule reaches consumers at error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

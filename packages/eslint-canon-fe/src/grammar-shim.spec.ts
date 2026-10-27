@@ -8,6 +8,7 @@ import { join } from "node:path"
 import test, { after } from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import { rules, recommended } from "./grammar-shim.ts"
 import { recommended as universal, ruleOwners, rules as published, why } from "./index.ts"
 
@@ -16,9 +17,11 @@ const grammarRoot = mkdtempSync(join(tmpdir(), "grammar-shim-"))
 writeFileSync(join(grammarRoot, "package.json"), JSON.stringify({ name: "@starci/grammar" }))
 after(() => rmSync(grammarRoot, { recursive: true, force: true }))
 
-const tester = () => new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } })
-const shim = (name, source) => ({ messageId: "FE_GRAMMAR_SHIM", data: { name, source } })
-const invalid = (code, ...errors) => ({ code, filename: "src/components/blocks/Card/index.tsx", errors })
+const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
+const shimRule = rules["no-grammar-shim"]
+assert.ok(shimRule, "no-grammar-shim is published")
+const shim = (name: string, source: string) => ({ messageId: "FE_GRAMMAR_SHIM", data: { name, source } })
+const invalid = (code: string, ...errors: { readonly messageId: string; readonly data: { readonly name: string; readonly source: string } }[]) => ({ code, filename: "src/components/blocks/Card/index.tsx", errors })
 
 test("R321 is registered universally at error with its finding code", () => {
   assert.equal(published["no-grammar-shim"], rules["no-grammar-shim"])
@@ -28,10 +31,10 @@ test("R321 is registered universally at error with its finding code", () => {
   assert.equal(why["no-grammar-shim"].code, "FE_GRAMMAR_SHIM")
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R321 ${edition}: a Grammar component is imported where it renders, never re-exported from an app path`, () => {
   assert.doesNotThrow(() => {
-    tester().run("no-grammar-shim", rules["no-grammar-shim"], {
+    tester().run("no-grammar-shim", shimRule, {
       valid: [
         "import { SurfaceCard } from \"@starci/grammar/common\"; export const Panel = () => <SurfaceCard>body</SurfaceCard>",
         "import * as G from \"@starci/grammar/core\"; export const Panel = ({ children }) => <G.SurfaceCard>{children}</G.SurfaceCard>",

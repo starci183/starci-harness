@@ -3,18 +3,18 @@
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { at, fixtureHfs, canonTester } from "../fixtures/typed/tester.ts"
 import { propsFieldsReadonly } from "./props-and-slots.ts"
 
 const COMPONENT = at("apps/web/src/components/branches/Card/index.tsx")
 const render = '\nexport const Card = (props: CardProps) => <div>{props.title}</div>'
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
     test(`${edition} FE_PROPS_MUTABLE accepts deeply readonly props and rejects mutable fields and collections`, () => {
-        const tester = new RuleTester({
+        const tester = canonTester(new RuleTester({
             languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
             settings: { starci: { hfs: fixtureHfs(undefined, { lite: edition === "lite" }) } },
-        })
+        }))
         tester.run("props-fields-readonly", propsFieldsReadonly, {
             valid: [
                 { filename: COMPONENT, code: "interface CardProps { readonly title: string; readonly meta: { readonly label: string }; readonly tags: readonly string[]; readonly pair: readonly [string, number]; readonly rows: ReadonlyArray<{ readonly id: string }>; readonly [key: string]: unknown }" + render },

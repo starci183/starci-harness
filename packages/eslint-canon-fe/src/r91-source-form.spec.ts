@@ -8,7 +8,7 @@ import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
-import { at, FE_DECLARATION, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { at, FE_DECLARATION, fixtureHfs, canonTester } from "../fixtures/typed/tester.ts"
 import { noEmojiInSource, noVietnameseInSource, requireExportJsdoc } from "./comments.ts"
 import {
   exportMatchesFolder,
@@ -24,19 +24,23 @@ import {
 import { handlerOnPrefix, noDirectConstAlias, preferArrowExport, rules as namingRules } from "./naming.ts"
 import { rules as graphRules } from "./project-graph.ts"
 
+const secondLanguageInPath = namingRules["no-second-language-in-path"]
+const frontendSourceLayout = graphRules["frontend-source-layout"]
+assert.ok(secondLanguageInPath && frontendSourceLayout, "the R91 rules are published")
+
 const LEAF = at("apps/web/src/components/leaves/Text/index.tsx")
 const BRANCH = at("apps/web/src/components/branches/ModalBranch/index.tsx")
 const PAGE = at("apps/web/src/features/pages/HomePage/index.tsx")
 const ROUTE = at("apps/web/src/app/[locale]/page.tsx")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R91 accepts valid source and rejects invalid authoring in ${edition}`, () => {
     const hfs = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })
     assert.equal(hfs.edition, edition)
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("require-export-jsdoc", requireExportJsdoc, {
       valid: [{ filename: LEAF, code: "/** Renders readable text. */\nexport const Text = () => null" }],
       invalid: [{ filename: LEAF, code: "export const Text = () => null", errors: [{ messageId: "jsdoc" }] }],
@@ -93,7 +97,7 @@ for (const edition of ["lite", "full"]) {
       valid: ["const onSubmit = () => submit()"],
       invalid: [{ code: "const handleSubmit = () => submit()", errors: [{ messageId: "handle" }] }],
     })
-    tester.run("no-second-language-in-path", namingRules["no-second-language-in-path"], {
+    tester.run("no-second-language-in-path", secondLanguageInPath, {
       valid: [{ filename: at("apps/web/src/app/[locale]/sign-in/page.tsx"), code: "export const value = 1" }],
       invalid: [{ filename: at("apps/web/src/app/[locale]/dang-nhap/page.tsx"), code: "export const value = 1", errors: [{ messageId: "path" }] }],
     })
@@ -110,7 +114,7 @@ for (const edition of ["lite", "full"]) {
     const invalidCode = "export const config = 1\n"
     const fixture = projectFixture({ profile: "fe", edition, files: { [validPath]: validCode, [invalidPath]: invalidCode } })
     t.after(fixture.cleanup)
-    assert.doesNotThrow(() => fixture.tester.run("frontend-source-layout", graphRules["frontend-source-layout"], {
+    assert.doesNotThrow(() => canonTester(fixture.tester).run("frontend-source-layout", frontendSourceLayout, {
       valid: [{ filename: fixture.at(validPath), code: validCode }],
       invalid: [{ filename: fixture.at(invalidPath), code: invalidCode, errors: [{ messageId: "finding", data: { message: "[FE_SOURCE_LAYOUT_INVALID] Production source under a Next application root must belong to app, features, components, hooks or modules, or be a framework-pinned root file Next.js loads from the source root (knowledge/patterns/fe/folder.yaml FE-FOLDER-1 frameworkPinnedRootFiles); configuration cannot hide an unclassified owner." } }] }],
     }))

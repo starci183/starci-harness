@@ -14,6 +14,8 @@
  * calls, socket.io-client outside `hooks/socketio`) and `fetch` outside the API layer are `fetch-only-in-api-client`'s findings;
  * a glyph library outside the icon leaf is the icon law's. Each import is judged by one rule.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
 import { globalReferences, inSlot, isProductSource } from "./lib/scope.ts"
 
@@ -24,7 +26,7 @@ const SUPABASE_SCOPE = "@supabase/"
  * No import (static, re-export, dynamic or `require`) of a package the fe-stack catalog forbids, and no `@supabase/*` outside
  * `modules/auth`. Type-only imports count: a type import still makes the package a dependency of the front end.
  */
-export const feStackImport = {
+export const feStackImport = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A front end imports no library the fe-stack catalog forbids, and `@supabase/*` only in `modules/auth`." },
@@ -39,13 +41,13 @@ export const feStackImport = {
   create(context) {
     if (!isProductSource(context)) return {}
     const authOwner = inSlot(context, "fe.modules.auth")
-    const judge = (node, source) => {
+    const judge = (node: Node, source: TSESTree.Literal["value"]): void => {
       const name = packageNameOf(source)
-      if (name === null) return
+      if (name === null || name === undefined) return
       const concern = forbiddingConcern(source)
       if (concern) {
-        const named = concern.packages?.length > 0 ? concern.packages : concern.home ?? []
-        const canonical = named.map((entry) => `\`${entry}\``).join(", ")
+        const named = (concern.packages?.length ?? 0) > 0 ? concern.packages ?? [] : concern.home ?? []
+        const canonical = named.map((entry: string) => `\`${entry}\``).join(", ")
         context.report({ node, messageId: "forbidden", data: { name, concern: concern.id, canonical, pattern: concern.pattern ?? "", why: concern.why ?? "" } })
         return
       }
@@ -75,12 +77,12 @@ export const feStackImport = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "fe-stack-import": feStackImport,
 }
 
 /** Every rule is an error: a second library for a concern is the defect, not a style. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

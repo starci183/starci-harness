@@ -11,16 +11,17 @@ import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT } from "./lib/package-root.ts"
 import { why } from "./lib/why.ts"
 import { imageHasSize, noNativeFormControl, noNativeImg } from "./native-controls.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 
 const ROOT = join(PACKAGE_ROOT, "fixtures", "typed")
 const BLOCK = join(ROOT, "apps", "web", "src", "components", "blocks", "Feed", "component.tsx")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R62 valid and invalid native elements in ${edition}`, () => {
     const declaration = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
     const hfs = hfsFromDeclaration({ ...declaration, edition }, ROOT)
     assert.equal(hfs.edition, edition)
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: {
         parser: tsParser,
         ecmaVersion: 2022,
@@ -28,7 +29,7 @@ for (const edition of ["lite", "full"]) {
         parserOptions: { ecmaFeatures: { jsx: true } },
       },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("no-native-form-control", noNativeFormControl, {
       valid: [{ filename: BLOCK, code: "export const Feed = () => <Button onPress={save} />" }],
       invalid: [

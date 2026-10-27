@@ -26,26 +26,28 @@
  * architecture machine that sees the whole tree.
  */
 
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Context, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { importedReduxHook } from "./lib/redux-hook-origin.ts"
 import { importedOwnHook } from "./lib/own-hook-origin.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { walk } from "./lib/ast.ts"
-import { functionOf, isFn, unwrap, variableOf } from "./lib/bindings.ts"
+import { functionOf, isFn, unwrap, variableOf, type Variable } from "./lib/bindings.ts"
 import { baseName, classOf, fileOf, inSlot } from "./lib/scope.ts"
 import { rules as swrFamilyRules } from "./swr-family.ts"
 
 /** Names that mark a hook. */
-const isHookName = (name) => /^use[A-Z0-9]/.test(name)
+const isHookName = (name: string): boolean => /^use[A-Z0-9]/.test(name)
 
 /**
  * The SWR key of a hook (`QUERY_<X>_SWR_KEY`, `MUTATE_<X>_SWR_KEY`, `SUBSCRIBE_<X>_SWR_KEY`, fe-stack data): the one constant a hook file exports beside its
  * hook, so a mutation or a socket message revalidates exactly that cache entry.
  */
-const isSwrKeyName = (name) => /^[A-Z][A-Z0-9_]*_SWR_KEY$/.test(name)
+const isSwrKeyName = (name: string): boolean => /^[A-Z][A-Z0-9_]*_SWR_KEY$/.test(name)
 
 /** A hook file name: `use<Name>.ts`. */
 const HOOK_FILE = new RegExp(String.raw`^use[A-Z0-9]\w*\.ts$`)
-const isHookFileName = (name) => HOOK_FILE.test(name)
+const isHookFileName = (name: string): boolean => HOOK_FILE.test(name)
 
 /** Modules that only run on the server: server code, not a hook. */
 const SERVER_ONLY = new Set(["server-only", "next/headers"])
@@ -54,23 +56,42 @@ const SERVER_ONLY = new Set(["server-only", "next/headers"])
 const FAMILY_SLOTS = ["fe.hooks.swr", "fe.hooks.rhf", "fe.hooks.zustand", "fe.hooks.socketio", "fe.hooks.effects", "fe.hooks.reuseables"]
 
 /** Runtime exports and their local values; type exports do not introduce hooks or helpers. */
-const exportedEntries = (node) => {
+/** A declaration that exports. */
+type ExportNode = TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration | TSESTree.ExportAllDeclaration
+
+/** One name a file exports: the export statement, the exported name and the local it binds (null for a re-export). */
+interface ExportEntry {
+  readonly node: ExportNode
+  readonly name: string
+  readonly local: Node | null
+  readonly default?: boolean
+}
+
+/** True for a statement that exports. */
+const isExportNode = (node: TSESTree.ProgramStatement): node is ExportNode =>
+  ["ExportNamedDeclaration", "ExportDefaultDeclaration", "ExportAllDeclaration"].includes(node.type)
+
+/** The name an export specifier spells, identifier or string literal. */
+const spelled = (node: TSESTree.Identifier | TSESTree.StringLiteral): string => (node.type === "Identifier" ? node.name : node.value)
+
+const exportedEntries = (node: ExportNode): ExportEntry[] => {
   if (node.type === "ExportDefaultDeclaration") {
     const declaration = node.declaration
-    return [{ node, name: declaration.id?.name ?? "default", local: declaration, default: true }]
+    const id = "id" in declaration ? declaration.id : undefined
+    return [{ node, name: id?.type === "Identifier" ? id.name : "default", local: declaration, default: true }]
   }
   if (node.exportKind === "type") return []
   if (node.type === "ExportAllDeclaration") return [{ node, name: "*", local: null }]
   const declaration = node.declaration
   if (!declaration) {
     return node.specifiers.filter((specifier) => specifier.exportKind !== "type").map((specifier) => ({
-      node, name: specifier.exported.name ?? specifier.exported.value, local: node.source ? null : specifier.local,
-      default: (specifier.exported.name ?? specifier.exported.value) === "default",
+      node, name: spelled(specifier.exported), local: node.source ? null : specifier.local,
+      default: spelled(specifier.exported) === "default",
     }))
   }
   if (declaration.type === "FunctionDeclaration" && declaration.id) return [{ node, name: declaration.id.name, local: declaration }]
   if (declaration.type === "VariableDeclaration") {
-    return declaration.declarations.filter((d) => d.id.type === "Identifier").map((d) => ({ node, name: d.id.name, local: d.id }))
+    return declaration.declarations.flatMap((d) => (d.id.type === "Identifier" ? [{ node, name: d.id.name, local: d.id }] : []))
   }
   return []
 }
@@ -102,47 +123,62 @@ const LIBRARY_HOOKS = new Map([
   ["zustand/react/shallow", new Set(["useShallow"])],
 ])
 const OWN_HOOK = "own-hooks"
-const builtinHook = (origin) => origin?.source === OWN_HOOK || Boolean(LIBRARY_HOOKS.get(origin?.source)?.has(origin.name)) || origin?.source === "react-redux" || (origin?.source === "react" ? REACT_HOOKS.has(origin.name) : Boolean(SWR_HOOKS.get(origin?.source)?.has(origin.name)))
-const propertyName = (node) => {
+
+/** Where a hook comes from: the module and the export it names (null for the module object itself; any key a member reads). */
+interface HookOrigin {
+  readonly source: string
+  readonly name: unknown
+}
+
+/** True when `set` holds `name`. */
+const hasName = (set: ReadonlySet<string> | undefined, name: unknown): boolean => set !== undefined && typeof name === "string" && set.has(name)
+
+const builtinHook = (origin: HookOrigin | null): boolean => {
+  if (origin === null) return false
+  return origin.source === OWN_HOOK || hasName(LIBRARY_HOOKS.get(origin.source), origin.name) || origin.source === "react-redux" || (origin.source === "react" ? hasName(REACT_HOOKS, origin.name) : hasName(SWR_HOOKS.get(origin.source), origin.name))
+}
+const propertyName = (node: TSESTree.MemberExpression): unknown => {
   if (!node.computed && node.property.type === "Identifier") return node.property.name
   return node.property.type === "Literal" ? node.property.value : null
 }
 
 /** SWR request hooks are default exports; its root also names useSWRConfig. */
-const namedOrigin = (source, name) => {
+const namedOrigin = (source: string, name: unknown): HookOrigin | null => {
   if (source === "react") return { source, name }
-  if (LIBRARY_HOOKS.get(source)?.has(name)) return { source, name }
+  if (hasName(LIBRARY_HOOKS.get(source), name)) return { source, name }
   if (name === "default" && SWR_DEFAULTS.has(source)) return { source, name: SWR_DEFAULTS.get(source) }
   return source === "swr" && name === "useSWRConfig" ? { source, name } : null
 }
 
 /** A runtime import records whether its value is a hook or its module namespace. */
-const importOrigin = (definition) => {
+const importOrigin = (definition: TSESLint.Scope.Definitions.ImportBindingDefinition): HookOrigin | null => {
   const specifier = definition.node
+  if (definition.parent.type !== "ImportDeclaration") throw new TypeError("Cannot read properties of undefined (reading 'value')")
   const source = String(definition.parent.source.value)
-  if (definition.parent.importKind === "type" || specifier.importKind === "type") return null
+  if (definition.parent.importKind === "type" || ("importKind" in specifier && specifier.importKind === "type")) return null
   if (source !== "react" && !SWR_HOOKS.has(source) && !LIBRARY_HOOKS.has(source)) return null
   if (source === "next-themes" && specifier.type === "ImportDefaultSpecifier") return null
-  if (specifier.type === "ImportSpecifier") return namedOrigin(source, specifier.imported.name ?? specifier.imported.value)
+  if (specifier.type === "ImportSpecifier") return namedOrigin(source, spelled(specifier.imported))
   if (specifier.type === "ImportDefaultSpecifier" && SWR_DEFAULTS.has(source)) return { source, name: SWR_DEFAULTS.get(source) }
   return { source, name: null }
 }
 
 /** Resolve a constant alias, including destructuring a React/SWR namespace. */
-const constantOrigin = (context, definition, variable, seen) => {
+const constantOrigin = (context: AnyContext, definition: TSESLint.Scope.Definition, variable: Variable, seen: Set<Variable>): HookOrigin | null => {
+  if (definition.type !== "Variable" || definition.parent.kind !== "const") return null
   const declaration = definition.node
-  if (declaration.type !== "VariableDeclarator" || definition.parent.kind !== "const") return null
   const origin = hookOrigin(context, declaration.init, seen)
   if (declaration.id.type === "Identifier") return origin
   if (declaration.id.type !== "ObjectPattern" || !origin || origin.name !== null) return null
-  const property = declaration.id.properties.find((entry) => entry.type === "Property" && entry.value.type === "Identifier" && entry.value.name === variable.name)
+  const property = declaration.id.properties.find((entry): entry is TSESTree.Property => entry.type === "Property" && entry.value.type === "Identifier" && entry.value.name === variable.name)
   if (!property) return null
-  const name = property.computed || property.key.type === "Literal" ? property.key.value : property.key.name
+  const key = property.key
+  const name = property.computed || key.type === "Literal" ? ("value" in key ? key.value : undefined) : key.type === "Identifier" ? key.name : undefined
   return namedOrigin(origin.source, name)
 }
 
 /** Follow lexical bindings so shadowed, reassigned and unrelated `use*` values cannot prove a hook. */
-const hookOrigin = (context, input, seen = new Set()) => {
+const hookOrigin = (context: AnyContext, input: Node | null | undefined, seen: Set<Variable> = new Set()): HookOrigin | null => {
   const node = unwrap(input)
   if (node?.type === "MemberExpression") {
     const origin = hookOrigin(context, node.object, seen)
@@ -154,7 +190,8 @@ const hookOrigin = (context, input, seen = new Set()) => {
   const variable = variableOf(context, node)
   if (!variable || seen.has(variable) || variable.defs.length !== 1) return null
   if (variable.references.some((reference) => reference.isWrite() && !reference.init)) return null
-  const definition = variable.defs[0]
+  const [definition] = variable.defs
+  if (definition === undefined) return null
   if (definition.type === "ImportBinding") {
     const origin = importOrigin(definition)
     if (origin) return origin
@@ -165,7 +202,7 @@ const hookOrigin = (context, input, seen = new Set()) => {
 }
 
 /** The exported function itself must call the hook; an unused nested callback is not evidence. */
-const callsBuiltinHook = (context, local) => {
+const callsBuiltinHook = (context: AnyContext, local: Node | null): boolean => {
   const hook = functionOf(context, local)
   if (!hook) return false
   let found = false
@@ -178,7 +215,10 @@ const callsBuiltinHook = (context, local) => {
 }
 
 /** Exactly one named, locally implemented hook; optional SWR key and type exports remain available. */
-const checkHookExports = (context, program, exported) => {
+/** The messages a hook file's exports are judged with. */
+type ExportMessages = "defaultExport" | "export" | "missing" | "many" | "fake"
+
+const checkHookExports = (context: Context<ExportMessages>, program: TSESTree.Program, exported: readonly ExportEntry[]): void => {
   const hooks = exported.filter((item) => !item.default && isHookName(item.name))
   const defaults = exported.filter((item) => item.default)
   for (const item of defaults) context.report({ node: item.node, messageId: "defaultExport" })
@@ -188,7 +228,8 @@ const checkHookExports = (context, program, exported) => {
     }
   }
   if (hooks.length === 0 && defaults.length === 0) context.report({ node: program, messageId: "missing" })
-  if (hooks.length > 1) context.report({ node: hooks[1].node, messageId: "many", data: { count: hooks.length } })
+  const second = hooks[1]
+  if (hooks.length > 1 && second !== undefined) context.report({ node: second.node, messageId: "many", data: { count: hooks.length } })
   for (const item of hooks) {
     if (!callsBuiltinHook(context, item.local)) context.report({ node: item.node, messageId: "fake", data: { name: item.name } })
   }
@@ -199,15 +240,26 @@ const checkHookExports = (context, program, exported) => {
  * (directly in `hooks/`, a non-hook name in a domain, a name outside a family's `allows`); `hookFile` a `use<Name>.ts` hook
  * file; `sharedFile` a domain's `<domain>.shared.ts`.
  */
-const hookFileOf = (context) => {
+/** How the linted file sits in `hooks/`. */
+interface HookFile {
+  readonly stray: boolean
+  readonly directlyInHooks: boolean
+  readonly hookFile: boolean
+  readonly sharedFile: boolean
+  readonly family: string | null | undefined
+  readonly allows: string
+  readonly subscriptions?: boolean
+}
+
+const hookFileOf = (context: AnyContext): HookFile | null => {
   const hfs = hfsOf(context)
   const file = fileOf(context)
   const found = classOf(context)
   const name = baseName(file)
   if (inSlot(context, ...FAMILY_SLOTS)) {
     const verdict = hfs.allows(file)
-    const stray = Boolean(verdict) && !verdict.allowed
-    const allows = (verdict?.allows ?? hfs.slot(found.slot)?.allows ?? []).join("`, `")
+    const stray = verdict !== null && !verdict.allowed
+    const allows = (verdict?.allows ?? (found.slot === undefined ? null : hfs.slot(found.slot))?.allows ?? []).join("`, `")
     // A role the slot names (`entry`, `effects`, `store`) or a non-hook file it allows (sockets.ts, enums/, types/, barrels) is no hook file.
     const subscriptions = ["/api/sse/subscriptions/", "/api/graphql/subscriptions/"].some((folder) => file.split(String.fromCharCode(92)).join("/").includes(folder))
     return { stray, directlyInHooks: false, hookFile: !stray && !found.role && isHookFileName(name), sharedFile: false, family: found.slot, allows, subscriptions }
@@ -225,7 +277,7 @@ const hookFileOf = (context) => {
 }
 
 /** `hooks/` holds React hooks, each under the name its family or domain gives it, and one shared helper file per domain. */
-export const hooksFolderHoldsHooksOnly = {
+export const hooksFolderHoldsHooksOnly = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`hooks/` holds `use*.ts` hooks under the names their family slot gives (`hooks/swr`, `hooks/rhf`, `hooks/zustand`, `hooks/socketio`, `hooks/effects`, `hooks/reuseables`) and, per domain, one `<domain>.shared.ts`; nothing else." },
@@ -275,7 +327,7 @@ export const hooksFolderHoldsHooksOnly = {
       "Program:exit"(program) {
         if (judged.directlyInHooks || judged.stray || (!judged.hookFile && !judged.sharedFile)) return
         const exported = program.body
-          .filter((node) => ["ExportNamedDeclaration", "ExportDefaultDeclaration", "ExportAllDeclaration"].includes(node.type))
+          .filter(isExportNode)
           .flatMap(exportedEntries)
         if (judged.sharedFile) {
           for (const item of exported) {
@@ -287,14 +339,14 @@ export const hooksFolderHoldsHooksOnly = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "hooks-folder-holds-hooks-only": hooksFolderHoldsHooksOnly,
   // Forward the family enforcers for the catalog's source-only CONTRIBUTIONS discovery.
   ...swrFamilyRules,
 }
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

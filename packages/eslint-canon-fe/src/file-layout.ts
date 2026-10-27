@@ -12,18 +12,20 @@
  * destination it sends things to rather than merely refusing.
  */
 
-import { hfsOf } from "./lib/hfs.ts"
-import { classOf, fileOf, inSlot, isComponentFile, kindOfFile, roleOfFile, tierOfFile } from "./lib/scope.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Rules, type Recommended } from "./lib/rule.ts"
+import { hfsOf, requiredRoot, requiredSlot, type HfsView } from "./lib/hfs.ts"
+import { classOf, fileOf, inSlot, isComponentFile, kindOfFile, roleOfFile } from "./lib/scope.ts"
 
 /** The path segments of the linted file below the folder of its owner (the slot's `root`), directories only. */
-const dirsBelowRoot = (context) => {
-  const { root } = classOf(context)
+const dirsBelowRoot = (context: AnyContext): string[] => {
+  const root = requiredRoot(classOf(context))
   const relative = hfsOf(context).relative(fileOf(context))
   return relative.slice(root.length + 1).split("/").slice(0, -1)
 }
 
 /** The folder segment that sits where a component layer folder is expected but is not one, or null: `components/shells/`, `src/shells/`. */
-const unknownLayerFolder = (context) => {
+const unknownLayerFolder = (context: AnyContext): string | null => {
   const hfs = hfsOf(context)
   const file = fileOf(context)
   const found = hfs.classify(file)
@@ -33,8 +35,8 @@ const unknownLayerFolder = (context) => {
     return relative.startsWith(`${prefix}/`) ? (relative.slice(prefix.length + 1).split("/")[0] ?? null) : null
   }
   if (found.slot === "fe.package.ui" && !found.kind) {
-    const [folder, layer, ...rest] = relative.slice(found.root.length + 1).split("/")
-    return folder === "src" && rest.length > 0 ? layer : null
+    const [folder, layer, ...rest] = relative.slice(requiredRoot(found).length + 1).split("/")
+    return folder === "src" && rest.length > 0 ? layer ?? null : null
   }
   return null
 }
@@ -47,22 +49,31 @@ const NON_COMPONENT_FOLDERS = new Set(["constants", "utils", "types", "hooks"])
  * file's path inside it. A page or layout owner IS the surface folder; an overlay owner is its category and the
  * surface is the folder below it.
  */
-const surfaceFolder = (context) => {
+/** A surface folder of a feature: its tier, its name and the path of the linted file inside it. */
+interface SurfaceFolder {
+  readonly tier: string | undefined
+  readonly name: string | undefined
+  readonly rest: string
+}
+
+const surfaceFolder = (context: AnyContext): SurfaceFolder | null => {
   if (!inSlot(context, "fe.feature")) return null
-  const { kind, bindings, root } = classOf(context)
-  const below = hfsOf(context).relative(fileOf(context)).slice(root.length + 1).split("/")
+  const found = classOf(context)
+  const { kind, bindings } = found
+  const below = hfsOf(context).relative(fileOf(context)).slice(requiredRoot(found).length + 1).split("/")
   if (kind === "overlays") return below.length > 1 ? { tier: kind, name: below[0], rest: below.slice(1).join("/") } : null
+  if (bindings === undefined) throw new TypeError("Cannot read properties of undefined (reading 'name')")
   return { tier: kind, name: bindings.name, rest: below.join("/") }
 }
 
 /** A file a surface folder may hold: one of the slot's roles (entry, drawing, styles), directly in the folder. */
-const belongsInSurfaceFolder = (context, folder) =>
+const belongsInSurfaceFolder = (context: AnyContext, folder: SurfaceFolder): boolean =>
   !folder.rest.includes("/") && roleOfFile(context) !== null
 
 // -- FILE-2 --------------------------------------------------------------------------------------
 
 /** A page, layout or overlay folder holds its two halves and its colocated class-name module. */
-export const surfaceFolderTwoFilesOnly = {
+export const surfaceFolderTwoFilesOnly = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A page/layout/overlay folder holds `component.tsx` + `index.tsx` and nothing else." },
@@ -77,16 +88,16 @@ export const surfaceFolderTwoFilesOnly = {
     if (!folder || belongsInSurfaceFolder(context, folder)) return {}
     return {
       Program(node) {
-        context.report({ node, messageId: "extra", data: folder })
+        context.report({ node, messageId: "extra", data: { ...folder } })
       },
     }
   },
-}
+})
 
 // -- FILE-3 --------------------------------------------------------------------------------------
 
 /** What is not component code does not live in the component tree. */
-export const noHelperFolderInComponents = {
+export const noHelperFolderInComponents = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`constants/` `utils/` `types/` `hooks/` are not component folders." },
@@ -109,12 +120,12 @@ export const noHelperFolderInComponents = {
       },
     }
   },
-}
+})
 
 // -- FILE-1 --------------------------------------------------------------------------------------
 
 /** A PascalCase folder exports a family whose name belongs to the folder. */
-export const exportMatchesFolder = {
+export const exportMatchesFolder = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "A PascalCase folder exports a direct named-export family matching the folder." },
@@ -127,19 +138,19 @@ export const exportMatchesFolder = {
   create(context) {
     if (roleOfFile(context) !== "entry" || kindOfFile(context) === null) return {}
     const folder = hfsOf(context).relative(fileOf(context)).split("/").slice(-2)[0]
-    if (!/^[A-Z][A-Za-z0-9]*$/.test(folder)) return {}
-    const names = new Set()
-    const belongsToFamily = (name) =>
+    if (folder === undefined || !/^[A-Z][A-Za-z0-9]*$/.test(folder)) return {}
+    const names = new Set<string>()
+    const belongsToFamily = (name: string): boolean =>
       name === folder || (name.startsWith(folder) && name.length > folder.length && /^[A-Z]/.test(name.slice(folder.length)))
     return {
       ExportNamedDeclaration(node) {
         const declaration = node.declaration
         if (declaration && declaration.type === "VariableDeclaration") {
-          declaration.declarations.forEach((one) => one.id && one.id.name && names.add(one.id.name))
+          declaration.declarations.forEach((one) => one.id.type === "Identifier" && one.id.name && names.add(one.id.name))
         }
         if (declaration && declaration.type === "FunctionDeclaration" && declaration.id) names.add(declaration.id.name)
         for (const specifier of node.specifiers || []) {
-          if (specifier.exported && specifier.exported.name) names.add(specifier.exported.name)
+          if (specifier.exported.type === "Identifier" && specifier.exported.name) names.add(specifier.exported.name)
         }
       },
       "Program:exit"(node) {
@@ -148,15 +159,15 @@ export const exportMatchesFolder = {
       },
     }
   },
-}
+})
 
 // -- FILE-4 --------------------------------------------------------------------------------------
 
 /** Members that make an object literal look like a component family rather than data. */
-const looksLikeComponentMember = (name) => /^[A-Z]/.test(String(name))
+const looksLikeComponentMember = (name: string): boolean => /^[A-Z]/.test(String(name))
 
 /** A folder exports a family, never one runtime object standing in for a namespace. */
-export const noRuntimeNamespace = {
+export const noRuntimeNamespace = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A component family is exported as members, not as one runtime object." },
@@ -172,20 +183,20 @@ export const noRuntimeNamespace = {
         const declaration = node.declaration
         if (!declaration || declaration.type !== "VariableDeclaration") return
         for (const one of declaration.declarations) {
-          const name = one.id && one.id.name
+          const name = one.id.type === "Identifier" ? one.id.name : undefined
           const init = one.init && one.init.type === "TSAsExpression" ? one.init.expression : one.init
           if (!name || !/^[A-Z]/.test(name) || !init || init.type !== "ObjectExpression") continue
           const members = init.properties
-            .filter((property) => property.type === "Property" && !property.computed)
+            .filter((property): property is TSESTree.Property => property.type === "Property" && !property.computed)
             .map((property) => (property.key.type === "Identifier" ? property.key.name : null))
-            .filter(Boolean)
+            .filter((member): member is string => Boolean(member))
           if (members.length < 2 || !members.every(looksLikeComponentMember)) continue
           context.report({ node: one.id, messageId: "namespace", data: { name, members: members.join(", ") } })
         }
       },
     }
   },
-}
+})
 
 // -- FILE-5 --------------------------------------------------------------------------------------
 
@@ -193,15 +204,22 @@ export const noRuntimeNamespace = {
  * Whether the repository declares the shared UI package (slot `fe.package.ui` is opt-in): the classification of a file
  * of the package's own root is `owned` only then.
  */
-const uiPackageDeclared = (hfs) => {
-  const root = hfs.slot("fe.package.ui").path.replace(/<[^>]+>/g, "probe").replace(/\/$/, "")
+/** A list field of a slot the manifest always declares; a missing one is a broken manifest and stops the run. */
+const slotList = (hfs: HfsView, id: string, field: "kinds" | "layers"): readonly string[] => {
+  const list = requiredSlot(hfs.slot(id), id)[field]
+  if (list === undefined) throw new TypeError(`the slot ${id} declares no ${field}`)
+  return list
+}
+
+const uiPackageDeclared = (hfs: HfsView): boolean => {
+  const root = requiredSlot(hfs.slot("fe.package.ui"), "fe.package.ui").path.replace(/<[^>]+>/g, "probe").replace(/\/$/, "")
   return hfs.classify(`${root}/package.json`).status === "owned"
 }
 
 /** The layer folders that know a feature: those a component owner or a feature owner has and the shared package does not. */
-const featureTiers = (hfs) => {
-  const shared = new Set(hfs.slot("fe.package.ui").kinds)
-  return new Set([...hfs.slot("fe.components").layers, ...hfs.slot("fe.feature").kinds].filter((name) => !shared.has(name)))
+const featureTiers = (hfs: HfsView): Set<string> => {
+  const shared = new Set(requiredSlot(hfs.slot("fe.package.ui"), "fe.package.ui").kinds)
+  return new Set([...slotList(hfs, "fe.components", "layers"), ...slotList(hfs, "fe.feature", "kinds")].filter((name) => !shared.has(name)))
 }
 
 /**
@@ -218,7 +236,7 @@ const featureTiers = (hfs) => {
  * feature". The document was right, the tree disagreed, and nothing turned red for either of them -
  * which is the whole argument for this rule rather than the paragraph.
  */
-export const monorepoTierBelongsToItsSide = {
+export const monorepoTierBelongsToItsSide = defineRule({
   meta: {
     type: "problem",
     docs: {
@@ -239,7 +257,7 @@ export const monorepoTierBelongsToItsSide = {
     const folder = unknownLayerFolder(context)
     const inPackage = inSlot(context, "fe.package.ui") && folder !== null && featureTiers(hfs).has(folder) ? folder : null
     const tier = kindOfFile(context)
-    const inApp = inSlot(context, "fe.components") && tier !== null && hfs.slot("fe.package.ui").kinds.includes(tier) && uiPackageDeclared(hfs) ? tier : null
+    const inApp = inSlot(context, "fe.components") && tier !== null && slotList(hfs, "fe.package.ui", "kinds").includes(tier) && uiPackageDeclared(hfs) ? tier : null
     return {
       Program(node) {
         if (inPackage) {
@@ -250,7 +268,7 @@ export const monorepoTierBelongsToItsSide = {
       },
     }
   },
-}
+})
 
 // -- FILE-6 --------------------------------------------------------------------------------------
 
@@ -272,7 +290,7 @@ export const monorepoTierBelongsToItsSide = {
  * The cost is stated where it bites: a route file that draws inside `page.tsx` still passes. That is
  * FILE-2's `component.tsx` split to catch, and no path rule can see it.
  */
-export const routeTreeHoldsRoutesOnly = {
+export const routeTreeHoldsRoutesOnly = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`src/app/**` holds framework route files only; a page owner lives in `features/pages/<Name>/`." },
@@ -294,16 +312,16 @@ export const routeTreeHoldsRoutesOnly = {
       },
     }
   },
-}
+})
 
-function propertyName(node) {
-  if (node.key?.type === "Identifier") return node.key.name
-  if (node.key?.type === "Literal") return node.key.value
+function propertyName(node: TSESTree.Property): unknown {
+  if (node.key.type === "Identifier") return node.key.name
+  if (node.key.type === "Literal") return node.key.value
   return null
 }
 
 /** `meta.shape` must tell the same truth as the source path. */
-export const sourceTierMarkerMatchesFolder = {
+export const sourceTierMarkerMatchesFolder = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A source tier marker matches the component folder that owns it." },
@@ -316,7 +334,7 @@ export const sourceTierMarkerMatchesFolder = {
   create(context) {
     const tier = kindOfFile(context)
     if (tier === null) return {}
-    const expected = {
+    const markers: Readonly<Record<string, string | undefined>> = {
       blocks: "block",
       branches: "branch",
       composites: "composite",
@@ -324,30 +342,32 @@ export const sourceTierMarkerMatchesFolder = {
       leaves: "leaf",
       overlays: "overlay",
       pages: "page",
-    }[tier]
+    }
+    const expected = markers[tier]
     return {
       ExportNamedDeclaration(node) {
         const declaration = node.declaration
         if (!declaration || declaration.type !== "VariableDeclaration") return
         for (const item of declaration.declarations || []) {
           if (item.id?.type !== "Identifier" || item.id.name !== "meta") continue
-          let init = item.init
+          let init: TSESTree.Expression | null = item.init
           while (init && (init.type === "TSAsExpression" || init.type === "TSSatisfiesExpression")) init = init.expression
           if (!init || init.type !== "ObjectExpression") continue
-          const shapeProperty = init.properties.find((property) =>
+          const shapeProperty = init.properties.find((property): property is TSESTree.Property =>
             property.type === "Property" && !property.computed && propertyName(property) === "shape")
-          const shape = shapeProperty?.value?.type === "Literal" ? shapeProperty.value.value : null
-          if (typeof shape === "string" && shape !== expected) {
-            context.report({ node: shapeProperty.value, messageId: "mismatch", data: { tier, shape } })
+          const shapeValue = shapeProperty?.value
+          const shape = shapeValue?.type === "Literal" ? shapeValue.value : null
+          if (shapeValue !== undefined && typeof shape === "string" && shape !== expected) {
+            context.report({ node: shapeValue, messageId: "mismatch", data: { tier, shape } })
           }
         }
       },
     }
   },
-}
+})
 
 /** `shells/` is not a tier; vendor mechanics are closed named branches. */
-export const noShellTier = {
+export const noShellTier = defineRule({
   meta: {
     type: "problem",
     docs: { description: "The component vocabulary has no shell tier." },
@@ -361,7 +381,7 @@ export const noShellTier = {
     if (unknownLayerFolder(context) !== "shells") return {}
     return { Program(node) { context.report({ node, messageId: "shell" }) } }
   },
-}
+})
 
 /**
  * The component a route slot mounts takes the slot's own name.
@@ -378,7 +398,7 @@ export const noShellTier = {
  * in for, so its name is a decision rather than a constant. `route`, `providers`, `globals`
  * and the asset slots export no component and are not here.
  */
-const ROUTE_SLOT_NAME = {
+const ROUTE_SLOT_NAME: Readonly<Record<string, string | undefined>> = {
   page: "Page",
   layout: "Layout",
   template: "Template",
@@ -390,7 +410,7 @@ const ROUTE_SLOT_NAME = {
   "not-found": "NotFound",
 }
 
-export const routeSlotFixedName = {
+export const routeSlotFixedName = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A route slot file default-exports a component named after the slot." },
@@ -406,12 +426,12 @@ export const routeSlotFixedName = {
   },
   create(context) {
     if (!inSlot(context, "fe.route")) return {}
-    const expected = ROUTE_SLOT_NAME[roleOfFile(context)]
+    const expected = ROUTE_SLOT_NAME[String(roleOfFile(context))]
     if (!expected) return {}
     const file = hfsOf(context).relative(fileOf(context))
     const basename = file.slice(file.lastIndexOf("/") + 1)
     let seen = false
-    const report = (node, actual) =>
+    const report = (node: Node, actual: string | null): void =>
       context.report({
         node,
         messageId: actual === null ? "anonymous" : "wrong",
@@ -436,9 +456,9 @@ export const routeSlotFixedName = {
       },
       ExportNamedDeclaration(node) {
         for (const specifier of node.specifiers || []) {
-          if (specifier.exported?.name !== "default") continue
+          if ((specifier.exported.type === "Identifier" ? specifier.exported.name : undefined) !== "default") continue
           seen = true
-          const local = specifier.local?.name ?? null
+          const local = specifier.local.type === "Identifier" ? specifier.local.name : null
           if (local !== expected) report(node, local)
         }
       },
@@ -447,9 +467,9 @@ export const routeSlotFixedName = {
       },
     }
   },
-}
+})
 
-export const rules = {
+export const rules: Rules = {
   "no-shell-tier": noShellTier,
   "source-tier-marker-matches-folder": sourceTierMarkerMatchesFolder,
   "surface-folder-two-files-only": surfaceFolderTwoFilesOnly,
@@ -469,4 +489,4 @@ export const rules = {
  * on every folder whose convention predates the rule, and that count is a migration rather than a
  * defect.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

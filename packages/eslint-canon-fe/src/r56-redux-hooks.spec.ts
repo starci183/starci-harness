@@ -1,6 +1,7 @@
 import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 
 // proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
@@ -8,7 +9,7 @@ import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 const base = new URL("../fixtures/hfs-templates/fe/skeleton/apps/__app__/src/", import.meta.url)
 const session = fs.readFileSync(new URL("hooks/auth/useSession.ts", base), "utf8")
 const redux = fs.readFileSync(new URL("redux/hooks.ts", base), "utf8")
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R56 ${edition} accepts canonical typed Redux hooks and rejects non-hooks`, t => {
     const filename = "apps/web/src/hooks/auth/useSession.ts"
     const files = {
@@ -21,7 +22,7 @@ for (const edition of ["lite", "full"]) {
     }
     const { tester, at, cleanup } = projectFixture({ profile: "fe", edition, files })
     t.after(cleanup)
-    tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
+    canonTester(tester).run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
       valid: [
         { filename: at(filename), code: session },
         { filename: at(filename), code: "import { useAppDispatch as dispatchHook } from '../../redux'; export const useSession = () => dispatchHook();" },
@@ -38,7 +39,7 @@ for (const edition of ["lite", "full"]) {
 
 // Owner ruling 2026-10-16 "Theo y tro": a composite hook that stands on the app's own hooks (a wrapper of hooks/swr, a hook of a
 // sibling domain) or on a listed library hook (next-intl...) is a hook; a file that exports a non-hook still fails.
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R56 ${edition} accepts composite hooks over own hooks and library hooks, and still refuses non-hooks`, t => {
     const filename = "apps/web/src/hooks/admin/useAdminSession.ts"
     const files = {
@@ -56,7 +57,7 @@ for (const edition of ["lite", "full"]) {
     const { tester, at, cleanup } = projectFixture({ profile: "fe", edition, files })
     t.after(cleanup)
     const wrapper = 'import { useQueryAdminSessionSwr } from "@/hooks/swr"; import { adminFailureOf } from "../../lib/helper"; '
-    tester.run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
+    canonTester(tester).run("hooks-folder-holds-hooks-only", hooksFolderHoldsHooksOnly, {
       valid: [
         // the composite hook over a hooks/swr wrapper (through the barrel), and over a sibling domain hook by a relative path
         { filename: at(filename), code: wrapper + "export const useAdminSession = () => { const query = useQueryAdminSessionSwr(); return adminFailureOf(query) }" },
