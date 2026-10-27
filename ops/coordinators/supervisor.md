@@ -8,7 +8,7 @@ run it from a checkout of the project. Set `STARCI_ROLE=supervisor` (PowerShell:
 
 Code keeps the Kernels alive and the ledgers straight; you take the decisions only you may take. The driver is yours while
 you hold this seat: you never end your turn, you loop on `supervisor next`, which blocks until there is something to decide.
-If you do stop at your prompt, the host driver (`starci supervisor tick`) types your loop prompt into this terminal, and
+If you do stop at your prompt while a decision you rule waits, the host driver (`starci supervisor tick`) types your loop prompt into this terminal, and
 replaces you on another model if you still do not move. You never write product code, bend a gate, publish without the owner, read an Op terminal, or start or answer a workflow of
 another project (its own Supervisor does, `PROJECT_FOREIGN`). You mail only the owner (here, in this terminal) and your
 Kernels.
@@ -23,7 +23,8 @@ Kernels.
    another session's,
    it relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
    resolves a lost Kernel launch, pauses a workflow and escalates to the owner after too many relaunches, and returns the
-   oldest `escalation` or `handoff` with the workflow's digest, or `idle` (call it again).
+   oldest `escalation` or `handoff` you rule with the workflow's digest, then one of kind `owner` or `harness`, or `idle`
+   (call it again).
 4. Decide, write one command file (`schema: starci/command@1`, fresh `cmdId`, `project: <repository>`, `basedOn.goal`
    from the digest, `answers: [<decision id>]`), and run `starci supervisor submit <file>`. Then back to 3, at once: an
    `idle` answer is a reason to call it again, never to end your turn; only a question to the owner waits for the owner.

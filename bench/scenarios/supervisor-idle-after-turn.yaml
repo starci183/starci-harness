@@ -1,9 +1,9 @@
 schema: starci/scenario@1
 id: supervisor-idle-after-turn
 group: orca
-title: "the Supervisor ended its turn with an escalation waiting and its Kernel died: the scheduled tick drives the sweep and nudges it"
+title: "the Supervisor ended its turn with a scope escalation it rules waiting and its Kernel died: the scheduled tick drives the sweep and nudges it"
 inject: >-
-  the Kernel escalates, then its worker exits; the Supervisor agent ended its turn (idle at its prompt, no supervisor next for
+  the Kernel escalates a scope question, then its worker exits; the Supervisor agent ended its turn (idle at its prompt, no supervisor next for
   five minutes) and nobody prompts it; only the owner's scheduled supervisor tick runs, outside every Orca terminal
 expect: >-
   the tick, acting for the attached Supervisor, relaunches the gone Kernel in the Supervisor's Run (Orca accepts the dispatch
@@ -47,8 +47,8 @@ steps:
         workflow: quiet
         basedOn: {graph: 1}
         escalation:
-          kind: owner
-          question: may doc a name the product?
+          kind: scope
+          question: may doc a also write docs/b.md?
   - seat: kernel:quiet
     starci: [kernel, submit, "${run}/esc.yaml"]
   - name: the Kernel dies

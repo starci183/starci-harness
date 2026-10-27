@@ -48,7 +48,7 @@ coordinators:
   nextPollSeconds: 30
 
 # The stall ladder (orca runner): a seat whose agent sits idle at its prompt while its ledger work is pending. A Supervisor
-# with an open decision, a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
+# with an open decision it rules (not one awaiting the owner), a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
 # failed, lost, launch-unknown), an Op whose task runs with no result filed. Run by `supervisor tick` (Supervisor, Kernels and
 # their Ops), `supervisor next` (Kernels) and `kernel next` (its Ops); judged from Orca's signals only, never a screen.
 stall:

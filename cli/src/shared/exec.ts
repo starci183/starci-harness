@@ -164,6 +164,20 @@ export const captureTool = async (tool: string, args: readonly string[], cwd: st
     return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr, timedOut: run.timedOut }
 }
 
+/**
+ * Runs a host tool attached to this process's terminal (stdin, stdout and stderr inherited, the same environment) and resolves
+ * its exit code, 1 when a signal ended it. A process that never started is refused with ToolNotStarted.
+ */
+export const runAttached = async (tool: string, args: readonly string[], cwd: string): Promise<number> =>
+    new Promise((settle, fail) => {
+        const child = spawn(tool, [...args], { cwd, windowsHide: true, stdio: "inherit" })
+        child.on("error", (error: Error) => {
+            const code = errorCode(error)
+            if (child.pid === undefined) fail(new ToolNotStarted(tool, typeof code === "string" ? code : "spawn failed"))
+        })
+        child.on("close", (code: number | null) => { settle(code ?? 1) })
+    })
+
 /** Runs a short host tool synchronously (for code that cannot await, such as opening the ledger), killed after `timeoutMs` when given; never throws. */
 export const captureToolSync = (tool: string, args: readonly string[], cwd: string, timeoutMs?: number): ToolRun => {
     const run = spawnSync(tool, [...args], { cwd, windowsHide: true, encoding: "utf8", maxBuffer: MAX_BUFFER, ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }) })

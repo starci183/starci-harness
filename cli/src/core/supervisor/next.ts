@@ -5,11 +5,12 @@ import { projectFrom, supervisorNext } from "./driver.js"
 /**
  * `starci supervisor next`: a Supervisor's only wait, for its project. It keeps one live Kernel per running orca workflow the
  * Supervisor owns in the project's repositories (relaunching on Orca's word, pausing and escalating past the relaunch limit) and
- * returns the project's oldest open escalation or handoff with its workflow digest; idle when none came.
+ * returns the project's next open escalation or handoff with its workflow digest (the ones it rules, oldest first, before the ones
+ * awaiting the owner); idle when none came.
  */
 export const supervisorNextVerb = defineVerb({
     path: ["supervisor", "next"],
-    summary: "sweep the Kernels of the workflows the project's Supervisor owns (relaunch on Orca's word) and return the project's oldest escalation or handoff with a digest; idle after --wait",
+    summary: "sweep the Kernels of the workflows the project's Supervisor owns (relaunch on Orca's word) and return the project's next escalation or handoff with a digest (its own before the owner's); idle after --wait",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],
