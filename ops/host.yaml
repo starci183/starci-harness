@@ -1,0 +1,59 @@
+# The services a host runs for the harness, read by cli/src/harness/host.ts (`starci host status|up|install|uninstall`).
+# An argv runs without a shell. Tokens: {starci} is this CLI (node and its main.js), {node} this Node, {orca} the Orca CLI
+# (STARCI_ORCA_BIN honoured), {state} the state base, {runtime} the runtime root, {env:NAME} an environment variable.
+# A check is up when it exits 0 and, with `json`, when the value at `path` of its json output equals `equals`.
+# `install` registers a service to run by itself (kind schedule: a scheduled task named StarCi ...), or nothing (kind none).
+schema: starci/host@1
+# How long `host up` waits for a started service's check to turn up, and how long one check may run.
+waitSeconds: 120
+checkTimeoutSeconds: 30
+services:
+  - id: orca
+    summary: the Orca app and its runtime, which every seat runs in
+    platform: any
+    check:
+      argv: ["{orca}", status, --json]
+      json:
+        path: result.runtime.reachable
+        equals: true
+    start:
+      argv: ["{orca}", open]
+    install:
+      kind: none
+    requires: []
+  - id: docker
+    summary: Docker Desktop, which runs the pinned uat image
+    platform: win32
+    check:
+      argv: [docker, info, --format, "{{.ServerVersion}}"]
+    start:
+      argv: ["{env:LOCALAPPDATA}/Programs/DockerDesktop/Docker Desktop.exe"]
+      detach: true
+    install:
+      kind: none
+    requires: []
+  - id: supervisors
+    summary: every project's [Supervisor] seat, ensured by one supervisor tick
+    platform: any
+    check:
+      argv: ["{starci}", supervisor, status, --json]
+      json:
+        path: data.liveness
+        equals: alive
+    start:
+      argv: ["{starci}", supervisor, tick]
+    install:
+      kind: none
+    requires: [orca]
+  - id: supervisor-tick
+    summary: the one host-wide process, a supervisor tick every minute that keeps every Supervisor and its tree alive with no LLM awake
+    platform: any
+    install:
+      kind: schedule
+      name: StarCi Supervisor Tick
+      everyMinutes: 1
+      argv: ["{starci}", supervisor, tick]
+      env:
+        STARCI_ROLE: supervisor
+      log: "{state}/tick.log"
+    requires: [orca]

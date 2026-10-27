@@ -10,6 +10,7 @@ validated by the CLI when it is read; a key no code reads is deleted.
 | [checks.yaml](checks.yaml) | the check presets an op or a contract names, each expanding into one primitive check | `contract.ts`, `run-checks.ts` |
 | [routing.yaml](routing.yaml) | tiers, pools, host probes, balance, quota, usage, the provider circuit and its probe, failure signals, outcomes, qualification, scoring, pool concurrency, workflow budgets: every number of the router | `router.ts`, `circuit.ts`, `usage.ts`, `outcomes.ts`, `pools.ts`, `budget.ts` |
 | [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner) | `liveness.ts` |
+| [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
 
 A label's floor and host tools live in its op file and nowhere else. The prose below explains how the router and the

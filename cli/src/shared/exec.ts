@@ -206,6 +206,35 @@ export const captureCommand = async (argv: readonly string[], cwd: string, optio
     return captureTool(tool, args, cwd, options)
 }
 
+/**
+ * Starts a long-lived host program (a desktop app) without a shell and without waiting for it: detached, its output ignored,
+ * so this CLI exits while it runs. Refuses with ToolNotStarted when the program could not be started.
+ */
+export const startDetached = (argv: readonly string[], cwd: string): Promise<void> =>
+    new Promise((settle, refuse) => {
+        const [tool, ...args] = argv
+        if (tool === undefined) {
+            refuse(new Refusal("CLI_USAGE", "an empty command cannot run"))
+            return
+        }
+        let child: ChildProcess
+        try {
+            child = spawn(tool, args, { cwd, windowsHide: true, detached: true, stdio: "ignore" })
+        } catch (error: unknown) {
+            const code = errorCode(error)
+            refuse(new ToolNotStarted(tool, typeof code === "string" ? code : "spawn failed"))
+            return
+        }
+        child.once("error", (error: Error) => {
+            const code = errorCode(error)
+            refuse(new ToolNotStarted(tool, typeof code === "string" ? code : error.message))
+        })
+        child.once("spawn", () => {
+            child.unref()
+            settle()
+        })
+    })
+
 /** Runs a host tool and reports whether it succeeded, never throwing; for probes such as doctor. */
 export const probeTool = async (tool: string, args: readonly string[], cwd: string): Promise<string | undefined> => {
     try {

@@ -163,6 +163,9 @@ const projectsRoot = (): string => {
 /** The host store, `<state base>/machine.sqlite`. */
 export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 
+/** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */
+export const hostLauncherPath = (service: string, extension: "cmd" | "vbs"): string => join(stateBase(), "host", `${service}.${extension}`)
+
 /** A coordinator's immutable launch brief, outside every product repository. */
 export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string =>
     join(role === "supervisor" ? stateBase() : projectDir(root), "briefs", `${role}-${launchId}.md`)
