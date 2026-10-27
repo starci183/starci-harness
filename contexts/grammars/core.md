@@ -55,6 +55,5 @@ and `core` does not bind it (code follow-up C-3).
 
 ## Lint
 
-`@starci/eslint-grammar-starci` (`starciGrammarConfig`) today. Its rules are Common-API checks every grammar
-needs; `core` has no rule of its own. The contract names it `@starci/eslint-grammar-core` over
-`@starci/eslint-grammar-common` (decision D-7).
+`@starci/eslint-grammar-core` (`coreGrammarConfig`). Its rules are Common-API checks every grammar needs; `core`
+has no rule of its own. The contract moves them into `@starci/eslint-grammar-common` (decision D-7).

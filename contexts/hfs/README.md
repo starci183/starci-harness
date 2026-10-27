@@ -50,7 +50,7 @@ law names the parameter instead of its value.
 ## Rules
 
 A rule is a law that a machine can decide; one that needs judgement is a pattern rule reviewed by an agent. Each
-entry names its enforcers by kind (`eslint-be`, `eslint-fe`, `eslint-grammar-starci`, `stylelint`, `machine`,
+entry names its enforcers by kind (`eslint-be`, `eslint-fe`, `eslint-grammar-core`, `stylelint`, `machine`,
 `hfs`, `sonar`). Every rule is an error: no baseline, allowlist or suppression exists for a product. The rules of the
 StarCi runtime repository itself are harness policy, not app knowledge, and are not in this catalog.
 

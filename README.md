@@ -72,7 +72,7 @@ repositories, so a run survives a closed chat or a dead agent. [contexts/harness
 | [ops/](ops/) | the work as data: the worker brief, the worker labels, the lanes and repair routes, the check presets, routing and budgets, liveness, the uat image |
 | [policy/](policy/README.md) | the gates: tiers and profiles, canon packages, banned loosening markers, the secret scan |
 | [contexts/](contexts/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
-| [packages/](packages/README.md) | the packages apps install from npm: the canon (ESLint fe and be, stylelint, tsconfig, prettier, jest) and the AI pool router |
+| [packages/](packages/README.md) | the packages apps install from npm: the canon (ESLint fe and be, stylelint, tsconfig, prettier, jest), the Grammar and its lint families, `hfs`, the shared libraries (heroicons, event-stream, test-world) and the AI pool router |
 | `skills/` | the agent entry for operating the harness (`skills/starci/SKILL.md`) |
 
 ## Build from source
