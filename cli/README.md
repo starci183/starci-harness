@@ -33,6 +33,11 @@ src/
   role the verb does not list refuses `ROLE_REFUSED`, a value that is no role is usage (`ROLE_UNKNOWN`), and unset
   means not enforced. Orca's `worker-start` cannot set a worker's environment, so the rendered brief names the role
   (`supervisor`, `kernel`, `worker` for Orca seats, `agent` for an inline task) and tells the agent to set it.
+- **Context search.** `build` (and `prepack`) ends with `core/contexts/search-build.ts`, which chunks the corpus and
+  writes `dist/contexts-search.json`, embedding it on CPU with the pinned model of `core/contexts/search-embed.ts`
+  (optional dependency `@huggingface/transformers`, weights downloaded once into `.runtime/models` and hash-checked;
+  `STARCI_SEARCH_MODEL=off` builds BM25 only) for `contexts search`, which fuses BM25 and cosine, falls back to BM25
+  when the model is absent, fails `--check` on a stale index and measures `--eval` on `core/contexts/search-eval.json`.
 - **Host processes** run without a shell (`shared/exec.ts`; npm through the running Node), so no quoting breaks on
   Windows; git goes through `shared/git.ts`.
 

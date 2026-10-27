@@ -16,6 +16,7 @@ import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./lite/app/info.js"
+import { appSonarVerb } from "./core/app/sonar.js"
 import { seatListVerb } from "./core/seat/list.js"
 import { seatStartVerb } from "./core/seat/start.js"
 import { seatStopVerb } from "./core/seat/stop.js"
@@ -44,6 +45,7 @@ import { workflowRunVerb } from "./core/workflow/run.js"
 import { seatPingVerb } from "./core/seat/ping.js"
 import { uatRunVerb } from "./core/uat/run.js"
 import { contextsAnatomyVerb } from "./core/contexts/anatomy.js"
+import { contextsSearchVerb } from "./core/contexts/search.js"
 import { benchListVerb } from "./core/bench/list.js"
 import { benchRunVerb } from "./core/bench/run.js"
 import { supervisorStartVerb } from "./core/supervisor/start.js"
@@ -82,6 +84,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskResultVerb,
     taskCancelVerb,
     appInfoVerb,
+    appSonarVerb,
     seatStartVerb,
     seatListVerb,
     seatStopVerb,
@@ -110,6 +113,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     seatPingVerb,
     uatRunVerb,
     contextsAnatomyVerb,
+    contextsSearchVerb,
     benchRunVerb,
     benchListVerb,
     supervisorStartVerb,

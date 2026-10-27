@@ -1,6 +1,6 @@
 {
   "name": "@starci/cli",
-  "version": "2.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "private": true,
   "description": "The starci command line: one TypeScript source, core verbs plus the lite and full edition verbs.",
   "license": "UNLICENSED",
@@ -19,13 +19,13 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node dist/core/contexts/search-build.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "start": "node dist/main.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run build",
-    "prepack": "node -e \"for (const d of ['ops','policy','contexts','packages/jest-preset/README.md']) require('node:fs').cpSync('../'+d, d, {recursive: true})\"",
+    "prepack": "node -e \"for (const d of ['ops','policy','contexts','packages/jest-preset/README.md']) require('node:fs').cpSync('../'+d, d, {recursive: true})\" && node dist/core/contexts/search-build.js",
     "postpack": "node -e \"for (const d of ['ops','policy','contexts','packages']) require('node:fs').rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
@@ -40,5 +40,8 @@
     "jiti": "2.7.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "4.3.1"
   }
 }
