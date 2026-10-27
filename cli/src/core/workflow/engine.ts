@@ -271,6 +271,17 @@ const queueNode = (root: string, workflow: WorkflowRow, node: PlanNode): { reado
     }
 }
 
+/** The wait a node gets when the workflow budget refuses another task, or undefined while the budget allows it. */
+const budgetWait = (root: string, workflowId: string, key: string): StepAction | undefined => {
+    try {
+        assertWorkflowBudget(root, workflowId)
+        return undefined
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return { key, task: null, action: "wait", detail: `${refusal.code}: ${refusal.message}` }
+    }
+}
+
 /** The ready nodes in dependency order become queued tasks while there are free slots and budget; `halted` says the workflow stopped dispatching. */
 const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepAction[]; readonly halted: boolean } => {
     const { workflow } = snapshot
@@ -285,11 +296,9 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
         }
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
         if (node === undefined) continue
-        try {
-            assertWorkflowBudget(root, workflow.id)
-        } catch (error: unknown) {
-            const refusal = asRefusal(error)
-            actions.push({ key: node.key, task: null, action: "wait", detail: `${refusal.code}: ${refusal.message}` })
+        const overBudget = budgetWait(root, workflow.id, node.key)
+        if (overBudget !== undefined) {
+            actions.push(overBudget)
             break
         }
         const made = queueNode(root, workflow, node)

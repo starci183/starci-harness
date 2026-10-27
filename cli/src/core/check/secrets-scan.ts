@@ -39,6 +39,22 @@ const judgeFile = (file: string, text: string): SecretFinding[] => (file.endsWit
 /** The `:line` of a finding, empty for a finding of a whole file. */
 const lineSuffix = (line: number | null): string => (line === null ? "" : ":" + String(line))
 
+/** Splits raw findings into the ones a declared exception covers (with its reason) and the ones it does not, and the exceptions used. */
+const applyExceptions = (raw: readonly SecretFinding[], policy: Policy) => {
+    const findings: SecretFinding[] = []
+    const excepted: ExceptedSecret[] = []
+    const used = new Set<SecurityException>()
+    for (const finding of raw) {
+        const exception = policy.security.exceptions.find((candidate) => candidate.path === finding.file && candidate.rule === finding.pattern)
+        if (exception === undefined) findings.push(finding)
+        else {
+            used.add(exception)
+            excepted.push({ ...finding, reason: exception.reason })
+        }
+    }
+    return { findings, excepted, used }
+}
+
 /**
  * Scans `files` (repository-relative) with the rules of shared/secrets.ts as the files stand: forbidden paths by name, every
  * line of every readable file by content. A neverRead file is judged by its name alone. `complete` says the files are the
@@ -66,17 +82,7 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
         }
         raw.push(...judgeFile(file, read.text))
     }
-    const findings: SecretFinding[] = []
-    const excepted: ExceptedSecret[] = []
-    const used = new Set<SecurityException>()
-    for (const finding of raw) {
-        const exception = policy.security.exceptions.find((candidate) => candidate.path === finding.file && candidate.rule === finding.pattern)
-        if (exception === undefined) findings.push(finding)
-        else {
-            used.add(exception)
-            excepted.push({ ...finding, reason: exception.reason })
-        }
-    }
+    const { findings, excepted, used } = applyExceptions(raw, policy)
     const stale = complete ? policy.security.exceptions.filter((exception) => !used.has(exception)) : []
     const verdict = findings.length === 0 && stale.length === 0 && unjudged.length === 0 ? "green" : "red"
     return { files: present.length, unread, envelopes: allowed ? "allowed" : "refused", findings, excepted, stale, unjudged, verdict }

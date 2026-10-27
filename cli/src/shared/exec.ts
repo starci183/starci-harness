@@ -57,7 +57,7 @@ const killTree = (child: ChildProcess): void => {
     const pid = child.pid
     if (pid === undefined) return
     if (process.platform === "win32") {
-        spawnSync(join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"), ["/pid", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" })
+        spawnSync(join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "taskkill.exe"), ["/pid", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" })
         return
     }
     try {

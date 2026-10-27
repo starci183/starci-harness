@@ -187,7 +187,7 @@ interface Ending {
 }
 
 const seatLine = (ending: Ending): string[] => [
-    ...(ending.seats.length === 0 ? [] : [`seats: ${ending.seats.map((seat) => `${seat.seat} ${seat.outcome}`).join(", ")}`]),
+    ...(ending.seats.length === 0 ? [] : ["seats: " + ending.seats.map((seat) => seat.seat + " " + seat.outcome).join(", ")]),
     ...(ending.seatProblem === undefined ? [] : [`warning: the task's seats were not closed (${ending.seatProblem}); close them with starci seat stop <seat>`]),
 ]
 

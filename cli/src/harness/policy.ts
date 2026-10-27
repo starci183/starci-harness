@@ -185,13 +185,17 @@ const overlayDir = (dir: string, repositoryRoot: string | undefined): string | u
     return POLICY_FILES.some((file) => existsSync(join(candidate, file))) ? candidate : undefined
 }
 
+const profileProblems = (name: string, profile: QualityPolicy["profiles"][string], canon: CanonPolicy): string[] => {
+    const problems: string[] = []
+    for (const stack of profile.canon) if (!(stack in canon.stacks)) problems.push(`profile ${name} names unknown canon stack ${stack}`)
+    if (profile.canon.length > 0 && !profile.runtime.includes("canon")) problems.push(`profile ${name} names canon stacks but its runtime tier has no canon gate`)
+    return problems
+}
+
 const checkCrossReferences = (dir: string, quality: QualityPolicy, canon: CanonPolicy, security: SecurityPolicy): void => {
     const problems: string[] = []
     for (const [kind, name] of Object.entries(quality.defaults)) if (!(name in quality.profiles)) problems.push(`defaults.${kind} names unknown profile ${name}`)
-    for (const [name, profile] of Object.entries(quality.profiles)) {
-        for (const stack of profile.canon) if (!(stack in canon.stacks)) problems.push(`profile ${name} names unknown canon stack ${stack}`)
-        if (profile.canon.length > 0 && !profile.runtime.includes("canon")) problems.push(`profile ${name} names canon stacks but its runtime tier has no canon gate`)
-    }
+    for (const [name, profile] of Object.entries(quality.profiles)) problems.push(...profileProblems(name, profile, canon))
     for (const name of Object.keys(security.sopsEnvelopes.profiles ?? {})) if (!(name in quality.profiles)) problems.push(`security sopsEnvelopes names unknown profile ${name}`)
     if (problems.length > 0) throw new Refusal("POLICY_INVALID", `${dir}: ${problems.join("; ")}`)
 }
