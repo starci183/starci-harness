@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { z } from "zod"
+import { inOrder } from "../../harness/sequential.js"
 import { CHUNKER_VERSION, SEARCH_SCOPES, readCorpus } from "./search-corpus.js"
 import type { Chunk, Corpus, SearchScope } from "./search-corpus.js"
 import { EMBED_MODELS, chosenModel, loadEmbedder, modelCache, packVectors, unpackVectors } from "./search-embed.js"
@@ -63,7 +64,8 @@ const embedChunks = async (model: EmbedModel, chunks: readonly Chunk[], progress
     const passages = chunks.map(passageOf)
     const keys = passages.map((text) => textKey(model, text))
     const missing = keys.flatMap((key, index) => (cached.has(key) ? [] : [index]))
-    for (let start = 0; start < missing.length; start += BATCH) {
+    const starts = Array.from({ length: Math.ceil(missing.length / BATCH) }, (_, batchIndex) => batchIndex * BATCH)
+    await inOrder(starts, async (start) => {
         const batch = missing.slice(start, start + BATCH)
         const vectors = await embedder.embed(
             batch.map((index) => passages[index] ?? ""),
@@ -71,7 +73,7 @@ const embedChunks = async (model: EmbedModel, chunks: readonly Chunk[], progress
         )
         for (const [at, index] of batch.entries()) cached.set(keys[index] ?? "", Buffer.from((vectors[at] ?? new Float32Array()).buffer).toString("base64"))
         if (start % (BATCH * 20) === 0) progress(`embedded ${String(Math.min(start + BATCH, missing.length))}/${String(missing.length)} changed chunk(s)`)
-    }
+    })
     const kept = Object.fromEntries(keys.map((key) => [key, cached.get(key) ?? ""]))
     mkdirSync(modelCache(), { recursive: true })
     writeFileSync(cacheFile, JSON.stringify(kept))
@@ -128,12 +130,10 @@ export const loadIndex = (file = INDEX_PATH): LoadedIndex | undefined => {
 }
 
 /** Whether the index matches the corpus (and the chunker) it claims to cover. */
-export const staleness = (index: SearchIndexFile, corpus: Corpus): string | undefined =>
-    index.chunker !== CHUNKER_VERSION
-        ? `index built by chunker ${String(index.chunker)}, this CLI chunks with ${String(CHUNKER_VERSION)}`
-        : index.corpusHash === corpus.hash
-          ? undefined
-          : `index covers corpus ${index.corpusHash.slice(0, 12)}, the tree is ${corpus.hash.slice(0, 12)}`
+export const staleness = (index: SearchIndexFile, corpus: Corpus): string | undefined => {
+    if (index.chunker !== CHUNKER_VERSION) return `index built by chunker ${String(index.chunker)}, this CLI chunks with ${String(CHUNKER_VERSION)}`
+    return index.corpusHash === corpus.hash ? undefined : `index covers corpus ${index.corpusHash.slice(0, 12)}, the tree is ${corpus.hash.slice(0, 12)}`
+}
 
 /** One search hit. */
 export interface SearchHit {
@@ -179,6 +179,13 @@ const embedderFor = (index: SearchIndexFile): QueryEmbedder => {
     return queryEmbedder
 }
 
+/** The question's vector, or why the ranking stays lexical (asked so, the index carries no vectors, the model does not load). */
+const queryVector = async (index: LoadedIndex, query: string, lexicalOnly: boolean): Promise<Float32Array | string> => {
+    if (lexicalOnly) return "lexical ranking asked"
+    if (index.vectors === null) return index.file.embeddingNote
+    return embedderFor(index.file)(query)
+}
+
 /** Ranks the index for a question: hybrid when the index carries vectors and the pinned model loads offline, else BM25. */
 export const search = async (
     index: LoadedIndex,
@@ -188,7 +195,7 @@ export const search = async (
     const chunks = index.file.chunks
     const allowed = options.scopes.length === 0 ? () => true : (at: number) => options.scopes.includes(chunks[at]?.scope ?? "harness")
     const lexical = index.lexical.score(query, allowed)
-    const vector = options.lexicalOnly || index.vectors === null ? (options.lexicalOnly ? "lexical ranking asked" : index.file.embeddingNote) : await embedderFor(index.file)(query)
+    const vector = await queryVector(index, query, options.lexicalOnly)
     const vectors = index.vectors
     const ranked = typeof vector === "string" || vectors === null ? lexical : fuse([lexical, cosineRank(vector, vectors, allowed)], FUSION_DEPTH)
     const hits = ranked.slice(0, options.limit).flatMap(({ index: at, score }) => {

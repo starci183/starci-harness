@@ -14,7 +14,7 @@ export const benchListVerb = defineVerb({
     flags: {
         group: { kind: "string", summary: "only this group" },
     },
-    run: async (_context, flags) => {
+    run: (_context, flags) => {
         const scenarios = loadScenarios().filter((scenario) => flags.group === undefined || scenario.group === flags.group)
         const rows = scenarios.map((scenario) => ({ id: scenario.id, group: scenario.group, title: scenario.title, automation: scenario.automation, runnable: runnable(scenario), pending: scenario.pending ?? null }))
         const table = formatTable([["SCENARIO", "GROUP", "AUTOMATION", "RUNS NOW", "TITLE"], ...rows.map((row) => [row.id, row.group, row.automation, row.runnable ? "yes" : "no", row.title])])

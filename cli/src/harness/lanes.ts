@@ -204,28 +204,41 @@ const satisfiedBy = (satisfier: (typeof SATISFIERS)[number], ref: WorkRef, step:
             return done ? `${ref.id} is done` : undefined
         case "direction-approved":
             return done && fileExists(repo, record.direction) ? `${ref.id} is done and its direction ${record.direction} exists` : undefined
-        case "assets-exist": {
-            const slots = slotsOf(record)
-            const drawn = slots.length > 0 && slots.every((slot) => typeof slot === "object" && slot !== null && "file" in slot && fileExists(repo, slot.file))
-            return drawn ? `every asset slot of ${ref.id} has its file` : undefined
-        }
-        case "owners-landed": {
-            const owners = Array.isArray(record?.owners) ? (record.owners as unknown[]) : []
-            const paths = owners.map((owner) => (typeof owner === "object" && owner !== null && "path" in owner && typeof owner.path === "string" ? owner.path : "")).filter((path) => path !== "")
-            if (paths.length === 0) return undefined
-            const landed = paths.every((path) => captureGitSync(["log", "-1", "--format=%H", "--", path], repo).stdout.trim() !== "")
-            return landed ? `every owner of ${ref.id} (${paths.join(", ")}) has a commit` : undefined
-        }
+        case "assets-exist":
+            return assetsDrawn(record, ref, repo)
+        case "owners-landed":
+            return ownersLanded(record, ref, repo)
         case "uat-receipted": {
             const evidence = readYamlFile(join(repo, ref.folder, "evidence.yaml"))
             const runs = Array.isArray(evidence?.runs) ? evidence.runs.length : 0
             return done && runs > 0 ? `${ref.id} is done and its evidence.yaml cites ${String(runs)} run(s)` : undefined
         }
-        case "task-green": {
-            const task = greenTask(place, ref, step.label, step.over)
-            return task === undefined ? undefined : `task ${task} (${step.label}) is done over ${step.over === "feature" ? `feature ${ref.feature ?? "-"}` : ref.id}`
-        }
+        case "task-green":
+            return taskGreen(place, ref, step)
     }
+}
+
+/** `task-green`: a done task of the step's label over the record (or its feature). */
+const taskGreen = (place: FlowPlace, ref: WorkRef, step: LaneStep): string | undefined => {
+    const task = greenTask(place, ref, step.label, step.over)
+    const over = step.over === "feature" ? "feature " + (ref.feature ?? "-") : ref.id
+    return task === undefined ? undefined : `task ${task} (${step.label}) is done over ${over}`
+}
+
+/** `assets-exist`: every asset slot of the record names a file that exists. */
+const assetsDrawn = (record: Record<string, unknown> | undefined, ref: WorkRef, repo: string): string | undefined => {
+    const slots = slotsOf(record)
+    const drawn = slots.length > 0 && slots.every((slot) => typeof slot === "object" && slot !== null && "file" in slot && fileExists(repo, slot.file))
+    return drawn ? `every asset slot of ${ref.id} has its file` : undefined
+}
+
+/** `owners-landed`: every owner path of the record has a commit. */
+const ownersLanded = (record: Record<string, unknown> | undefined, ref: WorkRef, repo: string): string | undefined => {
+    const owners = Array.isArray(record?.owners) ? (record.owners as unknown[]) : []
+    const paths = owners.map((owner) => (typeof owner === "object" && owner !== null && "path" in owner && typeof owner.path === "string" ? owner.path : "")).filter((path) => path !== "")
+    if (paths.length === 0) return undefined
+    const landed = paths.every((path) => captureGitSync(["log", "-1", "--format=%H", "--", path], repo).stdout.trim() !== "")
+    return landed ? `every owner of ${ref.id} (${paths.join(", ")}) has a commit` : undefined
 }
 
 /** Why a step is optional for this record and goal, or undefined when it must be walked. */
@@ -305,6 +318,78 @@ const featureRecords = (feature: string, lane: Lane, covered: readonly WorkRef[]
     return [...found.values()]
 }
 
+/** The steps of a record's lane already carried, each with the tasks that carry it, in lane order. */
+type CarriedBefore = readonly { readonly step: string; readonly keys: readonly string[] }[]
+
+/** What a walk of the graph's lanes reads, and where it writes its problems. */
+interface LaneWalk {
+    readonly nodes: readonly FlowNode[]
+    readonly place: FlowPlace
+    readonly lanes: readonly Lane[]
+    readonly refsOf: ReadonlyMap<string, readonly WorkRef[]>
+    readonly covered: ReadonlyMap<string, WorkRef>
+    readonly ancestors: ReadonlyMap<string, ReadonlySet<string>>
+    readonly problems: string[]
+    readonly flowOf: (ref: WorkRef) => RecordFlow | undefined
+}
+
+/** Whether a task is over the record (or, for a feature step, over the record's feature). */
+const isOver = (walk: LaneWalk, node: FlowNode, ref: WorkRef, step: LaneStep): boolean =>
+    (walk.refsOf.get(node.key) ?? []).some((other) => (step.over === "feature" ? ref.feature !== null && other.feature === ref.feature : other.id === ref.id))
+
+/** The problems of a carrier of a held step: the feature has no record of the lane it is held until, or the carrier does not depend on their tasks. */
+const heldProblems = (walk: LaneWalk, step: LaneStep, ref: WorkRef, key: string, above: ReadonlySet<string>): string[] => {
+    const held = step.heldUntil === undefined ? undefined : walk.lanes.find((lane) => lane.id === step.heldUntil)
+    if (held === undefined || ref.feature === null) return []
+    const records = featureRecords(ref.feature, held, [...walk.covered.values()], walk.place.repo)
+    if (records.length === 0) {
+        return [`${ref.id}: step ${step.id} is held until the ${held.id} records of feature ${ref.feature}, and it has none; write one (docs) and walk its lane (${held.steps.map((entry) => entry.label).join(", ")}) before task ${key}`]
+    }
+    return records.flatMap((record) => {
+        const keys = (walk.flowOf(record)?.steps ?? []).flatMap((entry) => entry.tasks)
+        const missing = keys.filter((dep) => !above.has(dep))
+        return missing.length === 0 ? [] : [`${ref.id}: task ${key} carries step ${step.id}, held until ${record.id}; make it depend on ${missing.join(", ")}`]
+    })
+}
+
+/** The tasks of a step's label over the record not yet used by another step: those naming the step as input, else those naming none. */
+const carriersOf = (walk: LaneWalk, ref: WorkRef, step: LaneStep, used: ReadonlySet<string>): string[] => {
+    const candidates = walk.nodes.filter((node) => node.contract.label === step.label && isOver(walk, node, ref, step) && !used.has(node.key))
+    const named = candidates.filter((node) => stepInput(node.contract) === step.id)
+    return (named.length > 0 ? named : candidates.filter((node) => stepInput(node.contract) === undefined)).map((node) => node.key)
+}
+
+/** The problems of a step's carriers: one that does not depend on every task of an earlier step, or on the records its step is held until. */
+const carriedProblems = (walk: LaneWalk, ref: WorkRef, laneId: string, step: LaneStep, carriers: readonly string[], before: CarriedBefore): void => {
+    for (const key of carriers) {
+        const above = walk.ancestors.get(key) ?? new Set<string>()
+        for (const earlier of before) {
+            const missing = earlier.keys.filter((dep) => !above.has(dep))
+            if (missing.length > 0) walk.problems.push(`${ref.id} (lane ${laneId}): task ${key} carries step ${step.id} but does not depend on ${missing.join(", ")} (step ${earlier.step} before it); add them to its dependsOn`)
+        }
+        walk.problems.push(...heldProblems(walk, step, ref, key, above))
+    }
+}
+
+/** One lane step of a record: optional, satisfied by evidence, carried by tasks (`used` takes them), or missing (a problem naming the fix). */
+const walkStep = (walk: LaneWalk, ref: WorkRef, lane: Lane, step: LaneStep, before: CarriedBefore, used: Set<string>): StepFlow => {
+    const optional = optionalBecause(step, ref, walk.place)
+    if (optional !== undefined) return { step: step.id, label: step.label, status: "optional", detail: optional, tasks: [] }
+    const evidence = step.satisfiedWhen.map((satisfier) => satisfiedBy(satisfier, ref, step, walk.place)).find((found) => found !== undefined)
+    if (evidence !== undefined) return { step: step.id, label: step.label, status: "satisfied", detail: evidence, tasks: [] }
+    const carriers = carriersOf(walk, ref, step, used)
+    if (carriers.length === 0) {
+        const after = before.flatMap((entry) => entry.keys)
+        const shared = lane.steps.filter((other) => other.label === step.label).length > 1
+        const fix = [`add a ${step.label} task over ${ref.folder}`, ...(shared ? [`with input step: ${step.id}`] : []), ...(after.length === 0 ? [] : [`depending on ${after.join(", ")}`])].join(" ")
+        const detail = `neither satisfied (${step.satisfiedWhen.join(" | ")}) nor carried: ${fix}`
+        walk.problems.push(`${ref.id} (lane ${lane.id}): step ${step.id} is ${detail}`)
+        return { step: step.id, label: step.label, status: "missing", detail, tasks: [] }
+    }
+    for (const key of carriers) used.add(key)
+    return { step: step.id, label: step.label, status: "carried", detail: `carried by ${carriers.join(", ")}`, tasks: carriers }
+}
+
 /**
  * The flow of a graph (ops/lanes.yaml): every Work record a task is over walks its lane, and so does every record a held step
  * waits on. Each step is optional, satisfied by evidence, carried by tasks of its label over the record, or missing; a carrying
@@ -315,11 +400,7 @@ export const evaluateFlow = (nodes: readonly FlowNode[], place: FlowPlace, lanes
     const refsOf = new Map(nodes.map((node) => [node.key, recordsOf(node.contract, repo)]))
     const covered = new Map<string, WorkRef>()
     for (const refs of refsOf.values()) for (const ref of refs) covered.set(ref.id, ref)
-    const ancestors = ancestorsOf(nodes)
-    const problems: string[] = []
     const flows = new Map<string, RecordFlow>()
-    const isOver = (node: FlowNode, ref: WorkRef, step: LaneStep): boolean =>
-        (refsOf.get(node.key) ?? []).some((other) => (step.over === "feature" ? ref.feature !== null && other.feature === ref.feature : other.id === ref.id))
     const flowOf = (ref: WorkRef): RecordFlow | undefined => {
         const known = flows.get(ref.id)
         if (known !== undefined) return known
@@ -329,69 +410,28 @@ export const evaluateFlow = (nodes: readonly FlowNode[], place: FlowPlace, lanes
         const flow: RecordFlow = { record: ref.id, lane: lane.id, steps }
         flows.set(ref.id, flow)
         const used = new Set<string>()
-        let before: { readonly step: string; readonly keys: readonly string[] }[] = []
-        const shared = (label: string): boolean => lane.steps.filter((step) => step.label === label).length > 1
+        let before: CarriedBefore = []
         for (const step of lane.steps) {
-            const optional = optionalBecause(step, ref, place)
-            if (optional !== undefined) {
-                steps.push({ step: step.id, label: step.label, status: "optional", detail: optional, tasks: [] })
-                continue
-            }
-            const evidence = step.satisfiedWhen.map((satisfier) => satisfiedBy(satisfier, ref, step, place)).find((found) => found !== undefined)
-            if (evidence !== undefined) {
-                steps.push({ step: step.id, label: step.label, status: "satisfied", detail: evidence, tasks: [] })
-                continue
-            }
-            const candidates = nodes.filter((node) => node.contract.label === step.label && isOver(node, ref, step) && !used.has(node.key))
-            const named = candidates.filter((node) => stepInput(node.contract) === step.id)
-            const carriers = (named.length > 0 ? named : candidates.filter((node) => stepInput(node.contract) === undefined)).map((node) => node.key)
-            if (carriers.length === 0) {
-                const after = before.flatMap((entry) => entry.keys)
-                const fix = [
-                    `add a ${step.label} task over ${ref.folder}`,
-                    ...(shared(step.label) ? [`with input step: ${step.id}`] : []),
-                    ...(after.length === 0 ? [] : [`depending on ${after.join(", ")}`]),
-                ].join(" ")
-                const detail = `neither satisfied (${step.satisfiedWhen.join(" | ")}) nor carried: ${fix}`
-                steps.push({ step: step.id, label: step.label, status: "missing", detail, tasks: [] })
-                problems.push(`${ref.id} (lane ${lane.id}): step ${step.id} is ${detail}`)
-                continue
-            }
-            for (const key of carriers) used.add(key)
-            steps.push({ step: step.id, label: step.label, status: "carried", detail: `carried by ${carriers.join(", ")}`, tasks: carriers })
-            for (const key of carriers) {
-                const above = ancestors.get(key) ?? new Set<string>()
-                for (const earlier of before) {
-                    const missing = earlier.keys.filter((dep) => !above.has(dep))
-                    if (missing.length > 0) problems.push(`${ref.id} (lane ${lane.id}): task ${key} carries step ${step.id} but does not depend on ${missing.join(", ")} (step ${earlier.step} before it); add them to its dependsOn`)
-                }
-                problems.push(...heldProblems(step, ref, key, above))
-            }
-            before = [...before, { step: step.id, keys: carriers }]
+            const walked = walkStep(walk, ref, lane, step, before, used)
+            steps.push(walked)
+            // The step is in the flow before its carriers are judged, so a held record's walk that comes back here sees it.
+            if (walked.status !== "carried") continue
+            carriedProblems(walk, ref, lane.id, step, walked.tasks, before)
+            before = [...before, { step: step.id, keys: walked.tasks }]
         }
         return flow
     }
-    const heldProblems = (step: LaneStep, ref: WorkRef, key: string, above: ReadonlySet<string>): string[] => {
-        const held = step.heldUntil === undefined ? undefined : lanes.find((lane) => lane.id === step.heldUntil)
-        if (held === undefined) return []
-        if (ref.feature === null) return []
-        const records = featureRecords(ref.feature, held, [...covered.values()], repo)
-        if (records.length === 0) {
-            return [`${ref.id}: step ${step.id} is held until the ${held.id} records of feature ${ref.feature}, and it has none; write one (docs) and walk its lane (${held.steps.map((entry) => entry.label).join(", ")}) before task ${key}`]
-        }
-        return records.flatMap((record) => {
-            const keys = (flowOf(record)?.steps ?? []).flatMap((entry) => entry.tasks)
-            const missing = keys.filter((dep) => !above.has(dep))
-            return missing.length === 0 ? [] : [`${ref.id}: task ${key} carries step ${step.id}, held until ${record.id}; make it depend on ${missing.join(", ")}`]
-        })
-    }
-    for (const ref of [...covered.values()]) flowOf(ref)
-    return { records: [...flows.values()], problems: [...new Set(problems)] }
+    const walk: LaneWalk = { nodes, place, lanes, refsOf, covered, ancestors: ancestorsOf(nodes), problems: [], flowOf }
+    for (const ref of covered.values()) flowOf(ref)
+    return { records: [...flows.values()], problems: [...new Set(walk.problems)] }
 }
 
 /** The flow as text: one line per record, each step with its status. */
 export const flowLines = (report: FlowReport): string[] =>
-    report.records.map((flow) => `${flow.record} [${flow.lane}]: ${flow.steps.map((step) => `${step.step} ${step.status}${step.tasks.length === 0 ? "" : ` (${step.tasks.join(", ")})`}`).join(", ")}`)
+    report.records.map((flow) => {
+        const steps = flow.steps.map((step) => step.step + " " + step.status + (step.tasks.length === 0 ? "" : " (" + step.tasks.join(", ") + ")"))
+        return `${flow.record} [${flow.lane}]: ${steps.join(", ")}`
+    })
 
 /**
  * Refuses FLOW_INCOMPLETE when a Work record the graph covers has a lane step that is neither satisfied by evidence nor carried by
@@ -402,7 +442,7 @@ export const assertFlow = (workflowId: string, nodes: readonly FlowNode[], place
     if (report.problems.length === 0) return report
     throw new Refusal(
         "FLOW_INCOMPLETE",
-        `the graph of ${workflowId} leaves lane steps of its Work records undone (ops/lanes.yaml):\n${report.problems.map((problem) => `- ${problem}`).join("\n")}\nlanes:\n${flowLines(report).map((line) => `  ${line}`).join("\n")}`,
+        `the graph of ${workflowId} leaves lane steps of its Work records undone (ops/lanes.yaml):\n${report.problems.map((problem) => "- " + problem).join("\n")}\nlanes:\n${flowLines(report).map((line) => "  " + line).join("\n")}`,
     )
 }
 

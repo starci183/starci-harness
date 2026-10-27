@@ -119,7 +119,8 @@ export const supervisorStatus = async (binary: OrcaBinary | undefined, cwd: stri
     if (binary === undefined) return { project, supervisor, liveness: "unknown", leaseExpired }
     try {
         const live = await terminalList(binary, cwd)
-        return { project, supervisor, liveness: live.handles.has(supervisor.terminal) ? "alive" : live.truncated ? "unknown" : "gone", leaseExpired }
+        const unlisted = live.truncated ? "unknown" : "gone"
+        return { project, supervisor, liveness: live.handles.has(supervisor.terminal) ? "alive" : unlisted, leaseExpired }
     } catch {
         return { project, supervisor, liveness: "unknown", leaseExpired }
     }

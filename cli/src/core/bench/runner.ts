@@ -8,7 +8,7 @@ import { stringify } from "yaml"
 import { runtimeRoot, stateBase } from "../../harness/ledger.js"
 import { inOrder } from "../../harness/sequential.js"
 import { captureTool } from "../../shared/exec.js"
-import { captureGit } from "../../shared/git.js"
+import { captureGit, samePath } from "../../shared/git.js"
 import type { ToolRun } from "../../shared/exec.js"
 import { benchRoot, runnable } from "./scenario.js"
 import type { Assertion, Scenario, Step } from "./scenario.js"
@@ -46,11 +46,6 @@ interface RunState {
 
 const VAR = /\$\{([A-Za-z0-9_.-]+)\}/g
 
-const spell = (path: string): string => {
-    const slashed = path.replaceAll("\\", "/").replace(/\/+$/, "")
-    return process.platform === "win32" ? slashed.toLowerCase() : slashed
-}
-
 /**
  * The state folder (`<state>/projects/<ledger_id>`) of a repository of the run, once a writing verb minted its ledger: the one the
  * host registry lists for that repository, else, before any registry, the only folder there is.
@@ -62,13 +57,13 @@ const ledgerFolder = (state: string, repo: string): string | undefined => {
     if (existsSync(machine)) {
         const db = new DatabaseSync(machine, { readOnly: true, timeout: 5000 })
         try {
-            const row = db.prepare("SELECT ledger_id, repo_root FROM ledgers").all().find((candidate) => spell(String(candidate.repo_root)) === spell(repo))
+            const row = db.prepare("SELECT ledger_id, repo_root FROM ledgers").all().find((candidate) => samePath(String(candidate.repo_root), repo))
             if (row !== undefined) return join(root, String(row.ledger_id))
         } finally {
             db.close()
         }
     }
-    const [only] = readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory())
+    const only = readdirSync(root).find((name) => statSync(join(root, name)).isDirectory())
     return only === undefined ? undefined : join(root, only)
 }
 
@@ -161,6 +156,13 @@ const seatOf = (run: RunState, seat: string | undefined, label: string): { reado
     return { env: { ORCA_TERMINAL_HANDLE: known(run, `kernel.${workflow}.terminal`, label), STARCI_ROLE: "kernel" }, cwd: run.vars.get(`worktree.${workflow}`) ?? run.repo }
 }
 
+/** What a verb run said, for a failure: its exit and its envelope's code and message, else the head of its output. */
+const saidOf = (done: ToolRun, envelope: Record<string, unknown> | undefined): string => {
+    if (envelope === undefined) return `exit ${String(done.exitCode)} ${done.stdout.slice(0, 300)}`
+    const message = typeof envelope.message === "string" ? envelope.message.slice(0, 300) : undefined
+    return `exit ${String(done.exitCode)} ${JSON.stringify({ code: envelope.code, message })}`
+}
+
 const starci = async (run: RunState, step: Step, label: string): Promise<void> => {
     const args = (step.starci ?? []).map((arg) => expand(run, arg))
     const seat = seatOf(run, step.seat, label)
@@ -169,7 +171,7 @@ const starci = async (run: RunState, step: Step, label: string): Promise<void> =
     const done = await captureTool(process.execPath, [cliPath(), ...args, "--json", "--cwd", cwd], cwd, { env, timeoutMs: 600_000 })
     const envelope = envelopeOf(done.stdout)
     const expect = step.expect ?? { exit: 0 }
-    const said = `exit ${String(done.exitCode)} ${envelope === undefined ? done.stdout.slice(0, 300) : JSON.stringify({ code: envelope.code, message: typeof envelope.message === "string" ? envelope.message.slice(0, 300) : undefined })}`
+    const said = saidOf(done, envelope)
     if (expect.exit !== undefined && done.exitCode !== expect.exit) unmet(run, label, `expected exit ${String(expect.exit)}, got ${said}`)
     if (expect.ok !== undefined && envelope?.ok !== expect.ok) unmet(run, label, `expected ok ${String(expect.ok)}, got ${said}`)
     if (expect.code !== undefined && envelope?.code !== expect.code) unmet(run, label, `expected refusal ${expect.code}, got ${said}`)
@@ -227,12 +229,21 @@ const orcaCalls = (run: RunState): { readonly command: string; readonly flags: R
               .map((line) => JSON.parse(line) as { command: string; flags: Record<string, unknown> })
         : []
 
-const check = async (run: RunState, assertion: Assertion, label: string): Promise<void> => {
-    if (assertion.sql !== undefined) {
-        const got = query(run, assertion.sql.db, assertion.sql.query, label, assertion.sql.repo)
-        const want = deepExpand(run, assertion.sql.equals)
-        if (!isDeepStrictEqual(got, want)) unmet(run, label, `${assertion.sql.query} gave ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`)
-    }
+/** Counts the Orca calls of one command (matching flags, or distinct values of one flag) against the expected bounds. */
+const checkOrcaCalls = (run: RunState, expected: NonNullable<Assertion["orcaCalls"]>, label: string): void => {
+    const { command, count, min, max, distinct } = expected
+    const match = Object.entries(expected.match ?? {}).map(([flag, pattern]) => [flag, new RegExp(expand(run, pattern))] as const)
+    const calls = orcaCalls(run).filter((call) => call.command === command && match.every(([flag, pattern]) => pattern.test(typeof call.flags[flag] === "string" ? call.flags[flag] : "")))
+    const n = distinct === undefined ? calls.length : new Set(calls.map((call) => JSON.stringify(call.flags[distinct]))).size
+    const distinctNote = distinct === undefined ? "" : " with distinct " + distinct
+    const what = `${String(n)} orca ${command} call(s)${distinctNote}`
+    if (count !== undefined && n !== count) unmet(run, label, `${what}, expected ${String(count)}`)
+    if (min !== undefined && n < min) unmet(run, label, `${what}, expected at least ${String(min)}`)
+    if (max !== undefined && n > max) unmet(run, label, `${what}, expected at most ${String(max)}`)
+}
+
+/** The git assertions: commits matching a grep, a clean worktree, a path at HEAD. */
+const checkGit = async (run: RunState, assertion: Assertion, label: string): Promise<void> => {
     if (assertion.gitLog !== undefined) {
         const log = await git(run, ["log", "--format=%H", `--grep=${expand(run, assertion.gitLog.grep)}`, "--fixed-strings", "HEAD"], assertion.gitLog.in)
         const count = log.stdout.split("\n").filter((line) => line !== "").length
@@ -246,16 +257,16 @@ const check = async (run: RunState, assertion: Assertion, label: string): Promis
         const found = await git(run, ["cat-file", "-e", `HEAD:${expand(run, assertion.gitHas.path)}`], assertion.gitHas.in)
         if ((found.exitCode === 0) !== assertion.gitHas.present) unmet(run, label, `HEAD has ${assertion.gitHas.path}: ${String(found.exitCode === 0)}`)
     }
-    if (assertion.orcaCalls !== undefined) {
-        const { command, count, min, max, distinct } = assertion.orcaCalls
-        const match = Object.entries(assertion.orcaCalls.match ?? {}).map(([flag, pattern]) => [flag, new RegExp(expand(run, pattern))] as const)
-        const calls = orcaCalls(run).filter((call) => call.command === command && match.every(([flag, pattern]) => pattern.test(typeof call.flags[flag] === "string" ? call.flags[flag] : "")))
-        const n = distinct === undefined ? calls.length : new Set(calls.map((call) => JSON.stringify(call.flags[distinct]))).size
-        const what = `${String(n)} orca ${command} call(s)${distinct === undefined ? "" : ` with distinct ${distinct}`}`
-        if (count !== undefined && n !== count) unmet(run, label, `${what}, expected ${String(count)}`)
-        if (min !== undefined && n < min) unmet(run, label, `${what}, expected at least ${String(min)}`)
-        if (max !== undefined && n > max) unmet(run, label, `${what}, expected at most ${String(max)}`)
+}
+
+const check = async (run: RunState, assertion: Assertion, label: string): Promise<void> => {
+    if (assertion.sql !== undefined) {
+        const got = query(run, assertion.sql.db, assertion.sql.query, label, assertion.sql.repo)
+        const want = deepExpand(run, assertion.sql.equals)
+        if (!isDeepStrictEqual(got, want)) unmet(run, label, `${assertion.sql.query} gave ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`)
     }
+    await checkGit(run, assertion, label)
+    if (assertion.orcaCalls !== undefined) checkOrcaCalls(run, assertion.orcaCalls, label)
     if (assertion.exists !== undefined) {
         const present = existsSync(inRepo(run, assertion.exists.path))
         if (present !== assertion.exists.present) unmet(run, label, `${assertion.exists.path} exists is ${String(present)}`)
@@ -265,15 +276,15 @@ const check = async (run: RunState, assertion: Assertion, label: string): Promis
 const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
     const current = existsSync(run.orcaState) ? (JSON.parse(readFileSync(run.orcaState, "utf8")) as Record<string, unknown>) : {}
     const rules = [...((current.rules as unknown[] | undefined) ?? []), ...((deepExpand(run, step.rules ?? []) as unknown[]))]
-    const workers = { ...((current.workers as Record<string, string> | undefined) ?? {}) }
+    const workers = { ...(current.workers as Record<string, string> | undefined) }
     // `*` names every Op dispatch the stand-in launched so far and `kernel` every Kernel's: the scenario cannot know Orca's ids before the launch.
     const { dispatch, state } = step.worker ?? { dispatch: undefined, state: "" }
     const launched = Object.values((current.dispatches as Record<string, { readonly dispatchId: string; readonly kind?: string }> | undefined) ?? {})
     if (dispatch === "*" || dispatch === "kernel") for (const entry of launched.filter((candidate) => (candidate.kind === "kernel") === (dispatch === "kernel"))) workers[entry.dispatchId] = state
     else if (dispatch !== undefined) workers[expand(run, dispatch)] = state
-    const terminals = { ...((current.terminals as Record<string, boolean> | undefined) ?? {}) }
+    const terminals = { ...(current.terminals as Record<string, boolean> | undefined) }
     if (step.terminal !== undefined) terminals[expand(run, step.terminal.handle)] = step.terminal.live
-    const mail = { ...((current.mail as Record<string, unknown[]> | undefined) ?? {}) }
+    const mail = { ...(current.mail as Record<string, unknown[]> | undefined) }
     let sent = Number(current.benchMail ?? 0)
     for (const letter of step.mail ?? []) {
         const to = expand(run, letter.to)
@@ -319,8 +330,8 @@ const boot = async (run: RunState, step: NonNullable<Step["boot"]>, label: strin
     await adoptKernel(run, step.workflow, step.attach !== false, label, step.in ?? step.project)
 }
 
-const execute = async (run: RunState, step: Step, index: number): Promise<void> => {
-    const label = `step ${String(index + 1)}${step.name === undefined ? "" : ` (${step.name})`}`
+/** The files a step writes: `file` under the run folder (text or YAML), `write` in the scratch repository (text or a generated fixture). */
+const writeFiles = (run: RunState, step: Step): void => {
     if (step.file !== undefined) {
         const target = isAbsolute(expand(run, step.file.path)) ? expand(run, step.file.path) : join(run.dir, expand(run, step.file.path))
         const content = step.file.content ?? stringify(deepExpand(run, step.file.yaml))
@@ -330,28 +341,40 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
         const content = step.write.generated === undefined ? expand(run, step.write.content ?? "") : generated(step.write.generated)
         writeText(inRepo(run, step.write.path), content, step.write.crlf === true)
     }
+}
+
+/** Runs a step's SQL on a store of the run. */
+const execSql = (run: RunState, sql: NonNullable<Step["sql"]>, label: string): void => {
+    const handle = openDb(run, sql.db, label, sql.repo)
+    try {
+        handle.exec(expand(run, sql.exec))
+    } finally {
+        handle.close()
+    }
+}
+
+/** Saves the first value a query returns as a variable of the run. */
+const readVar = (run: RunState, read: NonNullable<Step["read"]>, label: string): void => {
+    const [first] = query(run, read.db, read.query, label, read.repo) as unknown[]
+    const value = Array.isArray(first) ? (first as unknown[])[0] : first
+    if (value === undefined || value === null) unmet(run, label, `${read.query} returned nothing to save as ${read.as}`)
+    run.vars.set(read.as, typeof value === "string" ? value : JSON.stringify(value))
+}
+
+const execute = async (run: RunState, step: Step, index: number): Promise<void> => {
+    const named = step.name === undefined ? "" : " (" + step.name + ")"
+    const label = `step ${String(index + 1)}${named}`
+    writeFiles(run, step)
     if (step.remove !== undefined) rmSync(inRepo(run, step.remove), { force: true, recursive: true })
     if (step.orca !== undefined) orcaScript(run, step.orca)
-    if (step.sql !== undefined) {
-        const handle = openDb(run, step.sql.db, label, step.sql.repo)
-        try {
-            handle.exec(expand(run, step.sql.exec))
-        } finally {
-            handle.close()
-        }
-    }
+    if (step.sql !== undefined) execSql(run, step.sql, label)
     if (step.git !== undefined) {
         const done = await git(run, step.git.map((arg) => expand(run, arg)))
         const want = step.expect?.exit ?? 0
         if (done.exitCode !== want) unmet(run, label, `git ${step.git.join(" ")} exited ${String(done.exitCode)}: ${done.stderr.slice(0, 300)}`)
     }
     if (step.boot !== undefined) await boot(run, step.boot, label)
-    if (step.read !== undefined) {
-        const [first] = query(run, step.read.db, step.read.query, label, step.read.repo) as unknown[]
-        const value = Array.isArray(first) ? (first as unknown[])[0] : first
-        if (value === undefined || value === null) unmet(run, label, `${step.read.query} returned nothing to save as ${step.read.as}`)
-        run.vars.set(step.read.as, typeof value === "string" ? value : JSON.stringify(value))
-    }
+    if (step.read !== undefined) readVar(run, step.read, label)
     if (step.worker !== undefined) await worker(run, step.worker, label)
     if (step.starci !== undefined) await Promise.all(Array.from({ length: step.parallel ?? 1 }, async () => starci(run, step, label)))
     if (step.assert !== undefined) await check(run, step.assert, label)
@@ -360,7 +383,8 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
 const stamp = (): string => new Date().toISOString().replaceAll(/[:.]/g, "-")
 
 const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState> => {
-    const dir = join(stateBase(), "bench", `${stamp()}-${scenario.id}${fault === null ? "" : `-${fault}`}`)
+    const faultSuffix = fault === null ? "" : "-" + fault
+    const dir = join(stateBase(), "bench", `${stamp()}-${scenario.id}${faultSuffix}`)
     const repo = join(dir, scenario.repo?.dir ?? "repo")
     const state = join(dir, "state")
     mkdirSync(repo, { recursive: true })
@@ -382,7 +406,7 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
     const repos: readonly [string, Readonly<Record<string, string>> | undefined][] = [[repo, scenario.repo?.files], ...Object.entries(scenario.repos ?? {}).map(([name, files]): [string, Readonly<Record<string, string>> | undefined] => [join(dir, name), files.files])]
     for (const [path] of repos.slice(1)) mkdirSync(path, { recursive: true })
     await inOrder(repos, async ([path, given]) => {
-        for (const args of [["init", "-q", "-b", "main"], ["config", "user.email", "bench@starci.local"], ["config", "user.name", "starci bench"], ["config", "core.autocrlf", "false"]]) await git(withEnv, args, path)
+        await inOrder([["init", "-q", "-b", "main"], ["config", "user.email", "bench@starci.local"], ["config", "user.name", "starci bench"], ["config", "core.autocrlf", "false"]], (args) => git(withEnv, args, path))
         for (const [file, content] of Object.entries(given ?? { "README.md": "# bench scratch repository\n" })) writeText(join(path, file), expand(withEnv, content), false)
         await git(withEnv, ["add", "-A"], path)
         await git(withEnv, ["commit", "-q", "-m", "bench: scratch repository"], path)
@@ -401,12 +425,10 @@ export const runScenario = async (scenario: Scenario, fault: string | null): Pro
     delete process.env.STARCI_ROLE
     const run = await setUp(scenario, fault)
     let verdict: Verdict = "pass"
+    // A step runs only under its `when` fault and never under its `unless` one; its number counts every step of the scenario.
+    const steps = (scenario.steps ?? []).map((step, index) => ({ step, index })).filter(({ step }) => (step.when === undefined || step.when === fault) && step.unless !== fault)
     try {
-        for (const [index, step] of (scenario.steps ?? []).entries()) {
-            if (step.when !== undefined && step.when !== fault) continue
-            if (step.unless !== undefined && step.unless === fault) continue
-            await execute(run, step, index)
-        }
+        await inOrder(steps, ({ step, index }) => execute(run, step, index))
     } catch (error: unknown) {
         verdict = error instanceof Unmet ? "fail" : "error"
         if (!(error instanceof Unmet)) run.failures.push(`bench error: ${error instanceof Error ? error.message : String(error)}`)

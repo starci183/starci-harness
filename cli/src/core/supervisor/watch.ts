@@ -40,24 +40,28 @@ export const supervisorWatchVerb = defineVerb({
         const loaded = buildStamp()
         let seen = loaded
         const ticks: SupervisorTick[] = []
-        while (ticks.length < limit) {
+        // One pass after another, `seconds` apart, until the limit; a new build of the CLI first settles, then replaces this process.
+        const pass = async (n: number): Promise<void> => {
             const stamp = buildStamp()
             if (stamp !== loaded && stamp === seen) {
                 context.progress(`${new Date().toISOString()} a new build of ${DIST}: reloading`)
                 process.exit(await runAttached(process.execPath, [...process.execArgv, ...process.argv.slice(1)], process.cwd()))
             }
-            if (stamp !== loaded) {
-                seen = stamp
-                context.progress(`${new Date().toISOString()} a new build of ${DIST} is being written: no tick until it settles`)
-            } else {
+            if (stamp === loaded) {
                 const tick = await supervisorTick(context)
                 ticks.push(tick)
                 const lines = tick.actions.length === 0 ? "" : `\n  ${tick.actions.join("\n  ")}`
-                context.progress(`${new Date().toISOString()} tick ${String(ticks.length)}: ${tick.swept.length === 0 ? "nothing swept" : `swept ${tick.swept.join(", ")}`}${lines}`)
-                if (ticks.length >= limit) break
+                const swept = tick.swept.length === 0 ? "nothing swept" : "swept " + tick.swept.join(", ")
+                context.progress(`${new Date().toISOString()} tick ${String(n)}: ${swept}${lines}`)
+                if (n >= limit) return
+            } else {
+                seen = stamp
+                context.progress(`${new Date().toISOString()} a new build of ${DIST} is being written: no tick until it settles`)
             }
             await sleep(seconds * 1000)
+            await pass(stamp === loaded ? n + 1 : n)
         }
+        await pass(1)
         return { data: { ticks: ticks.length, last: ticks.at(-1) ?? null }, message: `supervisor watch: ${String(ticks.length)} tick(s)` }
     },
 })

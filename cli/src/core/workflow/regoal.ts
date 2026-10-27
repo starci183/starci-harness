@@ -41,7 +41,8 @@ export const workflowRegoalVerb = defineVerb({
             const recorded = recordGoalChange(db, workflow, command, basedOn, callerRole() ?? "owner")
             const { goal } = recorded
             const outside = scopeProblems(nodes, goal.scope)
-            const scope = goal.scope === null ? "no scope ceiling" : `scope ${goal.scope.paths?.join(", ") ?? "any path"}, at most ${goal.scope.maxTasks === undefined ? "any number of" : String(goal.scope.maxTasks)} tasks`
+            const maxTasks = goal.scope?.maxTasks === undefined ? "any number of" : String(goal.scope.maxTasks)
+            const scope = goal.scope === null ? "no scope ceiling" : `scope ${goal.scope.paths?.join(", ") ?? "any path"}, at most ${maxTasks} tasks`
             const message = [
                 `${recorded.duplicate ? "already recorded" : "recorded"}: workflow ${workflow.id} goal v${String(goal.version)} (${command.change.cmdId}): ${goal.text}`,
                 `acceptance: ${goal.acceptance.join(", ") || "-"}; ${scope}`,

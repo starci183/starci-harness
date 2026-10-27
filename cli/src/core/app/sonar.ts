@@ -54,9 +54,8 @@ export const appSonarVerb = defineVerb({
         })
         const green = blockMatches(lines, block) && shadowed.length === 0
         const data: AppSonarData = { file, mode: "check", verdict: green ? "green" : "drift", block, shadowed }
-        const message = green
-            ? `green: ${file} carries the generated Sonar block`
-            : `drift: ${file} ${blockMatches(lines, block) ? `sets ${keys.join(", ")} outside the block on line(s) ${shadowed.join(", ")}` : "lacks the generated Sonar block or it differs"}; run \`starci app sonar --write\``
+        const drift = blockMatches(lines, block) ? "sets " + keys.join(", ") + " outside the block on line(s) " + shadowed.join(", ") : "lacks the generated Sonar block or it differs"
+        const message = green ? `green: ${file} carries the generated Sonar block` : `drift: ${file} ${drift}; run \`starci app sonar --write\``
         return Promise.resolve({ data, message, exitCode: green ? 0 : 1 })
     },
 })

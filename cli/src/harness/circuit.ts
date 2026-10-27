@@ -77,7 +77,8 @@ const probeOf = (db: DatabaseSync, routing: Routing, provider: string, failureKi
     // A quota circuit waits for its window's reset: a launch before it proves nothing the reset time does not already say.
     const byInterval = failureKind === "quota" && openUntil !== null ? openUntil : later(lastFailed ?? opened, interval)
     const probeDueAt = openUntil !== null && openUntil < byInterval ? openUntil : byInterval
-    const probe: ProbeState = inFlight ? "in-flight" : probeDueAt <= at ? "due" : "none"
+    const due: ProbeState = probeDueAt <= at ? "due" : "none"
+    const probe: ProbeState = inFlight ? "in-flight" : due
     return { probe, probeDueAt, failedProbes: failed.length }
 }
 

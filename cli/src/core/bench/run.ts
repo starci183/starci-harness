@@ -1,7 +1,7 @@
 import { Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
-import type { ScenarioResult } from "./runner.js"
+import { inOrder } from "../../harness/sequential.js"
 import { runScenario } from "./runner.js"
 import { loadScenarios, runnable } from "./scenario.js"
 import { logResults, recordScoreboard, scoreboardPath } from "./scoreboard.js"
@@ -32,12 +32,13 @@ export const benchRunVerb = defineVerb({
         const fault = flags.fault ?? null
         const unknownFault = chosen.find((scenario) => fault !== null && !(scenario.faults ?? []).includes(fault))
         if (unknownFault !== undefined) throw new Refusal("FAULT_UNKNOWN", `${unknownFault.id} declares no fault ${fault ?? ""} (its faults: ${(unknownFault.faults ?? []).join(", ") || "none"})`)
-        const results: ScenarioResult[] = []
-        for (const scenario of chosen) {
+        const faultTag = fault === null ? "" : " [" + fault + "]"
+        const results = await inOrder(chosen, async (scenario) => {
             const result = await runScenario(scenario, fault)
-            context.progress(`${result.verdict.padEnd(7)} ${scenario.id}${fault === null ? "" : ` [${fault}]`} (${String(Math.round(result.ms / 1000))} s)${result.failures.map((failure) => `\n        ${failure}`).join("")}`)
-            results.push(result)
-        }
+            const failures = result.failures.map((failure) => "\n        " + failure).join("")
+            context.progress(`${result.verdict.padEnd(7)} ${scenario.id}${faultTag} (${String(Math.round(result.ms / 1000))} s)${failures}`)
+            return result
+        })
         logResults(results)
         if (flags.record) recordScoreboard(scenarios, results)
         const red = results.filter((result) => result.verdict === "fail" || result.verdict === "error")

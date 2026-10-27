@@ -359,7 +359,8 @@ export const contractChanges = (before: Contract, after: Contract): string[] => 
         if (field === "summary" || field === "details") return [`${field}: ${was.length === 0 ? "(none)" : JSON.stringify(clip(was[0] ?? ""))} -> ${is.length === 0 ? "(none)" : JSON.stringify(clip(is[0] ?? ""))}`]
         const added = is.filter((item) => !was.includes(item))
         const removed = was.filter((item) => !is.includes(item))
-        return [`${field}: ${[...added.map((item) => `+ ${item}`), ...removed.map((item) => `- ${item}`)].join("; ") || "reordered"}`]
+        const moves = [...added.map((item) => "+ " + item), ...removed.map((item) => "- " + item)]
+        return [`${field}: ${moves.join("; ") || "reordered"}`]
     })
 }
 
@@ -387,8 +388,10 @@ const resultLines = (db: DatabaseSync, previous: TaskRow): string[] => {
         .prepare("SELECT DISTINCT name FROM check_runs WHERE attempt_id = ? AND status = 'red' ORDER BY name")
         .all(attempt.id)
         .map((row) => text(row.name))
+    const filed = result === undefined ? "filed no result" : "filed " + result.status
+    const redChecks = red.length === 0 ? "" : ", red checks: " + red.join(", ")
     return [
-        `Previous result: task ${previous.id} is ${previous.status}; attempt ${attempt.id} ${result === undefined ? "filed no result" : `filed ${result.status}`}, verdict ${attempt.verdict ?? "none"}${red.length === 0 ? "" : `, red checks: ${red.join(", ")}`}.`,
+        `Previous result: task ${previous.id} is ${previous.status}; attempt ${attempt.id} ${filed}, verdict ${attempt.verdict ?? "none"}${redChecks}.`,
         ...(result === undefined ? [] : ["```json", clip(JSON.stringify(result.output, null, 2)), "```"]),
     ]
 }
@@ -409,7 +412,7 @@ export const priorWorkSection = (root: string, task: TaskRow): string | undefine
         const changes = contractChanges(previous.contract, task.contract)
         const lines = [
             `This task repeats ${String(ids.length)} earlier task(s) of the same work (${ids.join(", ")}). Start from their work; never redo it blindly.`,
-            changes.length === 0 ? "Contract, previous -> this: unchanged." : `Contract, previous (${previous.id}) -> this:\n\n${changes.map((change) => `- ${change}`).join("\n")}`,
+            changes.length === 0 ? "Contract, previous -> this: unchanged." : `Contract, previous (${previous.id}) -> this:\n\n${changes.map((change) => "- " + change).join("\n")}`,
             resultLines(db, previous).join("\n"),
             patchLine(task, stored[0], asApplied(lastEvent(db, APPLIED_EVENT, task.id))),
         ]

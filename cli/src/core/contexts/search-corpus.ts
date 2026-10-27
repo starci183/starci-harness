@@ -92,7 +92,14 @@ interface Section {
 }
 
 const FENCE = /^\s{0,3}(```|~~~)/
-const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/
+const HEADING = /^ {0,3}(#{1,6})\s+/
+
+/** A heading's text: what follows its `#` run, without a closing `#` run and the blanks around it. */
+const headingText = (rest: string): string => {
+    let text = rest.trimEnd()
+    while (text.endsWith("#")) text = text.slice(0, -1)
+    return text.trimEnd()
+}
 
 /** Splits a Markdown file at its headings (outside code fences); the front matter and text before the first heading are a section of level 0. */
 const markdownSections = (lines: readonly string[]): Section[] => {
@@ -102,7 +109,7 @@ const markdownSections = (lines: readonly string[]): Section[] => {
     for (const [offset, line] of lines.slice(start).entries()) {
         if (FENCE.test(line)) fenced = !fenced
         const match = fenced ? null : HEADING.exec(line)
-        if (match?.[1] !== undefined && match[2] !== undefined) sections.push({ heading: match[2], level: match[1].length, line: start + offset + 1, body: [] })
+        if (match?.[1] !== undefined) sections.push({ heading: headingText(line.slice(match[0].length)), level: match[1].length, line: start + offset + 1, body: [] })
         else sections.at(-1)?.body.push(line)
     }
     return sections
@@ -125,8 +132,9 @@ const markdownChunks = (path: string, lines: readonly string[]): Chunk[] => {
         const seen = anchors.get(base) ?? 0
         anchors.set(base, seen + 1)
         const title = [path, ...parents.filter((item) => item !== "")].join(" › ")
+        const anchor = seen === 0 ? base : base + "-" + String(seen)
         chunks.push({
-            id: id ?? `${path}#${seen === 0 ? base : `${base}-${String(seen)}`}`,
+            id: id ?? `${path}#${anchor}`,
             citable: id !== undefined,
             path,
             line: section.line,
@@ -150,6 +158,13 @@ interface Cut {
     readonly id?: string
 }
 
+/** The second-level keys of a long top-level block, each a cut. */
+const subKeyCuts = (block: readonly string[], top: { readonly line: number; readonly key: string }): Cut[] =>
+    block.flatMap((line, offset) => {
+        const sub = SUB_KEY.exec(line)?.[1]
+        return sub === undefined ? [] : [{ line: top.line + offset, key: `${top.key}.${sub}` }]
+    })
+
 /** The lines where a yaml file is cut: each top-level key, each id entry at the shallowest id indent of its block, the sub-keys of a long block. */
 const yamlCuts = (lines: readonly string[]): Cut[] => {
     const tops = lines.flatMap((line, index) => {
@@ -169,12 +184,7 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
         if (items.length > 0) {
             const shallowest = Math.min(...items.map((item) => item.indent))
             for (const item of items.filter((entry) => entry.indent === shallowest)) cuts.push({ line: item.line, key: top.key, id: item.id })
-        } else if (block.join("\n").length > SPLIT_CHARS) {
-            for (const [offset, line] of block.entries()) {
-                const sub = SUB_KEY.exec(line)?.[1]
-                if (sub !== undefined) cuts.push({ line: top.line + offset, key: `${top.key}.${sub}` })
-            }
-        }
+        } else if (block.join("\n").length > SPLIT_CHARS) cuts.push(...subKeyCuts(block, top))
     }
     return cuts
 }

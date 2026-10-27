@@ -20,7 +20,7 @@ export const logResults = (results: readonly ScenarioResult[]): void => {
     appendFileSync(join(dir, "results.jsonl"), results.map((result) => `${JSON.stringify(result)}\n`).join(""))
 }
 
-const cell = (text: string): string => text.replaceAll("|", "\\|").replaceAll("\n", " ")
+const cell = (text: string): string => text.replaceAll("|", String.raw`\|`).replaceAll("\n", " ")
 
 // The last recorded result of each scenario, read back from the table so a partial run keeps the other rows.
 const previous = (text: string): Map<string, { readonly verdict: string; readonly date: string }> => {
@@ -46,7 +46,8 @@ export const renderTable = (scenarios: readonly Scenario[], results: readonly Sc
     const latest = new Map(results.filter((result) => result.fault === null).map((result) => [result.id, result]))
     const rows = scenarios.map((scenario) => {
         const result = latest.get(scenario.id)
-        const date = result === undefined ? (runnable(scenario) ? (kept.get(scenario.id)?.date ?? "") : "") : result.at.slice(0, 10)
+        const keptDate = runnable(scenario) ? (kept.get(scenario.id)?.date ?? "") : ""
+        const date = result === undefined ? keptDate : result.at.slice(0, 10)
         return `| [${scenario.id}](scenarios/${scenario.id}.yaml) | ${scenario.group} | ${cell(scenario.title)} | ${scenario.automation} | ${verdictCell(result, scenario, kept.get(scenario.id))} | ${date} |`
     })
     return ["| scenario | group | what | automation | result | recorded |", "|---|---|---|---|---|---|", ...rows].join("\n")

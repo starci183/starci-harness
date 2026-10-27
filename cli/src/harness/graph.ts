@@ -103,11 +103,11 @@ export const headerSchema = z.strictObject({
 export type WorkflowHeader = z.infer<typeof headerSchema>
 
 /** The routing overrides a ledger may still hold in a workflow's stored goal from before the router picked alone; reading drops them. */
-const DROPPED_HEADER_FIELDS: readonly string[] = ["agent", "model", "effort", "bias"]
+const DROPPED_HEADER_FIELDS: ReadonlySet<string> = new Set(["agent", "model", "effort", "bias"])
 
 /** Reads a workflow header as the ledger stored it, without the routing overrides headerSchema no longer takes. */
 export const storedHeader = (value: unknown): WorkflowHeader =>
-    headerSchema.parse(typeof value === "object" && value !== null ? Object.fromEntries(Object.entries(value).filter(([key]) => !DROPPED_HEADER_FIELDS.includes(key))) : value)
+    headerSchema.parse(typeof value === "object" && value !== null ? Object.fromEntries(Object.entries(value).filter(([key]) => !DROPPED_HEADER_FIELDS.has(key))) : value)
 
 const workflowFileSchema = z.strictObject({ ...headerSchema.shape, tasks: z.array(fileTaskSchema).min(1) })
 

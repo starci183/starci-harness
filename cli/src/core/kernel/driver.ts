@@ -152,45 +152,66 @@ const firstSeen = (db: DatabaseSync, kind: string, subject: string): string => {
 
 const LEASE_HOLDER = /leased by task (\S+)/
 
+/** Raises one Kernel decision of the workflow (each fact once); returns its id. */
+type Raise = (kind: KernelDecisionKind, subject: string, evidence: unknown) => string
+
+/** A failed or lost node is red; a node a worker returned (blocked or mismatch) is a question. */
+const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): void => {
+    for (const view of snapshot.views) {
+        const task = view.task
+        if (task === null) continue
+        if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome: latestAttempt(db, task.id)?.outcome ?? null, redChecks: redChecks(db, task.id) })
+        if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its leases" })
+        if (view.state === "returned") {
+            const attempt = latestAttempt(db, task.id)
+            raise("question", task.id, { key: view.key, why: view.why, result: task.result, output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null) })
+        }
+    }
+}
+
+/** A node whose dependency's settled result changed under it is stale; a stale decision no longer called for is superseded. */
+const raiseStale = (db: DatabaseSync, workflowId: string, nodes: readonly NodeAction[], raise: Raise): void => {
+    const stale = nodes.filter((node) => node.action === "stale" && node.task !== null).map((node) => ({ subject: `${node.key}:${node.task ?? ""}`, node }))
+    for (const { subject, node } of stale) raise("stale", subject, { key: node.key, task: node.task, staleDeps: node.staleDeps ?? [], why: node.why })
+    const current = new Set(stale.map((entry) => entry.subject))
+    for (const decision of openDecisions(db, "kernel", workflowId)) {
+        if (decision.kind === "stale" && !current.has(decision.subject)) answerDecision(db, decision.id, "superseded: no longer stale", "kernel")
+    }
+}
+
+/** A node waiting on another workflow's path lease past conflictMinutes is a conflict. */
+const raiseConflicts = (db: DatabaseSync, workflowId: string, actions: readonly StepAction[], rules: CoordinatorLiveness, raise: Raise): void => {
+    for (const action of actions) {
+        const holder = action.action === "wait" && action.detail.startsWith("LEASE_CONFLICT") ? LEASE_HOLDER.exec(action.detail)?.[1] : undefined
+        if (holder === undefined || action.key === null) continue
+        const holderWorkflow = db.prepare("SELECT workflow_id FROM tasks WHERE id = ?").get(holder)?.workflow_id
+        if (holderWorkflow === undefined || holderWorkflow === null || holderWorkflow === workflowId) continue
+        const subject = `${action.key}:${holder}`
+        if (olderThan(firstSeen(db, "lease-conflict-seen", `${workflowId}:${subject}`), rules.conflictMinutes)) {
+            raise("conflict", subject, { key: action.key, holderTask: holder, holderWorkflow: String(holderWorkflow), detail: action.detail })
+        }
+    }
+}
+
 /**
  * Raises every decision the ledger now calls for (each fact once): a failed, lost or stuck node is red; a node a worker
  * returned (blocked or mismatch) is a question; a node waiting on another workflow's path lease past conflictMinutes is a
  * conflict; a node whose dependency's settled result changed under it (reconcile.ts workflowActions) is stale; a done or
  * stopped workflow is done.
  */
-const raiseDecisions = (root: string, workflowId: string, actions: readonly StepAction[], nodes: readonly NodeAction[], rules: CoordinatorLiveness): void => { withLedger(root, (db) => { inTransaction(db, () => {
+const raiseDecisions = (root: string, workflowId: string, actions: readonly StepAction[], nodes: readonly NodeAction[], rules: CoordinatorLiveness): void => {
+    withLedger(root, (db) => {
+        inTransaction(db, () => {
             const snapshot = snapshotOf(db, workflowId)
-            const raise = (kind: KernelDecisionKind, subject: string, evidence: unknown): string => raiseDecision(db, { scope: "kernel", workflowId, kind, subject, evidence })
-            for (const view of snapshot.views) {
-                const task = view.task
-                if (task === null) continue
-                if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome: latestAttempt(db, task.id)?.outcome ?? null, redChecks: redChecks(db, task.id) })
-                if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its leases" })
-                if (view.state === "returned") {
-                    const attempt = latestAttempt(db, task.id)
-                    raise("question", task.id, { key: view.key, why: view.why, result: task.result, output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null) })
-                }
-            }
-            const stale = nodes.filter((node) => node.action === "stale" && node.task !== null).map((node) => ({ subject: `${node.key}:${node.task ?? ""}`, node }))
-            for (const { subject, node } of stale) raise("stale", subject, { key: node.key, task: node.task, staleDeps: node.staleDeps ?? [], why: node.why })
-            const current = new Set(stale.map((entry) => entry.subject))
-            for (const decision of openDecisions(db, "kernel", workflowId)) {
-                if (decision.kind === "stale" && !current.has(decision.subject)) answerDecision(db, decision.id, "superseded: no longer stale", "kernel")
-            }
-            for (const action of actions) {
-                const holder = action.action === "wait" && action.detail.startsWith("LEASE_CONFLICT") ? LEASE_HOLDER.exec(action.detail)?.[1] : undefined
-                if (holder === undefined || action.key === null) continue
-                const holderWorkflow = db.prepare("SELECT workflow_id FROM tasks WHERE id = ?").get(holder)?.workflow_id
-                if (holderWorkflow === undefined || holderWorkflow === null || holderWorkflow === workflowId) continue
-                const subject = `${action.key}:${holder}`
-                if (olderThan(firstSeen(db, "lease-conflict-seen", `${workflowId}:${subject}`), rules.conflictMinutes)) {
-                    raise("conflict", subject, { key: action.key, holderTask: holder, holderWorkflow: String(holderWorkflow), detail: action.detail })
-                }
-            }
+            const raise: Raise = (kind, subject, evidence) => raiseDecision(db, { scope: "kernel", workflowId, kind, subject, evidence })
+            raiseNodeStates(db, snapshot, raise)
+            raiseStale(db, workflowId, nodes, raise)
+            raiseConflicts(db, workflowId, actions, rules, raise)
             const { status, graphVersion, reason } = snapshot.workflow
             if (status === "done" || status === "stopped") raise("done", `${status}:g${String(graphVersion)}`, { status, reason })
-        }); },
-    ); }
+        })
+    })
+}
 
 const isOrcaDown = (error: unknown): boolean => {
     if (error instanceof OrcaFailure) return error.effect === "unknown"
@@ -264,12 +285,15 @@ const drainMail = async (root: string, workflowId: string, binary: OrcaBinary, c
     }
     const actions: StepAction[] = []
     const supervisors = supervisorTerminals(await projectOf(root))
+    const { terminal, runId: run } = kernel
+    // Each batch is acked by the next check, so the batches follow each other; at most ten per drain.
+    const take = async (delivery: Awaited<ReturnType<typeof mailCheck>>, batch: number): Promise<void> => {
+        if (delivery.deliveryId === null || batch >= 10) return
+        actions.push(...takeMail(root, workflowId, delivery.messages, supervisors))
+        await take(await mailCheck(binary, { terminal, run, ack: delivery.deliveryId }, cwd), batch + 1)
+    }
     try {
-        let delivery = await mailCheck(binary, { terminal: kernel.terminal, run: kernel.runId, waitMs }, cwd)
-        for (let batch = 0; delivery.deliveryId !== null && batch < 10; batch += 1) {
-            actions.push(...takeMail(root, workflowId, delivery.messages, supervisors))
-            delivery = await mailCheck(binary, { terminal: kernel.terminal, run: kernel.runId, ack: delivery.deliveryId }, cwd)
-        }
+        await take(await mailCheck(binary, { terminal, run, waitMs }, cwd), 0)
     } catch (error: unknown) {
         actions.push({ key: null, task: null, action: "problem", detail: `mailbox not read (${asRefusal(error).code}); the ledger is read anyway` })
         if (waitMs !== undefined) await sleep(waitMs)
@@ -373,7 +397,7 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
                     return true
                 }),
             )
-            if (seat.agent !== null) reportStalled(seat.agent, kind, `Op ${task} ${step.detail}${signals.failureText === null ? "" : `: ${signals.failureText}`}`)
+            if (seat.agent !== null) reportStalled(seat.agent, kind, `Op ${task} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
             return { key, task, action: "lost", detail: `Op stalled (${kind}, ${step.detail}): ${fence}${failed ? "; task failed (stalled)" : ""}` }
         } catch (error: unknown) {
             return { key, task, action: "problem", detail: `stalled Op not fenced (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}` }
@@ -508,7 +532,8 @@ export const kernelNext = async (context: VerbContext, root: string, workflowId:
         actions: actions.slice(-30),
         inlineNext: inline,
     })
-    for (;;) {
+    // One round: tick, then answer, or wait for mail and go round again until the deadline.
+    const round = async (): Promise<KernelNext> => {
         renewKernel(root, workflowId, rules)
         const pending = firstOpen(root, workflowId)
         if (pending !== undefined) return answer(pending, null)
@@ -522,7 +547,9 @@ export const kernelNext = async (context: VerbContext, root: string, workflowId:
         const waitMs = Math.min(rules.nextPollSeconds * 1000, left)
         if (ticked.binary === null) await sleep(waitMs)
         else actions.push(...(await drainMail(root, workflowId, ticked.binary, context.cwd, waitMs)))
+        return round()
     }
+    return round()
 }
 
 /** What a submit did: the command row and whether it was a replay of one applied before. */

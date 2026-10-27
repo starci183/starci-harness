@@ -122,7 +122,7 @@ const nested = (inner: string, outer: string): boolean => {
 const dirOf = (path: string): string => (isDir(path) ? path : path.slice(0, path.lastIndexOf("/") + 1))
 
 /** Whether `text` fits `pattern`, where each `*` stands for any run of characters. */
-const wildcardMatches = (pattern: string, value: string): boolean => new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`).test(value)
+const wildcardMatches = (pattern: string, value: string): boolean => new RegExp("^" + pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)).join(".*") + "$").test(value)
 
 /** Whether glob segments `glob` match path-or-glob segments `entry` (`**` crosses directories, `*` stays in one segment). */
 const segmentsCover = (glob: readonly string[], entry: readonly string[]): boolean => {
@@ -140,6 +140,44 @@ const withoutCovered = (entries: readonly string[]): string[] =>
 
 /** The side-relative path variants of a slot, placeholders as `*`. */
 const variantsOf = (slot: Slot): string[] => braceVariants(slot.path).map(star)
+/** The fixed non-role `.ts` files the required slots name (their `requires` and `allows`), under each of their directories. */
+const fixedFileExclusions = (required: readonly Slot[], suffixes: readonly string[]): string[] => {
+    const roleAlternatives = suffixes.map((suffix) => suffix.replace(/[-.]/g, String.raw`\$&`)).join("|")
+    const isRole = new RegExp(String.raw`\.(?:${roleAlternatives})\.ts$`)
+    return required.flatMap((slot) =>
+        [...(slot.requires ?? []), ...(slot.allows ?? [])]
+            .filter((entry) => entry.endsWith(".ts") && !entry.includes("<role>"))
+            .flatMap((entry) => braceVariants(entry))
+            .filter((name) => !isRole.test(star(name).replaceAll("*", "x")))
+            .flatMap((name) => variantsOf(slot).map((dir) => `be/${dir}${star(name)}`.replace(/\/\/+/g, "/"))),
+    )
+}
+
+/**
+ * The coverage exclusions of one side: the whole side when it holds no `coverage: required` slot, else (the back end only)
+ * every `coverage: none` path, every non-logic suffix and every fixed non-role file a required slot names.
+ */
+const sideExclusions = (side: string, slots: readonly Slot[], suffixes: readonly string[], roles: readonly string[]): string[] => {
+    const own = slots.filter((slot) => slot.profiles.includes(side))
+    const required = own.filter((slot) => slot.coverage === "required")
+    if (required.length === 0) return [`${side}/**`]
+    if (side !== "be") throw new Refusal("SLOTS_INVALID", `side ${side} has coverage: required slots but ruleParams names logic roles for be only`)
+    const requiredDirs = required.flatMap((slot) =>
+        variantsOf(slot).map((dir) => {
+            if (!isDir(dir)) throw new Refusal("SLOTS_INVALID", `slot ${slot.id} is coverage: required but its path ${slot.path} is not a directory`)
+            return dir
+        }),
+    )
+    const nonePaths = [...new Set(own.filter((slot) => slot.coverage === "none").flatMap(variantsOf))]
+    const swallowing = nonePaths.filter(isDir).find((dir) => requiredDirs.some((other) => nested(other, dir)))
+    if (swallowing !== undefined) throw new Refusal("SLOTS_INVALID", `the coverage: none directory ${swallowing} contains a coverage: required slot`)
+    const noneMinimal = nonePaths.filter((path) => !nonePaths.some((other) => other !== path && isDir(other) && nested(dirOf(path), other)))
+    return [
+        ...noneMinimal.map((path) => `be/${path}${isDir(path) ? "**" : ""}`),
+        ...suffixes.filter((candidate) => !roles.includes(candidate)).map((suffix) => `be/**/*.${suffix}.ts`),
+        ...fixedFileExclusions(required, suffixes),
+    ]
+}
 
 /**
  * `sonar.coverage.exclusions` of an app, derived from the slots of its edition: the back end's complement of the measured
@@ -154,39 +192,7 @@ export const coverageExclusions = (manifest: Manifest, app: AppFacts): string[] 
     const slots = manifest.slots
         .map((raw) => effectiveSlot(raw, app.edition))
         .filter((slot): slot is Slot => slot?.tracked === "tracked" && slot.presence !== "forbidden" && (slot.provider === undefined || app.providers.includes(slot.provider)))
-    const result = new Set<string>()
-    for (const side of app.sides) {
-        const own = slots.filter((slot) => slot.profiles.includes(side))
-        const required = own.filter((slot) => slot.coverage === "required")
-        if (required.length === 0) {
-            result.add(`${side}/**`)
-            continue
-        }
-        if (side !== "be") throw new Refusal("SLOTS_INVALID", `side ${side} has coverage: required slots but ruleParams names logic roles for be only`)
-        const requiredDirs = required.flatMap((slot) =>
-            variantsOf(slot).map((dir) => {
-                if (!isDir(dir)) throw new Refusal("SLOTS_INVALID", `slot ${slot.id} is coverage: required but its path ${slot.path} is not a directory`)
-                return dir
-            }),
-        )
-        const nonePaths = [...new Set(own.filter((slot) => slot.coverage === "none").flatMap(variantsOf))]
-        for (const dir of nonePaths.filter(isDir)) {
-            if (requiredDirs.some((other) => nested(other, dir))) throw new Refusal("SLOTS_INVALID", `the coverage: none directory ${dir} contains a coverage: required slot`)
-        }
-        const noneMinimal = nonePaths.filter((path) => !nonePaths.some((other) => other !== path && isDir(other) && nested(dirOf(path), other)))
-        for (const path of noneMinimal) result.add(`be/${path}${isDir(path) ? "**" : ""}`)
-        for (const suffix of suffixes.filter((candidate) => !roles.includes(candidate))) result.add(`be/**/*.${suffix}.ts`)
-        const isRole = new RegExp(String.raw`\.(?:${suffixes.map((suffix) => suffix.replace(/[-.]/g, "\\$&")).join("|")})\.ts$`)
-        for (const slot of required) {
-            for (const entry of [...(slot.requires ?? []), ...(slot.allows ?? [])]) {
-                if (!entry.endsWith(".ts") || entry.includes("<role>")) continue
-                for (const name of braceVariants(entry)) {
-                    if (isRole.test(star(name).replaceAll("*", "x"))) continue
-                    for (const dir of variantsOf(slot)) result.add(`be/${dir}${star(name)}`.replace(/\/\/+/g, "/"))
-                }
-            }
-        }
-    }
+    const result = new Set(app.sides.flatMap((side) => sideExclusions(side, slots, suffixes, roles)))
     return withoutCovered([...result]).sort(byCodeUnit)
 }
 
@@ -233,7 +239,7 @@ export const blockMatches = (lines: readonly string[], block: readonly string[])
  * by it, else appended. Every other line setting a key the block sets is dropped, so the generated value is the one Sonar reads.
  */
 export const spliceBlock = (textOfFile: string, block: readonly string[]): string => {
-    const lines = textOfFile.replace(/\r\n/g, "\n").replace(/\n$/, "").split("\n")
+    const lines = textOfFile.replaceAll("\r\n", "\n").replace(/\n$/, "").split("\n")
     const found = findBlock(lines)
     const kept = found !== undefined && found.end !== -1 ? [...lines.slice(0, found.begin), "\u0000", ...lines.slice(found.end + 1)] : lines.filter((line) => line.trimEnd() !== SONAR_BEGIN && line.trimEnd() !== SONAR_END)
     const keys = blockKeys(block)

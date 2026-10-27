@@ -8,7 +8,7 @@ import { contractHash, contractProblems, readContract, resolveChecks } from "../
 import type { Contract } from "../../harness/contract.js"
 import { now, openExistingLedger, openLedger } from "../../harness/ledger.js"
 import { loadLiveness } from "../../harness/liveness.js"
-import { assertLeasesHeld, inTransaction, releaseLeases } from "../../harness/leases.js"
+import { assertLeasesHeld, inTransaction, isTerminal, releaseLeases } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
@@ -23,7 +23,6 @@ import { clearIntent, getTask, lastEvent, latestAttempt, markIntent, recordEvent
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha } from "../../shared/git.js"
-import { isTerminal } from "../../harness/leases.js"
 import { inOrder } from "../../harness/sequential.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
@@ -282,7 +281,7 @@ const freezeWorker = async (root: string, taskId: string): Promise<readonly Seat
     }
     const live = seats.filter((seat) => seat.outcome === "not-stopped" || seat.outcome === "launch-unknown")
     if (live.length > 0) {
-        throw new Refusal("VERIFY_WORKER_LIVE", `task ${taskId}: the worker of seat ${live.map((seat) => `${seat.seat} (${seat.outcome})`).join(", ")} may still write; nothing was verified, stop it and verify again`)
+        throw new Refusal("VERIFY_WORKER_LIVE", `task ${taskId}: the worker of seat ${live.map((seat) => seat.seat + " (" + seat.outcome + ")").join(", ")} may still write; nothing was verified, stop it and verify again`)
     }
     return seats
 }

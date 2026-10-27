@@ -451,7 +451,8 @@ export const contextTokens = (resolved: ResolvedContract, ops: Ops, root?: strin
     let bytes = 0
     const unmeasured: string[] = []
     for (const file of resolved.context) {
-        const path = file.harness ? join(ops.root, file.path) : root === undefined ? undefined : join(root, file.path)
+        const inRepository = root === undefined ? undefined : join(root, file.path)
+        const path = file.harness ? join(ops.root, file.path) : inRepository
         if (path === undefined || !existsSync(path)) unmeasured.push(file.entry)
         else bytes += statSync(path).size
     }
@@ -499,12 +500,12 @@ const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops)
     return problems
 }
 
-/** Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files and the behavioural rule. */
-export const contractProblems = (contract: Contract, ops: Ops): string[] => {
+/** The problems of a contract's allowPaths: the whole repository or Work tree, a neverRead file, a bad place, a duplicate. */
+const allowPathProblems = (allowPaths: readonly string[]): string[] => {
     const problems: string[] = []
     const seen = new Set<string>()
     const policy = loadPolicy()
-    for (const path of contract.context.allowPaths) {
+    for (const path of allowPaths) {
         // The schema already normalised the entry, so `./src/` and `src` are the same path here.
         if (path === ".") problems.push(`allowPaths entry "${path}" is the whole repository; name concrete folders or files`)
         if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/features/<feature>)`)
@@ -513,6 +514,12 @@ export const contractProblems = (contract: Contract, ops: Ops): string[] => {
         if (seen.has(path)) problems.push(`allowPaths entry "${path}" is named twice`)
         seen.add(path)
     }
+    return problems
+}
+
+/** Problems that make a contract unfit to send, beyond its schema: label, base kept, paths, context files and the behavioural rule. */
+export const contractProblems = (contract: Contract, ops: Ops): string[] => {
+    const problems = allowPathProblems(contract.context.allowPaths)
     if (contract.context.cwd !== undefined) problems.push(...placeProblems("cwd", contract.context.cwd))
     let resolved: ResolvedContract
     try {

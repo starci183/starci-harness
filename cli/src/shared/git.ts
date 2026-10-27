@@ -46,7 +46,8 @@ export const mainCheckout = async (cwd: string): Promise<string> => {
 /** True when two paths name the same folder, however they are spelled (slashes; case on Windows). */
 export const samePath = (left: string, right: string): boolean => {
     const spell = (path: string): string => {
-        const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+        let slashed = resolve(path).replaceAll("\\", "/")
+        while (slashed.endsWith("/")) slashed = slashed.slice(0, -1)
         return process.platform === "win32" ? slashed.toLowerCase() : slashed
     }
     return spell(left) === spell(right)
@@ -59,7 +60,7 @@ export const ignoresCase = async (cwd: string): Promise<boolean> => (await captu
 export const commitWithMessage = async (cwd: string, head: string, message: string, since?: string): Promise<string | undefined> => {
     const range = since === undefined ? head : `${since}..${head}`
     const trailer = /^Starci-Task: .+$/m.exec(message)?.[0]
-    const grep = trailer === undefined ? [] : [`--grep=^${trailer.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`]
+    const grep = trailer === undefined ? [] : ["--grep=^" + trailer.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`) + "$"]
     const log = await git(cwd, ["log", "--max-count=200", ...grep, "--format=%H%x1f%B%x1e", range])
     const wanted = message.trim()
     for (const entry of log.split("\x1e")) {

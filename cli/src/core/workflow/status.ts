@@ -25,7 +25,8 @@ export const workflowStatusVerb = defineVerb({
         try {
             const { workflow, views, live } = snapshotOf(db, flags.workflow)
             const goal = currentGoal(db, workflow.id, workflow.header, workflow.goalVersion)
-            const scope = goal.scope === null ? "no scope ceiling" : `scope ${goal.scope.paths?.join(", ") ?? "any path"}, max ${goal.scope.maxTasks === undefined ? "-" : String(goal.scope.maxTasks)} tasks`
+            const maxTasks = goal.scope?.maxTasks === undefined ? "-" : String(goal.scope.maxTasks)
+            const scope = goal.scope === null ? "no scope ceiling" : `scope ${goal.scope.paths?.join(", ") ?? "any path"}, max ${maxTasks} tasks`
             const done = views.filter((view) => view.state === "done").length
             const budget = workflowBudgets(root, workflow.id).budgets[0] ?? null
             const data = {
