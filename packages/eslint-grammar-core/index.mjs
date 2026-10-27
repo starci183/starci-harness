@@ -2,6 +2,7 @@
 import tsParser from "@typescript-eslint/parser"
 import { SOURCE_FILES, linterOptions } from "@starci/eslint-canon-fe/lib/config.mjs"
 import { rules as appShellRules } from "./app-shell.mjs"
+import { rules as chipLabelRules } from "./chip-label.mjs"
 import { rules as drawingRules } from "./drawing.mjs"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.mjs"
 import { rules as iconRules } from "./icon.mjs"
@@ -13,6 +14,7 @@ import { rules as vendorRules } from "./vendor-boundary.mjs"
 
 const CONTRIBUTIONS = [
   { law: "app-shell", rules: appShellRules },
+  { law: "chip-label", rules: chipLabelRules },
   { law: "drawing", rules: drawingRules },
   { law: "grammar-boundary", rules: grammarBoundaryRules },
   { law: "icon", rules: iconRules },

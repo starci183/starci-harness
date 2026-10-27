@@ -5664,3 +5664,26 @@ rules:
         source: owner
         quote: "The size of the buttons and controls is uneven; the teacher thinks height = 40px (h-10) should be fixed for every button, switch, input, tabs and so on, what do you think? (translated from Vietnamese)"
         ruling: "One 40px control height is the default of every standalone control (owner ruling control-height-40): Grammar draws it, an app omits size, sm is for a nested item or dense toolbar row, lg only for a landing hero call to action, and controls of one row share one size."
+  - id: R322
+    code: "FE_CHIP_LABEL_CASE"
+    law: "The label of a status chip (a StatusDot with text, a Badge) starts with an uppercase letter, so every chip of an app reads in one vocabulary."
+    kinds: [lint, codemod]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_CHIP_LABEL_CASE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
+    templateNa: "A template states no chip label; the words are the app's."
+    proves:
+      - packages/eslint/grammar-core/chip-label.spec.mjs
+    exemplifiedBy:
+      - {path: packages/eslint/grammar-core/chip-label.spec.mjs, editions: [lite, full], codes: [FE_CHIP_LABEL_CASE]}
+    witness:
+      - {path: packages/eslint/grammar-core/chip-label.spec.mjs, editions: [lite, full], codes: [FE_CHIP_LABEL_CASE]}
+    cases:
+      - id: case-1
+        date: "2026-10-27"
+        source: owner
+        quote: "A chip label starts uppercase."
+        ruling: "The label of a status chip starts with an uppercase letter (owner ruling chip-label-uppercase); StatusDot capitalises a text label it renders, and the lint refuses a lowercase literal label at its source."
