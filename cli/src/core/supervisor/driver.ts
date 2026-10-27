@@ -14,10 +14,10 @@ import { inTransaction } from "../../harness/leases.js"
 import { loadLiveness } from "../../harness/liveness.js"
 import { readMachine, textOf, withMachine } from "../../harness/machine.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
-import { locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, workerShow } from "../../harness/orca/client.js"
+import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harness/orca/client.js"
 import type { RouteMember } from "../../harness/router.js"
-import { kernelSeatOf } from "../../harness/seats.js"
+import { kernelSeatOf, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
 import { ensureSupervisor, inSupervisorTerminal, isAttached, renewSupervisorLease, startSupervisor, stopSupervisor, supervisorRecord } from "../../harness/supervisor.js"
@@ -96,19 +96,44 @@ const relaunchReason = async (binary: OrcaBinary, cwd: string, seat: SeatRow | u
     }
 }
 
-/** Resolves a Kernel launch with no dispatch receipt through Orca: completed -> replay; absent past the deadline -> an escalation. */
-const resolveKernelLaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, seat: SeatRow, rules: CoordinatorLiveness): Promise<string | null> => {
+/**
+ * Resolves a Kernel launch with no dispatch on its seat through Orca. A completed request whose receipt names a dispatch is
+ * judged by that dispatch: a started worker is adopted; one that never started past stall.startDeadlineMinutes (or is gone) is
+ * closed and the Kernel relaunched with that member behind every other. A completed request with no dispatch is replayed;
+ * an absent one past the deadline is an escalation.
+ */
+const resolveKernelLaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, seat: SeatRow, rules: CoordinatorLiveness, acting: AttachedSupervisor): Promise<string | null> => {
     if (seat.requestId === null || seat.handle !== null) return null
-    const state = (await requestShow(binary, seat.requestId, cwd).catch(() => null))?.state ?? "unknown"
+    const shownRequest = await requestShow(binary, seat.requestId, cwd).catch(() => null)
+    const state = shownRequest?.state ?? "unknown"
+    if (state === "completed" && shownRequest?.dispatchId != null) return judgeKernelDispatch(root, binary, cwd, workflow, seat, shownRequest.dispatchId, rules, acting)
     if (state === "completed") {
         await launchKernelSeat(root, cwd, seat.id, seat.launch as WorkerStartInput, binary)
-        return `${workflow.id}: replayed the Kernel launch (request ${seat.requestId} completed)`
+        return `${workflow.id}: replayed the Kernel launch (request ${seat.requestId} completed, no dispatch yet)`
     }
     if (state !== "pending" && olderThan(seat.startedAt, rules.effectUnknownDeadlineMinutes)) {
         withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `stuck-launch:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: `the Kernel launch ${seat.id} is unknown to Orca (request-show ${state}) past the deadline; check Orca, then seat stop it and kernel start` } } }))
         return `${workflow.id}: Kernel launch ${seat.id} stuck (${state})`
     }
     return null
+}
+
+/** A Kernel launch's dispatch, judged as an Op's is: started -> adopted on the seat; never started past the deadline, or gone -> closed and relaunched elsewhere. */
+const judgeKernelDispatch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, seat: SeatRow, dispatchId: string, rules: CoordinatorLiveness, acting: AttachedSupervisor): Promise<string | null> => {
+    const stall = loadStallRules()
+    const shown = await workerShow(binary, dispatchId, cwd).catch(() => null)
+    const states = shown === null ? [] : [shown.state, shown.observed].filter((value): value is string => value !== null)
+    const gone = states.some((value) => loadLiveness().goneStates.includes(value))
+    const unstarted = states.some((value) => stall.startUnknownStates.includes(value))
+    if (shown?.state != null && !gone && !unstarted) {
+        withLedger(root, (db) => { recordSeat(db, seat.id, { status: shown.state ?? seat.status, handle: dispatchId, terminal: shown.terminal, facts: { adopted: { dispatchId, state: shown.state } } }); })
+        return `${workflow.id}: Kernel launch adopted (dispatch ${dispatchId} is ${shown.state})`
+    }
+    if (!gone && !(unstarted && olderThan(seat.startedAt, stall.startDeadlineMinutes))) return null
+    await closeWorker(binary, dispatchId, cwd, shown?.terminal ?? seat.terminal)
+    withLedger(root, (db) => { recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, handle: dispatchId, facts: { deadOnArrival: { states } } }); })
+    const stalled = seat.agent === null ? [] : [{ agent: seat.agent, model: seat.model ?? "" }]
+    return relaunch(root, binary, cwd, workflow, `Kernel launch ${seat.id} never started (${states.join("/") || "unknown"})`, { replace: false, acting, stalled }, rules)
 }
 
 /**
@@ -193,7 +218,7 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     const done = await inOrder(workflows, async ({ workflow, seat, progress }): Promise<string[]> => {
         const lines: string[] = []
         try {
-            if (seat?.handle === null) lines.push((await resolveKernelLaunch(root, binary, cwd, workflow, seat, rules)) ?? "")
+            if (seat?.handle === null) lines.push((await resolveKernelLaunch(root, binary, cwd, workflow, seat, rules, acting)) ?? "")
             else {
                 const reason = await relaunchReason(binary, cwd, seat, progress, rules)
                 if (reason !== null) lines.push(await relaunch(root, binary, cwd, workflow, reason.why, { replace: reason.replace, acting }, rules))
