@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: `StatusDot` (text chip, `echo`, static; one dot-size token, five tones; dot-only variants require `aria-label` and show it in a Tooltip; the text variant is a soft HeroUI `Chip` of the same `size`, so padding and height equal the Chip's, and capitalises its first letter). `Badge isDot` renders through the same anatomy (the `starci-core-badge-dot` class and `CircleFill` dot are gone).
+- Added: `Text` `mono` and `tabular`; inline `Code`; `Meter size="sm"` (thin track); `Timeline` `isAttention` (tone row background); `Badge` tone `muted`; `Terminal` (dark monospace log tail, `role="log"`, `aria-live="polite"`, follows the end unless scrolled up).
+
 ## 0.13.0 - 2026-10-27
 
 - Removed: the Heritage family (`@starci/grammar/heritage`, `heritage.css`, `HeritageGrammarRoot`, `HERITAGE_DNA`); the package ships two families, Core and Offset Pop, over Common. Migrate: select `core` or `offset-pop`.
