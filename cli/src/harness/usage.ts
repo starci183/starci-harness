@@ -155,6 +155,19 @@ export const codexRolloutUsage = (): { readonly usage: ProviderUsage; readonly o
 /** When Orca's usage was last polled (its event on the host store), or null. */
 const lastPoll = (): string | null => readMachine((db) => textOf(db.prepare("SELECT MAX(at) AS at FROM provider_events WHERE provider = ? AND kind = 'usage-poll'").get(ORCA_SOURCE)?.at), null)
 
+/** One `orca account list --json` call: its parsed reply, or why it gave none. */
+const pollOrca = (): { readonly reply: unknown; readonly failure: string | null } => {
+    const binary = orcaBinarySync()
+    const run = binary === undefined ? undefined : captureToolSync(binary.path, ["account", "list", "--json"], process.cwd(), ORCA_TIMEOUT_MS)
+    if (run === undefined) return { reply: undefined, failure: "STARCI_ORCA_BIN names no file" }
+    if (run.exitCode !== 0) return { reply: undefined, failure: `exit ${String(run.exitCode)}${run.timedOut ? " (timed out)" : ""}: ${run.stderr.split("\n")[0] ?? ""}` }
+    try {
+        return { reply: JSON.parse(run.stdout) as unknown, failure: null }
+    } catch {
+        return { reply: undefined, failure: "the reply is not json" }
+    }
+}
+
 /**
  * Polls Orca's account usage (`orca account list --json`, read-only) and records it, at most once per usage.refreshMinutes
  * unless `force`; a poll that fails is recorded and proves nothing. Returns what it read, or null when the last poll is recent.
@@ -163,28 +176,15 @@ export const refreshUsage = (options: { readonly force?: boolean; readonly reply
     const routing = loadRouting()
     const last = lastPoll()
     if (options.force !== true && options.reply === undefined && last !== null && Date.parse(at) - Date.parse(last) < minutesMs(routing.usage.refreshMinutes)) return null
-    let reply: unknown = options.reply
-    let failure: string | null = null
-    if (reply === undefined) {
-        const binary = orcaBinarySync()
-        const run = binary === undefined ? undefined : captureToolSync(binary.path, ["account", "list", "--json"], process.cwd(), ORCA_TIMEOUT_MS)
-        if (run === undefined) failure = "STARCI_ORCA_BIN names no file"
-        else if (run.exitCode !== 0) failure = `exit ${String(run.exitCode)}${run.timedOut ? " (timed out)" : ""}: ${run.stderr.split("\n")[0] ?? ""}`
-        else {
-            try {
-                reply = JSON.parse(run.stdout)
-            } catch {
-                failure = "the reply is not json"
-            }
-        }
-    }
+    const { reply, failure } = options.reply === undefined ? pollOrca() : { reply: options.reply, failure: null }
     const usages = failure === null ? parseOrcaUsage(reply, routing.usage.windows) : []
     const codexRead = usages.some((usage) => usage.provider === "codex" && usage.status === "ok")
     const rollout = codexRead || options.reply !== undefined ? undefined : codexRolloutUsage()
     const freshRollout = rollout !== undefined && Date.parse(at) - Date.parse(rollout.observedAt) <= minutesMs(routing.quota.maxAgeMinutes) ? rollout : undefined
     return withMachine((db) => {
         recordProviderEvent(db, ORCA_SOURCE, "usage-poll", { ok: failure === null, detail: failure, providers: usages.map((usage) => usage.provider) }, at)
-        const lines = failure === null ? applyUsage(db, routing, usages, options.reply === undefined ? ORCA_SOURCE : "report", at) : [`orca usage not read: ${failure}`]
+        const source = options.reply === undefined ? ORCA_SOURCE : "report"
+        const lines = failure === null ? applyUsage(db, routing, usages, source, at) : [`orca usage not read: ${failure}`]
         const fallback = freshRollout === undefined ? [] : applyUsage(db, routing, [freshRollout.usage], CODEX_SOURCE, freshRollout.observedAt).map((line) => `${line} [${CODEX_SOURCE}]`)
         return [...lines, ...fallback]
     })

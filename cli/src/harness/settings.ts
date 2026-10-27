@@ -46,8 +46,13 @@ const PRINT: ToStringOptions = { lineWidth: 0, flowCollectionPadding: false }
 
 const PLAIN_KEY = /^[A-Za-z_][\w-]*$/
 
+const segmentText = (segment: Segment): string => {
+    if (typeof segment === "number") return `[${String(segment)}]`
+    return PLAIN_KEY.test(segment) ? `.${segment}` : `[${JSON.stringify(segment)}]`
+}
+
 const keyOf = (file: string, path: readonly Segment[]): string =>
-    file + path.map((segment) => (typeof segment === "number" ? `[${String(segment)}]` : PLAIN_KEY.test(segment) ? `.${segment}` : `[${JSON.stringify(segment)}]`)).join("")
+    file + path.map(segmentText).join("")
 
 const KEY_TOKEN = /\.([A-Za-z_][\w-]*)|\[(\d+)\]|\[("(?:[^"\\]|\\.)*")\]/y
 

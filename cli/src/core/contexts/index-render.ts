@@ -60,7 +60,7 @@ const yamlSummary = (lines: readonly string[]): string => {
     return schema === undefined ? "data" : `data, ${schema.replace(/^schema:\s*/, "")}`
 }
 
-const SECTION = /^##\s+(.+)$/
+const SECTION = /^##\s+(\S.*)$/
 
 const listed = (ids: readonly string[]): string => {
     const more = ids.length > IDS_SHOWN ? ` and ${String(ids.length - IDS_SHOWN)} more` : ""
