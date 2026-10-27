@@ -19,6 +19,9 @@
     ".": "./index.mjs",
     "./lib/*": "./lib/*"
   },
+  "imports": {
+    "#runtime/*": "./runtime/*"
+  },
   "main": "./index.mjs",
   "files": [
     "LICENSE",
@@ -43,7 +46,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test \"*.spec.mjs\""
+    "test": "node --test \"src/**/*.spec.ts\""
   },
   "keywords": [
     "eslint",
