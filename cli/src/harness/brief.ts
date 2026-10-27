@@ -84,7 +84,7 @@ const describeOutput = (item: ResolvedOutput): string => {
         spec.type,
         ...("minItems" in spec && spec.minItems !== undefined && spec.minItems > 0 ? [`at least ${String(spec.minItems)}`] : []),
         ...("cites" in spec && spec.cites === "context" ? ["ids named by the files you read"] : []),
-        ...("cites" in spec && spec.cites === "work" ? ["ids named by the Work files you read"] : []),
+        ...("cites" in spec && spec.cites === "work" ? ["ids named by the Work files you read or the records you wrote in your allowPaths"] : []),
         item.source,
     ]
     const summary = "summary" in spec && spec.summary !== undefined ? `: ${spec.summary}` : ""

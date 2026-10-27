@@ -346,14 +346,17 @@ const substitute = (value: unknown, args: CheckArgs): unknown => {
 }
 
 /** The trace a `cited` check verifies: each output key that cites, with the context files its ids must come from. */
-const traceOf = (resolved: ResolvedContract, ops: Ops): { key: string; minItems: number; files: string[] }[] =>
+const traceOf = (resolved: ResolvedContract, ops: Ops, allowPaths: readonly string[]): { key: string; minItems: number; files: string[] }[] =>
     resolved.output
         .filter((item) => "cites" in item.spec && item.spec.cites !== undefined)
         .map((item) => {
             const work = "cites" in item.spec && item.spec.cites === "work"
             const files = resolved.context.filter((file) => !work || (!file.harness && underPaths(file.path, [WORK_TREE])))
             // Harness files are absolute here; repository files stay relative, read from the checkout the check runs in.
-            return { key: item.key, minItems: minItemsOf(item.spec), files: files.map((file) => (file.harness ? join(ops.root, file.path) : file.path)) }
+            const read = files.map((file) => (file.harness ? join(ops.root, file.path) : file.path))
+            // A Work key may also cite a record the task wrote: its own Work scope is read in the candidate, folders included.
+            const written = work ? allowPaths.filter((path) => underPaths(path, [WORK_TREE])) : []
+            return { key: item.key, minItems: minItemsOf(item.spec), files: [...read, ...written] }
         })
 
 const expand = (entry: CheckEntry, index: number, ops: Ops): ResolvedCheck => {
@@ -381,7 +384,7 @@ export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => 
     const resolved = resolveContract(contract, ops)
     const checks = resolved.checks.map(({ entry }, index): ResolvedCheck => {
         const check = expand(entry, index, ops)
-        return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, ops) } } : check
+        return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, ops, contract.context.allowPaths) } } : check
     })
     if (resolved.output.length === 0) return checks
     const types: Record<string, OutputType> = Object.fromEntries(resolved.output.map((item) => [item.key, item.spec.type]))

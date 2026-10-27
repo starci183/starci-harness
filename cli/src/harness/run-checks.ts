@@ -178,18 +178,20 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length)} required key(s)${andExpected}`)
 }
 
-/** The ids each context file names, read once per check; a file the checkout lacks names none. */
+/** The ids a file names, or every yaml file under a folder (a Work scope the task wrote); a path the checkout lacks names none. */
+const idsAt = (path: string): Set<string> => {
+    if (!existsSync(path)) return new Set<string>()
+    if (!statSync(path).isDirectory()) return ruleIdsIn(readFileSync(path, "utf8"))
+    return new Set(globSync("**/*.yaml", { cwd: path }).flatMap((file) => [...ruleIdsIn(readFileSync(join(path, file), "utf8"))]))
+}
+
+/** The ids each traced file or folder names, read once per check. */
 const idsOfFiles = (files: readonly string[], place: CheckPlace): Map<string, Set<string>> =>
-    new Map(
-        files.map((file) => {
-            const path = isAbsolute(file) ? file : join(place.root, file)
-            return [file, existsSync(path) ? ruleIdsIn(readFileSync(path, "utf8")) : new Set<string>()]
-        }),
-    )
+    new Map(files.map((file) => [file, idsAt(isAbsolute(file) ? file : join(place.root, file))]))
 
 /**
  * The read trace: every id the filed result cites under a traced key (rulesApplied, workRecords) is named by one of the task's
- * context files, literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires.
+ * context files (for a Work key, also a record under the task's own Work allowPaths), literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires.
  */
 const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "cited" } }, place: CheckPlace): CheckOutcome => {
     const document = readJsonDocument(RESULT_FILE, place)
