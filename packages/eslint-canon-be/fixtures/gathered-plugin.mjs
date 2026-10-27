@@ -19,11 +19,11 @@ const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 export function gatheredPluginSpec({ side, dir, plugin, lawOwners, recommended, ruleDeclarations, rules }) {
   const namespace = `starci-${side}`
 
-  /** Every rule module in this axis, by law name. */
+  /** Every rule module in this axis, by law name: a side's source is `.mjs` or `.ts`, its specs `.spec.*`. */
   const lawModules = () =>
     readdirSync(dir)
-      .filter((name) => name.endsWith(".mjs") && !name.endsWith(".spec.mjs") && name !== "index.mjs")
-      .map((name) => name.replace(/\.mjs$/, ""))
+      .filter((name) => /\.(mjs|ts)$/.test(name) && !/\.spec\.(mjs|ts)$/.test(name) && !/\.d\.ts$/.test(name) && !/^index\.(mjs|ts)$/.test(name))
+      .map((name) => name.replace(/\.(mjs|ts)$/, ""))
       .sort(byCodeUnit)
 
   test(`${side}: every law in the folder is gathered - a new module cannot be forgotten here`, () => {

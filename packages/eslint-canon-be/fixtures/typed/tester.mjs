@@ -8,7 +8,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
-import { hfsFromDeclaration } from "../../lib/hfs.mjs"
+import { hfsFromDeclaration } from "../../src/lib/hfs.ts"
 import { appDeclaration } from "../app.mjs"
 
 /** The fixture repository root. */
