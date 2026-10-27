@@ -20,6 +20,7 @@ import { requireSupervisor } from "./supervisor.js"
 import type { AttachedSupervisor } from "./supervisor.js"
 import { recordEvent } from "./tasks.js"
 import { projectOf } from "./work.js"
+import { materialiseHooks } from "./worktree.js"
 import { getWorkflow, recordKernel } from "./workflow.js"
 import type { KernelRecord, WorkflowRow } from "./workflow.js"
 
@@ -140,6 +141,7 @@ const harnessWorktree = async (root: string, workflowId: string): Promise<Worktr
     mkdirSync(dirname(path), { recursive: true })
     const args = (await refExists(root, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"]
     await git(root, args)
+    await materialiseHooks(root, path)
     return { path, branch, created: true }
 }
 

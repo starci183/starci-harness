@@ -1,0 +1,87 @@
+schema: starci/scenario@1
+id: worktree-hooks-generated-hooks-path
+group: conflict
+title: "a product's generated, gitignored core.hooksPath reaches the workflow worktree, and a worktree without it is never verified"
+inject: the product sets core.hooksPath=.husky/_ (gitignored, written by its prepare script); the harness creates the workflow worktree; later the hooks folder is deleted there
+expect: >-
+  the new worktree has the hooks folder from the product's prepare script and its pre-commit hook fires on a commit
+  (a marker file proves it); with the folder deleted, task verify is refused WORKTREE_HOOKS_MISSING and the task does not settle
+pass:
+  - the hooks folder exists in the worktree the harness created
+  - a commit in the worktree fires the product hook (marker file)
+  - with the hooks folder removed, verify is refused with WORKTREE_HOOKS_MISSING and the task is not done
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    .gitignore: |
+      .husky/_
+      hook-fired.marker
+    package.json: |
+      {"name":"hooks-product","version":"1.0.0","private":true,"scripts":{"prepare":"node prepare.mjs"}}
+    prepare.mjs: |
+      import { mkdirSync, writeFileSync } from "node:fs"
+      mkdirSync(".husky/_", { recursive: true })
+      writeFileSync(".husky/_/pre-commit", "#!/bin/sh\necho fired > \"$(git rev-parse --show-toplevel)/hook-fired.marker\"\n")
+steps:
+  - name: the product generates its hooks in the main checkout and points git at them
+    git: ["-c", "alias.gen=!node prepare.mjs", gen]
+  - git: [config, core.hooksPath, .husky/_]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: hooks
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: hooks
+  - name: the harness's worktree has the generated hooks folder
+    assert:
+      exists:
+        path: ${worktree.hooks}/.husky/_/pre-commit
+        present: true
+  - name: a commit in the worktree fires the product hook
+    git: ["-C", "${worktree.hooks}", commit, --allow-empty, -q, -m, "bench: hook probe"]
+  - assert:
+      exists:
+        path: ${worktree.hooks}/hook-fired.marker
+        present: true
+  - name: kernel next launches a
+    seat: kernel:hooks
+    starci: [kernel, next, hooks, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a'"
+      as: a
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# a\n"
+  - name: the hooks folder disappears from the worktree
+    remove: ${worktree.hooks}/.husky/_
+  - name: verify is refused
+    seat: kernel:hooks
+    starci: [task, verify, "${a}"]
+    expect:
+      exit: 1
+      contains: WORKTREE_HOOKS_MISSING
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks WHERE plan_key = 'a'
+        equals: [reported]
