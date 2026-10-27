@@ -3,10 +3,13 @@ import { locateOrca } from "../../harness/orca/client.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
-/** Relaunches a running workflow's missing Kernel as a Supervisor child dispatch. */
+/**
+ * `starci kernel start <workflow>`: from the Supervisor's terminal, launches the Kernel of a running orca workflow whose Kernel
+ * Orca reports gone (or that never had one, such as a workflow started before seats were agents), in the workflow's worktree.
+ */
 export const kernelStartVerb = defineVerb({
     path: ["kernel", "start"],
-    summary: "launch a running Orca workflow's Kernel agent from the Supervisor terminal",
+    summary: "launch (or relaunch) a running orca workflow's [Kernel] agent from the Supervisor terminal; refuses while Orca shows one alive",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor"],

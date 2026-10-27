@@ -113,8 +113,9 @@ const sendLaunch = async (binary: OrcaBinary, cwd: string, id: string, input: Ag
  */
 export const startSupervisor = async (binary: OrcaBinary, cwd: string): Promise<SupervisorRecord> => {
     const status = await supervisorStatus(binary, cwd)
-    if (status.supervisor !== null && status.liveness !== "gone") throw new Refusal("SUPERVISOR_RUNNING", `the Supervisor is ${status.liveness}; starci supervisor status, or stop it first`)
-    if (status.supervisor !== null) withMachine((db) => db.prepare("UPDATE supervisors SET ended_at = ? WHERE id = ? AND ended_at IS NULL").run(now(), status.supervisor.id))
+    const previous = status.supervisor
+    if (previous !== null && status.liveness !== "gone") throw new Refusal("SUPERVISOR_RUNNING", `the Supervisor is ${status.liveness}; starci supervisor status, or stop it first`)
+    if (previous !== null) withMachine((db) => db.prepare("UPDATE supervisors SET ended_at = ? WHERE id = ? AND ended_at IS NULL").run(now(), previous.id))
     const pick = pickCoordinator("supervisor")
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const id = randomUUID()

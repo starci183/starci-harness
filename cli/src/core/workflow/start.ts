@@ -9,11 +9,14 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { exitOf, readSnapshot, reportOf, reportMessage, stepWorkflow } from "./engine.js"
 
 /**
- * Starts a defined workflow: Orca launches its Kernel agent, whose attach dispatches Ops; inline takes its first step here.
+ * `starci workflow start <id>`. orca: only from the Supervisor's terminal (else SUPERVISOR_REQUIRED); the workflow gets its one
+ * worktree and its `[Kernel] <id>` agent is launched into the Supervisor's Run (worker-start --run/--parent/--from). The Kernel's
+ * `kernel attach` creates its child Run and its `kernel next` dispatches the Ops. A Kernel launch that fails leaves the workflow
+ * running for `kernel start` (or `supervisor next`) to relaunch. inline: unchanged, its first step prints the next task.
  */
 export const workflowStartVerb = defineVerb({
     path: ["workflow", "start"],
-    summary: "start a defined workflow: Orca launches its Kernel agent from the Supervisor terminal; inline prints the next task",
+    summary: "start a defined workflow: orca (from the Supervisor terminal) makes its one worktree and launches its [Kernel] agent; inline prints the next task",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],

@@ -72,8 +72,6 @@ CREATE TABLE IF NOT EXISTS decisions (
   id TEXT PRIMARY KEY, scope TEXT NOT NULL, workflow_id TEXT NOT NULL, kind TEXT NOT NULL, subject TEXT NOT NULL,
   evidence_json TEXT NOT NULL, raised_at TEXT NOT NULL, answered_by TEXT, answered_at TEXT,
   UNIQUE (scope, workflow_id, kind, subject));
-CREATE TABLE IF NOT EXISTS workflow_worktrees (
-  workflow_id TEXT PRIMARY KEY, path TEXT NOT NULL, branch TEXT, created INTEGER NOT NULL, recorded_at TEXT NOT NULL);
 `
 
 /**
@@ -99,9 +97,11 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "workflows", column: "kernel_terminal", type: "TEXT", since: 6 },
     { table: "workflows", column: "kernel_terminal_owned", type: "INTEGER", since: 6 },
     { table: "workflows", column: "kernel_closed_at", type: "TEXT", since: 6 },
-    // S4 (seat tree, episodic coordinators): a Kernel is a seat (role kernel) of its workflow, and every seat holds a TTL lease.
+    // Version 8: a Kernel is a seat (role kernel) of its workflow, and every seat holds a TTL lease.
     { table: "seats", column: "workflow_id", type: "TEXT", since: 8 },
     { table: "seats", column: "lease_until", type: "TEXT", since: 8 },
+    // One workflow = one worktree: the checkout every Op, verify and relaunched Kernel of the workflow uses.
+    { table: "workflows", column: "worktree", type: "TEXT", since: 8 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {

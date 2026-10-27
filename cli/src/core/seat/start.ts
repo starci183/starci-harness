@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
@@ -31,7 +32,8 @@ import {
     worktreeSelector,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { ensureKernel, launchableKernel } from "../../harness/kernel.js"
+import { ensureKernel, launchableKernel, workflowWorktreeOf } from "../../harness/kernel.js"
+import { applyPriorWork } from "../../harness/prior.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -88,6 +90,13 @@ const RUN_PLACEHOLDER = "<result.run.id of run-create>"
 const REQUEST_PLACEHOLDER = "<derived from the attempt id>"
 
 const clip = (text: string): string => (text.length <= TITLE_CHARS ? text : `${text.slice(0, TITLE_CHARS - 1)}…`)
+
+/** The folder a --worktree value names (a path, or a path: selector); another Orca selector leaves the repository root. */
+const worktreeFolder = (value: string | undefined, cwd: string, root: string): string => {
+    if (value === undefined) return root
+    if (value.startsWith("path:")) return value.slice("path:".length)
+    return value.includes(":") && !/^[A-Za-z]:[\\/]/.test(value) ? root : resolve(cwd, value)
+}
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
@@ -407,12 +416,15 @@ const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, opt
  * Launches one Orca worker on a queued task. The claim comes first, in one BEGIN IMMEDIATE transaction (queued -> running, a
  * new attempt, an open seat carrying the launch record), so two concurrent starts cannot both launch; only then is Orca called.
  */
-export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<SeatStartData>> => {
-    const { root, cwd } = options
+export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<SeatStartData>> => {
+    const { root, cwd } = given
     const ops = loadOps()
     const db = openLedger(root)
     try {
-        const task = getTask(db, options.task)
+        const task = getTask(db, given.task)
+        // One workflow = one worktree: every Op of a workflow launches into the worktree its workflow recorded.
+        const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
+        const options: SeatStartOptions = { ...given, worktree: given.worktree ?? recorded }
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
         const binary = await locateOrca(cwd)
         const kernel = nestingOf(await kernelOf(db, task, binary, options), options)
@@ -443,8 +455,10 @@ export const startSeat = async (options: SeatStartOptions): Promise<VerbResult<S
             const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
             return { task: running, seat, record, files }
         })
+        await applyPriorWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
+        const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files: claim.files, resumed: false, kernel }, launched)
+        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)
     } finally {
         db.close()
     }
@@ -481,6 +495,8 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             const runId = seat.runId ?? parsed.data.run
             return { task, seat, record: parsed.data, runId }
         })
+        const recorded = claim.task.workflowId === null ? undefined : workflowWorktreeOf(db, claim.task.workflowId)
+        await applyPriorWork(root, recorded ?? root, claim.task)
         const files = writeBrief(claim.task, loadOps(), root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
         const parent = claim.record.start.parent

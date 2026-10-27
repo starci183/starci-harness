@@ -55,8 +55,8 @@ const withRecord = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 
 /** The workflow's one worktree as recorded, if any (one workflow = one worktree, owner ruling). */
 export const workflowWorktreeOf = (db: DatabaseSync, workflowId: string): string | undefined => {
-    const row = db.prepare("SELECT path FROM workflow_worktrees WHERE workflow_id = ?").get(workflowId)
-    return row === undefined ? undefined : String(row.path)
+    const row = db.prepare("SELECT worktree FROM workflows WHERE id = ?").get(workflowId)
+    return row?.worktree === null || row?.worktree === undefined ? undefined : String(row.worktree)
 }
 
 /**
@@ -71,8 +71,9 @@ export const ensureWorkflowWorktree = async (root: string, workflowId: string): 
     let path: string
     let branch: string | null = null
     let created = 0
-    if (given !== undefined && !given.includes(":")) {
-        path = resolve(root, given)
+    const selector = given !== undefined && /^(?:(?:identity|id|name|branch|issue):|(?:current|active|new-child|new-top-level)$)/.test(given)
+    if (given !== undefined && !selector) {
+        path = resolve(root, given.startsWith("path:") ? given.slice("path:".length) : given)
         if (!existsSync(path)) throw new Refusal("WORKTREE_MISSING", `workflow ${workflowId} names worktree ${given}, which does not exist`)
     } else if (given === undefined) {
         path = join(projectDir(root), "worktrees", workflowId)
@@ -85,7 +86,7 @@ export const ensureWorkflowWorktree = async (root: string, workflowId: string): 
         }
     } else throw new Refusal("WORKTREE_SELECTOR", `workflow ${workflowId} names the Orca selector ${given}; one workflow runs in one git worktree, so name a folder (or none, and the harness makes one)`)
     withRecord(root, (db) => {
-        db.prepare("INSERT INTO workflow_worktrees (workflow_id, path, branch, created, recorded_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(workflow_id) DO UPDATE SET path = excluded.path, branch = excluded.branch").run(workflowId, path, branch, created, now())
+        db.prepare("UPDATE workflows SET worktree = ? WHERE id = ?").run(path, workflowId)
         recordEvent(db, "workflow-worktree", workflowId, { path, branch, created: created === 1 })
     })
     return path
@@ -149,12 +150,11 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
         timeoutMs: LAUNCH_TIMEOUT_MS,
         retryRequest: requestIdOf("kernel-worker-start", launchId),
     }
-    withRecord(root, (db) =>
-        inTransaction(db, () => {
+    withRecord(root, (db) => { inTransaction(db, () => {
             if (kernelSeatOf(db, workflowId) !== undefined) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
             openKernelSeat(db, { id: launchId, workflowId, agent: pick.agent, model: pick.model, requestId: input.retryRequest, launch: input })
             recordKernel(db, workflowId, { terminal: null, owned: true, closedAt: null })
-        }),
+        }); },
     )
     await launchKernelSeat(root, cwd, launchId, input, binary)
     notes.push(`launched ${kernelTitle(workflowId)} as ${pick.agent}/${pick.model} in ${worktree}; its first command is starci kernel attach`)
@@ -174,7 +174,7 @@ export const launchKernelSeat = async (root: string, cwd: string, seatId: string
                 return workerStart(binary, input, cwd)
             }
         })
-        const seat = withRecord(root, (db) => recordSeat(db, seatId, { status: started.state, handle: started.dispatchId, terminal: started.terminal, runId: started.runId ?? undefined }))
+        const seat = withRecord(root, (db) => recordSeat(db, seatId, { status: started.state, handle: started.dispatchId, terminal: started.terminal, ...(started.runId === null ? {} : { runId: started.runId }) }))
         if (started.terminal !== null) await terminalRename(binary, started.terminal, kernelTitle(seat.workflowId ?? ""), cwd)
         return seat
     } catch (error: unknown) {

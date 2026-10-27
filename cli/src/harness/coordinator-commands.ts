@@ -104,7 +104,7 @@ const toCommand = (row: Record<string, unknown>): CommandRow => ({
     sha256: String(row.sha256),
     status: String(row.status) as CommandRow["status"],
     body: JSON.parse(String(row.body_json)) as Command,
-    outcome: row.outcome_json === null || row.outcome_json === undefined ? null : JSON.parse(String(row.outcome_json)),
+    outcome: typeof row.outcome_json === "string" ? JSON.parse(row.outcome_json) : null,
     receivedAt: String(row.received_at),
 })
 
@@ -198,7 +198,7 @@ const toDecision = (row: Record<string, unknown>): Decision => ({
     subject: String(row.subject),
     evidence: JSON.parse(String(row.evidence_json)),
     raisedAt: String(row.raised_at),
-    answeredBy: row.answered_by === null || row.answered_by === undefined ? null : String(row.answered_by),
+    answeredBy: typeof row.answered_by === "string" ? row.answered_by : null,
 })
 
 /** The stable id of a decision: the same fact raised twice is one decision. */

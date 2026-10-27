@@ -2,24 +2,22 @@ import { attachKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { exitOf, reportMessage, stepWorkflow } from "../workflow/engine.js"
 
-/** Attaches the Kernel agent's terminal to its child Run, then takes the first workflow step. */
+/** `starci kernel attach <workflow> --launch <id>`: the Kernel agent's first command; its loop is then `kernel next` / `kernel submit`. */
 export const kernelAttachVerb = defineVerb({
     path: ["kernel", "attach"],
-    summary: "attach the dispatched Kernel terminal, create its child Run and take a workflow step",
+    summary: "adopt the launched Kernel agent's terminal as coordinator of the workflow's child Run and its [Kernel] task",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel"],
     schema: "starci/kernel-attached@1",
     flags: {
         workflow: { kind: "string", required: true, positional: true, summary: "the workflow id" },
-        launch: { kind: "string", required: true, summary: "the launch id supplied in the generated Kernel brief" },
+        launch: { kind: "string", required: true, summary: "the launch id the Kernel brief names" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
-        const attached = await attachKernel(root, context.cwd, flags.workflow, flags.launch, await locateOrca(context.cwd))
-        const report = await stepWorkflow(context, root, flags.workflow)
-        return { data: { ...attached, report }, message: [...attached.notes, reportMessage(report)].join("\n"), exitCode: exitOf(report) }
+        const data = await attachKernel(root, context.cwd, flags.workflow, flags.launch, await locateOrca(context.cwd))
+        return { data, message: [...data.notes, `next: starci kernel next ${flags.workflow}`].join("\n") }
     },
 })

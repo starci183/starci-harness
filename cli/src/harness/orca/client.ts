@@ -630,7 +630,7 @@ export interface MailDelivery {
  */
 export const mailCheck = async (binary: OrcaBinary, input: { readonly terminal: string; readonly run: string; readonly ack?: string | undefined; readonly waitMs?: number | undefined }, cwd: string): Promise<MailDelivery> => {
     const base: Record<string, string | true | undefined> = { terminal: input.terminal, run: input.run, ack: input.ack }
-    const flags = input.waitMs === undefined ? base : { ...base, wait: true, types: "worker_done,question,escalation,handoff", "timeout-ms": String(input.waitMs) }
+    const flags = input.waitMs === undefined ? base : { ...base, wait: true as const, types: "worker_done,question,escalation,handoff", "timeout-ms": String(input.waitMs) }
     const result = await callOrcaArgv(binary, orcaToolArgv("orchestration", "check", flags), "orca orchestration check", checkSchema, cwd, (input.waitMs ?? 0) + ORCA_TIMEOUT_MS)
     const rows = result.delivery?.messages ?? result.messages ?? []
     return {
