@@ -40,6 +40,8 @@ jobs:
         run: node cli/dist/main.js check loosening
       - name: Secret scan of the whole tree (policy/security.yaml)
         run: node cli/dist/main.js check secrets --all
+      - name: Harness shape (contexts/hfs/harness.yaml)
+        run: node cli/dist/main.js check shape
       # Specs read sibling packages by relative path and the Grammar lint packages install siblings as file: copies
       # (packages/README.md), so every package is installed before any is tested.
       - name: Install packages

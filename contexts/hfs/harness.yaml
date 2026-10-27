@@ -415,6 +415,11 @@ slots:
     presence: optional
     holds: the page a lint rule's message links to; it names its owner in contexts/ and never restates the law
     rule: CONTRIB-4
+  - id: packages.verify-evidence
+    path: "packages/<name>/docs/verify/*.png"
+    presence: optional
+    holds: browser screenshots that prove a package's components render as specified, per family; never shipped (files lists dist only)
+    rule: CONTRIB-9 data is data
   - id: packages.presets
     path: "packages/tsconfig/*.json"
     presence: optional
