@@ -56,13 +56,17 @@ settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`h
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
 and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's one worktree. Seats and leases stay
 in the project ledger.
-Additive migrations bump the corresponding machine schema version or `LEDGER_VERSION`; migrations never drop.
+Additive migrations bump the corresponding machine schema version or `LEDGER_VERSION`; migrations never drop. Every
+store is opened through one function (`connect` in `harness/ledger.ts`), which reads its header first: a file that is
+no SQLite database or a damaged one is refused `LEDGER_CORRUPT`, naming the file and its recovery, and is never written.
 
 **Task states.** `TRANSITIONS` in `harness/tasks.ts` is the one state machine, changed only through `setStatus`, a
 compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
-failed returns the task to `queued`; a verify with no verdict returns it to `reported` with no try spent. A command
+failed returns the task to `queued`; a verify with no verdict returns it to `reported` with no try spent, until one
+result has reached no verdict `settleNoVerdictMax` times ([ops/liveness.yaml](../ops/liveness.yaml)): then the failure is
+persistent and the task ends `awaiting_owner` with the last reason (`noVerdict` in `core/task/verify.ts`). A command
 with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
 verify or result arriving later is refused `TASK_INTENT_HELD`; a cancel refused half-way keeps it and resumes when run
 again), `repair` when a preserve saved the work but could not put every path back (a held file on Windows); a task
@@ -75,13 +79,21 @@ token only names the grant.
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
 Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's `allowPaths` and
 replays every check there, never in the worker's environment; what the candidate misses is read against the same
-staged snapshot. Green commits only those paths (never pushed) and makes the task done, records its settle commit
+staged snapshot. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
+through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
+them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
+project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract
+says (`harness/clean-verify.ts`). Green commits only those paths (never pushed) and makes the task done, records its settle commit
 (`tasks.settle_commit`) and releases its leases in one transaction; red preserves and resets them and releases the
 leases. Settles of one project run one at a time under the settle lock (`harness/settle.ts`), so each candidate builds
 on the HEAD the previous one left and a half-done edit of one task never reaches another's checks; its holder stamps
 a heartbeat, so a dead holder whose pid Windows reused is taken over once the beat goes stale. Git is the authority for
-landed: `--recover` on a task stuck in verifying makes it done when its branch carries the settle commit (its message
-and `Starci-Task:` trailer after the HEAD the verify started from), and returns it to `reported` otherwise.
+landed: a task left verifying by a verifier that no longer holds the settle lock (dead, or its beat stale) is reconciled
+by `task verify --recover`, which every `workflow step` (and so `kernel next`) runs on such a task before it settles: done
+when its branch carries the settle commit (its message and `Starci-Task:` trailer after the HEAD the verify started
+from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
+`shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
+NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
 
 **Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
 a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is

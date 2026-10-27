@@ -142,6 +142,24 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
     return found.filter((action) => action !== null)
 }
 
+/**
+ * Reconciles each verifying node whose verifier died (it no longer holds the settle lock, or its heartbeat went stale) through
+ * `task verify --recover`: git first, so a settle commit that landed makes it done, else it returns to reported for this same
+ * step to verify. A verifier still alive (VERIFY_LIVE) is a wait.
+ */
+const recoverOrphans = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
+    const verifying = snapshot.views.flatMap((view) => (view.state === "verifying" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
+    return inOrder(verifying, async ({ key, task }): Promise<StepAction> => {
+        try {
+            const recovered = await taskVerifyVerb.run(context, { task, contract: undefined, record: false, "no-commit": false, recover: true })
+            return { key, task, action: "verified", detail: recovered.message }
+        } catch (error: unknown) {
+            const refusal = asRefusal(error)
+            return { key, task, action: refusal.code === "VERIFY_LIVE" ? "wait" : "problem", detail: `${refusal.code}: ${refusal.message}` }
+        }
+    })
+}
+
 /** Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. */
 const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
     const reported = snapshot.views.flatMap((view) => (view.state === "reported" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
@@ -356,7 +374,8 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
 }
 
 /**
- * One dispatch tick, idempotent: cancel live tasks no node carries any more, settle reported nodes through `task verify`,
+ * One dispatch tick, idempotent: cancel live tasks no node carries any more, recover verifying nodes whose verifier died,
+ * settle reported nodes through `task verify`,
  * close the seats of settled tasks, dispatch the nodes that became ready (orca: launch their seats under the Kernel), then move
  * the workflow to the status its nodes call for; a stopped workflow's Kernel terminal is closed.
  * This is what a loop, the daemon or an inline chat agent calls.
@@ -371,6 +390,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(
             ...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)),
             ...(await checkLiveness(context, root, readSnapshot(root, id))),
+            ...(await recoverOrphans(context, readSnapshot(root, id))),
             ...(await settleReported(context, readSnapshot(root, id))),
             ...(await closeSettledSeats(root, readSnapshot(root, id))),
         )

@@ -7,7 +7,7 @@ import { openExistingLedger, openLedger, projectDir } from "../../harness/ledger
 import { acquireLeases, inTransaction } from "../../harness/leases.js"
 import type { LeaseGrant } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
-import { createTask, getTask } from "../../harness/tasks.js"
+import { createTask, getTask, recordEvent } from "../../harness/tasks.js"
 import { worktreeSelector } from "../../harness/orca/client.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
@@ -141,10 +141,19 @@ export const taskSendVerb = defineVerb({
         const fromWork = flags.uat === undefined ? undefined : await uatSend(context.cwd, flags.uat, flags["retry-of"])
         const file = fromWork?.file ?? resolve(context.cwd, flags.contract ?? "")
         const contract = fromWork?.contract ?? readContract(file)
-        const problems = contractProblems(contract, loadOps())
-        if (problems.length > 0) throw new Refusal("CONTRACT_UNFIT", `the contract is not fit to send (see starci contract check):\n${problems.join("\n")}`)
         // A uat task is queued where its Work is, so its run, its record and its harness commit share one repository.
         const root = fromWork?.uat.workRoot.root ?? (await repositoryRoot(context.cwd))
+        const problems = contractProblems(contract, loadOps())
+        if (problems.length > 0) {
+            // The refusal queues nothing, but the ledger keeps its evidence: what was refused and why.
+            const db = openLedger(root)
+            try {
+                recordEvent(db, "send-refused", null, { contract: file, label: contract.label, allowPaths: contract.context.allowPaths, problems })
+            } finally {
+                db.close()
+            }
+            throw new Refusal("CONTRACT_UNFIT", `the contract is not fit to send (see starci contract check):\n${problems.join("\n")}`)
+        }
         // The checkout the task's work lives in (its workflow's worktree wins, see createTask): where a launched worker runs when
         // --worktree names a folder, else this checkout. An Orca selector names no folder here, so this checkout stands until recordTaskWorktree corrects it.
         const selector = flags.launch ? worktreeSelector(flags.worktree, context.cwd, root) : undefined

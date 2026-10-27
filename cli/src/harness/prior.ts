@@ -4,8 +4,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { asRefusal, Refusal } from "../shared/errors.js"
-import { captureTool, headline } from "../shared/exec.js"
-import { git, gitSucceeds } from "../shared/git.js"
+import { headline } from "../shared/exec.js"
+import { captureGit, git, gitSucceeds } from "../shared/git.js"
 import type { Contract } from "./contract.js"
 import { leasePaths } from "./leases.js"
 import { now, openExistingLedger, openLedger, priorDir } from "./ledger.js"
@@ -106,7 +106,7 @@ export const priorPatches = (root: string, db: DatabaseSync, task: TaskRow): Pri
 
 /** Runs git with a temporary index, refusing on a non-zero exit. */
 const indexed = async (cwd: string, index: string, args: readonly string[]): Promise<string> => {
-    const run = await captureTool("git", args, cwd, { env: { GIT_INDEX_FILE: index } })
+    const run = await captureGit(args, cwd, { env: { GIT_INDEX_FILE: index } })
     if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `git ${args.join(" ")} failed: ${headline(run.stderr) || "exit " + String(run.exitCode)}`)
     return run.stdout.trim()
 }
@@ -293,7 +293,7 @@ const applyNewest = async (worktree: string, task: TaskRow, newest: PriorPatch):
             return { outcome: "conflicted", ...from, detail: "the checkout already has other changes under this task's allowPaths; nothing was applied" }
         }
         const paths = await patchPaths(top, filtered)
-        const run = await captureTool("git", ["apply", "--3way", "--binary", filtered], top)
+        const run = await captureGit(["apply", "--3way", "--binary", filtered], top)
         if (run.exitCode === 0) {
             // --3way stages what it applied; the worker starts from an unstaged work tree, as if it had made the edits itself.
             await git(top, ["reset", "-q", "--", ...paths.map(literal)])

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
+import { loadPolicy, neverRead } from "./policy.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
@@ -496,10 +497,12 @@ const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops)
 export const contractProblems = (contract: Contract, ops: Ops): string[] => {
     const problems: string[] = []
     const seen = new Set<string>()
+    const policy = loadPolicy()
     for (const path of contract.context.allowPaths) {
         // The schema already normalised the entry, so `./src/` and `src` are the same path here.
         if (path === ".") problems.push(`allowPaths entry "${path}" is the whole repository; name concrete folders or files`)
         if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/features/<feature>)`)
+        if (neverRead(policy, path)) problems.push(`allowPaths entry "${path}" names a file policy/security.yaml neverRead lists; the harness never opens it, so no task may write or lease it`)
         problems.push(...placeProblems("allowPaths entry", path))
         if (seen.has(path)) problems.push(`allowPaths entry "${path}" is named twice`)
         seen.add(path)

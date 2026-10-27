@@ -21,9 +21,10 @@ const livenessSchema = z.object({
     quietMinutes: z.number().positive(),
     goneStates: z.array(z.string().min(1)),
     goneErrors: z.array(z.string().min(1)),
+    settleNoVerdictMax: z.number().int().positive(),
 })
 
-/** ops/liveness.yaml, validated: the seat thresholds and the Orca answers that prove a worker gone. */
+/** ops/liveness.yaml, validated: the seat thresholds, the Orca answers that prove a worker gone, and the bound of a verify that reaches no verdict. */
 export type Liveness = z.infer<typeof livenessSchema>
 
 const loaded = new Map<string, Liveness>()
