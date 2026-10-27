@@ -118,7 +118,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, label placement inside or outside the material]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-LISTCARD-LABEL-OUTSIDE, DNA-COMMON-LISTCARD-LABEL-UNPAINTED, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-EDGE-NESTED, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-POCKET, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
 
   - id: button
     ui: ui/components/button.md
@@ -795,6 +795,16 @@ mustKeep:
         target: painted-box
         checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: ">=", value: 1px }]
       owner: surfacecard-always-painted
+    - id: DNA-CORE-CARD-LABEL-OUTSIDE
+      role: card
+      law: A labelled card's label is an unpainted row on the page above the card, outside the painted material (ruling card-label-placement-per-grammar).
+      measure:
+        kind: style
+        op: "="
+        cases:
+          - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"]', metric: background-color, value: "rgba(0, 0, 0, 0)" }
+          - { select: '[data-component="SurfaceCard"][data-grammar-surface-labelled="true"] > [data-grammar-frame="bounded"]', metric: background-color, value: { token: --surface } }
+      owner: grammars/core.md
     - id: DNA-CORE-BUTTON-PILL
       role: button
       law: Every button and its skeleton is a pill, its corner at least half its height.

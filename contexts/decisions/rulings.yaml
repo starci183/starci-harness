@@ -64,7 +64,7 @@ rulings:
   - id: card-label-placement-per-grammar
     date: '2026-10-28'
     status: live
-    ruling: "Whether a labelled card's label sits inside or outside the painted material is each grammar's decision. Offset-pop keeps it outside. Core's exact rule is still the owner's to state; the owner's direction is the Claude app: an outside label only for a card floating in content. The inside-only CSS came from legacy WIP 57e5851e5 without a ruling."
+    ruling: "Whether a labelled card's label sits inside or outside the painted material is each grammar's decision; core (starci) and offset-pop both keep it outside, an unpainted row above the card. The owner's words: label inside or outside is decided per grammar, and core is outside. The inside version came from a legacy WIP commit (57e5851e5) without a ruling."
     owner: "contexts/grammars/contract.yaml (DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE); contexts/grammars/core.md; @starci/grammar src/core/styles.css"
   - id: surfacecard-always-painted
     date: '2026-10-25'
