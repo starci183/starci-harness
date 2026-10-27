@@ -40,9 +40,9 @@
   "devDependencies": {
     "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "24.19.2",
-    "postcss": "8.5.28",
+    "postcss": "8.5.31",
     "postcss-value-parser": "4.2.0",
-    "stylelint": "17.15.0",
+    "stylelint": "17.16.0",
     "typescript": "5.9.3"
   },
   "publishConfig": {

@@ -44,7 +44,7 @@
   "devDependencies": {
     "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "24.19.2",
-    "prettier": "3.9.6",
+    "prettier": "3.9.10",
     "typescript": "5.9.3"
   }
 }
