@@ -106,14 +106,6 @@ slots:
         until: "2026-12-31"
         owner: lane ts-canon-fe
         why: the front-end canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
-      - path: packages/eslint-grammar-core/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the core Grammar lint factory and its hand-written index.d.ts are being converted to src/ TypeScript
-      - path: packages/eslint-grammar-offset-pop/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the offset-pop lint factory and its hand-written index.d.ts are being converted to src/ TypeScript
       - path: packages/grammar/
         until: "2026-12-31"
         owner: Grammar Storybook lane
@@ -126,26 +118,10 @@ slots:
         until: "2026-12-31"
         owner: CLI unification lane
         why: the starci app implementation is hand-written JavaScript moving into the one CLI
-      - path: packages/jest-preset/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the CommonJS preset and its hand-written .d.ts files are being converted to src/ TypeScript built to CommonJS
-      - path: packages/prettier-config/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: index.cjs, its hand-written index.d.cts and one spec are being converted to TypeScript
-      - path: packages/stylelint-canon/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the CSS canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
       - path: packages/test-world/
         until: "2026-12-31"
         owner: package TS plan
         why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/tsconfig/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: config.spec.mjs is the one JavaScript file; it becomes a TypeScript spec
     holds: hand-written JavaScript or hand-written declarations in a package; a package is TypeScript in src/ built to dist/
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
 
@@ -360,26 +336,6 @@ slots:
         until: "2026-12-31"
         owner: lane ts-canon-fe
         why: the front-end canon has no src/ until its JavaScript moves there as TypeScript
-      - path: packages/eslint-grammar-core/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the core Grammar lint factory has no src/ until its JavaScript moves there as TypeScript
-      - path: packages/eslint-grammar-offset-pop/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the offset-pop lint factory has no src/ until its JavaScript moves there as TypeScript
-      - path: packages/jest-preset/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the jest preset has no src/ until its CommonJS moves there as TypeScript
-      - path: packages/prettier-config/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the Prettier config has no src/ until index.cjs moves there as TypeScript
-      - path: packages/stylelint-canon/
-        until: "2026-12-31"
-        owner: lane ts-small-packages
-        why: the CSS canon has no src/ until its JavaScript moves there as TypeScript
     holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
   - id: packages.tests
@@ -421,7 +377,7 @@ slots:
     holds: browser screenshots that prove a package's components render as specified, per family; never shipped (files lists dist only)
     rule: CONTRIB-9 data is data
   - id: packages.presets
-    path: "packages/tsconfig/*.json"
+    path: ["packages/tsconfig/*.json", "packages/tsconfig/config.spec.ts"]
     presence: optional
     holds: the strict TypeScript presets base, be, build, next and e2e
     rule: packages/README.md

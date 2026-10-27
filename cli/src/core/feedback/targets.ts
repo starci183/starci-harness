@@ -57,8 +57,8 @@ const resolveRule = (target: string): { readonly target: string; readonly eviden
 
 /** An anchor the contexts search corpus resolves: a citable id or `<path>#<anchor>`. */
 const resolveContext = (target: string): { readonly target: string; readonly evidence: string } => {
-    const chunk = readCorpus(runtimeRoot()).chunks.find((item) => item.id === target)
-    if (chunk === undefined) throw unresolved("context", target, "no chunk of the contexts corpus has this id (starci contexts search prints them)")
+    const chunk = readCorpus(runtimeRoot()).chunks.find((item) => item.anchor === target || item.aliases.includes(target))
+    if (chunk === undefined) throw unresolved("context", target, "no anchor of the contexts corpus is this id (starci contexts anchor resolves them)")
     return { target, evidence: `${chunk.path}:${String(chunk.line)} ${chunk.title}` }
 }
 

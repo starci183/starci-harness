@@ -64,8 +64,8 @@ const chooseAnchorsOf = (path: string, title: string, text: string): string[] =>
 const cache = new Map<string, ReadonlyMap<string, ResolvedAnchor>>()
 
 /**
- * The interim resolver over the search corpus under `root` (the harness checkout): every chunk id (rule ids, yaml `id:` values,
- * `<path>#<anchor>`), every id a chunk names as the rules-cited trace reads it (a heading token or a yaml `id:`), explicit
+ * The resolver over the search corpus under `root` (the harness checkout): every chunk's anchor and aliases (core/contexts
+ * anchors.ts owns how a chunk is anchored), every id a chunk names as the rules-cited trace reads it (a heading token or a yaml `id:`), explicit
  * `{#id}` and `<a id>` anchors, and the Choose anchors of contexts/ui/components/<family>.md (`<family>.choose`, plus
  * `<family>.choose.<term>` for each sub-heading and bold term of that section). The first definition of an id wins.
  */
@@ -79,7 +79,8 @@ export const corpusResolver = (root: string): AnchorResolver => {
         const corpus = existsSync(join(root, "contexts")) ? readCorpus(root).chunks : []
         for (const chunk of corpus) {
             const anchor = { text: chunk.text, file: chunk.path, line: chunk.line }
-            define(chunk.id, anchor)
+            define(chunk.anchor, anchor)
+            for (const alias of chunk.aliases) define(alias, anchor)
             for (const id of ruleIdsIn(chunk.text)) define(id, anchor)
             for (const found of chunk.text.matchAll(EXPLICIT)) define(found[1] ?? found[2] ?? "", anchor)
             for (const id of chooseAnchorsOf(chunk.path, chunk.title, chunk.text)) define(id, anchor)

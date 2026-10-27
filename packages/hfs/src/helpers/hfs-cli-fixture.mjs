@@ -9,7 +9,7 @@ import { FE_APP_SCRIPTS, PACKAGE_MANAGER, WORKSPACES, feAppPackageName } from '.
 import { loadSonarGate } from '../../runtime/scripts/gates/sonar-gate.mjs';
 import { parseYaml } from '../../runtime/engine/yaml.mjs';
 
-const jestPreset = createRequire(import.meta.url)('../../../jest-preset/index.cjs');
+const jestPreset = createRequire(import.meta.url)('../../../jest-preset/dist/index.js');
 const PINS = parseYaml(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'runtime', 'knowledge', 'hfs', 'canon-pins.yaml'), 'utf8')).pins;
 const FE_STACK = parseYaml(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'runtime', 'knowledge', 'hfs', 'fe-stack.yaml'), 'utf8'));
 const FE_CORE_DEPENDENCIES = Object.fromEntries(FE_STACK.concerns.filter((concern) => concern.tier === 'core')
