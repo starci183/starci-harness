@@ -24,7 +24,17 @@ const MOBILE = "packages/fixture-ui/src/branches/MobileDrawer/component.tsx"
 const goodDrawer = `${DRAWER_IMPORTS} export const MobileDrawer = () => ${DRAWER}`
 const mobileCaller = (name = "MobileDrawer", source = "@fixture/ui") => `import { WorkspaceShell, Sidebar } from "@starci/grammar/common"; import { ${name} } from "${source}"; export const Frame = () => <WorkspaceShell viewport="fixed" navigation={<Sidebar />} navigationVisibility="wide" compactHeader={<${name} />} />`
 
-const verify = (app: ProjectFixture, code: string, rule = "navbar-cluster") => (app.linter ??= new Linter({ cwd: app.root })).verify(code, [{
+/** The ESLint instance a spec keeps per fixture, created on first use. */
+const LINTERS = new WeakMap<ProjectFixture, Linter>()
+const linterOf = (app: ProjectFixture): Linter => {
+  const known = LINTERS.get(app)
+  if (known !== undefined) return known
+  const linter = new Linter({ cwd: app.root })
+  LINTERS.set(app, linter)
+  return linter
+}
+
+const verify = (app: ProjectFixture, code: string, rule = "navbar-cluster") => linterOf(app).verify(code, [{
   files: ["**/*.tsx"],
   languageOptions: { parser, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
   settings: { starci: { hfs: loadHfs(pathToFileURL(path.join(app.root, "eslint.config.mjs")).href) } },

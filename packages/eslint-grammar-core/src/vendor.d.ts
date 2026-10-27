@@ -201,18 +201,6 @@ declare module "*/eslint-canon-be/fixtures/gathered-plugin.mjs" {
   }): void
 }
 
-declare module "*/eslint-canon-be/fixtures/typed/tester.mjs" {
-  /** The one typed RuleTester both canons build over a fixture root and its HFS view. */
-  export function ruleTester(input: {
-    readonly root: string
-    readonly hfs: unknown
-    readonly jsx?: boolean
-    readonly extensions?: readonly string[]
-    readonly maxDepth?: number
-    readonly maxProjects?: number
-  }): import("eslint").RuleTester
-}
-
 declare module "*/eslint-canon-be/fixtures/project/tester.mjs" {
   /** A hermetic app on disk whose project graph the project rules read. */
   export interface ProjectFixture {

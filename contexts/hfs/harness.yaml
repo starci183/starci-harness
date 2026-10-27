@@ -318,8 +318,6 @@ slots:
     exempt:
       - path: packages/tsconfig/
         why: the tsconfig package is JSON presets; it has nothing to build
-    enforce: target
-    exceptions:
     holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
   - id: packages.tests

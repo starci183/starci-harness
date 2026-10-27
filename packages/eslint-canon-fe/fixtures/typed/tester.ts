@@ -13,11 +13,11 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester, type Rule as EslintRule } from "eslint"
-import { eslintRule } from "../../src/lib/eslint-boundary.ts"
+import { eslintRule, sharedRule } from "../../src/lib/eslint-boundary.ts"
 import { hfsFromDeclaration, type HfsView } from "../../src/lib/hfs.ts"
 import { defineRule, type AnyContext, type Rule } from "../../src/lib/rule.ts"
 import { appDeclaration } from "../../../eslint-canon-be/fixtures/app.mjs"
-import { ruleTester } from "../../../eslint-canon-be/fixtures/typed/tester.mjs"
+import { ruleTester, type CanonRuleTester as SharedRuleTester } from "../../../eslint-canon-be/fixtures/typed/tester.mjs"
 
 /** The cases RuleTester runs: ESLint's own test-case shape. */
 export type RuleTests = Parameters<RuleTester["run"]>[2]
@@ -27,10 +27,14 @@ export interface CanonRuleTester {
   run(name: string, rule: Rule<string, readonly unknown[]> | EslintRule.RuleModule, tests: RuleTests): void
 }
 
-/** ESLint's RuleTester, taking the canon's rules. */
-export const canonTester = (tester: RuleTester): CanonRuleTester => ({
-  run: (name, rule, tests) => tester.run(name, eslintRule(rule), tests),
-})
+/**
+ * A RuleTester taking the canon's rules: ESLint's own, or one the shared back-end fixtures build (an ESLint RuleTester they declare at
+ * typescript-eslint's rule type). Both run the same rule object.
+ */
+export const canonTester = (tester: RuleTester | SharedRuleTester): CanonRuleTester =>
+  tester instanceof RuleTester
+    ? { run: (name, rule, tests) => tester.run(name, eslintRule(rule), tests) }
+    : { run: (name, rule, tests) => tester.run(name, sharedRule(rule), tests) }
 
 /** The fixture repository root. */
 export const TYPED_ROOT = dirname(fileURLToPath(import.meta.url))

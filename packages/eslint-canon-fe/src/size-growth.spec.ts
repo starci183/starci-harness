@@ -61,4 +61,4 @@ test("fe: a new file over the manifest budget is refused, in a component and a h
   }))
 })
 
-sizeGrowthSharedSpec({ side: "fe", tester: eslintTester, fileSizeGrowth, budget: BUDGET, fileName: "Big.tsx" })
+sizeGrowthSharedSpec({ side: "fe", tester, fileSizeGrowth, budget: BUDGET, fileName: "Big.tsx" })

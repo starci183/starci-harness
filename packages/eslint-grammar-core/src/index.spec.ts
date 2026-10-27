@@ -25,7 +25,9 @@ for (const name of readdirSync(SOURCE_DIR)) {
 }
 after(() => rmSync(lawFolder, { recursive: true, force: true }))
 
-gatheredPluginSpec({ side: "grammar", dir: lawFolder, plugin, lawOwners, recommended, ruleDeclarations, rules })
+const pluginRules = plugin.rules
+assert.ok(pluginRules, "the plugin publishes its rules")
+gatheredPluginSpec({ side: "grammar", dir: lawFolder, plugin: { ...plugin, rules: pluginRules }, lawOwners, recommended, ruleDeclarations, rules })
 
 /** The behavioral citations `defineFamilyRules` attaches to a rule's docs. */
 const citationsOf = (rule: Rule.RuleModule): { readonly url: unknown; readonly knowledge: unknown; readonly ownership: unknown } => {

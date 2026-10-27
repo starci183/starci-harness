@@ -9,9 +9,7 @@
  * The shared contract lives in ../eslint-canon-be/fixtures/gathered-plugin.mjs; what follows is the front end's own.
  */
 import assert from "node:assert/strict"
-import { mkdtempSync, readdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import plugin, { lawOwners, linterOptions, recommended, ruleDeclarations, rules } from "./index.ts"
@@ -19,20 +17,7 @@ import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plug
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
-/**
- * The shared contract lists a side's laws as the `.mjs` modules of `dir`, and this package's laws are `src/*.ts`. Until the
- * shared fixture reads TypeScript laws, it is handed a folder naming each law of src/ once as `<law>.mjs`, so the same
- * comparison runs against the real source listing.
- */
-const lawListing = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), "starci-fe-laws-"))
-  for (const name of readdirSync(HERE)) {
-    if (name.endsWith(".ts") && !name.endsWith(".spec.ts")) writeFileSync(join(dir, name.replace(/\.ts$/, ".mjs")), "")
-  }
-  return dir
-}
-
-gatheredPluginSpec({ side: "fe", dir: lawListing(), plugin, lawOwners, recommended, ruleDeclarations, rules })
+gatheredPluginSpec({ side: "fe", dir: HERE, plugin, lawOwners, recommended, ruleDeclarations, rules })
 
 test("fe: the plugin publishes rules only - no repository audit rides beside it", async () => {
   const module: Readonly<Record<string, unknown>> = await import("./index.ts")
