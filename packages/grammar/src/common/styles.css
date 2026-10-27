@@ -2823,6 +2823,18 @@
         flex: 1 1 0%;
     }
 
+    /*
+     * Dividers are full bleed (DNA-COMMON-DIVIDER-FULL-BLEED): a horizontal hairline placed in a card's content region
+     * runs from card edge to card edge, through the content inset, never inset from them; the content above and below
+     * it keeps the card inset from the rule.
+     */
+    .starci-core-surface-content > .starci-core-divider-bare:not([data-grammar-divider-orientation="vertical"]) {
+        align-self: stretch;
+        inline-size: auto !important;
+        margin-inline: calc(-1 * var(--starci-core-surface-inset, 1rem)) !important;
+        margin-block: var(--starci-core-surface-inset, 1rem);
+    }
+
     /* A vertical hairline between touching columns of one joined surface: it fills the row, whatever its height. */
     .starci-core-divider-bare[data-grammar-divider-orientation="vertical"] {
         align-self: stretch;

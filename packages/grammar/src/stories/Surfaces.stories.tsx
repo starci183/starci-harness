@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, Matrix, PlusGlyph, State, noop, placeholderImage } from './fixtures.js';
+import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage } from './fixtures.js';
 
 /**
  * Surfaces: cards, collections, reading frames and scroll regions — the containers every family
@@ -15,24 +15,161 @@ export default meta;
 
 type Story = StoryObj;
 
-/** Core insets a labelled card's title from the boundary: the label row keeps a non-zero inline padding. */
+/**
+ * A Core PANEL card carries its title inside the card (the card header), inset from the boundary: the label row keeps a
+ * non-zero inline padding (0.13.0 fix). Offset Pop keeps a panel title outside, flush with the card edge like every label.
+ */
 export const SurfaceCardLabelInset: Story = {
-  name: 'SurfaceCard label inset (Core)',
-  globals: { grammarFamily: 'core' },
+  name: 'SurfaceCard panel title inset',
   render: () => (
     <div style={{ maxWidth: 480 }}>
-      <G.SurfaceCard label="This week" fact="3 lessons">
+      <G.SurfaceCard label="Group info" placement="panel">
         <G.Text>Keep the streak going with one short lesson a day.</G.Text>
       </G.SurfaceCard>
     </div>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, globals }) => {
+    const inside = (globals['grammarFamily'] ?? 'core') === 'core';
     await waitFor(() => {
       const label = canvasElement.querySelector<HTMLElement>('[data-component="SurfaceCard"] > [data-grammar-surface-label]');
       expect(label).not.toBeNull();
       const style = getComputedStyle(label as HTMLElement);
-      expect(Number.parseFloat(style.paddingInlineStart)).toBeGreaterThan(0);
-      expect(Number.parseFloat(style.paddingInlineEnd)).toBeGreaterThan(0);
+      for (const side of [style.paddingInlineStart, style.paddingInlineEnd]) {
+        if (inside) expect(Number.parseFloat(side)).toBeGreaterThan(0);
+        else expect(Number.parseFloat(side)).toBe(0);
+      }
+    });
+  },
+};
+
+/** Each family's own card-label decision (ruling card-label-placement-per-grammar): where a PANEL card's title sits. */
+const PANEL_TITLE: Readonly<Record<string, 'inside' | 'outside'>> = { core: 'inside', 'offset-pop': 'outside' };
+
+const dnaPlanOptions = [
+  { id: 'starter', label: 'Starter' },
+  { id: 'team', label: 'Team' },
+];
+
+/** A page that mixes a floating card in the content flow with a docked panel column, as a chat's details pane. */
+const FloatingAndPanelPage = () => (
+  <div data-story-dna-page="true" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 20rem', gap: '1.5rem', alignItems: 'stretch', minHeight: '34rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+      <G.SectionHeader title="Weekly review" description="A floating card among other content, with a nested card inside." level={2} />
+      <div data-story-dna="floating">
+        <G.SurfaceCard label="This week" fact="3 lessons">
+          <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+          <G.Divider />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div data-story-dna="nested">
+            <G.SurfaceCard label="Nested card" fact="2 seats">
+              <G.Text>A surface placed on a surface: border, no shadow.</G.Text>
+            </G.SurfaceCard>
+          </div>
+          <div data-story-dna="controls" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+            <G.Input id="dna-input" name="name" label="Name" />
+            <G.Select label="Plan" options={dnaPlanOptions} defaultValue="team" />
+            <G.Button intent="commit" onPress={noop}>Save</G.Button>
+          </div>
+          </div>
+        </G.SurfaceCard>
+      </div>
+    </div>
+    <div data-story-dna="panel" style={{ display: 'flex', minWidth: 0 }}>
+      <G.SurfaceCard label="Group info" placement="panel" height="fill">
+        <G.Text tone="muted">12 members, created 3 March.</G.Text>
+        <G.Text>A docked panel of the layout carries its title as its header.</G.Text>
+      </G.SurfaceCard>
+    </div>
+  </div>
+);
+
+const rectOf = (element: Element) => element.getBoundingClientRect();
+/** A shadow that draws something: any layer left once the transparent zero layers are removed. */
+const raised = (element: Element) => /px/.test(getComputedStyle(element).boxShadow.replaceAll(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px,? ?/g, ''));
+
+/** Every DNA rule the page breaks for `family`, as readable lines. */
+const dnaProblems = (scope: Element, family: string): string[] => {
+  const problems: string[] = [];
+  const card = (slot: string) => scope.querySelector(`[data-story-dna="${slot}"] > [data-component="SurfaceCard"]`);
+  const partsOf = (root: Element | null) => ({
+    label: root?.querySelector(':scope > [data-grammar-surface-label]') ?? null,
+    material: root?.querySelector(':scope > [data-grammar-frame="bounded"], :scope > [data-grammar-highlight] > [data-grammar-frame="bounded"]') ?? null,
+  });
+  const painted = (element: Element) => {
+    const style = getComputedStyle(element);
+    return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || raised(element) || Number.parseFloat(style.borderTopWidth) > 0;
+  };
+
+  const floating = card('floating');
+  const f = partsOf(floating);
+  if (floating === null || f.label === null || f.material === null) problems.push('floating card: label or material missing');
+  else {
+    if (rectOf(f.label).bottom > rectOf(f.material).top + 0.5) problems.push(`floating card: label bottom ${rectOf(f.label).bottom.toFixed(1)} below material top ${rectOf(f.material).top.toFixed(1)}`);
+    if (painted(floating)) problems.push('floating card: the root around the label is painted');
+    if (!painted(f.material)) problems.push('floating card: the material box is not painted');
+  }
+
+  const panel = card('panel');
+  const p = partsOf(panel);
+  if (panel === null || p.label === null || p.material === null) problems.push('panel card: title or material missing');
+  else if ((PANEL_TITLE[family] ?? 'outside') === 'inside') {
+    const box = rectOf(panel);
+    const title = rectOf(p.label.firstElementChild ?? p.label);
+    if (!painted(panel)) problems.push('panel card: the card box around the title is not painted');
+    if (title.top < box.top || title.left < box.left + 1 || title.right > box.right) problems.push('panel card: the title is not inside the material');
+  } else if (rectOf(p.label).bottom > rectOf(p.material).top + 0.5) problems.push('panel card: this family keeps the title outside, but it overlaps the material');
+
+  const nested = partsOf(card('nested')).material;
+  if (nested === null) problems.push('nested card: material missing');
+  else {
+    const style = getComputedStyle(nested);
+    if (!(Number.parseFloat(style.borderTopWidth) > 0)) problems.push('nested card: no border');
+    if (raised(nested)) problems.push(`nested card: raised (${style.boxShadow})`);
+  }
+
+  const divider = scope.querySelector('[data-story-dna="floating"] [data-grammar-surface-content] > [data-component="Divider"]');
+  if (divider === null || f.material === null) problems.push('divider missing');
+  else {
+    const d = rectOf(divider);
+    // The card's edges are the inside of its border (an Offset Pop outline is the border itself).
+    const m = rectOf(f.material);
+    const border = getComputedStyle(f.material);
+    const inner = { left: m.left + Number.parseFloat(border.borderLeftWidth), right: m.right - Number.parseFloat(border.borderRightWidth) };
+    const inset = Math.max(Math.abs(d.left - inner.left), Math.abs(inner.right - d.right));
+    if (inset > 1.5) problems.push(`divider inset ${inset.toFixed(1)}px (full bleed is 0)`);
+  }
+
+  const controls = scope.querySelector('[data-story-dna="controls"]');
+  for (const [name, selector] of [['Input', '[data-grammar-input-control="true"]'], ['Select', '[data-component="Select"] button'], ['Button', '[data-component="Button"]']] as const) {
+    const control = controls?.querySelector(selector);
+    if (control == null) problems.push(`${name}: missing`);
+    else if (Math.abs(rectOf(control).height - 40) > 0.5) problems.push(`${name}: block size ${rectOf(control).height.toFixed(1)}px (40px)`);
+  }
+  return problems;
+};
+
+/**
+ * The family DNA on one page, light and dark: a FLOATING card (label above the material, the page's commonest card), a
+ * docked PANEL card (Core: title inside, as the header; Offset Pop: outside), a nested surface (border, no shadow), a
+ * full-bleed divider (inset 0) and the 40px controls (Input, Select, Button).
+ */
+export const FloatingCardAndPanel: Story = {
+  parameters: { grammar: { bleed: false } },
+  render: (_, { globals }) => (
+    <Matrix>
+      {(['light', 'dark'] as const).map((theme) => (
+        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-dna-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
+          <FloatingAndPanelPage />
+        </G.GrammarRoot>
+      ))}
+    </Matrix>
+  ),
+  play: async ({ canvasElement, globals }) => {
+    const family = typeof globals['grammarFamily'] === 'string' ? globals['grammarFamily'] : 'core';
+    await waitFor(() => {
+      const problems = [...canvasElement.querySelectorAll('[data-story-dna-theme]')].flatMap((root) =>
+        dnaProblems(root, family).map((problem) => `${root.getAttribute('data-story-dna-theme')}: ${problem}`));
+      expect(problems, problems.join('; ')).toEqual([]);
     });
   },
 };
