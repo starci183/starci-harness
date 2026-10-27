@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { admitCommand, answerDecision, finishCommand, getDecision, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
+import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
 import type { Command, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
@@ -284,16 +284,20 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     return done.flat()
 }
 
-const oldestDecision = (repos: readonly string[]): SupervisorDecision | undefined => {
-    const all = repos.flatMap((project) => withLedger(project, (db) => openDecisions(db, "supervisor").map((decision) => ({ ...decision, project }))))
-    return all.sort((a, b) => a.raisedAt.localeCompare(b.raisedAt))[0]
-}
+/**
+ * The project's open Supervisor decisions in the order `supervisor next` returns them: the ones the Supervisor rules, oldest
+ * first, then the ones awaiting the owner (`awaitsOwner`), so an owner's question never holds the others back.
+ */
+const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[] =>
+    repos
+        .flatMap((project) => withLedger(project, (db) => openDecisions(db, "supervisor").map((decision) => ({ ...decision, project }))))
+        .sort((a, b) => Number(awaitsOwner(a)) - Number(awaitsOwner(b)) || a.raisedAt.localeCompare(b.raisedAt))
 
 /**
  * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch with no receipt is resolved through
- * request-show; too many relaunches pause and escalate), then returns the project's oldest open escalation or handoff, else waits
+ * request-show; too many relaunches pause and escalate), then returns the project's next open escalation or handoff (`openSupervisorDecisions`), else waits
  * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
  * tick` sweeps for it.
  */
@@ -310,7 +314,7 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
         if (attached !== null && binary !== null) for (const repo of repos) actions.push(...(await sweepKernels(repo, binary, context.cwd, rules, attached, false)))
-        const decision = oldestDecision(repos)
+        const decision = openSupervisorDecisions(repos)[0]
         if (decision !== undefined) {
             const digest = withLedger(decision.project, (db) => digestOf(db, decision.workflowId))
             return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, actions }
@@ -341,7 +345,8 @@ const hostEventsOf = (kind: string, subject: string): { readonly at: string; rea
 const decisionOf = (data: unknown): unknown => (typeof data === "object" && data !== null && "decision" in data ? data.decision : null)
 
 /**
- * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while an escalation or handoff of its project waits and
+ * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while a decision of its project that it rules waits (one
+ * awaiting the owner is not its work: it waits for the owner's answer) and
  * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
  * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
  * new launch with that member behind every other. Once kernelRelaunchMax replacements left the same decision waiting, the tick
@@ -351,7 +356,7 @@ const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSu
     const stall = loadStallRules()
     const project = projectOfRecord(seat)
     const title = supervisorTitle(project.name)
-    const decision = oldestDecision(repos)
+    const decision = openSupervisorDecisions(repos).find((open) => !awaitsOwner(open))
     const lastCall = lastCallOf(seat.lease_until, rules.supervisorTtlMinutes, seat.started_at)
     if (decision === undefined || !olderThan(lastCall, stall.idleMinutes)) return null
     const signals = await askIdle(binary, cwd, { terminal: seat.terminal, handle: null }, inventory, stall)

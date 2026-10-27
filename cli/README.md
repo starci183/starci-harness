@@ -177,7 +177,8 @@ escalates to the Supervisor (kind harness), and every later submit of it is refu
 `supervisor next` sweeps the workflows the Supervisor owns in its project's registered repositories: a Kernel whose lease lapsed with no
 progress past its TTL (a relaunch is not progress) is relaunched on Orca's word (gone, or idle), and once the relaunch
 limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a live Kernel idle at
-its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
+its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, and only then
+one awaiting the owner (kind `owner` or `harness`, `awaitsOwner` in `harness/coordinator-commands.ts`). `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
 and its `answers` close escalations (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
 
@@ -202,7 +203,7 @@ platforms are refused (`supervisor watch` in a terminal serves there). `host sta
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
-Supervisor decision; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
+Supervisor decision it rules, never one awaiting the owner; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for
 tui-idle`, or no output in `terminal list` and worker-show and no dispatch heartbeat for `quietMinutes`). It is nudged with its
 role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge, at most `nudgeMax`); a nudge unanswered past

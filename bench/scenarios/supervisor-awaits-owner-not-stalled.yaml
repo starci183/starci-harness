@@ -1,0 +1,137 @@
+schema: starci/scenario@1
+id: supervisor-awaits-owner-not-stalled
+group: orca
+title: "a Supervisor that asked the owner waits at its prompt: not stalled while only an owner escalation is open, stalled once one it rules waits"
+inject: >-
+  the Kernel escalates a question of kind owner; the Supervisor asked the owner in its terminal and ended its turn (idle at its
+  prompt, no supervisor next for ten minutes) while the owner has not answered; later the Kernel escalates a scope question too,
+  and the Supervisor still does not move
+expect: >-
+  while only the owner escalation is open, the scheduled ticks neither nudge nor replace the Supervisor, and no stalled outcome
+  is recorded; supervisor next returns the scope escalation before the older owner one; once the scope escalation waits, the
+  tick nudges the Supervisor, and after the nudge goes unanswered past the grace it replaces it on another member
+pass:
+  - no nudge and no replacement while only the owner escalation waits
+  - supervisor next returns the escalation the Supervisor rules before the one awaiting the owner
+  - exactly one nudge, then one replacement, once the scope escalation waits
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - file:
+      path: esc-owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-owner-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the product?
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-owner.yaml"]
+  - name: the Supervisor asked the owner and waits at its prompt
+    orca:
+      set:
+        tuiIdle:
+          ${supervisor.terminal}: true
+  - &quiet
+    name: its last driver call was ten minutes ago
+    sql:
+      db: machine
+      exec: UPDATE project_supervisors SET lease_until = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+20 minutes') WHERE ended_at IS NULL
+  - name: the scheduled tick leaves a Supervisor awaiting the owner alone
+    starci: [supervisor, tick]
+  - name: a later tick still leaves it alone
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${supervisor.terminal}
+        count: 0
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind IN ('stall-nudged', 'stall-gave-up')"
+        equals: [0]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM member_outcomes WHERE class = 'stalled'"
+        equals: [0]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM project_supervisors
+        equals: [1]
+  - file:
+      path: esc-scope.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-scope-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: scope
+          question: may doc a also write docs/b.md?
+          paths: [docs/b.md]
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-scope.yaml"]
+  - name: supervisor next returns the escalation the Supervisor rules first
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: may doc a also write docs/b.md?
+  - *quiet
+  - name: the tick nudges the Supervisor now that a decision it rules waits
+    starci: [supervisor, tick]
+    expect:
+      contains: nudge 1 of
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${supervisor.terminal}
+        count: 1
+  - name: the nudge went unanswered for four minutes
+    sql:
+      db: machine
+      exec: UPDATE host_events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-4 minutes') WHERE kind = 'stall-nudged'
+  - name: the tick gives the Supervisor up and replaces it
+    starci: [supervisor, tick]
+    expect:
+      contains: replaced by
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM member_outcomes WHERE class = 'stalled'"
+        equals: [1]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM project_supervisors
+        equals: [2]

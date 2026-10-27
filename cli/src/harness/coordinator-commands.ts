@@ -25,6 +25,9 @@ export type CommandScope = "kernel" | "supervisor"
 /** The kinds an escalation names (wave principle 5). */
 export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harness"] as const
 
+/** The escalation kinds the owner rules: the Supervisor asks the owner in its terminal and relays the ruling (ops/coordinators/supervisor.md). */
+const OWNER_RULED: readonly (typeof ESCALATION_KINDS)[number][] = ["owner", "harness"]
+
 const commandSchema = z.strictObject({
     schema: z.literal("starci/command@1"),
     cmdId: z.string().regex(/^[\w.:-]{6,80}$/, "cmdId is 6..80 of letters, digits, _ . : -"),
@@ -237,6 +240,18 @@ export const openDecisions = (db: DatabaseSync, scope: CommandScope, workflowId?
         ? db.prepare("SELECT * FROM decisions WHERE scope = ? AND answered_at IS NULL ORDER BY raised_at, id").all(scope)
         : db.prepare("SELECT * FROM decisions WHERE scope = ? AND workflow_id = ? AND answered_at IS NULL ORDER BY raised_at, id").all(scope, workflowId)
     ).map(toDecision)
+
+/**
+ * Whether a decision awaits the owner: an escalation whose kind the owner rules. Its Supervisor waits for the owner's answer, so
+ * it is no work of the Supervisor's own: `supervisor next` returns it after every decision the Supervisor rules, and it never
+ * makes an idle Supervisor stalled.
+ */
+export const awaitsOwner = (decision: Decision): boolean => {
+    const evidence = decision.evidence
+    if (decision.kind !== "escalation" || typeof evidence !== "object" || evidence === null || !("escalation" in evidence)) return false
+    const escalation = evidence.escalation
+    return typeof escalation === "object" && escalation !== null && "kind" in escalation && OWNER_RULED.some((kind) => kind === escalation.kind)
+}
 
 /** One decision by id. */
 export const getDecision = (db: DatabaseSync, id: string): Decision | undefined => {
