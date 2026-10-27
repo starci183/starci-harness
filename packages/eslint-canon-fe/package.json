@@ -32,7 +32,7 @@
   },
   "imports": {
     "#runtime/*": {
-      "types": "./types/runtime/*",
+      "types": "./src/types/runtime/*",
       "default": "./runtime/*"
     }
   },

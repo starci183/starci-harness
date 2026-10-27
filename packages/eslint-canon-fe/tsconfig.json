@@ -7,5 +7,5 @@
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["src", "types", "fixtures/overlay-host-files.ts", "fixtures/typed/tester.ts"]
+  "include": ["src", "fixtures/overlay-host-files.ts", "fixtures/typed/tester.ts"]
 }

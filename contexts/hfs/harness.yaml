@@ -98,10 +98,6 @@ slots:
         until: "2026-12-31"
         owner: package TS plan
         why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
-      - path: packages/eslint-canon-fe/
-        until: "2026-12-31"
-        owner: lane ts-canon-fe
-        why: the front-end canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
       - path: packages/grammar/
         until: "2026-12-31"
         owner: Grammar Storybook lane
@@ -324,10 +320,6 @@ slots:
         why: the tsconfig package is JSON presets; it has nothing to build
     enforce: target
     exceptions:
-      - path: packages/eslint-canon-fe/
-        until: "2026-12-31"
-        owner: lane ts-canon-fe
-        why: the front-end canon has no src/ until its JavaScript moves there as TypeScript
     holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
     rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
   - id: packages.tests
