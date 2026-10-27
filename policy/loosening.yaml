@@ -2,10 +2,11 @@
 # this file selects the banned ones and lists the exceptions. The gate reads the tree as it stands (tracked plus
 # untracked, never ignored files), not a diff.
 # Exceptions live only in a repository's own policy/loosening.yaml, never inline: each names one file, one marker, its
-# kind, the exact text of each line it covers (`match`, the line trimmed; a list for several lines) and the reason. Only
-# a fixture, template or detector file takes one (`exceptionKindProblem` in cli/src/harness/policy.ts holds the test of
-# each kind; any other file is refused EXCEPTION_KIND_REFUSED). Any other line of the file stays a finding, and a `match`
-# that covers no finding is EXCEPTION_STALE, so the list cannot accrete.
+# kind, the exact text of each line it covers (`match`, the line trimmed; a list for several lines) and the reason. A
+# fixture, template or detector file takes one, and so does any file a live owner ruling covers, as a `ruling` exception
+# naming its id in `decision` (`exceptionKindProblem` in cli/src/harness/policy.ts holds the test of each kind; any other
+# file is refused EXCEPTION_KIND_REFUSED, an id that is no live ruling EXCEPTION_RULING_UNKNOWN). Any other line of the
+# file stays a finding, and a `match` that covers no finding is EXCEPTION_STALE, so the list cannot accrete.
 # A project's policy/loosening.yaml may ban more markers and declare its exceptions; it can never unban.
 schema: starci/loosening-policy@1
 banned:
@@ -25,6 +26,12 @@ scan:
 # A code marker reads code, never the text of a string, template or comment; a directive marker reads comments, so a
 # comment that spells a directive is a finding wherever it stands, a rule's doc comment included.
 exceptions:
+  - path: sonar-project.properties
+    marker: gate-widening
+    kind: ruling
+    decision: cli-proven-by-bench
+    match: "sonar.coverage.exclusions=cli/src/**"
+    reason: "the CLI is proven by the bench, so cli/src is excluded from coverage only; issues and duplication still analyse it"
   - path: packages/hfs/runtime/scripts/guards/git-policy.mjs
     marker: no-verify
     kind: detector

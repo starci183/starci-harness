@@ -5,7 +5,7 @@ import { envelopesAllowed, neverRead } from "../../harness/policy.js"
 import type { Policy } from "../../harness/policy.js"
 import { lineFindings, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding, SecretHit } from "../../shared/secrets.js"
-import { applyExceptions } from "./exceptions.js"
+import { applyExceptions, coverageLabel } from "./exceptions.js"
 import type { Coverage, StaleEntry } from "./exceptions.js"
 import { readTreeFile } from "./tree-files.js"
 
@@ -72,7 +72,7 @@ export const exceptSecrets = (root: string, hits: readonly SecretHit[], policy: 
         policy.security.exceptions,
     )
     const bare = ({ file, line, pattern }: SecretHit): SecretFinding => ({ file, line, pattern })
-    return { findings: open.map(bare), excepted: excepted.map((hit): ExceptedSecret => ({ ...bare(hit), kind: hit.kind, reason: hit.reason })), stale: stale.map(({ path, rule, kind, index }) => ({ path, rule, kind, index })) }
+    return { findings: open.map(bare), excepted: excepted.map((hit): ExceptedSecret => ({ ...bare(hit), kind: hit.kind, decision: hit.decision, reason: hit.reason })), stale: stale.map(({ path, rule, kind, index }) => ({ path, rule, kind, index })) }
 }
 
 /**
@@ -112,7 +112,7 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
 export const describeSecrets = (report: SecretReport): string[] => [
     `secrets: ${report.verdict}; ${String(report.files)} file(s), ${String(report.unread)} judged by name only, ${String(report.findings.length)} finding(s), ${String(report.excepted.length)} excepted`,
     ...report.findings.map((finding) => `${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
-    ...report.excepted.map((finding) => `excepted ${finding.kind}: ${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
+    ...report.excepted.map((finding) => `excepted ${coverageLabel(finding)}: ${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
     ...report.stale.map((entry) => `EXCEPTION_STALE: ${entry.path} ${entry.rule} (${entry.kind}) match[${String(entry.index)}] covers no finding; remove it from policy/security.yaml`),
     ...report.unjudged.map((file) => `unjudged: ${file} is larger than scan.maxFileBytes; the scan cannot read it`),
 ]

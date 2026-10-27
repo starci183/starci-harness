@@ -119,7 +119,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: SHARED-FORMAT-1 Prettier is the only formatter · SHARED-FORMAT-2 Line endings and editor settings are managed files
 - [code/shared/imports.md](../code/shared/imports.md) · 2 KB — Through which path a file imports and what it exports.
   - sections: SHARED-IMPORTS-1 Across owners through the owner's entry; inside one owner, relative · SHARED-IMPORTS-2 Type-only bindings use `import type` · SHARED-IMPORTS-3 Every export has a consumer; every import is used
-- [code/shared/loosening.md](../code/shared/loosening.md) · 2 KB — What makes a check pass without the code satisfying it.
+- [code/shared/loosening.md](../code/shared/loosening.md) · 3 KB — What makes a check pass without the code satisfying it.
   - sections: SHARED-LOOSENING-1 No inline suppression, escape marker or swallowed failure · SHARED-LOOSENING-2 A wrong rule is changed in its owner, never around it
 - [code/shared/naming.md](../code/shared/naming.md) · 2 KB — The identifier forms both sides share.
   - sections: SHARED-NAMING-1 Identifier case follows what the identifier is · SHARED-NAMING-2 Exports are named; a default export only where a framework loads one · SHARED-NAMING-3 Module-level functions are arrow constants
@@ -135,8 +135,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 16 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet · Wrappers pin
 - [decisions/open-ui.md](../decisions/open-ui.md) · 7 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 30 KB — The one log of owner rulings that knowledge, the grammar package and the canon lint carry.
-  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, auth-callback-shape, avatar-default-dicebear-initials, band-is-first-face and 67 more
+- [decisions/rulings.yaml](../decisions/rulings.yaml) · 31 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
+  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, agent-avatar-initials-bot-badge, alert-white-surface, app-owned-schedules, auth-callback-shape, avatar-default-dicebear-initials, band-is-first-face and 68 more
 - [grammars/README.md](../grammars/README.md) · 6 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: The model: one contract, composed implementations · Files · Who owns what · Reading order for an author · Where feedback lands
 - [grammars/common.md](../grammars/common.md) · 9 KB — Common is the layer every grammar is drawn over.

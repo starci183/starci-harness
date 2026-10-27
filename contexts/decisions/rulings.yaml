@@ -1,7 +1,8 @@
-# The one log of owner rulings that knowledge, the grammar package and the canon lint carry. A ruling is what the
-# owner decided, in present tense and in one place; the rule it shaped states it as plain law and lives in `owner`
-# (a knowledge file and rule id, a package file, or a lint rule). Rules never carry dates or ruling citations; a
-# change that needs to point at the decision cites the ruling id here.
+# The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry. A
+# ruling is what the owner decided, in present tense and in one place; the rule it shaped states it as plain law and
+# lives in `owner` (a knowledge file and rule id, a package file, a lint rule, or a policy file). Rules never carry dates
+# or ruling citations; a change that needs to point at the decision cites the ruling id here, and a `ruling` exception
+# of policy/loosening.yaml or policy/security.yaml names a live id (or one it absorbs) as its `decision`.
 #   id        stable; legacy spellings are kept so existing citations resolve (R212/case-4, control-height-40)
 #   status    live | proposed (written, awaiting the owner; the gate that depends on it stays red)
 #   absorbs   ids of earlier rulings this one replaced; a citation of an absorbed id resolves to this entry
@@ -475,6 +476,11 @@ rulings:
     status: live
     ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
     owner: "policy (sonar configuration of the app template)"
+  - id: cli-proven-by-bench
+    date: '2026-10-27'
+    status: live
+    ruling: "The harness CLI is proven by the bench and by runs of the built CLI, not by unit coverage: Sonar analyses cli/src for issues and duplication and excludes it from coverage only."
+    owner: "CONTRIBUTING.md CONTRIB-1; sonar-project.properties"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

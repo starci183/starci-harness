@@ -1,6 +1,6 @@
 import { neverRead } from "../../harness/policy.js"
 import type { LooseningMarker, Policy } from "../../harness/policy.js"
-import { applyExceptions } from "./exceptions.js"
+import { applyExceptions, coverageLabel } from "./exceptions.js"
 import type { Coverage, StaleEntry } from "./exceptions.js"
 import { markerFileKind, markersIn } from "./markers.js"
 import { SONAR_FILE, appFacts, appRootOf, sonarBlock } from "./sonar-scope.js"
@@ -94,7 +94,7 @@ export const scanLoosening = async (root: string, policy: Policy): Promise<Loose
 export const describeLoosening = (report: LooseningReport): string[] => [
     `loosening: ${report.verdict}; ${String(report.scanned)} file(s) read, ${String(report.findings.length)} finding(s), ${String(report.excepted.length)} excepted`,
     ...report.findings.map((finding) => `${finding.file}:${String(finding.line)} ${finding.marker} (${finding.label})`),
-    ...report.excepted.map((finding) => `excepted ${finding.kind}: ${finding.file}:${String(finding.line)} ${finding.marker}`),
+    ...report.excepted.map((finding) => `excepted ${coverageLabel(finding)}: ${finding.file}:${String(finding.line)} ${finding.marker}`),
     ...report.stale.map((entry) => `EXCEPTION_STALE: ${entry.path} ${entry.rule} (${entry.kind}) match ${JSON.stringify(entry.match)} covers no finding; remove it from policy/loosening.yaml`),
     ...report.unjudged.map((file) => `unjudged: ${file} is larger than scan.maxFileBytes; split it, the gate cannot read it`),
 ]

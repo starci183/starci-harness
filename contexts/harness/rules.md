@@ -8,7 +8,7 @@ These hold for every role and every task. A rule with a gate names it; the other
    `release push` scan for leaks; this repository is public and tracks no secret envelope.
 2. **No loosening.** No inline disable, `ts-ignore`, `NOSONAR`, skipped or focused test, `|| true`, `--no-verify` or
    widened allowlist. Change the code, not the gate. `starci check loosening` reads the tree as it stands and
-   `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file.
+   `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a live owner ruling covers.
 3. **No stash, force or reset in a dirty tree.** Never `git stash`, `reset --hard`, `checkout -- .`, `clean -f`, a
    force push or a branch switch in a checkout that holds someone's uncommitted work. Work in your own worktree.
 4. **Two tools never touch the same files.** Parallel agents, seats or tools write disjoint paths; the harness enforces

@@ -39,7 +39,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `supervisor tick` keeps and sweeps every project's Supervisor; a workflow under the version-2 host Supervisor is
   adopted by its project's Supervisor on the first tick.
 - **Exceptions pin their lines.** An exception of `policy/loosening.yaml` or `policy/security.yaml` names its `kind`
-  (`fixture`, `template` or `detector`) and the exact text of each line it covers (`match`); it covers only those lines,
+  (`fixture`, `template`, `detector`, or `ruling` with the id of a live ruling of contexts/decisions/rulings.yaml in
+  `decision`, else `EXCEPTION_RULING_UNKNOWN`) and the exact text of each line it covers (`match`); it covers only those lines,
   so a new occurrence in the same file is a finding. An exception on a file its kind does not qualify is refused
   `EXCEPTION_KIND_REFUSED`, a `match` that covers no finding turns the check red `EXCEPTION_STALE`, and `check loosening`
   and `check secrets` list every exception applied. `release push` honours the same exceptions.

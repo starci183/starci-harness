@@ -5,6 +5,8 @@ export interface DeclaredException {
     readonly path: string
     readonly rule: string
     readonly kind: ExceptionKind
+    /** The owner ruling a `ruling` exception rests on. */
+    readonly decision?: string | undefined
     readonly match: readonly string[]
     readonly reason: string
 }
@@ -28,8 +30,12 @@ export interface StaleEntry {
 /** What an exception adds to a finding it covers. */
 export interface Coverage {
     readonly kind: ExceptionKind
+    readonly decision?: string | undefined
     readonly reason: string
 }
+
+/** How a report names the exception that covers a finding: its kind, and the ruling a `ruling` exception rests on. */
+export const coverageLabel = (coverage: Coverage): string => (coverage.decision === undefined ? coverage.kind : `${coverage.kind} ${coverage.decision}`)
 
 /** Findings split by the declared exceptions: the open ones, the covered ones with their exception, and the unused entries. */
 export interface Excepted<F> {
@@ -53,7 +59,7 @@ export const applyExceptions = <F>(findings: readonly F[], keyOf: (finding: F) =
         if (exception === undefined) open.push(finding)
         else {
             used.add(`${String(exceptionIndex)}:${String(exception.match.indexOf(key.text))}`)
-            excepted.push({ ...finding, kind: exception.kind, reason: exception.reason })
+            excepted.push({ ...finding, kind: exception.kind, decision: exception.decision, reason: exception.reason })
         }
     }
     const stale = exceptions.flatMap((exception, exceptionIndex) =>
