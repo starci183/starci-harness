@@ -1,0 +1,100 @@
+# StarCi Harness desktop app: builds the Tauri shell in `app/`.
+# Windows -> .msi + NSIS .exe, macOS -> universal .dmg; the bundles are uploaded as workflow artifacts.
+# Signing is optional: the builds are unsigned unless these repository secrets exist.
+#   macOS (wired below): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#                        APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID (notarization)
+#   Windows (reserved, not wired yet): WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD
+name: app
+
+on:
+  push:
+    tags: ["app-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            runner: windows-latest
+            args: ""
+            rust_targets: ""
+            bundles: |
+              app/src-tauri/target/release/bundle/msi/*.msi
+              app/src-tauri/target/release/bundle/nsis/*.exe
+          - name: macos-universal
+            runner: macos-latest
+            args: "--target universal-apple-darwin"
+            rust_targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+            bundles: |
+              app/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            packages/grammar/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+
+      # The app installs the Grammar from ../packages/grammar as a copy (app/.npmrc install-links), so its dist is built first.
+      - name: Build the Grammar
+        working-directory: packages/grammar
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Optional macOS signing
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # Export only the secrets that exist, so an unset one never reaches the bundler as an empty value.
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
+          done
+
+      - name: Build desktop bundles
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          tauriScript: npm run tauri
+          args: ${{ matrix.args }}
+
+      - name: Upload bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: starci-harness-${{ matrix.name }}
+          path: ${{ matrix.bundles }}
+          if-no-files-found: error
