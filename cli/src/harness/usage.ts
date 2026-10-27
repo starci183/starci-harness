@@ -130,9 +130,9 @@ const newestFile = (dir: string, pattern: RegExp): string | undefined => {
         return undefined
     }
     const files = entries.filter((entry) => entry.isFile() && pattern.test(entry.name)).map((entry) => join(dir, entry.name))
-    const newest = files.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
+    const newest = files.toSorted((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0]
     if (newest !== undefined) return newest
-    for (const sub of entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort().reverse()) {
+    for (const sub of entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).toSorted((a, b) => b.localeCompare(a))) {
         const found = newestFile(join(dir, sub), pattern)
         if (found !== undefined) return found
     }
