@@ -5,8 +5,8 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 11 KB — Read this file first, in this repository or in any app the harness drives.
-  - sections: Load order · Harness · The boundary model: four owners, one app · Map · Reading order by task · Feedback hardens · House rules for editing contexts
+- [README.md](../README.md) · 12 KB — Read this file first, in this repository or in any app the harness drives.
+  - sections: Load order · Two layers of context · Harness · The boundary model: four owners, one app · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [code/README.md](../code/README.md) · 2 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
   - sections: Read for a coding task
 - [code/be/README.md](../code/be/README.md) · 5 KB — How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to `@starci/eslint-canon-be`.

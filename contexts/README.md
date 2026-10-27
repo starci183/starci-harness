@@ -26,6 +26,16 @@ row starts with [harness/rules.md](harness/rules.md), the rules no task may bend
 The verbs available in the working directory, with flags, effect and json schema, come from `starci explain`
 (`--json` for machines). It is generated from the verb definitions and is the one list of commands.
 
+## Two layers of context
+
+The first layer is read before any work and is fixed: your row above, or for a worker the brief's files (the op's
+`context.base` with its anatomy slice, then the contract's `context.extend`, within the op's budget). The second layer is
+looked up on demand when a question comes up mid-task: `starci contexts search "<question>" [--scope ui,code,...]`
+ranks the sections of this tree, the op files, `policy/` and the harness documents and prints each hit's id, file,
+line and text. Open the hit's file before you rely on it. A hit marked citable carries a rule or record id; `rulesApplied`
+may cite it only when that file is among the task's context files, since the rules-cited check reads ids from those
+files alone.
+
 ## Harness
 
 | file | holds |
