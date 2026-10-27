@@ -7,6 +7,7 @@ import type { Command, CommandRow, Decision, KernelDecisionKind } from "../../ha
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
+import { workflowLanes } from "../../harness/lanes.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
@@ -48,6 +49,8 @@ export interface Digest {
     readonly nodes: Readonly<Record<string, number>>
     readonly openDecisions: number
     readonly recentCommands: readonly { readonly cmdId: string; readonly kind: string; readonly status: string }[]
+    /** The planning digest: the lane of each Work record the graph covers, each step satisfied, carried, optional or missing. */
+    readonly lanes: readonly string[]
 }
 
 /** What `kernel next` returns: one decision (or idle when none came within the wait, or an inline task waits), with the digest. */
@@ -97,6 +100,7 @@ export const digestOf = (db: DatabaseSync, workflowId: string): Digest => {
         nodes,
         openDecisions: openDecisions(db, "kernel", workflowId).length,
         recentCommands: recent.map((row) => ({ cmdId: String(row.cmd_id), kind: String(row.kind), status: String(row.status) })),
+        lanes: workflowLanes(db, workflowId),
     }
 }
 

@@ -87,6 +87,7 @@ steps:
         workflow: scoped
         basedOn: {graph: ${graph}}
         answers: [${question}]
+        route: blocked-answered
         change: add.yaml
   - name: the change past the ceiling is refused
     seat: kernel:scoped

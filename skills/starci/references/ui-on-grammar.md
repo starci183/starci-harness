@@ -2,7 +2,7 @@
 
 A front end is drawn in its grammar: the `@starci/grammar` package owns every component, prop, token and
 value. The app owns only product facts (copy, routes, data) and the layout of boundaries it owns. This holds
-for a `ui` contract and for any `code` contract that touches the front end.
+for a `draw` contract (the screen's direction), an `audit` contract and any `code` contract that touches the front end.
 
 ## Resolve the grammar
 
@@ -46,5 +46,5 @@ starci check run
 starci check loosening
 ```
 
-In a contract this is the `check-run-green` preset, which the `ui` and `code` labels carry by default. Taste
+In a contract this is the `check-run-green` preset, which the `code` label carries by default. Taste
 and UX are the owner's review after the checks, never a contract check.

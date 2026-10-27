@@ -8,6 +8,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Lanes and repair routes.** `ops/lanes.yaml` is the standard build flow each Work record walks; `workflow define`,
+  `amend` and every replan refuse `FLOW_INCOMPLETE` while a covered record's step is neither satisfied by evidence nor
+  carried by a task of its label in order, and `kernel next` digests each record's lane. `ops/routes.yaml` bounds repairs:
+  a red or question decision carries its legal route, `kernel submit` refuses `ROUTE_ILLEGAL` off it, and past its limit
+  the Kernel escalates to the owner. The `ui` label becomes `draw`; `audit` and `review` are new, and the router never
+  gives a `review` to the provider that authored the work it reads (`independentOf`). A workflow file may name
+  `requires: [security, perf]`.
+
 - **Host driver and stall ladder.** `supervisor tick` (one idempotent pass for a scheduled task) and `supervisor watch`
   (its loop) keep the seat tree alive with no LLM awake: ensure the Supervisor, sweep its Kernels and their Ops, and for an
   agent idle at its prompt with work pending (Orca's tui-idle, output and heartbeat signals) nudge it with its loop prompt,

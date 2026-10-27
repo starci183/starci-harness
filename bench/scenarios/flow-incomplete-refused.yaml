@@ -1,0 +1,137 @@
+schema: starci/scenario@1
+id: flow-incomplete-refused
+group: plan
+title: a replan that adds back-end code without the rest of its lane is refused and the graph stays as it was
+inject: an amend whose change file adds a code task over a back-end impl record and nothing after it
+expect: >-
+  workflow amend refuses FLOW_INCOMPLETE naming the missing steps and how to add them; the graph stays at v1 with its one
+  task; the same change with the test, e2e and review tasks behind the code records graph v2
+pass:
+  - the amend is refused FLOW_INCOMPLETE and the workflow is still at graph v1
+  - the complete change records graph v2 with five tasks
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    .starciwork/workspace.yaml: |
+      schema: work/workspace@1
+      id: shop
+      repositories:
+        - {role: be, name: api}
+    .starciwork/features/shop/impl/api/orders/index.yaml: |
+      schema: work/implementation@1
+      id: impl.shop.api.orders
+      title: the orders slice
+      state: todo
+      activity: idle
+      repository: api
+      owners:
+        - {role: be, path: api/src/orders}
+      proves: []
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: grow
+        goal: document the orders slice, then build it
+        runner: inline
+        tasks:
+          - id: doc
+            label: docs
+            summary: write the orders notes
+            allowPaths: [docs/orders.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/orders.md]}
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - file:
+      path: half.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: grow
+        reason: build the orders slice
+        changes:
+          - op: add
+            task:
+              id: code
+              label: code
+              summary: build the orders slice
+              allowPaths: [api/src/orders]
+              context: [.starciwork/features/shop/impl/api/orders/index.yaml]
+              inputs: {side: be, edition: lite}
+              checks:
+                - preset: tests-pass
+                  args: {command: "node --version"}
+  - name: amend with code alone
+    starci: [workflow, amend, grow, --change, "${run}/half.yaml"]
+    expect:
+      exit: 1
+      code: FLOW_INCOMPLETE
+      contains: "add a test task over .starciwork/features/shop/impl/api/orders depending on code"
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT graph_version FROM workflows WHERE id = 'grow'
+        equals:
+          - 1
+  - file:
+      path: whole.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: grow
+        reason: build the orders slice through its lane
+        changes:
+          - op: add
+            task:
+              id: code
+              label: code
+              summary: build the orders slice
+              allowPaths: [api/src/orders]
+              context: [.starciwork/features/shop/impl/api/orders/index.yaml]
+              inputs: {side: be, edition: lite}
+              checks:
+                - preset: tests-pass
+                  args: {command: "node --version"}
+          - op: add
+            task:
+              id: test
+              label: test
+              summary: test the orders slice
+              dependsOn: [code]
+              allowPaths: [api/test/orders]
+              context: [.starciwork/features/shop/impl/api/orders/index.yaml]
+              inputs: {edition: lite}
+              checks:
+                - preset: tests-pass
+                  args: {command: "node --version"}
+          - op: add
+            task:
+              id: e2e
+              label: verify
+              summary: run the orders e2e suite
+              dependsOn: [test]
+              allowPaths: [api/reports/orders]
+              context: [.starciwork/features/shop/impl/api/orders/index.yaml]
+              inputs: {suite: "node --version"}
+          - op: add
+            task:
+              id: review
+              label: review
+              summary: review the orders diff
+              dependsOn: [e2e]
+              allowPaths: [api/reviews/orders]
+              context: [.starciwork/features/shop/impl/api/orders/index.yaml]
+              inputs: {since: HEAD}
+  - name: amend with the whole lane
+    starci: [workflow, amend, grow, --change, "${run}/whole.yaml"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT graph_version || ':' || (SELECT COUNT(*) FROM plan_nodes p WHERE p.workflow_id = 'grow' AND p.graph_version = w.graph_version) FROM workflows w WHERE id = 'grow'
+        equals:
+          - "2:5"

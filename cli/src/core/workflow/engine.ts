@@ -225,12 +225,12 @@ export const closeKernelActions = async (context: VerbContext, root: string, sna
 
 /**
  * The launch of a queued node task: the router's pick from the task's label, the node's difficulty and risk, and its lineage
- * (attempt number and contract-red members, through the retry chain). A refused pick is a wait: the task stays queued and the
+ * (attempt number and contract-red members, through the retry chain), and the authors an independent label avoids. A refused pick is a wait: the task stays queued and the
  * next step routes it again.
  */
 const launchOf = (root: string, node: PlanNode, taskId: string): RoutePick | Refusal => {
     const lineage = withLedger(root, (db) => lineageOf(db, taskId))
-    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: node.route.risk })
+    const pick = pickRoute({ label: node.contract.label, difficulty: node.route.difficulty, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: node.route.risk, authors: lineage.authors })
     return pick instanceof RouteRefusal ? new Refusal(pick.code, [pick.message, ...describeRoute(pick)].join("; ")) : pick
 }
 

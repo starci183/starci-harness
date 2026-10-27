@@ -115,6 +115,7 @@ design asks for.
 | [change-stale-dependency-kernel-decides](scenarios/change-stale-dependency-kernel-decides.yaml) | change | a dependency lands a different result: dependents become stale, never auto-cancelled | automated | pending |  |
 | [change-touches-running-node](scenarios/change-touches-running-node.yaml) | change | the change edits a task while it runs (redo-live) | automated | pending |  |
 | [change-while-verify-settling](scenarios/change-while-verify-settling.yaml) | change | an amend arrives while a task's verify is settling | automated | pending |  |
+| [kernel-cannot-drop-owner-deliverable](scenarios/kernel-cannot-drop-owner-deliverable.yaml) | change | a Kernel's replan cannot drop a task of the owner's goal; a replacement or the Supervisor's goal-change can | automated | pass | 2026-10-27 |
 | [conflict-lease-case-insensitive](scenarios/conflict-lease-case-insensitive.yaml) | conflict | Docs/A.md and docs/a.md are one file on Windows and macOS: one lease | automated | pass | 2026-10-27 |
 | [conflict-lease-overlap](scenarios/conflict-lease-overlap.yaml) | conflict | two live tasks over the same path: the second is refused LEASE_CONFLICT | automated | pass | 2026-10-27 |
 | [conflict-scope-blocked](scenarios/conflict-scope-blocked.yaml) | conflict | a worker needing a path outside its scope files blocked, never widens | automated | pass | 2026-10-27 |
@@ -147,6 +148,7 @@ design asks for.
 | [budget-tries-exhausted-then-raised](scenarios/budget-tries-exhausted-then-raised.yaml) | budget | a workflow out of tries holds dispatch until a raise, then resumes | automated | pass | 2026-10-27 |
 | [verify-clean-checkout-not-worker-env](scenarios/verify-clean-checkout-not-worker-env.yaml) | verify | a check that passes only in the worker's environment is red on the clean checkout | automated | pass | 2026-10-27 |
 | [verify-flaky-test](scenarios/verify-flaky-test.yaml) | verify | a check fails then passes on the same tree | automated | pending |  |
+| [verify-only-task-settles-on-observed-evidence](scenarios/verify-only-task-settles-on-observed-evidence.yaml) | verify | a task whose audit finds nothing to change settles green on the checks over its allowPaths, with no commit | automated | pass | 2026-10-27 |
 | [verify-probe-target-down](scenarios/verify-probe-target-down.yaml) | verify | a probe check's target is down | automated | pending |  |
 | [verify-red-preserves-and-resets](scenarios/verify-red-preserves-and-resets.yaml) | verify | a red verify preserves the work, resets the paths and commits nothing | automated | pass | 2026-10-27 |
 | [verify-slow-suite](scenarios/verify-slow-suite.yaml) | verify | a check runs past its deadline | automated | pending |  |
@@ -203,10 +205,17 @@ design asks for.
 | [model-worker-role-cannot-overstep](scenarios/model-worker-role-cannot-overstep.yaml) | model | a process running as worker cannot amend, raise budgets, stop or push | automated | pass | 2026-10-27 |
 | [worker-mismatch-no-try-spent](scenarios/worker-mismatch-no-try-spent.yaml) | model | the model refuses the task as specified: mismatch returns it without spending a try | automated | pass | 2026-10-27 |
 | [budget-task-always-over](scenarios/budget-task-always-over.yaml) | plan | a task blows its budget every try | automated | pending |  |
+| [flow-incomplete-refused](scenarios/flow-incomplete-refused.yaml) | plan | a replan that adds back-end code without the rest of its lane is refused and the graph stays as it was | automated | pass | 2026-10-27 |
+| [lane-be-needs-test-e2e-review](scenarios/lane-be-needs-test-e2e-review.yaml) | plan | back-end code is tested, proven end to end and reviewed before the plan is recorded | automated | pass | 2026-10-27 |
+| [lane-fe-code-held-until-ui](scenarios/lane-fe-code-held-until-ui.yaml) | plan | front-end code waits for its feature's screens to be drawn | automated | pass | 2026-10-27 |
+| [lane-ui-already-drawn-skips](scenarios/lane-ui-already-drawn-skips.yaml) | plan | a screen the owner already drew is not drawn again; its front end is built, audited and walked | automated | pass | 2026-10-27 |
+| [lane-ui-draw-then-image](scenarios/lane-ui-draw-then-image.yaml) | plan | a screen not yet drawn walks its ui lane, draw then image, before define records the graph | automated | pass | 2026-10-27 |
 | [plan-replan-oscillation](scenarios/plan-replan-oscillation.yaml) | plan | the Kernel replans A, B, A, B | automated | pending |  |
 | [plan-self-overlap-serialised](scenarios/plan-self-overlap-serialised.yaml) | plan | the Kernel plans two independent tasks over one path: the lease serialises them | automated | pass | 2026-10-27 |
 | [plan-unachievable-goal](scenarios/plan-unachievable-goal.yaml) | plan | the goal cannot be met | automated | pending |  |
 | [plan-wrong-dependency-order](scenarios/plan-wrong-dependency-order.yaml) | plan | the Kernel forgets a dependency | semi | pending |  |
+| [route-audit-drift-repairs-code](scenarios/route-audit-drift-repairs-code.yaml) | plan | an audit that finds drift is repaired by code, never re-run at the same head | automated | pass | 2026-10-27 |
+| [route-limit-escalates](scenarios/route-limit-escalates.yaml) | plan | past a route's limit the Kernel may not repair again; it escalates to the owner through the Supervisor | automated | pass | 2026-10-27 |
 | [environment-keycloak-down-uat](scenarios/environment-keycloak-down-uat.yaml) | environment | an external dependency is down during uat | semi | pending |  |
 | [environment-lockfile-drift](scenarios/environment-lockfile-drift.yaml) | environment | the lockfile drifts from package.json | automated | pending |  |
 | [environment-npm-registry-down](scenarios/environment-npm-registry-down.yaml) | environment | the npm registry is down during clean verify | manual | pending |  |

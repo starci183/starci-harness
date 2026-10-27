@@ -150,6 +150,9 @@ const opFrontmatterSchema = z.strictObject({
     output: z.strictObject({ base: z.record(keyNameSchema, outputSpecSchema) }),
     // behavioural: a contract of this label needs a behavioural (T0 or T1) check, so green never means only "it compiles".
     checks: z.strictObject({ base: z.array(checkEntrySchema), behavioural: z.boolean() }),
+    // independentOf: the labels whose author a task of this label is never routed to: the router drops the providers that did the
+    // dependency work of those labels (router.ts, the independence step), so a review reads work its own provider did not write.
+    independentOf: z.array(z.string().min(1)).min(1).optional(),
 })
 
 /** A named check preset from ops/checks.yaml. */
@@ -262,6 +265,10 @@ export const loadOps = (dir: string = locateOps()): Ops => {
         labels[op.label] = op
     }
     if (files.length === 0) throw new Refusal("OPS_INVALID", `${opsDir} holds no op file`)
+    for (const op of Object.values(labels)) {
+        const unknown = (op.independentOf ?? []).filter((label) => !(label in labels))
+        if (unknown.length > 0) throw invalid(op.file, `independentOf names labels with no op file: ${unknown.join(", ")}`)
+    }
     const ops: Ops = { dir, root: dirname(dir), labels, presets }
     workerProcedure(ops)
     return ops

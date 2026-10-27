@@ -114,14 +114,18 @@ dependency is done; its ledger task is created only then, so a waiting node hold
 task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
 atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's
 ceiling, and `GOAL_SHRUNK` when it drops a key of a graph planned under the current goal version that no key it adds
-takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
+takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Define
+and every replan are refused `FLOW_INCOMPLETE` while a Work record a task is over has a step of its lane
+([ops/lanes.yaml](../ops/lanes.yaml)) that is neither satisfied by evidence nor carried by a task of its label over it,
+in the lane's order (`assertFlow` in `harness/lanes.ts`); `kernel next` digests each record's lane as `lanes`. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
 diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
 drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,
 unless the removal says `keepEffect`). `plan diff` prints the classification without applying it, and
 `workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
 blocks its dependents and the workflow, naming the red checks; independent tasks keep going, and a retry is always the
-Kernel's amend, never automatic. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
+Kernel's amend, never automatic: the red or question decision carries its one legal route of
+[ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a

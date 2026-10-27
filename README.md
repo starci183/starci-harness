@@ -69,7 +69,7 @@ repositories, so a run survives a closed chat or a dead agent. [contexts/harness
 | folder | holds |
 |---|---|
 | [cli/](cli/README.md) | the `starci` command (npm `starci-harness`), one TypeScript source: core verbs, the harness verbs and the edition verbs |
-| [ops/](ops/) | the work as data: the worker brief, the seven worker labels, the check presets, routing and budgets, liveness, the uat image |
+| [ops/](ops/) | the work as data: the worker brief, the worker labels, the lanes and repair routes, the check presets, routing and budgets, liveness, the uat image |
 | [policy/](policy/README.md) | the gates: tiers and profiles, canon packages, banned loosening markers, the secret scan |
 | [contexts/](contexts/README.md) | how StarCi app code and UI are written: app shape, stack, code patterns, grammars, UI rules, vendor parity |
 | [packages/](packages/README.md) | the canon packages apps install from npm: ESLint (fe, be), stylelint, tsconfig, prettier, jest |

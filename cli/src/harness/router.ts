@@ -36,6 +36,8 @@ export interface RouteInput {
     readonly previousRed?: number | readonly RouteMember[] | undefined
     readonly risk?: readonly string[] | undefined
     readonly stalled?: readonly RouteMember[] | undefined
+    /** The providers that authored the dependency work of the labels the label's op names in `independentOf`: never picked. */
+    readonly authors?: readonly string[] | undefined
 }
 
 /** One member a step dropped, and why. */
@@ -266,6 +268,7 @@ const hardReason = (candidate: Candidate, input: RouteInput, facts: Facts, tier:
     if (missing.length > 0) return fail(`host has no ${missing.join(", ")}`)
     const reds = redsByPool.get(candidate.pool) ?? 0
     if (reds >= 2) return fail(`excluded by this task's lineage: ${String(reds)} contract-red attempts on pool ${candidate.pool}`)
+    if (input.authors?.includes(candidate.provider) === true) return fail(`provider ${candidate.provider} authored the work this ${input.label} task reads`, "independence")
     const circuit = circuitReason(candidate, facts, highRisk)
     if (circuit !== null) return fail(circuit)
     const limit = Math.min(pool.maxParallel, candidate.concurrency.cap)
@@ -439,9 +442,10 @@ const hardStep = (stage: Stage, input: RouteInput, facts: Facts, redsByPool: Rea
         })
         stage.snapshot("hard-filter", hard, `tier ${record.tier}`)
         const up = routing.tierOrder[routing.tierOrder.indexOf(record.tier) + 1]
-        const unqualifiedOnly = hard.length === 0 && record.dropped.some((row) => row.step === "qualification" && row.reason.endsWith(`[tier ${record.tier}]`))
-        if (!unqualifiedOnly || up === undefined) return { hard, candidates }
-        stage.snapshot("qualification", [], `no member of tier ${record.tier} is qualified for this high-risk task; looking in tier ${up}`)
+        const climbing = hard.length === 0 ? record.dropped.find((row) => (row.step === "qualification" || row.step === "independence") && row.reason.endsWith(`[tier ${record.tier}]`)) : undefined
+        if (climbing === undefined || up === undefined) return { hard, candidates }
+        const why = climbing.step === "qualification" ? "is qualified for this high-risk task" : "is independent of the work's authors"
+        stage.snapshot(climbing.step, [], `no member of tier ${record.tier} ${why}; looking in tier ${up}`)
         record.tier = up
     }
 }
@@ -601,6 +605,26 @@ export interface Lineage {
     readonly reds: readonly RouteMember[]
     readonly stalled: readonly RouteMember[]
     readonly risk: readonly string[]
+    readonly authors: readonly string[]
+}
+
+/**
+ * The providers that authored the dependency work an independent label reads: for each dependency task the task was dispatched on
+ * (plan_inputs_json) whose label the op names in `independentOf`, the provider of every attempt it ran.
+ */
+const authorsOf = (db: DatabaseSync, taskId: string, label: string): string[] => {
+    const labels = loadOps().labels[label]?.independentOf ?? []
+    if (labels.length === 0) return []
+    const inputs: unknown = JSON.parse(textOf(db.prepare("SELECT plan_inputs_json FROM tasks WHERE id = ?").get(taskId)?.plan_inputs_json) ?? "{}")
+    const deps = Object.values(typeof inputs === "object" && inputs !== null ? inputs : {}).filter((id): id is string => typeof id === "string")
+    const routing = loadRouting()
+    const authors = new Set<string>()
+    for (const dep of deps) {
+        const row = db.prepare("SELECT label FROM tasks WHERE id = ?").get(dep)
+        if (!labels.includes(textOf(row?.label) ?? "")) continue
+        for (const attempt of db.prepare("SELECT agent FROM attempts WHERE task_id = ? AND agent IS NOT NULL").all(dep)) authors.add(providerOfAgent(routing, textOf(attempt.agent) ?? ""))
+    }
+    return [...authors].sort()
 }
 
 /** The risk tags of a workflow task: its plan node's route in the workflow's current graph; none for a task outside a workflow. */
@@ -613,8 +637,8 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
     return Array.isArray(risk) ? risk.filter((tag): tag is string => typeof tag === "string") : []
 }
 
-/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, or a worker that never started. */
-const STALLED_OUTCOMES: readonly string[] = ["stalled", "launch-failed"]
+/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, timed out, or a worker that never started. */
+const STALLED_OUTCOMES: readonly string[] = ["stalled", "launch-failed", "timeout"]
 
 /** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
@@ -635,7 +659,7 @@ export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
         }
         current = getTask(db, current).retryOf
     }
-    return { label: task.label, attempts, reds, stalled, risk: task.workflowId === null ? [] : riskOf(db, task.id) }
+    return { label: task.label, attempts, reds, stalled, risk: task.workflowId === null ? [] : riskOf(db, task.id), authors: authorsOf(db, task.id, task.label) }
 }
 
 /** Routes the next attempt of a queued task from its ledger: its label, attempt number, contract-red lineage and risk. */
@@ -651,7 +675,7 @@ export const routeTask = (root: string, taskId: string, options: { readonly reco
     } finally {
         db.close()
     }
-    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: lineage.risk }, { record: options.record ?? true })
+    return pickRoute({ label: lineage.label, attempt: lineage.attempts + 1, previousRed: lineage.reds, stalled: lineage.stalled, risk: lineage.risk, authors: lineage.authors }, { record: options.record ?? true })
 }
 
 const fixed = (value: number): string => value.toFixed(2)

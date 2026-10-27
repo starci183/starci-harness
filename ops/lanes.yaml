@@ -1,0 +1,78 @@
+# The standard build flow: the lane every Work record walks, chosen by its family (and, for an impl record, by the role its
+# repository has in workspace.yaml). A model fills the content of one step; it never decides which step comes next, which
+# label repairs what (routes.yaml) or how many rounds. The Kernel plans dynamically: a step its evidence already satisfies
+# is skipped. cli/src/harness/lanes.ts reads this file; `workflow define`, `amend` and every replan refuse FLOW_INCOMPLETE
+# while a step of a Work record the graph covers is neither satisfied nor carried by a task of its label over that record.
+#
+# satisfiedWhen: evidence the code evaluates, any one of which satisfies the step:
+#   record-exists       the record's file is in the Work tree
+#   record-done         the record's state is done
+#   direction-approved  a ui record is done and the `direction` file it names exists
+#   assets-exist        the ui record declares asset slots and every slot's `file` exists
+#   owners-landed       every owner path of an impl record has a commit in the workflow's repository
+#   uat-receipted       a uat record is done and its evidence.yaml cites a run
+#   task-green          a done task of the step's label over the record (or its feature, `over: feature`) is in the ledger
+# optionalWhen: a fact of the record that makes the step optional (hasNoArtworkSlots: the record is drawn and declares no
+#   asset slot). optionalUnless: a goal flag without which the step is optional (requiresSecurity, requiresPerf: the
+#   workflow file's `requires` names security, perf).
+# heldUntil: a lane whose records of the same feature hold this step: each is satisfied, or carried by tasks the step's task
+#   depends on. over: feature lets a task over any record of the record's feature carry the step.
+# Steps run in order: a task carrying a step depends on the tasks carrying the steps before it. `build` names the label a
+# route `to: build` repairs with.
+schema: starci/lanes@1
+lanes:
+  - id: business
+    match: [{family: br}, {family: fr}, {family: nfr}, {family: journey}, {family: data}]
+    steps:
+      - {id: decide, label: docs, satisfiedWhen: [record-exists]}
+  - id: architecture
+    match: [{family: sds}, {family: contract}]
+    steps:
+      - {id: decide, label: docs, satisfiedWhen: [record-exists]}
+  - id: brand
+    match: [{family: brand}]
+    steps:
+      - {id: decide, label: docs, satisfiedWhen: [record-exists]}
+  - id: ui
+    match: [{family: ui}]
+    build: draw
+    steps:
+      - {id: draw, label: draw, satisfiedWhen: [direction-approved]}
+      - {id: image, label: image, satisfiedWhen: [assets-exist], optionalWhen: hasNoArtworkSlots}
+  # The front end has no unit tests (SHARED-TEST-1): it is audited against its drawing and walked.
+  - id: impl-fe
+    match: [{family: impl, role: fe}]
+    build: code
+    steps:
+      - {id: code, label: code, satisfiedWhen: [record-done, owners-landed], heldUntil: ui}
+      - {id: audit, label: audit, satisfiedWhen: [record-done, task-green]}
+      - {id: uat, label: uat, satisfiedWhen: [record-done, task-green], over: feature}
+      - {id: security, label: verify, satisfiedWhen: [record-done, task-green], optionalUnless: requiresSecurity}
+      - {id: perf, label: verify, satisfiedWhen: [record-done, task-green], optionalUnless: requiresPerf}
+  - id: impl-be
+    match: [{family: impl}]
+    build: code
+    steps:
+      - {id: code, label: code, satisfiedWhen: [record-done, owners-landed]}
+      - {id: test, label: test, satisfiedWhen: [record-done, task-green]}
+      - {id: e2e, label: verify, satisfiedWhen: [record-done, task-green]}
+      - {id: security, label: verify, satisfiedWhen: [record-done, task-green], optionalUnless: requiresSecurity}
+      - {id: perf, label: verify, satisfiedWhen: [record-done, task-green], optionalUnless: requiresPerf}
+      - {id: review, label: review, satisfiedWhen: [record-done, task-green]}
+  - id: uat
+    match: [{family: uat}]
+    build: code
+    steps:
+      - {id: walk, label: uat, satisfiedWhen: [uat-receipted]}
+  # One external provider, one live proof with the owner's credential; the code that calls it is the impl record's.
+  - id: integration
+    match: [{family: integration}]
+    build: code
+    steps:
+      - {id: live, label: verify, satisfiedWhen: [record-done, task-green]}
+  - id: operations
+    match: [{family: environment}]
+    build: deliver
+    steps:
+      - {id: deliver, label: deliver, satisfiedWhen: [task-green]}
+      - {id: review, label: review, satisfiedWhen: [task-green]}

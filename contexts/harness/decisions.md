@@ -16,6 +16,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **Project pattern.** `contexts/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.
+- **A standard flow, planned dynamically.** Every Work record walks the lane of its family
+  ([ops/lanes.yaml](../../ops/lanes.yaml)): a model fills the content of one step and never decides which step comes
+  next, which label repairs what or how many rounds ([ops/routes.yaml](../../ops/routes.yaml)). The Kernel plans only the
+  steps evidence does not satisfy yet (a screen the owner already drew is not drawn again); `workflow define`, `amend` and
+  every replan refuse `FLOW_INCOMPLETE` otherwise (`assertFlow` in `cli/src/harness/lanes.ts`), and `kernel submit`
+  refuses `ROUTE_ILLEGAL` for an answer off a decision's route (`assertRoute` in `cli/src/harness/routes.ts`); past a
+  route's limit the owner decides, through the Supervisor.
 - **Machine checks only.** A contract's checks, its op file's `checks.base` plus its own `checks.extend`, are only
   checks a machine runs (`command`, `starci`, `files`, `json`, `probe`, `cited`, `uat-flow`), and an op whose
   `checks.behavioural` is true makes a contract without a behavioural check unfit (`contractProblems` in

@@ -3,7 +3,7 @@
 Read this file first, in this repository or in any app the harness drives. It names what to read for the task in hand;
 every fact lives in one file of this tree (or in the code that owns it), and this file points at it.
 
-The harness is one TypeScript CLI (`cli/`, the `starci` command) plus the data it reads: `ops/` (worker labels, check
+The harness is one TypeScript CLI (`cli/`, the `starci` command) plus the data it reads: `ops/` (worker labels, lanes and routes, check
 presets, routing), `policy/` (gates and profiles), `contexts/` (this tree: the harness's own rules and how app code is
 written), `packages/` (the canon packages apps install) and `skills/starci/` (the agent entry for operating the
 harness). [README.md](../README.md) is the overview and says how it works.

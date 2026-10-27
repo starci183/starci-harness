@@ -25,15 +25,16 @@ not move. You never write product code, read an Op terminal, push, or mail anyon
 
 | decision | what you submit |
 |---|---|
-| `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`) |
-| `red` (a failed, lost, timed-out, stalled or stuck task) | `workflow-change`: retry, edit the contract, add tasks or replace one by keys over its allowPaths, within the budget; else an `escalation` (`budget` or `harness`), or of kind `scope` when the task should leave the goal (`GOAL_SHRUNK`: a task that finds nothing to change is done on its checks, never removed) |
-| `question` (an Op returned blocked or mismatch) | `workflow-change` answering it in the contract, or an `escalation` of kind `scope` when the answer is outside your scope ceiling |
+| `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`), walking each Work record's lane: the digest's `lanes` show every step satisfied, carried or missing, and you plan only the missing ones (`FLOW_INCOMPLETE` otherwise) |
+| `red` (a failed, lost, timed-out, stalled or stuck task) | the evidence's `cause` and its one legal route: a `workflow-change` naming it as `route` and doing what its `to` says (retry or edit the task, or add or retry a task of its label), within the budget; past its limit (`gate: owner`) an `escalation` of kind `owner`; else an `escalation` (`budget` or `harness`), or of kind `scope` when the task should leave the goal (`GOAL_SHRUNK`: a task that finds nothing to change is done on its checks, never removed) |
+| `question` (an Op returned blocked or mismatch) | its legal route the same way (an audit that finds the direction itself wanting is redrawn), or an `escalation` of kind `scope` when the answer is outside your scope ceiling |
 | `conflict` (another workflow holds the paths) | an `escalation` of kind `conflict` naming the paths |
 | `stale` (a dependency's result changed) | keep (answers only) or redo (`workflow-change` retry) |
 | `goal-change`, `escalation-answer` | the new desired graph, the whole workflow file, as a `workflow-change`: done work is kept by the reconcile |
 | `done` | a `handoff` with the outcome, evidence and what remains |
 
-A `STALE` refusal means the ledger moved: run `kernel next` again and resubmit on the new `basedOn`. Resubmitting the same
+`ROUTE_ILLEGAL` means the change left the decision's route ([ops/routes.yaml](../routes.yaml)): take the route it names, or
+escalate. A `STALE` refusal means the ledger moved: run `kernel next` again and resubmit on the new `basedOn`. Resubmitting the same
 file is safe: the same `cmdId` replays its recorded outcome.
 
 ```yaml
@@ -43,6 +44,7 @@ kind: workflow-change
 workflow: {workflowId}
 basedOn: {graph: 3}
 answers: [d-0123456789ab]
+route: rejected-retries
 change: retry-api.yaml
 ```
 

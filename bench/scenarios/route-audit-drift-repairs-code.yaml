@@ -1,0 +1,160 @@
+schema: starci/scenario@1
+id: route-audit-drift-repairs-code
+group: plan
+title: an audit that finds drift is repaired by code, never re-run at the same head
+inject: the audit worker files failed with verdict failed and one finding
+expect: >-
+  kernel next returns the red decision with its cause (findings) and its one legal route, audit-drift-repairs-code; kernel
+  submit refuses ROUTE_ILLEGAL for a change naming another route, and for one naming the legal route without a code task; the
+  change that adds a code task and retries the audit behind it is applied as graph v2
+pass:
+  - the red decision carries cause findings and route audit-drift-repairs-code
+  - a retry of the audit alone is refused ROUTE_ILLEGAL, under either route name
+  - the repair through a code task is applied and answers the decision
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    .starciwork/workspace.yaml: |
+      schema: work/workspace@1
+      id: shop
+      repositories:
+        - {role: fe, name: web}
+    .starciwork/features/shop/impl/web/cart/index.yaml: |
+      schema: work/implementation@1
+      id: impl.shop.web.cart
+      title: the cart screen's code
+      state: done
+      activity: idle
+      repository: web
+      owners:
+        - {role: fe, path: web/src/cart}
+      proves: []
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: aud
+        goal: audit the cart screen
+        runner: inline
+        tasks:
+          - id: audit
+            label: audit
+            summary: audit the cart screen against its direction
+            allowPaths: [web/audit/cart]
+            context: [.starciwork/features/shop/impl/web/cart/index.yaml]
+            inputs: {grammar: core, run: web/audit/cart}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, aud]
+    save:
+      audit: data.nodes.0.task.id
+  - name: the audit finds drift
+    worker:
+      task: ${audit}
+      status: failed
+      output:
+        summary: the cart total sits outside its card
+        files: []
+        verdict: failed
+        findings:
+          - {screen: cart, state: filled, expected: total inside the card, observed: total below it, screenshot: cart-filled.png, rule: none}
+        rulesApplied: []
+        workRecords: [impl.shop.web.cart]
+  - name: kernel next returns the red decision with its route
+    starci: [kernel, next, aud, --wait, "0"]
+    expect:
+      contains: '"id": "audit-drift-repairs-code"'
+    save:
+      red: data.decision.id
+      graph: data.digest.graphVersion
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(evidence_json, '$.cause') || ':' || json_extract(evidence_json, '$.routes[0].label') FROM decisions WHERE kind = 'red'"
+        equals:
+          - findings:code
+  - file:
+      path: retry.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: aud
+        changes:
+          - {op: retry, id: audit}
+  - file:
+      path: cmd-wrong-route.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-aud-wrong-route
+        kind: workflow-change
+        workflow: aud
+        basedOn: {graph: ${graph}}
+        answers: [${red}]
+        route: rejected-retries
+        change: retry.yaml
+  - name: another route is refused
+    starci: [kernel, submit, "${run}/cmd-wrong-route.yaml"]
+    expect:
+      exit: 1
+      code: ROUTE_ILLEGAL
+      contains: "allows route audit-drift-repairs-code"
+  - file:
+      path: cmd-no-code.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-aud-no-code
+        kind: workflow-change
+        workflow: aud
+        basedOn: {graph: ${graph}}
+        answers: [${red}]
+        route: audit-drift-repairs-code
+        change: retry.yaml
+  - name: the legal route without its code task is refused
+    starci: [kernel, submit, "${run}/cmd-no-code.yaml"]
+    expect:
+      exit: 1
+      code: ROUTE_ILLEGAL
+      contains: "repairs with a code task"
+  - file:
+      path: repair.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: aud
+        reason: the audit found the cart total drifting
+        changes:
+          - op: add
+            task:
+              id: fix
+              label: code
+              summary: put the cart total back inside its card
+              allowPaths: [web/src/cart]
+              context: [.starciwork/features/shop/impl/web/cart/index.yaml]
+              inputs: {side: fe, edition: lite}
+              checks:
+                - preset: tests-pass
+                  args: {command: "node --version"}
+          - {op: edit, id: audit, set: {dependsOn: [fix]}}
+          - {op: retry, id: audit}
+  - file:
+      path: cmd-repair.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-aud-repair
+        kind: workflow-change
+        workflow: aud
+        basedOn: {graph: ${graph}}
+        answers: [${red}]
+        route: audit-drift-repairs-code
+        change: repair.yaml
+  - name: the repair through code is applied
+    starci: [kernel, submit, "${run}/cmd-repair.yaml"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT graph_version FROM workflows WHERE id = 'aud') || ':' || (SELECT answered_by FROM decisions WHERE kind = 'red')"
+        equals:
+          - "2:k-aud-repair"

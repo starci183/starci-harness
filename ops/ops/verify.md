@@ -1,6 +1,6 @@
 ---
 schema: starci/op@1
-summary: run one heavy suite the goal asks for (perf, security, e2e) and report it as json; the harness reruns it to judge the report
+summary: run one suite of a lane (e2e, security, perf, an integration's live proof) and report it as json; the harness reruns it to judge the report
 floor: medium
 hostTools: [git, node, docker]
 context:
@@ -16,9 +16,10 @@ output:
     verdict: {type: string, summary: "passed or failed, as the suite itself judged (its exit code: 0 is passed)"}
     findings: {type: array, summary: "one entry per failure or finding, empty when there is none"}
 checks:
-  base: [suite-verdict]
+  base: [suite-verdict, result-passed]
   behavioural: true
 ---
 Run the suite the input names, once it is set up as the input says, and report what it found. Do not fix what it finds:
-a red suite is a finding, reported with `verdict: failed`, not a reason to edit code. The harness reruns the same command
-on the clean checkout; the task is green when your verdict agrees with that run, and red when it does not.
+a red suite is a finding, filed `failed` with `verdict: failed` and its findings, not a reason to edit code. The harness
+reruns the same command on the clean checkout; the task is green only when the suite passed and your verdict says so, and
+a verdict that run contradicts is red too.
