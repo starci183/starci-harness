@@ -16,7 +16,7 @@ import {
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../primitive/Skeleton/index.js"
-import { FLOW_GRAPH_NODE_MAX_WIDTH, flowGraphRoot, layerCoordinate, layeredPositions, radialPositions } from "./layout.js"
+import { FLOW_GRAPH_NODE_MAX_WIDTH, flowGraphRoot, layerCoordinate, layeredPositions, layeredStepPosition, radialPositions } from "./layout.js"
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode } from "./types.js"
 
 export { layeredPositions, radialPositions } from "./layout.js"
@@ -167,11 +167,11 @@ export const FlowGraph = ({
 
     const layout: FlowGraphLayout = layoutProp ?? (direction === undefined ? "radial" : "layered")
     const flowDirection: FlowGraphDirection | undefined = direction ?? (layout === "layered" ? "TB" : undefined)
+    const layered = useMemo(() => layout === "layered" ? layeredPositions(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
     const positions = useMemo(() => {
         if (layout === "radial") return radialPositions(nodes, edges)
-        if (layout === "layered") return layeredPositions(nodes, edges, flowDirection ?? "TB").positions
-        return null
-    }, [layout, nodes, edges, flowDirection])
+        return layered?.positions ?? null
+    }, [layout, nodes, edges, layered])
     const rootId = flowGraphRoot(nodes)?.id
     const flowNodes = useMemo<Array<Node<NodeData>>>(() => nodes.map((graphNode) => ({
         id: graphNode.id,
@@ -212,16 +212,21 @@ export const FlowGraph = ({
         })
     }, [headers, flowDirection, nodes, positions, layout])
     const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData>>>(() => [...headerNodes, ...flowNodes], [headerNodes, flowNodes])
-    const flowEdges = useMemo<Array<Edge>>(() => edges.map((edge) => ({
+    const flowEdges = useMemo<Array<Edge>>(() => edges.map((edge) => {
+        // A layered edge that skips layers turns in a gap, never inside a skipped layer (see layeredStepPosition).
+        const stepPosition = layered === null ? undefined : layeredStepPosition(edge, layered.positions, layered.layers, flowDirection ?? "TB")
+        return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
         type: layout === "radial" ? "straight" : "smoothstep",
+        ...(stepPosition === undefined ? {} : { pathOptions: { stepPosition } }),
         className: edge.isPlaceholder === true ? "starci-core-flow-graph-edge starci-core-flow-graph-edge-placeholder" : "starci-core-flow-graph-edge",
         focusable: false,
         selectable: false,
         animated: false,
-    })), [edges, layout])
+        }
+    }), [edges, layout, layered, flowDirection])
     const signature = `${layout}:${flowDirection ?? ""}:${headerNodes.length}:${nodes.map((node) => node.id).join("|")}`
 
     const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {

@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
-import { waitFor } from 'storybook/test';
+import { userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, HomeGlyph, Matrix, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -351,23 +351,89 @@ const waveHeaders: ReadonlyArray<G.FlowGraphLayerHeader> = [
 
 /** A waves DAG: layered layout, handles on the layout axis, wave headers, nodes that link through the root's router, a custom height. */
 export const FlowGraphWaves: Story = {
-  render: () => {
-    const Demo = () => {
-      const [path, setPath] = useState<string>('(none)');
-      return (
-        <G.GrammarRoot navigate={setPath} useHref={(href: string) => href}>
-          <Matrix maxWidth={900}>
-            <State label={`Left to right, headers above (navigated: ${path})`} direction="column">
-              <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
-            </State>
-            <State label="Top to bottom, lane headers beside" direction="column">
-              <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
-            </State>
-          </Matrix>
-        </G.GrammarRoot>
-      );
+  // The router root keeps the toolbar family: a bare nested GrammarRoot would drop the graph back to Common.
+  render: (_, { globals }) => (
+    <MemoryRouterRoot globals={globals}>
+      <Matrix maxWidth={900}>
+        <State label="Left to right, headers above" direction="column">
+          <G.FlowGraph label="Build waves" nodes={waveNodes} edges={waveEdges} direction="LR" headers={waveHeaders} height={360} />
+        </State>
+        <State label="Top to bottom, lane headers beside" direction="column">
+          <G.FlowGraph label="Build waves (vertical)" nodes={waveNodes} edges={waveEdges} direction="TB" headers={waveHeaders} height="40rem" />
+        </State>
+      </Matrix>
+    </MemoryRouterRoot>
+  ),
+  play: async ({ canvasElement }) => {
+    const path = () => canvasElement.querySelector('[data-story-router-path]')?.getAttribute('data-story-router-path');
+    const graphs = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="FlowGraph"]')];
+    await waitFor(() => {
+      if (graphs.length !== 2) throw new Error('Two graphs must render');
+      for (const graph of graphs) {
+        if (graph.querySelectorAll('.react-flow__edge').length !== waveEdges.length) throw new Error('Every edge must draw');
+        if (graph.querySelectorAll('[data-grammar-flow-header]').length !== waveHeaders.length) throw new Error('Every header must draw');
+      }
+      const canvas = graphs[0]?.querySelector('.starci-core-flow-graph-canvas');
+      if (canvas === null || canvas === undefined || Math.round(canvas.getBoundingClientRect().height) !== 360) throw new Error('height={360} must give a 360px canvas');
+    });
+    const link = (graph: HTMLElement | undefined, id: string) => {
+      const found = graph?.querySelector<HTMLElement>(`[data-grammar-flow-node="${id}"] [data-grammar-flow-link]`);
+      if (found === null || found === undefined) throw new Error(`Node ${id} must render a link`);
+      return found;
     };
-    return <Demo />;
+    await userEvent.click(link(graphs[0], 'api'));
+    await waitFor(() => { if (path() !== '#/tasks/api') throw new Error(`A click must navigate through the router, got ${path()}`); });
+    link(graphs[1], 'jobs').focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => { if (path() !== '#/tasks/jobs') throw new Error(`Enter must navigate through the router, got ${path()}`); });
+  },
+};
+
+type NavRow = { readonly id: string; readonly href: string; readonly title: string; readonly status: string };
+const navRows: ReadonlyArray<NavRow> = [
+  { id: 'r1', href: '/lessons/1', title: 'Present simple', status: 'Published' },
+  { id: 'r2', href: '/lessons/2', title: 'Past continuous', status: 'Draft' },
+];
+const navColumns: ReadonlyArray<G.DataTableColumn<NavRow>> = [{ id: 'title', label: 'Lesson', isRowHeader: true }, { id: 'status', label: 'Status' }];
+
+/** Client-side navigation: under a root given `navigate`, Link, Button href and a DataTable row href go through the router. */
+export const ClientNavigation: Story = {
+  name: 'Client navigation (memory router)',
+  render: (_, { globals }) => (
+    <MemoryRouterRoot globals={globals}>
+      <Matrix maxWidth={560}>
+        <State label="Link and Button href">
+          <G.Link href="/settings">Settings</G.Link>
+          <G.Button intent="neutral" href="/lessons/new">New lesson</G.Button>
+        </State>
+        <State label="DataTable row href" direction="column">
+          <G.DataTable label="Lessons" columns={navColumns} rows={navRows} renderCell={(row, columnId) => (columnId === 'title' ? row.title : row.status)} emptyContent="No lessons." />
+        </State>
+      </Matrix>
+    </MemoryRouterRoot>
+  ),
+  play: async ({ canvasElement }) => {
+    const path = () => canvasElement.querySelector('[data-story-router-path]')?.getAttribute('data-story-router-path');
+    const expectPath = (expected: string, how: string) => waitFor(() => { if (path() !== expected) throw new Error(`${how} must navigate to ${expected}, got ${path()}`); });
+    const pick = (selector: string) => {
+      const found = canvasElement.querySelector<HTMLElement>(selector);
+      if (found === null) throw new Error(`${selector} must render`);
+      return found;
+    };
+    const location = window.location.href;
+    await userEvent.click(pick('a[href="/settings"]'));
+    await expectPath('/settings', 'A Link click');
+    await userEvent.click(pick('a[href="/lessons/new"]'));
+    await expectPath('/lessons/new', 'A Button href click');
+    const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row-link="true"]')];
+    const cell = rows[1]?.querySelector<HTMLElement>('[role="gridcell"], [role="rowheader"]');
+    if (cell === null || cell === undefined) throw new Error('A linked row must render its cells');
+    await userEvent.click(cell);
+    await expectPath('/lessons/2', 'A DataTable row click');
+    rows[0]?.focus();
+    await userEvent.keyboard('{Enter}');
+    await expectPath('/lessons/1', 'Enter on a DataTable row');
+    if (window.location.href !== location) throw new Error('Navigation must stay in-app; the document location changed');
   },
 };
 
