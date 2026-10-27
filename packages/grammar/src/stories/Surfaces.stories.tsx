@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BookGlyph, Matrix, PlusGlyph, State, noop, placeholderImage } from './fixtures.js';
 
@@ -13,6 +14,28 @@ const meta: Meta = {
 export default meta;
 
 type Story = StoryObj;
+
+/** Core insets a labelled card's title from the boundary: the label row keeps a non-zero inline padding. */
+export const SurfaceCardLabelInset: Story = {
+  name: 'SurfaceCard label inset (Core)',
+  globals: { grammarFamily: 'core' },
+  render: () => (
+    <div style={{ maxWidth: 480 }}>
+      <G.SurfaceCard label="This week" fact="3 lessons">
+        <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+      </G.SurfaceCard>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const label = canvasElement.querySelector<HTMLElement>('[data-component="SurfaceCard"] > [data-grammar-surface-label]');
+      expect(label).not.toBeNull();
+      const style = getComputedStyle(label as HTMLElement);
+      expect(Number.parseFloat(style.paddingInlineStart)).toBeGreaterThan(0);
+      expect(Number.parseFloat(style.paddingInlineEnd)).toBeGreaterThan(0);
+    });
+  },
+};
 
 export const SurfaceCard: Story = {
   render: () => (

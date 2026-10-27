@@ -4,6 +4,7 @@
 
 - Removed: the Heritage family (`@starci/grammar/heritage`, `heritage.css`, `HeritageGrammarRoot`, `HERITAGE_DNA`); the package ships two families, Core and Offset Pop, over Common. Migrate: select `core` or `offset-pop`.
 - Changed: the Core DNA id is `core` (was `starci-core`). The CSS class prefix `starci-core-*` and the cascade layers are unchanged.
+- Fixed: a labelled Core `SurfaceCard` insets its label row again. Common's `padding: 0 !important` on the label row, in the earlier layer, beat Core's inset, so the title touched the card edge; the label row now reads `--starci-core-surface-label-padding`, which Core sets. The `Surfaces/SurfaceCard label inset (Core)` story asserts a non-zero inline padding.
 - Changed: versioned together with the Grammar lint families 0.13.0. The package lives in github.com/starci183/starci-harness; `src/common/rule-catalog.generated.ts` is committed source edited in place.
 
 
