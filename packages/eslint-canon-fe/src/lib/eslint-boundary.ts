@@ -10,8 +10,8 @@
 import type { ESLint, Rule as EslintRule } from "eslint"
 import type { Rule, Rules } from "./rule.ts"
 
-/** A canon rule as ESLint's rule type: the same object. */
-export const eslintRule = (rule: Rule<string, readonly unknown[]>): EslintRule.RuleModule =>
+/** A canon rule (or a rule already written at ESLint's type, as the Grammar families write theirs) as ESLint's rule type: the same object. */
+export const eslintRule = (rule: Rule<string, readonly unknown[]> | EslintRule.RuleModule): EslintRule.RuleModule =>
   rule as unknown as EslintRule.RuleModule
 
 /** The canon's rules as an ESLint plugin: the same objects, under ESLint's plugin type. */

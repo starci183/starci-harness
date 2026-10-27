@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { rules, recommended, vendorPrimitiveHasNamedOwner } from "./vendor-boundary.ts"
 
 test("vendor boundary publishes only ordinary ownership rules", () => {

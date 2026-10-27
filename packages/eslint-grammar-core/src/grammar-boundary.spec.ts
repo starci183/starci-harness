@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
-import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { GRAMMAR_OWNERS, noRawStructuralElement, recommended, rules } from "./grammar-boundary.ts"
 
 const HERE = dirname(fileURLToPath(import.meta.url))

@@ -1,6 +1,6 @@
 /** Behavioral witnesses for StarCi's per-slot status renderer. */
 import test from "node:test"
-import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.mjs"
+import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { slotStatusThroughSlotView } from "./drawing.ts"
 
 const tester = slotTester()

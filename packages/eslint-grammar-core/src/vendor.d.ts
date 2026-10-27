@@ -182,36 +182,6 @@ declare module "*/runtime/engine/yaml.mjs" {
   export function parseYaml(source: string): unknown
 }
 
-declare module "*/eslint-canon-fe/index.mjs" {
-  /** The universal front-end canon's rules by name. */
-  export const rules: Readonly<Record<string, import("eslint").Rule.RuleModule>>
-}
-
-declare module "*/eslint-canon-fe/fixtures/typed/tester.mjs" {
-  type RuleTester = import("eslint").RuleTester
-  type HfsView = import("@starci/eslint-canon-fe/lib/hfs.mjs").HfsView
-
-  /** The fe side of the fixture app (hfs.json sides.fe). */
-  export interface FeDeclaration {
-    readonly apps?: readonly { readonly name: string; readonly kind: string }[]
-    readonly optionalSlots?: readonly string[]
-    readonly grammar?: string
-  }
-  /** The default fe side of the fixture app: two apps and the shared packages. */
-  export const FE_DECLARATION: Readonly<{ apps: readonly { readonly name: string; readonly kind: string }[]; optionalSlots: readonly string[] }>
-  /** The fe-side view of a fixture whose declaration names the selected Grammar `G`. */
-  export type FeHfsView<G extends string = string> = HfsView & { readonly profile: "fe"; readonly grammar: G }
-  /** The HFS view of the fixture fe side. */
-  export function fixtureHfs<G extends string>(declaration: FeDeclaration & { readonly grammar: G }, options?: { readonly lite?: boolean }): FeHfsView<G>
-  export function fixtureHfs(declaration?: FeDeclaration, options?: { readonly lite?: boolean }): HfsView
-  /** The absolute filename of a fixture-relative path. */
-  export function at(rel: string): string
-  /** A RuleTester with typed linting, JSX and the fixture HFS settings. */
-  export function typedTester(options?: { readonly declaration?: FeDeclaration; readonly lite?: boolean }): RuleTester
-  /** A RuleTester with the fixture HFS settings and a syntax-only parser. */
-  export function slotTester(options?: { readonly declaration?: FeDeclaration }): RuleTester
-}
-
 declare module "*/eslint-canon-be/fixtures/app.mjs" {
   type AppDeclaration = import("@starci/eslint-canon-fe/lib/hfs.mjs").AppDeclaration
   /** The app `hfs.json` of a fixture: the declaration of one side with the defaults of the other. */
@@ -229,6 +199,18 @@ declare module "*/eslint-canon-be/fixtures/gathered-plugin.mjs" {
     readonly ruleDeclarations: readonly { readonly law: string; readonly name: string }[]
     readonly rules: Readonly<Record<string, import("eslint").Rule.RuleModule>>
   }): void
+}
+
+declare module "*/eslint-canon-be/fixtures/typed/tester.mjs" {
+  /** The one typed RuleTester both canons build over a fixture root and its HFS view. */
+  export function ruleTester(input: {
+    readonly root: string
+    readonly hfs: unknown
+    readonly jsx?: boolean
+    readonly extensions?: readonly string[]
+    readonly maxDepth?: number
+    readonly maxProjects?: number
+  }): import("eslint").RuleTester
 }
 
 declare module "*/eslint-canon-be/fixtures/project/tester.mjs" {

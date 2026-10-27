@@ -12,7 +12,7 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import tsParser from "@typescript-eslint/parser"
-import { RuleTester } from "eslint"
+import { RuleTester, type Rule as EslintRule } from "eslint"
 import { eslintRule } from "../../src/lib/eslint-boundary.ts"
 import { hfsFromDeclaration, type HfsView } from "../../src/lib/hfs.ts"
 import { defineRule, type AnyContext, type Rule } from "../../src/lib/rule.ts"
@@ -24,7 +24,7 @@ export type RuleTests = Parameters<RuleTester["run"]>[2]
 
 /** A RuleTester that runs the canon's rules. */
 export interface CanonRuleTester {
-  run(name: string, rule: Rule<string, readonly unknown[]>, tests: RuleTests): void
+  run(name: string, rule: Rule<string, readonly unknown[]> | EslintRule.RuleModule, tests: RuleTests): void
 }
 
 /** ESLint's RuleTester, taking the canon's rules. */
@@ -39,6 +39,7 @@ export const TYPED_ROOT = dirname(fileURLToPath(import.meta.url))
 export interface FeDeclaration {
   readonly apps: readonly { readonly name: string; readonly kind: string }[]
   readonly optionalSlots?: readonly string[]
+  readonly grammar?: string
   readonly [field: string]: unknown
 }
 
@@ -78,9 +79,21 @@ export interface FixtureOptions {
   readonly lite?: boolean | undefined
 }
 
+/** The fe-side view of a fixture whose declaration names the selected Grammar `G`. */
+export type FeHfsView<G extends string = string> = HfsView & { readonly profile: "fe"; readonly grammar: G }
+
+/** True when a view is the fe side and carries the Grammar its declaration selected. */
+const isFeViewOf = <G extends string>(view: HfsView, grammar: G): view is FeHfsView<G> => view.profile === "fe" && view.grammar === grammar
+
 /** The HFS view of the fixture fe side (`declaration` is the fe side of the app; `lite` lints it as an edition-lite app). */
-export const fixtureHfs = (declaration: FeDeclaration = FE_DECLARATION, { lite = false }: FixtureOptions = {}): HfsView =>
-  hfsFromDeclaration(fixtureApp(declaration, lite), TYPED_ROOT)
+export function fixtureHfs<G extends string>(declaration: FeDeclaration & { readonly grammar: G }, options?: FixtureOptions): FeHfsView<G>
+export function fixtureHfs(declaration?: FeDeclaration, options?: FixtureOptions): HfsView
+export function fixtureHfs(declaration: FeDeclaration = FE_DECLARATION, { lite = false }: FixtureOptions = {}): HfsView {
+  const view = hfsFromDeclaration(fixtureApp(declaration, lite), TYPED_ROOT)
+  const grammar = declaration.grammar
+  if (grammar !== undefined && !isFeViewOf(view, grammar)) throw new TypeError(`the fixture view does not carry the declared Grammar ${grammar}`)
+  return view
+}
 
 /** The absolute filename of a fixture-relative path. */
 export const at = (rel: string): string => join(TYPED_ROOT, rel)
