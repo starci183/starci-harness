@@ -136,7 +136,7 @@ starci app hygiene [--cwd <dir>]
 starci app coverage merge --out <lcov> <lcov-or-dir>... [--cwd <dir>]
 `;
 const PER_CODE_LIMIT = 25;
-const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility']);
+const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app']);
 /** Flags that may repeat: their values are collected in order. */
 const LIST_FLAGS = new Set(['--inject']);
 const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring']);
@@ -390,7 +390,7 @@ function newMain(opts, { cwd: repoRoot, stdout: out }) {
 function addMain(opts, { cwd: repoRoot, stdout: out }) {
   const [noun, name, ...extra] = opts.positional;
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'] } });
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);
