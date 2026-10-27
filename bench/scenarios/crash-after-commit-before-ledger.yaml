@@ -11,6 +11,8 @@ pass:
   - no actor overstepping its role
   - no human intervention beyond the injected fault
 automation: automated
+faults:
+  - recover-verb
 steps:
   - file:
       path: wf.yaml
@@ -62,6 +64,14 @@ steps:
   - sql:
       db: ledger
       exec: UPDATE tasks SET status = 'verifying'
+  - name: the explicit recover verb
+    when: recover-verb
+    starci:
+      - task
+      - verify
+      - ${a}
+      - --recover
+    expect: {}
   - name: step
     starci:
       - workflow

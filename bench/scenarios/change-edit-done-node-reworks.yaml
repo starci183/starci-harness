@@ -5,7 +5,7 @@ title: editing the contract of a done task makes it rework, its independents kee
 inject: a, b independent and done; the Kernel edits a's details
 expect: a is classified redo/rework, b keep; b's commit stays; only a gets a new ledger task
 pass:
-  - classification a redo|rework, b keep
+  - classification a rework, b keep
   - a new task for a only
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -102,5 +102,5 @@ steps:
         db: ledger
         query: SELECT json_extract(value, '$.key') || ':' || json_extract(value, '$.class') FROM graph_versions, json_each(classification_json) WHERE graph_version = 2 ORDER BY 1
         equals:
-          - a:redo
+          - a:rework
           - b:keep
