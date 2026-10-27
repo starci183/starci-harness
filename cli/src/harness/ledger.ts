@@ -91,6 +91,10 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "tasks", column: "intent_json", type: "TEXT", since: 7 },
     { table: "tasks", column: "worktree", type: "TEXT", since: 7 },
     { table: "tasks", column: "settle_commit", type: "TEXT", since: 7 },
+    // Replan: a task's settled result hash and the dependency tasks it ran on; a graph version's command id.
+    { table: "tasks", column: "result_hash", type: "TEXT", since: 7 },
+    { table: "tasks", column: "plan_inputs_json", type: "TEXT", since: 7 },
+    { table: "graph_versions", column: "cmd_id", type: "TEXT", since: 7 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {

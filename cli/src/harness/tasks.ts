@@ -249,10 +249,11 @@ export const clearIntent = (db: DatabaseSync, id: string): void => {
 
 /**
  * Records the commit a task's settle landed; call it in the transaction that makes the task done, so a done task always
- * names its commit (or null: its settle had nothing to commit). Other modules read it as `TaskRow.settleCommit`.
+ * names its commit (or null: its settle had nothing to commit), and clears its result hash so the replan recomputes it.
+ * Other modules read it as `TaskRow.settleCommit`.
  */
 export const recordSettleCommit = (db: DatabaseSync, taskId: string, commit: string | null): void => {
-    db.prepare("UPDATE tasks SET settle_commit = ? WHERE id = ?").run(commit, taskId)
+    db.prepare("UPDATE tasks SET settle_commit = ?, result_hash = NULL WHERE id = ?").run(commit, taskId)
 }
 
 /** Records the checkout a task's worker really runs in, for a launch that learned it only from Orca (a worktree selector). */
