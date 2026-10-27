@@ -206,7 +206,9 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
         retryRequest: requestIdOf("kernel-worker-start", launchId),
     }
     withRecord(root, (db) => { inTransaction(db, () => {
-            if (kernelSeatOf(db, workflowId) !== undefined) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
+            // The seat this start just fenced may still read open (stopped, its tab not released); any other open seat is a race.
+            const current = kernelSeatOf(db, workflowId)
+            if (current !== undefined && current.id !== open?.id) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
             openKernelSeat(db, { id: launchId, workflowId, agent: pick.agent, model: pick.model, requestId: input.retryRequest, launch: input })
             recordKernel(db, workflowId, { terminal: null, owned: true, closedAt: null })
             if (coordinatorOf(db, workflowId) !== SUPERVISOR_COORDINATOR) recordEvent(db, "workflow-coordinator", workflowId, { coordinator: SUPERVISOR_COORDINATOR, seat: launchId })
