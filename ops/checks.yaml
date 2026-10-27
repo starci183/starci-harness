@@ -8,7 +8,7 @@
 schema: starci/check-presets@1
 presets:
   check-run-green:
-    summary: the scoped starci check (typecheck and lint of the changed packages) exits 0
+    summary: the scoped starci check exits 0 having run a step, over the changed packages, or over the tracked files under allowPaths when the task changes nothing
     behavioural: false
     check:
       kind: starci

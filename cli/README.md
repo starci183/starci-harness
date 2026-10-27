@@ -87,7 +87,10 @@ staged snapshot. Every candidate also meets the `lands` check, red when work und
 through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
 them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
 project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract
-says (`harness/clean-verify.ts`). Green commits only those paths (never pushed) and makes the task done, records its settle commit
+says (`harness/clean-verify.ts`). Its scoped `starci check` runs over what the candidate changes, or, when it changes
+nothing, over the tracked files under the `allowPaths` (`runScopedCheck` in `harness/run-checks.ts`), red when no step
+ran. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
+reads the tree of its `allowPaths` at the HEAD it settled on) and makes the task done, records its settle commit
 (`tasks.settle_commit`) and releases its leases in one transaction; red preserves and resets them and releases the
 leases. Settles of one project run one at a time under the settle lock (`harness/settle.ts`), so each candidate builds
 on the HEAD the previous one left and a half-done edit of one task never reaches another's checks; its holder stamps
@@ -110,7 +113,8 @@ dependency is done; its ledger task is created only then, so a waiting node hold
 `workflow amend --desired <workflow file> --based-on <graph version>` (the Kernel's whole desired graph, reconciled by
 task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
 atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's
-ceiling. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
+ceiling, and `GOAL_SHRUNK` when it drops a key of a graph planned under the current goal version that no key it adds
+takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan after a goal change may drop one. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
 diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
 drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,

@@ -20,8 +20,9 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   checks a machine runs (`command`, `starci`, `files`, `json`, `probe`, `cited`, `uat-flow`), and an op whose
   `checks.behavioural` is true makes a contract without a behavioural check unfit (`contractProblems` in
   `cli/src/harness/contract.ts`). Anything no machine can judge (taste, UX) is an owner review step, never part of a contract.
-- **Tests stay inside the task; CI judges the rest.** A contract's checks cover only what the task changed: the scoped
-  `check run`, the tests related to the changed files (never a whole suite) and `paths-only`. A `verify` worker runs a
+- **Tests stay inside the task; CI judges the rest.** A contract's checks cover only what the task changed, or, for a task
+  that changes nothing, its allowPaths as they stand: the scoped `check run` (`runScopedCheck` in
+  `cli/src/harness/run-checks.ts`), the tests related to the changed files (never a whole suite) and `paths-only`. A `verify` worker runs a
   heavy suite only when the goal itself is that suite. CI runs the full suite on main after the push; a red CI becomes
   a `code` contract scoped to the red checks and never blocks the next push.
 - **The router alone picks.** Every Op and Kernel is routed by [ops/routing.yaml](../../ops/routing.yaml) from real

@@ -225,3 +225,36 @@ export const assertScope = (workflowId: string, nodes: readonly Pick<PlanNode, "
     if (problems.length === 0) return
     throw new Refusal("SCOPE_EXCEEDED", `the graph of ${workflowId} exceeds the scope ceiling of goal v${String(goal.version)}; escalate (kind scope) instead:\n${problems.map((problem) => `- ${problem}`).join("\n")}`)
 }
+
+/** The nodes of a graph the deliverables rule reads: each key and the paths it owns. */
+type Owned = readonly Pick<PlanNode, "key" | "contract">[]
+
+/**
+ * The deliverables of the goal a replan would drop. The task keys of a graph planned under the current goal version are what
+ * that goal asks for, so a replan removes one only when it is a revert node the harness generated, or when keys the replan
+ * adds take it over (every allowPath of the removed key lies under theirs). The first replan after a goal change answers that
+ * change: the graph it replaces was planned under an older goal version (`plannedUnder`), so it may drop any key.
+ */
+export const droppedDeliverables = (before: Owned, after: Owned, plannedUnder: number, goal: Pick<Goal, "version">): string[] => {
+    if (plannedUnder < goal.version) return []
+    const previous = new Set(before.map((node) => node.key))
+    const next = new Set(after.map((node) => node.key))
+    const added = after.filter((node) => !previous.has(node.key) && !isGeneratedKey(node.key)).flatMap((node) => node.contract.context.allowPaths)
+    return before
+        .filter((node) => !next.has(node.key) && !isGeneratedKey(node.key))
+        .filter((node) => !node.contract.context.allowPaths.every((path) => underPaths(path, added)))
+        .map((node) => node.key)
+}
+
+/**
+ * Refuses GOAL_SHRUNK, naming the keys, when a replan drops a deliverable of the current goal (droppedDeliverables): no replan
+ * shrinks the owner's goal on its own. The Kernel escalates (kind scope), and the Supervisor's goal-change lets the next replan drop it.
+ */
+export const assertDeliverables = (workflowId: string, before: Owned, after: Owned, plannedUnder: number, goal: Pick<Goal, "version">): void => {
+    const dropped = droppedDeliverables(before, after, plannedUnder, goal)
+    if (dropped.length === 0) return
+    throw new Refusal(
+        "GOAL_SHRUNK",
+        `the replan of ${workflowId} drops ${dropped.join(", ")}, planned under goal v${String(goal.version)} and taken over by no added task; a replan never shrinks the owner's goal: escalate (kind scope) to the Supervisor, whose goal-change lets the next replan drop it`,
+    )
+}

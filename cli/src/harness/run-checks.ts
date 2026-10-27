@@ -296,12 +296,15 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
     })
 
 /**
- * A scoped `starci check` verb, run with --json so its steps can be read: a step that only skipped proves nothing, so the
- * check is red when no step ran at all (no changed package, or every package lacks its tsconfig and ESLint config).
+ * A scoped `starci check` verb, run with --json so its steps can be read. It judges what the task changed, or, for a task that
+ * changes nothing (a verify-only task whose audit found the code already right), the tracked files under its allowPaths as
+ * they stand: the gates and the lint over what the task was asked to prove. A step that only skipped proves nothing, so the
+ * check is red when no step ran at all (no package in that scope, or every package lacks its tsconfig and ESLint config).
  */
-const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], place: CheckPlace): Promise<CheckOutcome> => {
+const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], place: CheckPlace, allowPaths: readonly string[]): Promise<CheckOutcome> => {
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
-    const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withBase], place.cwd, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
+    const withPaths = withBase.includes("--") ? withBase : [...withBase, "--", ...allowPaths]
+    const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withPaths], place.cwd, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
     let envelope: Record<string, unknown>
     try {
         envelope = asRecord(JSON.parse(run.stdout))
@@ -313,8 +316,10 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const scope = asRecord(data.scope)
     const steps = stepsOf(data)
     const ran = steps.filter((step) => step.status !== "skipped")
+    const changed = Array.isArray(scope.changed) ? scope.changed.length : 0
+    const judged = changed === 0 && Array.isArray(scope.files) && scope.files.length > 0 ? `, so ${String(scope.files.length)} tracked file(s) under allowPaths` : ""
     const lines = [
-        `scope vs ${String(scope.base)}: ${String(Array.isArray(scope.changed) ? scope.changed.length : 0)} changed file(s), ${String(Array.isArray(scope.targets) ? scope.targets.length : 0)} package(s)`,
+        `scope vs ${String(scope.base)}: ${String(changed)} changed file(s)${judged}, ${String(Array.isArray(scope.targets) ? scope.targets.length : 0)} package(s)`,
         ...steps.map((step) => `${step.status} ${step.step} ${step.package}${step.reason === "" ? "" : " (" + step.reason + ")"}`),
         ...(ran.length === 0 ? ["no step ran: nothing was typechecked or linted, so this check proves nothing"] : []),
         ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),
@@ -329,7 +334,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
     switch (primitive.kind) {
         case "starci": {
             const [group, verb] = primitive.args
-            if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.has(verb)) return runScopedCheck(check, primitive.args, place)
+            if (group === "check" && verb !== undefined && SCOPED_CHECK_VERBS.has(verb)) return runScopedCheck(check, primitive.args, place, contract.context.allowPaths)
             return fromRun(check, await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options))
         }
         case "command": {

@@ -24,7 +24,7 @@ in this terminal) and your Kernels.
 | decision | what you do |
 |---|---|
 | escalation `conflict` | rule who owns the paths: a `goal-change` to the workflow that yields (narrower scope), answering the escalation; the other's Kernel continues once the lease frees |
-| escalation `scope`, `budget` | within the owner's mandate a `goal-change` (wider scope or raised budget with `starci budget raise`), else ask the owner here first |
+| escalation `scope`, `budget` | within the owner's mandate a `goal-change` (wider scope, a task the goal no longer asks for, or raised budget with `starci budget raise`), else ask the owner here first |
 | escalation `owner`, `harness` | ask the owner in this terminal; relay the ruling as a `goal-change` or `stop` |
 | `handoff` | review the evidence, land it after a green scoped `starci check run` with `starci release push`, then `stop` answering the handoff; a red CI becomes a scoped `code` contract in a `goal-change` |
 | the owner changes their mind | a `goal-change` with the new goal on the current `basedOn.goal` |

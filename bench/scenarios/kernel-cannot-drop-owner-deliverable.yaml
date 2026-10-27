@@ -1,0 +1,113 @@
+schema: starci/scenario@1
+id: kernel-cannot-drop-owner-deliverable
+group: change
+title: a Kernel's replan cannot drop a task of the owner's goal; a replacement or the Supervisor's goal-change can
+inject: "the Kernel removes the audit task the goal asked for, because it found nothing to change"
+expect: >-
+  the remove is refused GOAL_SHRUNK naming the key and the path (escalate kind scope), and the graph stays as it was; a
+  replan that removes the key while an added key takes over its allowPaths is applied; after the Supervisor's goal-change
+  (goal v2) the first replan answering it may drop a key
+pass:
+  - the Kernel's remove of audit refused GOAL_SHRUNK, graph still v1 with audit in it
+  - a remove of audit beside an added audit-again over the same allowPaths recorded as graph v2
+  - after goal v2 the remove of other recorded as graph v3
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: shrink
+        goal: no app module re-exports a Grammar component; write the other doc
+        runner: inline
+        tasks:
+          - id: audit
+            label: docs
+            summary: audit docs/audit.md
+            allowPaths: [docs/audit.md]
+          - id: other
+            label: docs
+            summary: write docs/other.md
+            allowPaths: [docs/other.md]
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, shrink]
+  - file:
+      path: drop.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: shrink
+        reason: the audit found nothing to change
+        changes:
+          - op: remove
+            id: audit
+  - name: the Kernel drops the owner's deliverable
+    starci: [workflow, amend, shrink, --change, "${run}/drop.yaml"]
+    env:
+      STARCI_ROLE: kernel
+    expect:
+      exit: 1
+      code: GOAL_SHRUNK
+      contains: escalate (kind scope)
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT w.graph_version || ':' || (SELECT COUNT(*) FROM plan_nodes n WHERE n.workflow_id = w.id AND n.graph_version = w.graph_version AND n.plan_key = 'audit') FROM workflows w WHERE w.id = 'shrink'"
+        equals: ["1:1"]
+  - file:
+      path: replace.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: shrink
+        reason: the audit is redone under a new key
+        changes:
+          - op: remove
+            id: audit
+          - op: add
+            task:
+              id: audit-again
+              label: docs
+              summary: audit docs/audit.md again
+              allowPaths: [docs/audit.md]
+  - name: a replacement under the same paths is the Kernel's own work
+    starci: [workflow, amend, shrink, --change, "${run}/replace.yaml"]
+    env:
+      STARCI_ROLE: kernel
+  - file:
+      path: goal.yaml
+      yaml:
+        schema: starci/goal-change@1
+        workflow: shrink
+        cmdId: sup-shrink-goal-2
+        goal: no app module re-exports a Grammar component; the other doc is not wanted any more
+  - name: the Supervisor changes the goal
+    starci: [workflow, regoal, shrink, --goal, "${run}/goal.yaml", --based-on, "1"]
+    env:
+      STARCI_ROLE: supervisor
+  - file:
+      path: drop-other.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: shrink
+        reason: goal v2 no longer asks for the other doc
+        changes:
+          - op: remove
+            id: other
+  - name: the first replan answering goal v2 drops it
+    starci: [workflow, amend, shrink, --change, "${run}/drop-other.yaml"]
+    env:
+      STARCI_ROLE: kernel
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT goal_version || ':' || graph_version FROM workflows WHERE id = 'shrink'"
+        equals: ["2:3"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT plan_key FROM plan_nodes WHERE workflow_id = 'shrink' AND graph_version = 3 ORDER BY plan_key"
+        equals: [audit-again]

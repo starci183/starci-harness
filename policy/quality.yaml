@@ -1,7 +1,7 @@
 # The gate tiers and the profiles a project picks from. Policy selects and configures; every gate is code in the CLI
 # (cli/src/core/check), and a gate name the CLI does not implement is refused when this file is read.
 # runtime: `starci check run` before a push and `starci task verify` on the clean checkout run these, scoped to what
-#   changed and bounded by stepTimeoutSeconds per process. secrets and canon judge the changed scope; loosening reads
+#   changed (a task that changes nothing: the tracked files under its allowPaths) and bounded by stepTimeoutSeconds per process. secrets and canon judge the changed scope; loosening reads
 #   the whole tree as it is (state-based, cheap).
 # ci: CI runs these on main after the push; nobody waits for them unless an action is listed in requireCi.
 schema: starci/quality-policy@1
