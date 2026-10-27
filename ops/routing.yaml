@@ -8,7 +8,7 @@ difficulties: [easy, medium, hard, insane]
 # tier = labelTiers[label] ?? difficultyTier[max(difficulty, label floor)].
 difficultyTier: {easy: low, medium: medium, hard: high, insane: frontier}
 # A label named here takes that tier whatever its difficulty.
-labelTiers: {}
+labelTiers: {image: high}
 # Coordinator seats use these tiers and the same pool, provider, quota, qualification and scoring rules as Ops.
 coordinators: {supervisor: high, kernel: high}
 # Lowest first: a second contract-red in a task's lineage raises the tier one step along this order.
@@ -16,20 +16,23 @@ tierOrder: [low, medium, high, frontier]
 escalateAfterReds: 2
 
 # A tier is the set of members the router scores; the order breaks a tie only.
+# The model follows the work: everyday work (low, medium) runs each provider's everyday model (Claude Sonnet, Devin
+# SWE-2 Max, Codex GPT-6 Luna); hard work (high, frontier) runs its strongest (Claude Opus, Codex GPT-6.1 Sol).
 tiers:
   frontier:
     - {agent: claude, model: claude-opus-5-5}
     - {agent: codex, model: gpt-6.1-sol, effort: max}
   high:
-    - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: claude, model: claude-opus-5-5}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
-  # Claude is in the medium tier, so a uat task always has a member whose pool takes the uat label.
+  # Claude is in the everyday tiers, so a uat task always has a member whose pool takes the uat label.
   medium:
-    - {agent: devin, model: swe-2-max}
-    - {agent: codex, model: gpt-6.1-sol, effort: medium}
     - {agent: claude, model: claude-sonnet-5-5}
+    - {agent: devin, model: swe-2-max}
+    - {agent: codex, model: gpt-6-luna, effort: medium}
     - {agent: cursor, model: auto}
   low:
+    - {agent: claude, model: claude-sonnet-5-5}
     - {agent: devin, model: swe-2-max}
     - {agent: codex, model: gpt-6-luna, effort: low}
 
@@ -41,10 +44,11 @@ pools:
     maxParallel: 6
     labels: [code, test, ui, verify, uat, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
+  # Only Codex takes image work: image generation runs on GPT-6.1 alone.
   codex:
     provider: codex
     maxParallel: 10
-    labels: [code, test, ui, verify, uat, docs, deliver, supervisor, kernel]
+    labels: [code, test, ui, verify, uat, docs, deliver, image, supervisor, kernel]
     tools: [git, node, browser, docker]
   devin:
     provider: devin
