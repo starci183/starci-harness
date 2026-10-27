@@ -544,6 +544,17 @@ export const Timeline: Story = {
           ]}
         />
       </State>
+      <State label="Attention entry (row background)" direction="column">
+        <G.Timeline
+          label="Deploy"
+          items={[
+            { id: 'a1', title: 'Build passed', state: 'affirmative', timeLabel: '09:00' },
+            { id: 'a2', title: 'Approval needed', state: 'cautionary', isAttention: true, description: 'Waiting for a reviewer.' },
+            { id: 'a3', title: 'Smoke test failed', state: 'negative', isAttention: true, description: '1 failure.' },
+            { id: 'a4', title: 'Release', state: 'neutral' },
+          ]}
+        />
+      </State>
       <State label="Negative item" direction="column">
         <G.Timeline label="Build log" items={[{ id: 'b1', title: 'Build started', state: 'informative' }, { id: 'b2', title: 'Tests failed', state: 'negative', description: '2 failures.' }]} />
       </State>

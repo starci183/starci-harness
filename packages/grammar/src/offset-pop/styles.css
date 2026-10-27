@@ -188,6 +188,38 @@
         font-weight: 800;
     }
 
+    /* StatusDot with text: a pill in ink. No outline, so its padding and height stay the HeroUI Chip's. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="StatusDot"][data-variant="text"] {
+        border-radius: var(--offset-pop-pill-radius);
+        font-weight: 800;
+    }
+
+    /* The status dot takes an ink ring so it reads on the cream canvas. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
+        box-shadow: 0 0 0 1px var(--offset-pop-ink);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"][data-tone="muted"] {
+        border-style: dashed;
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Code"] {
+        border: 1px solid var(--offset-pop-ink);
+        border-radius: 0.5rem;
+        background: var(--offset-pop-blush);
+        color: var(--offset-pop-ink);
+    }
+
+    /* Terminal: ink panel with the family's offset shadow. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Terminal"] {
+        --starci-core-terminal-bg: var(--offset-pop-ink);
+        --starci-core-terminal-fg: var(--offset-pop-canvas);
+        --starci-core-terminal-title-fg: var(--offset-pop-yellow);
+        border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
+        border-radius: var(--offset-pop-control-radius);
+        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] {
         border: 0;
         background: transparent;

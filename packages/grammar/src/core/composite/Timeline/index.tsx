@@ -13,6 +13,11 @@ export type TimelineItem = {
     readonly state?: PresentationState
     /** The entry the reader is at now (`aria-current="step"`). */
     readonly isCurrent?: boolean
+    /**
+     * The entry needs the reader (a failed step, a pending approval): the whole row takes a tone background, not just
+     * the marker. The tone follows `state` (negative danger, affirmative success, informative accent, otherwise warning).
+     */
+    readonly isAttention?: boolean
     /** App-owned marker glyph; defaults to a dot. */
     readonly marker?: ReactNode
 }
@@ -66,6 +71,7 @@ export const Timeline = ({ label, items, className, isLoading = false, loadingRo
                     data-contract="STATE-1 TRUTH-1"
                     data-grammar-timeline-state={state}
                     data-grammar-current={item.isCurrent ? "true" : "false"}
+                    data-grammar-attention={item.isAttention ? "true" : undefined}
                 >
                     <span aria-hidden="true" className="starci-core-timeline-marker" data-contract="A11Y-2" data-grammar-timeline-marker="true">{item.marker}</span>
                     <div className="starci-core-timeline-copy">
