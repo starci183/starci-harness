@@ -2861,6 +2861,14 @@
         max-inline-size: 100%;
     }
 
+    /*
+     * The wrapper takes the keyboard focus ring (the disabled control is faded, so a ring on it would fade too); it takes
+     * the vendor Button's radius, so the ring follows the button's shape instead of drawing a square round a pill.
+     */
+    .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]) {
+        border-radius: calc(var(--radius) * 3);
+    }
+
     .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="fill"]) {
         display: flex;
         inline-size: 100%;

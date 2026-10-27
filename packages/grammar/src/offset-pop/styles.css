@@ -181,6 +181,11 @@
         font-weight: 800;
     }
 
+    /* A disabled Button's tooltip wrapper carries its focus ring in the family's button radius. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]) {
+        border-radius: var(--radius);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Badge"] {
         border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-pill-radius);

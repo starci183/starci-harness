@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Matrix, SettingsGlyph, SignOutGlyph, State, TrashGlyph, UserGlyph, noop } from './fixtures.js';
 
@@ -408,6 +409,32 @@ export const DisabledButtonReason: Story = {
       </State>
     </Matrix>
   ),
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.closest('.grammar-common-root') ?? document.body;
+    const tooltipText = () => [...root.ownerDocument.querySelectorAll('[role="tooltip"]')].map((tip) => tip.textContent).join('|');
+    const wrappers = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-tooltip-disabled-trigger="true"]')];
+    if (wrappers.length !== 2) throw new Error('Both disabled Buttons must sit in a tooltip trigger');
+    for (const wrapper of wrappers) {
+      const button = wrapper.querySelector<HTMLElement>('[data-component="Button"]');
+      if (button === null) throw new Error('The wrapper must hold the Button');
+      // The focus ring is drawn on the wrapper, so it must take the Button's shape.
+      if (getComputedStyle(wrapper).borderTopLeftRadius !== getComputedStyle(button).borderTopLeftRadius) throw new Error(`Wrapper radius ${getComputedStyle(wrapper).borderTopLeftRadius} differs from the Button's ${getComputedStyle(button).borderTopLeftRadius}`);
+    }
+    const [first, second] = wrappers;
+    if (first === undefined || second === undefined) throw new Error('Both wrappers must render');
+    // React Aria opens a tooltip on hover only once the pointer has moved (pointer modality), as a real mouse does.
+    await userEvent.hover(canvasElement);
+    await userEvent.hover(first);
+    await waitFor(() => { if (!tooltipText().includes('Add a title before publishing.')) throw new Error('Hover must show the reason'); });
+    await userEvent.unhover(first);
+    await waitFor(() => { if (tooltipText().includes('Add a title before publishing.')) throw new Error('Leaving must hide the reason'); });
+    // Tab to the second wrapper: the platform skips the disabled Buttons, the wrappers take the keyboard stops.
+    first.focus();
+    await userEvent.tab();
+    if (canvasElement.ownerDocument.activeElement !== second) throw new Error('Tab must move from one disabled Button wrapper to the next');
+    await waitFor(() => { if (!tooltipText().includes('Pick a plan first.')) throw new Error('Keyboard focus must show the reason'); });
+    second.blur();
+  },
 };
 
 export const Tooltip: Story = {
