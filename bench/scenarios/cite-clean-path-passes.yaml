@@ -34,7 +34,7 @@ steps:
             dependsOn: [draw]
             allowPaths: [web/reviews/cart]
             inputs: {since: HEAD}
-            cites: [tabs.choose, tabs.choose.page-tabs, STATE-6]
+            cites: [tabs.choose, tabs.choose.level:page, STATE-6]
   - starci: [workflow, define, "${run}/wf.yaml"]
   - name: start
     starci: [workflow, start, clean]
@@ -55,7 +55,7 @@ steps:
         files: [web/direction/cart.html, web/direction/cart-tabs.tsx]
         direction: web/direction/cart.html
         rulesApplied: [STATE-6]
-        cites: [tabs.choose, tabs.choose.page-tabs, STATE-6]
+        cites: [tabs.choose, tabs.choose.level:page, STATE-6]
   - name: step settles the draw
     starci: [workflow, step, clean]
   - read:
@@ -74,7 +74,7 @@ steps:
         rulesApplied: []
         citeGrades:
           - {cite: tabs.choose, grade: followed, evidence: "web/direction/cart-tabs.tsx:3 page tabs switch the cart's main area"}
-          - {cite: tabs.choose.page-tabs, grade: followed, evidence: "web/direction/cart-tabs.tsx:3 one page set under the header"}
+          - {cite: tabs.choose.level:page, grade: followed, evidence: "web/direction/cart-tabs.tsx:3 one page set under the header"}
           - {cite: STATE-6, grade: not-applicable, evidence: "the direction holds no persistent peer choice yet"}
   - name: step settles the review
     starci: [workflow, step, clean]

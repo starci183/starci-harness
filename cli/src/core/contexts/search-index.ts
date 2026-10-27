@@ -139,7 +139,7 @@ const CHANGED_SHOWN = 8
 
 /** The files whose bytes differ between the index and the corpus: changed, added (in the tree only) and removed (in the index only). */
 export const changedFiles = (index: SearchIndexFile, corpus: Corpus): string[] => {
-    const paths = [...new Set([...Object.keys(index.fileHashes), ...corpus.files])].sort()
+    const paths = [...new Set([...Object.keys(index.fileHashes), ...corpus.files])].sort((a, b) => a.localeCompare(b))
     return paths.flatMap((path) => {
         const built = index.fileHashes[path]
         const now = corpus.fileHashes[path]

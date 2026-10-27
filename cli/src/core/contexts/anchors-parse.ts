@@ -68,6 +68,29 @@ export const headingId = (text: string): string | undefined => {
     return ruled.find((token) => /\d/.test(token)) ?? (opening !== undefined && text.startsWith(opening) && UPPER_ID.test(opening) ? opening : undefined)
 }
 
+const CHOICE_LINE = /^Choice `([^`]+)`:/
+const TABLE_ROW = /^\|\s*([a-z0-9][a-z0-9-]*)\s*\|/
+
+/**
+ * The Choice ids a section's body declares, as contexts/ui/components pages write them: ``Choice `tabs.choose.level`: ...``
+ * names the decision, and each row of the table under it names an answer, `tabs.choose.level:page`.
+ */
+export const choiceIds = (body: string): string[] => {
+    const ids: string[] = []
+    let current: string | undefined
+    for (const line of body.split("\n")) {
+        const choice = CHOICE_LINE.exec(line)?.[1]
+        if (choice !== undefined) {
+            current = isDottedId(choice) ? choice : undefined
+            if (current !== undefined) ids.push(current)
+            continue
+        }
+        const row = current === undefined ? undefined : TABLE_ROW.exec(line)?.[1]
+        if (current !== undefined && row !== undefined && row !== "row") ids.push(`${current}:${row}`)
+    }
+    return ids
+}
+
 /** The anchors one heading carries: the primary (explicit, else its id, else the fallback) and the other forms it also resolves by. */
 export const headingAnchors = (path: string, parsed: ParsedHeading, fallbackSlug: string): { readonly anchor: string; readonly aliases: readonly string[] } => {
     const fallback = `${path}#${fallbackSlug}`

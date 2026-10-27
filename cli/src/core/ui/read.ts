@@ -247,7 +247,7 @@ export const overviewOf = async (cwd: string): Promise<Overview> => {
         projects: summaries,
         providers: providersOf(),
         workflows,
-        events: events.sort((a, b) => b.at.localeCompare(a.at)).slice(0, EVENTS_SHOWN),
+        events: events.toSorted((a, b) => b.at.localeCompare(a.at)).slice(0, EVENTS_SHOWN),
         host: await hostOf(cwd),
     }
 }

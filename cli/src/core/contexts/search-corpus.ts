@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
 import { ruleIdsIn } from "../../harness/contract.js"
 import { SLICE_EDITIONS, SLICE_SIDES, sliceFile } from "./anatomy-render.js"
-import { headingAnchors, isAnchorId, linkFragments, parseHeading, slug } from "./anchors-parse.js"
+import { choiceIds, headingAnchors, isAnchorId, linkFragments, parseHeading, slug } from "./anchors-parse.js"
 import type { LinkFragment } from "./anchors-parse.js"
 import { INDEX_FILE } from "./index-render.js"
 
@@ -159,7 +159,7 @@ const markdownChunks = (path: string, sections: readonly Section[]): Chunk[] => 
         const named = section.level === 0 ? { anchor: `${path}#${fallback}`, aliases: [] } : headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
         chunks.push({
             anchor: named.anchor,
-            aliases: named.aliases,
+            aliases: section.level === 0 ? named.aliases : [...new Set([...named.aliases, ...choiceIds(text)])],
             citable: section.level > 0 && ruleIdsIn(`# ${section.raw}`).has(named.anchor),
             path,
             line: section.line,
