@@ -211,6 +211,11 @@
         background: var(--surface);
     }
 
+    /* size="sm": the thin track keeps the ink outline at half the plain meter's height. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"][data-size="sm"] [data-slot="meter-track"] {
+        height: 0.5rem;
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"] [data-slot="meter-fill"] {
         background: var(--offset-pop-tone-color);
     }

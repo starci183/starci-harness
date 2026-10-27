@@ -26,6 +26,10 @@ export type TextProps = {
      * through the boundary with a descendant selector on `[data-size]` to force one.
      */
     readonly overflow?: TextOverflow
+    /** Set the copy in the monospace stack: identifiers, hashes, paths, figures that line up. */
+    readonly mono?: boolean
+    /** Tabular figures (`tabular-nums`): digits of equal width, so a column or a counter does not jitter. */
+    readonly tabular?: boolean
     readonly isSkeleton?: boolean
     readonly isSuperseded?: boolean
     /** Opt into the shared selected-parent accent treatment. */
@@ -91,6 +95,8 @@ export const Text = ({
     weight = "normal",
     live = "off",
     overflow,
+    mono = false,
+    tabular = false,
     isSkeleton = false,
     isSuperseded = false,
     parentEmphasis,
@@ -111,6 +117,8 @@ export const Text = ({
             data-parent-emphasis={parentEmphasis}
             data-live={live}
             data-overflow={overflow}
+            data-mono={mono ? "true" : undefined}
+            data-tabular={tabular ? "true" : undefined}
             data-loading={isSkeleton ? "true" : "false"}
             data-contract={isSkeleton ? getTextSkeletonContract(size) : getTextContract(size, resolvedTone, showsStartContent)}
             aria-live={isSkeleton || live === "off" ? undefined : live}
