@@ -1,4 +1,4 @@
-import type { PoolConfig, RouterEvents } from "../types.ts"
+import type { PoolConfig, RouterEvents } from "./types.ts"
 
 /** One handler per router event, subscribed when the module starts and released when the application shuts down. */
 export type AiRouterHandlers = { readonly [E in keyof RouterEvents]?: (payload: RouterEvents[E]) => void }

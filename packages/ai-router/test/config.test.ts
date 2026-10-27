@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { AiRouterError, createFakeProvider, createRouter, definePool, validateConfig } from "../src/index.ts"
-import type { PoolConfig, ProviderConfig } from "../src/index.ts"
+import { validateConfig } from "../src/config.ts"
+import { AiRouterError } from "../src/errors.ts"
+import { createFakeProvider } from "../src/fake.ts"
+import { createRouter } from "../src/router.ts"
+import type { PoolConfig, ProviderConfig } from "../src/types.ts"
 import { ask, provider, setup, standardProviders } from "./helpers.ts"
 
 function refuses(config: PoolConfig, pattern: RegExp): void {
@@ -82,36 +85,7 @@ describe("policies", () => {
     })
 })
 
-describe("definePool", () => {
-    test("builds a validated config whose profile names type the calls", async () => {
-        const fake = createFakeProvider()
-        const config = definePool()
-            .provider("a", { baseUrl: "https://a.test/v1", weight: 2 })
-            .key("k1", { env: "AI_ROUTER_TEST_KEY" })
-            .key("k2", { resolve: () => "sk-two" })
-            .model("m1", { aliases: ["fast"], capabilities: ["chat", "streaming"] })
-            .provider("b", { baseUrl: "https://b.test/v1" })
-            .key("k1", { resolve: () => "sk-b" })
-            .model("m1")
-            .profile("cheap", { model: "fast", allowFallback: false })
-            .options({ fetch: fake.fetch })
-            .build()
-        assert.equal(config.providers.length, 2)
-        assert.deepEqual(Object.keys(config.profiles ?? {}), ["cheap"])
-        const router = createRouter(config)
-        const result = await router.chat(ask("x"), { profile: "cheap" })
-        assert.equal(result.routing.model, "m1")
-    })
-
-    test("refuses a key or model before any provider", () => {
-        assert.throws(() => definePool().key("k", { env: "X" }), /needs a provider/)
-        assert.throws(() => definePool().model("m"), /needs a provider/)
-    })
-
-    test("refuses an invalid pool at build", () => {
-        assert.throws(() => definePool().provider("a", { baseUrl: "https://a.test" }).build(), /no keys/)
-    })
-
+describe("the spec pools", () => {
     test("the standard providers are valid", () => {
         validateConfig({ providers: standardProviders() })
     })

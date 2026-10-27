@@ -1,5 +1,7 @@
-import { createFakeProvider, createRouter } from "../src/index.ts"
-import type { AiRouter, FakeProvider, PoolConfig, ProviderConfig, RouterEvents } from "../src/index.ts"
+import { createFakeProvider } from "../src/fake.ts"
+import type { FakeProvider } from "../src/fake.ts"
+import { createRouter } from "../src/router.ts"
+import type { AiRouter, PoolConfig, ProviderConfig, RouterEvents } from "../src/types.ts"
 
 /** A provider with resolver keys whose test secrets are `sk-<provider>-<alias>`. */
 export function provider(id: string, aliases: readonly string[], models: ProviderConfig["models"], extra: Partial<ProviderConfig> = {}): ProviderConfig {

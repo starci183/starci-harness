@@ -1,7 +1,7 @@
 {
   "name": "@starci/ai-router",
   "version": "0.2.0",
-  "description": "A zero-dependency pool router for OpenAI-compatible APIs: many keys, many models and many providers behind one chat, stream and embeddings call, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry; an optional NestJS module at @starci/ai-router/nest.",
+  "description": "A NestJS module that routes OpenAI-compatible calls across a pool of keys, models and providers: AiRouterModule.register and an injectable AiRouterService for chat, stream and embeddings, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry.",
   "keywords": [
     "ai",
     "llm",
@@ -36,9 +36,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./nest": {
-      "types": "./dist/nest/index.d.ts",
-      "default": "./dist/nest/index.js"
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     },
     "./package.json": "./package.json"
   },
@@ -54,15 +54,8 @@
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.0 || ^12.0.0",
-    "@nestjs/core": "^11.0.0 || ^12.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@nestjs/common": {
-      "optional": true
-    },
-    "@nestjs/core": {
-      "optional": true
-    }
+    "@nestjs/core": "^11.0.0 || ^12.0.0",
+    "reflect-metadata": "^0.1.12 || ^0.2.0"
   },
   "publishConfig": {
     "access": "public",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { AiRouterError, createFakeProvider } from "../src/index.ts"
+import { AiRouterError } from "../src/errors.ts"
+import { createFakeProvider } from "../src/fake.ts"
 import { ask, provider, record, setup, tally } from "./helpers.ts"
 
 describe("selection", () => {

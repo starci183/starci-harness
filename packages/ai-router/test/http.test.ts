@@ -3,8 +3,9 @@ import { createServer } from "node:http"
 import type { IncomingMessage, Server } from "node:http"
 import type { AddressInfo } from "node:net"
 import { after, before, describe, test } from "node:test"
-import { AiRouterError, createRouter } from "../src/index.ts"
-import type { AiRouter, ChatCompletionChunk } from "../src/index.ts"
+import { AiRouterError } from "../src/errors.ts"
+import { createRouter } from "../src/router.ts"
+import type { AiRouter, ChatCompletionChunk } from "../src/types.ts"
 import { ask } from "./helpers.ts"
 
 interface Seen {
