@@ -61,7 +61,7 @@ schema: starci/workflow@1
 id: <lower-case-key>
 goal: <the owner's goal, enriched by the scan>
 runner: orca            # or inline; never chosen by edition
-maxParallel: 2          # orca only
+maxParallel: 2          # orca only; capped by workflowParallel of ops/routing.yaml
 tasks:
   - id: <key>
     label: <label>

@@ -2,12 +2,12 @@ schema: starci/scenario@1
 id: scale-50-ops
 group: scale
 title: "fifty Ops under one Kernel: the cap holds, nothing launches twice"
-inject: 50 independent orca tasks at maxParallel 16 (the schema cap)
-expect: one Kernel child Run, 16 worker-starts with 16 distinct request ids, 16 leases; 34 tasks wait without a ledger task
+inject: 50 independent orca tasks in a workflow file asking maxParallel 16, past the workflowParallel cap of 10 (ops/routing.yaml)
+expect: one Kernel child Run, 10 worker-starts with 10 distinct request ids, 10 leases; 40 tasks wait without a ledger task
 pass:
-  - 16 distinct worker-start requests
+  - 10 distinct worker-start requests
   - one run-create
-  - 16 running tasks, 16 leases
+  - 10 running tasks, 10 leases
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -534,7 +534,7 @@ steps:
         command: worker-start
         match:
           task-title: '^\[Op\]'
-        count: 16
+        count: 10
         distinct: retry-request
   - assert:
       orcaCalls:
@@ -547,10 +547,10 @@ steps:
         db: ledger
         query: SELECT COUNT(*) FROM tasks WHERE status = 'running'
         equals:
-          - 16
+          - 10
   - assert:
       sql:
         db: ledger
         query: SELECT COUNT(*) FROM leases
         equals:
-          - 16
+          - 10

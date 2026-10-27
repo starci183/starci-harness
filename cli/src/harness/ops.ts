@@ -153,6 +153,8 @@ const opFrontmatterSchema = z.strictObject({
     // independentOf: the labels whose author a task of this label is never routed to: the router drops the providers that did the
     // dependency work of those labels (router.ts, the independence step), so a review reads work its own provider did not write.
     independentOf: z.array(z.string().min(1)).min(1).optional(),
+    // perRecord: a task of this label works one Work record, so a plan fans one step out per record (lanes.ts, TASK_NOT_SPLIT).
+    perRecord: z.boolean().optional(),
 })
 
 /** A named check preset from ops/checks.yaml. */

@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: write the back-end tests of one slice, inside test paths only (the front end has no tests, SHARED-TEST-1)
 floor: medium
 hostTools: [git, node]
+perRecord: true
 context:
   budget: 30000
   base:

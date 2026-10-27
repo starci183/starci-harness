@@ -28,8 +28,6 @@ const KEY = /^[a-z0-9][a-z0-9._-]{0,62}$/
 
 const DEFAULT_PARALLEL = 2
 
-const MAX_PARALLEL = 16
-
 const keySchema = z.string().regex(KEY, "a key is lower-case letters, digits, '.', '_' or '-', at most 63, starting with a letter or digit")
 
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
@@ -95,7 +93,8 @@ export const headerSchema = z.strictObject({
     requires: z.array(z.enum(["security", "perf"])).optional(),
     runner: z.enum(["orca", "inline"]),
     worktree: z.string().min(1).optional(),
-    maxParallel: z.number().int().min(1).max(MAX_PARALLEL).default(DEFAULT_PARALLEL),
+    // Capped by workflowParallel of ops/routing.yaml where tasks are queued (engine.ts queueReady), never refused.
+    maxParallel: z.number().int().min(1).default(DEFAULT_PARALLEL),
     base: z.string().min(1).default("HEAD"),
 })
 

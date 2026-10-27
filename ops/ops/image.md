@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: generate real artwork (the asset slots a drawn ui record declares, illustrations, mockup renders)
 floor: hard
 hostTools: [git]
+perRecord: true
 context:
   base: []
 input:

@@ -15,8 +15,9 @@
 # optionalWhen: a fact of the record that makes the step optional (hasNoArtworkSlots: the record is drawn and declares no
 #   asset slot). optionalUnless: a goal flag without which the step is optional (requiresSecurity, requiresPerf: the
 #   workflow file's `requires` names security, perf).
-# heldUntil: a lane whose records of the same feature hold this step: each is satisfied, or carried by tasks the step's task
-#   depends on. over: feature lets a task over any record of the record's feature carry the step.
+# heldUntil: the lanes whose records of the same feature hold this step, each {lane, through?, required?}: every step of each
+#   such record up to `through` (default its last) is satisfied, or carried by tasks the step's task depends on; a feature
+#   with no record of the lane is refused unless `required: false`. over: feature lets a task over any record of the record's feature carry the step.
 # Steps run in order: a task carrying a step depends on the tasks carrying the steps before it. `build` names the label a
 # route `to: build` repairs with.
 schema: starci/lanes@1
@@ -39,12 +40,13 @@ lanes:
     steps:
       - {id: draw, label: draw, satisfiedWhen: [direction-approved]}
       - {id: image, label: image, satisfiedWhen: [assets-exist], optionalWhen: hasNoArtworkSlots}
-  # The front end has no unit tests (SHARED-TEST-1): it is audited against its drawing and walked.
+  # The front end has no unit tests (SHARED-TEST-1): it is audited against its drawing and walked. Its code starts behind its
+  # feature's drawings and behind the back end's code of the feature, when the feature has any.
   - id: impl-fe
     match: [{family: impl, role: fe}]
     build: code
     steps:
-      - {id: code, label: code, satisfiedWhen: [record-done, owners-landed], heldUntil: ui}
+      - {id: code, label: code, satisfiedWhen: [record-done, owners-landed], heldUntil: [{lane: ui}, {lane: impl-be, through: code, required: false}]}
       - {id: audit, label: audit, satisfiedWhen: [record-done, task-green]}
       - {id: uat, label: uat, satisfiedWhen: [record-done, task-green], over: feature}
       - {id: security, label: verify, satisfiedWhen: [record-done, task-green], optionalUnless: requiresSecurity}

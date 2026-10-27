@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: draw one screen's direction in the grammar and the brand (HTML and tokens) and write it into its ui record
 floor: hard
 hostTools: [git, node]
+perRecord: true
 context:
   budget: 40000
   base:

@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: scaffold, implement, fix, refactor or remove a feature
 floor: medium
 hostTools: [git, node]
+perRecord: true
 context:
   budget: 24000
   base:
