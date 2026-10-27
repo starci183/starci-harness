@@ -15,10 +15,15 @@
  * keystroke of its parent. Hoist the constant, or build it once above the map.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { attribute, attributeValue, calleeName, isFunction, mentions } from "./lib/ast.ts"
 
 /** `.map(callback)` where the callback is written inline; the call node, else null. */
-const mapCallback = (call) => {
+/** A function written inline as a callback. */
+type Callback = TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression
+
+const mapCallback = (call: Node): Callback | null => {
   if (call.type !== "CallExpression" || call.callee.type !== "MemberExpression" || call.callee.computed) return null
   if (call.callee.property.type !== "Identifier" || call.callee.property.name !== "map") return null
   const receiver = calleeName(call.callee.object)
@@ -28,9 +33,9 @@ const mapCallback = (call) => {
 }
 
 /** The JSX a callback returns: its expression body, or the value of each of its own `return` statements. */
-const returnedJsx = (callback) => {
-  const found = []
-  const take = (node) => {
+const returnedJsx = (callback: Callback): (TSESTree.JSXElement | TSESTree.JSXFragment)[] => {
+  const found: (TSESTree.JSXElement | TSESTree.JSXFragment)[] = []
+  const take = (node: Node | null | undefined): void => {
     if (!node) return
     if (node.type === "JSXElement" || node.type === "JSXFragment") found.push(node)
     else if (node.type === "ConditionalExpression") {
@@ -42,7 +47,7 @@ const returnedJsx = (callback) => {
     take(callback.body)
     return found
   }
-  const scan = (node) => {
+  const scan = (node: Node | null | undefined): void => {
     if (!node || typeof node.type !== "string") return
     if (node.type === "ReturnStatement") return take(node.argument)
     if (node.type === "BlockStatement") node.body.forEach(scan)
@@ -63,16 +68,17 @@ const returnedJsx = (callback) => {
  * True when the rows have no identity to lose: the receiver is an array written in place, or the callback
  * ignores the item (`(_, index) => ...`), which is how a skeleton or a placeholder count is rendered.
  */
-const isPositional = (call, callback) => {
-  if (call.callee.object.type === "ArrayExpression") return true
+const isPositional = (call: TSESTree.CallExpression, callback: Callback): boolean => {
+  // mapCallback placed the call: its callee is the `.map` member
+  if (call.callee.type === "MemberExpression" && call.callee.object.type === "ArrayExpression") return true
   const item = callback.params[0]
-  return Boolean(item) && item.type === "Identifier" && item.name.startsWith("_")
+  return item !== undefined && item.type === "Identifier" && item.name.startsWith("_")
 }
 
 // -- LISTS-1 ---------------------------------------------------------------------------------------
 
 /** Every element a `.map` callback returns carries a `key`. */
-export const listItemHasKey = {
+export const listItemHasKey = defineRule({
   meta: {
     type: "problem",
     docs: { description: "An element returned from `.map` carries a `key`." },
@@ -96,12 +102,12 @@ export const listItemHasKey = {
       },
     }
   },
-}
+})
 
 // -- LISTS-2 ---------------------------------------------------------------------------------------
 
 /** The key is never the position, and never made up on every render. */
-export const noIndexKey = {
+export const noIndexKey = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A list key is stable data identity, never the map index or a random value." },
@@ -125,7 +131,7 @@ export const noIndexKey = {
           if (element.type !== "JSXElement") continue
           const key = attribute(element.openingElement, "key")
           const value = attributeValue(key)
-          if (!value) continue
+          if (!key || !value) continue
           const text = source.getText(value)
           if (/\b(?:Math\.random|Date\.now|randomUUID|nanoid|uuid)\b/.test(text)) {
             context.report({ node: key, messageId: "random" })
@@ -136,19 +142,19 @@ export const noIndexKey = {
       },
     }
   },
-}
+})
 
 // -- LISTS-3 ---------------------------------------------------------------------------------------
 
 /** True for `<Component>` and `<a.B>`, false for a DOM tag: only a component can be memoised. */
-const isComponentTag = (opening) => {
+const isComponentTag = (opening: TSESTree.JSXOpeningElement): boolean => {
   if (opening.name.type === "JSXMemberExpression") return true
   return opening.name.type === "JSXIdentifier" && /^[A-Z]/.test(opening.name.name)
 }
 
 /** True when the nearest function around `node` is a `.map` callback. */
-const insideMapCallback = (node) => {
-  for (let current = node.parent; current; current = current.parent) {
+const insideMapCallback = (node: Node): boolean => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
     if (!isFunction(current)) continue
     return current.parent?.type === "CallExpression" && current.parent.arguments[0] === current && mapCallback(current.parent) === current
   }
@@ -156,7 +162,7 @@ const insideMapCallback = (node) => {
 }
 
 /** A component in a mapped list gets no object or array literal for a prop. */
-export const noInlineLiteralPropInList = {
+export const noInlineLiteralPropInList = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No object or array literal as a prop of a component rendered inside `.map`." },
@@ -180,14 +186,14 @@ export const noInlineLiteralPropInList = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "list-item-has-key": listItemHasKey,
   "no-index-key": noIndexKey,
   "no-inline-literal-prop-in-list": noInlineLiteralPropInList,
-}
+} satisfies Rules
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

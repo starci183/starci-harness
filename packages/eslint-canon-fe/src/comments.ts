@@ -16,6 +16,8 @@
 
 import { hasSecondLanguage } from "#runtime/scripts/lib/language.mjs"
 import { jsdocBefore } from "#runtime/scripts/lib/jsdoc.mjs"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Comment, type Listener, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { fileOf, inSlot } from "./lib/scope.ts"
 
 /**
@@ -25,7 +27,7 @@ import { fileOf, inSlot } from "./lib/scope.ts"
  * - a single class covering both trips the misleading-character-class rule, and a rule that has to
  * be silenced to exist is one nobody trusts.
  */
-const hasEmoji = (text) =>
+const hasEmoji = (text: unknown): boolean =>
   typeof text === "string" &&
   (/\p{Extended_Pictographic}/u.test(text) || /[\u{1F1E6}-\u{1F1FF}]{2}/u.test(text))
 
@@ -36,46 +38,52 @@ const hasEmoji = (text) =>
  * which are the product's other language. There is no "copy module": a `resources/` folder of strings is copy that
  * skipped the catalogue.
  *
- * @param {object} context - The ESLint rule context.
- * @returns {boolean} True when the linted file holds content rather than authoring.
+ * @param context - The ESLint rule context.
+ * @returns True when the linted file holds content rather than authoring.
  */
-export const isContentFile = (context) => {
+export const isContentFile = (context: AnyContext): boolean => {
   const file = fileOf(context)
   return inSlot(context, "fe.modules.i18n", "fe.package.i18n") && file.endsWith(".json")
 }
 
 /** Walk every place prose can hide, and hand each to one check. */
-const proseVisitors = (context, report) => {
+const proseVisitors = (context: AnyContext, report: (node: Node | Comment, text: string | null | undefined) => void): Listener => {
   const source = context.sourceCode || context.getSourceCode()
   return {
     Program() {
       for (const comment of source.getAllComments()) report(comment, comment.value)
     },
-    Identifier(node) {
+    Identifier(node: TSESTree.Identifier) {
       report(node, node.name)
     },
-    JSXIdentifier(node) {
+    JSXIdentifier(node: TSESTree.JSXIdentifier) {
       report(node, node.name)
     },
-    PrivateIdentifier(node) {
+    PrivateIdentifier(node: TSESTree.PrivateIdentifier) {
       report(node, node.name)
     },
-    Literal(node) {
+    Literal(node: TSESTree.Literal) {
       if (typeof node.value === "string") report(node, node.value)
     },
-    TemplateElement(node) {
+    TemplateElement(node: TSESTree.TemplateElement) {
       report(node, node.value && node.value.cooked)
     },
-    JSXText(node) {
+    JSXText(node: TSESTree.JSXText) {
       report(node, node.value)
     },
   }
 }
 
+/** The name an exported declaration introduces: its own `id`, or the first declarator's of a variable declaration. */
+const declaredId = (declaration: Node): Node | null | undefined => {
+  if ("id" in declaration && declaration.id) return declaration.id
+  return declaration.type === "VariableDeclaration" ? declaration.declarations[0]?.id : undefined
+}
+
 // -- COMMENTS-1 ------------------------------------------------------------------------------------
 
 /** Every export opens with a documentation block. */
-export const requireExportJsdoc = {
+export const requireExportJsdoc = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "Exported declarations open with a documentation block." },
@@ -87,24 +95,23 @@ export const requireExportJsdoc = {
   },
   create(context) {
     const source = context.sourceCode || context.getSourceCode()
-    const hasBlock = (node) => jsdocBefore(source, node) !== null
-    const check = (node) => {
+    const hasBlock = (node: Node): boolean => jsdocBefore(source, node) !== null
+    const check = (node: TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration): void => {
       const declaration = node.declaration
       if (!declaration) return
-      const kinds = ["VariableDeclaration", "TSInterfaceDeclaration", "FunctionDeclaration", "TSTypeAliasDeclaration"]
+      const kinds: readonly string[] = ["VariableDeclaration", "TSInterfaceDeclaration", "FunctionDeclaration", "TSTypeAliasDeclaration"]
       if (!kinds.includes(declaration.type) || hasBlock(node)) return
-      const id =
-        declaration.id || (declaration.declarations && declaration.declarations[0] && declaration.declarations[0].id)
-      context.report({ node: id || declaration, messageId: "jsdoc", data: { name: (id && id.name) || "this export" } })
+      const id = declaredId(declaration)
+      context.report({ node: id || declaration, messageId: "jsdoc", data: { name: (id && "name" in id && id.name) || "this export" } })
     }
     return { ExportNamedDeclaration: check, ExportDefaultDeclaration: check }
   },
-}
+})
 
 // -- COMMENTS-4 ------------------------------------------------------------------------------------
 
 /** No Unicode emoji in source: stable product reactions use attributed checked-in SVG artwork. */
-export const noEmojiInSource = {
+export const noEmojiInSource = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No emoji in source authoring." },
@@ -120,12 +127,12 @@ export const noEmojiInSource = {
       if (hasEmoji(text)) context.report({ node, messageId: "emoji" })
     })
   },
-}
+})
 
 // -- COMMENTS-5 ------------------------------------------------------------------------------------
 
 /** Source prose is English: no Vietnamese letter in an identifier, string, comment, JSX text or test title. */
-export const noVietnameseInSource = {
+export const noVietnameseInSource = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No Vietnamese in source authoring, specs included." },
@@ -140,14 +147,14 @@ export const noVietnameseInSource = {
       if (hasSecondLanguage(text)) context.report({ node, messageId: "vietnamese" })
     })
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "require-export-jsdoc": requireExportJsdoc,
   "no-emoji-in-source": noEmojiInSource,
   "no-vietnamese-in-source": noVietnameseInSource,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -156,4 +163,4 @@ export const rules = {
  * from - every undocumented export in the tree reports at once. The other two are usually already
  * at zero, because a second language in source is noticed by readers long before a rule arrives.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

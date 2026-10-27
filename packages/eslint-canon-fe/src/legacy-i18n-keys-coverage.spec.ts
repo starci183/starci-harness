@@ -2,6 +2,7 @@
 // proves: FE_I18N_KEYS@full
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import { rules } from "./project-graph.ts"
 
 const GOOD = "apps/web/src/modules/i18n/use-title.ts"
@@ -15,7 +16,10 @@ const validCode = [
 ].join("\n")
 const invalidCode = validCode.replace("useTitle", "useMissing").replace("t('title')", "t.rich('missing')")
 
-for (const edition of ["lite", "full"]) {
+const i18nKeys = rules["i18n-keys"]
+if (!i18nKeys) throw new Error("project-graph publishes no i18n-keys rule")
+
+for (const edition of ["lite", "full"] as const) {
     test(`${edition} FE_I18N_KEYS accepts catalog keys and rejects a missing literal key`, (t) => {
         const fixture = projectFixture({
             profile: "fe",
@@ -28,7 +32,7 @@ for (const edition of ["lite", "full"]) {
             },
         })
         t.after(fixture.cleanup)
-        fixture.tester.run("i18n-keys", rules["i18n-keys"], {
+        canonTester(fixture.tester).run("i18n-keys", i18nKeys, {
             valid: [{ filename: fixture.at(GOOD), code: validCode }],
             invalid: [{
                 filename: fixture.at(BAD),

@@ -8,7 +8,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { at, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"
+import { at, contextAt, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"
 import { isContentFile, noEmojiInSource, noVietnameseInSource, requireExportJsdoc, rules } from "./comments.ts"
 
 const tester = slotTester()
@@ -95,14 +95,14 @@ test("COMMENTS-5: no Vietnamese anywhere in source, specs and test titles includ
 
 test("there is no copy-module exemption: a resources folder is authoring, and the dictionaries are content", () => {
   const settings = { starci: { hfs: fixtureHfs() } }
-  const content = (rel) => isContentFile({ filename: at(rel), settings })
+  const content = (rel: string) => isContentFile(contextAt(at(rel), settings.starci.hfs))
   assert.equal(content("apps/web/src/modules/resources/copy.ts"), false)
   assert.equal(content("apps/web/src/modules/i18n/messages/vi.json"), true)
   assert.equal(content("packages/nivo-i18n/messages/vi.json"), true)
   // code of the i18n module is authoring: only its dictionaries are content
   assert.equal(content("apps/web/src/modules/i18n/request.ts"), false)
   assert.equal(content("apps/web/src/components/leaves/Text/fixtures/copy.ts"), false)
-  assert.equal(rules["no-second-language-in-source"], undefined)
+  assert.equal(Reflect.get(rules, "no-second-language-in-source"), undefined)
 })
 
 test("public documentation requires a final adjacent description, not tags, headers or punctuation", () => {

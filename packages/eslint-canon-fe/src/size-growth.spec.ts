@@ -11,11 +11,11 @@ import { join } from "node:path"
 import { runGit } from "#runtime/scripts/api/git/lib.mjs"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { fixtureHfs } from "../fixtures/typed/tester.ts"
+import { canonTester, fixtureHfs } from "../fixtures/typed/tester.ts"
 import { fileSizeGrowth, rules } from "./size-growth.ts"
 import { lines, sizeGrowthSharedSpec } from "../../eslint-canon-be/fixtures/size-growth.mjs"
 
-const tester = new RuleTester({
+const eslintTester = new RuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,
@@ -24,6 +24,7 @@ const tester = new RuleTester({
   },
   settings: { starci: { hfs: fixtureHfs() } },
 })
+const tester = canonTester(eslintTester)
 
 /** The front-end parameters the rule reads through the slot view. */
 const feParams = fixtureHfs().ruleParams
@@ -43,7 +44,7 @@ test("fe: a new file over the manifest budget is refused, in a component and a h
   const probeRoot = mkdtempSync(join(tmpdir(), "starci-fe-budget-probe-"))
   const home = process.cwd()
   t.after(() => { process.chdir(home); rmSync(probeRoot, { recursive: true, force: true }) })
-  const git = (...args) => runGit(args, { dir: probeRoot, config: { "user.email": "t@example.com", "user.name": "t" } })
+  const git = (...args: string[]) => runGit(args, { dir: probeRoot, config: { "user.email": "t@example.com", "user.name": "t" } })
   git("init", "-q", "-b", "main")
   git("commit", "-q", "--allow-empty", "-m", "seed")
   process.chdir(probeRoot)
@@ -60,4 +61,4 @@ test("fe: a new file over the manifest budget is refused, in a component and a h
   }))
 })
 
-sizeGrowthSharedSpec({ side: "fe", tester, fileSizeGrowth, budget: BUDGET, fileName: "Big.tsx" })
+sizeGrowthSharedSpec({ side: "fe", tester: eslintTester, fileSizeGrowth, budget: BUDGET, fileName: "Big.tsx" })

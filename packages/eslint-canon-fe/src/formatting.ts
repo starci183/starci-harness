@@ -15,6 +15,7 @@
  * stack and refused by `fe-stack-import`. `modules/i18n/**` is exempt: it is where the formatters are configured.
  */
 
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { forbiddingConcern } from "./lib/fe-stack.ts"
 import { classOf, inSlot } from "./lib/scope.ts"
 
@@ -28,14 +29,14 @@ const INTL_FORMATTERS = new Set(["NumberFormat", "DateTimeFormat", "RelativeTime
 const DATE_LIBRARIES = /^(?:moment(?:-timezone)?|dayjs(?:\/.+)?|date-fns(?:\/.+)?|luxon)$/
 
 /** The date-math home of the front-end stack (fe-stack `dates`): the capability `dayjs` of slot `fe.modules` (`modules/dayjs/`). */
-const isDayjsHome = (context) => inSlot(context, "fe.modules") && classOf(context).bindings?.capability === "dayjs"
+const isDayjsHome = (context: AnyContext): boolean => inSlot(context, "fe.modules") && classOf(context).bindings?.capability === "dayjs"
 
 /** A currency mark or code beside a substitution. */
 const CURRENCY = /[₫€£¥]|\b(?:VND|USD|EUR)\b/
 
 /** True when `node` is displayed: it sits in a JSX expression or a template literal. */
-const isDisplayed = (node) => {
-  for (let current = node.parent; current; current = current.parent) {
+const isDisplayed = (node: Node): boolean => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) {
     if (current.type === "JSXExpressionContainer" || current.type === "TemplateLiteral") return true
     if (current.type === "ArrowFunctionExpression" || current.type === "FunctionExpression" || current.type === "FunctionDeclaration") return false
   }
@@ -43,7 +44,7 @@ const isDisplayed = (node) => {
 }
 
 /** Numbers, money and dates are formatted by the `next-intl` formatter. */
-export const useIntlFormatter = {
+export const useIntlFormatter = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Format numbers, money and dates with `useFormatter` / `getFormatter` from `next-intl`." },
@@ -99,12 +100,12 @@ export const useIntlFormatter = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "use-intl-formatter": useIntlFormatter,
-}
+} satisfies Rules
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

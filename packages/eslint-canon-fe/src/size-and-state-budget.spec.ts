@@ -8,6 +8,8 @@ import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { Linter } from "eslint"
 import { at, fixtureHfs, slotTester, typedTester } from "../fixtures/typed/tester.ts"
+import { eslintPlugin } from "./lib/eslint-boundary.ts"
+import type { HfsView } from "./lib/hfs.ts"
 import {
   componentLineBudget,
   noAppRelativeClock,
@@ -24,14 +26,22 @@ const HOOK = at("apps/web/src/hooks/feed/useFeed.ts")
 const BARREL = at("apps/web/src/hooks/feed/index.ts")
 
 // The budgets are the slot manifest's own numbers: the rule keeps no copy.
-const COMPONENTS = fixtureHfs().slot("fe.components").budget
-const FEATURE = fixtureHfs().slot("fe.feature").budget
+/** The number a slot's budget states for `key`, read from the manifest as stated; a missing one fails the case. */
+const budgetNumber = (hfs: HfsView, id: string, key: string): number => {
+  const slot = hfs.slot(id)
+  const budget: unknown = slot === null ? undefined : Reflect.get(slot, "budget")
+  const value: unknown = typeof budget === "object" && budget !== null ? Reflect.get(budget, key) : undefined
+  if (typeof value !== "number") throw new TypeError(`slot ${id} states no ${key} budget`)
+  return value
+}
+const COMPONENTS = (key: string): number => budgetNumber(fixtureHfs(), "fe.components", key)
+const FEATURE = (key: string): number => budgetNumber(fixtureHfs(), "fe.feature", key)
 
 /** `count` lines of code that do nothing. */
-const lines = (count) => Array.from({ length: count }, (_, index) => `const line${index} = ${index}`).join("\n")
+const lines = (count: number): string => Array.from({ length: count }, (_, index) => `const line${index} = ${index}`).join("\n")
 
 /** A barrel whose named, type-only, star and namespace statements all re-export from another file. */
-const reExports = (count) => Array.from({ length: count }, (_, index) => [
+const reExports = (count: number): string => Array.from({ length: count }, (_, index) => [
   `export { value${index} } from "./value${index}"`,
   `export type { Value${index} } from "./value${index}"`,
   `export * from "./value${index}"`,
@@ -40,7 +50,7 @@ const reExports = (count) => Array.from({ length: count }, (_, index) => [
 ][index % 5]).join("\n")
 
 /** A component with `states` useState calls and `data` data hooks. */
-const unit = (name, states, data) =>
+const unit = (name: string, states: number, data: number): string =>
   `export const ${name} = () => {\n${Array.from({ length: states }, (_, i) => `  const [s${i}, set${i}] = useState(0)`).join("\n")}\n${Array.from({ length: data }, (_, i) => `  const d${i} = useQueryFeed${i}Swr()`).join("\n")}\n  return null\n}`
 
 test("every rule this law declares is a rule", () => {
@@ -48,14 +58,14 @@ test("every rule this law declares is a rule", () => {
 })
 
 test("BUDGET-1: a component file stays within the line budget its slot states for its role", () => {
-  assert.deepEqual([COMPONENTS["component.tsx"], COMPONENTS["index.tsx"]], [300, 200])
+  assert.deepEqual([COMPONENTS("component.tsx"), COMPONENTS("index.tsx")], [300, 200])
   tester.run("component-line-budget", componentLineBudget, {
     valid: [
       { filename: DRAWING, code: lines(300) },
       { filename: DRAWING, code: `${lines(300)}
 ` },
       { filename: BLOCK, code: lines(200) },
-      { filename: at("apps/web/src/features/pages/Home/component.tsx"), code: lines(FEATURE["component.tsx"]) },
+      { filename: at("apps/web/src/features/pages/Home/component.tsx"), code: lines(FEATURE("component.tsx")) },
       // a hook and a module are held by the `file` budget of their slot (200, 400)
       { filename: HOOK, code: lines(200) },
       { filename: at("apps/web/src/modules/feed/index.ts"), code: lines(400) },
@@ -84,9 +94,9 @@ test("BUDGET-1: a component file stays within the line budget its slot states fo
 test("BUDGET-1: only a pure re-export index.ts gets the separate barrel budget", () => {
   const hfs = fixtureHfs()
   const slots = ["fe.hooks", "fe.hooks.swr", "fe.hooks.rhf", "fe.hooks.zustand", "fe.hooks.socketio", "fe.hooks.effects", "fe.hooks.reuseables"]
-  for (const id of slots) assert.equal(hfs.slot(id).budget.barrel, 400, id)
-  const max = hfs.slot("fe.hooks").budget.barrel
-  const ordinary = hfs.slot("fe.hooks").budget.file
+  for (const id of slots) assert.equal(budgetNumber(hfs, id, "barrel"), 400, id)
+  const max = budgetNumber(hfs, "fe.hooks", "barrel")
+  const ordinary = budgetNumber(hfs, "fe.hooks", "file")
   const overOrdinary = { messageId: "lines", data: { count: ordinary + 1, max: ordinary } }
   tester.run("component-line-budget", componentLineBudget, {
     valid: [
@@ -117,11 +127,11 @@ test("BUDGET-1: malformed export syntax is a parser failure", () => {
     files: ["**/*.ts"],
     languageOptions: { parser: tsParser },
     settings: { starci: { hfs: fixtureHfs() } },
-    plugins: { budget: { rules: { lines: componentLineBudget } } },
+    plugins: { budget: eslintPlugin({ meta: { name: "budget" }, rules: { lines: componentLineBudget } }) },
     rules: { "budget/lines": "error" },
   }], { filename: BARREL })
   assert.equal(messages.length, 1)
-  assert.equal(messages[0].fatal, true)
+  assert.equal(messages[0]?.fatal, true)
 })
 
 test("BUDGET-2: a unit holds at most six state hooks and six data hooks", () => {

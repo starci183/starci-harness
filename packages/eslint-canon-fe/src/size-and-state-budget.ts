@@ -21,19 +21,32 @@
  * ticker; product code passes the target instant to `RelativeTime` instead.
  */
 
-import { walk } from "./lib/ast.ts"
-import { functionOf, isFn, unwrap, variableOf } from "./lib/bindings.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { isNode, walk } from "./lib/ast.ts"
+import { functionOf, isFn, unwrap, variableOf, type FunctionNode } from "./lib/bindings.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { isPromiseValued } from "./lib/types.ts"
 import { baseName, fileOf, isProductSource, roleOfFile, slotOfFile } from "./lib/scope.ts"
+
+/** True for an object whose fields can be read by name. */
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === "object" && value !== null
+
+/** A field of the manifest's slot definition, as the manifest states it (`budget`, `roles`), or undefined for an unknown slot. */
+const slotField = (context: AnyContext, id: string, field: string): unknown => {
+  const slot = hfsOf(context).slot(id)
+  return slot === null ? undefined : Reflect.get(slot, field)
+}
 
 /**
  * The budget the slot of the linted file states (`budget` in knowledge/hfs/slots.yaml), or an empty one when no slot owns the file
  * or the slot states none. The numbers live in the manifest only: a rule that kept its own copy would drift from it.
  */
-const budgetOf = (context) => {
+const budgetOf = (context: AnyContext): Readonly<Record<string, unknown>> => {
   const id = slotOfFile(context)
-  return id === null ? {} : hfsOf(context).slot(id)?.budget ?? {}
+  if (id === null) return {}
+  const budget = slotField(context, id, "budget")
+  return isRecord(budget) ? budget : {}
 }
 
 /**
@@ -41,15 +54,16 @@ const budgetOf = (context) => {
  * `index.tsx` for the entry), else the slot's `file` budget (hooks 200, modules 400), else null. A pure re-export `index.ts`
  * uses the slot's separate `barrel` budget when stated: every statement must be an `export ... from` declaration.
  */
-const lineBudgetOf = (context, node) => {
+const lineBudgetOf = (context: AnyContext, node: TSESTree.Program): number | null => {
   const role = roleOfFile(context)
   const id = slotOfFile(context)
-  const fileName = role === null || id === null ? undefined : hfsOf(context).slot(id)?.roles?.[role]
+  const roles = role === null || id === null ? undefined : slotField(context, id, "roles")
+  const fileName = role === null || !isRecord(roles) ? undefined : roles[role]
   const budget = budgetOf(context)
   const pureBarrel = baseName(fileOf(context)) === "index.ts" && node.body.length > 0 && node.body.every((statement) =>
-    ["ExportNamedDeclaration", "ExportAllDeclaration"].includes(statement.type) && Boolean(statement.source))
+    (statement.type === "ExportNamedDeclaration" || statement.type === "ExportAllDeclaration") && Boolean(statement.source))
   if (pureBarrel && typeof budget.barrel === "number") return budget.barrel
-  const limit = fileName !== undefined && typeof budget[fileName] === "number" ? budget[fileName] : budget.file
+  const limit = fileName !== undefined && typeof budget[String(fileName)] === "number" ? budget[String(fileName)] : budget.file
   return typeof limit === "number" ? limit : null
 }
 
@@ -60,7 +74,7 @@ const DATA_HOOK = /^use\w*(?:Swr|SWR|Query|Mutation|Fetch|Infinite|Subscription)
 const STATE_HOOK = /^(?:useState|useReducer)$/
 
 /** The name a call is made through: `useState` or `React.useState`. */
-const calleeName = (callee) => {
+const calleeName = (callee: Node): string | null => {
   if (callee.type === "Identifier") return callee.name
   if (callee.type === "MemberExpression" && !callee.computed && callee.object.type === "Identifier" && callee.object.name === "React") {
     return callee.property.name
@@ -69,7 +83,7 @@ const calleeName = (callee) => {
 }
 
 /** The name a function is bound to, when it has one. */
-const functionName = (node) => {
+const functionName = (node: FunctionNode): string | null => {
   if (node.id) return node.id.name
   const parent = node.parent
   if (parent && parent.type === "VariableDeclarator" && parent.id.type === "Identifier") return parent.id.name
@@ -77,12 +91,12 @@ const functionName = (node) => {
 }
 
 /** A component or hook, by the naming convention React itself relies on. */
-const isUnitName = (name) => Boolean(name) && (/^[A-Z]/.test(name) || /^use[A-Z0-9]/.test(name))
+const isUnitName = (name: string | null): boolean => name !== null && name !== "" && (/^[A-Z]/.test(name) || /^use[A-Z0-9]/.test(name))
 
 // -- BUDGET-1 --------------------------------------------------------------------------------------
 
 /** A file is within the line budget its slot states for its role, pure re-export barrel (`barrel`) or every file (`file`). */
-export const componentLineBudget = {
+export const componentLineBudget = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "A file stays within the line budget its slot states (`component.tsx`, `index.tsx`, `barrel`, `file`)." },
@@ -104,12 +118,12 @@ export const componentLineBudget = {
       },
     }
   },
-}
+})
 
 // -- BUDGET-2 --------------------------------------------------------------------------------------
 
 /** A connected unit holds at most the slot's `useState` budget of state hooks and reads at most its `dataHooks` budget of data hooks. */
-export const unitHookBudget = {
+export const unitHookBudget = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "A unit stays within the state-hook and data-hook budget its slot states (`useState`, `dataHooks`)." },
@@ -126,8 +140,8 @@ export const unitHookBudget = {
     const { useState: maxState, dataHooks: maxData } = budgetOf(context)
     if (typeof maxState !== "number" && typeof maxData !== "number") return {}
     /** One frame per function being walked; only a component or hook frame accumulates. */
-    const frames = []
-    const enter = (node) => frames.push({ node, name: functionName(node), state: 0, data: 0 })
+    const frames: { readonly node: FunctionNode; readonly name: string | null; state: number; data: number }[] = []
+    const enter = (node: FunctionNode): number => frames.push({ node, name: functionName(node), state: 0, data: 0 })
     const exit = () => {
       const frame = frames.pop()
       if (!frame || !isUnitName(frame.name)) return
@@ -157,12 +171,12 @@ export const unitHookBudget = {
       },
     }
   },
-}
+})
 
 // -- BUDGET-3 --------------------------------------------------------------------------------------
 
 /** `setInterval`, or `window.setInterval`. */
-const isIntervalCall = (node) => {
+const isIntervalCall = (node: TSESTree.CallExpression): boolean => {
   const callee = node.callee
   if (callee.type === "Identifier") return callee.name === "setInterval"
   return (
@@ -175,19 +189,19 @@ const isIntervalCall = (node) => {
 }
 
 /** The function node a timer runs: the inline callback, or the same-file function a name stands for. */
-const timerCallback = (context, node) => functionOf(context, node.arguments[0])
+const timerCallback = (context: AnyContext, node: TSESTree.CallExpression): FunctionNode | null => functionOf(context, node.arguments[0])
 
 /**
  * True when running `fn` reads data: a call in its body (outside nested functions) whose value is a promise - `fetch`, the
  * transport client, a reader, SWR's `mutate()`/revalidation, anything awaited - or an `await`. A tick that only reads the time or
  * sets state (a shared clock, a countdown, an animation step) is not a refresh mechanism.
  */
-const readsData = (context, fn, seen = new Set()) => {
+const readsData = (context: AnyContext, fn: FunctionNode | null, seen = new Set<Node>()): boolean => {
   if (!fn || seen.has(fn)) return false
   seen.add(fn)
   let found = false
-  const visit = (current) => {
-    if (found || !current || typeof current.type !== "string") return
+  const visit = (current: unknown): void => {
+    if (found || !isNode(current)) return
     if (current !== fn && isFn(current)) return
     if (current.type === "AwaitExpression") { found = true; return }
     if (current.type === "CallExpression") {
@@ -195,10 +209,11 @@ const readsData = (context, fn, seen = new Set()) => {
       const local = functionOf(context, current.callee)
       if (local && readsData(context, local, seen)) { found = true; return }
     }
-    for (const [key, child] of Object.entries(current)) {
+    const entries: [string, unknown][] = Object.entries(current)
+    for (const [key, child] of entries) {
       if (key === "parent") continue
       if (Array.isArray(child)) child.forEach(visit)
-      else if (child && typeof child.type === "string") visit(child)
+      else if (isNode(child)) visit(child)
     }
   }
   visit(fn.body)
@@ -212,7 +227,7 @@ const readsData = (context, fn, seen = new Set()) => {
  * `setInterval`, or a `setTimeout` whose callback schedules the enclosing function again. A timer that only ticks time or state
  * is not a data-refresh mechanism. Grammar's live-time ownership is independently enforced by `no-app-relative-clock` below.
  */
-export const noHandRolledPolling = {
+export const noHandRolledPolling = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No `setInterval` and no self-scheduling `setTimeout` that reads data: one refresh mechanism per resource." },
@@ -237,16 +252,17 @@ export const noHandRolledPolling = {
         const callback = node.arguments[0]
         if (!callback || (callback.type !== "ArrowFunctionExpression" && callback.type !== "FunctionExpression")) return
         // The enclosing function: does the timer's own callback call it again (the same binding, not the same spelling)?
-        const owner = source.getAncestors(node).reverse().find((ancestor) => isFn(ancestor))
+        const owner = source.getAncestors(node).reverse().find(isFn)
         if (!owner) return
         let again = false
-        const visit = (current) => {
-          if (again || !current || typeof current.type !== "string") return
+        const visit = (current: unknown): void => {
+          if (again || !isNode(current)) return
           if (current.type === "CallExpression" && functionOf(context, current.callee) === owner) { again = true; return }
-          for (const [key, child] of Object.entries(current)) {
+          const entries: [string, unknown][] = Object.entries(current)
+          for (const [key, child] of entries) {
             if (key === "parent") continue
             if (Array.isArray(child)) child.forEach(visit)
-            else if (child && typeof child.type === "string") visit(child)
+            else if (isNode(child)) visit(child)
           }
         }
         visit(callback.body)
@@ -254,26 +270,26 @@ export const noHandRolledPolling = {
       },
     }
   },
-}
+})
 
 /** The static property name of an access or destructured property. */
-const propertyName = (node) => {
-  const key = node.property ?? node.key
+const propertyName = (node: TSESTree.MemberExpression | TSESTree.Property): string | null => {
+  const key = node.type === "MemberExpression" ? node.property : node.key
   if (!node.computed && key?.type === "Identifier") return key.name
   return key?.type === "Literal" && typeof key.value === "string" ? key.value : null
 }
 
 /** The platform member a local destructured binding selects. */
-const destructuredPath = (context, declarator, local, seen) => {
+const destructuredPath = (context: AnyContext, declarator: TSESTree.VariableDeclarator, local: string, seen: Set<Node>): string[] | null => {
   if (declarator.id.type !== "ObjectPattern") return null
-  const property = declarator.id.properties.find((entry) => entry.type === "Property" && entry.value.type === "Identifier" && entry.value.name === local)
+  const property = declarator.id.properties.find((entry): entry is TSESTree.Property => entry.type === "Property" && entry.value.type === "Identifier" && entry.value.name === local)
   const name = property && propertyName(property)
   const object = platformPath(context, declarator.init, seen)
   return object && name ? [...object, name] : null
 }
 
 /** A platform path, following local aliases and destructuring while refusing shadowed globals. */
-const platformPath = (context, node, seen = new Set()) => {
+const platformPath = (context: AnyContext, node: Node | null | undefined, seen = new Set<Node>()): string[] | null => {
   const inner = unwrap(node)
   if (!inner || seen.has(inner)) return null
   seen.add(inner)
@@ -295,15 +311,19 @@ const platformPath = (context, node, seen = new Set()) => {
 }
 
 /** A platform API spelling with the optional global-object prefix removed. */
-const platformName = (context, node) => {
+const platformName = (context: AnyContext, node: Node): string | null => {
   const parts = platformPath(context, node)
   if (!parts) return null
-  if (["window", "globalThis", "self"].includes(parts[0])) parts.shift()
+  const head = parts[0]
+  if (head !== undefined && ["window", "globalThis", "self"].includes(head)) parts.shift()
   return parts.join(".")
 }
 
 /** A wall-clock read: Date.now(), Date(), zero-argument new Date(), or performance.now(). */
-const readsClock = (context, root, seen = new Set()) => {
+/** The calls that read the wall clock, by platform name. */
+const CLOCK_CALLS = new Set<string | null>(["Date", "Date.now", "performance.now"])
+
+const readsClock = (context: AnyContext, root: Node | null | undefined, seen = new Set<Node>()): boolean => {
   if (!root || seen.has(root)) return false
   seen.add(root)
   let found = false
@@ -311,7 +331,7 @@ const readsClock = (context, root, seen = new Set()) => {
     if (found) return false
     if (node.type === "NewExpression" && node.arguments.length === 0 && platformName(context, node.callee) === "Date") found = true
     if (node.type !== "CallExpression") return undefined
-    if (["Date", "Date.now", "performance.now"].includes(platformName(context, node.callee))) found = true
+    if (CLOCK_CALLS.has(platformName(context, node.callee))) found = true
     const helper = functionOf(context, node.callee)
     if (helper && readsClock(context, helper.body, seen)) found = true
     return undefined
@@ -320,7 +340,7 @@ const readsClock = (context, root, seen = new Set()) => {
 }
 
 /** Whether a timer callback runs its enclosing function again, directly or through a same-file helper. */
-const callsFunction = (context, root, target, seen = new Set()) => {
+const callsFunction = (context: AnyContext, root: FunctionNode | null, target: Node, seen = new Set<Node>()): boolean => {
   if (!root || seen.has(root)) return false
   if (root === target) return true
   seen.add(root)
@@ -336,7 +356,7 @@ const callsFunction = (context, root, target, seen = new Set()) => {
 }
 
 /** Grammar owns the shared clock for live time labels; product components and hooks only pass instants. */
-export const noAppRelativeClock = {
+export const noAppRelativeClock = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Live relative time and countdowns use Grammar's shared clock rather than a product-owned ticker." },
@@ -353,16 +373,17 @@ export const noAppRelativeClock = {
         if (timer !== "setInterval" && timer !== "setTimeout") return
         const callback = functionOf(context, node.arguments[0])
         if (!callback) return
-        let owner = node.parent
+        let owner: Node | undefined = node.parent
         while (owner && !isFn(owner)) owner = owner.parent
-        const repeats = timer === "setInterval" || owner && callsFunction(context, callback, owner)
-        if (repeats && (readsClock(context, callback.body) || timer === "setTimeout" && readsClock(context, owner.body))) {
+        const ownerFn = owner && isFn(owner) ? owner : undefined
+        const repeats = timer === "setInterval" || ownerFn && callsFunction(context, callback, ownerFn)
+        if (repeats && (readsClock(context, callback.body) || timer === "setTimeout" && readsClock(context, ownerFn?.body))) {
           context.report({ node, messageId: "clock" })
         }
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
@@ -370,7 +391,7 @@ export const rules = {
   "unit-hook-budget": unitHookBudget,
   "no-hand-rolled-polling": noHandRolledPolling,
   "no-app-relative-clock": noAppRelativeClock,
-}
+} satisfies Rules
 
 /** Every rule is an error: the budget is the same for every app, and there is no baseline. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

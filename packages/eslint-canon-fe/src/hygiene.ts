@@ -17,8 +17,10 @@
  * binding (or member path), not the same identifier text; "a promise" is what the type checker says.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { walk } from "./lib/ast.ts"
-import { calleeParts, functionOf, isFn, keyOf, parentOf, unwrap } from "./lib/bindings.ts"
+import { calleeParts, functionOf, isFn, keyOf, parentOf, unwrap, type FunctionNode } from "./lib/bindings.ts"
 import { isPlatform, isUnresolvedType, propertyNamesOf } from "./lib/platform.ts"
 import { EFFECT_HOOKS, reactHookOf } from "./lib/react.ts"
 import { isProductSource } from "./lib/scope.ts"
@@ -27,7 +29,7 @@ import { isPromiseValued } from "./lib/types.ts"
 // -- HYGIENE-1 -------------------------------------------------------------------------------------
 
 /** The platform functions that start a timer or a frame callback and hand back a handle. */
-const HANDLE_STARTERS = new Map([
+const HANDLE_STARTERS = new Map<string, "timer" | "frame">([
   ["setTimeout", "timer"],
   ["setInterval", "timer"],
   ["requestAnimationFrame", "frame"],
@@ -35,6 +37,60 @@ const HANDLE_STARTERS = new Map([
 
 /** The platform functions that release such a handle, per kind. */
 const HANDLE_RELEASERS = { timer: new Set(["clearTimeout", "clearInterval"]), frame: new Set(["cancelAnimationFrame"]) }
+
+/** Where a started value is kept: `key` for a variable or member, `container` for a list or set it is pushed into. */
+interface Handle {
+  readonly key?: string | null
+  readonly container?: string
+}
+
+/** A timer or frame callback started through the platform. */
+interface HandleResource {
+  readonly kind: "timer" | "frame"
+  readonly node: TSESTree.CallExpression
+  readonly name: string
+  readonly handle: Handle | null
+}
+
+/** An observer or a connection the platform holds open. */
+interface OpenResource {
+  readonly kind: "observer" | "channel"
+  readonly node: TSESTree.NewExpression
+  readonly name: string
+  readonly handle: Handle | null
+}
+
+/** An event listener added to a target. */
+interface ListenerResource {
+  readonly kind: "listener"
+  readonly node: TSESTree.CallExpression
+  readonly name: string
+  readonly target: string | null
+  readonly type: string | null
+  readonly typeText: string
+  readonly listener: string | null
+  readonly listenerText: string
+  readonly signalOwner: string | null
+  readonly receiverText: string | null
+}
+
+/** The value of a call kept as a possible subscription object. */
+interface SubscriptionResource {
+  readonly kind: "subscription"
+  readonly node: TSESTree.CallExpression
+  readonly name: string
+  readonly handle: Handle
+}
+
+/** Anything an effect starts that must end with it. */
+type Resource = HandleResource | OpenResource | ListenerResource | SubscriptionResource
+
+/** Something a cleanup does that may end a resource. */
+type Release =
+  | { readonly kind: "release-ref"; readonly name: string; readonly near: ReadonlySet<string> }
+  | { readonly kind: "release"; readonly name: string; readonly arg: string | null }
+  | { readonly kind: "remove"; readonly target: string | null; readonly type: string | null; readonly listener: string | null }
+  | { readonly kind: "method"; readonly name: string; readonly receiver: string | null }
 
 /** The observers that hold their targets until they are disconnected. */
 const OBSERVERS = new Set(["ResizeObserver", "IntersectionObserver", "MutationObserver"])
@@ -49,15 +105,15 @@ const SUBSCRIPTION_RELEASES = ["unsubscribe", "off", "close"]
 const GLOBAL_OBJECTS = new Set(["window", "globalThis", "self"])
 
 /** `receiver` is absent or names the global object: `setTimeout(...)`, `window.setTimeout(...)`. */
-const onGlobalObject = (receiver) => {
+const onGlobalObject = (receiver: Node | null): boolean => {
   if (!receiver) return true
   const inner = unwrap(receiver)
   return inner.type === "Identifier" && GLOBAL_OBJECTS.has(inner.name)
 }
 
 /** The nearest function around a node, or null at module level. */
-const nearestFunction = (node) => {
-  for (let current = node.parent; current; current = current.parent) if (isFn(current)) return current
+const nearestFunction = (node: Node): FunctionNode | null => {
+  for (let current: Node | undefined = node.parent; current; current = current.parent) if (isFn(current)) return current
   return null
 }
 
@@ -65,7 +121,7 @@ const nearestFunction = (node) => {
  * Where the value of a start call is kept: `{ key }` for `const id = ...` / `id = ...` / `ref.current = ...`,
  * `{ container }` for `list.push(...)` / `set.add(...)`, or null when the handle is dropped.
  */
-const handleOf = (context, call) => {
+const handleOf = (context: AnyContext, call: TSESTree.CallExpression | TSESTree.NewExpression): Handle | null => {
   const parent = parentOf(call)
   if (!parent) return null
   if (parent.type === "VariableDeclarator" && unwrap(parent.init) === call && parent.id.type === "Identifier") return { key: keyOf(context, parent.id) }
@@ -84,20 +140,20 @@ const handleOf = (context, call) => {
 }
 
 /** The static key of an event type: `s:resize` for a string literal, the binding key for an identifier. */
-const typeKeyOf = (context, node) => {
+const typeKeyOf = (context: AnyContext, node: Node | undefined): string | null => {
   const inner = unwrap(node)
   if (inner?.type === "Literal" && typeof inner.value === "string") return `s:${inner.value}`
-  if (inner?.type === "TemplateLiteral" && inner.expressions.length === 0) return `s:${inner.quasis[0].value.cooked}`
+  if (inner?.type === "TemplateLiteral" && inner.expressions.length === 0) return `s:${inner.quasis[0]?.value.cooked}`
   return keyOf(context, inner)
 }
 
 /** The key of the object whose `.signal` an `addEventListener` option object passes (`{ signal: controller.signal }`), or null. */
-const signalOwnerOf = (context, options) => {
+const signalOwnerOf = (context: AnyContext, options: Node | undefined): string | null => {
   const object = unwrap(options)
   if (object?.type !== "ObjectExpression") return null
-  const property = object.properties.find((entry) => entry.type === "Property" && !entry.computed && entry.key.type === "Identifier" && entry.key.name === "signal")
+  const property = object.properties.find((entry): entry is TSESTree.Property => entry.type === "Property" && !entry.computed && entry.key.type === "Identifier" && entry.key.name === "signal")
   if (!property) return null
-  let value = unwrap(property.value)
+  let value: Node = unwrap(property.value)
   if (value.type === "Identifier") {
     const definition = context.sourceCode.getScope(value).set.get(value.name)?.defs[0]
     if (definition?.type === "Variable" && definition.node.init) value = unwrap(definition.node.init)
@@ -106,8 +162,12 @@ const signalOwnerOf = (context, options) => {
 }
 
 /** Every resource a call or `new` starts that must be released, or an empty list. */
-const resourcesOf = (context, node) => {
-  const found = []
+/** True when a callee (an identifier or a member, as calleeParts read it) is the platform's. */
+const isPlatformCallee = (context: AnyContext, callee: Node): boolean =>
+  (callee.type === "Identifier" || callee.type === "MemberExpression") && isPlatform(context, callee)
+
+const resourcesOf = (context: AnyContext, node: TSESTree.CallExpression | TSESTree.NewExpression): Resource[] => {
+  const found: Resource[] = []
   if (node.type === "NewExpression") {
     const callee = unwrap(node.callee)
     if (callee.type !== "Identifier" || !(OBSERVERS.has(callee.name) || CHANNELS.has(callee.name)) || !isPlatform(context, callee)) return found
@@ -117,19 +177,22 @@ const resourcesOf = (context, node) => {
   const parts = calleeParts(node)
   if (!parts) return found
   const callee = unwrap(node.callee)
-  if (HANDLE_STARTERS.has(parts.name) && onGlobalObject(parts.receiver) && isPlatform(context, callee)) {
-    found.push({ kind: HANDLE_STARTERS.get(parts.name), node, name: parts.name, handle: handleOf(context, node) })
-  } else if (parts.name === "addEventListener" && node.arguments.length >= 2 && isPlatform(context, callee)) {
-    const listener = unwrap(node.arguments[1])
+  const starter = HANDLE_STARTERS.get(parts.name)
+  const typeArgument = node.arguments[0]
+  const listenerArgument = node.arguments[1]
+  if (starter !== undefined && onGlobalObject(parts.receiver) && isPlatformCallee(context, callee)) {
+    found.push({ kind: starter, node, name: parts.name, handle: handleOf(context, node) })
+  } else if (parts.name === "addEventListener" && typeArgument && listenerArgument && isPlatformCallee(context, callee)) {
+    const listener = unwrap(listenerArgument)
     found.push({
       kind: "listener",
       node,
       name: "addEventListener",
       target: parts.receiver ? keyOf(context, parts.receiver) : "g:window",
-      type: typeKeyOf(context, node.arguments[0]),
-      typeText: context.sourceCode.getText(node.arguments[0]),
+      type: typeKeyOf(context, typeArgument),
+      typeText: context.sourceCode.getText(typeArgument),
       listener: listener && !isFn(listener) ? keyOf(context, listener) : null,
-      listenerText: context.sourceCode.getText(node.arguments[1]),
+      listenerText: context.sourceCode.getText(listenerArgument),
       signalOwner: signalOwnerOf(context, node.arguments[2]),
       receiverText: parts.receiver ? context.sourceCode.getText(parts.receiver) : null,
     })
@@ -142,19 +205,19 @@ const resourcesOf = (context, node) => {
 }
 
 /** True when the value of a call is a subscription object: it carries `unsubscribe`, `off` or `close` and is neither a promise, a DOM node nor a window. */
-const isSubscriptionObject = (context, call) => {
+const isSubscriptionObject = (context: AnyContext, call: Node): boolean => {
   const names = propertyNamesOf(context, call)
   return SUBSCRIPTION_RELEASES.some((name) => names.has(name)) && !names.has("then") && !names.has("nodeType") && !names.has("document") && !isUnresolvedType(context, call)
 }
 
 /** The ids of the statements' identifiers around a release: what a `list.forEach(clearTimeout)` mentions besides the releaser. */
-const nearKeys = (context, node) => {
+const nearKeys = (context: AnyContext, node: Node): Set<string> => {
   let root = node
-  for (let current = node; current; current = current.parent) {
+  for (let current: Node | undefined = node; current; current = current.parent) {
     root = current
     if (current.type.endsWith("Statement") || current.type === "VariableDeclaration" || isFn(current.parent)) break
   }
-  const keys = new Set()
+  const keys = new Set<string>()
   walk(context.sourceCode, root, (child) => {
     if (child.type === "Identifier" || child.type === "MemberExpression") {
       const key = keyOf(context, child)
@@ -166,10 +229,10 @@ const nearKeys = (context, node) => {
 }
 
 /** Every release the given functions perform (following calls to same-file functions), as comparable records. */
-const releasesIn = (context, roots) => {
-  const releases = []
-  const visited = new Set()
-  const queue = [...roots]
+const releasesIn = (context: AnyContext, roots: readonly Node[]): Release[] => {
+  const releases: Release[] = []
+  const visited = new Set<Node>()
+  const queue: Node[] = [...roots]
   while (queue.length > 0) {
     const fn = queue.shift()
     if (!fn || visited.has(fn)) continue
@@ -201,11 +264,11 @@ const releasesIn = (context, roots) => {
 }
 
 /** True when the releases contain the one that ends this resource. */
-const isReleased = (resource, releases) => {
-  const { handle } = resource
+const isReleased = (resource: Resource, releases: readonly Release[]): boolean => {
   switch (resource.kind) {
     case "timer":
     case "frame": {
+      const handle = resource.handle
       if (!handle) return false
       const names = HANDLE_RELEASERS[resource.kind]
       return releases.some((release) => {
@@ -219,16 +282,16 @@ const isReleased = (resource, releases) => {
       if (!resource.listener || !resource.target || !resource.type) return false
       return releases.some((release) => release.kind === "remove" && release.target === resource.target && release.type === resource.type && release.listener === resource.listener)
     case "observer":
-      return Boolean(handle?.key) && releases.some((release) => release.kind === "method" && release.name === "disconnect" && release.receiver === handle.key)
+      return Boolean(resource.handle?.key) && releases.some((release) => release.kind === "method" && release.name === "disconnect" && release.receiver === resource.handle?.key)
     case "channel":
-      return Boolean(handle?.key) && releases.some((release) => release.kind === "method" && release.name === "close" && release.receiver === handle.key)
+      return Boolean(resource.handle?.key) && releases.some((release) => release.kind === "method" && release.name === "close" && release.receiver === resource.handle?.key)
     default:
-      return Boolean(handle?.key) && releases.some((release) => release.kind === "method" && SUBSCRIPTION_RELEASES.includes(release.name) && release.receiver === handle.key)
+      return Boolean(resource.handle.key) && releases.some((release) => release.kind === "method" && SUBSCRIPTION_RELEASES.includes(release.name) && release.receiver === resource.handle.key)
   }
 }
 
 /** What to write to release a resource, for the message. */
-const releaseHint = (resource) => {
+const releaseHint = (resource: Resource): string => {
   switch (resource.kind) {
     case "timer":
       return "keep the handle (`const id = " + resource.name + "(...)`) and return `() => clearTimeout(id)` (or `clearInterval`)"
@@ -248,7 +311,7 @@ const releaseHint = (resource) => {
 }
 
 /** True when the observer is `.observe`d somewhere under the owner (an observer that observes nothing holds nothing). */
-const isObserved = (context, resource, owner) => {
+const isObserved = (context: AnyContext, resource: OpenResource, owner: Node): boolean => {
   if (!resource.handle?.key) {
     const parent = parentOf(resource.node)
     return parent?.type === "MemberExpression" && parent.property.type === "Identifier" && parent.property.name === "observe"
@@ -258,7 +321,7 @@ const isObserved = (context, resource, owner) => {
     if (observed) return false
     if (node.type === "CallExpression") {
       const parts = calleeParts(node)
-      if (parts?.receiver && parts.name === "observe" && keyOf(context, parts.receiver) === resource.handle.key) observed = true
+      if (parts?.receiver && parts.name === "observe" && keyOf(context, parts.receiver) === resource.handle?.key) observed = true
     }
     return undefined
   })
@@ -266,9 +329,9 @@ const isObserved = (context, resource, owner) => {
 }
 
 /** The functions an owner returns as its cleanup (every top-level `return`, or the expression body of an arrow). */
-const cleanupsOf = (context, owner) => {
-  const cleanups = []
-  const push = (expression) => {
+const cleanupsOf = (context: AnyContext, owner: FunctionNode): FunctionNode[] => {
+  const cleanups: FunctionNode[] = []
+  const push = (expression: Node | null | undefined): void => {
     const inner = unwrap(expression)
     if (!inner) return
     if (inner.type === "ConditionalExpression") {
@@ -295,7 +358,7 @@ const cleanupsOf = (context, owner) => {
  * Every effect and `useSyncExternalStore` subscribe in the file starts things that must end with it: a resource started
  * by one is released by the cleanup it returns, against the same handle, target and listener.
  */
-export const effectSubscriptionNeedsCleanup = {
+export const effectSubscriptionNeedsCleanup = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A timer, frame, listener, observer, socket or subscription started in an effect or a store subscribe is released, against the same handle, by the cleanup it returns." },
@@ -309,8 +372,8 @@ export const effectSubscriptionNeedsCleanup = {
   },
   create(context) {
     if (!isProductSource(context)) return {}
-    const owners = new Map()
-    const resources = []
+    const owners = new Map<Node, "effect" | "subscribe">()
+    const resources: Resource[] = []
     return {
       CallExpression(node) {
         const hook = reactHookOf(context, node)
@@ -325,8 +388,8 @@ export const effectSubscriptionNeedsCleanup = {
       },
       "Program:exit"(program) {
         for (const resource of resources) {
-          let owner = null
-          for (let current = resource.node.parent; current && !owner; current = current.parent) if (isFn(current) && owners.has(current)) owner = current
+          let owner: Node | null = null
+          for (let current: Node | undefined = resource.node.parent; current && !owner; current = current.parent) if (isFn(current) && owners.has(current)) owner = current
           const what = resource.kind === "listener" ? `addEventListener(${resource.typeText}, ${resource.listenerText})` : resource.kind === "subscription" ? resource.name : resource.kind === "observer" || resource.kind === "channel" ? `new ${resource.name}(...)` : `${resource.name}(...)`
           if (!owner) {
             if (resource.kind !== "timer" && resource.kind !== "frame") continue
@@ -343,12 +406,12 @@ export const effectSubscriptionNeedsCleanup = {
       },
     }
   },
-}
+})
 
 // -- HYGIENE-2 -------------------------------------------------------------------------------------
 
 /** The call at the bottom of a chain: `a().b().c()` starts at `a()`. */
-const rootCallOf = (call) => {
+const rootCallOf = (call: TSESTree.CallExpression): TSESTree.CallExpression => {
   let current = call
   for (;;) {
     const callee = unwrap(current.callee)
@@ -364,7 +427,7 @@ const rootCallOf = (call) => {
 }
 
 /** True when a `.then` / `.catch` / `.finally` sits anywhere in the call chain. */
-const isThenChained = (call) => {
+const isThenChained = (call: TSESTree.CallExpression): boolean => {
   let current = call
   for (;;) {
     const callee = unwrap(current.callee)
@@ -381,7 +444,7 @@ const isThenChained = (call) => {
  * while nothing says what it is. A platform call other than `fetch` (`audio.play()`, `clipboard.writeText(...)`) is not
  * a data load and is left alone.
  */
-const startsLoad = (context, call) => {
+const startsLoad = (context: AnyContext, call: TSESTree.CallExpression): boolean => {
   const root = rootCallOf(call)
   const rootCallee = unwrap(root.callee)
   const isPlatformCall = (rootCallee.type === "Identifier" || rootCallee.type === "MemberExpression") && isPlatform(context, rootCallee)
@@ -392,8 +455,8 @@ const startsLoad = (context, call) => {
 }
 
 /** The first load the effect callback starts synchronously (an immediately-invoked function counts; a listener, timer callback or the cleanup does not). */
-const loadStartedBy = (context, effect) => {
-  let found = null
+const loadStartedBy = (context: AnyContext, effect: FunctionNode): Node | null => {
+  let found: Node | null = null
   walk(context.sourceCode, effect.body, (node) => {
     if (found) return false
     if (node !== effect.body && isFn(node)) {
@@ -414,7 +477,7 @@ const loadStartedBy = (context, effect) => {
 }
 
 /** No data loading inside `useEffect`; data is read through an SWR hook over an operation of `modules/api`. */
-export const noDataFetchInEffect = {
+export const noDataFetchInEffect = defineRule({
   meta: {
     type: "problem",
     docs: { description: "An effect body starts no promise: no `await`, `fetch`, `.then`, `void load()`, `mutate()` or `refresh()`; read through an SWR hook (`hooks/swr`) over an operation of `modules/api`." },
@@ -437,12 +500,12 @@ export const noDataFetchInEffect = {
       },
     }
   },
-}
+})
 
 // -- HYGIENE-3 -------------------------------------------------------------------------------------
 
 /** A `catch` block with nothing in it, or a promise `.catch` handler with nothing in it. */
-export const noEmptyCatch = {
+export const noEmptyCatch = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A `catch` that does nothing hides the failure; handle it or return a typed outcome." },
@@ -473,12 +536,12 @@ export const noEmptyCatch = {
       },
     }
   },
-}
+})
 
 // -- HYGIENE-4 -------------------------------------------------------------------------------------
 
 /** No `console.*` in product source. */
-export const noConsole = {
+export const noConsole = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No `console.*` call in product source." },
@@ -499,7 +562,7 @@ export const noConsole = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
@@ -507,7 +570,7 @@ export const rules = {
   "no-data-fetch-in-effect": noDataFetchInEffect,
   "no-empty-catch": noEmptyCatch,
   "no-console": noConsole,
-}
+} satisfies Rules
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

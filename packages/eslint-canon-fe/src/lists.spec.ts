@@ -6,17 +6,18 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import tsParser from "@typescript-eslint/parser"
 import { listItemHasKey, noIndexKey, noInlineLiteralPropInList, rules } from "./lists.ts"
 
-const tester = new RuleTester({
+const tester = canonTester(new RuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,
     sourceType: "module",
     parserOptions: { ecmaFeatures: { jsx: true } },
   },
-})
+}))
 
 const FILE = "src/components/blocks/Feed/component.tsx"
 

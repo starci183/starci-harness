@@ -7,16 +7,16 @@
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import { at, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
+import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
 import { i18nStackInOneModule, localeSegmentIsLocale, navigationFromIntl, noNativeAnchor, noSecondI18nStack } from './next-conventions.ts';
 import { useIntlFormatter } from './formatting.ts';
 
 for (const edition of ['lite', 'full']) {
   test(`${edition} locale-owned i18n passes while misplaced locale stacks, navigation and formatting fail`, () => {
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs: fixtureHfs(LITE_FE_DECLARATION, { lite: edition === 'lite' }) } },
-    });
+    }));
     const block = at('apps/web/src/components/blocks/Nav/index.tsx');
     tester.run('locale-segment-is-locale', localeSegmentIsLocale, {
       valid: [{ filename: at('apps/web/src/app/[locale]/page.tsx'), code: 'export default function Page() {}' }],

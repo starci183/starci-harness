@@ -12,10 +12,12 @@
  * lint rule is for - the one nothing else will ever report.
  */
 
-import { classOf, fileOf, isComponentFile } from "./lib/scope.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { classOf, isComponentFile } from "./lib/scope.ts"
 
 /** Product component source these rules govern: a component owner's file, and not a spec (a placeholder in a test fixture is a fixture, not a second tree). */
-const isGoverned = (context) => isComponentFile(context)
+const isGoverned = (context: AnyContext): boolean => isComponentFile(context)
 
 /** A flag that means "waiting", in the spellings this codebase uses. */
 const WAITING_FLAG = /\bis(?:Loading|Skeleton|Pending)\b/
@@ -24,12 +26,13 @@ const WAITING_FLAG = /\bis(?:Loading|Skeleton|Pending)\b/
 const TWIN_NAME = /^[A-Za-z0-9]*Skeleton$/
 
 /** JSX element name, including `Foo.Bar`. */
-const jsxElementName = (opening) => {
+const jsxElementName = (opening: TSESTree.JSXOpeningElement | null | undefined): string | null => {
   const name = opening && opening.name
   if (!name) return null
   if (name.type === "JSXIdentifier") return name.name
   if (name.type === "JSXMemberExpression" && name.object && name.property) {
-    return `${name.object.name}.${name.property.name}`
+    // a deeper member (`a.b.C`) has no name on its object, and reads as `undefined.C`
+    return `${name.object.type === "JSXIdentifier" ? name.object.name : undefined}.${name.property.name}`
   }
   return null
 }
@@ -37,7 +40,7 @@ const jsxElementName = (opening) => {
 // -- LOADING-1 -------------------------------------------------------------------------------------
 
 /** No component exists whose job is to mirror another component's shape. */
-export const noRestingTwinComponent = {
+export const noRestingTwinComponent = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No component whose whole job is to mirror another one's shape." },
@@ -50,19 +53,20 @@ export const noRestingTwinComponent = {
   create(context) {
     if (!isGoverned(context)) return {}
     const owner = classOf(context)
-    if (owner.role !== "entry" || !TWIN_NAME.test(owner.bindings?.name ?? "")) return {}
+    const twin = owner.bindings?.name ?? ""
+    if (owner.role !== "entry" || !TWIN_NAME.test(twin)) return {}
     return {
       Program(node) {
-        context.report({ node, messageId: "twin", data: { name: owner.bindings.name } })
+        context.report({ node, messageId: "twin", data: { name: twin } })
       },
     }
   },
-}
+})
 
 // -- LOADING-1, handed in from outside --------------------------------------------------------------
 
 /** A ready-made placeholder is the same second tree, passed as a prop. */
-export const noPlaceholderProp = {
+export const noPlaceholderProp = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No prop hands a component a ready-made resting shape to render." },
@@ -99,12 +103,12 @@ export const noPlaceholderProp = {
       },
     }
   },
-}
+})
 
 // -- LOADING-2 -------------------------------------------------------------------------------------
 
 /** A caller never picks between a resting shape and a real one. */
-export const noRestingBranchAtCallSite = {
+export const noRestingBranchAtCallSite = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A waiting flag must not choose between two different components." },
@@ -118,7 +122,7 @@ export const noRestingBranchAtCallSite = {
     if (!isGoverned(context)) return {}
     const source = context.sourceCode || context.getSourceCode()
     /** Root element name of one arm, or null when the arm is not an element. */
-    const armName = (expression) => {
+    const armName = (expression: Node | null | undefined): string | null => {
       if (!expression) return null
       if (expression.type === "JSXElement") return jsxElementName(expression.openingElement)
       if (expression.type === "JSXFragment") return "<>"
@@ -137,14 +141,14 @@ export const noRestingBranchAtCallSite = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-resting-twin-component": noRestingTwinComponent,
   "no-placeholder-prop": noPlaceholderProp,
   "no-resting-branch-at-call-site": noRestingBranchAtCallSite,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -153,4 +157,4 @@ export const rules = {
  * time: hand-kept placeholder trees arrive in families, one per screen, and each is a real shape
  * that has to be folded back into the component it copies rather than deleted.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

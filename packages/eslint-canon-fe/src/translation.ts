@@ -25,13 +25,15 @@
  * and spares tokens is worth more than a clever one nobody trusts.
  */
 
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { isContentFile } from "./comments.ts"
 import { variableOf } from "./lib/bindings.ts"
 import { globalReferences, isComponentFile, kindOfFile } from "./lib/scope.ts"
 import { why } from "./lib/why.ts"
 
 /** True when a file sits in a component layer that must not resolve copy: every layer but `blocks` receives every word it renders, so it can know no domain and no sentence. */
-const isVocabularyFile = (context) => isComponentFile(context) && kindOfFile(context) !== "blocks"
+const isVocabularyFile = (context: AnyContext): boolean => isComponentFile(context) && kindOfFile(context) !== "blocks"
 
 /** Attributes a reader sees or hears: any word in them is copy. */
 const STRICT_ATTRS = new Set([
@@ -96,14 +98,14 @@ const RESOLVES_COPY = /^(?:useTranslations|useLocale|useFormatter|getTranslation
  * place so the lint and the gate never disagree about what a literal is. Neither has a suppression
  * marker.
  */
-const hasLetter = (text) => typeof text === "string" && /\p{L}{2,}/u.test(text)
+const hasLetter = (text: unknown): boolean => typeof text === "string" && /\p{L}{2,}/u.test(text)
 
 /** Prose rather than a token: it has a space, a non-ASCII letter, or it starts like a sentence. */
-const looksLikeProse = (text) =>
+const looksLikeProse = (text: string): boolean =>
   hasLetter(text) && (/\s/.test(text) || /[^\x00-\x7F]/.test(text) || /^[A-Z]/.test(text))
 
 /** Static string carried by a literal or an expression-free template, else null. */
-const staticString = (node) => {
+const staticString = (node: Node | null | undefined): string | null => {
   if (!node) return null
   if (node.type === "Literal" && typeof node.value === "string") return node.value
   if (node.type === "TemplateLiteral" && node.expressions.length === 0) {
@@ -116,23 +118,23 @@ const staticString = (node) => {
  * The static text of a template literal that has substitutions, each substitution standing as `#`
  * (a template of "the count, then installed" reads "# installed"); null for anything that is not such a template.
  */
-const templateText = (node) => {
+const templateText = (node: Node | null | undefined): string | null => {
   if (!node || node.type !== "TemplateLiteral" || node.expressions.length === 0) return null
   return node.quasis.map((quasi) => quasi.value.cooked ?? "").join("#")
 }
 
 /** True when the static parts of a template with substitutions contain a word (a count then "installed", not two ids joined by a dash). */
-const templateHasWord = (node) => {
+const templateHasWord = (node: Node | null | undefined): boolean => {
   const text = templateText(node)
   return text !== null && hasLetter(text.replaceAll("#", " "))
 }
 
 /** Punctuation at either edge of a word, outside its letters and hyphens. */
-const WORD_START = new Set(['"', "'", "("])
-const WORD_END = new Set([".", ",", "!", "?", ":", ";", '"', ")"])
+const WORD_START = new Set<string | undefined>(['"', "'", "("])
+const WORD_END = new Set<string | undefined>([".", ",", "!", "?", ":", ";", '"', ")"])
 
 /** Remove the edge punctuation in a single pass, preserving an apostrophe used as the core. */
-const wordCore = (token) => {
+const wordCore = (token: string): string => {
   let end = token.length
   while (end > 0 && WORD_END.has(token[end - 1])) end -= 1
   let start = 0
@@ -142,7 +144,7 @@ const wordCore = (token) => {
 }
 
 /** A sentence word allows hyphens between letters; an all-capitals chain (YYYY-MM-DD) is a format. */
-const isSentenceWord = (token) =>
+const isSentenceWord = (token: string): boolean =>
   /^[\p{L}\p{N}#'\u2019]+(?:-[\p{L}\p{N}#]+)*$/u.test(wordCore(token)) && !/^\p{Lu}{2,}(?:-\p{Lu}{2,})+$/u.test(token)
 
 /**
@@ -150,7 +152,7 @@ const isSentenceWord = (token) =>
  * letters and sentence punctuation only (so a class list, a URL, a media type or an id never qualifies), and it starts
  * like a sentence, ends like one, or carries a non-ASCII letter.
  */
-const looksLikeSentence = (text) => {
+const looksLikeSentence = (text: string): boolean => {
   const tokens = text.trim().split(/\s+/)
   if (tokens.length < 2) return false
   if (!tokens.every(isSentenceWord)) return false
@@ -159,7 +161,7 @@ const looksLikeSentence = (text) => {
 }
 
 /** Static string carried by a JSX attribute value, else null. */
-const attributeText = (node) => {
+const attributeText = (node: TSESTree.JSXAttribute | null | undefined): string | null => {
   const value = node && node.value
   if (!value) return null
   if (value.type === "JSXExpressionContainer") return staticString(value.expression)
@@ -167,11 +169,11 @@ const attributeText = (node) => {
 }
 
 /** The value node behind a JSX attribute, for de-duplication against the second-language walk. */
-const attributeValueNode = (node) =>
+const attributeValueNode = (node: TSESTree.JSXAttribute): Node | null =>
   node.value && node.value.type === "JSXExpressionContainer" ? node.value.expression : node.value
 
 /** The name of an object property key, else null. */
-const keyName = (property) => {
+const keyName = (property: TSESTree.Property): string | null => {
   if (property.computed) return null
   if (property.key.type === "Identifier") return property.key.name
   if (property.key.type === "Literal" && typeof property.key.value === "string") return property.key.value
@@ -181,7 +183,7 @@ const keyName = (property) => {
 // -- COPY-1 ----------------------------------------------------------------------------------------
 
 /** A component below a block never resolves a word. */
-export const noCopyResolutionBelowBlock = {
+export const noCopyResolutionBelowBlock = defineRule({
   meta: {
     type: "problem",
     docs: { description: "The vocabulary tiers receive resolved strings; they never resolve one." },
@@ -201,12 +203,12 @@ export const noCopyResolutionBelowBlock = {
       },
     }
   },
-}
+})
 
 // -- COPY-2 ----------------------------------------------------------------------------------------
 
 /** No literal copy at any tier, in any language, and no pragma to allow one. */
-export const noHardcodedCopy = {
+export const noHardcodedCopy = defineRule({
   meta: {
     type: "problem",
     docs: { description: "User-facing text comes from a `next-intl` catalogue through `t()`, at every tier." },
@@ -249,7 +251,7 @@ export const noHardcodedCopy = {
         const text = template ?? attributeText(node)
         if (text === null) return
         if (strict ? !hasLetter(text.replaceAll("#", " ")) : !looksLikeProse(text)) return
-        context.report({ node, messageId: "attribute", data: { attr, text: template === null ? text : source.getText(value) } })
+        context.report({ node, messageId: "attribute", data: { attr, text: template === null ? text : source.getText(value ?? undefined) } })
       },
       Property(node) {
         const key = keyName(node)
@@ -263,41 +265,52 @@ export const noHardcodedCopy = {
       },
     }
   },
-}
+})
 
 /** The static name of a member, including a bracketed string name. */
-const memberName = (node) => {
+const memberName = (node: Node | null | undefined): string | null => {
   if (node?.type !== "MemberExpression") return null
   return node.computed ? staticString(node.property) : node.property.name ?? null
 }
 
 /** The identifier at the root of a fluent call or property chain. */
-const callRoot = (node) => {
+const callRoot = (node: Node | null | undefined): TSESTree.Identifier | null => {
   if (!node) return null
   if (node.type === "Identifier") return node
   if (node.type === "CallExpression") return callRoot(node.callee)
   if (node.type === "MemberExpression") return callRoot(node.object)
-  if (["ChainExpression", "TSAsExpression", "TSNonNullExpression"].includes(node.type)) return callRoot(node.expression)
+  if (node.type === "ChainExpression" || node.type === "TSAsExpression" || node.type === "TSNonNullExpression") return callRoot(node.expression)
   return null
 }
 
+/** The module an import binding reads from; an `import x = require()` binding carries no `source`, and stops the run as reading it always has. */
+const importSource = (binding: TSESLint.Scope.Definitions.ImportBindingDefinition): string => {
+  const declaration = binding.parent
+  if (declaration.type !== "ImportDeclaration") throw new TypeError("Cannot read properties of undefined (reading 'value')")
+  return declaration.source.value
+}
+
+/** The name an import specifier imports, when it is spelled as an identifier. */
+const importedName = (specifier: Node): string | undefined =>
+  specifier.type === "ImportSpecifier" && specifier.imported.type === "Identifier" ? specifier.imported.name : undefined
+
 /** Methods whose first argument is a Zod validation message rather than a value constraint. */
-const ZOD_MESSAGE_FIRST = new Set([
+const ZOD_MESSAGE_FIRST = new Set<string | null>([
   "email", "url", "uuid", "cuid", "cuid2", "ulid", "emoji", "base64", "base64url", "ip", "ipv4", "ipv6",
   "datetime", "date", "time", "duration", "jwt", "nanoid", "nonempty", "finite", "int", "safe",
   "positive", "negative", "nonnegative", "nonpositive",
 ])
 
 /** Methods whose constraint or predicate precedes the validation message. */
-const ZOD_MESSAGE_SECOND = new Set([
+const ZOD_MESSAGE_SECOND = new Set<string | null>([
   "min", "max", "length", "regex", "includes", "startsWith", "endsWith", "gt", "gte", "lt", "lte", "multipleOf", "refine",
 ])
 
 /** Toast methods that receive visible feedback as their first argument; dismiss receives an id. */
-const TOAST_MESSAGE_METHODS = new Set(["success", "error", "info", "warning", "warn", "loading", "message"])
+const TOAST_MESSAGE_METHODS = new Set<string | null>(["success", "error", "info", "warning", "warn", "loading", "message"])
 
 /** Literal feedback and validation messages are catalogue copy in both editions. */
-export const noCopyInCall = {
+export const noCopyInCall = defineRule({
   meta: {
     type: "problem",
     docs: { description: "FE_COPY_IN_CALL: toast and Zod validation messages come from next-intl." },
@@ -313,12 +326,13 @@ export const noCopyInCall = {
         const root = callRoot(node.callee)
         if (!root) return
         const binding = variableOf(context, root)?.defs[0] ?? null
-        const imported = binding?.type === "ImportBinding" ? binding.parent.source.value : null
+        const importBinding = binding?.type === "ImportBinding" ? binding : null
+        const imported = importBinding ? importSource(importBinding) : null
         const method = memberName(node.callee)
         const zod = imported === "zod" || imported?.startsWith("zod/") || (!binding && root.name === "z")
         const toast = root.name === "toast" || (imported && /(?:^|\/)toast(?:\/|$)/.test(imported) &&
-          (binding.node.type === "ImportDefaultSpecifier" || binding.node.imported?.name === "toast"))
-        let message
+          importBinding !== null && (importBinding.node.type === "ImportDefaultSpecifier" || importedName(importBinding.node) === "toast"))
+        let message: TSESTree.CallExpressionArgument | undefined
         if (toast && (node.callee.type === "Identifier" || TOAST_MESSAGE_METHODS.has(method))) message = node.arguments[0]
         else if (zod && ZOD_MESSAGE_FIRST.has(method)) message = node.arguments[0]
         else if (zod && ZOD_MESSAGE_SECOND.has(method)) message = node.arguments[1]
@@ -330,10 +344,10 @@ export const noCopyInCall = {
       },
     }
   },
-}
+})
 
 /** Browser alerts bypass the application's translated toast feedback. */
-export const noAlert = {
+export const noAlert = defineRule({
   meta: {
     type: "problem",
     docs: { description: "FE_NO_ALERT: feedback uses the toast module rather than browser alert()." },
@@ -343,7 +357,7 @@ export const noAlert = {
     },
   },
   create(context) {
-    const calls = []
+    const calls: TSESTree.CallExpression[] = []
     return {
       CallExpression(node) { calls.push(node) },
       "Program:exit"() {
@@ -351,13 +365,13 @@ export const noAlert = {
         for (const node of calls) {
           const callee = node.callee
           const direct = callee.type === "Identifier" && callee.name === "alert" && globals.has(callee)
-          const member = memberName(callee) === "alert" && callee.object.type === "Identifier" && globals.has(callee.object)
+          const member = callee.type === "MemberExpression" && memberName(callee) === "alert" && callee.object.type === "Identifier" && globals.has(callee.object)
           if (direct || member) context.report({ node, messageId: "alert" })
         }
       },
     }
   },
-}
+})
 
 // Subcodes remain available to catalog validation when this module is imported independently.
 Object.assign(why, {
@@ -379,7 +393,7 @@ export const rules = {
   "no-hardcoded-copy": noHardcodedCopy,
   "no-copy-in-call": noCopyInCall,
   "no-alert": noAlert,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -389,4 +403,4 @@ export const rules = {
  * `t()`, which is work rather than a deletion. That is the reason there is no `warn` rollout and no
  * pragma - a repository burns the count down before it adopts, it does not live beside it.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

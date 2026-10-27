@@ -14,10 +14,11 @@
  * nothing is dead weight that reads as if it did.
  */
 
+import { defineRule, type AnyContext, type Recommended, type Rules } from "./lib/rule.ts"
 import { isProductSource } from "./lib/scope.ts"
 
 /** Product source is governed; canon tests deliberately build forbidden directives. */
-const isGoverned = (context) => isProductSource(context)
+const isGoverned = (context: AnyContext): boolean => isProductSource(context)
 
 /**
  * Any directive that changes ESLint's active rule set inside a source file.
@@ -42,7 +43,7 @@ const TOOL_DIRECTIVE =
   /\bNOSONAR\b|^\s*@sonar-ignore\b|^\s*(?:istanbul|c8|v8)\s+ignore\b|^\s*prettier-ignore(?:-start|-end)?\b|^\s*stylelint-(?:disable(?:-next-line|-line)?|enable)\b/i
 
 /** Inline lint configuration is repository policy, never a file-local choice. */
-export const noInlineLintConfig = {
+export const noInlineLintConfig = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Source cannot change its own lint or type-check policy." },
@@ -69,14 +70,14 @@ export const noInlineLintConfig = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-inline-lint-config": noInlineLintConfig,
-}
+} satisfies Rules
 
 /** Every lint escape is a build error. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-fe/no-inline-lint-config": "error",
 }

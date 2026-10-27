@@ -17,6 +17,7 @@ import {
   fixtureHfs,
   typedTester,
 } from "../fixtures/typed/tester.ts"
+import type { HfsView } from "./lib/hfs.ts"
 import { effectSubscriptionNeedsCleanup, noConsole, noEmptyCatch } from "./hygiene.ts"
 import { listItemHasKey, noIndexKey, noInlineLiteralPropInList } from "./lists.ts"
 import { componentLineBudget, noAppRelativeClock, noHandRolledPolling, unitHookBudget } from "./size-and-state-budget.ts"
@@ -24,13 +25,21 @@ import { componentLineBudget, noAppRelativeClock, noHandRolledPolling, unitHookB
 const BLOCK = at("apps/web/src/components/blocks/Feed/index.tsx")
 const TIME_LEAF = at("apps/web/src/components/leaves/UpdatedAt/index.tsx")
 const TIME_HOOK = at("apps/web/src/hooks/time/useNow.ts")
-const lines = (count) => Array.from({ length: count }, (_, index) => "const line" + index + " = " + index).join("\n")
-const unit = (states, data) => "export const Feed = () => {\n"
+/** The number a slot's budget states for `key`, read from the manifest as stated; a missing one fails the case. */
+const budgetNumber = (hfs: HfsView, id: string, key: string): number => {
+  const slot = hfs.slot(id)
+  const budget: unknown = slot === null ? undefined : Reflect.get(slot, "budget")
+  const value: unknown = typeof budget === "object" && budget !== null ? Reflect.get(budget, key) : undefined
+  if (typeof value !== "number") throw new TypeError(`slot ${id} states no ${key} budget`)
+  return value
+}
+const lines = (count: number): string => Array.from({ length: count }, (_, index) => "const line" + index + " = " + index).join("\n")
+const unit = (states: number, data: number): string => "export const Feed = () => {\n"
   + Array.from({ length: states }, (_, index) => "const [state" + index + "] = useState(0)").join("\n") + "\n"
   + Array.from({ length: data }, (_, index) => "const data" + index + " = useQueryFeed" + index + "Swr()").join("\n")
   + "\nreturn null\n}"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   const lite = edition === "lite"
   const declaration = lite ? LITE_FE_DECLARATION : FE_DECLARATION
   const tester = typedTester({ declaration, lite })
@@ -38,7 +47,7 @@ for (const edition of ["lite", "full"]) {
   test(edition + " R65 uses the real edition's component slot", () => {
     const hfs = fixtureHfs(declaration, { lite })
     assert.equal(hfs.edition, edition)
-    assert.equal(hfs.slot("fe.components").budget["index.tsx"], 200)
+    assert.equal(budgetNumber(hfs, "fe.components", "index.tsx"), 200)
   })
 
   test(edition + " R65 accepts valid and rejects invalid component line budgets", () => {

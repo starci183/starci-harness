@@ -5,10 +5,12 @@
  * Signatures and parameters are outside the body. An expression arrow has an expression body and
  * counts the expression and its wrapping parentheses, including comments and blanks inside them.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Recommended, type Rules } from "./lib/rule.ts"
 import { hfsOf } from "./lib/hfs.ts"
 
 /** Functions, methods, constructors, accessors and callbacks all receive the same body budget. */
-export const functionLineBudget = {
+export const functionLineBudget = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A function body stays within ruleParams.functionLines, counting comments and blank lines." },
@@ -22,13 +24,16 @@ export const functionLineBudget = {
     const max = hfsOf(context).ruleParams.functionLines ?? 80
     if (!Number.isInteger(max) || max < 1) throw new RangeError("ruleParams.functionLines must be a positive integer")
     const source = context.sourceCode || context.getSourceCode()
-    const check = (node) => {
+    const check = (node: TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression): void => {
       if (!node.body) return
       let start = node.body.loc.start.line
       let end = node.body.loc.end.line
       if (node.type === "ArrowFunctionExpression" && node.body.type !== "BlockStatement") {
         const arrow = source.getTokenBefore(node.body, { filter: (token) => token.value === "=>" })
-        start = source.getTokenAfter(arrow, { includeComments: true }).loc.start.line
+        if (arrow === null) throw new TypeError("an expression arrow has no => token")
+        const after = source.getTokenAfter(arrow, { includeComments: true })
+        if (after === null) throw new TypeError("an arrow token has nothing after it")
+        start = after.loc.start.line
         end = node.loc.end.line
       }
       const lines = end - start + 1
@@ -40,10 +45,10 @@ export const functionLineBudget = {
       ArrowFunctionExpression: check,
     }
   },
-}
+})
 
 /** The rule this law contributes to the plugin. */
-export const rules = { "function-line-budget": functionLineBudget }
+export const rules = { "function-line-budget": functionLineBudget } satisfies Rules
 
 /** The function budget is an error in both editions. */
-export const recommended = { "starci-fe/function-line-budget": "error" }
+export const recommended: Recommended = { "starci-fe/function-line-budget": "error" }

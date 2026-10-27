@@ -4,10 +4,11 @@ import test from "node:test"
 import { Linter, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { linterOptions } from "./lib/config.ts"
-import { at, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { at, canonTester, fixtureHfs } from "../fixtures/typed/tester.ts"
+import { eslintPlugin } from "./lib/eslint-boundary.ts"
 import { noInlineLintConfig, rules } from "./lint-escape-hatch.ts"
 
-const tester = new RuleTester({
+const tester = canonTester(new RuleTester({
   languageOptions: {
     parser: tsParser,
     ecmaVersion: 2022,
@@ -15,7 +16,7 @@ const tester = new RuleTester({
   },
   settings: { starci: { hfs: fixtureHfs() } },
   linterOptions,
-})
+}))
 
 const SOURCE = at("apps/web/src/components/blocks/CreditStatRow/index.tsx")
 
@@ -112,7 +113,7 @@ test("LINT-ESCAPE-2: the directive cannot silence its own guard", () => {
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
       settings: { starci: { hfs: fixtureHfs() } },
       linterOptions,
-      plugins: { "starci-fe": { rules } },
+      plugins: { "starci-fe": eslintPlugin({ meta: { name: "eslint-plugin-starci-fe" }, rules }) },
       rules: { "starci-fe/no-inline-lint-config": "error" },
     },
     at("apps/web/src/components/blocks/Example/index.tsx"),

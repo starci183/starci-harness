@@ -13,15 +13,16 @@
  * hook and state budgets are stricter still where they apply (`size-and-state-budget`); this ratchet is the one that
  * needs the previous revision.
  */
+import { defineRule, type Recommended, type Rules } from "./lib/rule.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { recordedLines } from "#runtime/scripts/api/git/recorded-lines.mjs"
 import { hardGrowthLines, lineCount } from "#runtime/scripts/lib/line-count.mjs"
 
 /** Whether a file is a source file this budget governs. */
-const governed = (filename) => /\.[cm]?tsx?$/.test(filename) && !/\.d\.[cm]?ts$/.test(filename)
+const governed = (filename: string): boolean => /\.[cm]?tsx?$/.test(filename) && !/\.d\.[cm]?ts$/.test(filename)
 
 /** The ratchet: a file over the budget must not be new and must not grow. */
-export const fileSizeGrowth = {
+export const fileSizeGrowth = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A source file over the budget is neither new nor longer than its recorded size." },
@@ -49,14 +50,14 @@ export const fileSizeGrowth = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "file-size-growth": fileSizeGrowth,
-}
+} satisfies Rules
 
 /** The ratchet is an error. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-fe/file-size-growth": "error",
 }

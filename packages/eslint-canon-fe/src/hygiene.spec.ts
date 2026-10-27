@@ -8,8 +8,6 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { RuleTester } from "eslint"
-import tsParser from "@typescript-eslint/parser"
 import { at, slotTester, typedTester } from "../fixtures/typed/tester.ts"
 import { effectSubscriptionNeedsCleanup, noConsole, noDataFetchInEffect, noEmptyCatch, rules } from "./hygiene.ts"
 
@@ -23,7 +21,7 @@ const PLAIN_FILE = at("apps/web/src/components/blocks/Feed/index.tsx")
 
 /** The imports every effect case starts with. */
 const REACT = "import { useEffect, useLayoutEffect, useSyncExternalStore } from \"react\"\n"
-const withReact = (code) => `${REACT}${code}`
+const withReact = (code: string): string => `${REACT}${code}`
 
 test("every rule this law declares is a rule", () => {
   for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)

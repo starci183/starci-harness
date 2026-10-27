@@ -11,6 +11,8 @@
  * describes an action is not its business.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
+import { defineRule, type Recommended, type Rules } from "./lib/rule.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { NEXT_RESERVED_EXPORTS } from "./lib/next.ts"
 import { fileOf, inSlot, roleOfFile } from "./lib/scope.ts"
@@ -21,7 +23,7 @@ const MODULE_LEVEL_PARENTS = new Set(["Program", "ExportNamedDeclaration", "Expo
 // -- NAMING-1 --------------------------------------------------------------------------------------
 
 /** A module-level function is an arrow const, so nothing exists before the line that declares it. */
-export const preferArrowExport = {
+export const preferArrowExport = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "Module-level functions use an arrow const, not a `function` declaration." },
@@ -43,12 +45,12 @@ export const preferArrowExport = {
       },
     }
   },
-}
+})
 
 // -- NAMING-2 --------------------------------------------------------------------------------------
 
 /** Something a reader triggers is named `onX`, so the name survives being passed. */
-export const handlerOnPrefix = {
+export const handlerOnPrefix = defineRule({
   meta: {
     type: "suggestion",
     docs: { description: "Handlers are named `onX`, not `handleX`." },
@@ -58,8 +60,9 @@ export const handlerOnPrefix = {
     },
   },
   create(context) {
-    const flag = (node, name) => {
-      if (!name || !/^handle[A-Z]/.test(name)) return
+    const flag = (node: TSESTree.Node, name: string | TSESTree.JSXIdentifier | null | undefined): void => {
+      // a namespaced attribute's name is a node, which never reads as `handleX`
+      if (!name || typeof name !== "string" || !/^handle[A-Z]/.test(name)) return
       context.report({ node, messageId: "handle", data: { name, rest: name.slice("handle".length) } })
     }
     return {
@@ -74,12 +77,12 @@ export const handlerOnPrefix = {
       },
     }
   },
-}
+})
 
 // -- machine-only identity -------------------------------------------------------------------------
 
 /** A const introduces a value; it does not merely give an existing identifier a second name. */
-export const noDirectConstAlias = {
+export const noDirectConstAlias = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A const must not be a direct identifier-to-identifier alias." },
@@ -105,7 +108,7 @@ export const noDirectConstAlias = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 // -- NAMING-3 --------------------------------------------------------------------------------------
@@ -129,7 +132,7 @@ const ROMANISED = [
 ]
 
 /** A route segment or folder name, lowercased, from a normalized path. */
-const segmentsOf = (filename) =>
+const segmentsOf = (filename: string): string[] =>
   String(filename || "").replace(/\\/g, "/").toLowerCase().split("/").filter(Boolean)
 
 /**
@@ -145,7 +148,7 @@ const segmentsOf = (filename) =>
  * quotes, so this is not only an authoring question: the product's own URLs stop being readable to
  * anybody outside one language.
  */
-const noSecondLanguageInPath = {
+const noSecondLanguageInPath = defineRule({
   meta: {
     type: "problem",
     docs: { description: "File and route names are written in the repository's one shared language." },
@@ -166,14 +169,14 @@ const noSecondLanguageInPath = {
       },
     }
   },
-}
+})
 
 export const rules = {
   "prefer-arrow-export": preferArrowExport,
   "handler-on-prefix": handlerOnPrefix,
   "no-second-language-in-path": noSecondLanguageInPath,
   "no-direct-const-alias": noDirectConstAlias,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -182,4 +185,4 @@ export const rules = {
  * Both rules here are mechanical and auto-correctable by hand in seconds, so a repository adopting
  * them with existing debt should burn the count down rather than live at `warn`.
  */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error" as const]))

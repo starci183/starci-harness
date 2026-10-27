@@ -3,16 +3,16 @@
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import { at, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
+import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
 import { htmlLangFromLocale } from './next-conventions.ts';
 import { noCopyResolutionBelowBlock, noHardcodedCopy } from './translation.ts';
 
 for (const edition of ['lite', 'full']) {
   test(`${edition} translated display copy and locale metadata pass; literal copy and lower-tier resolution fail`, () => {
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs: fixtureHfs(LITE_FE_DECLARATION, { lite: edition === 'lite' }) } },
-    });
+    }));
     const block = at('apps/web/src/components/blocks/Feed/index.tsx');
     const leaf = at('apps/web/src/components/leaves/Input/index.tsx');
     tester.run('no-hardcoded-copy', noHardcodedCopy, {

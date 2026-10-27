@@ -129,7 +129,7 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
 
 for (const edition of ["lite", "full"]) {
   const settings = { starci: { hfs: edition === "lite" ? fixtureHfs(LITE_FE_DECLARATION, { lite: true }) : fixtureHfs() } }
-  const form = (code) => ({ filename: at("apps/web/src/hooks/rhf/useProfileForm.ts"), settings, code })
+  const form = (code: string) => ({ filename: at("apps/web/src/hooks/rhf/useProfileForm.ts"), settings, code })
 
   test(`R286 FE_COPY_IN_CALL: ${edition} validation and toast messages use catalogue copy`, () => {
     assert.doesNotThrow(() => tester.run("no-copy-in-call", noCopyInCall, {
