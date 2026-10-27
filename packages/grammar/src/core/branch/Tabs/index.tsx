@@ -86,6 +86,22 @@ export const Tabs = (props: TabsProps) => {
         }
     }, [isClientReady, props.items, props.panelId, props.selectedKey])
 
+    // The vendor indicator fills its tab and animates width. A label edit resizes the selected tab, so the
+    // indicator follows at once: the frame disables that width transition for the commit that changed a label.
+    const labelSignature = props.items.map((item) => `${item.id}|${item.label}`).join(", ")
+    const previousSignature = useRef(labelSignature)
+    useLayoutEffect(() => {
+        const frame = frameRef.current
+        if (previousSignature.current === labelSignature) return
+        previousSignature.current = labelSignature
+        if (frame === null) return
+        frame.dataset.grammarTabsMeasuring = "true"
+        const first = requestAnimationFrame(() => {
+            requestAnimationFrame(() => { delete frame.dataset.grammarTabsMeasuring })
+        })
+        return () => { cancelAnimationFrame(first); delete frame.dataset.grammarTabsMeasuring }
+    }, [labelSignature, isClientReady])
+
     const scrollPreviousLabel = props.scrollPreviousLabel ?? "Scroll tabs left"
     const scrollNextLabel = props.scrollNextLabel ?? "Scroll tabs right"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { Tag as HeroTag, TagGroup as HeroTagGroup, type Selection } from "@heroui/react"
-import type { ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { navigationClassName } from "../../navigationClassNames.js"
 
 export type TagGroupItem = {
@@ -32,7 +32,23 @@ type TagGroupRemoval = {
     readonly removeLabel?: undefined
 }
 
-export type TagGroupProps = TagGroupRemoval & {
+type TagGroupReorder = {
+    /**
+     * Makes the tags reorderable: drag a tag onto another, or hold Alt and press an arrow key (Home and End go to the
+     * ends) on a focused tag. Receives every id in the new order. The app owns the order; render `items` in it.
+     */
+    readonly onReorder: (ids: ReadonlyArray<string>) => void
+    /** App-owned instruction read with the group, e.g. "Hold Alt and press an arrow key to move a tag". */
+    readonly reorderInstructions: string
+    /** App-owned announcement after a move, e.g. "Design moved to position 2 of 5". */
+    readonly reorderAnnouncement: (label: string, position: number, total: number) => string
+} | {
+    readonly onReorder?: undefined
+    readonly reorderInstructions?: undefined
+    readonly reorderAnnouncement?: undefined
+}
+
+export type TagGroupProps = TagGroupRemoval & TagGroupReorder & {
     /** Names the set of tags/chips, e.g. "Filters". */
     readonly label: string
     readonly items: ReadonlyArray<TagGroupItem>
@@ -51,12 +67,30 @@ const toIds = (selection: Selection, items: ReadonlyArray<TagGroupItem>): Readon
     ? items.map((item) => item.id)
     : [...selection].map(String)
 
+const moveId = (ids: ReadonlyArray<string>, id: string, targetIndex: number): ReadonlyArray<string> => {
+    const from = ids.indexOf(id)
+    const to = Math.min(ids.length - 1, Math.max(0, targetIndex))
+    if (from === -1 || from === to) return ids
+    const next = ids.filter((candidate) => candidate !== id)
+    next.splice(to, 0, id)
+    return next
+}
+
+const tagIdOf = (target: EventTarget | null, root: HTMLElement): string | undefined => {
+    if (!(target instanceof Element)) return undefined
+    const tag = target.closest<HTMLElement>("[data-grammar-tag-id]")
+    return tag !== null && root.contains(tag) ? tag.dataset.grammarTagId : undefined
+}
+
 /**
- * Chips/tags: static labels, selectable filters, or removable tokens.
+ * Chips/tags: static labels, selectable filters, removable tokens, or a reorderable set.
  *
  * Built on the vendor TagGroup, so arrow keys move between chips, Space/Enter toggle selection
  * and Delete/Backspace remove. Each chip exposes `data-grammar-selected`; chips wrap onto new lines
  * at narrow widths instead of overflowing.
+ * Reordering (`onReorder`) is Grammar's own layer: the vendor TagGroup has no drag-and-drop collection hooks, so the group
+ * wires native drag events for pointer users and Alt+arrow keys for keyboard users on top of the vendor tags, and announces
+ * each move through a live region.
  * Contract: root STATE-1, list FOCUS-2, chip FOCUS-1, remove A11Y-2, empty STATE-3.
  */
 export const TagGroup = ({
@@ -68,12 +102,92 @@ export const TagGroup = ({
     onSelectionChange,
     onRemove,
     removeLabel,
+    onReorder,
+    reorderInstructions,
+    reorderAnnouncement,
     emptyContent,
     size = "md",
     className,
-}: TagGroupProps) => (
+}: TagGroupProps) => {
+    const rootRef = useRef<HTMLDivElement>(null)
+    const instructionsId = useId()
+    const [announcement, setAnnouncement] = useState("")
+    const [draggingId, setDraggingId] = useState<string | undefined>(undefined)
+    const [dropTargetId, setDropTargetId] = useState<string | undefined>(undefined)
+    const ids = items.map((item) => item.id)
+    const reorderable = onReorder !== undefined
+    // The vendor tag does not forward `draggable`, so the group marks each enabled tag after every render.
+    useEffect(() => {
+        const root = rootRef.current
+        if (root === null || !reorderable) return
+        root.querySelectorAll<HTMLElement>("[data-grammar-tag-id]").forEach((tag) => {
+            tag.draggable = tag.getAttribute("aria-disabled") !== "true"
+        })
+    })
+    const commit = (id: string, targetIndex: number) => {
+        if (onReorder === undefined || reorderAnnouncement === undefined) return
+        const next = moveId(ids, id, targetIndex)
+        if (next === ids) return
+        onReorder(next)
+        const item = items.find((candidate) => candidate.id === id)
+        setAnnouncement(reorderAnnouncement(item?.label ?? id, next.indexOf(id) + 1, next.length))
+        requestAnimationFrame(() => {
+            rootRef.current?.querySelector<HTMLElement>(`[data-grammar-tag-id="${CSS.escape(id)}"]`)?.focus()
+        })
+    }
+    const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        const root = rootRef.current
+        if (!reorderable || root === null || !event.altKey || event.ctrlKey || event.metaKey) return
+        const id = tagIdOf(event.target, root)
+        if (id === undefined || event.target !== root.querySelector(`[data-grammar-tag-id="${CSS.escape(id)}"]`)) return
+        const rtl = getComputedStyle(root).direction === "rtl"
+        const index = ids.indexOf(id)
+        const target = event.key === "ArrowLeft" ? index + (rtl ? 1 : -1)
+            : event.key === "ArrowRight" ? index + (rtl ? -1 : 1)
+            : event.key === "ArrowUp" ? index - 1
+            : event.key === "ArrowDown" ? index + 1
+            : event.key === "Home" ? 0
+            : event.key === "End" ? ids.length - 1
+            : undefined
+        if (target === undefined) return
+        event.preventDefault()
+        event.stopPropagation()
+        commit(id, target)
+    }
+    const onDragStart = (event: DragEvent<HTMLDivElement>) => {
+        const root = rootRef.current
+        const id = root === null ? undefined : tagIdOf(event.target, root)
+        if (id === undefined) return
+        event.dataTransfer.effectAllowed = "move"
+        event.dataTransfer.setData("text/plain", id)
+        setDraggingId(id)
+    }
+    const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+        const root = rootRef.current
+        const id = root === null ? undefined : tagIdOf(event.target, root)
+        if (draggingId === undefined || id === undefined) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = "move"
+        setDropTargetId(id)
+    }
+    const onDrop = (event: DragEvent<HTMLDivElement>) => {
+        const root = rootRef.current
+        const id = root === null ? undefined : tagIdOf(event.target, root)
+        if (draggingId === undefined) return
+        event.preventDefault()
+        if (id !== undefined) commit(draggingId, ids.indexOf(id))
+        setDraggingId(undefined)
+        setDropTargetId(undefined)
+    }
+    const onDragEnd = () => {
+        setDraggingId(undefined)
+        setDropTargetId(undefined)
+    }
+    const tags = (
     <HeroTagGroup
+        ref={rootRef}
         aria-label={label}
+        {...(reorderable ? { "aria-describedby": instructionsId, "data-grammar-tag-reorderable": "true", onKeyDownCapture: onKeyDown, onDragStart, onDragOver, onDrop, onDragEnd } : {})}
         className={navigationClassName("starci-core-tag-group", className)}
         data-component="TagGroup"
         data-contract="STATE-1"
@@ -99,6 +213,8 @@ export const TagGroup = ({
                     className="starci-core-tag"
                     data-contract="FOCUS-1"
                     data-grammar-tag="true"
+                    data-grammar-tag-id={item.id}
+                    {...(reorderable ? { "data-grammar-tag-dragging": draggingId === item.id ? "true" : "false", "data-grammar-tag-drop-target": dropTargetId === item.id && draggingId !== item.id ? "true" : "false" } : {})}
                     textValue={item.isOff === true && item.offLabel !== undefined ? `${item.label}, ${item.offLabel}` : item.label}
                     data-grammar-tag-state={item.isOff === true ? "off" : "on"}
                     {...(item.isOff === true ? { variant: "surface" as const } : {})}
@@ -116,4 +232,13 @@ export const TagGroup = ({
             ))}
         </HeroTagGroup.List>
     </HeroTagGroup>
-)
+    )
+    if (!reorderable) return tags
+    return (
+        <>
+            {tags}
+            <span id={instructionsId} className="starci-core-visually-hidden" hidden>{reorderInstructions}</span>
+            <span aria-live="polite" role="status" className="starci-core-visually-hidden" data-grammar-tag-announcement="true">{announcement}</span>
+        </>
+    )
+}
