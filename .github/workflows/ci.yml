@@ -89,6 +89,11 @@ jobs:
             fi
             tag=$(node -p "(/^\d+\.\d+\.\d+-([A-Za-z]+)/.exec('$version') ?? [])[1] ?? 'latest'")
             (cd "$dir" && npm ci --no-audit --no-fund && npm publish --access public --provenance --tag "$tag")
-            test "$(npm view "$name@$version" version)" = "$version"
+            # The registry answers 404 for a few minutes after a publish ("being processed"); wait for it, up to 10 minutes.
+            for attempt in $(seq 1 20); do
+              [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ] && break
+              [ "$attempt" = 20 ] && { echo "$name@$version is not visible on npm after 10 minutes"; exit 1; }
+              sleep 30
+            done
             echo "published $name@$version ($tag)"
           done
