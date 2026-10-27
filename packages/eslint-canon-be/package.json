@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-canon-be",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "The StarCi back-end lint canon: every rule its laws publish, gathered as one flat-config plugin.",
   "type": "module",
   "license": "MIT",
@@ -16,15 +16,17 @@
   },
   "private": false,
   "exports": {
-    ".": "./index.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
-  "main": "./index.mjs",
+  "main": "./dist/index.js",
   "files": [
     "LICENSE",
-    "*.mjs",
-    "lib/*.mjs",
+    "dist/**",
+    "!dist/**/*.spec.*",
     "runtime/**",
-    "!*.spec.mjs",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -39,7 +41,10 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test \"src/**/*.spec.ts\""
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run typecheck && node --test \"src/**/*.spec.ts\""
   },
   "keywords": [
     "eslint",
@@ -50,11 +55,15 @@
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
+    "@typescript-eslint/utils": "^8.70.0",
     "eslint-plugin-sonarjs": "4.2.1",
     "eslint-plugin-unicorn": "65.0.0"
   },
   "devDependencies": {
+    "@starci/tsconfig": "file:../tsconfig",
+    "@types/node": "24.19.2",
     "eslint": "^9.18.0",
     "typescript": "^6.0.3"
-  }
+  },
+  "types": "./dist/index.d.ts"
 }
