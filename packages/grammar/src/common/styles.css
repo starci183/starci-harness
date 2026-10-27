@@ -3486,13 +3486,144 @@
         }
     }
 
-    /* Badge isDot: HeroUI's Chip dot (`<CircleFill width={6} />`), a 6px solid circle in the tone colour. */
-    .starci-core-badge-dot {
+    /*
+     * StatusDot: three variants (text chip, echo, static) share ONE dot-size token and one tone set. The text
+     * chip is HeroUI's soft Chip, so its padding, height and type are the vendor's per size (sm 4px/20px,
+     * md 8px+2px/24px, lg 12px+4px/28px). The dot-to-text gap is gap-1 (0.25rem): the Chip's own gap-0.5
+     * (0.125rem) plus the 0.125rem the dot adds after itself; no vendor property is overridden.
+     */
+    .grammar-common-root {
+        --starci-core-status-dot-size: 6px;
+    }
+
+    .starci-core-status-dot-mark {
+        --starci-core-status-dot-color: var(--muted, GrayText);
+        position: relative;
         display: inline-block;
-        width: 6px;
-        height: 6px;
+        width: var(--starci-core-status-dot-size);
+        height: var(--starci-core-status-dot-size);
         flex: none;
-        color: inherit;
+        border-radius: 999px;
+        background: var(--starci-core-status-dot-color);
+        /* The tone's light stop: the tone eased toward the surface. */
+        --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface, Canvas));
+    }
+
+    .starci-core-status-dot-mark[data-tone="accent"] { --starci-core-status-dot-color: var(--accent, Highlight); }
+    .starci-core-status-dot-mark[data-tone="success"] { --starci-core-status-dot-color: var(--success, CanvasText); }
+    .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning, CanvasText); }
+    .starci-core-status-dot-mark[data-tone="danger"] { --starci-core-status-dot-color: var(--danger, CanvasText); }
+
+    .starci-core-status-dot-chip > .starci-core-status-dot-mark {
+        margin-inline-end: 0.125rem;
+    }
+
+    .starci-core-status-dot-label {
+        display: inline-block;
+    }
+
+    .starci-core-status-dot-label::first-letter {
+        text-transform: uppercase;
+    }
+
+    /* Dot only (static and echo): a small focusable target, so the ring has room and the Tooltip has a trigger. */
+    .starci-core-status-dot:not(.starci-core-status-dot-chip) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem;
+        border-radius: 999px;
+    }
+
+    .starci-core-status-dot-mark[data-echo="true"]::after {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: var(--starci-core-status-dot-light);
+        content: "";
+        animation: starci-core-status-dot-echo 1.6s ease-out infinite;
+    }
+
+    @keyframes starci-core-status-dot-echo {
+        from { opacity: 0.9; transform: scale(1); }
+        to { opacity: 0; transform: scale(3.2); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-status-dot-mark[data-echo="true"]::after {
+            display: none;
+            animation: none;
+        }
+    }
+
+    /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
+    .starci-core-badge-muted {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.125rem;
+        color: var(--muted, GrayText);
+    }
+
+    /* Text: monospace and tabular figures, opted into. */
+    .starci-core-text[data-mono="true"] {
+        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+    }
+
+    .starci-core-text[data-tabular="true"] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Code: inline code on a soft plate, the size of the line around it. */
+    .starci-core-code {
+        padding: 0.125em 0.375em;
+        border-radius: 0.375rem;
+        background: var(--default, var(--surface-secondary, Canvas));
+        color: var(--foreground, CanvasText);
+        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+        font-size: 0.875em;
+        overflow-wrap: anywhere;
+    }
+
+    /* Terminal: a dark monospace log tail; dark in both themes (a console reads dark). */
+    .starci-core-terminal {
+        --starci-core-terminal-bg: oklch(20% 0.01 286);
+        --starci-core-terminal-fg: oklch(92% 0.005 286);
+        --starci-core-terminal-title-fg: oklch(72% 0.01 286);
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 0.75rem;
+        background: var(--starci-core-terminal-bg);
+        color: var(--starci-core-terminal-fg);
+    }
+
+    .starci-core-terminal-title {
+        padding: 0.5rem 0.75rem;
+        border-block-end: 1px solid color-mix(in srgb, var(--starci-core-terminal-fg) 14%, transparent);
+        color: var(--starci-core-terminal-title-fg);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .starci-core-terminal-log {
+        max-height: 16rem;
+        min-height: 4rem;
+        overflow: auto;
+        padding: 0.5rem 0.75rem;
+        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+        font-size: 0.8125rem;
+        line-height: 1.25rem;
+    }
+
+    .starci-core-terminal-log:focus-visible {
+        outline: 2px solid var(--focus, Highlight);
+        outline-offset: -2px;
+    }
+
+    .starci-core-terminal-line {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 
 

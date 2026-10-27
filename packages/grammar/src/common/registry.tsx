@@ -1,12 +1,12 @@
 "use client"
 
 import {
-    Badge, Button, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
+    Badge, Button, Code, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, PageContainer, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, Subnav,
-    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Text,
+    Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
 import { COMMON_FORMS_COMPONENTS } from "./renderers-forms.js"
@@ -23,12 +23,12 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    Badge, Button, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
+    Badge, Button, Code, ChatBubble, ChatWorkspace, Divider, EmptyNotice, FencedCodeBlock, FillViewport, GrammarRoot,
     Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, IncludedMark, Input,
     Label, LeadingNumber, List, ListItem, ListRow, MarkdownArticle, MarkdownTableFrame, MediaFrame,
     NavigationFeatureNav, NavLandmark, OtpInput, PageContainer, PinnedActionBar, PressableField, PrimaryRailLayout,
-    Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, Subnav,
-    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Text,
+    Progress, Rail, RankArtwork, Region, RelativeTime, SectionHeader, Sidebar, StateMark, StaticStateRow, StatusDot, Subnav,
+    SurfaceAccordionCard, SurfaceCard, SurfaceCopyGroup, SurfaceListCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
     ...COMMON_FORMS_COMPONENTS,
     ...COMMON_OVERLAYS_COMPONENTS,

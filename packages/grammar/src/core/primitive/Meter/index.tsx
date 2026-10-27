@@ -37,7 +37,11 @@ export type MeterProps = {
      * not a zero measurement). The geometry is `aria-hidden`; the root is `aria-busy`. `value`, `tone` and `segments` are ignored.
      */
     readonly isSkeleton?: boolean
+    /** `sm` is HeroUI's thin track (h-1, 0.25rem) for a gauge inside dense rows; `md` (default) is the h-2 track. */
+    readonly size?: MeterSize
 }
+
+export type MeterSize = "sm" | "md"
 
 const MIN_SEGMENTS = 2
 const MAX_SEGMENTS = 12
@@ -73,6 +77,7 @@ export const Meter = ({
     isLabelHidden = false,
     segments,
     isSkeleton = false,
+    size = "md",
 }: MeterProps) => {
     if (isSkeleton) {
         return (
@@ -80,6 +85,7 @@ export const Meter = ({
                 data-tier="atom"
                 data-component="Meter"
                 data-loading="true"
+                data-size={size}
                 data-grammar-skeleton="true"
                 data-grammar-tone="neutral"
                 data-contract="A11Y-3 STATE-8"
@@ -104,6 +110,7 @@ export const Meter = ({
             data-tier="atom"
             data-component="Meter"
             data-grammar-tone={tone}
+            data-size={size}
             data-contract="A11Y-3 ACCENT-4"
             value={reading}
             minValue={min}
@@ -112,7 +119,7 @@ export const Meter = ({
             {...(valueLabel === undefined ? {} : { valueLabel })}
             {...(isLabelHidden ? { "aria-label": label } : {})}
             color={status === "default" ? "accent" : status}
-            size="md"
+            size={size}
             className="starci-core-meter"
             render={renderMeterRoot}
         >
