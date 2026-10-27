@@ -21,11 +21,19 @@
  * slot view. A name is read only for the fixed vocabulary of the double markers, as whole words.
  */
 import ts from "typescript"
+import type { TSESTree } from "@typescript-eslint/utils"
 import { paramParts } from "./lib/ast.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isSpecFile, normalizePath } from "./lib/path.ts"
 import { implementsMigration, inCli, isMigrationFile, mayHoldEntityManager } from "./lib/persistence.ts"
 import { typed, typeOrigins } from "./lib/types.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+
+/** A class of either form. */
+type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression
+
+/** A class member that can take, hold or return a value. */
+type TypedMember = TSESTree.PropertyDefinition | TSESTree.AccessorProperty | TSESTree.MethodDefinition
 
 // -- provider-param-token --------------------------------------------------------------------------
 
@@ -33,7 +41,7 @@ import { typed, typeOrigins } from "./lib/types.ts"
 const INJECT_NAME = /^Inject(?:[A-Z][A-Za-z0-9]*)?$/
 
 /** True when a decorator expression is a call of an `Inject*` function, or of anything typed `TypedParameterDecorator<T>`. */
-const isInjector = (context, decorator) => {
+const isInjector = (context: Context, decorator: TSESTree.Decorator): boolean => {
     const expression = decorator.expression
     const callee = expression.type === "CallExpression" ? expression.callee : expression
     const name = callee.type === "Identifier" ? callee.name : callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee.property.name : ""
@@ -45,14 +53,14 @@ const isInjector = (context, decorator) => {
 }
 
 /** True when a class is a Nest provider-like: it carries a class decorator declared by a `@nestjs/*` package. */
-const isNestClass = (context, node) =>
+const isNestClass = (context: Context, node: ClassNode): boolean =>
     (node.decorators ?? []).some((decorator) => {
         const callee = decorator.expression.type === "CallExpression" ? decorator.expression.callee : decorator.expression
         return typeOrigins(context, callee).some((origin) => origin.module !== null && origin.module.startsWith("@nestjs/"))
     })
 
 /** True when a written type is a plain reference to one class: the token Nest resolves from the emitted metadata. */
-const isClassToken = (context, annotation) => {
+const isClassToken = (context: Context, annotation: TSESTree.TypeNode): boolean => {
     if (annotation.type !== "TSTypeReference") return false
     const { checker, toTs } = typed(context)
     const tsNode = toTs(annotation)
@@ -65,7 +73,7 @@ const isClassToken = (context, annotation) => {
 }
 
 /** A provider's constructor parameter is a class token or carries a named-token injector. */
-export const providerParamToken = {
+export const providerParamToken: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A constructor parameter of a Nest provider is typed by a class or carries an `Inject<Thing>()` decorator bound to a named token." },
@@ -79,7 +87,7 @@ export const providerParamToken = {
     },
     create(context) {
         const sourceCode = context.sourceCode
-        const check = (classNode) => {
+        const check = (classNode: ClassNode): void => {
             if (!isNestClass(context, classNode)) return
             for (const member of classNode.body.body) {
                 if (member.type !== "MethodDefinition" || member.kind !== "constructor" || !member.value?.params) continue
@@ -103,14 +111,14 @@ export const providerParamToken = {
 const PERSISTENCE_TYPES = new Set(["EntityManager", "Repository", "TreeRepository", "MongoRepository", "DataSource", "QueryRunner"])
 
 /** The persistence type a written type annotation names (by declaration origin), else null. */
-const persistenceTypeOf = (context, annotation) => {
+const persistenceTypeOf = (context: Context, annotation: Node | null | undefined): string | null => {
     if (!annotation) return null
     const origin = typeOrigins(context, annotation).find((entry) => entry.module === "typeorm" && PERSISTENCE_TYPES.has(entry.name))
     return origin ? origin.name : null
 }
 
 /** The first member of a class that takes, holds or returns a persistence type: `{ member, type }`, else null. */
-const persistenceMember = (context, classNode) => {
+const persistenceMember = (context: Context, classNode: ClassNode): { member: TypedMember; type: string } | null => {
     for (const member of classNode.body.body) {
         if (member.type === "PropertyDefinition" || member.type === "AccessorProperty") {
             const type = persistenceTypeOf(context, member.typeAnnotation?.typeAnnotation)
@@ -131,7 +139,7 @@ const persistenceMember = (context, classNode) => {
 }
 
 /** A persistence class exists only where the manager may be held. */
-export const noRepositoryClass = {
+export const noRepositoryClass: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A class with a member typed `EntityManager`, `Repository`, `DataSource` or `QueryRunner` lives only in an application handler, a domain service, a platform persistence capability, the cli app, the test world or a migration." },
@@ -148,16 +156,16 @@ export const noRepositoryClass = {
         const filename = context.filename || context.getFilename()
         const file = normalizePath(filename)
         if (mayHoldEntityManager(hfs, file) || inCli(hfs, file) || inTestWorld(hfs, file) || isMigrationFile(hfs, file) || (hfs.slotOf(file) ?? "").startsWith("be.tests.")) return {}
-        const check = (node) => {
+        const check = (node: ClassNode): void => {
             if (implementsMigration(context, node)) return
             const found = persistenceMember(context, node)
             if (!found) return
             const key = found.member.key
-            const member = found.member.kind === "constructor" ? "constructor" : key?.type === "Identifier" ? key.name : "a member"
+            const member = "kind" in found.member && found.member.kind === "constructor" ? "constructor" : key?.type === "Identifier" ? key.name : "a member"
             context.report({ node: node.id ?? node, messageId: "repository", data: { name: node.id?.name ?? "this class", type: found.type, member } })
         }
         /** An exported function whose first parameter is an EntityManager is a statement module: the same wrapper without a class. */
-        const checkFunction = (fn, id) => {
+        const checkFunction = (fn: TSESTree.FunctionDeclaration | TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression, id: TSESTree.Identifier): void => {
             const first = fn.params?.[0]
             if (!first) return
             const { target } = paramParts(first)
@@ -190,16 +198,16 @@ const DOUBLE_WORDS = new Set(["mock", "fake", "stub"])
  * `FAKE_CLOCK` gives `FAKE CLOCK`, `HTTPStub` gives `HTTP Stub`. A word is whole: `Faker` and `Mockingbird` are not `Fake`
  * and `Mock`.
  */
-const wordsOf = (name) =>
+const wordsOf = (name: string): string[] =>
     name
         .split(/[^A-Za-z0-9]+/)
         .flatMap((part) => part.match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+/g) ?? [])
 
 /** The double marker word an identifier carries, else null. */
-export const doubleWordOf = (name) => wordsOf(name).find((word) => DOUBLE_WORDS.has(word.toLowerCase())) ?? null
+export const doubleWordOf = (name: string): string | null => wordsOf(name).find((word) => DOUBLE_WORDS.has(word.toLowerCase())) ?? null
 
 /** Production source names no test double. */
-export const noTestDoubleInSource = {
+export const noTestDoubleInSource: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A class, function or constant of production source is not named `Mock*`, `Fake*` or `Stub*`." },
@@ -213,7 +221,7 @@ export const noTestDoubleInSource = {
         const hfs = hfsOf(context)
         const filename = context.filename || context.getFilename()
         if (isSpecFile(filename) || (hfs.slotOf(filename) ?? "").startsWith("be.tests.")) return {}
-        const report = (id) => {
+        const report = (id: TSESTree.Identifier): void => {
             const word = doubleWordOf(id.name)
             if (word) context.report({ node: id, messageId: "double", data: { name: id.name, word } })
         }
@@ -233,10 +241,10 @@ export const rules = {
     "provider-param-token": providerParamToken,
     "no-repository-class": noRepositoryClass,
     "no-test-double-in-source": noTestDoubleInSource,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/provider-param-token": "error",
     "starci-be/no-repository-class": "error",
     "starci-be/no-test-double-in-source": "error",

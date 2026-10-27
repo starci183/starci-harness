@@ -23,7 +23,8 @@
  */
 
 import ts from "typescript"
-import { walk } from "./lib/ast.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { nameOrValue, walk } from "./lib/ast.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { resolveVariable, transactionCallback } from "./lib/transactions.ts"
 import {
@@ -36,6 +37,7 @@ import {
     isMigrationFile,
 } from "./lib/persistence.ts"
 import { isPackageType, originsOfType, typed, typeOrigins } from "./lib/types.ts"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The `typeorm` repository types no class receives. */
 const REPOSITORY_TYPES = ["Repository", "TreeRepository", "MongoRepository"]
@@ -43,7 +45,7 @@ const REPOSITORY_TYPES = ["Repository", "TreeRepository", "MongoRepository"]
 // -- R83: the injector ---------------------------------------------------------------------------------
 
 /** A constructor parameter typed `EntityManager` carries the named injector of a declared connection. */
-export const mustInjectEntityManager = {
+export const mustInjectEntityManager: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An injected `EntityManager` carries the named injector of a declared connection." },
@@ -65,7 +67,7 @@ export const mustInjectEntityManager = {
 }
 
 /** The shared manager is injected by name, as a constructor parameter, and called directly. */
-export const namedEntityManagerOnly = {
+export const namedEntityManagerOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: {
@@ -94,12 +96,12 @@ export const namedEntityManagerOnly = {
         const mayHoldConnections = inDatabaseCapability(hfs, filename) || inCli(hfs, filename) || inTestWorld(hfs, filename) || isMigrationFile(hfs, filename)
         const CONNECTION_TYPES = new Set(["DataSource", "QueryRunner"])
         /** The connection type (DataSource / QueryRunner) a value or written type is declared as, else null. */
-        const connectionTypeOf = (node) => {
+        const connectionTypeOf = (node: Node): string | null => {
             const type = infraTypeOf(context, node)
             return type !== null && CONNECTION_TYPES.has(type) ? type : null
         }
         /** The connection type of a checker type (awaited), else null. */
-        const connectionOfType = (type) => {
+        const connectionOfType = (type: ts.Type | null | undefined): string | null => {
             if (!type) return null
             const { checker } = typed(context)
             const awaited = checker.getAwaitedType(type) ?? type
@@ -107,15 +109,15 @@ export const namedEntityManagerOnly = {
             return origin ? origin.name : null
         }
         /** True when the node sits inside a class that implements typeorm's `MigrationInterface` (it receives a `QueryRunner` by contract). */
-        const insideMigrationClass = (node) => {
-            for (let current = node.parent; current; current = current.parent) {
+        const insideMigrationClass = (node: Node): boolean => {
+            for (let current: Node | undefined = node.parent; current; current = current.parent) {
                 if ((current.type === "ClassDeclaration" || current.type === "ClassExpression") && implementsMigration(context, current)) return true
             }
             return false
         }
         /** The annotation of the constructor parameter or class property that contains this type node, else null. */
-        const siteAnnotationOf = (node) => {
-            for (let current = node.parent; current; current = current.parent) {
+        const siteAnnotationOf = (node: Node): TSESTree.TypeNode | null => {
+            for (let current: Node | undefined = node.parent; current; current = current.parent) {
                 if (current.type !== "TSTypeAnnotation") continue
                 const owner = current.parent
                 const isProperty = owner?.type === "PropertyDefinition"
@@ -126,14 +128,15 @@ export const namedEntityManagerOnly = {
             return null
         }
         /** The member of a repository-declared class type that hands out a connection: `{ member, type, wrapper }`, else null. */
-        const exposedConnection = (annotation) => {
+        const exposedConnection = (annotation: TSESTree.TypeNode): { member: string; type: string; wrapper: string } | null => {
             const { checker, toTs } = typed(context)
             const tsNode = toTs(annotation)
-            if (!tsNode) return null
+            // every type annotation maps to a TypeScript type node; the kind check only tells the compiler so
+            if (!tsNode || !ts.isTypeNode(tsNode)) return null
             const type = checker.getTypeFromTypeNode(tsNode)
             const symbol = type.getSymbol()
             const declaration = symbol && symbol.flags & ts.SymbolFlags.Class ? symbol.declarations?.[0] : null
-            if (!declaration || declaration.getSourceFile().fileName.replace(/\\/g, "/").includes("/node_modules/")) return null
+            if (!symbol || !declaration || declaration.getSourceFile().fileName.replace(/\\/g, "/").includes("/node_modules/")) return null
             for (const property of checker.getPropertiesOfType(type)) {
                 if (property.declarations?.some((entry) => ts.getCombinedModifierFlags(entry) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected))) continue
                 const memberType = checker.getTypeOfSymbolAtLocation(property, tsNode)
@@ -198,16 +201,17 @@ export const namedEntityManagerOnly = {
 // -- R83: repositories ---------------------------------------------------------------------------------
 
 /** Whether a type reference sits on a parameter or property already reported through its `@InjectRepository` decorator. */
-const carriesInjectRepository = (node) => {
-    for (let owner = node.parent; owner && owner.type !== "ClassBody"; owner = owner.parent) {
-        const decorated = (owner.decorators ?? []).some((decorator) => decorator.expression.type === "CallExpression" && decorator.expression.callee.name === "InjectRepository")
+const carriesInjectRepository = (node: Node): boolean => {
+    for (let owner: Node | undefined = node.parent; owner && owner.type !== "ClassBody"; owner = owner.parent) {
+        const decorators: readonly TSESTree.Decorator[] | undefined = "decorators" in owner ? owner.decorators : undefined
+        const decorated = (decorators ?? []).some((decorator) => decorator.expression.type === "CallExpression" && decorator.expression.callee.type === "Identifier" && decorator.expression.callee.name === "InjectRepository")
         if (decorated) return true
     }
     return false
 }
 
 /** Persistence never arrives as a repository. */
-export const noInjectedRepository = {
+export const noInjectedRepository: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Persistence goes through the shared `EntityManager`, never a repository." },
@@ -245,7 +249,7 @@ export const noInjectedRepository = {
 // -- DATA-3 ----------------------------------------------------------------------------------------
 
 /** An entity names its table, so a class rename cannot become a dropped table. */
-export const requireEntityTableName = {
+export const requireEntityTableName: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`@Entity()` names its table explicitly." },
@@ -257,7 +261,7 @@ export const requireEntityTableName = {
     },
     create(context) {
         /** Both `@Entity("t")` and `@Entity({ name: "t" })` name the table. */
-        const isTableName = (argument) =>
+        const isTableName = (argument: Node): boolean =>
             (argument.type === "Literal" && typeof argument.value === "string") || argument.type === "TemplateLiteral"
         return {
             Decorator(node) {
@@ -275,7 +279,7 @@ export const requireEntityTableName = {
                                 (property) =>
                                     property.type === "Property"
                                     && !property.computed
-                                    && (property.key.name === "name" || property.key.value === "name")
+                                    && nameOrValue(property.key) === "name"
                                     && isTableName(property.value),
                             )),
                 )
@@ -288,14 +292,14 @@ export const requireEntityTableName = {
 // -- transactions ----------------------------------------------------------------------------------
 
 /** The leftmost expression of a member chain: `this.deps.em` gives the `this`. */
-const rootOf = (expression) => {
+const rootOf = (expression: Node): Node => {
     let current = expression
     while (current.type === "MemberExpression" || current.type === "TSNonNullExpression") current = current.type === "MemberExpression" ? current.object : current.expression
     return current
 }
 
 /** Whether an identifier position reads a value (a property name, a key or a type name does not). */
-const readsValue = (node) => {
+const readsValue = (node: TSESTree.Identifier): boolean => {
     const parent = node.parent
     if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return false
     if (parent.type === "Property" && parent.key === node && !parent.computed && !parent.shorthand) return false
@@ -303,7 +307,7 @@ const readsValue = (node) => {
 }
 
 /** Everything inside a transaction receives the transactional manager, not one declared outside it. */
-export const noOuterManagerInTransaction = {
+export const noOuterManagerInTransaction: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Inside `<manager>.transaction(async (tx) => ...)`, every call uses `tx`, never another `EntityManager` declared outside the callback." },
@@ -316,13 +320,13 @@ export const noOuterManagerInTransaction = {
     create(context) {
         const sourceCode = context.sourceCode || context.getSourceCode()
         /** Whether the value written at `node` was declared outside the callback spanning `range`. */
-        const declaredOutside = (node, range) => {
+        const declaredOutside = (node: Node, range: TSESTree.Range): boolean => {
             const root = rootOf(node)
             if (root.type === "ThisExpression") return true
             if (root.type !== "Identifier") return false
             const variable = resolveVariable(sourceCode, root)
             const declaration = variable?.defs[0]?.name
-            return Boolean(declaration) && (declaration.range[0] < range[0] || declaration.range[1] > range[1])
+            return declaration ? (declaration.range[0] < range[0] || declaration.range[1] > range[1]) : false
         }
         return {
             CallExpression(node) {
@@ -344,7 +348,7 @@ export const noOuterManagerInTransaction = {
 const RELATION_DECORATORS = /^(?:ManyToOne|OneToOne|OneToMany|ManyToMany)$/
 
 /** A relation is asked for by the call site that needs it; the entity grants no relation eagerly. */
-export const noEagerRelation = {
+export const noEagerRelation: RuleModule = {
     meta: {
         type: "problem",
         docs: {
@@ -365,10 +369,10 @@ export const noEagerRelation = {
                 for (const argument of expression.arguments) {
                     if (argument.type !== "ObjectExpression") continue
                     const eagerProperty = argument.properties.find(
-                        (property) =>
+                        (property): property is TSESTree.Property =>
                             property.type === "Property"
                             && !property.computed
-                            && (property.key.name === "eager" || property.key.value === "eager"),
+                            && nameOrValue(property.key) === "eager",
                     )
                     if (!eagerProperty) continue
                     if (eagerProperty.value.type === "Literal" && eagerProperty.value.value === true) {
@@ -386,9 +390,9 @@ export const noEagerRelation = {
 const PLATFORM_EXTERNAL_TYPES = new Set(["HttpClient", "MessagePublisher"])
 
 /** Every receiver of a call chain, outermost first: `this.stripe.charges.create()` gives `this.stripe.charges`, `this.stripe`, `this`. */
-const receiversOf = (callee) => {
-    const receivers = []
-    let current = callee.type === "MemberExpression" ? callee.object : null
+const receiversOf = (callee: Node): Node[] => {
+    const receivers: Node[] = []
+    let current: Node | null = callee.type === "MemberExpression" ? callee.object : null
     while (current) {
         receivers.push(current)
         if (current.type === "MemberExpression") current = current.object
@@ -400,7 +404,7 @@ const receiversOf = (callee) => {
 }
 
 /** No transaction spans an external call: commit first, then call out (or write an outbox message inside the transaction). */
-export const noExternalCallInTransaction = {
+export const noExternalCallInTransaction: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An HTTP, SDK or publish call does not run inside `<manager>.transaction(async (tx) => ...)`." },
@@ -414,7 +418,7 @@ export const noExternalCallInTransaction = {
         const hfs = hfsOf(context)
         const sourceCode = context.sourceCode || context.getSourceCode()
         /** Whether a value's type is declared in `integrations/**` or is the platform `HttpClient` / `MessagePublisher`. */
-        const isExternalReceiver = (node) =>
+        const isExternalReceiver = (node: Node): boolean =>
             typeOrigins(context, node).some(
                 (origin) => hfs.tierOf(origin.file) === "integrations" || (PLATFORM_EXTERNAL_TYPES.has(origin.name) && hfs.slotOf(origin.file) === "be.platform"),
             )
@@ -444,10 +448,10 @@ export const rules = {
     "no-eager-relation": noEagerRelation,
     "no-external-call-in-transaction": noExternalCallInTransaction,
     "named-entity-manager-only": namedEntityManagerOnly,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`; a repository is fixed before it adopts the plugin, never given a weaker level. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/must-inject-entity-manager": "error",
     "starci-be/no-injected-repository": "error",
     "starci-be/require-entity-table-name": "error",

@@ -17,29 +17,35 @@ import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { infraTypeOf } from "./lib/persistence.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
 import { resolveVariable, transactionCallback } from "./lib/transactions.ts"
-import { typeOrigins, typed } from "./lib/types.ts"
+import { typed } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The `EventBus` port of `platform/event-bus`. */
-const isEventBusType = (context, node) => isOwnedType(context, node, { name: "EventBus", capability: "event-bus", tier: "platform" })
+const isEventBusType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "EventBus", capability: "event-bus", tier: "platform" })
 
 /** The `EventConsumer` port of `platform/event-bus`. */
-const isEventConsumerType = (context, node) => isOwnedType(context, node, { name: "EventConsumer", capability: "event-bus", tier: "platform" })
+const isEventConsumerType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "EventConsumer", capability: "event-bus", tier: "platform" })
 
 /** The `EventDelivery` type of `platform/event-bus`. */
-const isEventDeliveryType = (context, node) => isOwnedType(context, node, { name: "EventDelivery", capability: "event-bus", tier: "platform" })
+const isEventDeliveryType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "EventDelivery", capability: "event-bus", tier: "platform" })
 
 /** The `QueueOutbox` port of `platform/queue`. */
-const isQueueOutboxType = (context, node) => isOwnedType(context, node, { name: "QueueOutbox", capability: "queue", tier: "platform" })
+const isQueueOutboxType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "QueueOutbox", capability: "queue", tier: "platform" })
+
+/** The platform owners of the outbox: the rules leave their own files alone. */
+const OUTBOX_OWNERS: ReadonlyArray<string | null | undefined> = ["event-bus", "queue"]
 
 /** True for a file the rules leave alone: the owners themselves, and the test composition (the world, e2e and fixtures). */
-const isExempt = (hfs, file) => {
+const isExempt = (hfs: HfsView, file: string): boolean => {
     const tier = hfs.tierOf(file)
     if (tier === "e2e" || tier === "fixtures" || inTestWorld(hfs, file)) return true
-    return tier === "platform" && ["event-bus", "queue"].includes(ownerNameOf(hfs, file))
+    return tier === "platform" && OUTBOX_OWNERS.includes(ownerNameOf(hfs, file))
 }
 
 /** The index of the parameter of a signature declaration typed as typeorm's `EntityManager`, or -1. */
-const transactionParameterIndex = (checker, declaration) => {
+const transactionParameterIndex = (checker: ts.TypeChecker, declaration: ts.SignatureDeclaration | ts.JSDocSignature | undefined): number => {
     const parameters = declaration?.parameters ?? []
     return parameters.findIndex((parameter) => {
         const type = checker.getTypeAtLocation(parameter)
@@ -48,12 +54,15 @@ const transactionParameterIndex = (checker, declaration) => {
     })
 }
 
+/** The `kind` a node carries (a method's `constructor`), or undefined when it carries none (what reading `.kind` off it gave). */
+const kindOf = (node: Node | undefined): unknown => (node && "kind" in node ? node.kind : undefined)
+
 /**
  * What an expression passed as the transaction is: the transactional manager a `.transaction(async (manager) => ...)` callback
  * receives, or a function parameter typed as the `EntityManager` (a helper that runs inside the caller's transaction).
  * The injected shared manager (`this.entityManager`), a local alias and any other expression are not proof of a transaction.
  */
-const isTransactionManager = (context, argument) => {
+const isTransactionManager = (context: Context, argument: TSESTree.CallExpressionArgument | undefined): boolean => {
     if (argument?.type !== "Identifier") return false
     const variable = resolveVariable(context.sourceCode, argument)
     const definition = variable?.defs[0]
@@ -61,13 +70,20 @@ const isTransactionManager = (context, argument) => {
     const owner = definition.node
     const call = owner.parent
     if (call?.type === "CallExpression" && transactionCallback(context, call) === owner) return true
-    if (owner.parent?.type === "FunctionExpression" && owner.parent.parent?.kind === "constructor") return false
-    if (owner.parent?.kind === "constructor") return false
+    if (owner.parent?.type === "FunctionExpression" && kindOf(owner.parent.parent) === "constructor") return false
+    if (kindOf(owner.parent) === "constructor") return false
     return infraTypeOf(context, definition.name) === "EntityManager"
 }
 
+/** One outbox-writing call: what it is, the argument passed as the transaction, and that argument's position. */
+interface OutboxWrite {
+    kind: "publish" | "producer"
+    argument: TSESTree.CallExpressionArgument | undefined
+    expected: number
+}
+
 /** The outbox-writing call a node is: `{ kind: "publish", argument }` or `{ kind: "producer", argument }`, or null. */
-const outboxWriteOf = (context, hfs, node) => {
+const outboxWriteOf = (context: Context, hfs: HfsView, node: TSESTree.CallExpression): OutboxWrite | null => {
     const callee = node.callee
     if (callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" && callee.property.name === "publish" && isEventBusType(context, callee.object)) {
         return { kind: "publish", argument: node.arguments[1], expected: 1 }
@@ -83,7 +99,7 @@ const outboxWriteOf = (context, hfs, node) => {
 }
 
 /** `eventBus.publish(event, tx)` and a queue producer's `enqueueX(payload, tx)` are called only from `modules/domain`, inside its transaction. */
-export const outboxWriteTx = {
+export const outboxWriteTx: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The outbox is written only by a domain service, with the transaction manager of its own transaction." },
@@ -110,7 +126,7 @@ export const outboxWriteTx = {
 }
 
 /** The `eventName` literal of the event class an expression names (`typeof OrderPlacedEvent` has a static `eventName`), or null. */
-const eventNameOf = (context, expression) => {
+const eventNameOf = (context: Context, expression: Node): string | null => {
     const { checker, toTs } = typed(context)
     const tsNode = toTs(expression)
     if (!tsNode) return null
@@ -121,14 +137,14 @@ const eventNameOf = (context, expression) => {
 }
 
 /** True when the node is a `.eventId` member read on a value typed as the `EventDelivery` of `platform/event-bus`. */
-const readsDeliveryEventId = (context, node) =>
+const readsDeliveryEventId = (context: Context, node: Node): boolean =>
     node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier" && node.property.name === "eventId" && isEventDeliveryType(context, node.object)
 
 /** The kebab stem of an event name: dots become dashes. */
-const stemOfEvent = (name) => name.split(".").join("-")
+const stemOfEvent = (name: string): string => name.split(".").join("-")
 
 /** A message consumer is the one door of an event: placed in `transport/message`, named after its event, and it forwards the event id. */
-export const eventConsumerShape = {
+export const eventConsumerShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A class implementing `EventConsumer` is `transport/message/<event>.consumer.ts`, named after its event class's `eventName`, and forwards `delivery.eventId`; a `.consumer.ts` implements `EventConsumer`." },
@@ -147,7 +163,7 @@ export const eventConsumerShape = {
         if (isExempt(hfs, file)) return {}
         const inTransport = hfs.slotOf(file) === "be.transport.message"
         const isConsumerFile = baseName(file).endsWith(".consumer.ts")
-        const check = (node) => {
+        const check = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): void => {
             const name = node.id?.name ?? "this class"
             const implementsConsumer = (node.implements ?? []).some((entry) => isEventConsumerType(context, entry))
             if (!implementsConsumer) {
@@ -158,14 +174,14 @@ export const eventConsumerShape = {
                 context.report({ node: node.id ?? node, messageId: "placement", data: { name } })
                 return
             }
-            const eventProperty = node.body.body.find((member) => member.type === "PropertyDefinition" && !member.computed && member.key.type === "Identifier" && member.key.name === "event")
+            const eventProperty = node.body.body.find((member): member is TSESTree.PropertyDefinition => member.type === "PropertyDefinition" && !member.computed && member.key.type === "Identifier" && member.key.name === "event")
             const event = eventProperty?.value ? eventNameOf(context, eventProperty.value) : null
             if (event === null) context.report({ node: eventProperty ?? node.id ?? node, messageId: "eventUnknown", data: { name } })
             else {
                 const actual = baseName(file).slice(0, -".consumer.ts".length)
                 if (stemOfEvent(event) !== actual) context.report({ node: node.id ?? node, messageId: "stem", data: { event, expected: stemOfEvent(event), actual } })
             }
-            const handle = node.body.body.find((member) => member.type === "MethodDefinition" && !member.computed && member.key.type === "Identifier" && member.key.name === "handle")
+            const handle = node.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && !member.computed && member.key.type === "Identifier" && member.key.name === "handle")
             const body = handle?.value?.body
             let forwarded = false
             if (body) walk(body, (child) => { if (readsDeliveryEventId(context, child)) forwarded = true })
@@ -175,9 +191,12 @@ export const eventConsumerShape = {
     },
 }
 
+/** A function a producer is declared as. */
+type ProducerNode = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression | TSESTree.TSEmptyBodyFunctionExpression
+
 /** The functions of an exported class or the exported functions of a `.queue.ts`: the producers. */
-const producersOf = (program) => {
-    const found = []
+const producersOf = (program: TSESTree.Program): ProducerNode[] => {
+    const found: ProducerNode[] = []
     for (const statement of program.body) {
         const declaration = statement.type === "ExportNamedDeclaration" || statement.type === "ExportDefaultDeclaration" ? statement.declaration : null
         if (!declaration) continue
@@ -193,7 +212,7 @@ const producersOf = (program) => {
 }
 
 /** A producer of a queue passes its own transaction parameter to the outbox, and nothing else writes the outbox there. */
-export const queueProducerShape = {
+export const queueProducerShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "In `modules/queues/<queue>/<queue>.queue.ts` every producer that writes the `QueueOutbox` takes a `tx` parameter typed `EntityManager` and passes it as the transaction." },
@@ -209,7 +228,7 @@ export const queueProducerShape = {
         return {
             "Program:exit"(program) {
                 for (const producer of producersOf(program)) {
-                    const parameters = producer.params.filter((param) => param.type === "Identifier")
+                    const parameters = producer.params.filter((param): param is TSESTree.Identifier => param.type === "Identifier")
                     const tx = parameters.find((param) => infraTypeOf(context, param) === "EntityManager")
                     walk(producer.body, (node) => {
                         if (node.type !== "CallExpression" || node.callee.type !== "MemberExpression" || !isQueueOutboxType(context, node.callee.object)) return
@@ -227,10 +246,10 @@ export const rules = {
     "outbox-write-tx": outboxWriteTx,
     "event-consumer-shape": eventConsumerShape,
     "queue-producer-shape": queueProducerShape,
-}
+} satisfies Rules
 
 /** The level these laws ask for: `error`, switched off nowhere. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/outbox-write-tx": "error",
     "starci-be/event-consumer-shape": "error",
     "starci-be/queue-producer-shape": "error",

@@ -11,30 +11,32 @@
 import { posix } from "node:path"
 import { hfsOf } from "./lib/hfs.ts"
 import { resolveAlias } from "./lib/specifier.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The app slots: the slot ids of a service app's `apps/<app>/src/` folder. */
-const isAppSlot = (slotId) => typeof slotId === "string" && slotId.startsWith("be.app.")
+const isAppSlot = (slotId: string | null | undefined) => typeof slotId === "string" && slotId.startsWith("be.app.")
 
-const isRelative = (specifier) => specifier === "." || specifier === ".." || specifier.startsWith("./") || specifier.startsWith("../")
+const isRelative = (specifier: string) => specifier === "." || specifier === ".." || specifier.startsWith("./") || specifier.startsWith("../")
 
 /** Calls `check(node, specifier)` for every import and re-export that names a module. */
-const onSpecifiers = (check) => ({
-  ImportExpression(node) {
+const onSpecifiers = (check: (node: Node, specifier: unknown) => void): RuleListener => ({
+  ImportExpression(node: TSESTree.ImportExpression) {
+    check(node.source, node.source.type === "Literal" ? node.source.value : undefined)
+  },
+  ImportDeclaration(node: TSESTree.ImportDeclaration) {
     check(node.source, node.source.value)
   },
-  ImportDeclaration(node) {
-    check(node.source, node.source.value)
-  },
-  ExportNamedDeclaration(node) {
+  ExportNamedDeclaration(node: TSESTree.ExportNamedDeclaration) {
     if (node.source) check(node.source, node.source.value)
   },
-  ExportAllDeclaration(node) {
+  ExportAllDeclaration(node: TSESTree.ExportAllDeclaration) {
     if (node.source) check(node.source, node.source.value)
   },
 })
 
 /** A file of one service app imports no file of a sibling service app. */
-export const serviceIsolation = {
+export const serviceIsolation: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A service app (`apps/<service>/`) imports no file of a sibling service app; services share only the `src` libraries and meet through the wire." },
@@ -67,9 +69,9 @@ export const serviceIsolation = {
 
 export const rules = {
   "service-isolation": serviceIsolation,
-}
+} satisfies Rules
 
 /** The level this law asks for: `error`, switched off nowhere. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/service-isolation": "error",
 }

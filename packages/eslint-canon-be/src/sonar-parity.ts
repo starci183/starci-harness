@@ -10,11 +10,15 @@
  * `require-await` the factory turns on.
  */
 import { SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "max-params"]
 
 /** The rules this law contributes to the plugin. */
-export const rules = Object.fromEntries(NAMES.map((name) => [name, SONAR_SYNTAX_RULES[name]]))
+export const rules: Rules = Object.fromEntries(NAMES.flatMap((name): Array<[string, RuleModule]> => {
+    const rule = SONAR_SYNTAX_RULES[name]
+    return rule ? [[name, rule]] : []
+}))
 
 /** Starts at error: a repository's fix lane clears the debt before the rule ships. */
-export const recommended = Object.fromEntries(NAMES.map((name) => [`starci-be/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(NAMES.map((name) => [`starci-be/${name}`, "error" as const]))

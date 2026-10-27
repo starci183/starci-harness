@@ -24,12 +24,23 @@ import { keyName, wordsOf } from "./lib/ast.ts"
 import { derivesFromBuiltinError, presentParts, typeOf } from "./lib/declared.ts"
 import { isLoggerCall, isOwnedType } from "./lib/ports.ts"
 import { isDeclarationFile } from "./lib/path.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+
+/** An expression whose TYPE a log or error argument passes on. */
+type ValueNode = TSESTree.Identifier | TSESTree.MemberExpression | TSESTree.CallExpression
+
+/** A name an argument reads, and the node that spells it. */
+interface NameAt {
+  name: string
+  node: Node
+}
 
 /** The `Secret` brand of `platform/config`. */
-const isSecretType = (context, node) => isOwnedType(context, node, { name: "Secret", capability: "config", tier: "platform" })
+const isSecretType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "Secret", capability: "config", tier: "platform" })
 
 /** The `Pii` brand of the `identity` owner. */
-const isPiiType = (context, node) => isOwnedType(context, node, { name: "Pii", capability: "identity" })
+const isPiiType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "Pii", capability: "identity" })
 
 const SECRET_WORDS = new Set(["password", "passwd", "secret", "secrets", "apikey", "authorization", "bearer", "otp", "cookie", "cookies", "credential", "credentials", "jwt", "passphrase"])
 const SECRET_PAIRS = [["api", "key"], ["private", "key"], ["access", "key"], ["secret", "key"], ["signing", "key"], ["client", "secret"]]
@@ -38,7 +49,7 @@ const PII_WORDS = new Set(["email", "emails", "phone", "phonenumber", "fullname"
 const MEASURE_WORDS = new Set(["count", "counts", "id", "ids", "type", "types", "name", "names", "ttl", "expiry", "expires", "expiresat", "limit", "usage", "used", "budget", "max", "min", "input", "output", "total", "length", "kind", "hash", "hashed", "masked", "present", "provided", "configured", "exists", "has", "is", "reason", "status", "prefix", "suffix", "version", "rotated", "at", "summary", "source", "from", "fixture", "seed"])
 
 /** Whether a name spells a credential, given its words. */
-const isSecretName = (words) => {
+const isSecretName = (words: string[]): boolean => {
   if (words.some((word) => MEASURE_WORDS.has(word))) return false
   if (words.some((word) => SECRET_WORDS.has(word))) return true
   if (words.includes("token") || words.includes("tokens")) return true
@@ -48,12 +59,12 @@ const isSecretName = (words) => {
 const PII_PAIRS = [["full", "name"], ["birth", "date"], ["id", "card"], ["phone", "number"]]
 
 /** Whether a name spells a personal identifier: a two-word identifier (`fullName`) or a single word, unless the name measures one. */
-const isPiiName = (words) =>
+const isPiiName = (words: string[]): boolean =>
   PII_PAIRS.some(([a, b]) => words.some((word, index) => word === a && words[index + 1] === b))
   || (!words.some((word) => MEASURE_WORDS.has(word)) && words.some((word) => PII_WORDS.has(word)))
 
 /** A call that hides its argument: the value shown is a mask, a hash, a flag or a count. */
-const isHidingCall = (node) =>
+const isHidingCall = (node: Node): boolean =>
   node.type === "CallExpression"
   && node.callee.type === "Identifier"
   && /^(?:mask|redact|hash|fingerprint|last4|truncate|Boolean|Number|String)$|^(?:mask|redact|hash|fingerprint)/i.test(node.callee.name)
@@ -62,7 +73,7 @@ const isHidingCall = (node) =>
  * The expressions whose TYPE an argument passes on: identifiers, member reads, call results, and what they are read
  * out of. A call to a masking function shows a mask, so its arguments are not followed.
  */
-const valuesIn = (node, found = []) => {
+const valuesIn = (node: Node | null | undefined, found: ValueNode[] = []): ValueNode[] => {
   if (!node || typeof node.type !== "string") return found
   switch (node.type) {
     case "Identifier":
@@ -107,7 +118,7 @@ const valuesIn = (node, found = []) => {
 }
 
 /** The names an argument reads: identifiers, member properties and object keys, not nested function bodies. */
-const namesIn = (node, found = []) => {
+const namesIn = (node: Node | null | undefined, found: NameAt[] = []): NameAt[] => {
   if (!node || typeof node.type !== "string") return found
   switch (node.type) {
     case "Identifier":
@@ -157,7 +168,7 @@ const namesIn = (node, found = []) => {
 }
 
 /** A logger call carries no credential and no personal identifier, by type or by name. */
-export const noSecretInLog = {
+export const noSecretInLog: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Fields of a `Logger` call carry no `Secret`/`Pii` value and no credential or personal identifier by name." },
@@ -182,7 +193,7 @@ export const noSecretInLog = {
         if (!isLoggerCall(context, node)) return
         // the first argument is the event; the rest are the cause and the fields
         const fields = node.arguments.slice(1)
-        const reported = new Set()
+        const reported = new Set<Node | string>()
         for (const argument of fields) {
           for (const value of valuesIn(argument)) {
             if (reported.has(value)) continue
@@ -214,20 +225,20 @@ export const noSecretInLog = {
 const STRINGY = ts.TypeFlags.String | ts.TypeFlags.StringLiteral | ts.TypeFlags.TemplateLiteral
 
 /** Whether a node's type is text (a string, with `null`/`undefined` removed): the shape a raw credential travels in. */
-const isText = (context, node) => {
+const isText = (context: Context, node: Node): boolean => {
   const parts = presentParts(typeOf(context, node))
   return parts.length > 0 && parts.every((part) => (part.flags & STRINGY) && !(part.flags & ts.TypeFlags.EnumLiteral))
 }
 
 /** The last name a value expression ends in (`token`, `request.headers.authorization`), or null. */
-const ownNameOf = (node) => {
+const ownNameOf = (node: Node): string | null => {
   if (node.type === "Identifier") return node.name
   if (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier") return node.property.name
   return null
 }
 
 /** The `key: value` pairs of an argument tree whose value is text, so a key can name what the value is (`{ token: raw }`). */
-const textPropertiesIn = (context, node, found = []) => {
+const textPropertiesIn = (context: Context, node: Node | null | undefined, found: NameAt[] = []): NameAt[] => {
   if (node?.type === "ObjectExpression") {
     for (const property of node.properties) {
       if (property.type !== "Property" || property.computed || isHidingCall(property.value)) continue
@@ -248,7 +259,7 @@ const textPropertiesIn = (context, node, found = []) => {
  * failure, the tracing vendor and, for a declared error, the client. Personal identifiers are not judged here: an error
  * may name the account it refused.
  */
-export const noSecretInError = {
+export const noSecretInError: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A constructed error carries no `Secret` value and no text value named like a credential." },
@@ -267,8 +278,8 @@ export const noSecretInError = {
     return {
       NewExpression(node) {
         if (node.arguments.length === 0 || !derivesFromBuiltinError(context, typeOf(context, node))) return
-        const reported = new Set()
-        const report = (at, messageId, name) => {
+        const reported = new Set<Node>()
+        const report = (at: Node, messageId: "secretType" | "secret", name: string): void => {
           if (reported.has(at)) return
           reported.add(at)
           context.report({ node: at, messageId, data: { name } })
@@ -294,10 +305,10 @@ export const noSecretInError = {
 export const rules = {
   "no-secret-in-log": noSecretInLog,
   "no-secret-in-error": noSecretInError,
-}
+} satisfies Rules
 
 /** Both start at error: no baseline exists, and the repositories' fix lanes clear the debt. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/no-secret-in-log": "error",
   "starci-be/no-secret-in-error": "error",
 }

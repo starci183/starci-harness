@@ -20,7 +20,7 @@
  *     `<C>_ERROR_KINDS: Record<<C>ErrorCode, ErrorKind>` table, and an empty `<C>Error extends DomainError<<C>ErrorCode>`.
  *     Code uniqueness across the repository is the architecture machine's job, not a single file's.
  */
-import { some, walk } from "./lib/ast.ts"
+import { nameOrValue, some, walk } from "./lib/ast.ts"
 import {
     derives,
     derivesFromBuiltinError,
@@ -35,14 +35,22 @@ import {
 import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
 import { typed } from "./lib/types.ts"
+import { isNode } from "./lib/rule.ts"
+import type ts from "typescript"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+
+/** A function that can be a promise `.catch` handler. */
+type Handler = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 
 /** True when `name` is used as a value in `node` (not just as the object of `name.message`). */
-const carriesCaught = (node, name) => {
+const carriesCaught = (node: Node | null | undefined, name: string | null): boolean => {
     if (!name) return false
     let carried = false
     walk(node, (child) => {
         if (child.type !== "Identifier" || child.name !== name) return
-        let inner = child
+        let inner: Node = child
         while (inner.parent && (inner.parent.type === "TSAsExpression" || inner.parent.type === "TSNonNullExpression" || inner.parent.type === "TSTypeAssertion")) inner = inner.parent
         const parent = inner.parent
         if (parent?.type === "MemberExpression" && parent.object === inner) return
@@ -51,10 +59,13 @@ const carriesCaught = (node, name) => {
     return carried
 }
 
-const paramName = (fn) => (fn.params?.[0]?.type === "Identifier" ? fn.params[0].name : null)
+const paramName = (fn: Handler): string | null => {
+    const first = fn.params?.[0]
+    return first?.type === "Identifier" ? first.name : null
+}
 
 /** Every failure is rethrown, logged through the logger port, or returned as an outcome carrying its cause. */
-export const catchMustAccount = {
+export const catchMustAccount: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A catch rethrows, calls a method on a `Logger` receiver, or returns an outcome that carries the cause." },
@@ -67,11 +78,11 @@ export const catchMustAccount = {
     },
     create(context) {
         /** A call of a method on a receiver whose type is the `Logger` port declared by `platform/logging`. */
-        const isLoggerCall = (node) =>
+        const isLoggerCall = (node: Node): boolean =>
             node.type === "CallExpression" &&
             node.callee.type === "MemberExpression" &&
             isOwnedType(context, node.callee.object, "Logger", "platform", "logging")
-        const accounts = (body, param) =>
+        const accounts = (body: Node, param: string | null): boolean =>
             some(
                 body,
                 (node) =>
@@ -80,7 +91,7 @@ export const catchMustAccount = {
                     (node.type === "ReturnStatement" && node.argument !== null && carriesCaught(node.argument, param)),
                 { intoFunctions: false },
             )
-        const checkBlock = (reportNode, body, param) => {
+        const checkBlock = (reportNode: Node, body: TSESTree.BlockStatement, param: string | null): void => {
             if (body.body.length === 0) context.report({ node: reportNode, messageId: "empty" })
             else if (!accounts(body, param)) context.report({ node: reportNode, messageId: "swallowed" })
         }
@@ -104,10 +115,10 @@ export const catchMustAccount = {
 }
 
 /** The statements of a catch body that escape it: nested functions, nested handlers and guarded `try` blocks are not. */
-const escapingThrows = (body) => {
-    const found = []
-    const visit = (node) => {
-        if (!node || typeof node !== "object" || typeof node.type !== "string") return
+const escapingThrows = (body: TSESTree.BlockStatement): TSESTree.ThrowStatement[] => {
+    const found: TSESTree.ThrowStatement[] = []
+    const visit = (node: unknown): void => {
+        if (!isNode(node)) return
         if (node.type === "FunctionDeclaration" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression") return
         if (node.type === "CatchClause") return
         if (node.type === "ThrowStatement") found.push(node)
@@ -117,10 +128,13 @@ const escapingThrows = (body) => {
             visit(node.finalizer)
             return
         }
-        for (const [key, value] of Object.entries(node)) {
+        const entries: [string, unknown][] = Object.entries(node)
+        for (const [key, value] of entries) {
             if (key === "parent" || key === "loc" || key === "range") continue
-            if (Array.isArray(value)) value.forEach(visit)
-            else visit(value)
+            if (Array.isArray(value)) {
+                const items: readonly unknown[] = value
+                items.forEach(visit)
+            } else visit(value)
         }
     }
     body.body.forEach(visit)
@@ -128,8 +142,8 @@ const escapingThrows = (body) => {
 }
 
 /** The variable `identifier` names at its position, or null. */
-const variableOf = (sourceCode, identifier) => {
-    for (let scope = sourceCode.getScope(identifier); scope; scope = scope.upper) {
+const variableOf = (sourceCode: Readonly<TSESLint.SourceCode>, identifier: TSESTree.Identifier): TSESLint.Scope.Variable | null => {
+    for (let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(identifier); scope; scope = scope.upper) {
         const variable = scope.set.get(identifier.name)
         if (variable) return variable
     }
@@ -141,9 +155,9 @@ const variableOf = (sourceCode, identifier) => {
  * whose initializer or an assignment uses it. Anything the rule cannot see through is taken as carrying, so it never
  * reports a throw that might keep the cause.
  */
-const throwCarriesCaught = (sourceCode, argument, caught) => {
+const throwCarriesCaught = (sourceCode: Readonly<TSESLint.SourceCode>, argument: Node, caught: string): boolean => {
     if (carriesCaught(argument, caught)) return true
-    let value = argument
+    let value: Node = argument
     while (value.type === "TSAsExpression" || value.type === "TSNonNullExpression" || value.type === "TSTypeAssertion") value = value.expression
     if (value.type === "Identifier") {
         const variable = variableOf(sourceCode, value)
@@ -157,7 +171,7 @@ const throwCarriesCaught = (sourceCode, argument, caught) => {
 }
 
 /** A catch that replaces the caught failure passes the caught value on as the replacement's `cause` (BE-ERROR-4). */
-export const replacementThrowCarriesCause = {
+export const replacementThrowCarriesCause: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A throw that escapes a catch rethrows the caught value or carries it (as `cause`) in the replacement." },
@@ -171,7 +185,7 @@ export const replacementThrowCarriesCause = {
     },
     create(context) {
         const sourceCode = context.sourceCode || context.getSourceCode()
-        const check = (body, param) => {
+        const check = (body: TSESTree.BlockStatement, param: Node | null | undefined): void => {
             const caught = param?.type === "Identifier" ? param.name : null
             for (const statement of escapingThrows(body)) {
                 const argument = statement.argument
@@ -207,22 +221,23 @@ export const replacementThrowCarriesCause = {
  * `TestWorldError` lives in `test-world.error.ts` at the world root, which is the world's `errors/<capability>.error.ts`.
  * Only that file is a home; a nested `fakes/**` file, a spec and every other owner stay judged by `errors/<c>.error.ts`.
  */
-const isWorldErrorHome = (hfs, filename) => {
+const isWorldErrorHome = (hfs: HfsView, filename: string): boolean => {
     const placed = hfs.classify(filename)
     return placed.slot === "be.tests.world" && placed.path === `${placed.root}/test-world.error.ts`
 }
 
 /** True when a class of a unit spec (`<name>.spec.ts`) is local to it: neither exported by declaration nor by an `export { Name }` list. */
-const isSpecLocalClass = (filename, node) => {
-    if (!/\.spec\.[cm]?ts$/.test(filename) || !node.id) return false
+const isSpecLocalClass = (filename: string, node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): boolean => {
+    const id = node.id
+    if (!/\.spec\.[cm]?ts$/.test(filename) || !id) return false
     if (node.parent?.type === "ExportNamedDeclaration" || node.parent?.type === "ExportDefaultDeclaration") return false
     const program = node.parent?.type === "Program" ? node.parent : null
     if (!program) return node.type === "ClassDeclaration" || node.type === "ClassExpression"
-    return !program.body.some((statement) => statement.type === "ExportNamedDeclaration" && !statement.source && statement.specifiers.some((specifier) => (specifier.local.name ?? specifier.local.value) === node.id.name))
+    return !program.body.some((statement) => statement.type === "ExportNamedDeclaration" && !statement.source && statement.specifiers.some((specifier) => nameOrValue(specifier.local) === id.name))
 }
 
 /** An error class is declared at its owner in `errors/<capability>.error.ts` and derives from `DomainError`. */
-export const errorHome = {
+export const errorHome: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An error class derives from `DomainError` and is declared only in `errors/<capability>.error.ts` of its owner." },
@@ -236,7 +251,7 @@ export const errorHome = {
     create(context) {
         const hfs = hfsOf(context)
         const filename = normalizePath(context.filename)
-        const check = (node) => {
+        const check = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): void => {
             if (!node.id) return
             const type = typeOf(context, node.id)
             if (!type) return
@@ -258,8 +273,8 @@ export const errorHome = {
 }
 
 /** The variable a thrown identifier names is the parameter of a `catch` clause or of a promise `.catch` handler. */
-const isCaughtValue = (context, identifier) => {
-    for (let scope = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
+const isCaughtValue = (context: Context, identifier: TSESTree.Identifier): boolean => {
+    for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
         const variable = scope.set.get(identifier.name)
         if (!variable) continue
         return variable.defs.some((definition) => {
@@ -283,7 +298,7 @@ const isCaughtValue = (context, identifier) => {
 }
 
 /** Every thrown value is a `DomainError` of the owner that throws it. */
-export const throwDomainError = {
+export const throwDomainError: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A thrown value's type derives from `DomainError`; a domain owner never throws a platform error outward." },
@@ -299,7 +314,7 @@ export const throwDomainError = {
         const hfs = hfsOf(context)
         const filename = normalizePath(context.filename)
         const { checker } = typed(context)
-        const isHttpException = (type) => derives(checker, type, (name, file) => name === "HttpException" && /\/node_modules\/@nestjs\/common\//.test(file))
+        const isHttpException = (type: ts.Type): boolean => derives(checker, type, (name, file: string) => name === "HttpException" && /\/node_modules\/@nestjs\/common\//.test(file))
         return {
             ThrowStatement(node) {
                 const thrown = node.argument
@@ -323,7 +338,7 @@ export const throwDomainError = {
                     const declarations = part.getSymbol()?.declarations ?? []
                     const platform = declarations.find((declaration) => hfs.tierOf(String(declaration.getSourceFile().fileName).replace(/\\/g, "/")) === "platform")
                     if (platform) {
-                        context.report({ node: thrown, messageId: "platformThrown", data: { name: part.getSymbol().name } })
+                        context.report({ node: thrown, messageId: "platformThrown", data: { name: part.getSymbol()?.name } })
                         return
                     }
                 }
@@ -332,15 +347,37 @@ export const throwDomainError = {
     },
 }
 
-const words = (kebab) => kebab.split("-")
-const pascal = (kebab) => words(kebab).map((word) => word[0].toUpperCase() + word.slice(1)).join("")
-const upperSnake = (kebab) => words(kebab).join("_").toUpperCase()
+const words = (kebab: string): string[] => kebab.split("-")
+/** The first letter of a word in upper case; an empty word fails as reading a missing letter does. */
+const initial = (word: string): string => {
+    const first = word[0]
+    if (first === undefined) throw new TypeError("Cannot read properties of undefined (reading 'toUpperCase')")
+    return first.toUpperCase()
+}
+const pascal = (kebab: string): string => words(kebab).map((word) => initial(word) + word.slice(1)).join("")
+const upperSnake = (kebab: string): string => words(kebab).join("_").toUpperCase()
 
 /** The exported declaration inside an `export ...` statement, else null. */
-const exportedDeclaration = (statement) => (statement.type === "ExportNamedDeclaration" ? statement.declaration : null)
+const exportedDeclaration = (statement: TSESTree.ProgramStatement): TSESTree.NamedExportDeclarations | null => (statement.type === "ExportNamedDeclaration" ? statement.declaration : null)
+
+/** The name a declarator binds when it binds an identifier, else undefined. */
+const declaratorName = (declarator: TSESTree.VariableDeclarator): string | undefined => (declarator.id.type === "Identifier" ? declarator.id.name : undefined)
+
+/** The name of a declaration's `id` when that id is an identifier, else undefined. */
+const declaredName = (declaration: TSESTree.NamedExportDeclarations): string | undefined => {
+    const id = "id" in declaration ? declaration.id : null
+    return id?.type === "Identifier" ? id.name : undefined
+}
+
+/** The params of the type-argument list a node holds under `key` (`typeArguments`, or the older parser's `typeParameters`), else undefined. */
+const typeParamsUnder = (node: Node | null | undefined, key: string): TSESTree.TypeNode[] | undefined => {
+    if (!node) return undefined
+    const value: unknown = Reflect.get(node, key)
+    return isNode(value) && value.type === "TSTypeParameterInstantiation" ? value.params : undefined
+}
 
 /** The one shape of an owner's `errors/<capability>.error.ts`. */
-export const errorFamilyShape = {
+export const errorFamilyShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`errors/<c>.error.ts` exports one code enum, one `Record<Code, ErrorKind>` table and one empty error class." },
@@ -358,15 +395,16 @@ export const errorFamilyShape = {
     create(context) {
         const hfs = hfsOf(context)
         const home = errorHomeOf(hfs, normalizePath(context.filename))
-        if (!home) return {}
+        // the home's capability is the required group of its pattern, so it is always present
+        if (!home || home.capability === undefined) return {}
         const data = { pascal: pascal(home.capability), upper: upperSnake(home.capability) }
         const codeName = `${data.pascal}ErrorCode`
         const kindsName = `${data.upper}_ERROR_KINDS`
         const className = `${data.pascal}Error`
         return {
             Program(program) {
-                const declared = program.body.map(exportedDeclaration).filter(Boolean)
-                const enums = declared.filter((declaration) => declaration.type === "TSEnumDeclaration")
+                const declared = program.body.map(exportedDeclaration).filter((declaration): declaration is TSESTree.NamedExportDeclarations => Boolean(declaration))
+                const enums = declared.filter((declaration): declaration is TSESTree.TSEnumDeclaration => declaration.type === "TSEnumDeclaration")
                 const code = enums.find((declaration) => declaration.id.name === codeName)
                 if (!code) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "noCode", data })
                 else {
@@ -375,28 +413,31 @@ export const errorFamilyShape = {
                         const value = member.initializer
                         const text = value?.type === "Literal" && typeof value.value === "string" ? value.value : null
                         if (text === null || !prefix.test(text) || /_(?:EXCEPTION|ERROR)$/.test(text)) {
-                            context.report({ node: member, messageId: "memberValue", data: { ...data, member: member.id.name ?? member.id.value } })
+                            context.report({ node: member, messageId: "memberValue", data: { ...data, member: nameOrValue(member.id) } })
                         }
                     }
                 }
-                const kinds = declared.find((declaration) => declaration.type === "VariableDeclaration" && declaration.declarations.some((d) => d.id.name === kindsName))
-                if (!kinds) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "noKinds", data })
+                const kinds = declared.find((declaration): declaration is TSESTree.VariableDeclaration => declaration.type === "VariableDeclaration" && declaration.declarations.some((d) => declaratorName(d) === kindsName))
+                // the declarator is found whenever `kinds` is, since `kinds` is the declaration holding it
+                const declarator = kinds?.declarations.find((d) => declaratorName(d) === kindsName)
+                if (!declarator) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "noKinds", data })
                 else {
-                    const declarator = kinds.declarations.find((d) => d.id.name === kindsName)
                     const annotation = declarator.id.typeAnnotation?.typeAnnotation
-                    const args = annotation?.typeArguments?.params ?? annotation?.typeParameters?.params ?? []
+                    const args = typeParamsUnder(annotation, "typeArguments") ?? typeParamsUnder(annotation, "typeParameters") ?? []
                     const isRecord = annotation?.type === "TSTypeReference" && annotation.typeName.type === "Identifier" && annotation.typeName.name === "Record"
-                    const keyOk = args[0]?.type === "TSTypeReference" && args[0].typeName.type === "Identifier" && args[0].typeName.name === codeName
-                    const valueOk = args.length === 2 && args[1].type === "TSTypeReference" && isOwnedType(context, args[1], "ErrorKind", "platform", "errors")
+                    const [keyArg, valueArg] = args
+                    const keyOk = keyArg?.type === "TSTypeReference" && keyArg.typeName.type === "Identifier" && keyArg.typeName.name === codeName
+                    const valueOk = args.length === 2 && valueArg?.type === "TSTypeReference" && isOwnedType(context, valueArg, "ErrorKind", "platform", "errors")
                     if (!isRecord || args.length !== 2 || !keyOk || !valueOk) context.report({ node: declarator.id, messageId: "kindsType", data })
                 }
-                const cls = declared.find((declaration) => declaration.type === "ClassDeclaration" && declaration.id?.name === className)
+                const cls = declared.find((declaration): declaration is TSESTree.ClassDeclarationWithName => declaration.type === "ClassDeclaration" && declaration.id?.name === className)
                 if (!cls) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "noClass", data })
                 else {
                     const parent = cls.superClass
-                    const args = cls.superTypeArguments?.params ?? cls.superTypeParameters?.params ?? []
+                    const args = typeParamsUnder(cls, "superTypeArguments") ?? typeParamsUnder(cls, "superTypeParameters") ?? []
                     const parentOk = parent && isOwnedType(context, parent, "DomainError", "platform", "errors")
-                    const argOk = args.length === 1 && args[0].type === "TSTypeReference" && args[0].typeName.type === "Identifier" && args[0].typeName.name === codeName
+                    const [codeArg] = args
+                    const argOk = args.length === 1 && codeArg?.type === "TSTypeReference" && codeArg.typeName.type === "Identifier" && codeArg.typeName.name === codeName
                     if (!parentOk || !argOk || cls.body.body.length > 0) context.report({ node: cls.id, messageId: "classShape", data })
                 }
                 for (const statement of program.body) {
@@ -405,8 +446,8 @@ export const errorFamilyShape = {
                     if (!isExport) continue
                     const name =
                         declaration?.type === "VariableDeclaration"
-                            ? declaration.declarations.map((d) => d.id.name).find((n) => n !== kindsName)
-                            : declaration?.id?.name
+                            ? declaration.declarations.map(declaratorName).find((n) => n !== kindsName)
+                            : declaration ? declaredName(declaration) : undefined
                     if (declaration === null || declaration === undefined) {
                         context.report({ node: statement, messageId: "extra", data: { ...data, name: statement.type } })
                     } else if (name !== undefined && name !== codeName && name !== kindsName && name !== className) {
@@ -427,10 +468,10 @@ export const rules = {
     "error-home": errorHome,
     "throw-domain-error": throwDomainError,
     "error-family-shape": errorFamilyShape,
-}
+} satisfies Rules
 
 /** All start at error: HFS has no baseline, and the migration lanes clear the debt before a repository adopts them. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/catch-must-account": "error",
     "starci-be/replacement-throw-carries-cause": "error",
     "starci-be/error-home": "error",

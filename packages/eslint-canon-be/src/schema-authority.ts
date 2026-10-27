@@ -27,14 +27,17 @@ import { keyName, walk } from "./lib/ast.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { baseName, isMigrationFile, packageOfFile } from "./lib/ports.ts"
 import { inCli } from "./lib/persistence.ts"
-import { isPackageType, typed } from "./lib/types.ts"
+import { isPackageType, isTsNode, typed } from "./lib/types.ts"
 import { isDeclarationFile } from "./lib/path.ts"
+import type { Context, Node, Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
 
 /** Schema-changing statements: `CREATE|ALTER|DROP` of a structure, `TRUNCATE TABLE`, `ADD|DROP COLUMN`. */
 const DDL = /\b(?:(?:CREATE|ALTER|DROP)\s+(?:OR\s+REPLACE\s+)?(?:UNIQUE\s+)?(?:TEMP(?:ORARY)?\s+)?(?:TABLE|INDEX|TYPE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|SEQUENCE|EXTENSION|DATABASE|TRIGGER|FUNCTION|PROCEDURE|DOMAIN|POLICY|PUBLICATION|COLLATION|ROLE)|TRUNCATE\s+TABLE|(?:ADD|DROP)\s+(?:COLUMN|CONSTRAINT))\b/i
 
 /** The packages whose option types describe a DataSource. */
-const OPTION_PACKAGES = new Set(["typeorm", "@nestjs/typeorm"])
+const OPTION_PACKAGES = new Set<string | null>(["typeorm", "@nestjs/typeorm"])
 
 /** The DataSource operations that change the schema at runtime. */
 const SCHEMA_OPERATIONS = new Set(["synchronize", "dropDatabase"])
@@ -57,11 +60,11 @@ const WRITE_SQL = /\b(?:INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM|MERGE\s+I
 /** The Nest lifecycle hooks that run at boot in every process that composes the provider. */
 const BOOT_HOOKS = new Set(["onModuleInit", "onApplicationBootstrap"])
 
-const isFalse = (node) => node?.type === "Literal" && node.value === false
+const isFalse = (node: Node | null | undefined) => node?.type === "Literal" && node.value === false
 
 /** The text of every string literal and template chunk under `node`. */
-const stringsUnder = (node) => {
-    const found = []
+const stringsUnder = (node: Node | null | undefined) => {
+    const found: string[] = []
     walk(node, (child) => {
         if (child.type === "Literal" && typeof child.value === "string") found.push(child.value)
         else if (child.type === "TemplateElement") found.push(child.value.cooked ?? "")
@@ -70,10 +73,10 @@ const stringsUnder = (node) => {
 }
 
 /** The non-union, non-intersection constituents of a TypeScript type. */
-const leavesOf = (type) => (type.isUnionOrIntersection() ? type.types.flatMap(leavesOf) : [type])
+const leavesOf = (type: ts.Type): ts.Type[] => (type.isUnionOrIntersection() ? type.types.flatMap(leavesOf) : [type])
 
 /** The `synchronize` members that typeorm declares on the contextual type of an object literal, as TypeScript declarations. */
-const synchronizeMembers = (context, node) => {
+const synchronizeMembers = (context: Context, node: TSESTree.ObjectExpression) => {
     const { checker, toTs } = typed(context)
     const tsNode = toTs(node)
     const expected = tsNode ? checker.getContextualType(tsNode) : undefined
@@ -84,42 +87,45 @@ const synchronizeMembers = (context, node) => {
 }
 
 /** A `synchronize` declared as a method is the DataSource operation, not the options flag. */
-const isMethod = (declaration) => ts.isMethodSignature(declaration) || ts.isMethodDeclaration(declaration)
+const isMethod = (declaration: ts.Declaration) => ts.isMethodSignature(declaration) || ts.isMethodDeclaration(declaration)
 
 /** A `synchronize` declared on typeorm's `EntityOptions` is the per-entity switch, not the connection's. */
-const isEntityOption = (declaration) => ts.isInterfaceDeclaration(declaration.parent) && declaration.parent.name.text === "EntityOptions"
+const isEntityOption = (declaration: ts.Declaration) => ts.isInterfaceDeclaration(declaration.parent) && declaration.parent.name.text === "EntityOptions"
 
 /** Whether an object literal is contextually a DataSource options object: its expected type has a `synchronize` option (a property, not the `synchronize()` method, not an entity's) declared by `typeorm`. */
-const isOptionsObject = (context, node) => synchronizeMembers(context, node).some((declaration) => !isMethod(declaration) && !isEntityOption(declaration))
+const isOptionsObject = (context: Context, node: TSESTree.ObjectExpression) => synchronizeMembers(context, node).some((declaration) => !isMethod(declaration) && !isEntityOption(declaration))
 
 /** Whether an object literal is the options of typeorm's `@Entity(...)`. */
-const isEntityOptions = (context, node) => synchronizeMembers(context, node).some(isEntityOption)
+const isEntityOptions = (context: Context, node: TSESTree.ObjectExpression) => synchronizeMembers(context, node).some(isEntityOption)
 
 /** Whether an object literal is contextually a DataSource (or a partial of one) whose `synchronize` is the method: its keys are overrides of operations, not configuration. */
-const isOperationsObject = (context, node) => {
+const isOperationsObject = (context: Context, node: TSESTree.ObjectExpression) => {
     const members = synchronizeMembers(context, node)
     return members.length > 0 && members.every(isMethod)
 }
 
 /** Whether a file is the cli (the cli app or the cli feature root, whose migrate and seed commands run them) or the test world: the only places that run migrations and seed. */
-const isMigrationHost = (hfs, filename) => inCli(hfs, filename) || inTestWorld(hfs, filename)
+const isMigrationHost = (hfs: HfsView, filename: string) => inCli(hfs, filename) || inTestWorld(hfs, filename)
 
 /** The SQL text of a call argument: a literal, a template, or the quasis of a tagged template. */
-const sqlTextOf = (argument) => (argument ? stringsUnder(argument).join(" ") : "")
+const sqlTextOf = (argument: Node | undefined) => (argument ? stringsUnder(argument).join(" ") : "")
+
+/** A class node: a declaration or an expression. */
+type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression
 
 /**
  * The first call under a lifecycle hook that writes rows: an `EntityManager`/`DataSource`/`QueryRunner` write method, a `.query(...)` whose
  * text writes, or a call of another method of the same class (`this.seed()`) that does.
  */
-const bootWriteOf = (context, method, klass, visited) => {
-    let found = null
+const bootWriteOf = (context: Context, method: TSESTree.MethodDefinition, klass: ClassNode, visited: Set<TSESTree.MethodDefinition>): TSESTree.CallExpression | null => {
+    let found: TSESTree.CallExpression | null = null
     walk(method.value.body, (node) => {
         if (found || node.type !== "CallExpression") return
         const callee = node.callee
         if (callee.type !== "MemberExpression" || callee.computed || callee.property.type !== "Identifier") return
         const name = callee.property.name
         if (callee.object.type === "ThisExpression") {
-            const target = klass.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "method" && !member.computed && keyName(member.key) === name)
+            const target = klass.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "method" && !member.computed && keyName(member.key) === name)
             if (target && !visited.has(target)) {
                 visited.add(target)
                 found = bootWriteOf(context, target, klass, visited)
@@ -133,10 +139,10 @@ const bootWriteOf = (context, method, klass, visited) => {
 }
 
 /** Whether an object literal has a property called `name`. */
-const hasKey = (objectNode, name) => objectNode.properties.some((property) => property.type === "Property" && !property.computed && keyName(property.key) === name)
+const hasKey = (objectNode: TSESTree.ObjectExpression, name: string) => objectNode.properties.some((property) => property.type === "Property" && !property.computed && keyName(property.key) === name)
 
 /** The schema is decided by migrations run by the cli migrate command, never by the running process. */
-export const noRuntimeSchema = {
+export const noRuntimeSchema: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every DataSource options object states `synchronize: false`; no `migrationsRun`, no runtime DDL, no entity or migration glob." },
@@ -221,7 +227,7 @@ export const noRuntimeSchema = {
 // -- R37 -------------------------------------------------------------------------------------------
 
 /** Whether a decorator is `typeorm`'s `Entity`, read through the checker so an aliased import counts. */
-const isEntityDecorator = (checker, decorator) => {
+const isEntityDecorator = (checker: ts.TypeChecker, decorator: ts.Decorator) => {
     const callee = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
     let symbol = checker.getSymbolAtLocation(callee)
     if (symbol && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol)
@@ -229,14 +235,28 @@ const isEntityDecorator = (checker, decorator) => {
 }
 
 /** Whether a TypeScript declaration is a class carrying `@Entity`. */
-const carriesEntity = (checker, declaration) => ts.canHaveDecorators(declaration) && (ts.getDecorators(declaration) ?? []).some((decorator) => isEntityDecorator(checker, decorator))
+const carriesEntity = (checker: ts.TypeChecker, declaration: ts.Node) => ts.canHaveDecorators(declaration) && (ts.getDecorators(declaration) ?? []).some((decorator) => isEntityDecorator(checker, decorator))
+
+/** `declaration.name?.text` of a declaration whose kind is not known (undefined when it has no named `name`). */
+const entityNameOf = (declaration: ts.Declaration): string | undefined => {
+    const name: unknown = "name" in declaration ? declaration.name : undefined
+    if (!isTsNode(name) || !("text" in name)) return undefined
+    return typeof name.text === "string" ? name.text : undefined
+}
+
+/** Whether a type is a type reference (`Array<T>`, `Promise<T>`, a generic class or interface instance). */
+const isTypeReference = (type: ts.Type): type is ts.TypeReference =>
+    (type.flags & ts.TypeFlags.Object) !== 0 && "objectFlags" in type && typeof type.objectFlags === "number" && (type.objectFlags & ts.ObjectFlags.Reference) !== 0
+
+/** The type arguments of a type reference; any other type has none. */
+const typeArgumentsOf = (checker: ts.TypeChecker, type: ts.Type): readonly ts.Type[] => (isTypeReference(type) ? checker.getTypeArguments(type) : [])
 
 /**
  * The name of an ORM entity a type reaches, or null: the type itself, a union or intersection member, a type argument
  * (`Array<OrderEntity>`, `Promise<...>`), or a property of a type the repository declares. Types declared by a package
  * or the language are not walked into, only through their type arguments.
  */
-const entityReached = (checker, type, seen, depth) => {
+const entityReached = (checker: ts.TypeChecker, type: ts.Type | undefined, seen: Set<ts.Type>, depth: number): string | null => {
     if (!type || depth > 6 || seen.has(type)) return null
     seen.add(type)
     if (type.isUnionOrIntersection()) {
@@ -248,8 +268,8 @@ const entityReached = (checker, type, seen, depth) => {
     }
     const declarations = type.getSymbol()?.getDeclarations() ?? []
     const entity = declarations.find((declaration) => carriesEntity(checker, declaration))
-    if (entity) return entity.name?.text ?? "an entity"
-    for (const argument of checker.getTypeArguments(type)) {
+    if (entity) return entityNameOf(entity) ?? "an entity"
+    for (const argument of typeArgumentsOf(checker, type)) {
         const found = entityReached(checker, argument, seen, depth + 1)
         if (found) return found
     }
@@ -264,11 +284,11 @@ const entityReached = (checker, type, seen, depth) => {
     return null
 }
 
-const FUNCTION_TYPES = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction", "TSEmptyBodyFunctionExpression", "TSMethodSignature"])
+const FUNCTION_TYPES = new Set<string | undefined>(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction", "TSEmptyBodyFunctionExpression", "TSMethodSignature"])
 const PARAMETER_HOLDERS = new Set(["Identifier", "ObjectPattern", "ArrayPattern", "AssignmentPattern", "RestElement"])
 
 /** Which files carry boundary types, and how much of each: the whole file, or only the `execute` of a handler. */
-const boundaryOf = (hfs, filename) => {
+const boundaryOf = (hfs: HfsView, filename: string) => {
     const slot = hfs.slotOf(filename) ?? ""
     const name = baseName(filename)
     if (isTransportSlot(slot)) return "file"
@@ -278,14 +298,14 @@ const boundaryOf = (hfs, filename) => {
 }
 
 /** The MethodDefinition a node sits in the signature of, or null. */
-const methodOf = (node) => {
-    let current = node
+const methodOf = (node: Node) => {
+    let current: Node | undefined = node
     while (current && !FUNCTION_TYPES.has(current.type)) current = current.parent
     return current?.parent?.type === "MethodDefinition" ? current.parent : null
 }
 
 /** An ORM entity type never appears in a contract, DTO, command or query, transport signature or handler `execute`. */
-export const noEntityInContract = {
+export const noEntityInContract: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No type declared with `@Entity` is reachable from a transport signature, a handler `execute`, a `*.contracts.ts` or a message." },
@@ -299,7 +319,7 @@ export const noEntityInContract = {
         const filename = context.filename || context.getFilename()
         if (isDeclarationFile(filename)) return {}
         const hfs = hfsOf(context)
-        const listeners = {}
+        const listeners: RuleListener = {}
         if (baseName(filename).endsWith(".entity.ts")) {
             listeners.ImportDeclaration = (node) => {
                 const source = String(node.source.value)
@@ -311,11 +331,12 @@ export const noEntityInContract = {
         const boundary = boundaryOf(hfs, filename)
         if (!boundary) return listeners
         const { checker, toTs } = typed(context)
-        const reported = new Set()
-        const judge = (typeNode) => {
+        const reported = new Set<Node>()
+        const judge = (typeNode: TSESTree.TypeNode) => {
             if (reported.has(typeNode)) return
             const tsNode = toTs(typeNode)
-            if (!tsNode) return
+            // every type annotation maps to a TypeScript type node; the kind check only tells the compiler so
+            if (!tsNode || !ts.isTypeNode(tsNode)) return
             const name = entityReached(checker, checker.getTypeFromTypeNode(tsNode), new Set(), 0)
             if (name) {
                 reported.add(typeNode)
@@ -323,11 +344,15 @@ export const noEntityInContract = {
             }
         }
         /** Whether a signature is one this file is judged on. */
-        const inScope = (node) => boundary === "file" || methodOf(node)?.key?.name === "execute"
+        const inScope = (node: Node) => {
+            if (boundary === "file") return true
+            const key = methodOf(node)?.key
+            return key !== undefined && "name" in key && key.name === "execute"
+        }
         listeners.TSTypeAnnotation = (node) => {
             const holder = node.parent
             const isParameter = PARAMETER_HOLDERS.has(holder.type) && (FUNCTION_TYPES.has(holder.parent?.type) || holder.parent?.type === "TSParameterProperty")
-            const isReturn = FUNCTION_TYPES.has(holder.type) && holder.returnType === node
+            const isReturn = FUNCTION_TYPES.has(holder.type) && "returnType" in holder && holder.returnType === node
             const isMember = holder.type === "PropertyDefinition" || holder.type === "TSPropertySignature"
             if ((isParameter || isReturn || (isMember && boundary === "file")) && inScope(holder)) judge(node.typeAnnotation)
         }
@@ -346,14 +371,14 @@ export const noEntityInContract = {
 
 // -- R74 -------------------------------------------------------------------------------------------
 
-const methodNamed = (klass, name) =>
-    klass.body.body.find((member) => member.type === "MethodDefinition" && !member.computed && keyName(member.key) === name)
+const methodNamed = (klass: TSESTree.ClassDeclaration, name: string) =>
+    klass.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && !member.computed && keyName(member.key) === name)
 
 /** Whether a `down` body does nothing but refuse. */
-const onlyThrows = (body) => body.body.length > 0 && body.body.every((statement) => statement.type === "ThrowStatement")
+const onlyThrows = (body: TSESTree.BlockStatement) => body.body.length > 0 && body.body.every((statement) => statement.type === "ThrowStatement")
 
 /** A migration can be undone. */
-export const migrationDownReversible = {
+export const migrationDownReversible: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A migration declares a `down()` that reverses its `up()`." },
@@ -367,14 +392,15 @@ export const migrationDownReversible = {
     create(context) {
         const filename = context.filename || context.getFilename()
         if (isDeclarationFile(filename) || !isMigrationFile(hfsOf(context), filename)) return {}
-        const check = (node) => {
+        const check = (node: TSESTree.ClassDeclaration) => {
             if (!node.body) return
             const up = methodNamed(node, "up")
             if (!up) return
             const down = methodNamed(node, "down")
+            const downBody = down?.value.body
             if (!down) context.report({ node: node.id ?? node, messageId: "missing" })
-            else if (down.value.body.body.length === 0) context.report({ node: down.key, messageId: "empty" })
-            else if (onlyThrows(down.value.body)) context.report({ node: down.key, messageId: "throws" })
+            else if (downBody?.body.length === 0) context.report({ node: down.key, messageId: "empty" })
+            else if (downBody && onlyThrows(downBody)) context.report({ node: down.key, messageId: "throws" })
         }
         return { ClassDeclaration: check }
     },
@@ -385,10 +411,10 @@ export const rules = {
     "no-runtime-schema": noRuntimeSchema,
     "no-entity-in-contract": noEntityInContract,
     "migration-down-reversible": migrationDownReversible,
-}
+} satisfies Rules
 
 /** All three start at error: HFS keeps no baseline and the schema migration lanes clear the debt first. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-runtime-schema": "error",
     "starci-be/no-entity-in-contract": "error",
     "starci-be/migration-down-reversible": "error",

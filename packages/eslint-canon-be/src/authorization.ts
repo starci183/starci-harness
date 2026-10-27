@@ -10,9 +10,12 @@
  * default-deny the guard is global, so there is nothing left for the door to carry.
  */
 import { importsFrom } from "./lib/declared.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import { isNode } from "./lib/rule.ts"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** True when the decorator expression names `UseGuards`, however it was imported. */
-const isUseGuards = (decorator, aliases) => {
+const isUseGuards = (decorator: TSESTree.Decorator, aliases: Map<string, string>) => {
     const expression = decorator.expression.type === "CallExpression" ? decorator.expression.callee : decorator.expression
     if (expression.type === "Identifier") return expression.name === "UseGuards" || aliases.get(expression.name) === "UseGuards"
     if (expression.type === "MemberExpression" && !expression.computed && expression.property.type === "Identifier") {
@@ -22,7 +25,7 @@ const isUseGuards = (decorator, aliases) => {
 }
 
 /** No route picks its own guard: the global APP_GUARD chain decides. */
-export const noAuthUseGuards = {
+export const noAuthUseGuards: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`@UseGuards(...)` is not used: authentication and authorization are the global APP_GUARD chain." },
@@ -33,7 +36,7 @@ export const noAuthUseGuards = {
         },
     },
     create(context) {
-        let aliases = new Map()
+        let aliases = new Map<string, string>()
         return {
             Program(node) {
                 aliases = importsFrom(node, () => true)
@@ -48,7 +51,7 @@ export const noAuthUseGuards = {
 const GUARD_NAME = /Guard$/
 
 /** The identifier a type reference or expression ends in, or undefined. */
-const nameOf = (node) => {
+const nameOf = (node: Node | null | undefined): string | undefined => {
     if (node === undefined || node === null) return undefined
     if (node.type === "Identifier") return node.name
     if (node.type === "TSQualifiedName") return node.right.name
@@ -57,25 +60,26 @@ const nameOf = (node) => {
 }
 
 /** True when the class is a guard: it implements CanActivate or is named `...Guard`. */
-const isGuardClass = (node) =>
+const isGuardClass = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) =>
     GUARD_NAME.test(node.id?.name ?? "") || (node.implements ?? []).some((item) => nameOf(item.expression) === "CanActivate")
 
 /** True when the type mentions CanActivate or a `...Guard` class, directly or as `Type<...>` / a union member. */
-const namesGuardType = (type) => {
+const namesGuardType = (type: TSESTree.TypeNode | null | undefined): boolean => {
     if (type === undefined || type === null) return false
     if (type.type === "TSTypeReference") {
         const name = nameOf(type.typeName)
         if (name === "CanActivate" || GUARD_NAME.test(name ?? "")) return true
-        return (type.typeArguments ?? type.typeParameters)?.params?.some(namesGuardType) ?? false
+        const legacy: unknown = Reflect.get(type, "typeParameters")
+        return (type.typeArguments ?? (isNode(legacy) && legacy.type === "TSTypeParameterInstantiation" ? legacy : undefined))?.params?.some(namesGuardType) ?? false
     }
     if (type.type === "TSUnionType" || type.type === "TSIntersectionType") return type.types.some(namesGuardType)
     return false
 }
 
-const parameterOf = (parameter) => (parameter.type === "TSParameterProperty" ? parameter.parameter : parameter)
+const parameterOf = (parameter: TSESTree.Parameter) => (parameter.type === "TSParameterProperty" ? parameter.parameter : parameter)
 
 /** True when an `@Inject(SomeGuard)` style decorator names a guard class. */
-const injectsGuardToken = (parameter) =>
+const injectsGuardToken = (parameter: TSESTree.Parameter) =>
     (parameter.decorators ?? []).some(
         (decorator) =>
             decorator.expression.type === "CallExpression" &&
@@ -83,7 +87,7 @@ const injectsGuardToken = (parameter) =>
     )
 
 /** A guard never calls, extends or receives another guard: the app registers each one as its own APP_GUARD. */
-export const noGuardInjectsGuard = {
+export const noGuardInjectsGuard: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A guard class has no constructor parameter that is another guard (no CanActivate-typed parameter)." },
@@ -94,14 +98,14 @@ export const noGuardInjectsGuard = {
         },
     },
     create(context) {
-        const check = (node) => {
+        const check = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) => {
             if (!isGuardClass(node)) return
-            const constructor = node.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "constructor")
+            const constructor = node.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "constructor")
             for (const raw of constructor?.value.params ?? []) {
                 const parameter = parameterOf(raw)
                 const annotation = parameter.typeAnnotation?.typeAnnotation
                 if (namesGuardType(annotation) || injectsGuardToken(raw) || injectsGuardToken(parameter)) {
-                    context.report({ node: raw, messageId: "guardInGuard", data: { name: parameter.name ?? "guard" } })
+                    context.report({ node: raw, messageId: "guardInGuard", data: { name: ("name" in parameter ? parameter.name : undefined) ?? "guard" } })
                 }
             }
         }
@@ -113,10 +117,10 @@ export const noGuardInjectsGuard = {
 export const rules = {
     "no-auth-use-guards": noAuthUseGuards,
     "no-guard-injects-guard": noGuardInjectsGuard,
-}
+} satisfies Rules
 
 /** The level a consuming repository switches this on at. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-auth-use-guards": "error",
     "starci-be/no-guard-injects-guard": "error",
 }

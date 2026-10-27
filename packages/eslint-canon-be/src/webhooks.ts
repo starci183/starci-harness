@@ -23,12 +23,16 @@ import { callsOf, decoratorsFrom, hasClassDecorator, injectedMembers, methodsDec
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorArguments, decoratorCallee, importOf, isImportedFrom } from "./lib/import-source.ts"
 import { baseName, enumMemberOf } from "./lib/ports.ts"
-import { typed } from "./lib/types.ts"
+import { childNode, resolvedSymbol, typed } from "./lib/types.ts"
 import { isProviderAcknowledgement } from "./lib/webhook-ack.ts"
 import { webhookForbiddenReferences, webhookIntakeDispatchesCommand } from "./lib/webhook-handoff.ts"
 import { firstWebhookChallenge, firstWebhookVerification, isWebhookChallengeReturn, isWebhookDomainServiceType as isDomainServiceType, isWebhookSignatureType as isSignatureType } from "./lib/webhook-verifiers.ts"
 import { webhookInboxKey } from "./lib/webhook-handoff-inbox.ts"
 import { webhookIntakeProcessesDelivery } from "./lib/webhook-handoff-intake.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { ClassNode, MethodCall } from "./lib/doors.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The slot of provider webhook doors. */
 const SLOT = "be.feature.webhooks.http"
@@ -40,8 +44,8 @@ const HTTP_VERBS = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "
 const DECISION_NODES = new Set(["IfStatement", "SwitchStatement", "ConditionalExpression", "LogicalExpression", "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement", "DoWhileStatement", "TryStatement", "ThrowStatement"])
 
 /** The `@Controller` classes of a webhook file, with their handler methods. */
-const doorsOf = (context, program) => {
-    const doors = []
+const doorsOf = (context: Context, program: TSESTree.Program): TSESTree.ClassDeclaration[] => {
+    const doors: TSESTree.ClassDeclaration[] = []
     walk(program, (node) => {
         if (node.type !== "ClassDeclaration") return
         if (hasClassDecorator(context, node, "@nestjs/common", "Controller")) doors.push(node)
@@ -50,52 +54,52 @@ const doorsOf = (context, program) => {
 }
 
 /** The route methods of a controller: every method carrying an HTTP verb decorator. */
-const routeMethods = (context, controller) => methodsDecoratedBy(context, controller, "@nestjs/common", HTTP_VERBS)
+const routeMethods = (context: Context, controller: ClassNode): TSESTree.MethodDefinition[] => methodsDecoratedBy(context, controller, "@nestjs/common", HTTP_VERBS)
 
 /** The handler of a webhook door: its `@Post` method, or null when it has none. */
-const handlerOf = (context, controller) => methodsDecoratedBy(context, controller, "@nestjs/common", "Post")[0] ?? null
+const handlerOf = (context: Context, controller: ClassNode): TSESTree.MethodDefinition | null => methodsDecoratedBy(context, controller, "@nestjs/common", "Post")[0] ?? null
 
 /** Aliased decorators retain the HTTP verb exported by Nest, rather than their local spelling. */
-const routeVerbs = (context, route) => decoratorsFrom(context, route, "@nestjs/common", HTTP_VERBS).map((decorator) => HTTP_VERBS.find((verb) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", verb)))
+const routeVerbs = (context: Context, route: TSESTree.MethodDefinition): (string | undefined)[] => decoratorsFrom(context, route, "@nestjs/common", HTTP_VERBS).map((decorator) => HTTP_VERBS.find((verb) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", verb)))
 
 /** One unambiguous POST plus at most one unambiguous GET; stacked verb decorators grant no extra routes. */
-const validRoutes = (context, routes) => {
+const validRoutes = (context: Context, routes: TSESTree.MethodDefinition[]): boolean => {
     const verbs = routes.flatMap((route) => routeVerbs(context, route))
     return verbs.length === routes.length && verbs.filter((verb) => verb === "Post").length === 1
         && verbs.filter((verb) => verb === "Get").length <= 1 && verbs.every((verb) => verb === "Post" || verb === "Get")
 }
 
 /** A route's name is only presentation, never its identity. */
-const methodName = (method) => method.key.type === "Identifier" ? method.key.name : "the handler"
+const methodName = (method: TSESTree.MethodDefinition): string => method.key.type === "Identifier" ? method.key.name : "the handler"
 
 /** True when the method carries `@Public({ reason: PublicReason.SignedWebhook })`: the reason is read from the enum member the argument is. */
-const isSignedWebhookDoor = (context, method) =>
+const isSignedWebhookDoor = (context: Context, method: TSESTree.MethodDefinition): boolean =>
     (method.decorators ?? []).some((decorator) => {
         const callee = decoratorCallee(decorator)
         if (callee?.type !== "Identifier" || importOf(context, callee) === null) return false
         const options = decoratorArguments(decorator)[0]
         if (options?.type !== "ObjectExpression") return false
-        const reason = options.properties.find((property) => property.type === "Property" && !property.computed && property.key.type === "Identifier" && property.key.name === "reason")
+        const reason = options.properties.find((property): property is TSESTree.Property => property.type === "Property" && !property.computed && property.key.type === "Identifier" && property.key.name === "reason")
         const member = reason ? enumMemberOf(context, reason.value) : null
         return member !== null && member.enumName === "PublicReason" && member.member === "SignedWebhook"
     })
 
 /** Decisions are equally forbidden in the delivery and subscription doors. */
-const reportDecisions = (context, method) => {
+const reportDecisions = (context: Context, method: TSESTree.MethodDefinition): void => {
     walk(method.value.body, (child) => {
         if (DECISION_NODES.has(child.type)) context.report({ node: child, messageId: "branch", data: { what: child.type === "LogicalExpression" ? child.operator : child.type.replace(/(Statement|Expression)$/, "").toLowerCase() } })
     })
 }
 
 /** POST returns are restricted to the immutable literal acknowledgement of this webhook feature. */
-const reportPostReturns = (context, hfs, handler) => {
+const reportPostReturns = (context: Context, hfs: HfsView, handler: TSESTree.MethodDefinition): void => {
     walk(handler.value.body, (child) => {
         if (child.type === "ReturnStatement" && child.argument && !isProviderAcknowledgement(context, hfs, child.argument)) context.report({ node: child, messageId: "returns", data: { name: methodName(handler) } })
     })
 }
 
 /** Delivery calls consist only of the completed proof and one domain inbox intake. */
-const deliveryCallKind = (context, hfs, entry, separateProof, proof) => {
+const deliveryCallKind = (context: Context, hfs: HfsView, entry: MethodCall, separateProof: boolean, proof: TSESTree.CallExpression | null): "call" | "proof" | "intake" => {
     if (entry.receiver === null) return "call"
     if (isSignatureType(context, entry.receiver) && entry.method === "verify") return "proof"
     if (!isDomainServiceType(context, hfs, entry.receiver)) return "call"
@@ -104,12 +108,12 @@ const deliveryCallKind = (context, hfs, entry, separateProof, proof) => {
 }
 
 /** A declared proof is no escape hatch for dispatching commands behind the intake door. */
-const reportDomainDispatch = (context, hfs, call, receiver) => {
+const reportDomainDispatch = (context: Context, hfs: HfsView, call: TSESTree.CallExpression, receiver: TSESTree.Expression | null): void => {
     if (receiver !== null && isDomainServiceType(context, hfs, receiver) && webhookIntakeDispatchesCommand(context, hfs, call)) context.report({ node: call, messageId: "handoff" })
 }
 
 /** Delivery calls consist only of the completed proof and one domain inbox intake. */
-const reportIntakeCalls = (context, hfs, handler) => {
+const reportIntakeCalls = (context: Context, hfs: HfsView, handler: TSESTree.MethodDefinition): void => {
     const proof = firstWebhookVerification(context, hfs, handler)
     const calls = callsOf(handler)
     const domainCalls = calls.filter(({ receiver }) => receiver !== null && isDomainServiceType(context, hfs, receiver))
@@ -130,7 +134,7 @@ const reportIntakeCalls = (context, hfs, handler) => {
 }
 
 /** A challenge calls its domain verifier once and echoes exactly the returned value. */
-const reportChallenge = (context, hfs, handler) => {
+const reportChallenge = (context: Context, hfs: HfsView, handler: TSESTree.MethodDefinition): void => {
     const challenge = firstWebhookChallenge(context, hfs, handler)
     let echoes = 0
     walk(handler.value.body, (child) => {
@@ -146,7 +150,7 @@ const reportChallenge = (context, hfs, handler) => {
 }
 
 /** Public declaration and branch restrictions apply to both routes. */
-const reportRoute = (context, hfs, handler, challenge = false) => {
+const reportRoute = (context: Context, hfs: HfsView, handler: TSESTree.MethodDefinition, challenge = false): void => {
     if (!isSignedWebhookDoor(context, handler)) context.report({ node: handler.key, messageId: "notPublic", data: { name: methodName(handler) } })
     reportDecisions(context, handler)
     if (challenge) reportChallenge(context, hfs, handler)
@@ -157,13 +161,13 @@ const reportRoute = (context, hfs, handler, challenge = false) => {
 }
 
 /** The provider file contains one controller; an exported PROVIDER_ACK declaration may accompany it. */
-const reportDoor = (context, hfs, program) => {
+const reportDoor = (context: Context, hfs: HfsView, program: TSESTree.Program): void => {
     const doors = doorsOf(context, program)
-    if (doors.length !== 1) {
+    const [door] = doors
+    if (doors.length !== 1 || !door) {
         context.report({ node: program, messageId: "noDoor" })
         return
     }
-    const door = doors[0]
     for (const { node, annotation } of injectedMembers(context, door)) {
         if (!annotation || !(isSignatureType(context, annotation) || isDomainServiceType(context, hfs, annotation))) context.report({ node, messageId: "injects", data: { what: context.sourceCode.getText(node) } })
     }
@@ -173,20 +177,19 @@ const reportDoor = (context, hfs, program) => {
         context.report({ node: door, messageId: "route", data: { count: String(routes.length), verbs } })
         return
     }
-    reportRoute(context, hfs, handlerOf(context, door))
+    const handler = handlerOf(context, door)
+    if (handler) reportRoute(context, hfs, handler)
     for (const challenge of methodsDecoratedBy(context, door, "@nestjs/common", "Get")) reportRoute(context, hfs, challenge, true)
 }
 
 /** Resolve a decorator or method through its imported alias to its declaration. */
-const targetSymbol = (checker, node) => {
-    const symbol = checker.getSymbolAtLocation(node)
-    return symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
-}
+const targetSymbol = (checker: ts.TypeChecker, node: ts.Node): ts.Symbol | undefined => resolvedSymbol(checker, checker.getSymbolAtLocation(node))
 
 /** Public metadata belongs to the identity owner, including aliases and namespace imports. */
-const isPublicDecorator = (context, hfs, decorator) => {
+const isPublicDecorator = (context: Context, hfs: HfsView, decorator: TSESTree.Decorator): boolean | undefined => {
     const { checker, toTs } = typed(context)
-    const node = toTs(decoratorCallee(decorator))
+    const callee = decoratorCallee(decorator)
+    const node = callee && toTs(callee)
     const symbol = node && targetSymbol(checker, ts.isPropertyAccessExpression(node) ? node.name : node)
     return symbol?.getName() === "Public" && symbol.getDeclarations()?.some((declaration) => {
         const file = declaration.getSourceFile().fileName.replace(/\\/g, "/")
@@ -195,13 +198,15 @@ const isPublicDecorator = (context, hfs, decorator) => {
 }
 
 /** Unwrap const/satisfies annotations without granting a computed declaration a proof. */
-const unwrapTs = (node) => {
+function unwrapTs(node: ts.Node): ts.Node
+function unwrapTs(node: ts.Node | null | undefined): ts.Node | null | undefined
+function unwrapTs(node: ts.Node | null | undefined): ts.Node | null | undefined {
     while (node && (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node))) node = node.expression
     return node
 }
 
 /** Static object properties keep aliases, spreads and computed literal keys readable. Last writes win. */
-const propertyValue = (checker, expression, name, seen = new Set()) => {
+const propertyValue = (checker: ts.TypeChecker, expression: ts.Node | null | undefined, name: string, seen = new Set<ts.Node>()): ts.Node | null => {
     const node = unwrapTs(expression)
     if (!node || seen.has(node)) return null
     seen.add(node)
@@ -212,21 +217,21 @@ const propertyValue = (checker, expression, name, seen = new Set()) => {
                 if (value) return value
             } else if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) {
                 const key = ts.isComputedPropertyName(property.name) ? unwrapTs(property.name.expression) : property.name
-                if ((ts.isIdentifier(key) || ts.isStringLiteralLike(key)) && key.text === name) return property.initializer ?? property.name
+                if ((ts.isIdentifier(key) || ts.isStringLiteralLike(key)) && key.text === name) return ts.isPropertyAssignment(property) ? property.initializer : property.name
             }
         }
         return null
     }
     const symbol = targetSymbol(checker, ts.isPropertyAccessExpression(node) ? node.name : node)
     for (const declaration of symbol?.getDeclarations() ?? []) {
-        const value = propertyValue(checker, declaration.initializer, name, seen)
+        const value = propertyValue(checker, childNode(declaration, "initializer"), name, seen)
         if (value) return value
     }
     return null
 }
 
 /** A public reason is the actual `PublicReason` member of the identity owner, even behind a const options alias. */
-const publicReason = (context, decorator, member) => {
+const publicReason = (context: Context, decorator: TSESTree.Decorator, member: string): boolean => {
     const { checker, toTs } = typed(context)
     const options = decoratorArguments(decorator)[0]
     const reason = options && propertyValue(checker, toTs(options), "reason")
@@ -242,14 +247,15 @@ const publicReason = (context, decorator, member) => {
 }
 
 /** A SignedWebhook reason is the actual identity enum member, even behind a const options alias. */
-const signedReason = (context, decorator) => publicReason(context, decorator, "SignedWebhook")
+const signedReason = (context: Context, decorator: TSESTree.Decorator): boolean => publicReason(context, decorator, "SignedWebhook")
 
 /** An explicit verifier exemption names the exact domain method in a webhook HTTP module's exported const array. */
-const declaredVerifier = (context, hfs, method) => {
+const declaredVerifier = (context: Context, hfs: HfsView, method: Node | null | undefined): boolean => {
     if (method?.type !== "MethodDefinition" || hfs.tierOf(context.filename) !== "domain" || !baseName(context.filename).endsWith(".service.ts")) return false
     const { checker, program, toTs } = typed(context)
     const declaration = toTs(method)
-    const symbol = declaration?.name && targetSymbol(checker, declaration.name)
+    const name = childNode(declaration, "name")
+    const symbol = name && targetSymbol(checker, name)
     if (!symbol) return false
     return program.getSourceFiles().some((source) => hfs.slotOf(source.fileName) === SLOT && baseName(source.fileName).endsWith(".module.ts")
         && source.statements.some((statement) => ts.isVariableStatement(statement)
@@ -266,10 +272,10 @@ const declaredVerifier = (context, hfs, method) => {
 }
 
 /** Read literal paths and const aliases through the checker; Nest accepts path lists and Controller options too. */
-const routePaths = (context, decorator) => {
+const routePaths = (context: Context, decorator: TSESTree.Decorator): string[] => {
     const { checker, toTs } = typed(context)
-    const seen = new Set()
-    const read = (original) => {
+    const seen = new Set<ts.Node>()
+    const read = (original: ts.Node | null | undefined): string[] => {
         const node = unwrapTs(original)
         if (!node || seen.has(node)) return []
         seen.add(node)
@@ -280,11 +286,11 @@ const routePaths = (context, decorator) => {
             return read(node.left).flatMap((left) => read(node.right).map((right) => left + right))
         }
         if (ts.isTemplateExpression(node)) {
-            return node.templateSpans.reduce((values, span) => values.flatMap((value) => read(span.expression).map((part) => value + part + span.literal.text)), [node.head.text])
+            return node.templateSpans.reduce<string[]>((values, span) => values.flatMap((value) => read(span.expression).map((part) => value + part + span.literal.text)), [node.head.text])
         }
         const reference = ts.isPropertyAccessExpression(node) ? node.name : node
         const symbol = targetSymbol(checker, reference)
-        return symbol?.getDeclarations()?.flatMap((declaration) => read(declaration.initializer)) ?? []
+        return symbol?.getDeclarations()?.flatMap((declaration) => read(childNode(declaration, "initializer"))) ?? []
     }
     return decoratorArguments(decorator).flatMap((argument) => read(toTs(argument)))
 }
@@ -294,12 +300,12 @@ const routePaths = (context, decorator) => {
  * a GET named `callback` that declares the closed reason `PublicReason.AuthHandshake`. It is a browser redirect with no
  * signature to verify, so it is not a webhook door. A POST, a `webhook` or `events` path, or any other reason is still judged.
  */
-const isOAuthRedirect = (context, route, publicMetadata, paths) =>
+const isOAuthRedirect = (context: Context, route: TSESTree.MethodDefinition, publicMetadata: TSESTree.Decorator[], paths: string[]): boolean =>
     routeVerbs(context, route).every((verb) => verb === "Get") && publicMetadata.some((decorator) => publicReason(context, decorator, "AuthHandshake"))
     && !paths.some((path) => /webhook|events/i.test(path))
 
 /** R263: public webhook traffic always enters the signed, verified webhook kind. */
-export const webhookScope = {
+export const webhookScope: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "SignedWebhook metadata belongs only to webhook doors or explicitly declared domain verifiers; public webhook/callback/events routes belong to the webhook kind, except a GET OAuth redirect that declares PublicReason.AuthHandshake." },
@@ -339,7 +345,7 @@ export const webhookScope = {
 }
 
 /** A provider webhook door: one signed `@Post`, the signature proof, one domain intake call, nothing else. */
-export const webhookShape = {
+export const webhookShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A webhook door has one signed POST that verifies first, hands off once to a domain inbox intake and returns empty or its own literal PROVIDER_ACK, plus an optional signed GET that echoes only its domain verifier result. No command bus reaches the door or intake." },
@@ -371,7 +377,7 @@ export const webhookShape = {
 }
 
 /** The first statement of the handler is the unconditional signature proof. */
-export const webhookVerifyFirst = {
+export const webhookVerifyFirst: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "POST starts with an unconditional shared signature or declared domain proof. An optional GET starts with its domain challenge verifier, binding or returning only that result. Async proofs are awaited before any other work." },
@@ -403,10 +409,10 @@ export const rules = {
     "webhook-verify-first": webhookVerifyFirst,
     "webhook-scope": webhookScope,
     "webhook-inbox-key": webhookInboxKey,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/webhook-shape": "error",
     "starci-be/webhook-verify-first": "error",
     "starci-be/webhook-scope": "error",

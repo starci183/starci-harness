@@ -28,17 +28,19 @@ import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { moduleReferences } from "./lib/import-source.ts"
 import { isOwnedType } from "./lib/ports.ts"
 import { recommended as thirdPartyRecommended, rules as thirdPartyRules } from "./third-party-owner.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The owner id of a file: the last two segments of its owner root (`platform/http`), or null when no owner holds it. */
-const ownerIdOf = (hfs, filename) => {
+const ownerIdOf = (hfs: HfsView, filename: string) => {
     const root = hfs.ownerOf(filename)
     return root === null ? null : root.split("/").slice(-2).join("/")
 }
 
 /** The table key a module specifier falls under (the specifier itself or a subpath of it, with or without `node:`), or null. */
-const keyOf = (table, specifier) => {
+const keyOf = (table: Readonly<Record<string, readonly string[]>>, specifier: string) => {
     const variants = [specifier, specifier.startsWith("node:") ? specifier.slice(5) : `node:${specifier}`]
-    let best = null
+    let best: string | null = null
     for (const variant of variants) {
         for (const key of Object.keys(table)) {
             if ((variant === key || variant.startsWith(`${key}/`)) && (best === null || key.length > best.length)) best = key
@@ -48,7 +50,7 @@ const keyOf = (table, specifier) => {
 }
 
 /** A raw infrastructure library is used only inside the capability that owns it. */
-export const infraImportOwner = {
+export const infraImportOwner: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, events) is imported or referenced only by its owning capability." },
@@ -63,9 +65,10 @@ export const infraImportOwner = {
         const table = hfs.ruleParams.infraOwners
         const here = ownerIdOf(hfs, context.filename)
         const isWorld = inTestWorld(hfs, context.filename)
-        const check = (node, name, key) => {
+        const check = (node: Node, name: string, key: string) => {
             const owners = table[key]
-            if (owners.includes(here) || (isWorld && owners.length > 0 && !owners.includes("platform/logging"))) return
+            if (!owners) return
+            if ((here !== null && owners.includes(here)) || (isWorld && owners.length > 0 && !owners.includes("platform/logging"))) return
             if (owners.length === 0) context.report({ node, messageId: "nowhere", data: { name } })
             else context.report({ node, messageId: "foreign", data: { name, owners: owners.map((owner) => `\`${owner}\``).join(", ") } })
         }
@@ -79,7 +82,7 @@ export const infraImportOwner = {
                 if (Object.hasOwn(table, node.property.name)) check(node, `globalThis.${node.property.name}`, node.property.name)
             },
             "Program:exit"() {
-                const globalScope = context.sourceCode.scopeManager.globalScope
+                const globalScope = context.sourceCode.scopeManager?.globalScope
                 if (!globalScope) return
                 const references = [...globalScope.through, ...globalScope.variables.filter((variable) => variable.defs.length === 0).flatMap((variable) => variable.references)]
                 for (const reference of references) {
@@ -93,7 +96,7 @@ export const infraImportOwner = {
 }
 
 /** The `HttpClient` port of `platform/http`: the one outbound HTTP door, judged by the receiver's TYPE. */
-const isHttpClient = (context, node) => isOwnedType(context, node, { name: "HttpClient", capability: "http", tier: "platform" })
+const isHttpClient = (context: Context, node: Node) => isOwnedType(context, node, { name: "HttpClient", capability: "http", tier: "platform" })
 
 /**
  * A provider is spoken to only by its integration (BE-INFRA-3): a call on the `HttpClient` port is made only in an
@@ -101,7 +104,7 @@ const isHttpClient = (context, node) => isOwnedType(context, node, { name: "Http
  * capability that calls an identity provider's token or admin endpoint, a mailer API or any other remote over HTTP holds a
  * second copy of that provider's protocol, credentials and failure mapping; it calls the integration's public API instead.
  */
-export const httpClientOnlyInIntegrations = {
+export const httpClientOnlyInIntegrations: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The `HttpClient` port of `platform/http` is called only by an `integrations` owner (and `platform/http`, the test world)." },
@@ -129,10 +132,10 @@ export const rules = {
     "infra-import-owner": infraImportOwner,
     "http-client-only-in-integrations": httpClientOnlyInIntegrations,
     ...thirdPartyRules,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/infra-import-owner": "error",
     "starci-be/http-client-only-in-integrations": "error",
     ...thirdPartyRecommended,

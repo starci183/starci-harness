@@ -23,13 +23,16 @@
  *     decidable and stays a human read.
  */
 
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import { nameOrValue } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
 import { hasSecondLanguage } from "../runtime/scripts/lib/language.mjs"
 import { jsdocBefore, jsdocDescription } from "../runtime/scripts/lib/jsdoc.mjs"
+import type { Comment, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The slots of the per-owner message catalogs: the only source files that may hold Vietnamese. */
-const CATALOG_SLOTS = new Set(["be.domain.messages", "be.feature.messages"])
+const CATALOG_SLOTS = new Set<string | null>(["be.domain.messages", "be.feature.messages"])
 
 /**
  * The character classes this refuses, and why it is NOT simply "ASCII only".
@@ -51,7 +54,7 @@ const CATALOG_SLOTS = new Set(["be.domain.messages", "be.feature.messages"])
  *
  * Typographic punctuation is none of those and stays.
  */
-const VIETNAMESE_LETTER_NOTE = "detected by scripts/lib/language.mjs (`hasSecondLanguage`), structural on characters and folded to NFC so a decomposed spelling is caught too"
+// Vietnamese letters are detected by scripts/lib/language.mjs (`hasSecondLanguage`), structural on characters and folded to NFC so a decomposed spelling is caught too.
 
 /** Emoji and pictographs. */
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F0FF}\u{2600}-\u{27BF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/u
@@ -63,7 +66,7 @@ const ORNAMENT = /[✅❌✔✖✗✘⭐⬆⬇➡⬅]/
  * The fixtures slot that may carry localized text: a test data file that reproduces a real localized string. Placement is
  * the whole marker (there is no pragma), and specs never live there, so a test title is never exempt.
  */
-const FIXTURE_SLOTS = new Set(["be.tests.fixtures.i18n"])
+const FIXTURE_SLOTS = new Set<string | null>(["be.tests.fixtures.i18n"])
 
 /** The Vietnamese language's own name, which is a label rather than prose. */
 const ENDONYM = /Ti\u1ebfng Vi\u1ec7t/
@@ -78,7 +81,7 @@ const DOCUMENTED_KINDS = new Set([
 ])
 
 /** What a line offends with, or null. */
-const offenceIn = (line) => {
+const offenceIn = (line: string): string | null => {
   const withoutEndonym = line.normalize("NFC").replace(ENDONYM, "")
   if (hasSecondLanguage(withoutEndonym)) return "a Vietnamese letter"
   if (EMOJI.test(withoutEndonym)) return "an emoji"
@@ -86,33 +89,51 @@ const offenceIn = (line) => {
   return null
 }
 
+/** A declaration of one of the DOCUMENTED_KINDS, or a variable declaration. */
+type DocumentedDeclaration =
+  | TSESTree.TSInterfaceDeclaration
+  | TSESTree.TSTypeAliasDeclaration
+  | TSESTree.TSEnumDeclaration
+  | TSESTree.ClassDeclaration
+  | TSESTree.FunctionDeclaration
+  | TSESTree.VariableDeclaration
+
+/** An export statement that may carry a declaration. */
+type ExportStatement = TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration
+
+/** A member of a class body, an interface body or a type literal. */
+type Member = TSESTree.ClassElement | TSESTree.TypeElement
+
 /**
  * Whether an exported declaration has a surface a caller documents: a data constant is already described by its name,
  * and a kind outside DOCUMENTED_KINDS has no surface at all.
  */
-const hasDocumentedSurface = (declaration) => {
+const hasDocumentedSurface = (declaration: Node): declaration is DocumentedDeclaration => {
   if (declaration.type === "VariableDeclaration") {
     // a later declarator can expose a function even when the first binding is plain data
     return declaration.declarations.some(({ init }) => Boolean(init)
-      && (init.type === "ArrowFunctionExpression" || init.type === "FunctionExpression"))
+      && (init?.type === "ArrowFunctionExpression" || init?.type === "FunctionExpression"))
   }
   return DOCUMENTED_KINDS.has(declaration.type)
 }
 
 /** Whether the adjacent JSDoc has a declaration description rather than only tags or a file header. */
-const hasJsdocBefore = (sourceCode, node) => jsdocBefore(sourceCode, node) !== null
+const hasJsdocBefore = (sourceCode: Readonly<TSESLint.SourceCode>, node: Node): boolean => jsdocBefore(sourceCode, node) !== null
 
 /** The declared name, for the message. */
-const nameOf = (declaration) => {
-  if (declaration.id) return declaration.id.name
-  const first = declaration.declarations && declaration.declarations[0]
-  return (first && first.id && first.id.name) || "this export"
+const nameOf = (declaration: DocumentedDeclaration): string => {
+  if ("id" in declaration && declaration.id) return declaration.id.name
+  const first = "declarations" in declaration && declaration.declarations && declaration.declarations[0]
+  return (first && first.id && first.id.type === "Identifier" && first.id.name) || "this export"
 }
+
+/** The node a finding on a declaration points at: its name, else the declaration itself. */
+const reportedNode = (declaration: DocumentedDeclaration): Node => ("id" in declaration && declaration.id) || declaration
 
 // -- COMMENT-1 -------------------------------------------------------------------------------------
 
 /** Every export with a surface opens with a doc block. */
-export const requireExportJsdoc = {
+export const requireExportJsdoc: RuleModule = {
   meta: {
     type: "suggestion",
     docs: { description: "An exported class/interface/type/enum/function opens with JSDoc." },
@@ -124,14 +145,14 @@ export const requireExportJsdoc = {
   },
   create(context) {
     const sourceCode = context.sourceCode || context.getSourceCode()
-    const check = (node) => {
+    const check = (node: ExportStatement): void => {
       const declaration = node.declaration
       // a re-export has nothing here to attach a doc to
       if (!declaration) return
       if (!hasDocumentedSurface(declaration)) return
       if (hasJsdocBefore(sourceCode, node)) return
       context.report({
-        node: declaration.id || declaration,
+        node: reportedNode(declaration),
         messageId: "jsdoc",
         data: { name: nameOf(declaration) },
       })
@@ -162,7 +183,7 @@ const SIGNATURE_MEMBER_KINDS = new Set(["TSPropertySignature", "TSMethodSignatur
  * A property set to a literal or a named constant (`name = "CreatePlans1758"`, `readonly queue = PLAN_QUEUE`) is already
  * described by its own name and value, the same reason COMMENT-1 leaves a data constant alone.
  */
-const isDataProperty = (member) => {
+const isDataProperty = (member: Member): boolean => {
   if (member.type !== "PropertyDefinition" || !member.value) return false
   const value = member.value
   if (value.type === "Literal" || value.type === "Identifier") return true
@@ -171,18 +192,18 @@ const isDataProperty = (member) => {
 }
 
 /** The test tiers of the slot manifest: spec-read shapes there are documented at the type, not field by field. */
-const TEST_TIERS = new Set(["e2e", "fixtures"])
+const TEST_TIERS = new Set<string | null>(["e2e", "fixtures"])
 
 /** The members of an exported class, interface or object type alias that are its public surface. */
-const publicMembersOf = (declaration) => {
+const publicMembersOf = (declaration: Node): Member[] => {
   if (declaration.type === "ClassDeclaration") {
     return declaration.body.body.filter((member) =>
       CLASS_MEMBER_KINDS.has(member.type)
-      && member.kind !== "constructor"
+      && !("kind" in member && member.kind === "constructor")
       && !isDataProperty(member)
-      && member.key?.type !== "PrivateIdentifier"
-      && member.accessibility !== "private"
-      && member.accessibility !== "protected")
+      && !("key" in member && member.key?.type === "PrivateIdentifier")
+      && !("accessibility" in member && member.accessibility === "private")
+      && !("accessibility" in member && member.accessibility === "protected"))
   }
   if (declaration.type === "TSInterfaceDeclaration") return declaration.body.body.filter((member) => SIGNATURE_MEMBER_KINDS.has(member.type))
   if (declaration.type === "TSTypeAliasDeclaration") {
@@ -195,15 +216,15 @@ const publicMembersOf = (declaration) => {
 }
 
 /** The name a member is reached by, with its static side kept apart; null for a computed key the rule cannot name. */
-const memberKey = (member) => {
-  if (member.computed) return null
-  const key = member.key
+const memberKey = (member: Member): string | null => {
+  if ("computed" in member && member.computed) return null
+  const key = "key" in member ? member.key : undefined
   const name = key?.type === "Identifier" ? key.name : key?.type === "Literal" ? String(key.value) : null
-  return name === null ? null : `${member.static ? "static " : ""}${name}`
+  return name === null ? null : `${"static" in member && member.static ? "static " : ""}${name}`
 }
 
 /** Every public member of an exported class, interface or object type opens with a doc block (BE-COMMENT-3). */
-export const requirePublicMemberJsdoc = {
+export const requirePublicMemberJsdoc: RuleModule = {
   meta: {
     type: "suggestion",
     docs: { description: "Every public member of an exported class, interface or object type alias opens with JSDoc." },
@@ -216,20 +237,27 @@ export const requirePublicMemberJsdoc = {
   create(context) {
     const sourceCode = context.sourceCode || context.getSourceCode()
     if (TEST_TIERS.has(hfsOf(context).tierOf(normalizePath(context.filename)))) return {}
-    const check = (node) => {
+    const check = (node: ExportStatement): void => {
       const declaration = node.declaration
-      if (!declaration || !declaration.id) return
+      if (!declaration || !("id" in declaration) || !declaration.id) return
+      const id = declaration.id
       // overload signatures share one name; a doc on any of them documents the member
-      const groups = new Map()
+      const groups = new Map<string, { key: Node; members: Member[] }>()
       for (const member of publicMembersOf(declaration)) {
         const key = memberKey(member)
-        if (key === null) continue
-        if (!groups.has(key)) groups.set(key, [])
-        groups.get(key).push(member)
+        // a member memberKey names always has a key node; the second test only proves that to the types
+        const keyNode = "key" in member ? member.key : null
+        if (key === null || keyNode === null) continue
+        let group = groups.get(key)
+        if (!group) {
+          group = { key: keyNode, members: [] }
+          groups.set(key, group)
+        }
+        group.members.push(member)
       }
-      for (const [key, members] of groups) {
-        if (members.some((member) => hasJsdocBefore(sourceCode, member))) continue
-        context.report({ node: members[0].key, messageId: "jsdoc", data: { owner: declaration.id.name, name: key.replace(/^static /, "") } })
+      for (const [key, group] of groups) {
+        if (group.members.some((member) => hasJsdocBefore(sourceCode, member))) continue
+        context.report({ node: group.key, messageId: "jsdoc", data: { owner: "name" in id ? id.name : undefined, name: key.replace(/^static /, "") } })
       }
     }
     return {
@@ -242,7 +270,7 @@ export const requirePublicMemberJsdoc = {
 // -- COMMENT-2 -------------------------------------------------------------------------------------
 
 /** Every member of an exported enum carries its own doc. */
-export const requireEnumMemberJsdoc = {
+export const requireEnumMemberJsdoc: RuleModule = {
   meta: {
     type: "suggestion",
     docs: { description: "Every member of an exported enum carries its own JSDoc." },
@@ -259,7 +287,7 @@ export const requireEnumMemberJsdoc = {
         if (!node.parent || node.parent.type !== "ExportNamedDeclaration") return
         for (const member of node.members || []) {
           if (hasJsdocBefore(sourceCode, member)) continue
-          const name = member.id && (member.id.name || member.id.value)
+          const name = member.id && nameOrValue(member.id)
           context.report({ node: member, messageId: "jsdoc", data: { name: name || "?" } })
         }
       },
@@ -270,7 +298,7 @@ export const requireEnumMemberJsdoc = {
 // -- COMMENT-4 -------------------------------------------------------------------------------------
 
 /** Source prose is English; there is no exemption marker. */
-export const noNonAsciiSource = {
+export const noNonAsciiSource: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Source stays English; no exemption marker." },
@@ -289,8 +317,7 @@ export const noNonAsciiSource = {
     return {
       "Program:exit"(node) {
         const lines = sourceCode.getLines()
-        for (let index = 0; index < lines.length; index += 1) {
-          const line = lines[index]
+        for (const [index, line] of lines.entries()) {
           const offence = offenceIn(line)
           if (offence === null) continue
           context.report({
@@ -313,7 +340,7 @@ export const noNonAsciiSource = {
 // -- law 7 -------------------------------------------------------------------------------------
 
 /** Splits a declared name into its lowercase words, so `readUser` compares against "read user". */
-const wordsOf = (name) =>
+const wordsOf = (name: unknown): string[] =>
   (String(name || "")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
@@ -329,13 +356,13 @@ const wordsOf = (name) =>
 const RESTATEMENT_FILLER = new Set(["a", "an", "the", "is", "of", "for", "to", "this", "that", "function", "state"])
 
 /** The content words a doc comment contributes once filler is stripped out. */
-const docContentWords = (comment) =>
+const docContentWords = (comment: Comment): string[] =>
   (jsdocDescription(comment).match(/[A-Za-z]+/g) || [])
     .map((word) => word.toLowerCase())
     .filter((word) => !RESTATEMENT_FILLER.has(word))
 
 /** Whether a doc's leftover content words are exactly the declared name's own words - nothing added. */
-const isPureRestatement = (comment, declaredName) => {
+const isPureRestatement = (comment: Comment, declaredName: unknown): boolean => {
   const content = docContentWords(comment)
   const identifier = wordsOf(declaredName)
   if (content.length === 0 || identifier.length === 0) return false
@@ -347,7 +374,7 @@ const isPureRestatement = (comment, declaredName) => {
 }
 
 /** A doc block that only re-spells the declared name is COMMENT-3's violation wearing COMMENT-1's shape. */
-export const noRestatedNameJsdoc = {
+export const noRestatedNameJsdoc: RuleModule = {
   meta: {
     type: "suggestion",
     docs: {
@@ -362,7 +389,7 @@ export const noRestatedNameJsdoc = {
   },
   create(context) {
     const sourceCode = context.sourceCode || context.getSourceCode()
-    const checkExport = (node) => {
+    const checkExport = (node: ExportStatement): void => {
       const declaration = node.declaration
       // a re-export has nothing here to attach a doc to
       if (!declaration) return
@@ -371,7 +398,7 @@ export const noRestatedNameJsdoc = {
       if (!doc) return
       const name = nameOf(declaration)
       if (!isPureRestatement(doc, name)) return
-      context.report({ node: declaration.id || declaration, messageId: "restated", data: { name } })
+      context.report({ node: reportedNode(declaration), messageId: "restated", data: { name } })
     }
     return {
       ExportNamedDeclaration: checkExport,
@@ -381,7 +408,7 @@ export const noRestatedNameJsdoc = {
         for (const member of node.members || []) {
           const doc = jsdocBefore(sourceCode, member)
           if (!doc) continue
-          const name = member.id && (member.id.name || member.id.value)
+          const name = member.id && nameOrValue(member.id)
           if (!name || !isPureRestatement(doc, name)) continue
           context.report({ node: member, messageId: "restated", data: { name } })
         }
@@ -397,7 +424,7 @@ export const rules = {
   "require-public-member-jsdoc": requirePublicMemberJsdoc,
   "no-non-ascii-source": noNonAsciiSource,
   "no-restated-name-jsdoc": noRestatedNameJsdoc,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -407,7 +434,7 @@ export const rules = {
  * question, and a reader who hit the emoji rule learned nothing about the other two. One rule with
  * one reason is easier to obey, and impossible to satisfy by switching alphabets.
  */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/require-export-jsdoc": "error",
   "starci-be/require-enum-member-jsdoc": "error",
   "starci-be/require-public-member-jsdoc": "error",

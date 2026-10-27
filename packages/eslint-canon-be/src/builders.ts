@@ -19,20 +19,22 @@ import { basename } from "node:path"
 import ts from "typescript"
 import { INSERTING_SQL, isDatabaseReceiver, methodOf, queryText, WRITING_SQL } from "./lib/db-writes.ts"
 import { hfsOf } from "./lib/hfs.ts"
-import { moduleOf, typed } from "./lib/types.ts"
+import { moduleOf, resolvedSymbol, typed } from "./lib/types.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The file name of a linted path, in forward-slash form. */
-const baseOf = (filename) => basename(String(filename || "").replace(/\\/g, "/"))
+const baseOf = (filename: string) => basename(String(filename || "").replace(/\\/g, "/"))
 
 // -- spec-no-raw-insert ----------------------------------------------------------------------------
 
 const WRITE_METHODS = new Set(["save", "insert", "upsert", "update", "delete", "remove", "softDelete", "softRemove", "recover", "restore"])
 
 /** A unit service spec, an integration spec or an e2e spec. */
-const isSpecName = (name) => /\.(?:spec|integration-spec|e2e-spec)\.[cm]?ts$/.test(name)
+const isSpecName = (name: string) => /\.(?:spec|integration-spec|e2e-spec)\.[cm]?ts$/.test(name)
 
 /** A spec arranges rows through a builder, never by writing them itself. */
-export const specNoRawInsert = {
+export const specNoRawInsert: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A spec arranges rows through a builder, never through a raw INSERT or a direct write on an EntityManager." },
@@ -66,19 +68,19 @@ export const specNoRawInsert = {
 // -- spec-no-repeated-row-literal ------------------------------------------------------------------
 
 /** True when a class declaration carries typeorm's `@Entity(...)`, resolved by where the decorator is declared. */
-const isEntityClass = (checker, declaration) => {
+const isEntityClass = (checker: ts.TypeChecker, declaration: ts.Node): declaration is ts.ClassDeclaration => {
     if (!ts.isClassDeclaration(declaration)) return false
     return (ts.getDecorators(declaration) ?? []).some((decorator) => {
         const callee = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
         const symbol = checker.getSymbolAtLocation(callee)
         if (!symbol) return false
-        const target = ts.skipAlias(symbol, checker)
-        return (target.getDeclarations?.() ?? []).some((found) => moduleOf(found, String(found.getSourceFile().fileName).replace(/\\/g, "/")) === "typeorm")
+        const target = resolvedSymbol(checker, symbol)
+        return (target?.getDeclarations?.() ?? []).some((found) => moduleOf(found, String(found.getSourceFile().fileName).replace(/\\/g, "/")) === "typeorm")
     })
 }
 
 /** The entity class declarations a type stands for: itself, a union member, or the argument of a `Partial<Entity>` style alias. */
-const entityClassesOf = (checker, type) => {
+const entityClassesOf = (checker: ts.TypeChecker, type: ts.Type | undefined): ts.ClassDeclaration[] => {
     if (!type) return []
     const parts = type.isUnion?.() ? type.types : [type]
     const candidates = parts.flatMap((part) => [part, ...(part.aliasTypeArguments ?? [])])
@@ -86,7 +88,7 @@ const entityClassesOf = (checker, type) => {
 }
 
 /** A spec builds each persistence entity as an object literal at most once; further rows come from a builder. */
-export const specNoRepeatedRowLiteral = {
+export const specNoRepeatedRowLiteral: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A spec does not hand-build the same persistence entity as an object literal more than once." },
@@ -98,7 +100,7 @@ export const specNoRepeatedRowLiteral = {
     create(context) {
         if (!isSpecName(baseOf(context.filename || context.getFilename()))) return {}
         const { checker, toTs } = typed(context)
-        const firstLine = new Map()
+        const firstLine = new Map<ts.ClassDeclaration, number>()
         return {
             ObjectExpression(node) {
                 if (node.properties.length === 0 || node.properties.some((property) => property.type === "SpreadElement")) return
@@ -121,25 +123,25 @@ const SPEC_SLOTS = new Set(["be.tests.integration", "be.tests.e2e", "be.tests.co
 const CREATING_METHODS = new Set(["save", "insert", "upsert"])
 
 /** A file of the test tree that is not a spec and is not the builders slot. */
-const isTestSupport = (slot) => typeof slot === "string" && slot.startsWith("be.tests.") && slot !== BUILDERS && !SPEC_SLOTS.has(slot)
+const isTestSupport = (slot: string | null | undefined) => typeof slot === "string" && slot.startsWith("be.tests.") && slot !== BUILDERS && !SPEC_SLOTS.has(slot)
 
 /** The top-level statement that holds a node. */
-const topStatementOf = (node) => {
-    let current = node
+const topStatementOf = (node: Node): Node => {
+    let current: Node = node
     while (current.parent && current.parent.type !== "Program") current = current.parent
     return current
 }
 
 /** The names a top-level statement declares. */
-const declaredNames = (statement) => {
+const declaredNames = (statement: Node): string[] => {
     const declaration = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement
     if (!declaration) return []
     if (declaration.type === "VariableDeclaration") return declaration.declarations.flatMap((entry) => (entry.id.type === "Identifier" ? [entry.id.name] : []))
-    return declaration.id ? [declaration.id.name] : []
+    return "id" in declaration && declaration.id && declaration.id.type === "Identifier" ? [declaration.id.name] : []
 }
 
 /** A module of the test tree that exports something creating persisted rows is a builder and lives in the builders slot. */
-export const persistingBuilderInBuildersSlot = {
+export const persistingBuilderInBuildersSlot: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A module that exports functions creating persisted rows through an EntityManager is a test data builder and lives in the builders slot." },
@@ -151,11 +153,11 @@ export const persistingBuilderInBuildersSlot = {
     create(context) {
         if (!isTestSupport(hfsOf(context).slotOf(context.filename || context.getFilename()))) return {}
         const sourceCode = context.sourceCode || context.getSourceCode()
-        const writes = new Set()
-        const references = new Map()
-        const isCreation = (node) => {
+        const writes = new Set<Node>()
+        const references = new Map<Node, Set<string>>()
+        const isCreation = (node: TSESTree.CallExpression) => {
             const method = methodOf(node)
-            if (!method || !isDatabaseReceiver(context, node.callee.object)) return false
+            if (!method || node.callee.type !== "MemberExpression" || !isDatabaseReceiver(context, node.callee.object)) return false
             if (CREATING_METHODS.has(method)) return true
             return method === "query" && INSERTING_SQL.test(queryText(node.arguments[0], sourceCode.getScope(node)) ?? "")
         }
@@ -165,8 +167,12 @@ export const persistingBuilderInBuildersSlot = {
             },
             Identifier(node) {
                 const statement = topStatementOf(node)
-                if (!references.has(statement)) references.set(statement, new Set())
-                references.get(statement).add(node.name)
+                let names = references.get(statement)
+                if (!names) {
+                    names = new Set()
+                    references.set(statement, names)
+                }
+                names.add(node.name)
             },
             "Program:exit"(program) {
                 const exported = new Set(program.body.flatMap((statement) => (statement.type === "ExportNamedDeclaration" && !statement.declaration && !statement.source ? statement.specifiers.map((specifier) => specifier.local.name) : [])))
@@ -189,7 +195,7 @@ const JEST_GLOBALS = new Set(["expect", "jest", "describe", "it", "test", "befor
 const RANDOM_FUNCTIONS = new Set(["randomUUID", "randomBytes", "randomInt", "randomFillSync", "randomFill", "getRandomValues"])
 
 /** A builder arranges data only: no assertion, deterministic defaults. */
-export const builderArrangesOnly = {
+export const builderArrangesOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A test data builder arranges data only: no assertion, deterministic defaults." },
@@ -203,8 +209,8 @@ export const builderArrangesOnly = {
         if (hfsOf(context).slotOf(context.filename || context.getFilename()) !== BUILDERS) return {}
         const sourceCode = context.sourceCode || context.getSourceCode()
         /** True when the identifier is not declared in the file (a framework global, not a local named `test`). */
-        const isGlobal = (node) => {
-            for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+        const isGlobal = (node: TSESTree.Identifier) => {
+            for (let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(node); scope; scope = scope.upper) {
                 const variable = scope.set.get(node.name)
                 if (variable) return variable.defs.length === 0
             }
@@ -254,7 +260,7 @@ const CONSTRAINT_SQL = [
 const CONSTRAINT_METHODS = new Set(["dropForeignKey", "dropForeignKeys", "dropCheckConstraint", "dropCheckConstraints", "dropUniqueConstraint", "dropUniqueConstraints"])
 
 /** The test tree keeps every database constraint on. */
-export const testsKeepConstraints = {
+export const testsKeepConstraints: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Nothing in the test tree disables or drops a database constraint." },
@@ -268,14 +274,15 @@ export const testsKeepConstraints = {
         const slot = hfsOf(context).slotOf(context.filename || context.getFilename())
         if (typeof slot !== "string" || !slot.startsWith("be.tests.")) return {}
         const sourceCode = context.sourceCode || context.getSourceCode()
-        const check = (node, text) => {
+        const check = (node: Node, text: string | null) => {
             const found = CONSTRAINT_SQL.find((pattern) => pattern.test(text ?? ""))
-            if (found) context.report({ node, messageId: "sql", data: { what: text.match(found)[0] } })
+            const what = found ? text?.match(found) : null
+            if (found && what) context.report({ node, messageId: "sql", data: { what: what[0] } })
         }
         return {
             CallExpression(node) {
                 const method = methodOf(node)
-                if (!method || !isDatabaseReceiver(context, node.callee.object)) return
+                if (!method || node.callee.type !== "MemberExpression" || !isDatabaseReceiver(context, node.callee.object)) return
                 if (method === "query") check(node, queryText(node.arguments[0], sourceCode.getScope(node)))
                 else if (CONSTRAINT_METHODS.has(method)) context.report({ node, messageId: "method", data: { method } })
             },
@@ -293,10 +300,10 @@ export const rules = {
     "spec-no-repeated-row-literal": specNoRepeatedRowLiteral,
     "builder-arranges-only": builderArrangesOnly,
     "tests-keep-constraints": testsKeepConstraints,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/persisting-builder-in-builders-slot": "error",
     "starci-be/spec-no-raw-insert": "error",
     "starci-be/spec-no-repeated-row-literal": "error",

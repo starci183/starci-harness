@@ -11,11 +11,16 @@
  *   - a method that carries a decorator (the framework contract fixes it: resolvers, event handlers, lifecycle hooks);
  *   - an `async` generator, whose `yield` is its suspension.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
 import { walk } from "./lib/ast.ts"
 import { isDeclarationFile } from "./lib/path.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
+
+/** A function of any of the three forms. */
+type FunctionNode = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression
 
 /** Whether the function body awaits, ignoring nested functions (each is judged alone). */
-const awaits = (fn) => {
+const awaits = (fn: FunctionNode): boolean => {
   let found = false
   walk(fn.body, (node) => {
     if (found) return
@@ -26,7 +31,7 @@ const awaits = (fn) => {
 }
 
 /** Whether the function is a method whose `async` a base class, interface or decorator fixes. */
-const asyncIsContractual = (fn) => {
+const asyncIsContractual = (fn: FunctionNode): boolean => {
   const method = fn.parent?.type === "MethodDefinition" ? fn.parent : null
   if (!method) return false
   if (method.decorators?.length > 0) return true
@@ -37,7 +42,7 @@ const asyncIsContractual = (fn) => {
 }
 
 /** An `async` function awaits something. */
-export const asyncNeedsAwait = {
+export const asyncNeedsAwait: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "An `async` function contains an `await`, or it is not `async`." },
@@ -50,7 +55,7 @@ export const asyncNeedsAwait = {
   create(context) {
     const filename = context.filename || context.getFilename()
     if (isDeclarationFile(filename)) return {}
-    const check = (node) => {
+    const check = (node: FunctionNode): void => {
       if (!node.async || node.generator || !node.body) return
       if (node.body.type !== "BlockStatement" && node.type === "ArrowFunctionExpression") {
         // an expression body has no statements to await inside; `async () => x` is judged by the expression itself
@@ -75,9 +80,9 @@ export const asyncNeedsAwait = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "async-needs-await": asyncNeedsAwait,
-}
+} satisfies Rules
 
 /** Starts at error: no baseline exists, and the repositories' fix lanes clear the debt. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/async-needs-await": "error",
 }

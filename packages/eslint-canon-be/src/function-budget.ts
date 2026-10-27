@@ -5,10 +5,15 @@
  * Signatures and parameters are outside the body. An expression arrow has an expression body and
  * counts the expression and its wrapping parentheses, including comments and blanks inside them.
  */
+import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf } from "./lib/hfs.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
+
+/** A function of any of the three forms. */
+type FunctionNode = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression
 
 /** Functions, methods, constructors, accessors and callbacks all receive the same body budget. */
-export const functionLineBudget = {
+export const functionLineBudget: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A function body stays within ruleParams.functionLines, counting comments and blank lines." },
@@ -22,13 +27,16 @@ export const functionLineBudget = {
         const max = hfsOf(context).ruleParams.functionLines ?? 80
         if (!Number.isInteger(max) || max < 1) throw new RangeError("ruleParams.functionLines must be a positive integer")
         const source = context.sourceCode || context.getSourceCode()
-        const check = (node) => {
+        const check = (node: FunctionNode): void => {
             if (!node.body) return
             let start = node.body.loc.start.line
             let end = node.body.loc.end.line
             if (node.type === "ArrowFunctionExpression" && node.body.type !== "BlockStatement") {
                 const arrow = source.getTokenBefore(node.body, { filter: (token) => token.value === "=>" })
-                start = source.getTokenAfter(arrow, { includeComments: true }).loc.start.line
+                // An expression arrow always holds its `=>` and a token after it; the guard only proves that to the types.
+                const after = arrow === null ? null : source.getTokenAfter(arrow, { includeComments: true })
+                if (after === null) return
+                start = after.loc.start.line
                 end = node.loc.end.line
             }
             const lines = end - start + 1
@@ -43,7 +51,7 @@ export const functionLineBudget = {
 }
 
 /** The rule this law contributes to the plugin. */
-export const rules = { "function-line-budget": functionLineBudget }
+export const rules: Rules = { "function-line-budget": functionLineBudget }
 
 /** The function budget is an error in both editions. */
-export const recommended = { "starci-be/function-line-budget": "error" }
+export const recommended: Recommended = { "starci-be/function-line-budget": "error" }

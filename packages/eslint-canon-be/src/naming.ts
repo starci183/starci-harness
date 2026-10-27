@@ -30,8 +30,10 @@
  * that. Those are read by a person, which is why the law states them with the scars attached.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
+import type { Context, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** A schema generation baked into an identifier. */
 const VERSIONED_NAME = /(?:^|[a-z])V[0-9]+(?:$|[A-Z_])|_V[0-9]+/
@@ -61,7 +63,7 @@ const BARE_VERBS = new Set([
 // -- NAME-1 ----------------------------------------------------------------------------------------
 
 /** Decorator names carried by a class declaration. */
-const decoratorNames = (node) =>
+const decoratorNames = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): Array<string | null> =>
   (node.decorators || []).map((decorator) => {
     const expression = decorator.expression
     if (expression.type === "CallExpression" && expression.callee.type === "Identifier") return expression.callee.name
@@ -88,7 +90,7 @@ const VENDOR_FACTORY_NAMES = new Map([
 ])
 
 /** A `.module.ts` file's own static factory is named `register`, never a vendor's factory shape. */
-export const noVendorModuleFactoryName = {
+export const noVendorModuleFactoryName: RuleModule = {
   meta: {
     type: "problem",
     docs: {
@@ -127,7 +129,7 @@ export const noVendorModuleFactoryName = {
 // -- NAME-2 ----------------------------------------------------------------------------------------
 
 /** A name says what a thing is, never which schema generation it was built for. */
-export const noVersionInName = {
+export const noVersionInName: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Identifiers do not encode a schema version." },
@@ -138,7 +140,7 @@ export const noVersionInName = {
     },
   },
   create(context) {
-    const report = (node, name) => {
+    const report = (node: TSESTree.Node, name: string): void => {
       if (!name || !VERSIONED_NAME.test(name)) return
       context.report({ node, messageId: "versioned", data: { name } })
     }
@@ -165,7 +167,7 @@ export const noVersionInName = {
 // -- NAME-5 ----------------------------------------------------------------------------------------
 
 /** An exported function is a verb plus its object. */
-export const noBareVerbExport = {
+export const noBareVerbExport: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "An exported function names its object, not just its verb." },
@@ -176,7 +178,7 @@ export const noBareVerbExport = {
     },
   },
   create(context) {
-    const check = (node, name) => {
+    const check = (node: TSESTree.Node, name: string): void => {
       if (!name || !BARE_VERBS.has(name)) return
       context.report({ node, messageId: "bareVerb", data: { name } })
     }
@@ -203,10 +205,10 @@ export const noBareVerbExport = {
 // -- no-default-export -------------------------------------------------------------------------------------------
 
 /** The one file kind that may default-export: a Jest global setup, whose API is a default function. */
-const isGlobalSetup = (context) => inTestWorld(hfsOf(context), context.filename) && /\/global-(?:setup|teardown)\.ts$/.test(normalizePath(context.filename))
+const isGlobalSetup = (context: Context) => inTestWorld(hfsOf(context), context.filename) && /\/global-(?:setup|teardown)\.ts$/.test(normalizePath(context.filename))
 
 /** Named exports only: a default export has no name to grep, rename or import-check. */
-export const noDefaultExport = {
+export const noDefaultExport: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "TypeScript source uses named exports only; the Jest global setup is the one exception." },
@@ -219,7 +221,7 @@ export const noDefaultExport = {
   create(context) {
     if (!/\.[cm]?ts$/.test(normalizePath(context.filename))) return {}
     if (isGlobalSetup(context)) return {}
-    const isDefault = (name) => name && ((name.type === "Identifier" && name.name === "default") || (name.type === "Literal" && name.value === "default"))
+    const isDefault = (name: TSESTree.Identifier | TSESTree.StringLiteral): boolean => name && ((name.type === "Identifier" && name.name === "default") || (name.type === "Literal" && name.value === "default"))
     return {
       ExportDefaultDeclaration(node) {
         context.report({ node, messageId: "default" })
@@ -240,10 +242,10 @@ export const rules = {
   "no-bare-verb-export": noBareVerbExport,
   "no-vendor-module-factory-name": noVendorModuleFactoryName,
   "no-default-export": noDefaultExport,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/no-version-in-name": "error",
   "starci-be/no-bare-verb-export": "error",
   "starci-be/no-vendor-module-factory-name": "error",

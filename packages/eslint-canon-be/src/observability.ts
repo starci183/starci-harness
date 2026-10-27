@@ -16,6 +16,8 @@
 import { hfsOf } from "./lib/hfs.ts"
 import { baseName, enumsOf, isLoggerCall, isOwnedBy } from "./lib/ports.ts"
 import { isPackageType } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The framework loggers of `@nestjs/common` this replaces, by the names the package declares them under. */
 const FRAMEWORK_LOGGERS = Object.freeze(["Logger", "ConsoleLogger"])
@@ -23,10 +25,17 @@ const FRAMEWORK_LOGGERS = Object.freeze(["Logger", "ConsoleLogger"])
 /** The package the framework loggers come from. */
 const FRAMEWORK_PACKAGE = "@nestjs/common"
 
+/** The name a node spells when it is an identifier, else undefined (what reading `.name` off it gave). */
+const nameOf = (node: Node | undefined): string | undefined => (node?.type === "Identifier" || node?.type === "PrivateIdentifier" ? node.name : undefined)
+
+/** The name a constructed callee is reported under: its own name, else its member property's, else `Logger`. */
+const calleeName = (callee: TSESTree.Expression): string =>
+  nameOf(callee) ?? (callee.type === "MemberExpression" || callee.type === "MetaProperty" ? nameOf(callee.property) : undefined) ?? "Logger"
+
 // -- OBSERVABILITY-1 -------------------------------------------------------------------------------
 
 /** Logs leave through the `Logger` port, never the framework's own logger. */
-export const noFrameworkLogger = {
+export const noFrameworkLogger: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Only the `Logger` port of `platform/logging` logs; the framework's `Logger` is refused." },
@@ -43,21 +52,21 @@ export const noFrameworkLogger = {
   create(context) {
     // the adapter of the port is the one place that may know how lines are written
     if (isOwnedBy(hfsOf(context), context.filename || context.getFilename(), "platform", "logging")) return {}
-    const framework = (node) => FRAMEWORK_LOGGERS.some((name) => isPackageType(context, node, name, FRAMEWORK_PACKAGE))
+    const framework = (node: Node): boolean => FRAMEWORK_LOGGERS.some((name) => isPackageType(context, node, name, FRAMEWORK_PACKAGE))
     return {
       ImportDeclaration(node) {
         if (node.source.value !== FRAMEWORK_PACKAGE) return
         for (const specifier of node.specifiers || []) {
           if (specifier.type !== "ImportSpecifier") continue
-          const imported = specifier.imported.name ?? specifier.imported.value
+          const imported = specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value
           if (FRAMEWORK_LOGGERS.includes(imported)) context.report({ node: specifier, messageId: "imported", data: { name: imported, pkg: FRAMEWORK_PACKAGE } })
         }
       },
       // judged by the type of what is built, so an aliased import or a namespace import cannot walk past the check above
       NewExpression(node) {
-        if (framework(node)) context.report({ node, messageId: "constructed", data: { name: node.callee.name ?? node.callee.property?.name ?? "Logger" } })
+        if (framework(node)) context.report({ node, messageId: "constructed", data: { name: calleeName(node.callee) } })
       },
-      "ClassDeclaration, ClassExpression"(node) {
+      "ClassDeclaration, ClassExpression"(node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) {
         if (node.superClass && framework(node.superClass)) context.report({ node: node.superClass, messageId: "extended", data: { pkg: FRAMEWORK_PACKAGE } })
       },
     }
@@ -67,7 +76,7 @@ export const noFrameworkLogger = {
 // -- OBSERVABILITY-2 -------------------------------------------------------------------------------
 
 /** The event name is a member of an owner's log-event enum, never a string built at the call site. */
-export const noInterpolatedLogMessage = {
+export const noInterpolatedLogMessage: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A `Logger` call's first argument is a member of an owner's `<owner>.log-events.ts` enum, not a built string." },
@@ -85,6 +94,7 @@ export const noInterpolatedLogMessage = {
         if (!isLoggerCall(context, node)) return
         const first = node.arguments[0]
         if (!first) return
+        if (node.callee.type !== "MemberExpression" || node.callee.computed) return
         const method = node.callee.property.name
         const enums = enumsOf(context, first)
         if (!enums) {
@@ -99,13 +109,25 @@ export const noInterpolatedLogMessage = {
 }
 
 /** Whether `node` is a bare reference to the caught error, by name. */
-const isIdentifierNamed = (node, name) => Boolean(node) && node.type === "Identifier" && node.name === name
+const isIdentifierNamed = (node: Node | null | undefined, name: string): boolean => node?.type === "Identifier" && node.name === name
 
 /** How each wording shape reads back to the author, keyed by the `kind` pushed in `scanErrorUsage`. */
 const WORDING_SHAPES = {
-  message: (name) => `\`${name}.message\``,
-  stringWrap: (name) => `\`String(${name})\``,
-  template: (name) => `a template literal that interpolates \`${name}\` directly`,
+  message: (name: string): string => `\`${name}.message\``,
+  stringWrap: (name: string): string => `\`String(${name})\``,
+  template: (name: string): string => `a template literal that interpolates \`${name}\` directly`,
+}
+
+/** One wording shape found: the node that carries it and which shape it is. */
+interface WordingAt {
+  node: Node
+  kind: keyof typeof WORDING_SHAPES
+}
+
+/** What a scan of a log call's data finds beside the caught error. */
+interface ErrorUsage {
+  wording: WordingAt[]
+  identity: Node[]
 }
 
 /**
@@ -117,7 +139,7 @@ const WORDING_SHAPES = {
  * shapes and the one identity shape are syntactic, not semantic, which is exactly the boundary
  * OBSERVABILITY-5 draws between what a parser can hold and what needs a reader.
  */
-const scanErrorUsage = (node, errorName, found) => {
+const scanErrorUsage = (node: Node | null | undefined, errorName: string, found: ErrorUsage): void => {
   if (!node || typeof node !== "object" || typeof node.type !== "string") return
   switch (node.type) {
     case "MemberExpression":
@@ -171,7 +193,7 @@ const scanErrorUsage = (node, errorName, found) => {
  * that happens to be named `error` elsewhere is not this rule's business, and neither is a call
  * outside a `catch`, since OBSERVABILITY-5 only binds where the line is what an alert groups by.
  */
-export const noErrorWordingAsLogIdentity = {
+export const noErrorWordingAsLogIdentity: RuleModule = {
   meta: {
     type: "problem",
     docs: {
@@ -185,7 +207,7 @@ export const noErrorWordingAsLogIdentity = {
     },
   },
   create(context) {
-    const catchStack = []
+    const catchStack: (string | null)[] = []
     return {
       CatchClause(node) {
         catchStack.push(node.param && node.param.type === "Identifier" ? node.param.name : null)
@@ -202,14 +224,14 @@ export const noErrorWordingAsLogIdentity = {
         const dataArgs = node.arguments.slice(1)
         if (dataArgs.length === 0) return
 
-        const found = { wording: [], identity: [] }
+        const found: ErrorUsage = { wording: [], identity: [] }
         for (const arg of dataArgs) {
           // the caught error passed whole is the port's `cause`: the adapter serializes its name, so identity rides with it
           if (isIdentifierNamed(arg, errorName)) found.identity.push(arg)
           scanErrorUsage(arg, errorName, found)
         }
-        if (found.wording.length > 0 && found.identity.length === 0) {
-          const first = found.wording[0]
+        const [first] = found.wording
+        if (first && found.identity.length === 0) {
           context.report({
             node: first.node,
             messageId: "wordingOnly",
@@ -226,7 +248,7 @@ export const rules = {
   "no-framework-logger": noFrameworkLogger,
   "no-interpolated-log-message": noInterpolatedLogMessage,
   "no-error-wording-as-log-identity": noErrorWordingAsLogIdentity,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion: every rule at `error`, no exemption list.
@@ -234,7 +256,7 @@ export const rules = {
  * `no-console` is the standard rule rather than a house one; the config factory borrows it (`lib/config.mjs`
  * BORROWED) so it is on wherever these three are.
  */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/no-framework-logger": "error",
   "starci-be/no-interpolated-log-message": "error",
   "starci-be/no-error-wording-as-log-identity": "error",

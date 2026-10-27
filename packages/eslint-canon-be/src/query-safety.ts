@@ -21,29 +21,33 @@ import { keyName } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { baseNameOf, infraTypeOf, isMigrationFile } from "./lib/persistence.ts"
 import { isPackageType, typeOrigins } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { TypeOrigin } from "./lib/types.ts"
 
 /** The property a call goes through: `manager.query(...)` gives `query`. */
-const calleeProperty = (node) =>
+const calleeProperty = (node: TSESTree.CallExpression): string | null =>
     node.callee.type === "MemberExpression" && !node.callee.computed && node.callee.property.type === "Identifier"
         ? node.callee.property.name
         : null
 
 /** Whether a type origin is declared by the platform database capability (where `SqlText`, `SqlIdent` and `sql` live). */
-const fromDatabaseCapability = (hfs, origin) => {
+const fromDatabaseCapability = (hfs: HfsView, origin: TypeOrigin): boolean => {
     const found = hfs.classify(origin.file)
     return found.slot === "be.platform" && found.bindings?.capability === "database"
 }
 
 /** Whether the value at `node` has the branded type `name` exported by the platform database capability. */
-const hasBrand = (context, hfs, node, name) => typeOrigins(context, node).some((origin) => origin.name === name && fromDatabaseCapability(hfs, origin))
+const hasBrand = (context: Context, hfs: HfsView, node: Node, name: string): boolean => typeOrigins(context, node).some((origin) => origin.name === name && fromDatabaseCapability(hfs, origin))
 
 /** Whether a call goes through `.query` on a manager, runner or data source. */
-const isQueryCall = (context, node) => calleeProperty(node) === "query" && infraTypeOf(context, node.callee.object) !== null
+const isQueryCall = (context: Context, node: TSESTree.CallExpression): boolean => calleeProperty(node) === "query" && node.callee.type === "MemberExpression" && infraTypeOf(context, node.callee.object) !== null
 
 // -- R36 -----------------------------------------------------------------------------------------------
 
 /** SQL text is `SqlText`, and only a persistence `.sql.ts` builds it. */
-export const sqlTextOnly = {
+export const sqlTextOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`.query(...)` takes a `SqlText`, and the `sql` tag is called only in a persistence `<name>.sql.ts`." },
@@ -60,7 +64,7 @@ export const sqlTextOnly = {
         const filename = context.filename || context.getFilename()
         const migration = isMigrationFile(hfs, filename)
         const sqlFile = hfs.slotOf(filename) === "be.persistence" && baseNameOf(filename).endsWith(".sql.ts")
-        const isSqlTag = (node) => typeOrigins(context, node).some((origin) => origin.name === "sql" && fromDatabaseCapability(hfs, origin))
+        const isSqlTag = (node: Node): boolean => typeOrigins(context, node).some((origin) => origin.name === "sql" && fromDatabaseCapability(hfs, origin))
         return {
             CallExpression(node) {
                 if (isSqlTag(node.callee) && !sqlFile) context.report({ node, messageId: "tagOutsideSqlFile" })
@@ -76,7 +80,7 @@ export const sqlTextOnly = {
 }
 
 /** There is one way to write a complex read, and it is SQL. */
-export const noQueryBuilder = {
+export const noQueryBuilder: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No `createQueryBuilder(...)` call." },
@@ -100,7 +104,7 @@ export const noQueryBuilder = {
 // -- R68 -----------------------------------------------------------------------------------------------
 
 /** A statement is text plus parameters; a value never becomes part of the text. */
-export const noInterpolatedSql = {
+export const noInterpolatedSql: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Inside the `sql` tag every substitution is a `SqlIdent`; a `.query(...)` string is never built by template or concatenation." },
@@ -141,7 +145,7 @@ export const noInterpolatedSql = {
 const BOUNDED_READS = new Set(["find", "findBy", "findAndCount", "findAndCountBy"])
 
 /** A list read states its bound. */
-export const queryNeedsLimit = {
+export const queryNeedsLimit: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`find`, `findBy` and `findAndCount` on an `EntityManager` state `take`." },
@@ -157,7 +161,7 @@ export const queryNeedsLimit = {
         return {
             CallExpression(node) {
                 const method = calleeProperty(node)
-                if (!method || !BOUNDED_READS.has(method) || !isPackageType(context, node.callee.object, "EntityManager", "typeorm")) return
+                if (!method || !BOUNDED_READS.has(method) || node.callee.type !== "MemberExpression" || !isPackageType(context, node.callee.object, "EntityManager", "typeorm")) return
                 if (method === "findBy" || method === "findAndCountBy") {
                     context.report({ node: node.callee.property, messageId: "findBy", data: { method } })
                     return
@@ -179,8 +183,8 @@ const ITERATION_METHODS = new Set(["map", "forEach", "flatMap", "filter", "reduc
 const LOOP_STATEMENTS = new Set(["ForStatement", "ForOfStatement", "ForInStatement"])
 
 /** Whether `node` runs once per element: inside a `for` loop, or inside a callback of an array iteration method. */
-const insideIteration = (node) => {
-    let current = node.parent
+const insideIteration = (node: Node): boolean => {
+    let current: Node | undefined = node.parent
     while (current) {
         if (LOOP_STATEMENTS.has(current.type)) return true
         if (current.type === "FunctionDeclaration" || current.type === "FunctionExpression" || current.type === "ArrowFunctionExpression") {
@@ -191,7 +195,7 @@ const insideIteration = (node) => {
                 && !call.callee.computed
                 && call.callee.property.type === "Identifier"
                 && ITERATION_METHODS.has(call.callee.property.name)
-                && call.arguments.includes(current)
+                && call.arguments.some((argument) => argument === current)
             )
         }
         current = current.parent
@@ -200,7 +204,7 @@ const insideIteration = (node) => {
 }
 
 /** A read inside an iteration is N+1: one round trip per element. */
-export const noQueryInLoop = {
+export const noQueryInLoop: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An `EntityManager` read does not run once per element of a loop." },
@@ -215,7 +219,7 @@ export const noQueryInLoop = {
             CallExpression(node) {
                 const method = calleeProperty(node)
                 if (!method || !LOOP_READS.has(method) || !insideIteration(node)) return
-                if (infraTypeOf(context, node.callee.object) === "EntityManager") context.report({ node: node.callee.property, messageId: "inLoop", data: { method } })
+                if (node.callee.type === "MemberExpression" && infraTypeOf(context, node.callee.object) === "EntityManager") context.report({ node: node.callee.property, messageId: "inLoop", data: { method } })
             },
         }
     },
@@ -228,10 +232,10 @@ export const rules = {
     "no-interpolated-sql": noInterpolatedSql,
     "query-needs-limit": queryNeedsLimit,
     "no-query-in-loop": noQueryInLoop,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`; no baseline exists. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/sql-text-only": "error",
     "starci-be/no-query-builder": "error",
     "starci-be/no-interpolated-sql": "error",

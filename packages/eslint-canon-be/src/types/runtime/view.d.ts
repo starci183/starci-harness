@@ -64,11 +64,9 @@ declare module "*/runtime/scripts/hfs/view.mjs" {
     }
 
     /** A parameter-name rule (`ruleParams.be.paramNames`). */
-    export interface HfsParamName {
-        readonly type: string
-        readonly names: readonly string[]
-        readonly nameSuffix?: string
-    }
+    export type HfsParamName =
+        | { readonly type: string; readonly typeSuffix?: undefined; readonly names: readonly string[]; readonly nameSuffix?: string }
+        | { readonly type?: undefined; readonly typeSuffix: string; readonly names: readonly string[]; readonly nameSuffix?: string }
 
     /** A spec double (`ruleParams.be.specDoubles.doubles`). */
     export interface HfsSpecDouble {

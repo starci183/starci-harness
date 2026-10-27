@@ -19,20 +19,26 @@
  */
 import { hfsOf } from "./lib/hfs.ts"
 import { inCli } from "./lib/persistence.ts"
-import { isPackageType, typeOrigins } from "./lib/types.ts"
+import { isPackageType, typed, typeOrigins } from "./lib/types.ts"
+import { nameOrValue } from "./lib/ast.ts"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type ts from "typescript"
 
 /** Every test slot under `src/tests/` except the world, where the infrastructure lives. */
-const OUTSIDE_WORLD = new Set(["be.tests.fixtures", "be.tests.integration", "be.tests.e2e", "be.tests.contract"])
+const OUTSIDE_WORLD = new Set<string | null>(["be.tests.fixtures", "be.tests.integration", "be.tests.e2e", "be.tests.contract"])
 /** Every test slot under `src/tests/`. */
-const UNDER_TESTS = new Set([...OUTSIDE_WORLD, "be.tests.world"])
+const UNDER_TESTS = new Set<string | null>([...OUTSIDE_WORLD, "be.tests.world"])
 
 const SCHEMA_CALLS = new Set(["runMigrations", "undoLastMigration", "synchronize", "dropDatabase", "createSchema", "showMigrations"])
 const TYPEORM_RECEIVERS = ["DataSource", "QueryRunner", "EntityManager"]
 const CONTAINER_PACKAGES = /^(?:testcontainers|@testcontainers\/[a-z0-9-]+)$/
 /** `process.env` itself (the global `process`). */
-const isProcessEnv = (node) => node?.type === "MemberExpression" && !node.computed && node.object.type === "Identifier" && node.object.name === "process" && node.property.name === "env"
+const isProcessEnv = (node: Node | null | undefined) => node?.type === "MemberExpression" && !node.computed && node.object.type === "Identifier" && node.object.name === "process" && node.property.name === "env"
 /** A member of `process.env`. */
-const isEnvMember = (node) => node?.type === "MemberExpression" && isProcessEnv(node.object)
+const isEnvMember = (node: Node | null | undefined) => node?.type === "MemberExpression" && isProcessEnv(node.object)
+/** Whether the checker says a type is an array or a tuple (both are type references). */
+const isArrayOrTuple = (checker: ts.TypeChecker, type: ts.Type): type is ts.TypeReference => Boolean(checker.isArrayType?.(type) || checker.isTupleType?.(type))
 
 /**
  * The world is the only infrastructure location. Refused in fixtures, integration, e2e and contract specs: importing a
@@ -41,7 +47,7 @@ const isEnvMember = (node) => node?.type === "MemberExpression" && isProcessEnv(
  * `runMigrations`/`synchronize`/`dropDatabase`/`createSchema`... on a typeorm receiver; constructing a container; writing
  * `process.env`. Migration behaviour is tested by the e2e world.
  */
-export const testsInfraOnlyInWorld = {
+export const testsInfraOnlyInWorld: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Only src/tests/world starts infrastructure, migrates, holds a DataSource or writes process.env." },
@@ -57,23 +63,22 @@ export const testsInfraOnlyInWorld = {
         const hfs = hfsOf(context)
         const filename = context.filename || context.getFilename()
         if (!OUTSIDE_WORLD.has(hfs.slotOf(filename))) return {}
-        const isMigrationDecl = (file) => hfs.slotOf(file) === "be.persistence" && /\/migrations\/[^/]+$/.test(hfs.relative(file))
-        const fromMigrate = (file) => inCli(hfs, file)
-        const migrationTyped = (node) => {
-            const services = context.sourceCode.parserServices
-            const checker = services.program.getTypeChecker()
-            const tsNode = services.esTreeNodeToTSNodeMap.get(node)
+        const isMigrationDecl = (file: string) => hfs.slotOf(file) === "be.persistence" && /\/migrations\/[^/]+$/.test(hfs.relative(file))
+        const fromMigrate = (file: string) => inCli(hfs, file)
+        const migrationTyped = (node: TSESTree.Identifier) => {
+            const { checker, toTs } = typed(context)
+            const tsNode = toTs(node)
             if (!tsNode) return false
             let type = checker.getTypeAtLocation(tsNode)
-            if (checker.isArrayType?.(type) || checker.isTupleType?.(type)) type = checker.getTypeArguments(type)[0] ?? type
-            const parts = type?.isUnion?.() ? type.types : [type]
+            if (isArrayOrTuple(checker, type)) type = checker.getTypeArguments(type)[0] ?? type
+            const parts: (ts.Type | undefined)[] = type?.isUnion?.() ? type.types : [type]
             return parts.some((part) => (part?.getSymbol?.()?.getDeclarations?.() ?? []).some((d) => isMigrationDecl(String(d.getSourceFile().fileName))))
         }
         return {
             ImportDeclaration(node) {
                 const source = String(node.source.value)
                 if (CONTAINER_PACKAGES.test(source)) return context.report({ node, messageId: "infra" })
-                if (source === "typeorm" && node.specifiers.some((s) => s.type === "ImportSpecifier" && (s.imported.name ?? s.imported.value) === "DataSource")) return context.report({ node, messageId: "infra" })
+                if (source === "typeorm" && node.specifiers.some((s) => s.type === "ImportSpecifier" && nameOrValue(s.imported) === "DataSource")) return context.report({ node, messageId: "infra" })
                 for (const specifier of node.specifiers) {
                     const origins = typeOrigins(context, specifier.local)
                     if (origins.some((o) => isMigrationDecl(o.file) || fromMigrate(o.file)) || migrationTyped(specifier.local)) return context.report({ node: specifier, messageId: "migration" })
@@ -110,7 +115,7 @@ const OVERRIDES = new Set(["overrideProvider", "overrideModule", "overrideGuard"
  * external SaaS are network-edge fakes of the world (`world.fake.<provider>`), so our integrations' signing, parsing and retry code runs. Refused: `.override*(`, a provider
  * object with `useValue`, and `jest.mock(`.
  */
-export const testsNoOverride = {
+export const testsNoOverride: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Nothing under src/tests overrides a provider: external services are the world's network fakes." },
@@ -129,16 +134,16 @@ export const testsNoOverride = {
                 else if (callee.object.type === "Identifier" && callee.object.name === "jest" && callee.property.name === "mock") context.report({ node, messageId: "override", data: { what: "jest.mock" } })
             },
             Property(node) {
-                const key = node.key.type === "Identifier" ? node.key.name : node.key.value
+                const key = node.key.type === "Identifier" ? node.key.name : "value" in node.key ? node.key.value : undefined
                 if (key !== "useValue" || node.parent.type !== "ObjectExpression") return
-                if (node.parent.properties.some((p) => p.type === "Property" && (p.key.name ?? p.key.value) === "provide")) context.report({ node, messageId: "override", data: { what: "useValue" } })
+                if (node.parent.properties.some((p) => p.type === "Property" && nameOrValue(p.key) === "provide")) context.report({ node, messageId: "override", data: { what: "useValue" } })
             },
         }
     },
 }
 
 /** The name of a property key written as an identifier or a literal (`{ apps }`, `{ "apps": ... }`, `{ ["apps"]: ... }`); null for any computed expression. */
-const plainKey = (property) => {
+const plainKey = (property: TSESTree.Property) => {
     if (property.key.type === "Literal") return String(property.key.value)
     return property.key.type === "Identifier" && !property.computed ? property.key.name : null
 }
@@ -147,7 +152,7 @@ const plainKey = (property) => {
  * The world an integration spec (`{ modules }`, with real peer apps beside them as `apps` when its client calls another app of
  * ours) or an e2e spec (`{ apps }`, never `modules`) asks for; every such spec asks for one.
  */
-export const testWorldShape = {
+export const testWorldShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An integration spec calls useTestWorld({ modules }) (peer apps may join as `apps`); an e2e spec calls useTestWorld({ apps })." },
@@ -170,7 +175,7 @@ export const testWorldShape = {
                 seen = true
                 const options = node.arguments[0]
                 if (options?.type !== "ObjectExpression") return context.report({ node, messageId: "literal" })
-                const keys = []
+                const keys: string[] = []
                 for (const property of options.properties) {
                     const key = property.type === "Property" ? plainKey(property) : null
                     if (key === null) return context.report({ node: property, messageId: "literal" })
@@ -191,10 +196,10 @@ export const rules = {
     "tests-infra-only-in-world": testsInfraOnlyInWorld,
     "tests-no-override": testsNoOverride,
     "test-world-shape": testWorldShape,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/tests-infra-only-in-world": "error",
     "starci-be/tests-no-override": "error",
     "starci-be/test-world-shape": "error",

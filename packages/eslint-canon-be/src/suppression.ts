@@ -15,6 +15,7 @@
  * ignored comment into a failure a person reads, instead of a silent no-op that looks like an exemption. There is no
  * exit here: fix the code, or propose a change to the canon.
  */
+import type { Comment, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 const ESLINT_DIRECTIVE = /^\s*eslint-(?:disable|enable|env)(?:-next-line|-line)?(?:\s|$)/
 const ESLINT_CONFIG = /^\s*eslint\s+[@\w/-]+\s*:\s*(?:0|1|2|off|warn|error|\[)/
@@ -25,7 +26,7 @@ const SONAR = /\bNOSONAR\b|\bsonar-(?:disable|enable)\b/i
 const PRETTIER_IGNORE = /(?:^|[\s*/])prettier-ignore\b/
 
 /** The finding a comment is, or null when it is ordinary prose. `/* global x *\/` is a block-comment form only. */
-const kindOf = (comment) => {
+const kindOf = (comment: Comment): string | null => {
     const text = comment.value
     if (ESLINT_DIRECTIVE.test(text) || ESLINT_CONFIG.test(text)) return "eslint"
     if (comment.type === "Block" && GLOBAL_DECLARATION.test(text)) return "eslint"
@@ -37,7 +38,7 @@ const kindOf = (comment) => {
 }
 
 /** No comment switches a check off at the place it is written. */
-export const noInlineSuppression = {
+export const noInlineSuppression: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No eslint, TypeScript, coverage, Sonar or Prettier suppression comment." },
@@ -66,9 +67,9 @@ export const noInlineSuppression = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
     "no-inline-suppression": noInlineSuppression,
-}
+} satisfies Rules
 
 /** Error from the start: there is no baseline and no allowlist for a suppression. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-inline-suppression": "error",
 }

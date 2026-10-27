@@ -18,37 +18,56 @@ import { walk } from "./lib/ast.ts"
 import { isLoggerType } from "./lib/ports.ts"
 import { isTransportSlot } from "./lib/transport-slots.ts"
 import { isPackageType, typeOrigins, typed } from "./lib/types.ts"
+import { isNode } from "./lib/rule.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The slot that holds messages and handlers. */
 const APPLICATION = "be.feature.application"
 
 /** The slots that hold application-layer code (the support folder is the same layer). */
-const APPLICATION_LAYER = new Set([APPLICATION, "be.feature.application.support"])
+const APPLICATION_LAYER = new Set<string | null>([APPLICATION, "be.feature.application.support"])
 
 /** The package that owns the CQRS types. */
 const CQRS_PACKAGE = "@nestjs/cqrs"
 
 /** The base name of a filename. */
-const baseName = (filename) => String(filename).replace(/\\/g, "/").split("/").pop()
+const baseName = (filename: string): string => String(filename).replace(/\\/g, "/").split("/").pop() ?? ""
+
+/** A class of either form. */
+type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression
+
+/** Whether a value is a TypeScript type (it carries numeric `flags` and the `getSymbol` method). */
+const isTsType = (value: unknown): value is ts.Type =>
+    typeof value === "object" && value !== null && "flags" in value && typeof value.flags === "number" && "getSymbol" in value
+
+/** Whether an object type is a reference to a generic type (`Set<T>`, `Array<T>`), which carries type arguments. */
+const isTypeReference = (type: ts.Type): type is ts.TypeReference =>
+    (type.flags & ts.TypeFlags.Object) !== 0 && "objectFlags" in type && typeof type.objectFlags === "number" && (type.objectFlags & ts.ObjectFlags.Reference) !== 0
+
+/** The key of a class member, or undefined for a member that has none (a static block, an index signature). */
+const memberKeyOf = (member: TSESTree.ClassElement): TSESTree.Node | undefined => ("key" in member ? member.key : undefined)
 
 /** The bus receivers of `@nestjs/cqrs`. */
-const isBus = (context, node) => isPackageType(context, node, "CommandBus", CQRS_PACKAGE) || isPackageType(context, node, "QueryBus", CQRS_PACKAGE)
+const isBus = (context: Context, node: Node): boolean => isPackageType(context, node, "CommandBus", CQRS_PACKAGE) || isPackageType(context, node, "QueryBus", CQRS_PACKAGE)
 
 /** True when a declaration file belongs to the capability `capability` of a platform slot. */
-const declaredByCapability = (hfs, file, capability) => {
+const declaredByCapability = (hfs: HfsView, file: string, capability: string): boolean => {
     if (hfs.slotOf(file) !== "be.platform") return false
     const owner = hfs.ownerOf(file)
     return owner !== null && owner.split("/").pop() === capability
 }
 
 /** The classes a file declares. */
-const classVisitors = (visit) => ({ ClassDeclaration: visit, ClassExpression: visit })
+const classVisitors = (visit: (node: ClassNode) => void) => ({ ClassDeclaration: visit, ClassExpression: visit })
 
 /** The constructor of a class body, or undefined. */
-const constructorOf = (node) => node.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "constructor")
+const constructorOf = (node: ClassNode): TSESTree.MethodDefinition | undefined =>
+    node.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "constructor")
 
 /** The message kind (`command` / `query`) of a file in the application slot, or null. */
-const messageKindOf = (context) => {
+const messageKindOf = (context: Context) => {
     const filename = context.filename
     const name = baseName(filename)
     const kind = name.endsWith(".command.ts") ? "command" : name.endsWith(".query.ts") ? "query" : null
@@ -59,21 +78,25 @@ const messageKindOf = (context) => {
 // -- handler-overrides-process -----------------------------------------------------------------------------------
 
 /** True when the class (transitively) extends the `ICQRSHandler` of `platform/cqrs`. */
-const extendsTemplate = (context, node, hfs) => {
+const extendsTemplate = (context: Context, node: ClassNode, hfs: HfsView): boolean => {
     const { checker, toTs } = typed(context)
-    const seen = new Set()
-    const reaches = (type) => {
+    const seen = new Set<ts.Type>()
+    const reaches = (type: ts.Type | undefined): boolean => {
         if (!type || seen.has(type)) return false
         seen.add(type)
         const symbol = type.getSymbol?.()
         if (symbol?.getName() === "ICQRSHandler" && (symbol.getDeclarations() ?? []).some((declaration) => declaredByCapability(hfs, declaration.getSourceFile().fileName, "cqrs"))) return true
-        return (checker.getBaseTypes(type.target ?? type) ?? []).some(reaches)
+        // `type.target ?? type`: a reference resolves to its generic class or interface, whose base types the checker knows.
+        const target: unknown = Reflect.get(type, "target")
+        const resolved = target ?? type
+        if (!isTsType(resolved) || !resolved.isClassOrInterface()) return false
+        return (checker.getBaseTypes(resolved) ?? []).some(reaches)
     }
     return reaches(checker.getTypeAtLocation(toTs(node)))
 }
 
 /** True when `process` is still the template's abstract member (no class of the chain implemented it). */
-const processIsAbstract = (context, node) => {
+const processIsAbstract = (context: Context, node: ClassNode): boolean => {
     const { checker, toTs } = typed(context)
     const symbol = checker.getPropertyOfType(checker.getTypeAtLocation(toTs(node)), "process")
     const declarations = symbol?.getDeclarations() ?? []
@@ -81,7 +104,7 @@ const processIsAbstract = (context, node) => {
 }
 
 /** A handler implements the template's `process` and never overrides its public `execute`. */
-export const handlerOverridesProcess = {
+export const handlerOverridesProcess: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A CQRS handler extends `ICQRSHandler` and overrides `process`, never `execute`." },
@@ -98,7 +121,7 @@ export const handlerOverridesProcess = {
         return classVisitors((node) => {
             if (!(node.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), CQRS_PACKAGE, ["CommandHandler", "QueryHandler"]))) return
             const name = node.id?.name ?? "this handler"
-            const own = (member) => node.body.body.find((candidate) => candidate.type === "MethodDefinition" && candidate.key?.type === "Identifier" && candidate.key.name === member)
+            const own = (member: string) => node.body.body.find((candidate): candidate is TSESTree.MethodDefinition => candidate.type === "MethodDefinition" && candidate.key?.type === "Identifier" && candidate.key.name === member)
             const execute = own("execute")
             if (execute) {
                 context.report({ node: execute.key, messageId: "overridesExecute", data: { name } })
@@ -119,12 +142,20 @@ export const handlerOverridesProcess = {
 const DECISION_NODES = new Set(["IfStatement", "SwitchStatement", "ConditionalExpression", "LogicalExpression", "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement", "DoWhileStatement", "TryStatement", "ThrowStatement"])
 
 /** The one collaborator a handler may hold: a domain service (a class named `*Service` declared in a `*.service.ts` file) or a projection (a class declared in a `*.projection.ts` file of slot `be.projections`). */
-const isServiceType = (context, hfs, annotation) => typeOrigins(context, annotation).some((origin) => origin.module === null
+const isServiceType = (context: Context, hfs: HfsView, annotation: TSESTree.TypeNode): boolean => typeOrigins(context, annotation).some((origin) => origin.module === null
     && ((origin.name.endsWith("Service") && origin.file.endsWith(".service.ts")) || (origin.file.endsWith(".projection.ts") && hfs.slotOf(origin.file) === "be.projections")))
 
+/** One injected member of a class. */
+interface InjectedMember {
+    readonly report: Node
+    readonly param: Node
+    readonly name: string | null
+    readonly annotation: TSESTree.TypeNode | undefined
+}
+
 /** The injected members of a class: constructor parameters and decorated properties, with the type annotation of each. */
-const injectedMembers = (node) => {
-    const members = []
+const injectedMembers = (node: ClassNode): InjectedMember[] => {
+    const members: InjectedMember[] = []
     const constructor = constructorOf(node)
     for (const original of constructor?.value.params ?? []) {
         const param = original.type === "TSParameterProperty" ? original.parameter : original
@@ -138,7 +169,7 @@ const injectedMembers = (node) => {
 }
 
 /** A handler maps its input, calls exactly one method of an injected service and returns its result. */
-export const handlerIsThin = {
+export const handlerIsThin: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A CQRS handler injects only `*Service` classes or projections (and the template's Logger) and its `process` is one `return this.<service>.<method>(...)`." },
@@ -157,7 +188,7 @@ export const handlerIsThin = {
         return classVisitors((node) => {
             if (!(node.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), CQRS_PACKAGE, ["CommandHandler", "QueryHandler"]))) return
             const name = node.id?.name ?? "this handler"
-            const services = new Set()
+            const services = new Set<string>()
             for (const injected of injectedMembers(node)) {
                 if (injected.annotation && isServiceType(context, hfs, injected.annotation)) {
                     if (injected.name !== null) services.add(injected.name)
@@ -165,15 +196,16 @@ export const handlerIsThin = {
                     context.report({ node: injected.report, messageId: "dependency", data: { what: sourceCode.getText(injected.param) } })
                 }
             }
-            const method = node.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "method" && member.key.type === "Identifier" && member.key.name === "process")
+            const method = node.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "method" && member.key.type === "Identifier" && member.key.name === "process")
             const body = method?.value.body
-            if (!body) return
+            if (!method || !body) return
             let calls = 0
             walk(body, (child) => {
                 if (DECISION_NODES.has(child.type)) context.report({ node: child, messageId: "branch", data: { what: child.type === "LogicalExpression" ? child.operator : child.type.replace(/(Statement|Expression)$/, "").toLowerCase() } })
                 else if (child.type === "CallExpression") calls += 1
             })
-            const only = body.body.length === 1 && body.body[0].type === "ReturnStatement" ? body.body[0].argument : null
+            const [head] = body.body
+            const only = body.body.length === 1 && head?.type === "ReturnStatement" ? head.argument : null
             if (only === null) {
                 context.report({ node: method.key, messageId: "body", data: { name } })
                 return
@@ -189,7 +221,7 @@ export const handlerIsThin = {
 // -- message-carries-params-only ---------------------------------------------------------------------------------
 
 /** A message carries request context and nothing else. */
-export const messageCarriesParamsOnly = {
+export const messageCarriesParamsOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A command or query holds one `params` constructor parameter and declares nothing else." },
@@ -208,15 +240,17 @@ export const messageCarriesParamsOnly = {
             const constructor = constructorOf(node)
             for (const member of members) {
                 if (member === constructor) continue
-                const key = member.key?.type === "Identifier" ? member.key.name : "a member"
-                context.report({ node: member.key ?? member, messageId: "member", data: { name, member: key } })
+                const memberKey = memberKeyOf(member)
+                const key = memberKey?.type === "Identifier" ? memberKey.name : "a member"
+                context.report({ node: memberKey ?? member, messageId: "member", data: { name, member: key } })
             }
             if (!constructor) {
                 context.report({ node: node.id ?? node, messageId: "shape", data: { name } })
                 return
             }
             const params = constructor.value.params
-            const first = params[0]?.type === "TSParameterProperty" ? params[0].parameter : params[0]
+            const [firstParam] = params
+            const first = firstParam?.type === "TSParameterProperty" ? firstParam.parameter : firstParam
             if (params.length !== 1 || first?.type !== "Identifier" || first.name !== "params") context.report({ node: constructor, messageId: "shape", data: { name } })
             const statements = constructor.value.body?.body ?? []
             const onlySuper = statements.every((statement) => statement.type === "ExpressionStatement" && statement.expression.type === "CallExpression" && statement.expression.callee.type === "Super")
@@ -228,7 +262,7 @@ export const messageCarriesParamsOnly = {
 // -- message-typed-result ----------------------------------------------------------------------------------------
 
 /** A message states the type of its result: `Command<R>` / `Query<R>` from `@nestjs/cqrs`, one readonly `params`. */
-export const messageTypedResult = {
+export const messageTypedResult: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A message extends `Command<R>` / `Query<R>` from `@nestjs/cqrs` and declares `readonly params`." },
@@ -247,14 +281,14 @@ export const messageTypedResult = {
             const name = node.id?.name ?? "this message"
             if (!node.superClass || !isImportedFrom(context, node.superClass, CQRS_PACKAGE, base)) {
                 context.report({ node: node.id ?? node, messageId: "base", data: { name, base } })
-            } else if ((node.superTypeArguments ?? node.superTypeParameters)?.params.length !== 1) {
+            } else if (node.superTypeArguments?.params.length !== 1) {
                 context.report({ node: node.superClass, messageId: "result", data: { name, base } })
             }
             const constructor = constructorOf(node)
             if (!constructor) return
             const param = constructor.value.params[0]
             const valid = constructor.value.params.length === 1
-                && param.type === "TSParameterProperty"
+                && param?.type === "TSParameterProperty"
                 && param.readonly === true
                 && (param.accessibility === undefined || param.accessibility === "public")
                 && param.parameter.type === "Identifier"
@@ -268,7 +302,7 @@ export const messageTypedResult = {
 // -- execute-params-shape ----------------------------------------------------------------------------------------
 
 /** True for a class declaration decorated with `Entity` from `typeorm`. */
-const isEntityClass = (checker, declaration) => {
+const isEntityClass = (checker: ts.TypeChecker, declaration: ts.Declaration): boolean => {
     if (!ts.isClassDeclaration(declaration)) return false
     return (ts.getDecorators(declaration) ?? []).some((decorator) => {
         const call = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
@@ -280,25 +314,26 @@ const isEntityClass = (checker, declaration) => {
 }
 
 /** The name of an `@Entity` class reachable from `root` through properties, index signatures, unions and type arguments, or null. */
-const reachableEntity = (context, root) => {
+const reachableEntity = (context: Context, root: ts.Type): string | null => {
     const { checker, program } = typed(context)
-    const seen = new Set()
-    const stack = [root]
+    const seen = new Set<ts.Type>()
+    const stack: ts.Type[] = [root]
     let steps = 0
     while (stack.length > 0 && steps < 4000) {
         steps += 1
         const type = stack.pop()
+        if (type === undefined) break
         if (seen.has(type)) continue
         seen.add(type)
         if (type.isUnionOrIntersection()) {
             stack.push(...type.types)
             continue
         }
-        if ((type.flags & ts.TypeFlags.Object) !== 0 && (type.objectFlags & ts.ObjectFlags.Reference) !== 0) stack.push(...checker.getTypeArguments(type))
+        if (isTypeReference(type)) stack.push(...checker.getTypeArguments(type))
         const symbol = type.getSymbol() ?? type.aliasSymbol
         const declarations = symbol?.getDeclarations() ?? []
         const entity = declarations.find((declaration) => isEntityClass(checker, declaration))
-        if (entity) return symbol.getName()
+        if (entity && symbol) return symbol.getName()
         const own = declarations.some((declaration) => {
             const file = declaration.getSourceFile()
             return !program.isSourceFileFromExternalLibrary(file) && !program.isSourceFileDefaultLibrary(file)
@@ -311,7 +346,7 @@ const reachableEntity = (context, root) => {
 }
 
 /** True when a type annotation is a reference to the `ExecuteParams` or `PublicExecuteParams` that `platform/cqrs` declares (the symbol the name resolves to, so a local alias or lookalike is not it). */
-const namesPlatformParams = (context, hfs, annotation) => {
+const namesPlatformParams = (context: Context, hfs: HfsView, annotation: TSESTree.TypeNode): annotation is TSESTree.TSTypeReference => {
     if (annotation.type !== "TSTypeReference") return false
     const { checker, toTs } = typed(context)
     let symbol = checker.getSymbolAtLocation(toTs(annotation.typeName))
@@ -321,7 +356,7 @@ const namesPlatformParams = (context, hfs, annotation) => {
 }
 
 /** A message's `params` is `ExecuteParams<X>` / `PublicExecuteParams<X>` of `platform/cqrs` and X holds no entity. */
-export const executeParamsShape = {
+export const executeParamsShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A message's `params` is `ExecuteParams<X>` or `PublicExecuteParams<X>` from `platform/cqrs`, and no entity is reachable from X." },
@@ -344,10 +379,12 @@ export const executeParamsShape = {
                 context.report({ node: annotation, messageId: "shape", data: { name } })
                 return
             }
-            const argument = (annotation.typeArguments ?? annotation.typeParameters)?.params[0]
+            const argument = annotation.typeArguments?.params[0]
             if (!argument) return
             const { checker, toTs } = typed(context)
-            const entity = reachableEntity(context, checker.getTypeFromTypeNode(toTs(argument)))
+            const tsArgument = toTs(argument)
+            // A type argument maps to a TS type node; the declared map also admits an identifier, read as typeOrigins reads one.
+            const entity = reachableEntity(context, ts.isTypeNode(tsArgument) ? checker.getTypeFromTypeNode(tsArgument) : checker.getTypeAtLocation(tsArgument))
             if (entity !== null) context.report({ node: argument, messageId: "entity", data: { name, entity } })
         })
     },
@@ -356,19 +393,20 @@ export const executeParamsShape = {
 // -- no-use-case -------------------------------------------------------------------------------------------------
 
 /** True when every method body of the class is `return this.<bus>.execute(...)` (at least one method). */
-const isForwarder = (context, node) => {
-    const methods = node.body.body.filter((member) => member.type === "MethodDefinition" && member.kind === "method")
+const isForwarder = (context: Context, node: TSESTree.ClassDeclaration): boolean => {
+    const methods = node.body.body.filter((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "method")
     if (methods.length === 0) return false
     return methods.every((method) => {
         const statements = method.value.body?.body ?? []
-        if (statements.length !== 1 || statements[0].type !== "ReturnStatement") return false
-        const call = statements[0].argument?.type === "AwaitExpression" ? statements[0].argument.argument : statements[0].argument
+        const [statement] = statements
+        if (statements.length !== 1 || statement?.type !== "ReturnStatement") return false
+        const call = statement.argument?.type === "AwaitExpression" ? statement.argument.argument : statement.argument
         return call?.type === "CallExpression" && call.callee.type === "MemberExpression" && !call.callee.computed && call.callee.property.type === "Identifier" && call.callee.property.name === "execute" && isBus(context, call.callee.object)
     })
 }
 
 /** No use-case class and no forwarder service: the transport dispatches on the bus itself. */
-export const noUseCase = {
+export const noUseCase: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The application layer has no `*.use-case.ts`, no `*UseCase` class and no forwarder `<op>.service.ts`." },
@@ -383,7 +421,7 @@ export const noUseCase = {
         const hfs = hfsOf(context)
         const filename = context.filename
         const slot = hfs.slotOf(filename)
-        const visitors = {}
+        const visitors: { Program?: (node: TSESTree.Program) => void, ClassDeclaration?: (node: TSESTree.ClassDeclaration) => void } = {}
         if (APPLICATION_LAYER.has(slot)) {
             const name = baseName(filename)
             visitors.Program = (node) => {
@@ -407,7 +445,7 @@ export const noUseCase = {
 // -- no-event-bus ------------------------------------------------------------------------------------------------
 
 /** The bus class a constructed or extended expression is declared as (by declaration origin), else null. `classes` is the `ruleParams.be.eventBus.classes` map: module specifier -> class names. */
-const busClassOf = (context, node, classes) => {
+const busClassOf = (context: Context, node: Node, classes: Readonly<Record<string, readonly string[]>>): string | null => {
     const origin = typeOrigins(context, node).find((entry) => entry.module !== null && classes[entry.module]?.includes(entry.name))
     return origin ? origin.name : null
 }
@@ -416,18 +454,21 @@ const busClassOf = (context, node, classes) => {
 const REGISTER_METHODS = new Set(["add", "push", "unshift", "set"])
 
 /** True for a type that is a function: it has a call signature and no construct signature. */
-const isFunctionType = (type) => type.getCallSignatures().length > 0 && type.getConstructSignatures().length === 0
+const isFunctionType = (type: ts.Type): boolean => type.getCallSignatures().length > 0 && type.getConstructSignatures().length === 0
 
 /** True when a collection type (Set, Array, Map) holds functions. */
-const holdsFunctions = (checker, type) => {
+const holdsFunctions = (checker: ts.TypeChecker, type: ts.Type): boolean => {
     const symbolName = type.getSymbol()?.getName()
     if (!["Set", "Array", "ReadonlyArray", "Map", "WeakSet"].includes(symbolName ?? "")) return false
+    // A collection type that is not a generic reference has no type arguments: the checker answers [] for it.
+    if (!isTypeReference(type)) return false
     const args = checker.getTypeArguments(type)
-    return args.length > 0 && isFunctionType(args[args.length - 1])
+    const last = args[args.length - 1]
+    return args.length > 0 && last !== undefined && isFunctionType(last)
 }
 
 /** No in-process events: a side effect that must happen anyway is an event published through the bus. */
-export const noEventBus = {
+export const noEventBus: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`EventBus`, `@EventsHandler`, `IEventHandler` and `@nestjs/event-emitter` are not used." },
@@ -439,39 +480,44 @@ export const noEventBus = {
         },
     },
     create(context) {
-        const report = (node, name) => context.report({ node, messageId: "event", data: { name } })
+        const report = (node: Node, name: string) => context.report({ node, messageId: "event", data: { name } })
         const eventBus = hfsOf(context).ruleParams.eventBus
         const eventNames = new Set(eventBus.imports[CQRS_PACKAGE] ?? [])
         const { checker, toTs } = typed(context)
         /** Collects, per class, the functions-collection properties and the registrations made on them. */
-        const checkClass = (classNode) => {
-            const collections = new Map()
+        const checkClass = (classNode: ClassNode) => {
+            const collections = new Map<string, TSESTree.Identifier>()
             for (const member of classNode.body.body) {
                 if (member.type !== "PropertyDefinition" || member.computed || member.key.type !== "Identifier") continue
                 const tsKey = toTs(member.key)
                 if (tsKey && holdsFunctions(checker, checker.getTypeAtLocation(tsKey))) collections.set(member.key.name, member.key)
             }
             if (collections.size === 0) return
-            const registered = new Set()
-            const visit = (node) => {
-                if (!node || typeof node.type !== "string") return
+            const registered = new Set<string>()
+            const visit = (node: unknown): void => {
+                if (!isNode(node)) return
                 if (node.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && node.callee.property.type === "Identifier" && REGISTER_METHODS.has(node.callee.property.name)) {
                     const holder = node.callee.object
                     if (holder.type === "MemberExpression" && holder.object.type === "ThisExpression" && !holder.computed && holder.property.type === "Identifier" && collections.has(holder.property.name)) {
                         const callback = node.arguments[node.arguments.length - 1]
                         const tsCallback = callback ? toTs(callback) : null
-                        if (tsCallback && isFunctionType(checker.getTypeAtLocation(tsCallback)) && callback.type === "Identifier") registered.add(holder.property.name)
+                        if (tsCallback && isFunctionType(checker.getTypeAtLocation(tsCallback)) && callback?.type === "Identifier") registered.add(holder.property.name)
                     }
                 }
                 for (const key of Object.keys(node)) {
                     if (key === "parent") continue
-                    const value = node[key]
-                    if (Array.isArray(value)) for (const child of value) visit(child)
-                    else if (value && typeof value.type === "string") visit(value)
+                    const value: unknown = Reflect.get(node, key)
+                    if (Array.isArray(value)) {
+                        const children: unknown[] = value
+                        for (const child of children) visit(child)
+                    } else if (isNode(value)) visit(value)
                 }
             }
             visit(classNode.body)
-            for (const name of registered) context.report({ node: collections.get(name), messageId: "registry", data: { name } })
+            for (const name of registered) {
+                const key = collections.get(name)
+                if (key) context.report({ node: key, messageId: "registry", data: { name } })
+            }
         }
         return {
             ClassDeclaration(node) {
@@ -490,11 +536,13 @@ export const noEventBus = {
                 const members = eventBus.imports[value]
                 if (members === undefined) return
                 if (members.length === 0) report(source, value)
-                else for (const name of names) if (members.includes(name)) report(node, name)
+                else for (const name of names) if (name !== null && members.includes(name)) report(node, name)
             }),
             MemberExpression(node) {
                 if (node.computed || node.property.type !== "Identifier" || !eventNames.has(node.property.name)) return
-                if (node.object.type === "Identifier" && importOf(context, node.object)?.source === CQRS_PACKAGE && importOf(context, node.object).imported === "*") report(node, node.property.name)
+                if (node.object.type !== "Identifier") return
+                const binding = importOf(context, node.object)
+                if (binding?.source === CQRS_PACKAGE && binding.imported === "*") report(node, node.property.name)
             },
         }
     },
@@ -509,10 +557,10 @@ export const rules = {
     "execute-params-shape": executeParamsShape,
     "no-use-case": noUseCase,
     "no-event-bus": noEventBus,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/handler-overrides-process": "error",
     "starci-be/handler-is-thin": "error",
     "starci-be/message-carries-params-only": "error",

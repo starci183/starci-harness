@@ -28,6 +28,23 @@ import { baseName, isLoggerType, isOwnedType } from "./lib/ports.ts"
 import { firstWebhookVerification, isWebhookDomainServiceType } from "./lib/webhook-verifiers.ts"
 import { isWebhookForbiddenReceiver } from "./lib/webhook-handoff.ts"
 import { isProviderAcknowledgement } from "./lib/webhook-ack.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { ClassNode } from "./lib/doors.ts"
+import type { Context, Node, Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+
+/** A node of one of the `BRANCH_NODES` types: the visitors built over that set receive only these. */
+type BranchNode = TSESTree.IfStatement | TSESTree.SwitchStatement | TSESTree.ConditionalExpression | TSESTree.ForStatement | TSESTree.ForInStatement
+    | TSESTree.ForOfStatement | TSESTree.WhileStatement | TSESTree.DoWhileStatement | TSESTree.TryStatement | TSESTree.ThrowStatement | TSESTree.LogicalExpression
+
+/** A node of one of the `COMPUTE_NODES` types: the visitors built over that set receive only these. */
+type ComputeNode = TSESTree.BinaryExpression | TSESTree.UnaryExpression | TSESTree.UpdateExpression | TSESTree.AssignmentExpression
+
+/** A node of one of the `FUNCTION_NODES` types. */
+type FunctionRoot = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression | TSESTree.MethodDefinition
+
+/** A direct, non-computed member callee. */
+type Member = TSESTree.MemberExpressionNonComputedName
 
 /** The statements and expressions that are a decision, a repetition or an exit: none lives in a thin file. */
 const BRANCH_NODES = new Set(["IfStatement", "SwitchStatement", "ConditionalExpression", "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement", "DoWhileStatement", "TryStatement", "ThrowStatement", "LogicalExpression"])
@@ -38,8 +55,11 @@ const COMPUTE_NODES = new Set(["BinaryExpression", "UnaryExpression", "UpdateExp
 /** The nodes a function can be: the walk for calls and the nesting test use the same set. */
 const FUNCTION_NODES = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "MethodDefinition"])
 
+/** Whether a node is one of the `FUNCTION_NODES` types. */
+const isFunctionRoot = (node: Node): node is FunctionRoot => FUNCTION_NODES.has(node.type)
+
 /** What one decision or loop node is called in a message. */
-const BRANCH_WHAT = {
+const BRANCH_WHAT: Readonly<Record<string, string>> = {
     IfStatement: "an `if`",
     SwitchStatement: "a `switch`",
     ConditionalExpression: "a ternary",
@@ -56,31 +76,31 @@ const BRANCH_WHAT = {
 const STATEMENT_WRAPPERS = new Set(["AwaitExpression", "TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "ChainExpression"])
 
 /** The closed-vocabulary role a file name carries (`<name>.<role>.ts` gives `<role>`), or null. */
-const roleOf = (filename) => /\.([a-z][a-z0-9-]*)\.ts$/.exec(baseName(filename))?.[1] ?? null
+const roleOf = (filename: string): string | null => /\.([a-z][a-z0-9-]*)\.ts$/.exec(baseName(filename))?.[1] ?? null
 
 /** The `WebhookSignatureService` of `platform/http-security` - the `verify` a webhook door may call. */
-const isSignatureReceiver = (context, node) => isOwnedType(context, node, { name: "WebhookSignatureService", capability: "http-security", tier: "platform" })
+const isSignatureReceiver = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "WebhookSignatureService", capability: "http-security", tier: "platform" })
 
 /** The shape conversions a mapper may make on a value it received: a collection mapped item by item and a date written as text. They decide nothing and compute nothing. */
 const MAPPER_SHAPE_METHODS = new Set(["map", "toISOString"])
 
 /** The `JobClaims` port of `platform/jobs` - the fence a job step records itself through (`advance`, `runKey`): bookkeeping the fenced-job pattern requires, free beside the step's one delegating call. */
-const isClaimsReceiver = (context, node) => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
+const isClaimsReceiver = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
 
 /** The `Logger` port of `platform/logging` - the one call that is always free. */
 const isLoggerReceiver = isLoggerType
 
 /** A direct, non-computed member call; other callee shapes keep their ordinary call classification. */
-const memberOf = (callee) => callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee : null
+const memberOf = (callee: TSESTree.Expression): Member | null => callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee : null
 
 /** Nest-commander's group help is transport bookkeeping in a CLI door. */
-const isCliHelp = (role, member) => role === "cli" && member?.property.name === "help" && member.object.type === "MemberExpression"
+const isCliHelp = (role: string, member: Member | null): boolean => role === "cli" && member?.property.name === "help" && member.object.type === "MemberExpression"
     && member.object.object.type === "ThisExpression" && member.object.property.type === "Identifier" && member.object.property.name === "command"
 
 /** A signed number inside the validated immutable provider literal is data, rather than door computation. */
-const isLiteralAcknowledgementInitializer = (context, hfs, node) => {
-    let child = node
-    for (let parent = node.parent; parent; parent = parent.parent) {
+const isLiteralAcknowledgementInitializer = (context: Context, hfs: HfsView, node: Node): boolean => {
+    let child: Node = node
+    for (let parent: Node | undefined = node.parent; parent; parent = parent.parent) {
         if (parent.type === "VariableDeclarator") return parent.init === child && isProviderAcknowledgement(context, hfs, parent.id)
         child = parent
     }
@@ -88,11 +108,11 @@ const isLiteralAcknowledgementInitializer = (context, hfs, node) => {
 }
 
 /** A signed numeric literal in a TypeScript type annotation executes no expression. */
-const isSignedNumericLiteralType = (node) => node.type === "UnaryExpression" && node.parent?.type === "TSLiteralType"
+const isSignedNumericLiteralType = (node: Node): boolean => node.type === "UnaryExpression" && node.parent?.type === "TSLiteralType"
     && ["+", "-"].includes(node.operator) && node.argument.type === "Literal" && typeof node.argument.value === "number"
 
 /** The name of a thin file's law is `feature-thin` (R203). */
-export const featureThin = {
+export const featureThin: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A feature-tier file of a thin role maps its parameters and makes one delegating call into the modules: no branch, loop, `try`, `throw` or computation, and no call other than the one delegate, a modules function in mapping position, a `*.mapper.ts` function or the Logger." },
@@ -116,10 +136,11 @@ export const featureThin = {
         const webhookDoor = role === "webhook" && hfs.slotOf(context.filename) === "be.feature.webhooks.http"
 
         /** The injected member names of a class: constructor parameter properties and properties carrying an injector decorator. */
-        const memberNames = new Map()
-        const injectedNamesOf = (classNode) => {
-            if (memberNames.has(classNode)) return memberNames.get(classNode)
-            const names = new Set()
+        const memberNames = new Map<ClassNode, Set<string>>()
+        const injectedNamesOf = (classNode: ClassNode): Set<string> => {
+            const known = memberNames.get(classNode)
+            if (known) return known
+            const names = new Set<string>()
             for (const { node } of injectedMembers(context, classNode)) {
                 if (node.type === "TSParameterProperty" && node.parameter.type === "Identifier") names.add(node.parameter.name)
                 else if (node.type === "PropertyDefinition") {
@@ -136,8 +157,8 @@ export const featureThin = {
          * function or an object-literal method rebinds `this` in between (a method's own `FunctionExpression`
          * value is skipped - a method's `this` is the class).
          */
-        const thisClassOf = (node) => {
-            for (let parent = node.parent; parent; parent = parent.parent) {
+        const thisClassOf = (node: Node): ClassNode | null => {
+            for (let parent: Node | undefined = node.parent; parent; parent = parent.parent) {
                 if (parent.type === "ClassDeclaration" || parent.type === "ClassExpression") return parent
                 if (parent.type === "FunctionDeclaration") return null
                 if (parent.type === "FunctionExpression" && parent.parent?.type !== "MethodDefinition") return null
@@ -146,7 +167,7 @@ export const featureThin = {
         }
 
         /** The member name of `this.<member>` the call's receiver names, when it is an injected member of the enclosing class. */
-        const injectedMemberOf = (object, call) => {
+        const injectedMemberOf = (object: TSESTree.Expression, call: Node): string | null => {
             if (object.type !== "MemberExpression" || object.computed || object.object.type !== "ThisExpression" || object.property.type !== "Identifier") return null
             const classNode = thisClassOf(call)
             if (classNode === null) return null
@@ -155,23 +176,23 @@ export const featureThin = {
         }
 
         /** True for an imported pure `*.mapper.ts` function, resolved through any facade re-exports to its declaration. */
-        const isMapperCall = (callee) => {
+        const isMapperCall = (callee: Node): boolean => {
             if (callee.type !== "Identifier" || importOf(context, callee) === null) return false
             const declarations = aliasTarget(context, callee)?.getDeclarations() ?? []
             return declarations.length > 0 && declarations.every((declaration) => roleOf(declaration.getSourceFile().fileName) === "mapper")
         }
 
         /** True for a call `f(...)` where `f` is imported and its declaration lives outside the feature tier (a function of the modules). */
-        const isModulesCall = (callee) => {
+        const isModulesCall = (callee: Node): boolean => {
             if (callee.type !== "Identifier" || importOf(context, callee) === null) return false
             const symbol = aliasTarget(context, callee)
             return (symbol?.getDeclarations() ?? []).some((declaration) => hfs.tierOf(declaration.getSourceFile().fileName) !== "feature")
         }
 
         /** True when the call IS the statement it sits in: `f(...)`, `await f(...)`, `return (await) f(...)`, or the whole body of a concise arrow. */
-        const isStatementCall = (call) => {
-            let current = call
-            while (STATEMENT_WRAPPERS.has(current.parent?.type)) current = current.parent
+        const isStatementCall = (call: Node): boolean => {
+            let current: Node = call
+            while (current.parent && STATEMENT_WRAPPERS.has(current.parent.type)) current = current.parent
             const parent = current.parent
             return parent?.type === "ExpressionStatement" || parent?.type === "ReturnStatement" || (parent?.type === "ArrowFunctionExpression" && parent.body === current)
         }
@@ -181,14 +202,14 @@ export const featureThin = {
          * `free` (a mapper, a logger method, a webhook `verify`, a job step's `JobClaims` fence call, a modules function in a mapping position)
          * or `call` (a call a thin file does not make). A `mapper` file holds only mapper calls and `new`.
          */
-        const classifyMapperOrCli = (member, call) => {
+        const classifyMapperOrCli = (member: Member | null, call: Node): "free" | "call" | null => {
             if (mapperFile && member !== null && MAPPER_SHAPE_METHODS.has(member.property.name) && injectedMemberOf(member.object, call) === null) return "free"
             if (isCliHelp(role, member)) return "free"
             return mapperFile ? "call" : null
         }
 
         /** The free bookkeeping calls beside an injected member's one delegate. */
-        const classifyInjected = (member) => {
+        const classifyInjected = (member: Member): "free" | "call" | "delegating" => {
             if (webhookDoor && isWebhookForbiddenReceiver(context, hfs, member.object)) return "call"
             if (isLoggerReceiver(context, member.object)) return "free"
             if (role === "webhook" && member.property.name === "verify" && isSignatureReceiver(context, member.object)) return "free"
@@ -196,7 +217,7 @@ export const featureThin = {
             return "delegating"
         }
 
-        const classify = (call) => {
+        const classify = (call: TSESTree.CallExpression): "free" | "call" | "delegating" => {
             const callee = call.callee
             if (callee.type === "Identifier" && isMapperCall(callee)) return "free"
             const member = memberOf(callee)
@@ -208,11 +229,11 @@ export const featureThin = {
         }
 
         /** Every root function of the file (a method body, function or arrow not nested in another function and not inside a decorator subtree). */
-        const rootFunctionsOf = (program) => {
-            const roots = []
+        const rootFunctionsOf = (program: TSESTree.Program): FunctionRoot[] => {
+            const roots: FunctionRoot[] = []
             walk(program, (node) => {
-                if (!FUNCTION_NODES.has(node.type)) return
-                for (let parent = node.parent; parent; parent = parent.parent) {
+                if (!isFunctionRoot(node)) return
+                for (let parent: Node | undefined = node.parent; parent; parent = parent.parent) {
                     if (parent.type === "Decorator" || FUNCTION_NODES.has(parent.type)) return
                 }
                 if (node.type === "MethodDefinition" && node.kind === "constructor") return
@@ -222,7 +243,7 @@ export const featureThin = {
         }
 
         /** The name a `many` message reports for a function root. */
-        const nameOf = (fn) => {
+        const nameOf = (fn: FunctionRoot): string | null => {
             if (fn.type === "MethodDefinition") return keyName(fn.key) ?? "the method"
             if (fn.type === "FunctionDeclaration" && fn.id?.type === "Identifier") return fn.id.name
             const parent = fn.parent
@@ -231,12 +252,12 @@ export const featureThin = {
             return "the function"
         }
 
-        const visitors = {}
+        const visitors: RuleListener = {}
         for (const type of BRANCH_NODES) {
-            visitors[type] = (node) => context.report({ node, messageId: "branch", data: { what: type === "LogicalExpression" ? `a \`${node.operator}\`` : BRANCH_WHAT[type], role } })
+            visitors[type] = (node: BranchNode) => context.report({ node, messageId: "branch", data: { what: node.type === "LogicalExpression" ? `a \`${node.operator}\`` : BRANCH_WHAT[type], role } })
         }
         for (const type of COMPUTE_NODES) {
-            visitors[type] = (node) => {
+            visitors[type] = (node: ComputeNode) => {
                 if (isSignedNumericLiteralType(node)) return
                 if (webhookDoor && isLiteralAcknowledgementInitializer(context, hfs, node)) return
                 context.report({ node, messageId: "compute", data: { what: `an \`${node.operator}\``, role } })
@@ -251,7 +272,7 @@ export const featureThin = {
                 if (!body) continue
                 const proof = role === "webhook" && hfs.slotOf(context.filename) === "be.feature.webhooks.http" && root.type === "MethodDefinition" && decoratorsFrom(context, root, "@nestjs/common", "Post").length > 0
                     ? firstWebhookVerification(context, hfs, root) : null
-                const separateDomainProof = proof !== null && callsOf(root).filter(({ receiver }) => receiver !== null && isWebhookDomainServiceType(context, hfs, receiver)).length > 1
+                const separateDomainProof = proof !== null && root.type === "MethodDefinition" && callsOf(root).filter(({ receiver }) => receiver !== null && isWebhookDomainServiceType(context, hfs, receiver)).length > 1
                 let delegating = 0
                 walk(body, (node) => {
                     if (node.type !== "CallExpression") return
@@ -270,19 +291,20 @@ export const featureThin = {
 }
 
 /** A declaration's signed numeric literal is still data, including an enum member or a constant. */
-const isSignedNumericLiteral = (node) => node.type === "UnaryExpression" && ["+", "-"].includes(node.operator)
+const isSignedNumericLiteral = (node: Node): boolean => node.type === "UnaryExpression" && ["+", "-"].includes(node.operator)
     && node.argument.type === "Literal" && typeof node.argument.value === "number"
 
 /** A DTO's decorator application declares metadata; calls inside its arguments remain ordinary executable calls. */
-const isDecoratorApplication = (node) => node.parent?.type === "Decorator" && node.parent.expression === node
+const isDecoratorApplication = (node: TSESTree.CallExpression): boolean => node.parent?.type === "Decorator" && node.parent.expression === node
 
 /** A Nest command/query constructor initializes its data base through the required, argument-free super call. */
-const isCqrsDataConstructor = (context, node) => {
+const isCqrsDataConstructor = (context: Context, node: TSESTree.CallExpression): boolean => {
     if (node.callee.type !== "Super" || node.arguments.length !== 0) return false
-    for (let parent = node.parent; parent; parent = parent.parent) {
+    for (let parent: Node | undefined = node.parent; parent; parent = parent.parent) {
         if (parent.type === "MethodDefinition") {
             const declaration = parent.parent?.parent
-            return parent.kind === "constructor" && isImportedFrom(context, declaration?.superClass, "@nestjs/cqrs", ["Command", "Query"])
+            const superClass = declaration?.type === "ClassDeclaration" || declaration?.type === "ClassExpression" ? declaration.superClass : undefined
+            return parent.kind === "constructor" && isImportedFrom(context, superClass, "@nestjs/cqrs", ["Command", "Query"])
         }
         if (["FunctionDeclaration", "ArrowFunctionExpression"].includes(parent.type)) return false
     }
@@ -295,13 +317,13 @@ const isCqrsDataConstructor = (context, node) => {
  * registration must sit in a file the resolver imports, and the `.type.ts` is that file (owner ruling 2026-10-16 "Theo y tro", docs/microservices.md#r264).
  * The same call in any other role or slot, or nested in a function, stays executable logic.
  */
-const isEnumRegistration = (context, hfs, node, role) => role === "type"
+const isEnumRegistration = (context: Context, hfs: HfsView, node: TSESTree.CallExpression, role: string): boolean => role === "type"
     && hfs.slotOf(context.filename) === "be.transport.graphql"
     && node.parent?.type === "ExpressionStatement" && node.parent.parent?.type === "Program"
     && isImportedFrom(context, node.callee, "@nestjs/graphql", ["registerEnumType"])
 
 /** Non-door feature roles declare data; renaming a policy or a guard must never hide business logic from R203. */
-export const featureLogicRole = {
+export const featureLogicRole: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Non-door roles in the feature tier may declare data, types and DTO metadata, but cannot hold decisions, computation or executable calls." },
@@ -320,13 +342,13 @@ export const featureLogicRole = {
         // The feature's Nest composition is governed by the module laws. A module suffix in support/ is still support.
         if (["module", "module-definition"].includes(role) && hfs.slotOf(context.filename) !== "be.feature.application.support") return {}
 
-        const report = (node, what) => context.report({ node, messageId: "logic", data: { what, role } })
-        const visitors = {}
+        const report = (node: Node, what: string | undefined): void => context.report({ node, messageId: "logic", data: { what, role } })
+        const visitors: RuleListener = {}
         for (const type of BRANCH_NODES) {
-            visitors[type] = (node) => report(node, type === "LogicalExpression" ? `a \`${node.operator}\`` : BRANCH_WHAT[type])
+            visitors[type] = (node: BranchNode) => report(node, node.type === "LogicalExpression" ? `a \`${node.operator}\`` : BRANCH_WHAT[type])
         }
         for (const type of COMPUTE_NODES) {
-            visitors[type] = (node) => {
+            visitors[type] = (node: ComputeNode) => {
                 if (!isSignedNumericLiteral(node)) report(node, `an \`${node.operator}\``)
             }
         }
@@ -346,10 +368,10 @@ export const featureLogicRole = {
 export const rules = {
     "feature-thin": featureThin,
     "feature-logic-role": featureLogicRole,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/feature-thin": "error",
     "starci-be/feature-logic-role": "error",
 }

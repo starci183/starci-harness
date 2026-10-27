@@ -13,6 +13,8 @@ import ts from "typescript"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { moduleReferences } from "./lib/import-source.ts"
 import { isSpecFile } from "./lib/path.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 const PURE = new Set([
     "class-transformer", "class-validator", "rxjs", "reflect-metadata", "tslib", "zod", "lodash", "lodash-es",
@@ -25,31 +27,37 @@ const FRAMEWORK = new Set([
     "@as-integrations/express5", "express", "nest-commander", "typeorm",
 ])
 const TEST_LIBRARIES = new Set(["@nestjs/testing", "@starci/jest-preset", "@starci/test-world", "@jest/globals", "jest", "jest-mock"])
-const INVENTORIES = new WeakMap()
+/** The app dependency declarations (name -> package) and the module references of each integration file. */
+interface Inventory {
+    readonly dependencies: Map<string, string>
+    readonly byFile: Map<string, Set<string>>
+}
+
+const INVENTORIES = new WeakMap<HfsView, Inventory>()
 const SOURCE = /\.[cm]?[jt]sx?$/
 const GENERATED = new Set(["node_modules", "dist", "coverage", ".git"])
 
 /** The package root of a bare module specifier, including a scoped package's subpaths. */
-const packageOf = (specifier) => {
+const packageOf = (specifier: string) => {
     if (specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("#") || isBuiltin(specifier)) return null
     const parts = specifier.split("/")
     return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]
 }
 
 /** A file that the back-end slot view classifies as executable source or a test. */
-const inSource = (hfs, file) => {
+const inSource = (hfs: HfsView, file: string) => {
     const tier = hfs.tierOf(file)
     return (tier !== null && tier !== "none") || hfs.slotOf(file)?.startsWith("be.tests.") === true
 }
 
 /** Every literal module reference in a source file, including dynamic imports, require and re-exports. */
-const referencesOf = (file, text) => {
-    const found = new Set()
+const referencesOf = (file: string, text: string) => {
+    const found = new Set<string>()
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
-    const add = (node) => {
+    const add = (node: ts.Node | undefined) => {
         if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) found.add(node.text)
     }
-    const visit = (node) => {
+    const visit = (node: ts.Node) => {
         if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) add(node.moduleSpecifier)
         else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) add(node.moduleReference.expression)
         else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === "require"))) add(node.arguments[0])
@@ -63,22 +71,24 @@ const referencesOf = (file, text) => {
  * The app's dependency declarations and the SDK imports of all integration owners, read once for this HFS view.
  * No ancestor search: be/ has the app-root package.json immediately above it; standalone fixtures may put it at root.
  */
-const inventoryOf = (hfs) => {
-    if (INVENTORIES.has(hfs)) return INVENTORIES.get(hfs)
+const inventoryOf = (hfs: HfsView): Inventory => {
+    const cached = INVENTORIES.get(hfs)
+    if (cached) return cached
     const appManifest = join(dirname(hfs.repoRoot), "package.json")
     const manifest = existsSync(appManifest) ? appManifest : join(hfs.repoRoot, "package.json")
     if (!existsSync(manifest)) throw new Error("third-party-import-owner needs the app-root package.json beside be/ to derive SDK ownership")
-    const declaration = JSON.parse(readFileSync(manifest, "utf8"))
-    const dependencies = new Map()
+    const declaration: unknown = JSON.parse(readFileSync(manifest, "utf8"))
+    const dependencies = new Map<string, string>()
     for (const section of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
-        for (const [name, version] of Object.entries(declaration[section] ?? {})) {
+        const declared: unknown = typeof declaration === "object" && declaration !== null ? Reflect.get(declaration, section) : undefined
+        for (const [name, version] of Object.entries(declared ?? {})) {
             if (/^(?:workspace:|file:|link:)/.test(String(version))) continue
             const alias = /^npm:((?:@[^/]+\/)?[^@]+)(?:@|$)/.exec(String(version))
             dependencies.set(name, alias?.[1] ?? name)
         }
     }
-    const byFile = new Map()
-    const walk = (directory) => {
+    const byFile = new Map<string, Set<string>>()
+    const walk = (directory: string) => {
         for (const entry of readdirSync(directory, { withFileTypes: true })) {
             if (GENERATED.has(entry.name) || entry.isSymbolicLink()) continue
             const file = join(directory, entry.name)
@@ -93,12 +103,12 @@ const inventoryOf = (hfs) => {
 }
 
 /** The table already owns this import (including a package subpath); R90 alone judges it. */
-const inInfraTable = (hfs, specifier) => Object.keys(hfs.ruleParams.infraOwners).some((key) => specifier === key || specifier.startsWith(`${key}/`))
+const inInfraTable = (hfs: HfsView, specifier: string) => Object.keys(hfs.ruleParams.infraOwners).some((key) => specifier === key || specifier.startsWith(`${key}/`))
 
 /** The declared SDK identity, or null for an import that belongs to another existing concern. */
-const sdkOf = (hfs, dependencies, file, specifier) => {
+const sdkOf = (hfs: HfsView, dependencies: Map<string, string>, file: string, specifier: string) => {
     const name = packageOf(specifier)
-    const dependency = dependencies.get(name)
+    const dependency = name === null || name === undefined ? undefined : dependencies.get(name)
     if (!dependency || inInfraTable(hfs, specifier) || PURE.has(dependency) || FRAMEWORK.has(dependency)) return null
     const isTest = isSpecFile(file) || hfs.slotOf(file)?.startsWith("be.tests.") === true
     if (isTest && TEST_LIBRARIES.has(dependency)) return null
@@ -107,7 +117,7 @@ const sdkOf = (hfs, dependencies, file, specifier) => {
 }
 
 /** Every third-party SDK import stays in a single integrations/<provider> capability. */
-export const thirdPartyImportOwner = {
+export const thirdPartyImportOwner: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "BE_THIRD_PARTY_OWNER: a declared third-party SDK is imported only by one integration owner." },
@@ -121,23 +131,24 @@ export const thirdPartyImportOwner = {
         const hfs = hfsOf(context)
         const file = context.filename
         if (!inSource(hfs, file)) return {}
-        let inventory
+        let inventory: Inventory | undefined
         return moduleReferences(({ source, value }) => {
             // Relative paths, node builtins and the infrastructure table need no dependency manifest.
             if (packageOf(value) === null || inInfraTable(hfs, value)) return
             inventory ??= inventoryOf(hfs)
-            const sdk = sdkOf(hfs, inventory.dependencies, file, value)
+            const { dependencies, byFile } = inventory
+            const sdk = sdkOf(hfs, dependencies, file, value)
             if (sdk === null) return
             const here = hfs.ownerOf(file)
             if (hfs.tierOf(file) !== "integrations" || here === null) {
                 context.report({ node: source, messageId: "foreign", data: { name: value } })
                 return
             }
-            const owners = new Set([here])
-            for (const [other, references] of inventory.byFile) {
+            const owners = new Set<string | null>([here])
+            for (const [other, references] of byFile) {
                 // ESLint's current buffer replaces the on-disk text of this file.
                 if (other === resolve(file)) continue
-                if ([...references].some((reference) => sdkOf(hfs, inventory.dependencies, other, reference) === sdk)) owners.add(hfs.ownerOf(other))
+                if ([...references].some((reference) => sdkOf(hfs, dependencies, other, reference) === sdk)) owners.add(hfs.ownerOf(other))
             }
             if (owners.size > 1) context.report({ node: source, messageId: "multiple", data: { name: sdk, owners: [...owners].sort().map((owner) => `\`${owner}\``).join(", ") } })
         })
@@ -145,5 +156,5 @@ export const thirdPartyImportOwner = {
 }
 
 /** The published rule and its required severity. */
-export const rules = { "third-party-import-owner": thirdPartyImportOwner }
-export const recommended = { "starci-be/third-party-import-owner": "error" }
+export const rules = { "third-party-import-owner": thirdPartyImportOwner } satisfies Rules
+export const recommended: Recommended = { "starci-be/third-party-import-owner": "error" }

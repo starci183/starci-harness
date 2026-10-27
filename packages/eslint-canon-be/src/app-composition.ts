@@ -26,10 +26,12 @@ import { hfsOf } from "./lib/hfs.ts"
 import { isOwnedBy } from "./lib/declared.ts"
 import { keyName, staticText } from "./lib/ast.ts"
 import { isDeclarationFile, normalizePath } from "./lib/path.ts"
-import { moduleOf, originsOfType, packageOfExport, typed } from "./lib/types.ts"
+import { childNode, moduleOf, originsOfType, packageOfExport, resolvedSymbol as resolveAlias, typed } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** Static factories that register a Nest module (a dynamic module), a queue or a flow producer. */
-const REGISTRATION_CALLS = new Set([
+const REGISTRATION_CALLS: ReadonlySet<string | null> = new Set([
     "register",
     "registerAsync",
     "forRoot",
@@ -52,17 +54,22 @@ const LIST_NAME = /(?:Modules|Queues|Schedulers|Processors)$/
 const ENTRY_CALL = /(?:Scheduler|Queue)(?:Of)?$/
 
 /** Type-only wrappers do not change whether an expression composes modules. */
-const WRAPPERS = new Set(["TSAsExpression", "TSTypeAssertion", "TSSatisfiesExpression", "TSNonNullExpression", "TSInstantiationExpression", "ChainExpression"])
-const unwrap = (node) => {
-    while (node && WRAPPERS.has(node.type)) node = node.expression
+const WRAPPERS: ReadonlySet<string> = new Set(["TSAsExpression", "TSTypeAssertion", "TSSatisfiesExpression", "TSNonNullExpression", "TSInstantiationExpression", "ChainExpression"])
+/** A type-only wrapper node. */
+type Wrapper = TSESTree.TSAsExpression | TSESTree.TSTypeAssertion | TSESTree.TSSatisfiesExpression | TSESTree.TSNonNullExpression | TSESTree.TSInstantiationExpression | TSESTree.ChainExpression
+const isWrapper = (node: Node | null | undefined): node is Wrapper => node !== null && node !== undefined && WRAPPERS.has(node.type)
+function unwrap(node: Node): Node
+function unwrap(node: Node | null | undefined): Node | null | undefined
+function unwrap(node: Node | null | undefined): Node | null | undefined {
+    while (isWrapper(node)) node = node.expression
     return node
 }
 
 /** The known name of a member, including a static computed string. */
-const memberName = (node) => node.computed ? staticText(node.property) : keyName(node.property)
+const memberName = (node: TSESTree.MemberExpression): string | null => node.computed ? staticText(node.property) : keyName(node.property)
 
 /** The last name of an identifier or a statically named member expression, else null. */
-const lastName = (node) => {
+const lastName = (node: Node | null | undefined): string | null => {
     node = unwrap(node)
     if (node?.type === "Identifier") return node.name
     if (node?.type === "MemberExpression") return memberName(node)
@@ -70,7 +77,8 @@ const lastName = (node) => {
 }
 
 /** What an array element composes (`module`, `registration`, `scheduler`, `list`), or null when it is plain options data. */
-const compositionOf = (element) => {
+type Composition = "module" | "registration" | "scheduler" | "list"
+const compositionOf = (element: Node | null | undefined): Composition | null => {
     element = unwrap(element)
     if (!element) return null
     if (element.type === "SpreadElement") {
@@ -89,7 +97,7 @@ const compositionOf = (element) => {
 }
 
 /** Env parsing and options bindings hold no module, queue or scheduler composition. */
-export const appOptionsCompositionFree = {
+export const appOptionsCompositionFree: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`<app>.env.ts` holds environment parsing only and `<app>.options.ts` holds options types and port bindings; module, queue and scheduler composition lives in `compose/<area>.ts`." },
@@ -105,12 +113,12 @@ export const appOptionsCompositionFree = {
         if (isDeclarationFile(filename)) return {}
         const role = appRoleOf(hfsOf(context), filename)?.entry
         if (role !== APP_OPTIONS_ROLE && role !== APP_ENV_ROLE) return {}
-        const judged = new WeakSet()
+        const judged = new WeakSet<Node>()
         return {
             CallExpression(node) {
                 if (role !== APP_ENV_ROLE) return
-                let element = node
-                while (WRAPPERS.has(element.parent?.type)) element = element.parent
+                let element: Node = node
+                while (isWrapper(element.parent)) element = element.parent
                 if (element.parent?.type === "ArrayExpression") return
                 const what = compositionOf(node)
                 if (what !== "registration" && what !== "scheduler") return
@@ -126,7 +134,7 @@ export const appOptionsCompositionFree = {
             },
             "ArrayExpression:exit"(node) {
                 if (judged.has(node)) return
-                const what = node.elements.map(compositionOf).find((kind) => kind !== null)
+                const what = node.elements.map(compositionOf).find((kind): kind is Composition => kind !== null)
                 if (what === undefined) return
                 const label = { module: "Nest module", registration: "module or queue registration", scheduler: "scheduler or queue entry", list: "spread of a module, queue or scheduler list" }[what]
                 context.report({ node, messageId: "element", data: { what: label, role } })
@@ -135,23 +143,26 @@ export const appOptionsCompositionFree = {
     },
 }
 
+/** Whether a type is a reference to a generic type (it carries a `target`), the only kind `getTypeArguments` reads arguments from. */
+const isTypeReference = (type: ts.Type): type is ts.TypeReference => "target" in type
+
 /** Composition is a value's type, independent of the spelling of its class, factory or helper. */
-const compositionTypes = (checker) => {
-    const propertyType = (type, name) => {
+const compositionTypes = (checker: ts.TypeChecker) => {
+    const propertyType = (type: ts.Type, name: string): ts.Type | null => {
         const property = type.getProperty(name)
         const declaration = property?.valueDeclaration ?? property?.getDeclarations?.()?.[0]
-        return declaration ? checker.getTypeOfSymbolAtLocation(property, declaration) : null
+        return property && declaration ? checker.getTypeOfSymbolAtLocation(property, declaration) : null
     }
-    const constructor = (type) => (type?.getConstructSignatures().length ?? 0) > 0
-    const dynamicModule = (type) => constructor(propertyType(type, "module"))
-    const moduleConstructor = (type) => {
+    const constructor = (type: ts.Type | null | undefined): boolean => (type?.getConstructSignatures().length ?? 0) > 0
+    const dynamicModule = (type: ts.Type): boolean => constructor(propertyType(type, "module"))
+    const moduleConstructor = (type: ts.Type): boolean => {
         if (!constructor(type)) return false
         for (const declaration of type.getSymbol()?.getDeclarations?.() ?? []) {
             if (!ts.isClassDeclaration(declaration) && !ts.isClassExpression(declaration)) continue
             for (const decorator of ts.getDecorators(declaration) ?? []) {
                 const expression = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
                 const symbol = checker.getSymbolAtLocation(ts.isPropertyAccessExpression(expression) ? expression.name : expression)
-                const resolved = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+                const resolved = resolveAlias(checker, symbol)
                 if (resolved?.name === "Module" && resolved.getDeclarations()?.some((origin) => moduleOf(origin, normalizePath(origin.getSourceFile().fileName)) === "@nestjs/common")) return true
             }
         }
@@ -161,11 +172,11 @@ const compositionTypes = (checker) => {
             return factory?.getCallSignatures().some((signature) => dynamicModule(checker.getReturnTypeOfSignature(signature)))
         })
     }
-    const arrayElement = (type) => checker.isArrayType(type) || checker.isTupleType(type)
+    const arrayElement = (type: ts.Type): ts.Type | null | undefined => checker.isArrayType(type) || checker.isTupleType(type)
         ? checker.getIndexTypeOfType(type, ts.IndexKind.Number)
-        : type.getSymbol()?.name === "ReadonlyArray" ? checker.getTypeArguments(type)[0] : null
+        : type.getSymbol()?.name === "ReadonlyArray" ? (isTypeReference(type) ? checker.getTypeArguments(type)[0] : undefined) : null
     const MAX_DEPTH = 12
-    const contains = (type, constructors = false, seen = new Set(), depth = 0) => {
+    const contains = (type: ts.Type | null | undefined, constructors = false, seen = new Set<ts.Type>(), depth = 0): boolean => {
         // A library type graph (the application, an HTTP adapter) can be deep and cyclic through member types: a bounded walk never overflows the stack.
         if (depth > MAX_DEPTH) return false
         if (!type || seen.has(type) || type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter)) return false
@@ -194,7 +205,7 @@ const compositionTypes = (checker) => {
         }
         return type.getProperties().some((property) => contains(propertyType(type, property.name), false, new Set(seen), depth + 1))
     }
-    const typedList = (type) => {
+    const typedList = (type: ts.Type): boolean => {
         const element = arrayElement(type)
         if (!element || element.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return false
         const parts = element.isUnion() ? element.types : [element]
@@ -204,7 +215,7 @@ const compositionTypes = (checker) => {
 }
 
 /** R265: app values compose only in typed groups, never in env/options/bootstrap lists. */
-export const appCompositionTyped = {
+export const appCompositionTyped: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Module, provider, queue and scheduler composition is judged by its resolved type and lives in typed compose groups." },
@@ -219,59 +230,62 @@ export const appCompositionTyped = {
         const filename = normalizePath(context.filename || context.getFilename())
         if (isDeclarationFile(filename)) return {}
         const role = appRoleOf(hfsOf(context), filename)?.entry
-        if (![APP_ENV_ROLE, APP_OPTIONS_ROLE, "main.ts", "compose/<area>.ts"].includes(role)) return {}
+        const typedRoles: ReadonlyArray<string | undefined> = [APP_ENV_ROLE, APP_OPTIONS_ROLE, "main.ts", "compose/<area>.ts"]
+        if (!typedRoles.includes(role)) return {}
         const { checker, toTs } = typed(context)
         const { arrayElement, contains, typedList } = compositionTypes(checker)
-        const reported = new WeakSet()
-        const hasReport = (node) => {
-            for (let ancestor = node; ancestor; ancestor = ancestor.parent) if (reported.has(ancestor)) return true
+        const reported = new WeakSet<Node>()
+        const hasReport = (node: Node): boolean => {
+            for (let ancestor: Node | undefined = node; ancestor; ancestor = ancestor.parent) if (reported.has(ancestor)) return true
             return false
         }
-        const report = (node, messageId) => {
+        const report = (node: Node, messageId: "outside" | "group" | "business"): void => {
             if (hasReport(node)) return
             reported.add(node)
             context.report({ node, messageId, data: { role } })
         }
-        const typeOf = (node) => checker.getTypeAtLocation(toTs(node))
-        const bootstrapArgument = (node) => {
+        const typeOf = (node: Node): ts.Type => checker.getTypeAtLocation(toTs(node))
+        const bootCalls: ReadonlyArray<string | null> = ["create", "createApplicationContext", "createMicroservice"]
+        const bootstrapArgument = (node: Node): boolean => {
             // The root module's registration belongs here; inline lists and metadata still belong in compose/.
             if (role !== "main.ts" || node.type !== "CallExpression") return false
-            let expression = node
-            while (WRAPPERS.has(expression.parent?.type)) expression = expression.parent
+            let expression: Node = node
+            while (isWrapper(expression.parent)) expression = expression.parent
             const parent = expression.parent
-            if (parent?.type !== "CallExpression" || !parent.arguments.includes(expression) || parent.callee.type !== "MemberExpression") return false
-            const owner = (callee) => packageOfExport(context, callee) ?? packageOfExport(context, callee.object)
+            if (parent?.type !== "CallExpression" || !parent.arguments.some((argument) => argument === expression) || parent.callee.type !== "MemberExpression") return false
+            const owner = (callee: TSESTree.MemberExpression): string | null => packageOfExport(context, callee) ?? packageOfExport(context, callee.object)
             // An api boots through NestFactory; a cli app boots its root module through nest-commander's CommandFactory.run (R148).
-            return (["create", "createApplicationContext", "createMicroservice"].includes(memberName(parent.callee)) && owner(parent.callee) === "@nestjs/core")
+            return (bootCalls.includes(memberName(parent.callee)) && owner(parent.callee) === "@nestjs/core")
                 || (memberName(parent.callee) === "run" && parent.arguments[0] === expression && owner(parent.callee) === "nest-commander")
         }
-        const checkValue = (node) => {
+        const checkValue = (node: Node): void => {
             if (role === "compose/<area>.ts" || hasReport(node) || bootstrapArgument(node)) return
             if (contains(typeOf(node))) report(node, "outside")
         }
-        const checkGroup = (node, value, annotation) => {
+        const checkGroup = (node: Node, value: Node, annotation: unknown): void => {
             if (role !== "compose/<area>.ts") return
             const type = typeOf(value)
             const signatures = type.getCallSignatures()
-            const result = signatures.length ? checker.getReturnTypeOfSignature(signatures[0]) : type
+            const first = signatures[0]
+            const result = first ? checker.getReturnTypeOfSignature(first) : type
             if (signatures.length && !arrayElement(result) && !contains(result)) {
                 report(node, "business")
                 return
             }
             if (!annotation || !typedList(result)) report(node, "group")
         }
-        const annotationOf = (node) => {
+        const annotationOf = (node: Node | null | undefined): unknown => {
             if (!node) return null
             if (node.type === "TSSatisfiesExpression") return node.typeAnnotation
-            if (WRAPPERS.has(node.type)) return annotationOf(node.expression)
+            if (isWrapper(node)) return annotationOf(node.expression)
             if (node.type === "VariableDeclarator") return node.id.typeAnnotation ?? annotationOf(node.init)
-            if (node.returnType) return node.returnType
+            if ("returnType" in node && node.returnType) return node.returnType
             if (node.type !== "Identifier") return null
             const symbol = checker.getSymbolAtLocation(toTs(node))
-            const resolved = symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+            const resolved = resolveAlias(checker, symbol)
             return resolved?.getDeclarations()?.some((declaration) => {
-                const initializer = declaration.initializer
-                return declaration.type || initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer) || ts.isSatisfiesExpression(initializer)) && initializer.type
+                const initializer = childNode(declaration, "initializer")
+                return childNode(declaration, "type") || initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer) || ts.isSatisfiesExpression(initializer)) && initializer.type
             }) ?? false
         }
         return {
@@ -322,21 +336,32 @@ export const appCompositionTyped = {
 }
 
 /** Resolve an imported or local binding without relying on its local spelling. */
-const resolvedSymbol = (checker, node) => {
+const resolvedSymbol = (checker: ts.TypeChecker, node: ts.Node): ts.Symbol | undefined => {
     const symbol = checker.getSymbolAtLocation(ts.isPropertyAccessExpression(node) ? node.name : node)
-    return symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+    return resolveAlias(checker, symbol)
+}
+
+/** Whether a value is a TypeScript symbol (it carries numeric `flags` and an `escapedName`). */
+const isSymbol = (value: unknown): value is ts.Symbol =>
+    typeof value === "object" && value !== null && "flags" in value && typeof value.flags === "number" && "escapedName" in value
+
+/** The symbol the binder gave a node (a module's own symbol for an external-module source file), if any. */
+const ownSymbol = (node: ts.Node): ts.Symbol | undefined => {
+    const value: unknown = Reflect.get(node, "symbol")
+    return isSymbol(value) ? value : undefined
 }
 
 /** The app's declared name comes from its matching env filename, not its kind's slot name. */
-const appEnvNames = (filename, role) => {
+const appEnvNames = (filename: string, role: string): { file: string; reader: string } => {
     const root = filename.slice(0, filename.lastIndexOf("/"))
-    const app = role === APP_ENV_ROLE ? filename.split("/").at(-1).slice(0, -".env.ts".length) : root.split("/").at(-2)
-    const pascal = app.replace(/(?:^|[-_])([a-z\d])/g, (_, letter) => letter.toUpperCase())
+    const app = role === APP_ENV_ROLE ? (filename.split("/").at(-1) ?? "").slice(0, -".env.ts".length) : root.split("/").at(-2)
+    if (app === undefined) throw new TypeError("Cannot read properties of undefined (reading 'replace')")
+    const pascal = app.replace(/(?:^|[-_])([a-z\d])/g, (_: string, letter: string) => letter.toUpperCase())
     return { file: `${root}/${app}.env.ts`, reader: `read${pascal}Env` }
 }
 
 /** R289: the typed app env reader owns parsing; main acquires one source and delegates once. */
-export const appEnvRequired = {
+export const appEnvRequired: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every app exports its typed EnvSource reader; main builds one source and delegates parsing to that reader." },
@@ -355,25 +380,27 @@ export const appEnvRequired = {
         if (role !== APP_ENV_ROLE && role !== "main.ts") return {}
         const { checker, toTs } = typed(context)
         const names = appEnvNames(filename, role)
-        const ownedEnv = (type) => originsOfType(checker, type).some((origin) => origin.name === "EnvSource" && isOwnedBy(hfs, origin.file, "platform", "config"))
-        const envValue = (node) => node && ownedEnv(checker.getTypeAtLocation(toTs(node)))
-        const matchingReader = (node) => {
+        const ownedEnv = (type: ts.Type): boolean => originsOfType(checker, type).some((origin) => origin.name === "EnvSource" && isOwnedBy(hfs, origin.file, "platform", "config"))
+        const envValue = (node: Node | null | undefined): boolean | null | undefined => node && ownedEnv(checker.getTypeAtLocation(toTs(node)))
+        const matchingReader = (node: Node): boolean | undefined => {
             const symbol = resolvedSymbol(checker, toTs(node))
             return symbol?.name === names.reader && symbol.getDeclarations()?.some((declaration) => normalizePath(declaration.getSourceFile().fileName) === names.file)
         }
-        const envContract = (node) => {
+        const envContract = (node: TSESTree.Program): boolean | undefined => {
             const source = toTs(node)
-            if (!source.symbol) return false
-            const exported = checker.getExportsOfModule(source.symbol)
+            const moduleSymbol = ownSymbol(source)
+            if (!moduleSymbol) return false
+            const exported = checker.getExportsOfModule(moduleSymbol)
             const reader = exported.find((symbol) => symbol.name === names.reader)
             const declaration = reader?.valueDeclaration ?? reader?.getDeclarations()?.[0]
-            if (!declaration) return false
+            if (!reader || !declaration) return false
             const signatures = checker.getTypeOfSymbolAtLocation(reader, declaration).getCallSignatures()
             return signatures.some((signature) => {
                 const parameters = signature.getParameters()
                 if (parameters.length !== 1 || !signature.declaration?.type) return false
                 const parameter = parameters[0]
-                if (!parameter.valueDeclaration?.type || !ownedEnv(checker.getTypeOfSymbolAtLocation(parameter, parameter.valueDeclaration))) return false
+                const valueDeclaration = parameter?.valueDeclaration
+                if (!parameter || !valueDeclaration || !childNode(valueDeclaration, "type") || !ownedEnv(checker.getTypeOfSymbolAtLocation(parameter, valueDeclaration))) return false
                 const result = checker.getReturnTypeOfSignature(signature)
                 return result.getSymbol()?.getDeclarations()?.some((item) => ts.isInterfaceDeclaration(item)
                     && item.getSourceFile() === source && exported.some((symbol) => symbol.name === item.name.text))
@@ -382,9 +409,9 @@ export const appEnvRequired = {
         let sources = 0
         let delegates = 0
         let inline = false
-        const reported = new WeakSet()
-        const reportInline = (node) => {
-            for (let parent = node; parent; parent = parent.parent) if (reported.has(parent)) return
+        const reported = new WeakSet<Node>()
+        const reportInline = (node: Node): void => {
+            for (let parent: Node | undefined = node; parent; parent = parent.parent) if (reported.has(parent)) return
             reported.add(node)
             inline = true
             context.report({ node, messageId: "inline" })
@@ -422,7 +449,7 @@ export const appEnvRequired = {
 }
 
 /** R289: module lists in the app root contain only spreads of its own compose groups. */
-export const appModuleListInline = {
+export const appModuleListInline: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The app root spreads compose groups; its only inline provider registrations are app-wide guards and filters." },
@@ -439,7 +466,7 @@ export const appModuleListInline = {
         const { checker, toTs } = typed(context)
         const { contains } = compositionTypes(checker)
         const composeRoot = filename.slice(0, filename.lastIndexOf("/")) + "/compose/"
-        const groupSpread = (node) => {
+        const groupSpread = (node: Node): boolean => {
             if (node.type !== "SpreadElement") return false
             const value = unwrap(node.argument)
             const reference = value.type === "CallExpression" ? unwrap(value.callee) : value
@@ -449,19 +476,21 @@ export const appModuleListInline = {
                 return file.startsWith(composeRoot) && appRoleOf(hfs, file)?.entry === "compose/<area>.ts"
             }) ?? false
         }
-        const globalProvider = (node) => {
-            node = unwrap(node)
+        const providerTokens: ReadonlyArray<string | undefined> = ["APP_GUARD", "APP_FILTER"]
+        const globalProvider = (element: Node): boolean => {
+            const node = unwrap(element)
             if (node?.type !== "ObjectExpression") return false
-            const binding = node.properties.find((property) => property.type === "Property" && keyName(property.key) === "provide")
+            const binding = node.properties.find((property): property is TSESTree.Property => property.type === "Property" && keyName(property.key) === "provide")
             const value = binding && unwrap(binding.value)
-            if (!value || !["APP_GUARD", "APP_FILTER"].includes(resolvedSymbol(checker, toTs(value))?.name)) return false
+            if (!value || !providerTokens.includes(resolvedSymbol(checker, toTs(value))?.name)) return false
             return packageOfExport(context, value) === "@nestjs/core"
         }
         return {
             ArrayExpression(node) {
                 const parent = node.parent
                 const key = parent?.type === "Property" ? parent.computed ? staticText(parent.key) : keyName(parent.key) : null
-                if (![...COMPOSITION_KEYS, "providers"].includes(key) && !contains(checker.getTypeAtLocation(toTs(node)))) return
+                const listKeys: ReadonlyArray<string | null> = [...COMPOSITION_KEYS, "providers"]
+                if (!listKeys.includes(key) && !contains(checker.getTypeAtLocation(toTs(node)))) return
                 const violation = node.elements.find((element) => !element || !groupSpread(element) && !(key === "providers" && globalProvider(element)))
                 if (violation || node.elements.includes(null)) context.report({ node: violation ?? node, messageId: "inline" })
             },
@@ -470,7 +499,7 @@ export const appModuleListInline = {
 }
 
 /** Each composition file of an app stays within the line budget its app slot names. */
-export const appFileBudget = {
+export const appFileBudget: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`main.ts`, `app.module.ts`, `<app>.env.ts`, `<app>.options.ts` and `compose/<area>.ts` stay within the line budget of their app slot." },
@@ -485,7 +514,7 @@ export const appFileBudget = {
         const hfs = hfsOf(context)
         const role = appRoleOf(hfs, filename)
         const max = role ? hfs.slot(role.slot)?.budget?.[role.entry] : undefined
-        if (!Number.isInteger(max)) return {}
+        if (!role || max === undefined || !Number.isInteger(max)) return {}
         const fix = role.entry === APP_ENV_ROLE
             ? "Keep typed, fail-fast environment parsing only here; move module composition into `compose/<area>.ts` and business code into its owning module."
             : role.entry === APP_OPTIONS_ROLE
@@ -509,10 +538,10 @@ export const rules = {
     "app-env-required": appEnvRequired,
     "app-module-list-inline": appModuleListInline,
     "app-file-budget": appFileBudget,
-}
+} satisfies Rules
 
 /** Every rule starts at error; an app already over a budget migrates its lists into compose/. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/app-options-composition-free": "error",
     "starci-be/app-composition-typed": "error",
     "starci-be/app-env-required": "error",

@@ -31,6 +31,9 @@ import { isOwnedBy, isOwnedType, originsOf } from "./lib/declared.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isDeclarationFile, normalizePath } from "./lib/path.ts"
 import { moduleOf, originsOfType, typed } from "./lib/types.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 
 /** The test composition root (slot `be.tests.world`): it composes app options like `main.ts` and hands run state to jest workers through the environment. */
 const isTestWorld = inTestWorld
@@ -38,13 +41,13 @@ const isTestWorld = inTestWorld
 const PROCESS_MODULES = new Set(["process", "node:process"])
 
 /** `@nestjs/config`, `dotenv` and their subpaths. */
-const isConfigPackage = (source) => /^(?:@nestjs\/config|dotenv)(?:\/|$)/.test(source)
+const isConfigPackage = (source: string) => /^(?:@nestjs\/config|dotenv)(?:\/|$)/.test(source)
 
 /** True when the property of a member expression spells `env`. */
-const spellsEnv = (node) => (node.computed ? staticText(node.property) === "env" : keyName(node.property) === "env")
+const spellsEnv = (node: TSESTree.MemberExpression) => (node.computed ? staticText(node.property) === "env" : keyName(node.property) === "env")
 
 /** Only EnvSource, the app bootstrap roles and the test world read the process environment. */
-export const noDirectEnvRead = {
+export const noDirectEnvRead: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The process environment is read only by `EnvSource` of `platform/config`, app `main.ts`, the matching `<app>.env.ts` and the test world." },
@@ -61,18 +64,18 @@ export const noDirectEnvRead = {
         const hfs = hfsOf(context)
         const inConfigOwner = isOwnedBy(hfs, filename, "platform", "config")
         let declaresEnvSource = false
-        const variableOf = (identifier) => {
-            for (let scope = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
+        const variableOf = (identifier: TSESTree.Identifier): TSESLint.Scope.Variable | null => {
+            for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
                 const variable = scope.set.get(identifier.name)
                 if (variable) return variable
             }
             return null
         }
-        const isGlobal = (node) => node?.type === "Identifier" && ["globalThis", "global"].includes(node.name) && !variableOf(node)?.defs.length
+        const isGlobal = (node: Node | null | undefined) => node?.type === "Identifier" && ["globalThis", "global"].includes(node.name) && !variableOf(node)?.defs.length
         // Resolve aliases by their lexical binding: an identically named local or parameter is not Node's process.
-        const isProcess = (node, seen = new Set()) => {
+        const isProcess = (node: Node | null | undefined, seen = new Set<Node>()): boolean => {
             if (!node) return false
-            if (["TSAsExpression", "TSTypeAssertion", "TSNonNullExpression", "TSSatisfiesExpression", "ChainExpression"].includes(node.type)) return isProcess(node.expression, seen)
+            if (node.type === "TSAsExpression" || node.type === "TSTypeAssertion" || node.type === "TSNonNullExpression" || node.type === "TSSatisfiesExpression" || node.type === "ChainExpression") return isProcess(node.expression, seen)
             if (node.type === "MemberExpression") {
                 return isGlobal(node.object) && (node.computed ? staticText(node.property) : keyName(node.property)) === "process"
             }
@@ -84,14 +87,16 @@ export const noDirectEnvRead = {
             return variable.defs.some((definition) => {
                 if (definition.type === "ImportBinding") {
                     const specifier = definition.node
-                    return PROCESS_MODULES.has(definition.parent.source.value)
+                    return definition.parent.type === "ImportDeclaration" && PROCESS_MODULES.has(definition.parent.source.value)
                         && (specifier.type !== "ImportSpecifier" || keyName(specifier.imported) === "default")
                 }
                 if (definition.type !== "Variable") return false
                 const readScope = context.sourceCode.getScope(node).variableScope
-                const write = variable.references.filter((reference) => reference.isWrite()
-                    && [readScope, variable.scope.variableScope].includes(reference.from.variableScope)
-                    && reference.writeExpr?.range[1] <= node.range[0])
+                const write = variable.references.filter((reference) => {
+                    if (!reference.isWrite() || ![readScope, variable.scope.variableScope].includes(reference.from.variableScope)) return false
+                    const writeEnd = reference.writeExpr?.range[1]
+                    return writeEnd !== undefined && writeEnd <= node.range[0]
+                })
                     .sort((left, right) => right.identifier.range[0] - left.identifier.range[0])[0]
                 // A const captured by a function keeps its initializer even when the function is declared first.
                 const source = write?.writeExpr ?? (definition.parent.kind === "const" ? definition.node.init : null)
@@ -108,10 +113,10 @@ export const noDirectEnvRead = {
         const inWorld = isTestWorld(hfs, filename)
         const appRole = appRoleOf(hfs, filename)?.entry
         const inAppEntry = appRole === "main.ts" || appRole === APP_ENV_ROLE
-        const reportEnv = (node) => {
+        const reportEnv = (node: Node) => {
             if (!isEnvSourceFile() && !inWorld && !inAppEntry) context.report({ node, messageId: "env" })
         }
-        const reportSource = (node, source) => {
+        const reportSource = (node: Node, source: string) => {
             if (isConfigPackage(source)) context.report({ node, messageId: "package", data: { source } })
         }
         return {
@@ -126,7 +131,7 @@ export const noDirectEnvRead = {
                 reportSource(node, source)
                 if (!PROCESS_MODULES.has(source)) return
                 for (const specifier of node.specifiers) {
-                    if (specifier.type === "ImportSpecifier" && (specifier.imported.name ?? specifier.imported.value) === "env") reportEnv(specifier)
+                    if (specifier.type === "ImportSpecifier" && (specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value) === "env") reportEnv(specifier)
                 }
             },
             ImportExpression(node) {
@@ -175,16 +180,16 @@ const CONFIG_SUFFIX = ".config.ts"
 const OPTIONS_SUFFIX = ".options.ts"
 const CONFIG_SPEC_SUFFIX = ".config.spec.ts"
 
-const baseOf = (file) => normalizePath(file).split("/").at(-1) ?? ""
+const baseOf = (file: string) => normalizePath(file).split("/").at(-1) ?? ""
 
 /** A file in a slot of the repository whose role is `<c>.config.ts` (a file with the suffix that no slot claims is not one). */
-const isConfigFile = (hfs, file) => baseOf(file).endsWith(CONFIG_SUFFIX) && hfs.slotOf(file) !== null
+const isConfigFile = (hfs: HfsView, file: string) => baseOf(file).endsWith(CONFIG_SUFFIX) && hfs.slotOf(file) !== null
 
 /** A file in a slot of the repository whose role is `<c>.options.ts`. */
-const isOptionsFile = (hfs, file) => baseOf(file).endsWith(OPTIONS_SUFFIX) && hfs.slotOf(file) !== null
+const isOptionsFile = (hfs: HfsView, file: string) => baseOf(file).endsWith(OPTIONS_SUFFIX) && hfs.slotOf(file) !== null
 
 /** The declaration of a plain function (declaration, or arrow/function expression bound to a variable), else null: a method is not a getter. */
-const functionDeclarationOf = (declaration) => {
+const functionDeclarationOf = (declaration: ts.Node | undefined) => {
     if (!declaration) return null
     if (ts.isFunctionDeclaration(declaration)) return declaration
     if ((ts.isArrowFunction(declaration) || ts.isFunctionExpression(declaration)) && ts.isVariableDeclaration(declaration.parent)) return declaration
@@ -192,15 +197,15 @@ const functionDeclarationOf = (declaration) => {
 }
 
 /** True when the node is evaluated when the module loads: no function, method or class member body encloses it. */
-const isModuleScope = (node) => {
-    for (let parent = node.parent; parent; parent = parent.parent) {
+const isModuleScope = (node: Node) => {
+    for (let parent: Node | undefined = node.parent; parent; parent = parent.parent) {
         if (/Function|MethodDefinition|PropertyDefinition|StaticBlock/.test(parent.type)) return false
     }
     return true
 }
 
 /** Config is parsed once, in `main.ts` or its app's env file; other app roles do not read the environment. */
-export const configParsedInMain = {
+export const configParsedInMain: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Configuration is parsed in `main.ts` or its matching `<app>.env.ts`; other app files do not call parsers or EnvSource readers." },
@@ -239,7 +244,8 @@ export const configParsedInMain = {
                     }
                 }
                 const declaration = functionDeclarationOf(resolvedDeclaration)
-                if (!declaration) return
+                // a declaration comes from a signature, so `!signature` adds no case
+                if (!declaration || !signature) return
                 const declaredIn = normalizePath(declaration.getSourceFile().fileName)
                 const name = context.sourceCode.getText(node.callee)
                 if (isConfigFile(hfs, declaredIn) || appRoleOf(hfs, declaredIn)?.entry === APP_ENV_ROLE) {
@@ -260,7 +266,7 @@ const SECRET_READERS = new Set(["secret", "url", "host"])
 const DEFAULT_LITERAL = /^(?:localhost|127\.0\.0\.1|0\.0\.0\.0|https?:\/\/.*)?$/i
 
 /** No secret or URL value has a default of any kind: a missing value stops the boot. */
-export const noSecretDefault = {
+export const noSecretDefault: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A value typed `Secret` or `Url` never has a default, argument or fallback." },
@@ -276,9 +282,9 @@ export const noSecretDefault = {
         if (isDeclarationFile(filename)) return {}
         const hfs = hfsOf(context)
         /** True when the node's type is (or contains) `Secret` or `Url` as `platform/config` declares them. */
-        const isBrand = (node) => originsOf(context, node).some((origin) => BRANDS.has(origin.name) && isOwnedBy(hfs, origin.file, "platform", "config"))
-        const isEnvSource = (node) => originsOf(context, node).some((origin) => origin.name === "EnvSource" && isOwnedBy(hfs, origin.file, "platform", "config"))
-        const checkFallback = (node, operator, left) => {
+        const isBrand = (node: Node) => originsOf(context, node).some((origin) => BRANDS.has(origin.name) && isOwnedBy(hfs, origin.file, "platform", "config"))
+        const isEnvSource = (node: Node) => originsOf(context, node).some((origin) => origin.name === "EnvSource" && isOwnedBy(hfs, origin.file, "platform", "config"))
+        const checkFallback = (node: Node, operator: string, left: Node) => {
             if (isBrand(left)) context.report({ node, messageId: "fallback", data: { operator } })
         }
         return {
@@ -290,11 +296,14 @@ export const noSecretDefault = {
             },
             CallExpression(node) {
                 if (node.arguments.length < 2) return
+                const defaultArgument = node.arguments[1]
+                if (defaultArgument === undefined) return
                 const callee = node.callee
                 const method = callee.type === "MemberExpression" && !callee.computed ? keyName(callee.property) : null
-                const onEnvSource = method !== null && isEnvSource(callee.object)
+                // a method name comes only from a member expression, so the type test adds no case
+                const onEnvSource = method !== null && callee.type === "MemberExpression" && isEnvSource(callee.object)
                 if (onEnvSource && (SECRET_READERS.has(method) || isBrand(node))) {
-                    context.report({ node: node.arguments[1], messageId: "argument", data: { method } })
+                    context.report({ node: defaultArgument, messageId: "argument", data: { method } })
                     return
                 }
                 if (!isBrand(node)) return
@@ -313,7 +322,7 @@ const KEY_PREFIXES = new Set(["api", "secret", "private", "access", "signing", "
 const NOT_A_VALUE_WORDS = new Set(["type", "kind", "length", "count", "ttl", "name", "prefix", "header", "scheme", "field", "path", "regex", "pattern"])
 
 /** The identifier or property a comparison operand ends in, else null. */
-const operandName = (node) => {
+const operandName = (node: Node) => {
     if (node.type === "Identifier") return node.name
     if (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier") return node.property.name
     return null
@@ -327,37 +336,39 @@ const NOT_A_CREDENTIAL_QUALIFIERS = new Set(["fencing", "idempotency", "cursor",
  * `signingKey`), unless the name is an UPPER_SNAKE constant naming a key or a counter or cursor qualifies it. Shared by the
  * comparison rule here and the error rule of R71.
  */
-export const isCredentialName = (name) => {
+export const isCredentialName = (name: string) => {
     // an UPPER_SNAKE name is a constant naming a key, not the value it names
     if (/^[A-Z][A-Z0-9_]*$/.test(name)) return false
     const words = wordsOf(name)
     const last = words.at(-1)
     if (!last || NOT_A_VALUE_WORDS.has(last) || words.some((word) => NOT_A_CREDENTIAL_QUALIFIERS.has(word))) return false
-    return SECRET_COMPARE_WORDS.has(last) || (last === "key" && words.length > 1 && KEY_PREFIXES.has(words.at(-2)))
+    const prefix = words.at(-2)
+    return SECRET_COMPARE_WORDS.has(last) || (last === "key" && words.length > 1 && prefix !== undefined && KEY_PREFIXES.has(prefix))
 }
 
 /** An emptiness or presence check reveals nothing a timing attack could use. */
-const isPresenceOperand = (node) =>
+const isPresenceOperand = (node: Node) =>
     (node.type === "Literal" && (node.value === null || node.value === "" || typeof node.value === "boolean")) ||
     (node.type === "Identifier" && node.name === "undefined") ||
     (node.type === "UnaryExpression" && node.operator === "typeof")
 
 /** A value typed by the `Secret` brand of `platform/config`, or read out of one (`secret.reveal()`, `secret.value`): the TYPE says it is a secret. */
-const isSecretValue = (context, node) => {
+const isSecretValue = (context: Context, node: Node) => {
     const holder = node.type === "CallExpression" && node.callee.type === "MemberExpression" ? node.callee.object : node.type === "MemberExpression" ? node.object : null
     return isOwnedType(context, node, "Secret", "platform", "config") || (holder !== null && isOwnedType(context, holder, "Secret", "platform", "config"))
 }
 
 /** The packages that declare the Node crypto types: a digest read out of a `Hash` or `Hmac` is secret-derived material. */
-const CRYPTO_PACKAGES = new Set(["crypto", "node:crypto"])
+const CRYPTO_PACKAGES = new Set<string | null>(["crypto", "node:crypto"])
 
 /** A `.digest(...)` of a `Hash` or `Hmac` of Node's crypto, found by where the called signature is declared, never by the receiver's name. */
-const isCryptoDigest = (context, node) => {
+const isCryptoDigest = (context: Context, node: Node) => {
     if (node.type !== "CallExpression" || node.callee.type !== "MemberExpression") return false
     const { checker, toTs } = typed(context)
     const tsCall = toTs(node)
     const declaration = tsCall ? checker.getResolvedSignature(tsCall)?.declaration : undefined
-    if (!declaration || !declaration.name || declaration.name.getText() !== "digest") return false
+    const declaredName = declaration && "name" in declaration ? declaration.name : undefined
+    if (!declaration || !declaredName || declaredName.getText() !== "digest") return false
     const owner = declaration.parent
     const ownerName = (ts.isInterfaceDeclaration(owner) || ts.isClassDeclaration(owner)) && owner.name ? owner.name.text : ""
     if (ownerName !== "Hash" && ownerName !== "Hmac") return false
@@ -365,7 +376,7 @@ const isCryptoDigest = (context, node) => {
 }
 
 /** A secret is compared with `timingSafeEqual`, never with an equality operator. */
-export const secretCompareTimingSafe = {
+export const secretCompareTimingSafe: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A `Secret`-typed or secret-named value is compared with `timingSafeEqual`, not `===` or `!==`." },
@@ -403,10 +414,10 @@ export const rules = {
     "config-parsed-in-main": configParsedInMain,
     "no-secret-default": noSecretDefault,
     "secret-compare-timing-safe": secretCompareTimingSafe,
-}
+} satisfies Rules
 
 /** All four start at error: a secret in source or a timing leak is never a warning. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-direct-env-read": "error",
     "starci-be/config-parsed-in-main": "error",
     "starci-be/no-secret-default": "error",

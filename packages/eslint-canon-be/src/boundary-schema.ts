@@ -18,6 +18,8 @@ import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
 import { isTransportSlot } from "./lib/transport-slots.ts"
 import { SCHEMA_TIERS, schemaFileProblems } from "./lib/schema-values.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 const ZOD = /^zod(?:\/|$)/
 /** The imports of the other validation layer, which never share a file with a schema. */
@@ -42,7 +44,7 @@ const REFINING = new Set(["refine", "superRefine", "check"])
 const PASS_THROUGH = new Set(["coerce"])
 
 /** True for a bound argument that is not a way to say "no bound": absent, `Infinity`, `NaN`, a non-positive literal, `Number.MAX_*`. */
-const isRealBound = (argument) => {
+const isRealBound = (argument: TSESTree.CallExpressionArgument | undefined): boolean => {
     if (argument === undefined) return false
     if (argument.type === "Identifier") return argument.name !== "Infinity" && argument.name !== "NaN" && argument.name !== "undefined"
     if (argument.type === "Literal") return typeof argument.value === "number" && Number.isFinite(argument.value) && argument.value > 0
@@ -53,9 +55,9 @@ const isRealBound = (argument) => {
 }
 
 /** The methods chained on `node` (`z.string().trim().max(5)` gives `trim`, `max` with their calls), outermost last. */
-const chainOf = (node) => {
-    const calls = []
-    let current = node
+const chainOf = (node: Node): { name: string; call: TSESTree.CallExpression }[] => {
+    const calls: { name: string; call: TSESTree.CallExpression }[] = []
+    let current: Node = node
     for (;;) {
         const member = current.parent
         if (member?.type !== "MemberExpression" || member.object !== current || member.computed || member.property.type !== "Identifier") break
@@ -68,7 +70,7 @@ const chainOf = (node) => {
 }
 
 /** Resolves a zod constructor, including `z.iso.datetime()` and a renamed named import of `iso`. */
-const constructorOf = (callee, namespaces, named) => {
+const constructorOf = (callee: TSESTree.Expression, namespaces: Set<string>, named: Map<string, string>): string | null => {
     if (callee.type === "Identifier") return named.get(callee.name) ?? null
     if (callee.type !== "MemberExpression" || callee.computed || callee.property.type !== "Identifier") return null
     let object = callee.object
@@ -82,7 +84,7 @@ const constructorOf = (callee, namespaces, named) => {
 }
 
 /** Every schema built by this file is bounded and none accepts anything. */
-export const schemaBounded = {
+export const schemaBounded: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every zod string, array, set, map and record has an upper bound; `z.any()`, `z.unknown()` and `z.json()` are refused." },
@@ -96,8 +98,8 @@ export const schemaBounded = {
         },
     },
     create(context) {
-        const namespaces = new Set()
-        const named = new Map()
+        const namespaces = new Set<string>()
+        const named = new Map<string, string>()
         return {
             ImportDeclaration(node) {
                 if (typeof node.source.value !== "string" || !ZOD.test(node.source.value)) return
@@ -125,18 +127,19 @@ export const schemaBounded = {
                     return
                 }
                 const bounds = chain.filter((entry) => BOUNDING.has(entry.name))
-                if (bounds.length === 0) {
+                const [first] = bounds
+                if (!first) {
                     context.report({ node, messageId: kind, data: { name } })
                     return
                 }
-                if (!bounds.some((entry) => isRealBound(entry.call.arguments[0]))) context.report({ node: bounds[0].call, messageId: "bound", data: { name: bounds[0].name } })
+                if (!bounds.some((entry) => isRealBound(entry.call.arguments[0]))) context.report({ node: first.call, messageId: "bound", data: { name: first.name } })
             },
         }
     },
 }
 
 /** The module specifiers a file references, with the node that names each (imports, re-exports, `import()` and `require()`). */
-const referenceNodes = (node) => {
+const referenceNodes = (node: Node): Node[] => {
     switch (node.type) {
         case "ImportDeclaration":
         case "ExportAllDeclaration":
@@ -151,10 +154,10 @@ const referenceNodes = (node) => {
     }
 }
 
-const referencesZod = (node) => referenceNodes(node).filter((source) => source.type === "Literal" && typeof source.value === "string" && ZOD.test(source.value))
+const referencesZod = (node: Node): Node[] => referenceNodes(node).filter((source) => source.type === "Literal" && typeof source.value === "string" && ZOD.test(source.value))
 
 /** Where a schema may live, and what shares a file with it. */
-export const schemaPlace = {
+export const schemaPlace: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`zod` is imported only from a `*.schema.ts` file of a domain, platform or integrations owner, never in a transport door or beside a DTO decorator." },
@@ -174,13 +177,13 @@ export const schemaPlace = {
         const inDoor = isTransportSlot(slot) || slot.startsWith("be.transport.") || hfs.relative(filename).split("/").slice(0, -1).includes("dto")
         const isSchemaFile = SCHEMA_FILE.test(filename)
         return {
-            "*"(node) {
-                const found = referencesZod(node)
-                if (found.length === 0) return
-                if (inDoor) context.report({ node: found[0], messageId: "door" })
-                else if (tier === "feature") context.report({ node: found[0], messageId: "tier", data: { tier } })
-                else if (!isSchemaFile) context.report({ node: found[0], messageId: "file" })
-                else if (!SCHEMA_TIERS.has(tier)) context.report({ node: found[0], messageId: "tier", data: { tier: tier ?? "non-owner" } })
+            "*"(node: Node) {
+                const [first] = referencesZod(node)
+                if (!first) return
+                if (inDoor) context.report({ node: first, messageId: "door" })
+                else if (tier === "feature") context.report({ node: first, messageId: "tier", data: { tier } })
+                else if (!isSchemaFile) context.report({ node: first, messageId: "file" })
+                else if (!SCHEMA_TIERS.has(tier)) context.report({ node: first, messageId: "tier", data: { tier: tier ?? "non-owner" } })
             },
             ImportDeclaration(node) {
                 if (!isSchemaFile || inDoor || !MIXED.has(node.source.value)) return
@@ -191,7 +194,7 @@ export const schemaPlace = {
 }
 
 /** What a schema file holds: zod values and types, nothing that runs. */
-export const schemaFileValuesOnly = {
+export const schemaFileValuesOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A schema file imports zod and declares only zod schemas and their types: no class, provider, function or other logic." },
@@ -215,10 +218,10 @@ export const rules = {
     "schema-bounded": schemaBounded,
     "schema-place": schemaPlace,
     "schema-file-values-only": schemaFileValuesOnly,
-}
+} satisfies Rules
 
 /** Both start at error: no baseline exists. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/schema-bounded": "error",
     "starci-be/schema-place": "error",
     "starci-be/schema-file-values-only": "error",

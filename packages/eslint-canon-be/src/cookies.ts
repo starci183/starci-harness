@@ -10,6 +10,9 @@
  */
 import ts from "typescript"
 import { moduleOf, typed } from "./lib/types.ts"
+import type { Typed } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The packages whose response types declare the cookie writers: Express with its typings, and Fastify with its cookie plugin. */
 const RESPONSE_PACKAGES = new Set([
@@ -27,7 +30,7 @@ const HEADER_WRITERS = new Set(["setHeader", "append", "header", "set", "appendH
 const SAME_SITE = new Set(["lax", "strict"])
 
 /** The declaration a call resolves to, when it is a method of a response type of the express or fastify family; else null. */
-const responseMethodOf = (checker, toTs, call) => {
+const responseMethodOf = (checker: ts.TypeChecker, toTs: Typed["toTs"], call: TSESTree.CallExpression) => {
     const tsCall = toTs(call)
     const declaration = tsCall ? checker.getResolvedSignature(tsCall)?.declaration : undefined
     if (!declaration || !(ts.isMethodSignature(declaration) || ts.isMethodDeclaration(declaration)) || !declaration.name) return null
@@ -37,7 +40,7 @@ const responseMethodOf = (checker, toTs, call) => {
 }
 
 /** The present (non-nullish) members of a property's type on an options type, or [] when the property is absent or only nullish. */
-const presentParts = (checker, type, name, at) => {
+const presentParts = (checker: ts.TypeChecker, type: ts.Type, name: string, at: ts.Node) => {
     const symbol = type.getProperty(name)
     if (!symbol) return []
     const propertyType = checker.getTypeOfSymbolAtLocation(symbol, at)
@@ -45,11 +48,11 @@ const presentParts = (checker, type, name, at) => {
     return parts.filter((part) => !(part.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void)))
 }
 
-const isBooleanLiteral = (part, value) => Boolean(part.flags & ts.TypeFlags.BooleanLiteral) && part.intrinsicName === String(value)
+const isBooleanLiteral = (part: ts.Type, value: boolean) => Boolean(part.flags & ts.TypeFlags.BooleanLiteral) && "intrinsicName" in part && part.intrinsicName === String(value)
 
 /** The attributes a written cookie is missing, judged on the type of its options. */
-const missingAttributes = (checker, type, at) => {
-    const missing = []
+const missingAttributes = (checker: ts.TypeChecker, type: ts.Type, at: ts.Node) => {
+    const missing: string[] = []
     const httpOnly = presentParts(checker, type, "httpOnly", at)
     if (httpOnly.length === 0 || !httpOnly.every((part) => isBooleanLiteral(part, true))) missing.push("`httpOnly: true`")
     const secure = presentParts(checker, type, "secure", at)
@@ -60,7 +63,7 @@ const missingAttributes = (checker, type, at) => {
 }
 
 /** A cookie a door writes states httpOnly, secure and sameSite, and no door writes `Set-Cookie` by hand. */
-export const responseCookieAttributes = {
+export const responseCookieAttributes: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A cookie written through an Express or Fastify response states `httpOnly: true`, `secure: true` and `sameSite` `lax` or `strict`; `Set-Cookie` is never written as a header." },
@@ -98,9 +101,9 @@ export const responseCookieAttributes = {
 /** Every rule this module ships, by the name a config switches it on under. */
 export const rules = {
     "response-cookie-attributes": responseCookieAttributes,
-}
+} satisfies Rules
 
 /** The level a consuming repository switches this on at. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/response-cookie-attributes": "error",
 }

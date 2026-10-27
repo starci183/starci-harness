@@ -13,25 +13,27 @@ import { writtenEntityOrigins } from "./lib/entity-writes.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { baseName } from "./lib/ports.ts"
 import { typed } from "./lib/types.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 const PROJECTION_SLOT = "be.projections"
 const ENTITY_SUFFIX = ".projection-entity.ts"
 const PROJECTION_SUFFIX = ".projection.ts"
 
 /** True for the test composition, which seeds and inspects tables directly. */
-const isTestComposition = (hfs, file) => {
+const isTestComposition = (hfs: HfsView, file: string) => {
     const tier = hfs.tierOf(file)
     return tier === "e2e" || tier === "fixtures" || inTestWorld(hfs, file)
 }
 
 /** The word a method name starts with (`recomputeUserXp` gives `recompute`), or null when the name has no camelCase boundary. */
-const verbOf = (name) => {
+const verbOf = (name: string): string | null => {
     const match = /^[a-z]+/.exec(name)
-    return match && (match[0].length === name.length || /[A-Z]/.test(name[match[0].length])) ? match[0] : null
+    return match && (match[0].length === name.length || /[A-Z]/.test(name.charAt(match[0].length))) ? match[0] : null
 }
 
 /** Only a projection writes its table, from its own `<name>.projection.ts`. */
-export const projectionWriteOwner = {
+export const projectionWriteOwner: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A projection's entity is written only by the `*.projection.ts` of the same projection folder." },
@@ -57,14 +59,14 @@ export const projectionWriteOwner = {
 }
 
 /** The slot of an owner's root file: its kind lives there (`trigger`). */
-const triggerOfOwner = (hfs, file) => {
+const triggerOfOwner = (hfs: HfsView, file: string) => {
     const root = hfs.ownerOf(file)
     const slot = root ? hfs.slotOf(`${root}/index.ts`) : null
     return slot ? (hfs.slot(slot)?.trigger ?? null) : null
 }
 
 /** The projection class speaks only `recompute*` and `get*`, never exports its entity, and an api feature never recomputes. */
-export const projectionShape = {
+export const projectionShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A `*.projection.ts` class has only `recompute*` and `get*` public methods, a projection's `index.ts` exports no projection entity, and an api feature calls only `get*`." },
@@ -85,7 +87,7 @@ export const projectionShape = {
         return {
             MethodDefinition(node) {
                 if (!inProjection || !base.endsWith(PROJECTION_SUFFIX) || node.kind !== "method" || node.computed || node.key.type !== "Identifier") return
-                if (node.accessibility === "private" || node.accessibility === "protected" || node.key.type === "PrivateIdentifier") return
+                if (node.accessibility === "private" || node.accessibility === "protected") return
                 const verb = verbOf(node.key.name)
                 if (verb !== "recompute" && verb !== "get") context.report({ node: node.key, messageId: "vocabulary", data: { name: node.key.name } })
             },
@@ -108,10 +110,10 @@ export const projectionShape = {
 export const rules = {
     "projection-write-owner": projectionWriteOwner,
     "projection-shape": projectionShape,
-}
+} satisfies Rules
 
 /** The level these laws ask for: `error`, switched off nowhere. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/projection-write-owner": "error",
     "starci-be/projection-shape": "error",
 }

@@ -19,15 +19,17 @@ import { basename } from "node:path"
 import { hfsOf } from "./lib/hfs.ts"
 import { recordedLines } from "../runtime/scripts/api/git/recorded-lines.mjs"
 import { hardGrowthLines, lineCount } from "../runtime/scripts/lib/line-count.mjs"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** A migration is a file of the persistence slot named `<timestamp>-<name>.ts`. */
-const isMigration = (hfs, filename) => hfs.slotOf(filename) === "be.persistence" && /^\d{13,14}-[^/]+\.[cm]?ts$/.test(basename(filename))
+const isMigration = (hfs: HfsView, filename: string) => hfs.slotOf(filename) === "be.persistence" && /^\d{13,14}-[^/]+\.[cm]?ts$/.test(basename(filename))
 
 /** Whether a file is a source file this budget governs. */
-const governed = (hfs, filename) => /\.[cm]?tsx?$/.test(filename) && !/\.d\.[cm]?ts$/.test(filename) && !isMigration(hfs, filename)
+const governed = (hfs: HfsView, filename: string) => /\.[cm]?tsx?$/.test(filename) && !/\.d\.[cm]?ts$/.test(filename) && !isMigration(hfs, filename)
 
 /** The ratchet: a file over the budget must not be new and must not grow. */
-export const fileSizeGrowth = {
+export const fileSizeGrowth: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A source file over the budget is neither new nor longer than its recorded size." },
@@ -61,9 +63,9 @@ export const fileSizeGrowth = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
     "file-size-growth": fileSizeGrowth,
-}
+} satisfies Rules
 
 /** The ratchet is an error. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/file-size-growth": "error",
 }

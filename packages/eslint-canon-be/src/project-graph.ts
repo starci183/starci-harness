@@ -10,17 +10,16 @@
 import { LINT_ENFORCERS } from "../runtime/scripts/hfs/architecture/surface.mjs"
 import { projectRule } from "../runtime/scripts/hfs/project-rule.mjs"
 import { hfsOf } from "./lib/hfs.ts"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { RUNTIME_ROOT } from "./lib/runtime-root.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
-const RUNTIME = join(dirname(fileURLToPath(import.meta.url)), "..", "runtime")
 const mine = LINT_ENFORCERS.filter((enforcer) => enforcer.plugins.includes("be"))
 
 /** The rules this law contributes to the plugin: one per graph enforcer of this profile. */
-export const rules = Object.fromEntries(mine.map((enforcer) => [
+export const rules = Object.fromEntries(mine.map((enforcer): [string, RuleModule] => [
     enforcer.id,
-    projectRule({ enforcer, runtimeRoot: RUNTIME, hfsOf }),
-]))
+    projectRule({ enforcer, runtimeRoot: RUNTIME_ROOT, hfsOf }),
+])) satisfies Rules
 
 /** Every one at error. */
-export const recommended = Object.fromEntries(mine.map((e) => [`starci-be/${e.id}`, "error"]))
+export const recommended = Object.fromEntries(mine.map((e): [string, "error"] => [`starci-be/${e.id}`, "error"])) satisfies Recommended

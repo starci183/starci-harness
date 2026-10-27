@@ -18,9 +18,12 @@
  * asked of the file the specifier resolves to. Nothing here touches disk.
  */
 import { posix } from "node:path"
+import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf } from "./lib/hfs.ts"
 import { baseName } from "./lib/ports.ts"
 import { resolveAlias } from "./lib/specifier.ts"
+import type { Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The tiers whose files belong to an owner with a root `index.ts`. */
 const OWNER_TIERS = new Set(["feature", "domain", "platform", "integrations"])
@@ -34,28 +37,28 @@ const OWNER_TIERS = new Set(["feature", "domain", "platform", "integrations"])
  * @param {string} file - An absolute or repository-relative file path.
  * @returns {string | null} The owner's root directory.
  */
-const ownerDirOf = (hfs, file) => {
+const ownerDirOf = (hfs: HfsView, file: string) => {
   const root = hfs.ownerOf(file)
   return root && root !== hfs.relative(file) ? root : null
 }
 
 /** The forward-slash absolute path of a repository-relative path. */
-const absolute = (hfs, rel) => `${hfs.repoRoot.replace(/\\/g, "/")}/${rel}`
+const absolute = (hfs: HfsView, rel: string) => `${hfs.repoRoot.replace(/\\/g, "/")}/${rel}`
 
 /** The owner an import path (no extension, absolute) reaches: the owner of `<path>/index.ts`, which any file or folder of that owner shares. */
-const ownerOfTarget = (hfs, target) => ownerDirOf(hfs, `${target}/index.ts`)
+const ownerOfTarget = (hfs: HfsView, target: string) => ownerDirOf(hfs, `${target}/index.ts`)
 
 /** A specifier that names a directory by construction: `.`, `./`, `..`, `../`, or a trailing `/`. */
-const isBareFolderSpecifier = (specifier) =>
+const isBareFolderSpecifier = (specifier: string) =>
   specifier === "." || specifier === "./" || specifier === ".." || specifier === "../" || specifier.endsWith("/")
 
-const isRelative = (specifier) => specifier === "." || specifier === ".." || specifier.startsWith("./") || specifier.startsWith("../")
+const isRelative = (specifier: string) => specifier === "." || specifier === ".." || specifier.startsWith("./") || specifier.startsWith("../")
 
 /** The absolute path a relative specifier names from a file, without touching disk. */
-const resolveRelative = (filename, specifier) => posix.normalize(`${posix.dirname(filename.replace(/\\/g, "/"))}/${specifier}`)
+const resolveRelative = (filename: string, specifier: string) => posix.normalize(`${posix.dirname(filename.replace(/\\/g, "/"))}/${specifier}`)
 
 /** Calls `check(node, specifier)` for every import and re-export that names a module. */
-const onSpecifiers = (check) => ({
+const onSpecifiers = (check: (node: TSESTree.StringLiteral, specifier: string) => void): RuleListener => ({
   ImportDeclaration(node) {
     check(node.source, node.source.value)
   },
@@ -68,7 +71,7 @@ const onSpecifiers = (check) => ({
 })
 
 /** The public-surface width: the file's slot budget, else its tier's owner-slot budget, else a back-end owner default. */
-const indexExportBudget = (hfs, filename) =>
+const indexExportBudget = (hfs: HfsView, filename: string) =>
   [hfs.slotOf(filename), `be.${hfs.tierOf(filename)}`, "be.domain", "be.feature"].map((id) => (id ? hfs.slot(id)?.budget?.indexExports : undefined)).find(Number.isInteger)
 
 // -- R30: import-owner-entry -----------------------------------------------------------------------
@@ -77,7 +80,7 @@ const indexExportBudget = (hfs, filename) =>
  * A cross-owner import targets the owner's public entry: the alias and the owner, nothing deeper. A same-owner import
  * is relative and never goes through the owner's own `index.ts` (BE-CONVENTION 2.4).
  */
-export const importOwnerEntry = {
+export const importOwnerEntry: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Import another owner through its public entry (`index.ts`); import inside an owner relatively and never through its own `index.ts`." },
@@ -95,7 +98,7 @@ export const importOwnerEntry = {
     const filename = context.filename || context.getFilename()
     const hfs = hfsOf(context)
     const self = ownerDirOf(hfs, filename)
-    return onSpecifiers((node, specifier) => {
+    return onSpecifiers((node, specifier: string) => {
       if (typeof specifier !== "string") return
       if (isRelative(specifier)) {
         if (isBareFolderSpecifier(specifier) || !self) return
@@ -127,7 +130,7 @@ export const importOwnerEntry = {
 // -- no-self-module-alias --------------------------------------------------------------------------
 
 /** Inside an owner, imports are relative -- never the owner's own public alias. */
-export const noSelfModuleAlias = {
+export const noSelfModuleAlias: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Inside an owner, import relatively rather than through its own alias." },
@@ -141,7 +144,7 @@ export const noSelfModuleAlias = {
     const hfs = hfsOf(context)
     const self = ownerDirOf(hfs, context.filename || context.getFilename())
     if (!self) return {}
-    return onSpecifiers((node, specifier) => {
+    return onSpecifiers((node, specifier: string) => {
       if (typeof specifier !== "string" || isRelative(specifier)) return
       const alias = resolveAlias(context, specifier)
       if (alias && ownerOfTarget(hfs, alias.target) === self) context.report({ node, messageId: "self", data: { specifier } })
@@ -152,7 +155,7 @@ export const noSelfModuleAlias = {
 // -- no-folder-reexport ----------------------------------------------------------------------------
 
 /** Whether a file is an index by its role name. */
-const isIndexFile = (filename) => /^index\.[cm]?[jt]sx?$/.test(baseName(filename))
+const isIndexFile = (filename: string) => /^index\.[cm]?[jt]sx?$/.test(baseName(filename))
 
 /**
  * No file re-exports a folder, and an owner's index lists a bounded set of named exports.
@@ -166,7 +169,7 @@ const isIndexFile = (filename) => /^index\.[cm]?[jt]sx?$/.test(baseName(filename
  *
  * What this accepts: `export { PlanModule } from "./plan.module"` and `export type { PlanSummary } from "./plan.contracts"`.
  */
-export const noFolderReexport = {
+export const noFolderReexport: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "No file re-exports a folder, no `index.ts` is nested, and an owner's `index.ts` lists a bounded set of named exports." },
@@ -191,7 +194,7 @@ export const noFolderReexport = {
     const max = indexExportBudget(hfs, filename)
     let count = 0
     return {
-      ...onSpecifiers((node, specifier) => {
+      ...onSpecifiers((node, specifier: string) => {
         if (typeof specifier === "string" && isBareFolderSpecifier(specifier)) context.report({ node, messageId: "bareSpecifier", data: { specifier } })
       }),
       Program(node) {
@@ -211,7 +214,7 @@ export const noFolderReexport = {
         }
       },
       "Program:exit"(node) {
-        if (isIndex && Number.isInteger(max) && count > max) context.report({ node, messageId: "tooWide", data: { count, max } })
+        if (isIndex && typeof max === "number" && Number.isInteger(max) && count > max) context.report({ node, messageId: "tooWide", data: { count, max } })
       },
     }
   },
@@ -225,7 +228,7 @@ export const noFolderReexport = {
  * reaching a sibling owner without ever naming it. A file doing that could not be moved with its owner and still
  * resolve, because the path assumes the sibling is sitting right there on disk.
  */
-export const noRelativeCapabilityEscape = {
+export const noRelativeCapabilityEscape: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A relative import may not walk out of its own owner." },
@@ -240,7 +243,7 @@ export const noRelativeCapabilityEscape = {
     const hfs = hfsOf(context)
     const self = ownerDirOf(hfs, filename)
     if (!self) return {}
-    return onSpecifiers((node, specifier) => {
+    return onSpecifiers((node, specifier: string) => {
       if (typeof specifier !== "string" || !isRelative(specifier)) return
       const target = ownerOfTarget(hfs, resolveRelative(filename, specifier))
       if (target && target !== self) context.report({ node, messageId: "escape", data: { specifier, from: self, to: target } })
@@ -254,7 +257,7 @@ export const rules = {
   "no-self-module-alias": noSelfModuleAlias,
   "no-folder-reexport": noFolderReexport,
   "no-relative-capability-escape": noRelativeCapabilityEscape,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for, as the plugin's own opinion.
@@ -262,7 +265,7 @@ export const rules = {
  * All four are `error`. HFS keeps no baseline: a repository adopts them after its migration lane has moved its imports
  * onto owner entries, and `starciBeConfig` states them at `error` with none switched off.
  */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/import-owner-entry": "error",
   "starci-be/no-self-module-alias": "error",
   "starci-be/no-folder-reexport": "error",

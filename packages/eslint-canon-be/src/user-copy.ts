@@ -26,12 +26,16 @@ import { hfsOf } from "./lib/hfs.ts"
 import { ownerNameOf } from "./lib/ports.ts"
 import { typeOrigins, typed } from "./lib/types.ts"
 import { isDeclarationFile } from "./lib/path.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type ts from "typescript"
 
 const NOTIFY_TEXT_PROPS = new Set(["subject", "title", "body", "text", "message"])
 const RESPONSE_TEXT_PROPS = new Set(["message", "description", "title"])
 
 /** A literal that reads as prose rather than a code, an enum value or a key. */
-const looksLikeCopy = (text) => {
+const looksLikeCopy = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return false
     if (/^[A-Z][A-Z0-9_]*$/.test(trimmed)) return false // a code: PLAN_NOT_FOUND
@@ -40,11 +44,11 @@ const looksLikeCopy = (text) => {
 }
 
 /** Whether a TypeScript type is a class the repository or a package declares that extends the language `Error`. */
-const isCustomError = (program, checker, type) => {
-    const declaredByLanguage = (candidate) => (candidate.getSymbol()?.getDeclarations() ?? []).some((declaration) => program.isSourceFileDefaultLibrary(declaration.getSourceFile()))
+const isCustomError = (program: ts.Program, checker: ts.TypeChecker, type: ts.Type) => {
+    const declaredByLanguage = (candidate: ts.Type) => (candidate.getSymbol()?.getDeclarations() ?? []).some((declaration) => program.isSourceFileDefaultLibrary(declaration.getSourceFile()))
     if (declaredByLanguage(type)) return false
-    const seen = new Set()
-    const extendsError = (candidate) => {
+    const seen = new Set<ts.Type>()
+    const extendsError = (candidate: ts.Type): boolean => {
         if (seen.has(candidate)) return false
         seen.add(candidate)
         if (!candidate.isClassOrInterface()) return false
@@ -54,11 +58,11 @@ const isCustomError = (program, checker, type) => {
 }
 
 /** Whether a receiver's type is declared by an `integrations` owner or by `platform/event-bus` or `platform/queue`: an outbound port. */
-const isOutboundPort = (context, hfs, node) =>
+const isOutboundPort = (context: Context, hfs: HfsView, node: Node) =>
     typeOrigins(context, node).some((origin) => origin.module === null && (hfs.tierOf(origin.file) === "integrations" || (hfs.tierOf(origin.file) === "platform" && ["event-bus", "queue"].includes(ownerNameOf(hfs, origin.file) ?? ""))))
 
 /** User-facing text is looked up in the catalog by key, never written where it is used. */
-export const userCopyThroughCatalog = {
+export const userCopyThroughCatalog: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A literal exception message, notification text or response copy comes from the messages catalog, not from source." },
@@ -76,7 +80,7 @@ export const userCopyThroughCatalog = {
         const slot = hfs.slotOf(filename) ?? ""
         const inTransport = isTransportSlot(slot)
         const { program, checker, toTs } = typed(context)
-        const isOutboundCall = (node) =>
+        const isOutboundCall = (node: Node | null | undefined) =>
             node?.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && isOutboundPort(context, hfs, node.callee.object)
         return {
             NewExpression(node) {
@@ -92,7 +96,7 @@ export const userCopyThroughCatalog = {
             },
             CallExpression(node) {
                 if (!isOutboundCall(node)) return
-                const objectArg = node.arguments.find((argument) => argument.type === "ObjectExpression")
+                const objectArg = node.arguments.find((argument): argument is TSESTree.ObjectExpression => argument.type === "ObjectExpression")
                 if (!objectArg) return
                 for (const property of objectArg.properties) {
                     if (property.type !== "Property") continue
@@ -118,9 +122,9 @@ export const userCopyThroughCatalog = {
 /** The rule this law contributes to the plugin. */
 export const rules = {
     "user-copy-through-catalog": userCopyThroughCatalog,
-}
+} satisfies Rules
 
 /** Starts at error: a hand-written user-facing string is never a warning. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/user-copy-through-catalog": "error",
 }

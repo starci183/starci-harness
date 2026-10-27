@@ -16,6 +16,9 @@ import { decoratorArguments, decoratorCallee, importOf, isImportedFrom, moduleRe
 import { isTransportSlot, KIND_DOOR_SLOTS } from "./lib/transport-slots.ts"
 import { isPackageType, typeOrigins, typed } from "./lib/types.ts"
 import { operationRouteEvidence, restExceptionEvidence } from "./operations.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The HTTP route decorators of `@nestjs/common` (`Sse` is a route too: a `text/event-stream` GET that needs its own evidence). */
 const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head", "Sse"]
@@ -33,32 +36,35 @@ const WEBHOOK_SLOT = "be.feature.webhooks.http"
 const SSE_SLOT = "be.feature.realtime.sse"
 
 /** Slots whose classes are entered through a method the framework calls on a queue. */
-const PLAIN_ENTRY_SLOTS = new Set(["be.transport.message"])
+const PLAIN_ENTRY_SLOTS = new Set<string | null>(["be.transport.message"])
 
 /** True for the decorators that make a method a transport handler (a socket handler belongs to the realtime kind, which has its own laws). */
-const isRouteDecorator = (context, decorator) => {
+const isRouteDecorator = (context: Context, decorator: TSESTree.Decorator): boolean => {
     const callee = decoratorCallee(decorator)
     return isImportedFrom(context, callee, "@nestjs/common", HTTP_ROUTES)
         || isImportedFrom(context, callee, "@nestjs/graphql", GRAPHQL_OPERATIONS)
 }
 
 /** True when the class declares (transitively through its members' decorators) nothing but is a transport door: it has handler methods. */
-const handlerMethods = (context, node, slot) => node.body.body.filter((member) => {
+const handlerMethods = (context: Context, node: TSESTree.ClassDeclaration, slot: string | null): TSESTree.MethodDefinition[] => node.body.body.filter((member): member is TSESTree.MethodDefinition => {
     if (member.type !== "MethodDefinition" || member.kind !== "method" || member.static) return false
     if ((member.decorators ?? []).some((decorator) => isRouteDecorator(context, decorator))) return true
     return PLAIN_ENTRY_SLOTS.has(slot) && member.accessibility !== "private" && member.accessibility !== "protected"
 })
 
 /** The bus receivers of `@nestjs/cqrs`. */
-const isBus = (context, node) => isPackageType(context, node, "CommandBus", "@nestjs/cqrs") || isPackageType(context, node, "QueryBus", "@nestjs/cqrs")
+const isBus = (context: Context, node: Node): boolean => isPackageType(context, node, "CommandBus", "@nestjs/cqrs") || isPackageType(context, node, "QueryBus", "@nestjs/cqrs")
 
 /** True when a declaration file is owned by the capability `capability` of a platform slot. */
-const declaredByCapability = (hfs, file, capability) => hfs.slotOf(file) === "be.platform" && hfs.ownerOf(file)?.split("/").pop() === capability
+const declaredByCapability = (hfs: HfsView, file: string, capability: string): boolean => hfs.slotOf(file) === "be.platform" && hfs.ownerOf(file)?.split("/").pop() === capability
+
+/** The decorators a node carries, read off a node whose type is not known (undefined when it has none). */
+const decoratorsOf = (node: Node | undefined): TSESTree.Decorator[] | undefined => (node && "decorators" in node ? node.decorators : undefined)
 
 // -- transport-is-thin -------------------------------------------------------------------------------------
 
 /** What a transport class may hold, by the type of the injected value. */
-const isAllowedInjection = (context, hfs, slot, annotation) => {
+const isAllowedInjection = (context: Context, hfs: HfsView, slot: string | null, annotation: TSESTree.TypeNode): boolean => {
     const origins = typeOrigins(context, annotation)
     return origins.some((origin) => {
         if ((origin.name === "CommandBus" || origin.name === "QueryBus") && origin.module === "@nestjs/cqrs") return true
@@ -68,7 +74,7 @@ const isAllowedInjection = (context, hfs, slot, annotation) => {
 }
 
 /** True for a decorator that injects: `Inject` of Nest, or a function declared in a `*.decorators.ts` file, or a `@nestjs/typeorm` injector. */
-const isInjectorDecorator = (context, decorator) => {
+const isInjectorDecorator = (context: Context, decorator: TSESTree.Decorator): boolean => {
     const callee = decoratorCallee(decorator)
     if (callee?.type !== "Identifier") return false
     const found = importOf(context, callee)
@@ -81,7 +87,7 @@ const isInjectorDecorator = (context, decorator) => {
 }
 
 /** Counts the bus dispatches (`<bus>.execute(...)`) a method makes, closures included. */
-const dispatchesOf = (context, method) => {
+const dispatchesOf = (context: Context, method: TSESTree.MethodDefinition): number => {
     let count = 0
     walk(method.value.body, (node) => {
         if (node.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && node.callee.property.type === "Identifier" && node.callee.property.name === "execute" && isBus(context, node.callee.object)) count += 1
@@ -93,7 +99,7 @@ const dispatchesOf = (context, method) => {
 const DECISION_NODES = new Set(["IfStatement", "SwitchStatement", "ConditionalExpression", "LogicalExpression", "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement", "DoWhileStatement", "TryStatement", "ThrowStatement"])
 
 /** What an injected type is to a door: `bus`, `locale`, or null. */
-const injectedKind = (context, annotation) => {
+const injectedKind = (context: Context, annotation: TSESTree.TypeNode): "bus" | "locale" | null => {
     const origins = typeOrigins(context, annotation)
     if (origins.some((origin) => (origin.name === "CommandBus" || origin.name === "QueryBus") && origin.module === "@nestjs/cqrs")) return "bus"
     if (origins.some((origin) => origin.name === "RequestLocale" && origin.module === null)) return "locale"
@@ -101,10 +107,10 @@ const injectedKind = (context, annotation) => {
 }
 
 /** True for `this.<name>` where name is one of `names`. */
-const isThisMember = (expression, names) => expression?.type === "MemberExpression" && !expression.computed && expression.object.type === "ThisExpression" && expression.property.type === "Identifier" && names.has(expression.property.name)
+const isThisMember = (expression: Node | null | undefined, names: ReadonlySet<string>): boolean => expression?.type === "MemberExpression" && !expression.computed && expression.object.type === "ThisExpression" && expression.property.type === "Identifier" && names.has(expression.property.name)
 
 /** A door maps its input, dispatches exactly one message on the injected bus and returns the (mapped) result. */
-export const transportIsThin = {
+export const transportIsThin: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A transport class injects only `CommandBus`/`QueryBus`, and every handler method maps its input, dispatches exactly one command or query and returns the result: no decision, no loop, no other call." },
@@ -122,15 +128,15 @@ export const transportIsThin = {
         const hfs = hfsOf(context)
         const slot = hfs.slotOf(context.filename)
         // a webhook or realtime door answers to its own kind laws (webhooks.mjs, realtime.mjs), not to the one-dispatch shape
-        if (!isTransportSlot(slot) || KIND_DOOR_SLOTS.includes(slot)) return {}
+        if (!isTransportSlot(slot) || slot === null || KIND_DOOR_SLOTS.includes(slot)) return {}
         const sourceCode = context.sourceCode
-        const isMapper = (callee) => {
+        const isMapper = (callee: TSESTree.Expression): boolean => {
             if (callee.type !== "Identifier") return false
             const found = importOf(context, callee)
             return found !== null && /(?:^|\/)[^/]+\.mapper(?:\.[cm]?[jt]s)?$/.test(found.source.replace(/\\/g, "/"))
         }
         /** `unwrapOutcome` of `platform/primitives`, resolved by the symbol the name binds to, not by its spelling. */
-        const isUnwrapOutcome = (callee) => {
+        const isUnwrapOutcome = (callee: TSESTree.Expression): boolean => {
             if (callee.type !== "Identifier") return false
             const { checker, toTs } = typed(context)
             const tsNode = toTs(callee)
@@ -141,13 +147,13 @@ export const transportIsThin = {
         return {
             ClassDeclaration(node) {
                 // A Nest module class (`@Module`) wires the door into the container (registers consumers and jobs); it is not a door.
-                if ((node.decorators ?? node.parent?.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Module"))) return
-                const locales = new Set()
-                const classify = (name, annotation) => {
-                    const kind = name === null ? null : injectedKind(context, annotation)
-                    if (kind === "locale") locales.add(name)
+                if ((node.decorators ?? decoratorsOf(node.parent) ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Module"))) return
+                const locales = new Set<string>()
+                const classify = (name: string | null, annotation: TSESTree.TypeNode): void => {
+                    if (name === null) return
+                    if (injectedKind(context, annotation) === "locale") locales.add(name)
                 }
-                const constructor = node.body.body.find((member) => member.type === "MethodDefinition" && member.kind === "constructor")
+                const constructor = node.body.body.find((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "constructor")
                 for (const original of constructor?.value.params ?? []) {
                     const param = original.type === "TSParameterProperty" ? original.parameter : original
                     const annotation = param.typeAnnotation?.typeAnnotation
@@ -203,17 +209,17 @@ export const transportIsThin = {
 const ENVELOPE_NAMES = new Set(["GraphQLTransformInterceptor", "GraphQLSuccessMessage", "AbstractGraphQLResponse", "RestTransformInterceptor"])
 
 /** True when a class of this repository has an `intercept` that returns `map(...)` from rxjs over the handled response. */
-const interceptorMapsResponse = (context, argument) => {
+const interceptorMapsResponse = (context: Context, argument: TSESTree.CallExpressionArgument): boolean => {
     const { checker, toTs, program } = typed(context)
     const callee = argument.type === "NewExpression" ? argument.callee : argument
     if (callee.type !== "Identifier") return false
     let symbol = checker.getSymbolAtLocation(toTs(callee))
     if (symbol && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol)
-    const declaration = (symbol?.getDeclarations() ?? []).find((candidate) => ts.isClassDeclaration(candidate) && !program.isSourceFileFromExternalLibrary(candidate.getSourceFile()) && !program.isSourceFileDefaultLibrary(candidate.getSourceFile()))
+    const declaration = (symbol?.getDeclarations() ?? []).find((candidate): candidate is ts.ClassDeclaration => ts.isClassDeclaration(candidate) && !program.isSourceFileFromExternalLibrary(candidate.getSourceFile()) && !program.isSourceFileDefaultLibrary(candidate.getSourceFile()))
     const intercept = declaration?.members.find((member) => ts.isMethodDeclaration(member) && member.name.getText() === "intercept")
     if (!intercept) return false
     let mapped = false
-    const visit = (node) => {
+    const visit = (node: ts.Node): void => {
         if (mapped) return
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && importedFromRxjs(checker, node.expression)) mapped = true
         ts.forEachChild(node, visit)
@@ -223,24 +229,24 @@ const interceptorMapsResponse = (context, argument) => {
 }
 
 /** True when an identifier is bound by an import of `rxjs` (or `rxjs/operators`) whose exported name is `map`. */
-const importedFromRxjs = (checker, identifier) => {
+const importedFromRxjs = (checker: ts.TypeChecker, identifier: ts.Identifier): boolean => {
     const symbol = checker.getSymbolAtLocation(identifier)
     const declaration = symbol?.getDeclarations()?.[0]
     if (!declaration || !ts.isImportSpecifier(declaration)) return false
     const imported = (declaration.propertyName ?? declaration.name).text
     const module = ts.findAncestor(declaration, ts.isImportDeclaration)?.moduleSpecifier
-    return imported === "map" && ts.isStringLiteral(module) && (module.text === "rxjs" || module.text.startsWith("rxjs/"))
+    return imported === "map" && module !== undefined && ts.isStringLiteral(module) && (module.text === "rxjs" || module.text.startsWith("rxjs/"))
 }
 
 /** The expression a return statement hands back, without `await`, casts and parentheses. */
-const returned = (expression) => {
+const returned = (expression: TSESTree.Expression | null | undefined): TSESTree.Expression | null | undefined => {
     let current = expression
     while (current && (current.type === "AwaitExpression" || current.type === "TSAsExpression" || current.type === "TSSatisfiesExpression" || current.type === "TSNonNullExpression")) current = current.type === "AwaitExpression" ? current.argument : current.expression
     return current
 }
 
 /** No response envelope: a door returns its typed payload and failures travel as GraphQL errors. */
-export const noResponseEnvelope = {
+export const noResponseEnvelope: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No `{ success, data }` response envelope: no envelope class or decorator, no mapping interceptor, no envelope literal." },
@@ -255,13 +261,13 @@ export const noResponseEnvelope = {
         const hfs = hfsOf(context)
         const slot = hfs.slotOf(context.filename)
         const transport = isTransportSlot(slot)
-        const declared = (node, id) => {
+        const declared = (id: Node | null | undefined): void => {
             if (id?.type === "Identifier" && ENVELOPE_NAMES.has(id.name)) context.report({ node: id, messageId: "named", data: { name: id.name } })
         }
-        const visitors = {
-            ClassDeclaration: (node) => declared(node, node.id),
-            FunctionDeclaration: (node) => declared(node, node.id),
-            VariableDeclarator: (node) => declared(node, node.id),
+        const visitors: RuleListener = {
+            ClassDeclaration: (node) => declared(node.id),
+            FunctionDeclaration: (node) => declared(node.id),
+            VariableDeclarator: (node) => declared(node.id),
             ImportSpecifier(node) {
                 const name = node.imported.type === "Identifier" ? node.imported.name : node.imported.value
                 if (ENVELOPE_NAMES.has(name)) context.report({ node, messageId: "named", data: { name } })
@@ -275,7 +281,7 @@ export const noResponseEnvelope = {
                 for (const argument of decoratorArguments(node)) if (interceptorMapsResponse(context, argument)) context.report({ node: argument, messageId: "interceptor" })
             },
             ReturnStatement(node) {
-                let owner = node.parent
+                let owner: Node | undefined = node.parent
                 while (owner && owner.type !== "FunctionExpression" && owner.type !== "ArrowFunctionExpression" && owner.type !== "FunctionDeclaration") owner = owner.parent
                 if (owner?.parent?.type !== "MethodDefinition") return
                 const value = returned(node.argument)
@@ -293,13 +299,13 @@ export const noResponseEnvelope = {
 const JSON_SCALARS = new Set(["GraphQLJSON", "GraphQLJSONObject", "JSON", "JSONObject", "JSONResolver", "JSONObjectResolver"])
 
 /** True when the type is `unknown` or an object with a string index signature of `unknown`. */
-const isUnknownBag = (checker, type) => {
+const isUnknownBag = (checker: ts.TypeChecker, type: ts.Type): boolean => {
     if ((type.flags & ts.TypeFlags.Unknown) !== 0) return true
     return checker.getIndexInfosOfType(type).some((info) => (info.type.flags & ts.TypeFlags.Unknown) !== 0)
 }
 
 /** No free-form JSON in a door: no `GraphQLJSON`, no untyped `@Body()`, no `switch (input.operation)`. */
-export const noGraphqlJson = {
+export const noGraphqlJson: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A transport file takes no `GraphQLJSON` scalar, no `unknown` body and no `switch (input.operation)` dispatch." },
@@ -314,17 +320,21 @@ export const noGraphqlJson = {
         const hfs = hfsOf(context)
         if (!isTransportSlot(hfs.slotOf(context.filename))) return {}
         const { checker, toTs } = typed(context)
-        const scalar = (node, local, importedName, source) => {
+        const scalar = (node: Node, local: TSESTree.Identifier, importedName: string, source: string): void => {
             if (source === "graphql-type-json") return context.report({ node, messageId: "scalar", data: { name: importedName } })
             if (source === "graphql-scalars" && JSON_SCALARS.has(importedName)) return context.report({ node, messageId: "scalar", data: { name: importedName } })
             let symbol = checker.getSymbolAtLocation(toTs(local))
             if (symbol && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol)
-            const origin = (symbol?.getDeclarations() ?? []).some((declaration) => /\/node_modules\/(?:graphql-type-json|graphql-scalars)\//.test(declaration.getSourceFile().fileName.replace(/\\/g, "/")) && (JSON_SCALARS.has(symbol.getName()) || symbol.getName() === "default"))
+            const resolved = symbol
+            const origin = (resolved?.getDeclarations() ?? []).some((declaration) => /\/node_modules\/(?:graphql-type-json|graphql-scalars)\//.test(declaration.getSourceFile().fileName.replace(/\\/g, "/")) && resolved !== undefined && (JSON_SCALARS.has(resolved.getName()) || resolved.getName() === "default"))
             if (origin) context.report({ node, messageId: "scalar", data: { name: importedName } })
         }
         return {
             ImportSpecifier(node) {
-                scalar(node, node.local, node.imported.type === "Identifier" ? node.imported.name : node.imported.value, node.parent.source.value)
+                // An import specifier always sits in an import declaration, whose source is never null.
+                const { source } = node.parent
+                if (source === null) return
+                scalar(node, node.local, node.imported.type === "Identifier" ? node.imported.name : node.imported.value, source.value)
             },
             ImportDefaultSpecifier(node) {
                 scalar(node, node.local, node.local.name, node.parent.source.value)
@@ -333,8 +343,11 @@ export const noGraphqlJson = {
                 for (const param of node.value.params) {
                     const target = param.type === "AssignmentPattern" ? param.left : param
                     if (!(target.decorators ?? []).some((decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Body"))) continue
-                    const annotation = target.typeAnnotation?.typeAnnotation
-                    if (annotation && isUnknownBag(checker, checker.getTypeFromTypeNode(toTs(annotation)))) context.report({ node: target, messageId: "body" })
+                    const annotation = "typeAnnotation" in target ? target.typeAnnotation?.typeAnnotation : undefined
+                    if (!annotation) continue
+                    const tsAnnotation = toTs(annotation)
+                    // An annotation maps to a TS type node; the declared map also admits an identifier, read as typeOrigins reads one.
+                    if (isUnknownBag(checker, ts.isTypeNode(tsAnnotation) ? checker.getTypeFromTypeNode(tsAnnotation) : checker.getTypeAtLocation(tsAnnotation))) context.report({ node: target, messageId: "body" })
                 }
             },
             SwitchStatement(node) {
@@ -350,10 +363,10 @@ export const noGraphqlJson = {
 // -- door-lives-in-features --------------------------------------------------------------------------------------
 
 /** True for a `@Controller` decorator of `@nestjs/common`. */
-const isController = (context, decorator) => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Controller")
+const isController = (context: Context, decorator: TSESTree.Decorator): boolean => isImportedFrom(context, decoratorCallee(decorator), "@nestjs/common", "Controller")
 
 /** A door is a door whatever its protocol, and every REST door lives in the `transport/http` slot of a feature or in the door slot of the webhook kind. */
-export const doorLivesInFeatures = {
+export const doorLivesInFeatures: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A `@Controller` is declared in the `transport/http` slot of a feature." },
@@ -376,7 +389,7 @@ export const doorLivesInFeatures = {
 // -- no-capability-imports-features ------------------------------------------------------------------------------
 
 /** A capability under `modules/` never imports a feature: a door calls into a capability, never the other way round. */
-export const noCapabilityImportsFeatures = {
+export const noCapabilityImportsFeatures: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A domain, platform or integrations file never imports a file of a feature." },
@@ -400,7 +413,7 @@ export const noCapabilityImportsFeatures = {
 // -- rest-door-needs-a-reason ------------------------------------------------------------------------------------
 
 /** A REST door exists only where GraphQL cannot go, and each route has to show which case it is. */
-export const restDoorNeedsAReason = {
+export const restDoorNeedsAReason: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every REST route shows its own public reason (Health, AuthHandshake, SignedWebhook), byte transfer, redirect or declared operation table." },
@@ -434,10 +447,10 @@ export const rules = {
     "transport-is-thin": transportIsThin,
     "no-response-envelope": noResponseEnvelope,
     "no-graphql-json": noGraphqlJson,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/rest-door-needs-a-reason": "error",
     "starci-be/door-lives-in-features": "error",
     "starci-be/no-capability-imports-features": "error",

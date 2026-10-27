@@ -14,8 +14,10 @@
  * A runner is the test global or the import of `@jest/globals` / `vitest`, judged by its scope binding, never by a name
  * alone: a local variable called `it` is not one.
  */
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { hfsOf } from "./lib/hfs.ts"
 import { isSpecFile } from "./lib/path.ts"
+import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 const RUNNERS = new Set(["describe", "it", "test"])
 const MARKED = new Set(["xit", "xtest", "xdescribe", "fit", "ftest", "fdescribe"])
@@ -23,7 +25,7 @@ const BLOCKING_MEMBERS = new Set(["skip", "skipIf", "runIf", "todo", "only"])
 const RUNNER_PACKAGES = new Set(["@jest/globals", "vitest"])
 
 /** The variable a name resolves to from a scope, or null for an unresolved (global) name. */
-const resolve = (scope, name) => {
+const resolve = (scope: TSESLint.Scope.Scope | null, name: string): TSESLint.Scope.Variable | null => {
     for (let current = scope; current; current = current.upper) {
         const variable = current.set.get(name)
         if (variable && variable.defs.length > 0) return variable
@@ -31,8 +33,14 @@ const resolve = (scope, name) => {
     return null
 }
 
+/** The module a definition imports from (`undefined` when its parent is not an import with a source). */
+const importedFrom = (def: TSESLint.Scope.Definition): unknown => {
+    const parent = def.parent
+    return parent && "source" in parent ? parent.source?.value : undefined
+}
+
 /** A spec runs every test it declares; the skip lives in the world's contract helper. */
-export const specNoSkip = {
+export const specNoSkip: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No spec or test-tree file skips, focuses, marks todo or selects its runner conditionally; a contract spec's missing sandbox is a failing test of the test-world library's `sandbox.describe`, never a skip." },
@@ -46,17 +54,17 @@ export const specNoSkip = {
         const filename = context.filename || context.getFilename()
         const slot = hfsOf(context).slotOf(filename)
         if (!isSpecFile(filename) && !String(slot ?? "").startsWith("be.tests.")) return {}
-        const isRunner = (node) => {
+        const isRunner = (node: TSESTree.Identifier): boolean => {
             const variable = resolve(context.sourceCode.getScope(node), node.name)
             if (variable === null) return true
-            return variable.defs.some((def) => def.type === "ImportBinding" && RUNNER_PACKAGES.has(String(def.parent?.source?.value)))
+            return variable.defs.some((def) => def.type === "ImportBinding" && RUNNER_PACKAGES.has(String(importedFrom(def))))
         }
         return {
             Identifier(node) {
                 const parent = node.parent
                 if (parent.type === "TSTypeQuery" || parent.type === "ImportSpecifier" || parent.type === "ExportSpecifier") return
                 if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return
-                if (parent.key === node && !parent.computed && !parent.shorthand) return
+                if ("key" in parent && parent.key === node && !("computed" in parent && parent.computed) && !("shorthand" in parent && parent.shorthand)) return
                 const marked = MARKED.has(node.name)
                 if (!marked && !RUNNERS.has(node.name)) return
                 if (!isRunner(node)) return
@@ -77,9 +85,9 @@ export const specNoSkip = {
 /** The rules this law contributes to the plugin. */
 export const rules = {
     "spec-no-skip": specNoSkip,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/spec-no-skip": "error",
 }

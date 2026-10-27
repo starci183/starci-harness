@@ -16,21 +16,24 @@ import { writtenEntityOrigins } from "./lib/entity-writes.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
 import { typeOrigins, typed } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
-const isJobClaimsType = (context, node) => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
-const isJobStepType = (context, node) => isOwnedType(context, node, { name: "JobStep", capability: "jobs", tier: "platform" })
-const isFencedProcessorType = (context, node) => isOwnedType(context, node, { name: "FencedProcessor", capability: "jobs", tier: "platform" })
-const isRunKeyType = (context, node) => isOwnedType(context, node, { name: "RunKey", capability: "jobs", tier: "platform" })
+const isJobClaimsType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
+const isJobStepType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobStep", capability: "jobs", tier: "platform" })
+const isFencedProcessorType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "FencedProcessor", capability: "jobs", tier: "platform" })
+const isRunKeyType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "RunKey", capability: "jobs", tier: "platform" })
 
 /** True for a file of the owner itself, and for the test composition. */
-const isOwnerOrTest = (hfs, file) => {
+const isOwnerOrTest = (hfs: HfsView, file: string): boolean => {
     const tier = hfs.tierOf(file)
     if (tier === "e2e" || tier === "fixtures" || inTestWorld(hfs, file)) return true
     return tier === "platform" && ownerNameOf(hfs, file) === "jobs"
 }
 
 /** A write to an entity that `platform/jobs` declares (the job row) is made only by `platform/jobs`. */
-export const jobWriteOwner = {
+export const jobWriteOwner: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The job entity is written only by `platform/jobs`: no `update`, `increment`, `save`, `insert`, `delete` or query-builder write on it elsewhere." },
@@ -59,17 +62,17 @@ const TOKEN = "expectedFencingToken"
 const CARRIED = "fencingToken"
 
 /** A property of a TypeScript type by name, or undefined. */
-const propertyOf = (type, name) => type.getProperty(name)
+const propertyOf = (type: ts.Type, name: string): ts.Symbol | undefined => type.getProperty(name)
 
 /** True when the property is a required `number`. */
-const isRequiredNumber = (checker, property, location) => {
+const isRequiredNumber = (checker: ts.TypeChecker, property: ts.Symbol | undefined, location: ts.Node): boolean => {
     if (!property || (property.flags & ts.SymbolFlags.Optional) !== 0) return false
     const type = checker.getTypeOfSymbolAtLocation(property, location)
     return (type.flags & ts.TypeFlags.Number) !== 0
 }
 
 /** Calls on the `JobClaims` port, and what a guarded write is: required token, no cast to get around it, and `JobFencedOut` is not swallowed. */
-export const jobFenceRequired = {
+export const jobFenceRequired: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every `JobClaims` method that writes an existing job declares a required `expectedFencingToken: number`, a call never casts around it, and a `catch` around a guarded write rethrows." },
@@ -84,11 +87,13 @@ export const jobFenceRequired = {
         const hfs = hfsOf(context)
         const owner = isOwnerOrTest(hfs, context.filename)
         const { checker, toTs } = typed(context)
-        const claimsCall = (node) => node.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && isJobClaimsType(context, node.callee.object)
+        const claimsCall = (node: Node): boolean => node.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && isJobClaimsType(context, node.callee.object)
         return {
             // The declaration side: in the owner, each member of the port that takes a job requires the token.
             TSMethodSignature(node) {
-                if (!owner || hfs.tierOf(context.filename) !== "platform" || !isJobClaimsType(context, node.parent.parent?.id ?? node.parent)) return
+                const holder = node.parent.parent
+                const holderId = holder && "id" in holder ? holder.id : undefined
+                if (!owner || hfs.tierOf(context.filename) !== "platform" || !isJobClaimsType(context, holderId ?? node.parent)) return
                 const first = node.params?.[0]
                 if (!first) return
                 const tsNode = toTs(first)
@@ -96,7 +101,8 @@ export const jobFenceRequired = {
                 // A parameter that already carries the token (the claimed job itself) is a derivation, not a write.
                 if (!type || !propertyOf(type, TARGET) || propertyOf(type, CARRIED)) return
                 if (!isRequiredNumber(checker, propertyOf(type, TOKEN), tsNode)) {
-                    context.report({ node: first, messageId: "optionalToken", data: { method: node.key?.name ?? "this method", target: TARGET, token: TOKEN } })
+                    const methodName = node.key && "name" in node.key ? node.key.name : undefined
+                    context.report({ node: first, messageId: "optionalToken", data: { method: methodName ?? "this method", target: TARGET, token: TOKEN } })
                 }
             },
             CallExpression(node) {
@@ -121,7 +127,7 @@ export const jobFenceRequired = {
 }
 
 /** The class of an external effect of a step passes the key `JobClaims.runKey` made. */
-export const jobRunKey = {
+export const jobRunKey: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "In a job step every call on an integration port passes a `RunKey` (made by `JobClaims.runKey`, which includes the fencing token), never a cast or a literal." },
@@ -154,7 +160,7 @@ export const jobRunKey = {
 }
 
 /** A processor extends the fenced base and is named after its job; a step implements `JobStep` in `steps/`. */
-export const jobShape = {
+export const jobShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`<job>.processor.ts` of `features/jobs/<job>/transport/queue/` declares a class extending `FencedProcessor`; `steps/<step>.step.ts` declares a class implementing `JobStep`; neither role exists elsewhere." },
@@ -177,7 +183,7 @@ export const jobShape = {
         const inJob = found.slot === "be.feature.jobs.queue"
         const inSteps = found.slot === "be.feature.jobs.steps"
         const inPlatform = hfs.tierOf(file) === "platform" && ownerNameOf(hfs, file) === "jobs"
-        const check = (node) => {
+        const check = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): void => {
             const name = node.id?.name ?? "this class"
             const extendsFenced = node.superClass ? isFencedProcessorType(context, node.superClass) : false
             const implementsStep = (node.implements ?? []).some((entry) => isJobStepType(context, entry))
@@ -203,10 +209,10 @@ export const rules = {
     "job-fence-required": jobFenceRequired,
     "job-run-key": jobRunKey,
     "job-shape": jobShape,
-}
+} satisfies Rules
 
 /** The level these laws ask for: `error`, switched off nowhere. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/job-write-owner": "error",
     "starci-be/job-fence-required": "error",
     "starci-be/job-run-key": "error",

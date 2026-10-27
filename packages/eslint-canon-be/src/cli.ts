@@ -19,6 +19,12 @@
  */
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorCallee, importOf, isImportedFrom, moduleReferences } from "./lib/import-source.ts"
+import type { Context, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+
+/** A class node: a declaration or an expression. */
+type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression
 
 /** The slot of the cli app and of the cli feature root. */
 const CLI_APP_SLOT = "be.app.cli"
@@ -29,12 +35,12 @@ const FOREIGN_PARSERS = new Set(["commander", "yargs", "yargs/yargs", "yargs/hel
 /** The entry file of an app (the slot's first requirement): where the cli app boots. */
 const ENTRY = "main.ts"
 
-const relativeIn = (hfs, file) => hfs.allows(file)?.relative ?? null
-const isCliApp = (hfs, file) => hfs.slotOf(file) === CLI_APP_SLOT
-const isCliFeature = (hfs, file) => hfs.slotOf(file) === CLI_FEATURE_SLOT
+const relativeIn = (hfs: HfsView, file: string) => hfs.allows(file)?.relative ?? null
+const isCliApp = (hfs: HfsView, file: string) => hfs.slotOf(file) === CLI_APP_SLOT
+const isCliFeature = (hfs: HfsView, file: string) => hfs.slotOf(file) === CLI_FEATURE_SLOT
 
 /** The cli app boots with CommandFactory.run and never serves HTTP or a microservice. */
-export const cliBootstrap = {
+export const cliBootstrap: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The cli app boots with `CommandFactory.run` of nest-commander and never creates an HTTP application or a microservice." },
@@ -70,7 +76,7 @@ export const cliBootstrap = {
 }
 
 /** The nest-commander decorator a class carries (Command or SubCommand), by the import that binds it. */
-const commanderDecorator = (context, klass) => {
+const commanderDecorator = (context: Context, klass: ClassNode) => {
     for (const decorator of klass.decorators ?? []) {
         const callee = decoratorCallee(decorator)
         if (callee?.type !== "Identifier") continue
@@ -81,15 +87,16 @@ const commanderDecorator = (context, klass) => {
 }
 
 /** Where a command of each kind is declared in the cli feature root: `<group>/<group>.cli.ts` or `<group>/subs/<name>.cli.ts`. */
-const placeOf = (relative) => {
+const placeOf = (relative: string | null) => {
     const parts = String(relative ?? "").split("/")
     if (parts.length === 2 && parts[1] === `${parts[0]}.cli.ts`) return "Command"
-    if (parts.length === 3 && parts[1] === "subs" && parts[2].endsWith(".cli.ts") && !parts[2].endsWith(".spec.ts")) return "SubCommand"
+    const leaf = parts[2]
+    if (parts.length === 3 && parts[1] === "subs" && leaf !== undefined && leaf.endsWith(".cli.ts") && !leaf.endsWith(".spec.ts")) return "SubCommand"
     return null
 }
 
 /** A nest-commander command is declared only where the cli feature root keeps it, one per file, a sub-command a CommandRunner. */
-export const cliCommandShape = {
+export const cliCommandShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A nest-commander command is a group `@Command` in `src/features/cli/<group>/<group>.cli.ts` or a `@SubCommand` extending `CommandRunner` in `src/features/cli/<group>/subs/<name>.cli.ts`, one per file." },
@@ -107,7 +114,7 @@ export const cliCommandShape = {
         const slot = hfs.slotOf(filename)
         const place = isCliFeature(hfs, filename) ? placeOf(relativeIn(hfs, filename)) : null
         let commands = 0
-        const check = (klass) => {
+        const check = (klass: ClassNode) => {
             const found = commanderDecorator(context, klass)
             if (!found) return
             commands += 1
@@ -121,12 +128,12 @@ export const cliCommandShape = {
 }
 
 /** Whether a member expression is `process.argv` of the Node global (or `globalThis.process.argv`). */
-const isProcessArgv = (context, node) => {
+const isProcessArgv = (context: Context, node: TSESTree.MemberExpression) => {
     if (node.computed || node.property.type !== "Identifier" || node.property.name !== "argv") return false
     const object = node.object
-    const isProcess = (expression) => {
+    const isProcess = (expression: TSESTree.Expression) => {
         if (expression.type !== "Identifier" || expression.name !== "process") return false
-        for (let scope = context.sourceCode.getScope(expression); scope; scope = scope.upper) {
+        for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(expression); scope; scope = scope.upper) {
             const variable = scope.set.get("process")
             if (variable) return variable.defs.length === 0
         }
@@ -137,7 +144,7 @@ const isProcessArgv = (context, node) => {
 }
 
 /** nest-commander belongs to the cli app and the cli feature root; nothing else parses arguments or opens an action door. */
-export const cliOwner = {
+export const cliOwner: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "nest-commander is imported only by the cli app and the cli feature root; no back-end source reads `process.argv` or imports another argument parser." },
@@ -171,10 +178,10 @@ export const rules = {
     "cli-bootstrap": cliBootstrap,
     "cli-command-shape": cliCommandShape,
     "cli-owner": cliOwner,
-}
+} satisfies Rules
 
 /** Every rule is an error from the start: HFS keeps no baseline. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/cli-bootstrap": "error",
     "starci-be/cli-command-shape": "error",
     "starci-be/cli-owner": "error",

@@ -69,9 +69,26 @@ import { recommended as realtimeRecommended, rules as realtimeRules } from "./re
 import { recommended as featureThinRecommended, rules as featureThinRules } from "./feature-thin.ts"
 import { recommended as projectGraphRecommended, rules as projectGraphRules } from "./project-graph.ts"
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.ts"
+import type { TSESLint } from "@typescript-eslint/utils"
+import type { CanonPlugin } from "./lib/config.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { Recommended, RuleEntry, RuleModule, Rules } from "./lib/rule.ts"
+
+/** One law's contribution: its name, its rules and the levels it asks for. */
+interface Contribution {
+    law: string
+    rules: Rules
+    recommended: Recommended
+}
+
+/** One (law, rule name) pair as a law declares it. */
+interface RuleDeclaration {
+    law: string
+    name: string
+}
 
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
-const CONTRIBUTIONS = [
+const CONTRIBUTIONS: Contribution[] = [
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
     { law: "ambient-id", rules: ambientIdRules, recommended: ambientIdRecommended },
     { law: "app-composition", rules: appCompositionRules, recommended: appCompositionRecommended },
@@ -126,7 +143,7 @@ const CONTRIBUTIONS = [
 ]
 
 /** Every gathered law. */
-export const lawOwners = CONTRIBUTIONS.map((entry) => entry.law)
+export const lawOwners: string[] = CONTRIBUTIONS.map((entry) => entry.law)
 
 /**
  * Every (law, rule name) pair as DECLARED, before any collapsing.
@@ -141,7 +158,7 @@ export const lawOwners = CONTRIBUTIONS.map((entry) => entry.law)
  * indistinguishable from no gate, so the raw declarations are published here and the guard walks
  * these instead.
  */
-export const ruleDeclarations = CONTRIBUTIONS.flatMap((entry) =>
+export const ruleDeclarations: RuleDeclaration[] = CONTRIBUTIONS.flatMap((entry) =>
   Object.keys(entry.rules).map((name) => ({ law: entry.law, name })),
 )
 
@@ -152,12 +169,12 @@ export const ruleDeclarations = CONTRIBUTIONS.flatMap((entry) =>
  * to the document that explains it is this map. It answers "who owns this name" for a name that
  * SHIPPED; proving no two laws claim one name is `ruleDeclarations`' job, not this map's.
  */
-export const ruleOwners = Object.fromEntries(
+export const ruleOwners: Record<string, string> = Object.fromEntries(
     CONTRIBUTIONS.flatMap((entry) => Object.keys(entry.rules).map((name) => [name, entry.law])),
 )
 
 /** Every rule this canon publishes, keyed by its published name. */
-export const rules = Object.fromEntries(
+export const rules: Record<string, RuleModule> = Object.fromEntries(
     CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.rules)),
 )
 
@@ -165,12 +182,12 @@ export const rules = Object.fromEntries(
  * The levels this canon asks for: every rule at `error`. There is no `warn` and no burn-down level; a rule with
  * debt is fixed in the repositories before it ships, never published weaker.
  */
-export const recommended = Object.fromEntries(
+export const recommended: Record<string, RuleEntry> = Object.fromEntries(
     CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),
 )
 
 /** The plugin object, shaped the way a flat config expects it. */
-const plugin = {
+const plugin: CanonPlugin = {
     meta: { name: "eslint-plugin-starci-be" },
     rules,
 }
@@ -180,10 +197,10 @@ export default plugin
 /**
  * The whole flat config of a back end: `export default starciBeConfig({ hfs: loadHfs(import.meta.url) })`.
  *
- * @param {{ hfs: object }} input - The HFS view of the repository.
- * @returns {Promise<Array<object>>} The flat config.
+ * @param input - The HFS view of the repository.
+ * @returns The flat config.
  */
-export const starciBeConfig = ({ hfs }) => buildBeConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended })
+export const starciBeConfig = ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => buildBeConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended })
 
 export { linterOptions } from "./lib/config.ts"
 export { loadHfs } from "./lib/hfs.ts"

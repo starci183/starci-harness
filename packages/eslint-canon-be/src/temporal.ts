@@ -17,19 +17,31 @@
  */
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isOwnedBy } from "./lib/ports.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
 /** The globals that carry an ambient reading, and the member of each that reads it (`null`: any member). */
-const AMBIENT = Object.freeze({ Date: "now", performance: "now", process: "hrtime", Temporal: "Now" })
+const AMBIENT: Readonly<Record<string, string | undefined>> = Object.freeze({ Date: "now", performance: "now", process: "hrtime", Temporal: "Now" })
 
 /** Modules whose import of one of the globals above is the same ambient object (`node:perf_hooks` `performance`). */
 const AMBIENT_MODULES = new Set(["node:perf_hooks", "perf_hooks", "node:process", "process", "@js-temporal/polyfill", "temporal-polyfill"])
 
 /** Modules whose named export IS an ambient reader (`import { hrtime } from "node:process"`). */
-const AMBIENT_EXPORTS = Object.freeze({ "node:process": ["hrtime"], process: ["hrtime"] })
+const AMBIENT_EXPORTS: Readonly<Record<string, readonly string[] | undefined>> = Object.freeze({ "node:process": ["hrtime"], process: ["hrtime"] })
+
+/** An ambient root: the global name, the node that spells it, and whether it was reached through `globalThis`. */
+interface Root {
+    readonly name: string
+    readonly node: Node
+    readonly viaGlobalThis: boolean
+}
+
+/** The name an import specifier imports (an identifier or a string-literal export name). */
+const importedName = (imported: TSESTree.Identifier | TSESTree.StringLiteral) => (imported.type === "Identifier" ? imported.name : imported.value)
 
 /** The variable a name resolves to from `node`'s scope, or null when it is a global. */
-const variableOf = (context, node, name) => {
-    let scope = (context.sourceCode || context.getSourceCode()).getScope(node)
+const variableOf = (context: Context, node: Node, name: string) => {
+    let scope: TSESLint.Scope.Scope | null = (context.sourceCode || context.getSourceCode()).getScope(node)
     while (scope) {
         const found = scope.set.get(name)
         if (found) return found
@@ -39,23 +51,23 @@ const variableOf = (context, node, name) => {
 }
 
 /** Whether the root is the ambient global (or an import of it), not a local of the same name. */
-const isAmbientRoot = (context, root) => {
+const isAmbientRoot = (context: Context, root: Root) => {
     if (!Object.hasOwn(AMBIENT, root.name)) return false
     if (root.viaGlobalThis) return true
     const variable = variableOf(context, root.node, root.name)
     if (!variable || variable.defs.length === 0) return true
-    return variable.defs.every((def) => def.type === "ImportBinding" && AMBIENT_MODULES.has(def.parent.source.value))
+    return variable.defs.every((def) => def.type === "ImportBinding" && def.parent.type === "ImportDeclaration" && AMBIENT_MODULES.has(def.parent.source.value))
 }
 
 /** The property name of a non-computed or string-literal member access, else null. */
-const memberName = (node) => {
+const memberName = (node: TSESTree.MemberExpression) => {
     if (!node.computed && node.property.type === "Identifier") return node.property.name
     if (node.computed && node.property.type === "Literal" && typeof node.property.value === "string") return node.property.value
     return null
 }
 
 /** `globalThis.Date` and `Date` are the same root: `{ name, node, viaGlobalThis }`, or null when the node is neither. */
-const rootIdentifier = (node) => {
+const rootIdentifier = (node: Node): Root | null => {
     if (node.type === "Identifier") return { name: node.name, node, viaGlobalThis: false }
     if (node.type === "MemberExpression" && node.object.type === "Identifier" && node.object.name === "globalThis") {
         const name = memberName(node)
@@ -65,7 +77,7 @@ const rootIdentifier = (node) => {
 }
 
 /** Only `platform/clock` reads the ambient clock. */
-export const noAmbientClock = {
+export const noAmbientClock: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`Date.now`, a zero-argument `new Date()`, `performance.now`, `process.hrtime` and `Temporal.Now` are referenced only inside `platform/clock`." },
@@ -79,7 +91,7 @@ export const noAmbientClock = {
         const hfs = hfsOf(context)
         const filename = context.filename || context.getFilename()
         if (isOwnedBy(hfs, filename, "platform", "clock") || inTestWorld(hfs, filename)) return {}
-        const reportRoot = (node, root, member) => {
+        const reportRoot = (node: Node, root: Root, member: string) => {
             if (!isAmbientRoot(context, root)) return
             const wanted = AMBIENT[root.name]
             if (member === wanted) context.report({ node, messageId: "now", data: { call: `${root.name}.${member}` } })
@@ -107,8 +119,8 @@ export const noAmbientClock = {
                 const banned = AMBIENT_EXPORTS[node.source.value]
                 if (!banned) return
                 for (const specifier of node.specifiers) {
-                    if (specifier.type === "ImportSpecifier" && banned.includes(specifier.imported.name ?? specifier.imported.value)) {
-                        context.report({ node: specifier, messageId: "now", data: { call: `${specifier.imported.name ?? specifier.imported.value} from ${node.source.value}` } })
+                    if (specifier.type === "ImportSpecifier" && banned.includes(importedName(specifier.imported))) {
+                        context.report({ node: specifier, messageId: "now", data: { call: `${importedName(specifier.imported)} from ${node.source.value}` } })
                     }
                 }
             },
@@ -128,9 +140,9 @@ export const noAmbientClock = {
 /** The rule this law contributes to the plugin. */
 export const rules = {
     "no-ambient-clock": noAmbientClock,
-}
+} satisfies Rules
 
 /** Starts at error: no baseline exists, and the repositories' fix lanes clear the debt with a Clock codemod. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-ambient-clock": "error",
 }

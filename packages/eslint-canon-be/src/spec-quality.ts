@@ -16,6 +16,9 @@ import { walk } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { importOf } from "./lib/import-source.ts"
 import { originsOfType, typed } from "./lib/types.ts"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { HfsView } from "./lib/hfs.ts"
 
 const FS_MODULES = new Set(["fs", "node:fs", "fs/promises", "node:fs/promises"])
 const FS_READERS = new Set(["readFile", "readFileSync", "readdir", "readdirSync", "glob", "globSync", "opendir", "opendirSync", "createReadStream"])
@@ -28,12 +31,14 @@ const SOURCE_ANCHORS = new Set(["__dirname", "__filename"])
  * Whether a path text leads into the repository's own tree: the slot manifest owns it, or it starts down a path the
  * manifest knows (`src`, `apps`, `src/modules`), or it names a source file.
  */
-const leadsIntoRepository = (hfs, text) => {
+const leadsIntoRepository = (hfs: HfsView, text: string) => {
     const path = text.replace(/^(?:\.{0,2}[\\/])+/, "")
     if (!path) return false
     if (SOURCE_EXTENSION.test(path)) return true
     const found = hfs.classify(path)
-    return found.status === "owned" || (found.nearest?.matchedDepth ?? 0) > 0
+    const nearest = found.nearest
+    const matchedDepth: unknown = nearest && "matchedDepth" in nearest ? nearest.matchedDepth : undefined
+    return found.status === "owned" || Number(matchedDepth ?? 0) > 0
 }
 
 /**
@@ -42,7 +47,7 @@ const leadsIntoRepository = (hfs, text) => {
  * `const dir = join(__dirname, "x"); readdirSync(dir)` is recognised. A spec that reads the files ITS SUBJECT
  * wrote to a temporary directory is behavior, and stays outside this rule.
  */
-const pointsAtSource = (hfs, expression, scope, depth = 0) => {
+const pointsAtSource = (hfs: HfsView, expression: Node | null | undefined, scope: TSESLint.Scope.Scope | null, depth = 0): boolean => {
     if (!expression) return false
     let found = false
     walk(expression, (node) => {
@@ -50,7 +55,7 @@ const pointsAtSource = (hfs, expression, scope, depth = 0) => {
         if (node.type === "Identifier" && SOURCE_ANCHORS.has(node.name)) found = true
         else if (node.type === "MetaProperty") found = true
         else if (node.type === "MemberExpression" && node.object.type === "MetaProperty") found = true
-        else if (node.type === "CallExpression" && node.callee.type === "MemberExpression" && node.callee.object.type === "Identifier" && node.callee.object.name === "process" && node.callee.property.name === "cwd") found = true
+        else if (node.type === "CallExpression" && node.callee.type === "MemberExpression" && node.callee.object.type === "Identifier" && node.callee.object.name === "process" && "name" in node.callee.property && node.callee.property.name === "cwd") found = true
         else if (node.type === "Literal" && typeof node.value === "string" && leadsIntoRepository(hfs, node.value)) found = true
         else if (node.type === "TemplateElement" && leadsIntoRepository(hfs, node.value.cooked ?? "")) found = true
         else if (node.type === "Identifier" && depth < 2) {
@@ -64,7 +69,7 @@ const pointsAtSource = (hfs, expression, scope, depth = 0) => {
 }
 
 /** A spec never opens source files to assert on their text. */
-export const specNoSourceRead = {
+export const specNoSourceRead: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A spec does not read files with fs." },
@@ -77,14 +82,14 @@ export const specNoSourceRead = {
         if (!/\.(?:e2e-)?spec\.[cm]?ts$/.test(basename(context.filename || context.getFilename()))) return {}
         const hfs = hfsOf(context)
         const sourceCode = context.sourceCode || context.getSourceCode()
-        const namespaces = new Set()
-        const named = new Set()
+        const namespaces = new Set<string>()
+        const named = new Set<string>()
         return {
             ImportDeclaration(node) {
                 if (typeof node.source.value !== "string" || !FS_MODULES.has(node.source.value)) return
                 for (const specifier of node.specifiers) {
                     if (specifier.type === "ImportSpecifier") {
-                        const imported = specifier.imported.name ?? specifier.imported.value
+                        const imported = specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value
                         if (FS_READERS.has(imported)) named.add(specifier.local.name)
                         else if (imported === "promises") namespaces.add(specifier.local.name)
                     } else {
@@ -119,9 +124,9 @@ export const specNoSourceRead = {
 const TYPEORM_DOUBLES = ["EntityManager", "QueryRunner", "DataSource", "SelectQueryBuilder", "QueryBuilder"]
 
 /** The kit functions that build the database double. */
-const DATABASE_DOUBLES = ["mockEntityManager", "fakeTransaction"]
+const DATABASE_DOUBLES: ReadonlyArray<string | null> = ["mockEntityManager", "fakeTransaction"]
 
-export const specTypedEntityManager = {
+export const specTypedEntityManager: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A unit spec's database double is the kit's mockEntityManager()/fakeTransaction() from @starci/jest-preset, never an ad-hoc EntityManager." },
@@ -135,7 +140,7 @@ export const specTypedEntityManager = {
         const filename = context.filename || context.getFilename()
         if (!/\.spec\.ts$/.test(basename(filename)) || /\.e2e-spec\.ts$/.test(basename(filename))) return {}
         const kit = hfs.ruleParams.specDoubles.kit
-        const doubleType = (node) => {
+        const doubleType = (node: Node) => {
             const { checker, toTs } = typed(context)
             const tsNode = toTs(node)
             if (!tsNode) return undefined
@@ -143,7 +148,7 @@ export const specTypedEntityManager = {
             const parts = type.isUnionOrIntersection() ? type.types : [type]
             return TYPEORM_DOUBLES.find((name) => parts.some((part) => originsOfType(checker, part).some((origin) => origin.name === name && origin.module === "typeorm")))
         }
-        const fromKit = (callee) => {
+        const fromKit = (callee: TSESTree.Expression) => {
             const found = callee.type === "Identifier" ? importOf(context, callee) : null
             return found !== null && (found.source === kit || found.source.startsWith(`${kit}/`)) && DATABASE_DOUBLES.includes(found.imported)
         }
@@ -164,10 +169,10 @@ export const specTypedEntityManager = {
 export const rules = {
     "spec-no-source-read": specNoSourceRead,
     "spec-typed-entity-manager": specTypedEntityManager,
-}
+} satisfies Rules
 
 /** Error from the start: the migration lanes replace the source-reading specs before adoption. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/spec-no-source-read": "error",
     "starci-be/spec-typed-entity-manager": "error",
 }

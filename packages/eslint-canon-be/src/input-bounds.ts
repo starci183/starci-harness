@@ -23,26 +23,30 @@ import { importsFrom, isOwnedEnumMember, partsOf, presentParts, typeOf } from ".
 import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
 import { isPackageType, typed } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** True when the file sits in a transport slot inside a `dto/` folder, judged by the slot and the owner-relative path. */
-const isTransportDto = (hfs, filename) => {
+const isTransportDto = (hfs: HfsView, filename: string): boolean => {
     const slot = hfs.slotOf(filename) ?? ""
     if (!isTransportSlot(slot) && !slot.startsWith("be.feature.transport.")) return false
     return hfs.relative(filename).split("/").slice(0, -1).includes("dto")
 }
 
 const INPUT_FILE = /\.(?:input|args|request)\.ts$/
-const INPUT_DECORATORS = new Set(["InputType", "ArgsType"])
+const INPUT_DECORATORS = new Set<string | null>(["InputType", "ArgsType"])
 
-const decoratorsOf = (node) => node.decorators ?? []
+const decoratorsOf = (node: Node): TSESTree.Decorator[] => ("decorators" in node ? node.decorators ?? [] : [])
 
 /** The imported names of the decorators a member carries, mapped through the file's `class-validator`/`class-transformer` imports. */
-const boundsOf = (member, validators, transformers) => {
-    const names = new Set()
+const boundsOf = (member: Node, validators: Map<string, string>, transformers: Map<string, string>): Set<string> => {
+    const names = new Set<string>()
     for (const decorator of decoratorsOf(member)) {
         const local = decoratorName(decorator)
         if (local === null) continue
-        if (validators.has(local)) names.add(validators.get(local))
+        const validator = validators.get(local)
+        if (validator !== undefined) names.add(validator)
         if (transformers.has(local)) names.add(`transform:${transformers.get(local)}`)
     }
     return names
@@ -52,7 +56,7 @@ const STRINGY = ts.TypeFlags.String | ts.TypeFlags.StringLiteral | ts.TypeFlags.
 const NOT_NESTED = new Set(["Date", "Array", "ReadonlyArray", "Map", "Set", "Buffer", "Promise"])
 
 /** What a property's type obliges: `enum`, `string`, `array`, `nested` or null for a scalar with no further bound. */
-const obligationOf = (checker, type) => {
+const obligationOf = (checker: ts.TypeChecker, type: ts.Type | null): "enum" | "string" | "array" | "nested" | null => {
     const parts = presentParts(type)
     if (parts.length === 0) return null
     if (parts.every((part) => part.flags & ts.TypeFlags.EnumLike)) return "enum"
@@ -63,10 +67,10 @@ const obligationOf = (checker, type) => {
 }
 
 /** True when a string-typed property can only hold a fixed set of literals (`"paid" | "failed"`): a membership validator bounds it as `@MaxLength` does. */
-const isLiteralSet = (type) => presentParts(type).every((part) => part.flags & ts.TypeFlags.StringLiteral)
+const isLiteralSet = (type: ts.Type | null): boolean => presentParts(type).every((part) => part.flags & ts.TypeFlags.StringLiteral)
 
 /** Every property of an input class carries the validators its type calls for. */
-export const inputBounded = {
+export const inputBounded: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "Every property of an input class is validated and bounded by its type." },
@@ -86,9 +90,9 @@ export const inputBounded = {
         const sourceCode = context.sourceCode
         const { checker } = typed(context)
         const fileIsInput = isTransportDto(hfs, filename) && INPUT_FILE.test(filename)
-        let validators = new Map()
-        let transformers = new Map()
-        const checkClass = (node) => {
+        let validators = new Map<string, string>()
+        let transformers = new Map<string, string>()
+        const checkClass = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): void => {
             const target = node.parent?.type === "ExportNamedDeclaration" || node.parent?.type === "ExportDefaultDeclaration" ? node.parent : node
             const decorated = [...decoratorsOf(node), ...decoratorsOf(target)].map(decoratorName).some((name) => INPUT_DECORATORS.has(name))
             if (!fileIsInput && !decorated) return
@@ -126,7 +130,7 @@ const OFFSET_KEYS = new Set(["skip", "offset"])
 const OFFSET_KEYWORD = /\bOFFSET\b/i
 
 /** Reads are paged by cursor: no `skip`, `offset`, `OFFSET` or page number anywhere. */
-export const noOffsetPagination = {
+export const noOffsetPagination: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No offset or page-number pagination: `skip`/`offset` reads, `OFFSET` SQL, `page`/`offset` DTO fields." },
@@ -149,8 +153,9 @@ export const noOffsetPagination = {
                 const method = callee.property.name
                 if (!isPackageType(context, callee.object, "EntityManager", "typeorm")) return
                 if (method === "query") {
-                    const text = staticText(node.arguments[0])
-                    if (text !== null && OFFSET_KEYWORD.test(text)) context.report({ node: node.arguments[0], messageId: "sql" })
+                    const first = node.arguments[0]
+                    const text = staticText(first)
+                    if (first && text !== null && OFFSET_KEYWORD.test(text)) context.report({ node: first, messageId: "sql" })
                     return
                 }
                 if (!method.startsWith("find")) return
@@ -181,22 +186,22 @@ export const noOffsetPagination = {
 const STRICT_REASONS = new Set(["AuthHandshake", "SignedWebhook"])
 
 /** The member names of an enum-typed value, when every part of its type is a member of the owned enum; else []. */
-const ownedMembers = (context, node, enumName, tier, capability) =>
+const ownedMembers = (context: Context, node: Node, enumName: string, tier: string, capability: string): string[] =>
     isOwnedEnumMember(context, node, enumName, tier, capability) ? partsOf(typeOf(context, node)).map((part) => part.getSymbol()?.name ?? "") : []
 
 /** The arguments of a decorator call (`@X(a, b)`), or [] for a bare `@X`. */
-const argumentsOf = (decorator) => (decorator.expression.type === "CallExpression" ? decorator.expression.arguments : [])
+const argumentsOf = (decorator: TSESTree.Decorator): TSESTree.CallExpressionArgument[] => (decorator.expression.type === "CallExpression" ? decorator.expression.arguments : [])
 
 /** The `reason` value of an opening decorator's options object (`@Public({ reason })`), or null. */
-const reasonOf = (decorator) => {
+const reasonOf = (decorator: TSESTree.Decorator): TSESTree.Property["value"] | null => {
     const options = argumentsOf(decorator)[0]
     if (options?.type !== "ObjectExpression") return null
-    const property = options.properties.find((item) => item.type === "Property" && !item.computed && keyName(item.key) === "reason")
+    const property = options.properties.find((item): item is TSESTree.Property => item.type === "Property" && !item.computed && keyName(item.key) === "reason")
     return property ? property.value : null
 }
 
 /** A door opened for a handshake or a webhook is on the strict rate-limit tier. */
-export const authDoorStrictRateTier = {
+export const authDoorStrictRateTier: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A door opened for `PublicReason.AuthHandshake` or `PublicReason.SignedWebhook` carries `RateTier.Strict` of `platform/http-security`." },
@@ -206,11 +211,11 @@ export const authDoorStrictRateTier = {
         },
     },
     create(context) {
-        const isStrict = (decorator) => argumentsOf(decorator).some((argument) => {
+        const isStrict = (decorator: TSESTree.Decorator): boolean => argumentsOf(decorator).some((argument) => {
             const members = ownedMembers(context, argument, "RateTier", "platform", "http-security")
             return members.length > 0 && members.every((name) => name === "Strict")
         })
-        const judge = (target, enclosing) => {
+        const judge = (target: TSESTree.ClassDeclaration | TSESTree.MethodDefinition, enclosing: TSESTree.ClassDeclaration | TSESTree.ClassExpression | null): void => {
             for (const decorator of target.decorators ?? []) {
                 const reason = reasonOf(decorator)
                 if (reason === null) continue
@@ -237,10 +242,10 @@ export const rules = {
     "input-bounded": inputBounded,
     "no-offset-pagination": noOffsetPagination,
     "auth-door-strict-rate-tier": authDoorStrictRateTier,
-}
+} satisfies Rules
 
 /** All start at error: no baseline exists, and the repositories' fix lanes clear the debt. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/input-bounded": "error",
     "starci-be/no-offset-pagination": "error",
     "starci-be/auth-door-strict-rate-tier": "error",

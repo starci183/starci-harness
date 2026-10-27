@@ -24,60 +24,77 @@ import { aliasTarget, callsOf, hasClassDecorator, injectedMembers, methodsDecora
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorCallee } from "./lib/import-source.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { ClassNode, MethodCall } from "./lib/doors.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+
+/** One parameter of a handler method, as `parametersOf` unwraps it. */
+type Parameter = ReturnType<typeof parametersOf>[number]
 
 /** The slot of realtime doors. */
 const DOOR_SLOTS = new Set(["be.feature.realtime.graphql", "be.feature.realtime.websocket", "be.feature.realtime.sse"])
 
 /** The `RealtimeHub` port of `platform/realtime`. */
-const isHubType = (context, node) => isOwnedType(context, node, { name: "RealtimeHub", capability: "realtime", tier: "platform" })
+const isHubType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "RealtimeHub", capability: "realtime", tier: "platform" })
 
 /** The plain HTTP route decorators of `@nestjs/common`: an SSE controller carries none of them, its one route is `@Sse`. */
-const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head"]
+const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head"] as const
 
 /** The decorators that make a class a door of one kind of realtime file, by file role. */
 const ROLES = {
     gateway: { classDecorator: ["@nestjs/websockets", "WebSocketGateway"], operation: ["@nestjs/websockets", "SubscribeMessage"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField", "Subscription"]], ["@nestjs/common", ["Controller"]]] },
     subscription: { classDecorator: ["@nestjs/graphql", "Resolver"], operation: ["@nestjs/graphql", "Subscription"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField"]], ["@nestjs/websockets", ["WebSocketGateway", "SubscribeMessage"]], ["@nestjs/common", ["Controller"]]] },
     controller: { classDecorator: ["@nestjs/common", "Controller"], operation: ["@nestjs/common", "Sse"], foreign: [["@nestjs/graphql", ["Query", "Mutation", "ResolveField", "Subscription", "Resolver"]], ["@nestjs/websockets", ["WebSocketGateway", "SubscribeMessage"]], ["@nestjs/common", HTTP_ROUTES]] },
-}
+} as const
+
+/** A realtime file role: a key of `ROLES`. */
+type Role = keyof typeof ROLES
+
+/** Whether a captured file role is one of `ROLES`. */
+const isRole = (value: string | undefined): value is Role => value === "gateway" || value === "subscription" || value === "controller"
 
 /** The role (`gateway`, `subscription` or `controller`) a realtime file name carries, or null. */
-const roleOf = (filename) => /\.(gateway|subscription|controller)\.ts$/.exec(baseName(filename))?.[1] ?? null
+const roleOf = (filename: string): Role | null => {
+    const found = /\.(gateway|subscription|controller)\.ts$/.exec(baseName(filename))?.[1]
+    return isRole(found) ? found : null
+}
 
 /** The door classes of a file: every class with a class-level door decorator of the role. */
-const doorClasses = (context, program, role) => {
-    const found = []
+const doorClasses = (context: Context, program: TSESTree.Program, role: Role): TSESTree.ClassDeclaration[] => {
+    const found: TSESTree.ClassDeclaration[] = []
+    const [source, name] = ROLES[role].classDecorator
     walk(program, (node) => {
-        if (node.type === "ClassDeclaration" && hasClassDecorator(context, node, ...ROLES[role].classDecorator)) found.push(node)
+        if (node.type === "ClassDeclaration" && hasClassDecorator(context, node, source, name)) found.push(node)
     })
     return found
 }
 
 /** The framework supplies this server property; no inbound message supplies a stream's principal. */
-const hasSocketServer = (context, node) => node.body.body.some((member) =>
+const hasSocketServer = (context: Context, node: ClassNode): boolean => node.body.body.some((member) =>
     member.type === "PropertyDefinition" && hasClassDecorator(context, member, "@nestjs/websockets", "WebSocketServer"))
 
 /** The authenticated principal port the socket middleware passes to a push-only stream. */
-const isStreamPrincipal = (context, param) => isOwnedType(context, param, { name: "Principal", capability: "cqrs", tier: "platform" })
+const isStreamPrincipal = (context: Context, param: Node): boolean => isOwnedType(context, param, { name: "Principal", capability: "cqrs", tier: "platform" })
 
 /** The hub calls that open a client's stream: `subscribe` (an async iterable of frames) and `stream` (server-sent events), including those inside closures. */
 const OPENING_CALLS = new Set(["subscribe", "stream"])
-const hubSubscriptions = (context, method) => callsOf(method).filter(({ receiver, method: called }) =>
-    OPENING_CALLS.has(called) && receiver !== null && isHubType(context, receiver))
+const hubSubscriptions = (context: Context, method: TSESTree.MethodDefinition): MethodCall[] => callsOf(method).filter(({ receiver, method: called }) =>
+    called !== null && OPENING_CALLS.has(called) && receiver !== null && isHubType(context, receiver))
 
 /** The nonstatic methods a push-only gateway uses to feed its socket server. */
-const streamMethods = (context, node) => {
+const streamMethods = (context: Context, node: ClassNode): TSESTree.MethodDefinition[] => {
     if (!hasSocketServer(context, node)) return []
-    return node.body.body.filter((member) => member.type === "MethodDefinition" && member.kind === "method" && !member.static
+    return node.body.body.filter((member): member is TSESTree.MethodDefinition => member.type === "MethodDefinition" && member.kind === "method" && !member.static
         && hubSubscriptions(context, member).length > 0)
 }
 
 /** An inbound handler or a push-only stream taking the server's authenticated principal. */
-const hasOperation = (context, node, role) => methodsDecoratedBy(context, node, ...ROLES[role].operation).length > 0
+const hasOperation = (context: Context, node: ClassNode, role: Role): boolean => methodsDecoratedBy(context, node, ROLES[role].operation[0], ROLES[role].operation[1]).length > 0
     || (role === "gateway" && streamMethods(context, node).some((method) => parametersOf(method).some((param) => isStreamPrincipal(context, param))))
 
 /** A realtime file is the one door its role names, and nothing else. */
-export const realtimeShape = {
+export const realtimeShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A realtime file is one door: a `.gateway.ts` holds one `@WebSocketGateway` class with `@SubscribeMessage` handlers or principal-typed push streams through `@WebSocketServer`, a `.subscription.ts` holds one `@Resolver` class with `@Subscription` operations, and neither carries a route, query or mutation." },
@@ -97,13 +114,14 @@ export const realtimeShape = {
         return {
             "Program:exit"(program) {
                 const doors = doorClasses(context, program, role)
-                if (doors.length !== 1) {
+                const [door] = doors
+                if (doors.length !== 1 || !door) {
                     context.report({ node: program, messageId: "door", data: { role, decorator: `@${spec.classDecorator[1]}`, count: String(doors.length) } })
                     return
                 }
-                if (!hasOperation(context, doors[0], role)) context.report({ node: doors[0], messageId: "operations", data: { role, operation: spec.operation[1] } })
-                const streams = role === "controller" ? methodsDecoratedBy(context, doors[0], ...spec.operation).length : 1
-                if (streams > 1) context.report({ node: doors[0], messageId: "single", data: { count: String(streams) } })
+                if (!hasOperation(context, door, role)) context.report({ node: door, messageId: "operations", data: { role, operation: spec.operation[1] } })
+                const streams = role === "controller" ? methodsDecoratedBy(context, door, spec.operation[0], spec.operation[1]).length : 1
+                if (streams > 1) context.report({ node: door, messageId: "single", data: { count: String(streams) } })
                 walk(program, (node) => {
                     if (node.type !== "Decorator") return
                     for (const [source, names] of spec.foreign) {
@@ -117,10 +135,10 @@ export const realtimeShape = {
 }
 
 /** True when one decorator node is `name` exported by `source`. */
-const hasDecorator = (context, decorator, source, name) => hasClassDecorator(context, { decorators: [decorator] }, source, name)
+const hasDecorator = (context: Context, decorator: TSESTree.Decorator, source: string, name: string): boolean => hasClassDecorator(context, { decorators: [decorator] }, source, name)
 
 /** A realtime door injects the hub and nothing else: it reads and pushes, it never writes. */
-export const realtimeReadOnly = {
+export const realtimeReadOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The only value a realtime door injects is the `RealtimeHub` of `platform/realtime`: no `EntityManager`, bus, queue, event bus or domain service." },
@@ -143,7 +161,7 @@ export const realtimeReadOnly = {
 }
 
 /** True when the parameter carries `@CurrentPrincipal()` declared by `domain/identity`, judged by the declaration the decorator resolves to. */
-const isPrincipalParameter = (context, hfs, param) =>
+const isPrincipalParameter = (context: Context, hfs: HfsView, param: Parameter): boolean =>
     (param.decorators ?? []).some((decorator) => {
         const callee = decoratorCallee(decorator)
         if (callee?.type !== "Identifier") return false
@@ -152,8 +170,8 @@ const isPrincipalParameter = (context, hfs, param) =>
     })
 
 /** True when the identifier resolves to one of the `names` (parameters of the handler). */
-const resolvesTo = (context, identifier, parameters) => {
-    for (let scope = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
+const resolvesTo = (context: Context, identifier: TSESTree.Identifier, parameters: ReadonlySet<Node>): boolean => {
+    for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(identifier); scope; scope = scope.upper) {
         const variable = scope.set.get(identifier.name)
         if (!variable) continue
         return variable.defs.some((definition) => definition.type === "Parameter" && parameters.has(definition.name))
@@ -162,8 +180,8 @@ const resolvesTo = (context, identifier, parameters) => {
 }
 
 /** A method's principal parameters, declared by the identity decorator or the push stream's platform type. */
-const principalParameters = (context, hfs, method, push) => {
-    const principals = new Set()
+const principalParameters = (context: Context, hfs: HfsView, method: TSESTree.MethodDefinition, push: boolean): Set<Node> => {
+    const principals = new Set<Node>()
     for (const param of parametersOf(method)) {
         if (!isPrincipalParameter(context, hfs, param) && !(push && isStreamPrincipal(context, param))) continue
         const target = param.type === "AssignmentPattern" ? param.left : param
@@ -173,7 +191,7 @@ const principalParameters = (context, hfs, method, push) => {
 }
 
 /** The hub topic must use the method's principal declaration rather than a shadowing identifier. */
-const checkMethodTopics = (context, hfs, method, push) => {
+const checkMethodTopics = (context: Context, hfs: HfsView, method: TSESTree.MethodDefinition, push: boolean): void => {
     const principals = principalParameters(context, hfs, method, push)
     for (const { call } of hubSubscriptions(context, method)) {
         let scoped = false
@@ -185,7 +203,7 @@ const checkMethodTopics = (context, hfs, method, push) => {
 }
 
 /** The topic a client subscribes to is built from the principal the handler receives. */
-export const realtimeTopicScope = {
+export const realtimeTopicScope: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The topic passed to `RealtimeHub.subscribe` is built from the handler's `@CurrentPrincipal()` parameter or the push-only stream's platform `Principal` parameter." },
@@ -217,10 +235,10 @@ export const rules = {
     "realtime-shape": realtimeShape,
     "realtime-read-only": realtimeReadOnly,
     "realtime-topic-scope": realtimeTopicScope,
-}
+} satisfies Rules
 
 /** Every rule of this law at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/realtime-shape": "error",
     "starci-be/realtime-read-only": "error",
     "starci-be/realtime-topic-scope": "error",

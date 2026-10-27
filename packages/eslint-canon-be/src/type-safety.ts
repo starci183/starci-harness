@@ -17,14 +17,19 @@
  * written, measured against the reference backend and withdrawn because both of its real firings were wrong. It stays
  * a reader's job, exactly as the law's own `Layer held` table says.
  */
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+
+/** A function of any of the three forms. */
+type FunctionNode = TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression
 
 /** A parameter property (`private readonly x: T`) wraps the parameter it declares. */
-const unwrapParam = (param) => (param.type === "TSParameterProperty" ? param.parameter : param)
+const unwrapParam = (param: TSESTree.Parameter): TSESTree.AssignmentPattern | TSESTree.BindingName | TSESTree.RestElement => (param.type === "TSParameterProperty" ? param.parameter : param)
 
 // -- TYPE-3 ----------------------------------------------------------------------------------------
 
 /** A destructured parameter's type is named, so a second caller can reference it. */
-export const noInlineParamType = {
+export const noInlineParamType: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A destructured parameter takes a named type, not an inline literal." },
@@ -35,7 +40,7 @@ export const noInlineParamType = {
     },
   },
   create(context) {
-    const check = (params) => {
+    const check = (params: TSESTree.Parameter[]): void => {
       for (const raw of params || []) {
         const param = unwrapParam(raw)
         if (param.type !== "ObjectPattern" || !param.typeAnnotation) continue
@@ -83,11 +88,11 @@ export const noInlineParamType = {
  */
 
 /** A type literal with no members means "no properties" -- a different smell with a different fix. */
-const isEmptyTypeLiteral = (typeLiteral) => !typeLiteral.members || typeLiteral.members.length === 0
+const isEmptyTypeLiteral = (typeLiteral: TSESTree.TSTypeLiteral): boolean => !typeLiteral.members || typeLiteral.members.length === 0
 
 /** A vendor's own declaration lives in a `declare module` / module augmentation and cannot be named separately. */
-const isInsideAmbientModule = (node) => {
-  let current = node.parent
+const isInsideAmbientModule = (node: Node): boolean => {
+  let current: Node | undefined = node.parent
   while (current) {
     if (current.type === "TSModuleDeclaration" && current.declare) return true
     current = current.parent
@@ -96,7 +101,7 @@ const isInsideAmbientModule = (node) => {
 }
 
 /** The non-empty inline object type at `typeAnnotation.typeAnnotation`, or null if this is out of scope. */
-const inlineObjectTypeOf = (typeAnnotation, scopeNode) => {
+const inlineObjectTypeOf = (typeAnnotation: TSESTree.TSTypeAnnotation | undefined, scopeNode: Node): TSESTree.TSTypeLiteral | null => {
   if (!typeAnnotation) return null
   const literal = typeAnnotation.typeAnnotation
   if (!literal || literal.type !== "TSTypeLiteral") return null
@@ -105,7 +110,7 @@ const inlineObjectTypeOf = (typeAnnotation, scopeNode) => {
   return literal
 }
 
-export const noInlineObjectType = {
+export const noInlineObjectType: RuleModule = {
   meta: {
     type: "problem",
     docs: {
@@ -119,22 +124,24 @@ export const noInlineObjectType = {
     },
   },
   create(context) {
-    const reportLiteral = (node, position) => {
+    const reportLiteral = (node: Node, position: string): void => {
       context.report({ node, messageId: "inlineObjectType", data: { position } })
     }
 
-    const checkParams = (fnNode) => {
+    const checkParams = (fnNode: FunctionNode): void => {
       for (const raw of fnNode.params || []) {
         const param = unwrapParam(raw)
-        if (inlineObjectTypeOf(param.typeAnnotation, param)) {
-          reportLiteral(param.typeAnnotation, "parameter")
+        const annotation = param.typeAnnotation
+        if (annotation && inlineObjectTypeOf(annotation, param)) {
+          reportLiteral(annotation, "parameter")
         }
       }
     }
 
-    const checkReturnType = (fnNode) => {
-      if (inlineObjectTypeOf(fnNode.returnType, fnNode)) {
-        reportLiteral(fnNode.returnType, "return type")
+    const checkReturnType = (fnNode: FunctionNode): void => {
+      const annotation = fnNode.returnType
+      if (annotation && inlineObjectTypeOf(annotation, fnNode)) {
+        reportLiteral(annotation, "return type")
       }
     }
 
@@ -152,14 +159,16 @@ export const noInlineObjectType = {
         checkReturnType(node)
       },
       TSPropertySignature(node) {
-        if (inlineObjectTypeOf(node.typeAnnotation, node)) {
-          reportLiteral(node.typeAnnotation, "property signature")
+        const annotation = node.typeAnnotation
+        if (annotation && inlineObjectTypeOf(annotation, node)) {
+          reportLiteral(annotation, "property signature")
         }
       },
       VariableDeclarator(node) {
         if (node.id.type !== "Identifier") return
-        if (inlineObjectTypeOf(node.id.typeAnnotation, node)) {
-          reportLiteral(node.id.typeAnnotation, "variable")
+        const annotation = node.id.typeAnnotation
+        if (annotation && inlineObjectTypeOf(annotation, node)) {
+          reportLiteral(annotation, "variable")
         }
       },
     }
@@ -169,7 +178,7 @@ export const noInlineObjectType = {
 // -- TYPE-4 ----------------------------------------------------------------------------------------
 
 /** An enum keeps its runtime object. */
-export const noConstEnum = {
+export const noConstEnum: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Enums are declared plain, never `const enum`." },
@@ -192,8 +201,8 @@ export const noConstEnum = {
 // -- R72 -------------------------------------------------------------------------------------------
 
 /** A global name (`Function`, `eval`) that no declaration of this file shadows. */
-const isGlobalName = (context, node, name) => {
-  let scope = (context.sourceCode || context.getSourceCode()).getScope(node)
+const isGlobalName = (context: Context, node: Node, name: string): boolean => {
+  let scope: TSESLint.Scope.Scope | null = (context.sourceCode || context.getSourceCode()).getScope(node)
   while (scope) {
     const variable = scope.set.get(name)
     if (variable) return variable.defs.length === 0
@@ -203,7 +212,7 @@ const isGlobalName = (context, node, name) => {
 }
 
 /** `Function` as a type, `eval` and `new Function` run or accept code the compiler cannot see. */
-export const noFunctionOrEval = {
+export const noFunctionOrEval: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "No `Function` type, no `eval`, no `new Function` (the type escapes the borrowed assertion rules do not cover)." },
@@ -238,10 +247,13 @@ export const noFunctionOrEval = {
 
 // -- R75 -------------------------------------------------------------------------------------------
 
-const HANDLER_DECORATORS = new Set(["Query", "Mutation", "Subscription", "ResolveField", "Get", "Post", "Put", "Patch", "Delete", "MessagePattern", "EventPattern", "Cron", "Interval"])
-const SURFACE_CLASS_DECORATORS = new Set(["Injectable", "Resolver", "Controller"])
+const HANDLER_DECORATORS = new Set<string | null>(["Query", "Mutation", "Subscription", "ResolveField", "Get", "Post", "Put", "Patch", "Delete", "MessagePattern", "EventPattern", "Cron", "Interval"])
+const SURFACE_CLASS_DECORATORS = new Set<string | null>(["Injectable", "Resolver", "Controller"])
 
-const decoratorIdentifier = (decorator) => {
+/** The decorators a node carries, or none when it carries no such list. */
+const decoratorsOf = (node: Node | undefined): TSESTree.Decorator[] => (node && "decorators" in node ? node.decorators ?? [] : [])
+
+const decoratorIdentifier = (decorator: TSESTree.Decorator | undefined): string | null => {
   const expression = decorator?.expression
   if (!expression) return null
   if (expression.type === "Identifier") return expression.name
@@ -250,7 +262,7 @@ const decoratorIdentifier = (decorator) => {
 }
 
 /** A method that a caller or the framework reaches states what it returns. */
-export const explicitHandlerReturnType = {
+export const explicitHandlerReturnType: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Handlers and public methods of an Injectable, Resolver or Controller declare a return type." },
@@ -276,7 +288,7 @@ export const explicitHandlerReturnType = {
         const klass = node.parent?.parent
         if (!klass || klass.type !== "ClassDeclaration") return
         const exported = klass.parent?.type === "ExportNamedDeclaration" || klass.parent?.type === "ExportDefaultDeclaration"
-        const decorators = [...(klass.decorators ?? []), ...(klass.parent?.decorators ?? [])].map(decoratorIdentifier)
+        const decorators = [...(klass.decorators ?? []), ...decoratorsOf(klass.parent)].map(decoratorIdentifier)
         if (!exported || !decorators.some((name) => SURFACE_CLASS_DECORATORS.has(name))) return
         context.report({ node: node.key, messageId: "publicMethod" })
       },
@@ -306,7 +318,7 @@ export const rules = {
   "no-inline-object-type": noInlineObjectType,
   "no-const-enum": noConstEnum,
   "explicit-handler-return-type": explicitHandlerReturnType,
-}
+} satisfies Rules
 
 /**
  * The level this law asks for: every rule at `error`, in every file, specs included.
@@ -314,7 +326,7 @@ export const rules = {
  * The borrowed type-escape rules (`consistent-type-assertions` never, `no-non-null-assertion`, `no-explicit-any`)
  * are added by the factory (`lib/config.mjs`), not listed here. The array spelling rule stays with this law.
  */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/no-function-or-eval": "error",
   "starci-be/no-inline-param-type": "error",
   "starci-be/no-inline-object-type": "error",

@@ -31,6 +31,9 @@ import {
     mayHoldEntityManager,
 } from "./lib/persistence.ts"
 import { isPackageType, originsOfType, typed, typeOrigins } from "./lib/types.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The `@nestjs/typeorm` calls that build a second door to a connection. */
 const RAW_CONNECTION_CALLS = new Set(["InjectEntityManager", "InjectDataSource", "getEntityManagerToken"])
@@ -39,17 +42,17 @@ const RAW_CONNECTION_CALLS = new Set(["InjectEntityManager", "InjectDataSource",
 const FUNCTION_LIKE = new Set(["ArrowFunctionExpression", "FunctionExpression", "CallExpression"])
 
 /** Whether a file may build connections: the platform database capability and the cli app. */
-const mayBuildConnections = (hfs, file) => inDatabaseCapability(hfs, file) || inCli(hfs, file)
+const mayBuildConnections = (hfs: HfsView, file: string) => inDatabaseCapability(hfs, file) || inCli(hfs, file)
 
 /** `new DataSource(` also in the test world (`src/tests/world`), which owns the shared test infrastructure (owner ruling 2026-09-30). */
-const mayConstructDataSource = (hfs, file) => mayBuildConnections(hfs, file) || inTestWorld(hfs, file)
+const mayConstructDataSource = (hfs: HfsView, file: string) => mayBuildConnections(hfs, file) || inTestWorld(hfs, file)
 
 /** The connection whose name a string literal spells, or undefined. */
-const connectionNamed = (hfs, node) =>
+const connectionNamed = (hfs: HfsView, node: Node | null | undefined) =>
     node?.type === "Literal" && typeof node.value === "string" ? connectionsOf(hfs).find((connection) => connection.name === node.value) : undefined
 
 /** Whether a symbol is the platform composition's `TypedParameterDecorator` alias. */
-const isTypedParameterDecorator = (hfs, checker, symbol) => {
+const isTypedParameterDecorator = (hfs: HfsView, checker: ts.TypeChecker, symbol: ts.Symbol): boolean => {
     const target = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
     const declaration = target.declarations?.find(ts.isTypeAliasDeclaration)
     if (target.name !== "TypedParameterDecorator" || !declaration) return false
@@ -58,30 +61,36 @@ const isTypedParameterDecorator = (hfs, checker, symbol) => {
 }
 
 /** Whether a type argument is typeorm's `EntityManager`. */
-const isEntityManagerArgument = (checker, type) => originsOfType(checker, type).some((origin) => origin.module === "typeorm" && origin.name === "EntityManager")
+const isEntityManagerArgument = (checker: ts.TypeChecker, type: ts.Type): boolean => originsOfType(checker, type).some((origin) => origin.module === "typeorm" && origin.name === "EntityManager")
 
 /** Whether a written type is `TypedParameterDecorator<EntityManager>`, following the aliases written over it. */
-const isEntityManagerDecoratorNode = (hfs, checker, node, depth) => {
+const isEntityManagerDecoratorNode = (hfs: HfsView, checker: ts.TypeChecker, node: ts.Node, depth: number): boolean => {
     if (!ts.isTypeReferenceNode(node) || depth > 4) return false
     const symbol = checker.getSymbolAtLocation(node.typeName)
     if (!symbol) return false
-    if (isTypedParameterDecorator(hfs, checker, symbol)) return Boolean(node.typeArguments?.[0]) && isEntityManagerArgument(checker, checker.getTypeFromTypeNode(node.typeArguments[0]))
+    if (isTypedParameterDecorator(hfs, checker, symbol)) {
+        const argument = node.typeArguments?.[0]
+        return argument ? isEntityManagerArgument(checker, checker.getTypeFromTypeNode(argument)) : false
+    }
     const target = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
     const declaration = target.declarations?.find(ts.isTypeAliasDeclaration)
-    return Boolean(declaration) && isEntityManagerDecoratorNode(hfs, checker, declaration.type, depth + 1)
+    return declaration ? isEntityManagerDecoratorNode(hfs, checker, declaration.type, depth + 1) : false
 }
 
 /** Whether a type is `TypedParameterDecorator<EntityManager>`, however an alias renamed it. */
-const isEntityManagerDecorator = (hfs, checker, type) => {
+const isEntityManagerDecorator = (hfs: HfsView, checker: ts.TypeChecker, type: ts.Type): boolean => {
     const alias = type?.aliasSymbol
     if (!alias) return false
-    if (isTypedParameterDecorator(hfs, checker, alias)) return Boolean(type.aliasTypeArguments?.[0]) && isEntityManagerArgument(checker, type.aliasTypeArguments[0])
+    if (isTypedParameterDecorator(hfs, checker, alias)) {
+        const argument = type.aliasTypeArguments?.[0]
+        return argument ? isEntityManagerArgument(checker, argument) : false
+    }
     const declaration = alias.declarations?.find(ts.isTypeAliasDeclaration)
-    return Boolean(declaration) && isEntityManagerDecoratorNode(hfs, checker, declaration.type, 1)
+    return declaration ? isEntityManagerDecoratorNode(hfs, checker, declaration.type, 1) : false
 }
 
 /** Whether the value written at `node` is an EntityManager injector: it, or what it returns, is `TypedParameterDecorator<EntityManager>`. */
-const isEntityManagerInjector = (context, hfs, node) => {
+const isEntityManagerInjector = (context: Context, hfs: HfsView, node: Node): boolean => {
     const { checker, toTs } = typed(context)
     const tsNode = toTs(node)
     if (!tsNode) return false
@@ -90,19 +99,21 @@ const isEntityManagerInjector = (context, hfs, node) => {
 }
 
 /** Whether a call reaches a value declared by `pkg` under one of `names`, however it was imported. */
-const callsPackage = (context, node, names, pkg) => typeOrigins(context, node).some((origin) => origin.module === pkg && names.has(origin.name))
+const callsPackage = (context: Context, node: Node, names: ReadonlySet<string>, pkg: string): boolean => typeOrigins(context, node).some((origin) => origin.module === pkg && names.has(origin.name))
 
 /** The constant a declared connection name is exported as: `expert-academy` gives `EXPERT_ACADEMY_CONNECTION`. */
-const constantOf = (name) => `${name.toUpperCase().replace(/-/g, "_")}_CONNECTION`
+const constantOf = (name: string): string => `${name.toUpperCase().replace(/-/g, "_")}_CONNECTION`
 
 /** The string an env key argument spells, or null when it is not a plain string. */
-const keyText = (node) => {
+const keyText = (node: Node | undefined) => {
     if (node?.type === "Literal" && typeof node.value === "string") return node.value
-    return node?.type === "TemplateLiteral" && node.expressions.length === 0 ? node.quasis[0].value.cooked : null
+    if (node?.type !== "TemplateLiteral" || node.expressions.length !== 0) return null
+    const [quasi] = node.quasis
+    return quasi ? quasi.value.cooked : null
 }
 
 /** Whether a call's receiver is an `EnvSource` instance (the reader), not the class itself. */
-const isEnvSourceReader = (context, hfs, object) => {
+const isEnvSourceReader = (context: Context, hfs: HfsView, object: Node): boolean => {
     const isEnvSource = typeOrigins(context, object).some((origin) => {
         const found = hfs.classify(origin.file)
         return origin.name === "EnvSource" && found.slot === "be.platform" && found.bindings?.capability === "config"
@@ -113,7 +124,7 @@ const isEnvSourceReader = (context, hfs, object) => {
 }
 
 /** One physical database is one connection, one injector, one config and one registration. */
-export const oneConnectionPerDatabase = {
+export const oneConnectionPerDatabase: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "One database = one connection = one named `Inject<Conn>EntityManager` declared once in `platform/database`." },
@@ -142,16 +153,16 @@ export const oneConnectionPerDatabase = {
         const declaredNames = new Set(connectionsOf(hfs).map((connection) => injectorNameOf(connection.name)))
 
         /** Reports each injector-typed value written at `node`, unless it is the declared injector of this file's own connection. */
-        const checkInjector = (name, node, reportNode) => {
+        const checkInjector = (name: string, node: Node, reportNode: Node): void => {
             if (!isEntityManagerInjector(context, hfs, node)) return
             if (decoratorsFile && name === injectorNameOf(decoratorsFile.name)) return
             context.report({ node: reportNode, messageId: "injectorHome", data: { name } })
         }
         /** Reports a connection-name literal inside the options object of a registration. */
-        const checkOptionsName = (options) => {
+        const checkOptionsName = (options: TSESTree.CallExpressionArgument | undefined): void => {
             if (options?.type !== "ObjectExpression") return
             for (const property of options.properties) {
-                if (property.type !== "Property" || property.computed || property.key.name !== "name") continue
+                if (property.type !== "Property" || property.computed || property.key.type !== "Identifier" || property.key.name !== "name") continue
                 const named = connectionNamed(hfs, property.value)
                 if (named) context.report({ node: property.value, messageId: "literal", data: { name: named.name, constant: constantOf(named.name) } })
             }
@@ -160,7 +171,9 @@ export const oneConnectionPerDatabase = {
             CallExpression(node) {
                 const { callee } = node
                 if (callsPackage(context, callee, RAW_CONNECTION_CALLS, "@nestjs/typeorm")) {
-                    const name = typeOrigins(context, callee).find((origin) => RAW_CONNECTION_CALLS.has(origin.name)).name
+                    const origin = typeOrigins(context, callee).find((candidate) => RAW_CONNECTION_CALLS.has(candidate.name))
+                    if (!origin) return
+                    const { name } = origin
                     if (!mayRawInject) context.report({ node, messageId: "rawInjector", data: { name } })
                     for (const argument of node.arguments) {
                         const named = connectionNamed(hfs, argument)
@@ -189,7 +202,7 @@ export const oneConnectionPerDatabase = {
             VariableDeclarator(node) {
                 if (node.id.type !== "Identifier") return
                 const named = connectionNamed(hfs, node.init)
-                if (named && node.id.name === constantOf(named.name) && connectionFile?.name !== named.name) {
+                if (named && node.init && node.id.name === constantOf(named.name) && connectionFile?.name !== named.name) {
                     context.report({ node: node.init, messageId: "literal", data: { name: named.name, constant: node.id.name } })
                 }
                 if (node.init && FUNCTION_LIKE.has(node.init.type)) checkInjector(node.id.name, node.id, node.id)
@@ -198,9 +211,9 @@ export const oneConnectionPerDatabase = {
                 if (node.id) checkInjector(node.id.name, node.id, node.id)
             },
             ExportSpecifier(node) {
-                const exported = node.exported.name ?? node.exported.value
+                const exported = node.exported.type === "Identifier" ? node.exported.name : node.exported.value
                 // Re-exporting a declared injector under its own name is the owner's public surface; an alias is a second injector.
-                if (declaredNames.has(exported) || (!node.parent.source && node.local.name === exported)) return
+                if (declaredNames.has(exported) || (!node.parent.source && node.local.type === "Identifier" && node.local.name === exported)) return
                 checkInjector(exported, node.local, node.exported)
             },
         }
@@ -208,7 +221,7 @@ export const oneConnectionPerDatabase = {
 }
 
 /** An EntityManager is injected in an application handler, a domain service or a platform persistence capability only. */
-export const emInjectionSlots = {
+export const emInjectionSlots: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An `EntityManager` is injected only in application handlers, domain services, projections and the platform capabilities that own a `persistence/`." },
@@ -234,10 +247,10 @@ export const emInjectionSlots = {
 export const rules = {
     "one-connection-per-database": oneConnectionPerDatabase,
     "em-injection-slots": emInjectionSlots,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/one-connection-per-database": "error",
     "starci-be/em-injection-slots": "error",
 }

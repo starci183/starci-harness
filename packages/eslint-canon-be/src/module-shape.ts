@@ -38,11 +38,15 @@ import { isAppComposition } from "./lib/app-roles.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isDeclarationFile, isSpecFile, normalizePath } from "./lib/path.ts"
 import { typed } from "./lib/types.ts"
+import { isNode } from "./lib/rule.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
+import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
-const isModuleClass = (node) => node.decorators?.some((decorator) => decoratorName(decorator) === "Module") ?? false
+const isModuleClass = (node: TSESTree.ClassDeclaration): boolean => node.decorators?.some((decorator) => decoratorName(decorator) === "Module") ?? false
 
 /** `@Global()` is banned everywhere: globality is decided at the app root. */
-export const noGlobalDecorator = {
+export const noGlobalDecorator: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`@Global()` is not used anywhere, specs included." },
@@ -53,7 +57,7 @@ export const noGlobalDecorator = {
     },
     create(context) {
         if (isDeclarationFile(context.filename || context.getFilename())) return {}
-        let aliases = new Map()
+        let aliases = new Map<string, string>()
         return {
             Program(node) {
                 aliases = importsFrom(node, () => true)
@@ -78,10 +82,10 @@ const isAppModule = isAppComposition
  */
 const isWorld = inTestWorld
 
-const isTrue = (node) => node?.type === "Literal" && node.value === true
+const isTrue = (node: Node | null | undefined): boolean => node?.type === "Literal" && node.value === true
 
 /** `isGlobal: true` appears only in the app's `app.module.ts`. */
-export const isGlobalOnlyInApp = {
+export const isGlobalOnlyInApp: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`isGlobal: true` appears only in `apps/<app>/src/app.module.ts` and its composition groups `compose/<area>.ts`." },
@@ -114,14 +118,14 @@ export const isGlobalOnlyInApp = {
 }
 
 /** The module class an `imports` entry names: `X` or `X.register(...)`; null for anything else. */
-const importedModule = (entry) => {
+const importedModule = (entry: Node): TSESTree.Identifier | null => {
     if (entry.type === "Identifier") return entry
     if (entry.type === "CallExpression" && entry.callee.type === "MemberExpression" && !entry.callee.computed && entry.callee.object.type === "Identifier") return entry.callee.object
     return null
 }
 
 /** A module never imports another owner's module: a capability is reached through its `Inject*()` decorators. */
-export const noCrossOwnerModuleImport = {
+export const noCrossOwnerModuleImport: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A `@Module({ imports })` entry is not a module declared by another owner." },
@@ -137,7 +141,7 @@ export const noCrossOwnerModuleImport = {
         if ((hfs.slotOf(filename) ?? "").startsWith("be.app.")) return {}
         const { checker, toTs } = typed(context)
         const here = hfs.ownerOf(filename)
-        const declaringOwner = (identifier) => {
+        const declaringOwner = (identifier: TSESTree.Identifier): string | null => {
             const tsNode = toTs(identifier)
             let symbol = tsNode ? checker.getSymbolAtLocation(tsNode) : undefined
             if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
@@ -149,11 +153,11 @@ export const noCrossOwnerModuleImport = {
                 if (decoratorName(node) !== "Module" || node.expression.type !== "CallExpression") return
                 const metadata = node.expression.arguments[0]
                 if (metadata?.type !== "ObjectExpression") return
-                const imports = metadata.properties.find((item) => item.type === "Property" && !item.computed && keyName(item.key) === "imports")
+                const imports = metadata.properties.find((item): item is TSESTree.Property => item.type === "Property" && !item.computed && keyName(item.key) === "imports")
                 if (imports?.value.type !== "ArrayExpression") return
                 for (const entry of imports.value.elements) {
                     const reference = entry ? importedModule(entry) : null
-                    if (!reference) continue
+                    if (!entry || !reference) continue
                     // a package module is R90's concern; the same owner is one owner (a transport module and its feature's application module, a representative and its sub-modules)
                     const there = declaringOwner(reference)
                     if (there !== null && there !== here) context.report({ node: entry, messageId: "cross", data: { name: reference.name } })
@@ -164,7 +168,7 @@ export const noCrossOwnerModuleImport = {
 }
 
 /** A configurable module builder names its options type. */
-export const typedModuleDefinition = {
+export const typedModuleDefinition: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`new ConfigurableModuleBuilder<Options>()` states its options type." },
@@ -178,7 +182,9 @@ export const typedModuleDefinition = {
         return {
             NewExpression(node) {
                 if (node.callee.type !== "Identifier" || node.callee.name !== "ConfigurableModuleBuilder") return
-                const typedArgs = (node.typeArguments ?? node.typeParameters)?.params?.length > 0
+                // `typeParameters` is the older parser's name for the same type arguments
+                const typeArguments: unknown = node.typeArguments ?? Reflect.get(node, "typeParameters")
+                const typedArgs = isNode(typeArguments) && typeArguments.type === "TSTypeParameterInstantiation" && typeArguments.params?.length > 0
                 if (!typedArgs) context.report({ node, messageId: "untyped", data: { example: "Capability" } })
             },
         }
@@ -188,7 +194,7 @@ export const typedModuleDefinition = {
 const OTHER_FACTORIES = new Set(["registerAsync", "forRoot", "forRootAsync", "forFeature", "forFeatureAsync"])
 
 /** The one dynamic-module factory is `static register`. */
-export const staticModuleRegister = {
+export const staticModuleRegister: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A module's only factory is `static register`; `forRoot`, `forFeature` and `registerAsync` do not exist." },
@@ -217,7 +223,7 @@ export const staticModuleRegister = {
 const PROVIDER_DECORATORS = new Set(["Injectable", "Controller", "Resolver", "CommandHandler", "QueryHandler"])
 
 /** True when the declaration carries a provider decorator. */
-const isProviderDeclaration = (declaration) => {
+const isProviderDeclaration = (declaration: ts.Declaration): boolean => {
     if (!ts.isClassDeclaration(declaration) && !ts.isClassExpression(declaration)) return false
     return (ts.getDecorators(declaration) ?? []).some((decorator) => {
         const expression = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
@@ -226,7 +232,7 @@ const isProviderDeclaration = (declaration) => {
 }
 
 /** Providers are built by the container, not by `new` (a spec constructs its subject with typed doubles). */
-export const noNewInjectable = {
+export const noNewInjectable: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No `new X()` of a class declared as a provider outside a spec." },
@@ -252,7 +258,7 @@ export const noNewInjectable = {
 }
 
 /** No mutable state at module scope. */
-export const noModuleLet = {
+export const noModuleLet: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "No `let` or `var` at module scope." },
@@ -263,7 +269,7 @@ export const noModuleLet = {
     },
     create(context) {
         if (isDeclarationFile(context.filename || context.getFilename())) return {}
-        const check = (node) => {
+        const check = (node: Node): void => {
             if (node.type === "VariableDeclaration" && node.kind !== "const") context.report({ node, messageId: "mutable", data: { kind: node.kind } })
         }
         return {
@@ -278,7 +284,7 @@ export const noModuleLet = {
 }
 
 /** One `@Module` class per file. */
-export const oneModulePerFile = {
+export const oneModulePerFile: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A file declares at most one `@Module` class." },
@@ -300,19 +306,19 @@ export const oneModulePerFile = {
     },
 }
 
-const CAPABILITY_TIERS = new Set(["domain", "platform", "integrations", "projections"])
+const CAPABILITY_TIERS: ReadonlySet<string | null> = new Set(["domain", "platform", "integrations", "projections"])
 /** The tiers whose `<x>.module.ts` files are modules of the product: every one of them has a module definition. */
-const MODULE_TIERS = new Set(["feature", "domain", "platform", "integrations", "projections", "queues", "events"])
+const MODULE_TIERS: ReadonlySet<string | null> = new Set(["feature", "domain", "platform", "integrations", "projections", "queues", "events"])
 
 /** `{ inside, name }`: the owner-relative path of a file and the owner's directory name, or null outside an owner. */
-const insideOwner = (hfs, filename) => {
+const insideOwner = (hfs: HfsView, filename: string): { inside: string; name: string | undefined; tier: string | null } | null => {
     const root = hfs.ownerOf(filename)
     if (!root) return null
     return { inside: hfs.relative(filename).slice(root.length + 1), name: root.split("/").at(-1), tier: hfs.tierOf(filename) }
 }
 
 /** True for `static register(options: typeof OPTIONS_TYPE): DynamicModule`, the one allowed override. */
-const isRegisterOverride = (member) => {
+const isRegisterOverride = (member: TSESTree.MethodDefinition): boolean => {
     if (!member.static) return false
     const fn = member.value
     const parameter = fn.params?.[0]
@@ -330,20 +336,32 @@ const isRegisterOverride = (member) => {
 }
 
 /** The method names a builder chain calls, from the `new ConfigurableModuleBuilder<...>()` outward, with each call. */
-const builderChain = (newExpression) => {
-    const calls = []
-    for (let node = newExpression; node.parent?.type === "MemberExpression" && node.parent.object === node && node.parent.parent?.type === "CallExpression"; node = node.parent.parent) {
-        calls.push({ name: keyName(node.parent.property), call: node.parent.parent })
+/** One call of a builder chain: the method name and the call. */
+interface ChainCall {
+    readonly name: string | null
+    readonly call: TSESTree.CallExpression
+}
+
+const builderChain = (newExpression: TSESTree.NewExpression): ChainCall[] => {
+    const calls: ChainCall[] = []
+    let node: Node = newExpression
+    for (;;) {
+        const member: Node | undefined = node.parent
+        if (member?.type !== "MemberExpression" || member.object !== node) break
+        const call: Node | undefined = member.parent
+        if (call?.type !== "CallExpression") break
+        calls.push({ name: keyName(member.property), call })
+        node = call
     }
     return calls
 }
 
 /** True when the argument is the string literal `register`. */
-const isRegisterName = (node) => node?.type === "Literal" && node.value === "register"
+const isRegisterName = (node: Node | null | undefined): boolean => node?.type === "Literal" && node.value === "register"
 
 /** The reasons a builder chain is not the module definition of its kind (an empty list when it is). */
-const chainFaults = (calls, representative) => {
-    const missing = []
+const chainFaults = (calls: ReadonlyArray<ChainCall>, representative: boolean): string[] => {
+    const missing: string[] = []
     const extras = calls.find((entry) => entry.name === "setExtras")
     const named = calls.find((entry) => entry.name === "setClassMethodName")
     if (representative) {
@@ -362,8 +380,8 @@ const chainFaults = (calls, representative) => {
 }
 
 /** The module scope of a file: its kind, tier and name when it is a `<x>.module.ts` or `<x>.module-definition.ts` of a product tier, else null. */
-const moduleFileOf = (hfs, filename) => {
-    const base = filename.split("/").at(-1)
+const moduleFileOf = (hfs: HfsView, filename: string): { kind: "module" | "definition"; tier: string | null; name: string; representative: boolean } | null => {
+    const base = filename.split("/").at(-1) ?? ""
     const suffix = base.endsWith(".module-definition.ts") ? ".module-definition.ts" : base.endsWith(".module.ts") ? ".module.ts" : null
     if (!suffix) return null
     const tier = hfs.tierOf(filename)
@@ -381,7 +399,7 @@ const moduleFileOf = (hfs, filename) => {
  * a transport, a cli group) builds `new ConfigurableModuleBuilder<XOptions>().setClassMethodName("register").build()` and
  * declares nothing but its `@Module` metadata.
  */
-export const capabilityModuleShape = {
+export const capabilityModuleShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A module definition is a typed `ConfigurableModuleBuilder` chain of its kind; only a capability's representative module overrides `register`." },
@@ -428,7 +446,7 @@ export const capabilityModuleShape = {
 }
 
 /** True when a class declaration carries the Nest `Module` decorator. */
-const isModuleDeclaration = (declaration) => {
+const isModuleDeclaration = (declaration: ts.Declaration): boolean => {
     if (!ts.isClassDeclaration(declaration)) return false
     return (ts.getDecorators(declaration) ?? []).some((decorator) => {
         const expression = ts.isCallExpression(decorator.expression) ? decorator.expression.expression : decorator.expression
@@ -437,10 +455,10 @@ const isModuleDeclaration = (declaration) => {
 }
 
 /** The array of an `imports` property (the `@Module({ imports })` metadata or a dynamic module literal), else null. */
-const importsArrayOf = (property) => (!property.computed && keyName(property.key) === "imports" && property.value.type === "ArrayExpression" ? property.value : null)
+const importsArrayOf = (property: TSESTree.Property): TSESTree.ArrayExpression | null => (!property.computed && keyName(property.key) === "imports" && property.value.type === "ArrayExpression" ? property.value : null)
 
 /** The PascalCase options type name a module file name implies: `sepay-feed-http` gives `SepayFeedHttpOptions`. */
-const optionsTypeOf = (name) => `${name.replace(/(?:^|-)(\w)/g, (_, letter) => letter.toUpperCase())}Options`
+const optionsTypeOf = (name: string): string => `${name.replace(/(?:^|-)(\w)/g, (_: string, letter: string) => letter.toUpperCase())}Options`
 
 /**
  * Every Nest module has a module definition and is registered through it (owner ruling module-definition-everywhere): its
@@ -448,7 +466,7 @@ const optionsTypeOf = (name) => `${name.replace(/(?:^|-)(\w)/g, (_, letter) => l
  * of that definition, and a module of the product is listed in an `imports` array only as `X.register(...)`, never as a bare
  * class. The `AppModule` of an app root and the test world are composition roots and are not judged here.
  */
-export const moduleDefinitionRequired = {
+export const moduleDefinitionRequired: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A module has a sibling module definition and options file, extends its `ConfigurableModuleClass`, and is imported only as `X.register(...)`." },
@@ -466,9 +484,9 @@ export const moduleDefinitionRequired = {
         const hfs = hfsOf(context)
         if (inTestWorld(hfs, filename)) return {}
         const scope = moduleFileOf(hfs, filename)
-        const importedFrom = new Map()
+        const importedFrom = new Map<string, { name: string; source: string }>()
         const { checker, toTs } = typed(context)
-        const isModuleClassIdentifier = (identifier) => {
+        const isModuleClassIdentifier = (identifier: TSESTree.Identifier): boolean => {
             const tsNode = toTs(identifier)
             let symbol = tsNode ? checker.getSymbolAtLocation(tsNode) : undefined
             if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
@@ -477,7 +495,7 @@ export const moduleDefinitionRequired = {
         return {
             ImportDeclaration(node) {
                 for (const specifier of node.specifiers) {
-                    if (specifier.type === "ImportSpecifier") importedFrom.set(specifier.local.name, { name: specifier.imported.name ?? specifier.imported.value, source: String(node.source.value) })
+                    if (specifier.type === "ImportSpecifier") importedFrom.set(specifier.local.name, { name: specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value, source: String(node.source.value) })
                 }
             },
             Program(program) {
@@ -518,10 +536,10 @@ export const rules = {
     "no-new-injectable": noNewInjectable,
     "no-module-let": noModuleLet,
     "one-module-per-file": oneModulePerFile,
-}
+} satisfies Rules
 
 /** All start at error: HFS has one module shape and no baseline. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/no-global-decorator": "error",
     "starci-be/is-global-only-in-app": "error",
     "starci-be/no-cross-owner-module-import": "error",

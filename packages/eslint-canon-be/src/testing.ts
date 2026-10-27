@@ -27,15 +27,18 @@ import { basename, dirname, join } from "node:path"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isPackageType, typeOrigins } from "./lib/types.ts"
 import { doorOfSpec, isUnitSpecFile, unitRoleOfSpec, unitRoleOfSubject } from "./lib/unit-spec.ts"
+import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
 
 /** The file name of a linted path, in forward-slash form. */
-const baseOf = (filename) => basename(String(filename || "").replace(/\\/g, "/"))
+const baseOf = (filename: string) => basename(String(filename || "").replace(/\\/g, "/"))
 
 /** Test kind `spec`: a unit spec, `<name>.service.spec.ts` beside its service. */
-const isUnitSpec = (filename) => /\.spec\.ts$/.test(baseOf(filename))
+const isUnitSpec = (filename: string) => /\.spec\.ts$/.test(baseOf(filename))
 
 /** Test kind `e2e-spec`: `*.e2e-spec.ts` under `src/tests/e2e/` (`integration-spec` and `contract-spec` are the other two kinds of the tests slots). */
-const isE2eSpec = (filename) => /\.e2e-spec\.ts$/.test(baseOf(filename))
+const isE2eSpec = (filename: string) => /\.e2e-spec\.ts$/.test(baseOf(filename))
 
 /**
  * Matchers that assert a CALL happened rather than what came out of it.
@@ -61,11 +64,12 @@ const CALL_MATCHERS = new Set([
  * Climbs the member chain so modifiers pass through: `expect(x).not.toHaveBeenCalled()` answers
  * `toHaveBeenCalled`, and `expect(p).resolves.toBe(1)` answers `toBe`.
  */
-const matcherOf = (expectCall) => {
-  let cursor = expectCall
-  let last = null
+const matcherOf = (expectCall: Node) => {
+  let cursor: Node = expectCall
+  let last: string | null | undefined = null
   while (cursor.parent && cursor.parent.type === "MemberExpression" && cursor.parent.object === cursor) {
-    last = cursor.parent.property && cursor.parent.property.name
+    const property = cursor.parent.property
+    last = property && ("name" in property ? property.name : undefined)
     cursor = cursor.parent
   }
   return last
@@ -75,7 +79,7 @@ const matcherOf = (expectCall) => {
 // -- TESTING-6 -------------------------------------------------------------------------------------
 
 /** A spec whose every assertion is about a call restates the source instead of testing it. */
-export const noCallOnlySpec = {
+export const noCallOnlySpec: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "A unit spec asserts a result or a state change, not only that a call happened." },
@@ -89,14 +93,14 @@ export const noCallOnlySpec = {
     if (!isUnitSpec(context.filename || context.getFilename())) return {}
     let assertions = 0
     let callAssertions = 0
-    const seen = new Set()
+    const seen = new Set<string>()
     return {
       CallExpression(node) {
         if (!node.callee || node.callee.type !== "Identifier" || node.callee.name !== "expect") return
         const matcher = matcherOf(node)
         if (matcher === null) return
         assertions += 1
-        if (!CALL_MATCHERS.has(matcher)) return
+        if (matcher === undefined || !CALL_MATCHERS.has(matcher)) return
         callAssertions += 1
         seen.add(matcher)
       },
@@ -113,7 +117,7 @@ export const noCallOnlySpec = {
 // -- R47 unit spec topology ------------------------------------------------------------------------
 
 /** Whether a file exists (a spec is beside its subject on disk, so this is the one question the disk answers). */
-const exists = (path) => {
+const exists = (path: string) => {
   try {
     return statSync(path).isFile()
   } catch {
@@ -128,7 +132,7 @@ const BANNED_TEST_FILE = /(?:\.test|\.int-spec|\.harness-spec)\.[cm]?[jt]sx?$/
  * Unit specs are for services only: every `<name>.service.ts` has its `<name>.service.spec.ts` beside it, every unit spec is
  * one of those, and there are no kinds of test file beyond `spec`, `e2e-spec`, `integration-spec` and `contract-spec`.
  */
-export const unitTestColocated = {
+export const unitTestColocated: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "Only the unit-tested roles (`ruleParams.be.unitRoles`: a `<name>.service.ts`, a cli command `<name>.cli.ts` of `src/features/cli`) own a REQUIRED unit spec, each beside it as `<name>.<role>.spec.ts`; any other logic role (`ruleParams.be.logicRoles`: policy, client, guard, mapper, ...) inside a slot whose coverage is required may have one; any other unit spec is a finding, and there are only the spec kinds `spec`, `e2e-spec`, `integration-spec` and `contract-spec`." },
@@ -173,31 +177,32 @@ export const unitTestColocated = {
 const STATE_TYPES = ["EntityManager", "DataSource", "QueryRunner"]
 
 /** Whether an expression is a receiver of persisted state, by the TYPE it has and the package that declares it. */
-const isStateReader = (context, node) => STATE_TYPES.some((name) => isPackageType(context, node, name, "typeorm"))
+const isStateReader = (context: Context, node: Node) => STATE_TYPES.some((name) => isPackageType(context, node, name, "typeorm"))
 
 /** The handle `useTestWorld` answers, by where its type is declared: the `@starci/test-world` package or the repository's world slot. */
-const isWorldHandle = (context, node) => {
+const isWorldHandle = (context: Context, node: Node) => {
   const hfs = hfsOf(context)
   return typeOrigins(context, node).some((origin) => origin.name === "TestWorld" && (origin.module === "@starci/test-world" || inTestWorld(hfs, origin.file)))
 }
 
 /** The name a non-computed member access reads, or null. */
-const propertyNameOf = (node) => (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier" ? node.property.name : null)
+const propertyNameOf = (node: Node) => (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier" ? node.property.name : null)
 
 /**
  * Whether a member expression is the world's own state read: `<world>.db` (its connections are EntityManagers) or
  * `<world>.services.<name>.api` (a sibling service's own API). The receiver is judged by its type, not its name.
  */
-const isWorldStateRead = (context, node) => {
+const isWorldStateRead = (context: Context, node: TSESTree.MemberExpression) => {
   if (propertyNameOf(node) === "db") return isWorldHandle(context, node.object)
   if (propertyNameOf(node) !== "api") return false
   const service = node.object
   const services = service.type === "MemberExpression" ? service.object : null
-  return Boolean(services) && propertyNameOf(services) === "services" && isWorldHandle(context, services.object)
+  // a non-null `services` that answers `services` is a member expression: the guard below only names that for the types
+  return services?.type === "MemberExpression" && propertyNameOf(services) === "services" && isWorldHandle(context, services.object)
 }
 
 /** An end-to-end spec that never reads state back proves only that the server replied. */
-export const e2eAssertsPersistedState = {
+export const e2eAssertsPersistedState: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "An e2e spec reads state back rather than asserting only on the response." },
@@ -232,7 +237,7 @@ export const e2eAssertsPersistedState = {
 const PROVIDER_PACKAGES = /^(?:@anthropic-ai\/|openai$|openai\/|ollama$|@google\/generative-ai|@google\/genai|@mistralai\/|cohere-ai)/
 
 /** An e2e never calls a model; only a contract spec (`src/tests/contract/`, suffix `.contract-spec.ts`) may reach a provider. */
-export const noModelCallInE2e = {
+export const noModelCallInE2e: RuleModule = {
   meta: {
     type: "problem",
     docs: { description: "An e2e spec never reaches a model provider." },
@@ -267,13 +272,13 @@ const API_SHAPED_FILENAME_NOUNS = new Set([
 ])
 
 /** The hyphen-separated words of an e2e filename, with the lane suffix stripped. */
-const e2eFilenameSegments = (filename) => {
+const e2eFilenameSegments = (filename: string) => {
   const base = baseOf(filename)
   return base.replace(/\.e2e-spec\.ts$/, "").split("-").filter(Boolean)
 }
 
 /** An e2e file is one business flow; the filename may not be an API-shape noun wearing its clothes. */
-export const noApiShapedE2eFilename = {
+export const noApiShapedE2eFilename: RuleModule = {
   meta: {
     type: "problem",
     docs: {
@@ -291,7 +296,9 @@ export const noApiShapedE2eFilename = {
     if (!isE2eSpec(filename)) return {}
     const segments = e2eFilenameSegments(filename)
     if (segments.length === 0) return {}
-    const last = segments[segments.length - 1].toLowerCase()
+    const lastSegment = segments[segments.length - 1]
+    if (lastSegment === undefined) return {}
+    const last = lastSegment.toLowerCase()
     if (!API_SHAPED_FILENAME_NOUNS.has(last)) return {}
     return {
       Program(node) {
@@ -305,18 +312,18 @@ export const noApiShapedE2eFilename = {
 // -- TESTING-7 -------------------------------------------------------------------------------------
 
 /** Test infrastructure: the fixtures and the test world, where the shared model stub lives (slots `be.tests.fixtures`, `be.tests.world`). */
-const isTestInfrastructure = (hfs, filename) => hfs.slotOf(filename) === "be.tests.fixtures" || inTestWorld(hfs, filename)
+const isTestInfrastructure = (hfs: HfsView, filename: string) => hfs.slotOf(filename) === "be.tests.fixtures" || inTestWorld(hfs, filename)
 
 /** Bare markers a stub returns when nobody gave it a real answer to stand in for. */
 const MARKER_STRINGS = new Set(["stubbed", "stub", "ok", "test", "mock", "fake", "todo", "tbd", "n/a", "pending", ""])
 
 /** A string literal that is nothing but a marker - not an object, not a `JSON.stringify(...)` call. */
-const isMarkerLiteral = (node) => Boolean(
+const isMarkerLiteral = (node: Node | null | undefined): node is TSESTree.StringLiteral => Boolean(
   node && node.type === "Literal" && typeof node.value === "string" && MARKER_STRINGS.has(node.value.trim().toLowerCase()),
 )
 
 /** The world's default model stub returns a payload the production parser can actually parse. */
-export const noMarkerModelStub = {
+export const noMarkerModelStub: RuleModule = {
   meta: {
     type: "problem",
     docs: {
@@ -371,10 +378,10 @@ export const rules = {
   "no-model-call-in-e2e": noModelCallInE2e,
   "no-api-shaped-e2e-filename": noApiShapedE2eFilename,
   "no-marker-model-stub": noMarkerModelStub,
-}
+} satisfies Rules
 
 /** Every rule of this law ships at `error`. */
-export const recommended = {
+export const recommended: Recommended = {
   "starci-be/no-call-only-spec": "error",
   "starci-be/unit-test-colocated": "error",
   "starci-be/e2e-asserts-persisted-state": "error",

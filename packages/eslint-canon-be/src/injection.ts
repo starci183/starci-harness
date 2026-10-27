@@ -25,60 +25,94 @@
  */
 import { posix } from "node:path"
 import ts from "typescript"
-import { paramParts, staticText } from "./lib/ast.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import { nameOrValue, paramParts, staticText } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
-import { isImportedFrom } from "./lib/import-source.ts"
 import { normalizePath } from "./lib/path.ts"
-import { isPackageExport, packageOfExport, typed, typeOrigins } from "./lib/types.ts"
+import { isPackageExport, isTsNode, packageOfExport, typed, typeOrigins, type TypeOrigin } from "./lib/types.ts"
+import { isNode, type Context, type Node, type Recommended, type RuleModule, type Rules } from "./lib/rule.ts"
+import type { HfsView } from "./lib/hfs.ts"
 
 /** The raw decorators of Nest and TypeORM whose call is the injector's job. */
 const RAW_NAMES = new Set(["Inject", "InjectEntityManager", "InjectDataSource", "InjectQueue", "InjectRepository"])
 
+/** Where a called function is declared: its name, file and package; `ambient` is true for a name nothing declares. */
+interface Callee {
+    readonly name: string | null
+    readonly module: string | null
+    readonly file: string | null
+    readonly ambient: boolean
+}
+
+/** A function-like value an export binds. */
+type FunctionLike = TSESTree.FunctionDeclaration | TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
+
+/** One exported function-like binding: its name, the function and the identifier that names it. */
+interface ExportedFunction {
+    readonly name: string
+    readonly fn: FunctionLike
+    readonly id: TSESTree.Identifier
+}
+
+/** A `ruleParams.be.paramNames` entry, by an exact type name or by a type-name suffix. */
+type ParamEntry =
+    | { readonly type: string; readonly names: readonly string[]; readonly nameSuffix?: string }
+    | { readonly type?: undefined; readonly typeSuffix: string; readonly names: readonly string[]; readonly nameSuffix?: string }
+
 /** The package a declaration file belongs to (the innermost `node_modules/<pkg>`), else null; the compiler's own lib files are not packages. */
-const packageOfFile = (file) => {
+const packageOfFile = (file: string): string | null => {
     if (/\/node_modules\/typescript\/lib\//.test(file)) return null
     const match = /^.*\/node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(file)
-    return match ? match[1] : null
+    return match ? (match[1] ?? null) : null
 }
 
 /** The name a declaration is known by: its own name, or the variable an arrow/function expression is assigned to. */
-const declarationName = (declaration) => {
-    if (declaration.name && ts.isIdentifier(declaration.name)) return declaration.name.text
+const declarationName = (declaration: ts.Node): string | null => {
+    const name: unknown = "name" in declaration ? declaration.name : undefined
+    if (name && isTsNode(name) && ts.isIdentifier(name)) return name.text
     const parent = declaration.parent
     if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return parent.name.text
     return null
 }
 
 /** The variable a name resolves to from a node's scope. */
-const variableOf = (context, node, name) => {
-    for (let scope = context.sourceCode.getScope(node); scope; scope = scope.upper) {
+const variableOf = (context: Context, node: Node, name: string): TSESLint.Scope.Variable | null => {
+    for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(node); scope; scope = scope.upper) {
         const variable = scope.set.get(name)
         if (variable) return variable
     }
     return null
 }
 
+/** The first import-binding definition of a variable. */
+const importDefinitionOf = (variable: TSESLint.Scope.Variable | null): TSESLint.Scope.Definitions.ImportBindingDefinition | undefined => {
+    for (const entry of variable?.defs ?? []) if (entry.type === "ImportBinding") return entry
+    return undefined
+}
+
 /** The import a callee identifier or namespace member comes from, read from syntax when the checker cannot resolve it. */
-const importedCallee = (context, callee) => {
+const importedCallee = (context: Context, callee: Node): Callee => {
     const identifier = callee.type === "MemberExpression" && callee.object.type === "Identifier" ? callee.object : callee
     if (identifier.type !== "Identifier") return { name: null, module: null, file: null, ambient: false }
     const variable = variableOf(context, identifier, identifier.name)
-    const def = variable?.defs.find((entry) => entry.type === "ImportBinding")
+    const def = importDefinitionOf(variable)
     if (!def) {
         const local = (variable?.defs.length ?? 0) > 0
         const name = callee.type === "MemberExpression" ? staticPropertyName(callee) : identifier.name
         return { name, module: null, file: null, ambient: !local }
     }
+    // an `import x = require()` binding has no `source`: the read fails as it always has
+    if (def.parent?.type !== "ImportDeclaration") throw new TypeError("Cannot read properties of undefined (reading 'value')")
     const source = String(def.parent.source.value)
     const specifier = def.node
     const name = specifier.type === "ImportSpecifier"
-        ? (specifier.imported.name ?? specifier.imported.value)
+        ? (specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value)
         : callee.type === "MemberExpression" ? staticPropertyName(callee) : "default"
     return { name, module: source.startsWith(".") ? null : source, file: null, ambient: false }
 }
 
 /** The property a member expression names (`common.Inject` -> `Inject`), else null. */
-const staticPropertyName = (member) => {
+const staticPropertyName = (member: TSESTree.MemberExpression): string | null => {
     if (member.computed) return staticText(member.property)
     return member.property.type === "Identifier" ? member.property.name : null
 }
@@ -86,14 +120,14 @@ const staticPropertyName = (member) => {
 /**
  * Where the function a call invokes (or a decorator names) is declared.
  *
- * @param {object} context - The ESLint rule context.
- * @param {object} node - A CallExpression, or an Identifier used as a bare decorator.
- * @returns {{ name: string | null, file: string | null, module: string | null, ambient: boolean }} The declaration's name, file and package; `ambient` is true for a name nothing declares.
+ * @param context - The ESLint rule context.
+ * @param node - A CallExpression, or an Identifier used as a bare decorator.
+ * @returns The declaration's name, file and package; `ambient` is true for a name nothing declares.
  */
-const calleeOf = (context, node) => {
+const calleeOf = (context: Context, node: TSESTree.CallExpression | TSESTree.Identifier): Callee => {
     const { checker, toTs } = typed(context)
     const tsNode = toTs(node)
-    let declaration
+    let declaration: ts.Node | undefined
     if (tsNode && ts.isCallExpression(tsNode)) declaration = checker.getResolvedSignature(tsNode)?.declaration
     else if (tsNode) {
         let symbol = checker.getSymbolAtLocation(tsNode)
@@ -111,50 +145,51 @@ const calleeOf = (context, node) => {
 const INJECT_NAME = /^Inject(?:[A-Z][A-Za-z0-9]*)?$/
 
 /** True for a raw injection call: one of the five reserved names, or any `Inject*` function a package declares. */
-const isRawInject = (callee) => {
+const isRawInject = (callee: Callee): boolean => {
     if (callee.name === null) return false
     if (callee.module !== null) return INJECT_NAME.test(callee.name)
     return callee.ambient && RAW_NAMES.has(callee.name)
 }
 
 /** True for a file whose NAME role is an injector home. */
-const isDecoratorsFile = (filename) => posix.basename(normalizePath(filename)).endsWith(".decorators.ts")
+const isDecoratorsFile = (filename: string): boolean => posix.basename(normalizePath(filename)).endsWith(".decorators.ts")
 
 /** True when the file sits directly in an owner root (`src/modules/platform/clock/`), which is where its owner's injectors live. */
-const atOwnerRoot = (hfs, filename) => {
+const atOwnerRoot = (hfs: HfsView, filename: string): boolean => {
     const owner = hfs.ownerOf(filename)
     return owner !== null && posix.dirname(hfs.relative(filename)) === owner
 }
 
 /** True for a file of the `platform/composition` owner, the home of `injector` and `TypedParameterDecorator`. */
-const inComposition = (hfs, file) => {
+const inComposition = (hfs: HfsView, file: string | null): boolean => {
     if (!file || file.includes("/node_modules/") || hfs.tierOf(file) !== "platform") return false
     const owner = hfs.ownerOf(file)
     return owner !== null && posix.basename(owner) === "composition"
 }
 
 /** The injected type `T` of a call typed `TypedParameterDecorator<T>`, else null. */
-const injectedTypeOf = (context, call) => {
+const injectedTypeOf = (context: Context, call: TSESTree.CallExpression): ts.Type | null => {
     const { checker, toTs } = typed(context)
     const tsCall = toTs(call)
     if (!tsCall) return null
     const type = checker.getTypeAtLocation(tsCall)
-    if (type.aliasSymbol?.name === "TypedParameterDecorator" && type.aliasTypeArguments?.length === 1) return type.aliasTypeArguments[0]
+    const [injected] = type.aliasTypeArguments ?? []
+    if (type.aliasSymbol?.name === "TypedParameterDecorator" && type.aliasTypeArguments?.length === 1 && injected) return injected
     return null
 }
 
 /** The parameters of every constructor a class declares. */
-const constructorParams = (node) => (node.kind === "constructor" && node.value?.params) || []
+const constructorParams = (node: TSESTree.MethodDefinition): TSESTree.Parameter[] => (node.kind === "constructor" && node.value?.params) || []
 
 /** True when the function around a decorated parameter is a class constructor. */
-const isConstructorParam = (decorator) => {
-    let node = decorator.parent
+const isConstructorParam = (decorator: TSESTree.Decorator): boolean => {
+    let node: Node | undefined = decorator.parent
     while (node && !/^(?:FunctionExpression|ArrowFunctionExpression|FunctionDeclaration|ClassDeclaration|ClassExpression|Program)$/.test(node.type)) node = node.parent
     return node?.type === "FunctionExpression" && node.parent?.type === "MethodDefinition" && node.parent.kind === "constructor"
 }
 
 /** True when a decorator sits on a class member or a parameter (not on a class). */
-const memberKind = (decorator) => {
+const memberKind = (decorator: TSESTree.Decorator): string => {
     const owner = decorator.parent
     if (!owner) return "class"
     if (owner.type === "PropertyDefinition" || owner.type === "AccessorProperty") return "property"
@@ -166,7 +201,7 @@ const memberKind = (decorator) => {
 // -- injector-only ---------------------------------------------------------------------------------
 
 /** Raw injection lives only in `<owner>.decorators.ts`; injectors decorate constructor parameters. */
-export const injectorOnly = {
+export const injectorOnly: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`Inject(...)` and third-party `Inject*` are called only in `<owner>.decorators.ts` at an owner root; injectors decorate constructor parameters." },
@@ -210,45 +245,50 @@ export const injectorOnly = {
 // -- injector-shape --------------------------------------------------------------------------------
 
 /** The nearest JSDoc block before a statement, else null. */
-const jsdocBefore = (context, statement) => {
+const jsdocBefore = (context: Context, statement: Node): string | null => {
     const comments = context.sourceCode.getCommentsBefore(statement)
     const last = comments[comments.length - 1]
     return last && last.type === "Block" && last.value.startsWith("*") && last.value.replace(/[*\s]/g, "") !== "" ? last.value : null
 }
 
 /** The single expression a function returns (arrow expression body, or a block that is one `return`), else null. */
-const returnedExpression = (fn) => {
+const returnedExpression = (fn: FunctionLike): TSESTree.Expression | null => {
     if (fn.body.type !== "BlockStatement") return fn.body
     const [only] = fn.body.body
-    return fn.body.body.length === 1 && only.type === "ReturnStatement" ? only.argument : null
+    return fn.body.body.length === 1 && only?.type === "ReturnStatement" ? only.argument : null
 }
 
 /** The type arguments of a node, in either parser spelling. */
-const typeArgsOf = (node) => (node.typeArguments ?? node.typeParameters)?.params ?? []
+const typeArgsOf = (node: TSESTree.TSTypeReference | TSESTree.CallExpression): TSESTree.TypeNode[] => {
+    const legacy: unknown = Reflect.get(node, "typeParameters")
+    return (node.typeArguments ?? (isNode(legacy) && legacy.type === "TSTypeParameterInstantiation" ? legacy : undefined))?.params ?? []
+}
 
 /** The exported function-like bindings of a statement: `[{ name, fn, id }]`. */
-const exportedFunctions = (statement) => {
+const exportedFunctions = (statement: TSESTree.ExportNamedDeclaration): ExportedFunction[] => {
     const declaration = statement.declaration
     if (!declaration) return []
     if (declaration.type === "FunctionDeclaration" && declaration.id) return [{ name: declaration.id.name, fn: declaration, id: declaration.id }]
     if (declaration.type !== "VariableDeclaration") return []
-    return declaration.declarations
-        .filter((entry) => entry.id.type === "Identifier" && entry.init && /^(?:ArrowFunctionExpression|FunctionExpression)$/.test(entry.init.type))
-        .map((entry) => ({ name: entry.id.name, fn: entry.init, id: entry.id }))
+    return declaration.declarations.flatMap((entry) => entry.id.type === "Identifier" && (entry.init?.type === "ArrowFunctionExpression" || entry.init?.type === "FunctionExpression")
+        ? [{ name: entry.id.name, fn: entry.init, id: entry.id }]
+        : [])
 }
 
 /** True when an initializer is a call whose callee is named `injector` (whatever it resolves to is checked later). */
-const callsInjector = (context, fn) => {
+const callsInjector = (fn: FunctionLike): boolean => {
     const expression = returnedExpression(fn)
     return expression?.type === "CallExpression" && expression.callee.type === "Identifier" && expression.callee.name === "injector"
 }
 
 /** True for an `Inject<Thing>`-looking export (the convention's fixed vocabulary), excluding the builder itself. */
-const looksLikeInjector = (context, entry) =>
-    entry.name !== "injector" && (/^[Ii]nject/.test(entry.name) || entry.fn.returnType?.typeAnnotation?.typeName?.name === "TypedParameterDecorator" || callsInjector(context, entry.fn))
+const looksLikeInjector = (entry: ExportedFunction): boolean => {
+    const annotation = entry.fn.returnType?.typeAnnotation
+    return entry.name !== "injector" && (/^[Ii]nject/.test(entry.name) || (annotation?.type === "TSTypeReference" && annotation.typeName.type === "Identifier" && annotation.typeName.name === "TypedParameterDecorator") || callsInjector(entry.fn))
+}
 
 /** True for a value that is a class or a `unique symbol`. */
-const isTokenType = (type) => {
+const isTokenType = (type: ts.Type): boolean => {
     if (type.isUnion()) return type.types.every(isTokenType)
     if (type.flags & ts.TypeFlags.UniqueESSymbol) return true
     if (type.getConstructSignatures().length > 0) return true
@@ -256,17 +296,17 @@ const isTokenType = (type) => {
 }
 
 /** True for a string type (a string literal, `string`, or a union of them). */
-const isStringType = (type) => (type.isUnion() ? type.types.every(isStringType) : (type.flags & ts.TypeFlags.StringLike) !== 0)
+const isStringType = (type: ts.Type): boolean => (type.isUnion() ? type.types.every(isStringType) : (type.flags & ts.TypeFlags.StringLike) !== 0)
 
 /** The value of a `provide:` property. */
-const provideValue = (node) => {
+const provideValue = (node: Node): TSESTree.Property["value"] | null => {
     if (node.type !== "Property" || node.parent?.type !== "ObjectExpression" || (node.computed && node.key.type !== "Literal")) return null
-    const name = node.key.type === "Identifier" ? node.key.name : node.key.value
+    const name = nameOrValue(node.key)
     return name === "provide" ? node.value : null
 }
 
 /** The shape of an injector, its token and the `provide:` tokens of a module. */
-export const injectorShape = {
+export const injectorShape: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An injector is `(): TypedParameterDecorator<T> => injector<T>(token)` with JSDoc, over a `unique symbol` token." },
@@ -286,7 +326,7 @@ export const injectorShape = {
         const hfs = hfsOf(context)
         const filename = context.filename || context.getFilename()
         const listeners = {
-            Property(node) {
+            Property(node: TSESTree.Property) {
                 const value = provideValue(node)
                 if (!value) return
                 const { checker, toTs } = typed(context)
@@ -303,7 +343,7 @@ export const injectorShape = {
             ...listeners,
             ExportNamedDeclaration(statement) {
                 for (const entry of exportedFunctions(statement)) {
-                    if (!looksLikeInjector(context, entry)) continue
+                    if (!looksLikeInjector(entry)) continue
                     checkInjector(context, hfs, statement, entry)
                 }
                 if (statement.declaration?.type !== "VariableDeclaration") return
@@ -325,10 +365,11 @@ export const injectorShape = {
 }
 
 /** Reports every way one exported injector departs from the canonical shape. */
-const checkInjector = (context, hfs, statement, { name, fn, id }) => {
+const checkInjector = (context: Context, hfs: HfsView, statement: TSESTree.ExportNamedDeclaration, { name, fn, id }: ExportedFunction): void => {
     const data = { name }
     if (!/^Inject[A-Z][A-Za-z0-9]*$/.test(name)) context.report({ node: id, messageId: "name", data })
-    if (fn.params.length > 0) context.report({ node: fn.params[0], messageId: "params", data })
+    const [firstParam] = fn.params
+    if (fn.params.length > 0 && firstParam) context.report({ node: firstParam, messageId: "params", data })
     const annotation = fn.returnType?.typeAnnotation
     const wellTyped = annotation?.type === "TSTypeReference" && annotation.typeName.type === "Identifier" && annotation.typeName.name === "TypedParameterDecorator" && typeArgsOf(annotation).length === 1
     const fromComposition = wellTyped && typeOrigins(context, annotation).some((origin) => origin.name === "TypedParameterDecorator" && inComposition(hfs, origin.file))
@@ -351,7 +392,7 @@ const checkInjector = (context, hfs, statement, { name, fn, id }) => {
 // -- injector-type-match ---------------------------------------------------------------------------
 
 /** `T` of the injector equals the parameter annotation. */
-export const injectorTypeMatch = {
+export const injectorTypeMatch: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "The `T` of an injector's `TypedParameterDecorator<T>` is the type the parameter is annotated with." },
@@ -371,7 +412,7 @@ export const injectorTypeMatch = {
                         if (decorator.expression.type !== "CallExpression") continue
                         const injected = injectedTypeOf(context, decorator.expression)
                         if (!injected) continue
-                        check(context, decorator, target, injected)
+                        check(context, decorator, decorator.expression, target, injected)
                     }
                 }
             },
@@ -380,10 +421,10 @@ export const injectorTypeMatch = {
 }
 
 /** Compares one injector's `T` with the annotation of the parameter it decorates. */
-const check = (context, decorator, target, injected) => {
+const check = (context: Context, decorator: TSESTree.Decorator, call: TSESTree.CallExpression, target: TSESTree.BindingName | TSESTree.RestElement, injected: ts.Type): void => {
     const { checker, toTs } = typed(context)
-    const callee = decorator.expression.callee
-    const injector = callee.type === "Identifier" ? callee.name : (staticPropertyName(callee) ?? "Inject")
+    const callee = call.callee
+    const injector = callee.type === "Identifier" ? callee.name : ((callee.type === "MemberExpression" ? staticPropertyName(callee) : null) ?? "Inject")
     const annotation = target.typeAnnotation?.typeAnnotation
     const injectedName = checker.typeToString(injected)
     if (!annotation) {
@@ -391,7 +432,8 @@ const check = (context, decorator, target, injected) => {
         return
     }
     const tsAnnotation = toTs(annotation)
-    if (!tsAnnotation) return
+    // every type annotation maps to a TypeScript type node; the guard only tells the compiler so
+    if (!tsAnnotation || !ts.isTypeNode(tsAnnotation)) return
     const declared = checker.getNonNullableType(checker.getTypeFromTypeNode(tsAnnotation))
     const declaredName = checker.typeToString(declared)
     if (injected.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
@@ -406,7 +448,7 @@ const check = (context, decorator, target, injected) => {
 // -- infra-needs-injector --------------------------------------------------------------------------
 
 /** True when the class of a constructor can be built by the Nest container: a Nest class decorator, or any decorated constructor parameter. */
-const isContainerBuilt = (context, constructor) => {
+const isContainerBuilt = (context: Context, constructor: TSESTree.MethodDefinition): boolean => {
     const declaration = constructor.parent?.parent
     if (declaration?.type !== "ClassDeclaration" && declaration?.type !== "ClassExpression") return false
     if ((declaration.decorators ?? []).some((decorator) => packageOfExport(context, decorator.expression)?.startsWith("@nestjs/"))) return true
@@ -417,11 +459,11 @@ const isContainerBuilt = (context, constructor) => {
  * The origin that makes an annotated type infrastructure: declared by a package, or by a `platform/*` or `integrations/*` owner other
  * than `own`; null for a domain type, a type of the same owner or a language global.
  */
-const infraOriginOf = (context, hfs, own, annotation) => {
+const infraOriginOf = (context: Context, hfs: HfsView, own: string | null, annotation: Node): TypeOrigin | null => {
     const origins = typeOrigins(context, annotation)
     // A language global (`ReadonlyArray`, `Array`) is declared in the TypeScript lib and may be augmented by a package
     // (`@types/node`): the augmentation does not make it infrastructure.
-    const isLanguageGlobal = (origin) => origins.some((other) => other.name === origin.name && /\/node_modules\/typescript\/lib\//.test(other.file))
+    const isLanguageGlobal = (origin: TypeOrigin): boolean => origins.some((other) => other.name === origin.name && /\/node_modules\/typescript\/lib\//.test(other.file))
     return origins.find((origin) => {
         if (isLanguageGlobal(origin)) return false
         if (origin.module !== null) return true
@@ -432,7 +474,7 @@ const infraOriginOf = (context, hfs, own, annotation) => {
 }
 
 /** A constructor parameter of an infrastructure type carries an injector. */
-export const infraNeedsInjector = {
+export const infraNeedsInjector: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A constructor parameter typed by a platform/integrations declaration or a package carries an `Inject<Thing>()` decorator." },
@@ -474,10 +516,10 @@ export const infraNeedsInjector = {
 // -- injected-param-name --------------------------------------------------------------------------
 
 /** The `ruleParams.be.paramNames` entry for an origin's declared name, or null. */
-const paramEntryOf = (entries, name) => entries.find((entry) => (entry.type !== undefined ? entry.type === name : name.length > entry.typeSuffix.length && name.endsWith(entry.typeSuffix))) ?? null
+const paramEntryOf = (entries: readonly ParamEntry[], name: string): ParamEntry | null => entries.find((entry) => (entry.type !== undefined ? entry.type === name : name.length > entry.typeSuffix.length && name.endsWith(entry.typeSuffix))) ?? null
 
 /** An injected port of the table of `paramNames` is named the way every class names it. */
-export const injectedParamName = {
+export const injectedParamName: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "A constructor parameter that injects a port named in `ruleParams.be.paramNames` (`Clock`, `Logger`, `Cache`, `CommandBus`, `QueryBus`, `EntityManager`, `<Owner>Options`) carries the name that table gives it." },
@@ -488,7 +530,7 @@ export const injectedParamName = {
     },
     create(context) {
         const hfs = hfsOf(context)
-        const entries = hfs.ruleParams.paramNames
+        const entries: readonly ParamEntry[] = hfs.ruleParams.paramNames
         const own = hfs.ownerOf(context.filename || context.getFilename())
         return {
             MethodDefinition(node) {
@@ -518,7 +560,7 @@ export const injectedParamName = {
 const MODULE_REF_CALLS = new Set(["get", "resolve", "create"])
 
 /** No service locator: `ModuleRef` is not imported, typed or called. */
-export const noModuleRef = {
+export const noModuleRef: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`ModuleRef` (a service locator) is not used in product code or specs." },
@@ -528,22 +570,22 @@ export const noModuleRef = {
         },
     },
     create(context) {
-        const isModuleRef = (node) => typeOrigins(context, node).some((origin) => origin.name === "ModuleRef" && origin.module === "@nestjs/core")
+        const isModuleRef = (node: Node): boolean => typeOrigins(context, node).some((origin) => origin.name === "ModuleRef" && origin.module === "@nestjs/core")
         return {
             ImportDeclaration(node) {
                 if (node.source.value !== "@nestjs/core") return
                 for (const specifier of node.specifiers) {
-                    if (specifier.type === "ImportSpecifier" && (specifier.imported.name ?? specifier.imported.value) === "ModuleRef") context.report({ node: specifier, messageId: "use" })
+                    if (specifier.type === "ImportSpecifier" && nameOrValue(specifier.imported) === "ModuleRef") context.report({ node: specifier, messageId: "use" })
                 }
             },
             ExportNamedDeclaration(node) {
                 if (node.source?.value !== "@nestjs/core") return
                 for (const specifier of node.specifiers) {
-                    if ((specifier.local.name ?? specifier.local.value) === "ModuleRef") context.report({ node: specifier, messageId: "use" })
+                    if (nameOrValue(specifier.local) === "ModuleRef") context.report({ node: specifier, messageId: "use" })
                 }
             },
             TSTypeReference(node) {
-                const name = node.typeName.type === "Identifier" ? node.typeName.name : node.typeName.right?.name
+                const name = node.typeName.type === "Identifier" ? node.typeName.name : node.typeName.type === "TSQualifiedName" ? node.typeName.right?.name : undefined
                 if (name === "ModuleRef" && isModuleRef(node)) context.report({ node, messageId: "use" })
             },
             CallExpression(node) {
@@ -558,7 +600,7 @@ export const noModuleRef = {
 // -- no-forward-ref --------------------------------------------------------------------------------
 
 /** No `forwardRef(`: a cycle is a layering finding, not a DI trick. */
-export const noForwardRef = {
+export const noForwardRef: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "`forwardRef(...)` is not called." },
@@ -582,7 +624,7 @@ export const noForwardRef = {
 const TOKEN_GETTERS = new Set(["getEntityManagerToken", "getDataSourceToken"])
 
 /** A token is a class or a `unique symbol`, never a string. */
-export const noStringToken = {
+export const noStringToken: RuleModule = {
     meta: {
         type: "problem",
         docs: { description: "An injection token is never a string or template literal." },
@@ -594,7 +636,7 @@ export const noStringToken = {
     },
     create(context) {
         const filename = context.filename || context.getFilename()
-        const isString = (node) => {
+        const isString = (node: Node): boolean => {
             if (isPackageExport(context, node, "@nestjs/core")) return false
             if (node.type === "CallExpression" && TOKEN_GETTERS.has(calleeOf(context, node).name ?? "")) return false
             if (staticText(node) !== null) return true
@@ -632,10 +674,10 @@ export const rules = {
     "no-module-ref": noModuleRef,
     "no-forward-ref": noForwardRef,
     "no-string-token": noStringToken,
-}
+} satisfies Rules
 
 /** All start at error: there is one way to inject and no baseline. */
-export const recommended = {
+export const recommended: Recommended = {
     "starci-be/injector-only": "error",
     "starci-be/injector-shape": "error",
     "starci-be/injector-type-match": "error",
