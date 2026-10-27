@@ -90,7 +90,7 @@ Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-res
 
 ## House rules
 
-One place per rule: each rule lives in one file under one id, and every other file links to it. Every rule states its
-law in one sentence, why, and what enforces it (a lint rule id with its HFS rule, or "review only"); what a lint rule
-flags is the rule's own documentation, not repeated here. Feedback hardens the rule in its place, or turns it into a
-lint rule.
+Edits follow [contexts/README.md](../../README.md#house-rules-for-editing-contexts) and CONTRIBUTING.md CONTRIB-6: a
+change rewrites the rule where its concept lives, under its one id. What is specific here: every rule states its law in
+one sentence, why, and what enforces it (a lint rule id with its HFS rule, or "review only"); what a lint rule flags is
+the rule's own documentation, not repeated here.

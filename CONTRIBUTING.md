@@ -73,9 +73,25 @@ no owner exists yet, create it first. Never answer a duplicate with an allowlist
 
 Describe the tree as it is. Do not define something by the state it replaced; history lives in git.
 
-### CONTRIB-6 Replace, never append
+### CONTRIB-6 Rewrite the concept where it lives
 
-An edit rewrites the sentence that holds the rule. One concept has one paragraph, and it is the latest version.
+A change is a change to a concept, never a line added beside the rules that already hold it. Before editing, read the
+harness for that concept, then:
+
+1. **Name it.** Write down the concept the change touches and every term, rule id and synonym it goes by.
+2. **Find every place it lives.** Search the whole tree for those terms (`contexts/`, `ops/`, `policy/`, `skills/`,
+   `cli/src/`, `cli/README.md`, the root documents) and read each hit in its paragraph, not as a line.
+3. **Rewrite those places.** Rules A, B, C and D that the change touches become A', B', C' and D', so the general rule is
+   true with the change. A new sentence is written only when the concept had no home, and then in its owner (CONTRIB-4).
+4. **No case notes.** Never answer a change with an exception beside the old rule: "if E then E'", "except", "note",
+   "also", a bullet that narrows or contradicts an existing one, or a second section for the same concept. A carve-out the
+   owner rules is written into the general sentence itself.
+5. **Code the same way.** A fix lands in the function that owns the behaviour, not as a guard at a caller that patches one
+   symptom, and the path it makes dead is deleted in the same commit.
+6. **Show the search.** The commit message lists the places found and how each changed, or why it stays.
+
+Appended cases contradict silently: a reader takes the first sentence and never meets the second, and the tree grows
+without becoming truer. Held by review.
 
 ### CONTRIB-7 Feedback hardens
 

@@ -93,28 +93,30 @@ reasoning for an agent.
 
 ## Feedback hardens
 
-A feedback is absorbed by making the system stricter, never by adding text beside it. In order of preference it
-becomes: a grammar API that removes the choice; a lint, gate or threshold; or the general rule rewritten in its one
-place. It is never a case note ("for this case do X") and never a second rule that restates the first. Each
-hardening records its ruling in [decisions/rulings.yaml](decisions/rulings.yaml). Every rule therefore has exactly one
+A feedback is absorbed by making the system stricter (CONTRIBUTING.md CONTRIB-7, rewritten where its concept lives by
+CONTRIB-6). In order of preference it becomes: a grammar API that removes the choice; a lint, gate or threshold; or the
+general rule rewritten in its one place. Each hardening records its ruling in [decisions/rulings.yaml](decisions/rulings.yaml). Every rule therefore has exactly one
 place where a hardening lands: its own section (ui, patterns), its contract role, or its threshold key.
 
 ## House rules for editing contexts
 
-1. **One owner per fact.** A value code owns (a token, a size, a lint rule, a component) is not restated: name the
-   owner (`owner: @starci/grammar src/common/spacing.ts`). A fact appears in one file; others link to it.
-2. **Replace, never append.** An edit rewrites the sentence that holds the rule. No history in the present tense: no
-   dates, release names, "no longer" or ruling citations inside a rule; the ruling id lives in `rulings.yaml`.
-3. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
+Editing this tree follows [CONTRIBUTING.md](../CONTRIBUTING.md): one owner per fact (CONTRIB-4), present tense with no
+ghosts (CONTRIB-5), and every change rewritten where its concept lives, never appended beside it (CONTRIB-6). What is
+specific to contexts:
+
+1. **Cite the code owner.** A value code owns (a token, a size, a lint rule, a component) is named by its owner
+   (`owner: @starci/grammar src/common/spacing.ts`), never restated. No ruling id or date inside a rule; the id lives in
+   `rulings.yaml`.
+2. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
    product's `.starciwork`.
-4. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose
+3. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose
    that restates a lint rule (link its id).
-5. **Markdown for reasoning, YAML for data.** YAML only when a machine reads it, with a `schema`. Every folder has a
+4. **Markdown for reasoning, YAML for data.** YAML only when a machine reads it, with a `schema`. Every folder has a
    short README: what it holds, who reads it, reading order.
-6. **How a ruling enters.** The owner decides; the decision is written as plain present-tense law in the file that owns
+5. **How a ruling enters.** The owner decides; the decision is written as plain present-tense law in the file that owns
    the concept, and as one entry in `decisions/rulings.yaml` (id, date, ruling, owner of the fact). An agent's own
    choice that awaits the owner goes to the area's `decisions/open-*.md` with the alternative and the reason; when the
    owner confirms it, it moves to `rulings.yaml` and its row is deleted. A spelling that knowledge stops using is
    listed under `removedVocabulary` in the same file.
-7. **Write what is true now.** Grammars and knowledge are under test; a rule describes the system as it is or as a
-   recorded decision makes it, and an open gap is listed, not papered over.
+6. **Open gaps are listed.** Grammars and knowledge are under test; an open gap is listed where its concept lives, never
+   papered over.
