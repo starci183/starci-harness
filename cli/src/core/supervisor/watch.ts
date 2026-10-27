@@ -13,10 +13,24 @@ const sleep = async (ms: number): Promise<void> => new Promise((done) => setTime
 const DIST = fileURLToPath(new URL("../..", import.meta.url))
 
 /** The build of the CLI this process runs: the newest modification time of its built modules (dist's .js files), which every build moves. */
-const buildStamp = (): number =>
-    readdirSync(DIST, { recursive: true, encoding: "utf8" })
-        .filter((file) => file.endsWith(".js"))
-        .reduce((newest, file) => Math.max(newest, statSync(join(DIST, file), { throwIfNoEntry: false })?.mtimeMs ?? 0), 0)
+/** Modified time of one dist file, or -1 when a build is removing or rewriting it (Windows answers UNKNOWN, not ENOENT). */
+const mtimeOf = (file: string): number => {
+    try {
+        return statSync(join(DIST, file), { throwIfNoEntry: false })?.mtimeMs ?? -1
+    } catch {
+        return -1
+    }
+}
+
+/** The newest dist module's modified time; -1 while a build has the folder half written, which never equals a settled stamp. */
+const buildStamp = (): number => {
+    try {
+        const times = readdirSync(DIST, { recursive: true, encoding: "utf8" }).filter((file) => file.endsWith(".js")).map(mtimeOf)
+        return times.includes(-1) ? -1 : Math.max(0, ...times)
+    } catch {
+        return -1
+    }
+}
 
 /**
  * `starci supervisor watch`: `supervisor tick` in a loop for a foreground terminal, sleeping ops/liveness.yaml stall.watchSeconds
@@ -43,7 +57,7 @@ export const supervisorWatchVerb = defineVerb({
         // One pass after another, `seconds` apart, until the limit; a new build of the CLI first settles, then replaces this process.
         const pass = async (n: number): Promise<void> => {
             const stamp = buildStamp()
-            if (stamp !== loaded && stamp === seen) {
+            if (stamp !== -1 && stamp !== loaded && stamp === seen) {
                 context.progress(`${new Date().toISOString()} a new build of ${DIST}: reloading`)
                 process.exit(await runAttached(process.execPath, [...process.execArgv, ...process.argv.slice(1)], process.cwd()))
             }
