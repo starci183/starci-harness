@@ -1,0 +1,16 @@
+{
+  "hfs": 3,
+  "kind": "app",
+  "project": "shape-slot",
+  "sides": {
+    "fe": {
+      "grammar": "core",
+      "apps": [
+        {
+          "name": "leads",
+          "kind": "next"
+        }
+      ]
+    }
+  }
+}

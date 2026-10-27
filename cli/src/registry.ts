@@ -23,6 +23,7 @@ import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
 import { checkCiVerb } from "./core/check/ci.js"
+import { checkStoriesVerb } from "./core/check/stories.js"
 import { workflowDefineVerb } from "./core/workflow/define.js"
 import { workflowStartVerb } from "./core/workflow/start.js"
 import { workflowStatusVerb } from "./core/workflow/status.js"
@@ -102,6 +103,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     checkLooseningVerb,
     checkSecretsVerb,
     checkCiVerb,
+    checkStoriesVerb,
     workflowDefineVerb,
     workflowStartVerb,
     workflowStatusVerb,
