@@ -1,11 +1,13 @@
 /** Owner UI rulings: selection uses fill, and applications respect Grammar styling ownership. */
+import type { TSESTree } from "@typescript-eslint/utils";
 import { attribute, attributeValue, staticText } from "./lib/ast.ts";
 import { importOf } from "./lib/bindings.ts";
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts";
 import { isProductSource } from "./lib/scope.ts";
 import { typedClassStrings } from "./lib/typed-class-values.ts";
 
 /** Resolve a named or namespace import at its use, preserving lexical shadowing. */
-const grammarComponent = (context, opening, expected) => {
+const grammarComponent = (context: AnyContext, opening: TSESTree.JSXOpeningElement, expected: string): boolean => {
   const name = opening.name;
   const root = name.type === "JSXMemberExpression" ? name.object : name;
   if (root.type !== "JSXIdentifier") return false;
@@ -23,8 +25,14 @@ const grammarComponent = (context, opening, expected) => {
 };
 
 /** Only a final explicit attribute is proof when an opaque spread could override a value. */
-const propText = (opening, key) => {
-  let value = null;
+/** True when `text` is one of `values`; a missing text never is. */
+const oneOf = (values: readonly string[], text: string | null): boolean => text !== null && values.includes(text);
+
+/** The plain tag name of a JSX element (`nav`), or null for a member or namespaced name. */
+const plainTag = (name: TSESTree.JSXTagNameExpression): string | null => (name.type === "JSXIdentifier" ? name.name : null);
+
+const propText = (opening: TSESTree.JSXOpeningElement, key: string): string | null => {
+  let value: string | null = null;
   for (const entry of opening.attributes) {
     if (entry.type === "JSXSpreadAttribute") value = null;
     else if (entry.name.name === key) value = staticText(entry.value);
@@ -33,13 +41,13 @@ const propText = (opening, key) => {
 };
 
 /** Navigation and rail/list placement are structurally identifiable without guessing from product names. */
-const navigationList = (context, opening) => {
-  for (let node = opening.parent; node; node = node.parent) {
+const navigationList = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean => {
+  for (let node: Node | undefined = opening.parent; node; node = node.parent) {
     if (node.type !== "JSXElement") continue;
     const parent = node.openingElement;
     if (
-      ["nav", "ul", "ol"].includes(parent.name.name) ||
-      ["navigation", "list"].includes(propText(parent, "role"))
+      oneOf(["nav", "ul", "ol"], plainTag(parent.name)) ||
+      oneOf(["navigation", "list"], propText(parent, "role"))
     )
       return true;
     if (
@@ -53,7 +61,7 @@ const navigationList = (context, opening) => {
 };
 
 /** Navigation-like single selection uses the row fill instead of a second check indicator. */
-export const selectionFillNoCheck = {
+export const selectionFillNoCheck = defineRule({
   meta: {
     type: "problem",
     docs: {
@@ -68,23 +76,23 @@ export const selectionFillNoCheck = {
   },
   create(context) {
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         if (
           !grammarComponent(context, node, "ListBox") ||
           !navigationList(context, node)
         )
           return;
-        if (["none", "multiple"].includes(propText(node, "selectionMode")))
+        if (oneOf(["none", "multiple"], propText(node, "selectionMode")))
           return;
         if (propText(node, "selectionIndicator") !== "none")
           context.report({ node, messageId: "indicator" });
       },
     };
   },
-};
+});
 
 /** Grammar internal selectors belong to Grammar, including selectors in colocated class declarations. */
-export const noGrammarInternalSelector = {
+export const noGrammarInternalSelector = defineRule({
   meta: {
     type: "problem",
     docs: {
@@ -99,18 +107,18 @@ export const noGrammarInternalSelector = {
   create(context) {
     if (!isProductSource(context)) return {};
     const selector = /(?:\.|_|\[class[^\]]*)starci-core-/;
-    const report = (node, text) => {
+    const report = (node: Node, text: string | null): void => {
       if (text && selector.test(text))
         context.report({ node, messageId: "internal" });
     };
     return {
-      Literal(node) {
+      Literal(node: TSESTree.Literal) {
         if (typeof node.value === "string") report(node, node.value);
       },
-      TemplateElement(node) {
+      TemplateElement(node: TSESTree.TemplateElement) {
         report(node, node.value.cooked);
       },
-      JSXAttribute(node) {
+      JSXAttribute(node: TSESTree.JSXAttribute) {
         if (node.name.name !== "className") return;
         const value = attributeValue(attribute(node.parent, "className"));
         if (value?.type !== "Identifier" && value?.type !== "MemberExpression")
@@ -121,14 +129,14 @@ export const noGrammarInternalSelector = {
       },
     };
   },
-};
+});
 
 export const rules = {
   "selection-fill-no-check": selectionFillNoCheck,
   "no-grammar-internal-selector": noGrammarInternalSelector,
-};
+} satisfies Rules;
 
 /** Both owner rulings are universal errors in the frontend canon. */
-export const recommended = Object.fromEntries(
-  Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]),
+export const recommended: Recommended = Object.fromEntries(
+  Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]),
 );

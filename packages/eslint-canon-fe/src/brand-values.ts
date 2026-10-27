@@ -18,7 +18,9 @@
  * for one span would be two findings for one fix.
  */
 
+import type { TSESTree } from "@typescript-eslint/utils"
 import { isContentFile } from "./comments.ts"
+import { defineRule, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 
 /** A hex colour: 3, 4, 6 or 8 digits, not a longer word and not part of an identifier. */
 const HEX_COLOR = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/
@@ -80,8 +82,12 @@ const LENGTH_KEYS = new Set([
 /** Values that carry no raw colour: a token reference or a keyword. */
 const NEUTRAL_COLOR = /^(?:var\(|inherit$|initial$|unset$|revert$|currentcolor$|transparent$|none$)/i
 
+/** True when a JSX attribute name is an identifier the set holds (a namespaced name never is). */
+const namedIn = (names: ReadonlySet<string>, name: TSESTree.JSXIdentifier | TSESTree.JSXNamespacedName): boolean =>
+  name.type === "JSXIdentifier" && names.has(name.name)
+
 /** Static string of a literal or an expression-free template, else null. */
-const staticString = (node) => {
+const staticString = (node: Node | null | undefined): string | null => {
   if (!node) return null
   if (node.type === "Literal" && typeof node.value === "string") return node.value
   if (node.type === "TemplateLiteral" && node.expressions.length === 0) return node.quasis[0]?.value.cooked ?? ""
@@ -89,7 +95,7 @@ const staticString = (node) => {
 }
 
 /** No raw colour, hex or pixel value outside `brand.css`. */
-export const noRawBrandValue = {
+export const noRawBrandValue = defineRule({
   meta: {
     type: "problem",
     docs: { description: "No hex, colour function, named paint colour or px length in TypeScript; tokens only." },
@@ -107,21 +113,21 @@ export const noRawBrandValue = {
     if (isContentFile(context)) return {}
     const source = context.sourceCode || context.getSourceCode()
     /** Values already reported through an owner, so a string reports once. */
-    const claimed = new WeakSet()
+    const claimed = new WeakSet<Node>()
 
     /** True when a node sits inside a JSX `style={...}` attribute. */
-    const inStyleAttribute = (node) =>
+    const inStyleAttribute = (node: Node): boolean =>
       source
         .getAncestors(node)
         .some((ancestor) => ancestor.type === "JSXAttribute" && ancestor.name.type === "JSXIdentifier" && ancestor.name.name === "style")
 
     /** Reports the first raw value in a string, once. */
-    const scan = (node, text) => {
+    const scan = (node: Node, text: unknown): void => {
       if (claimed.has(node) || typeof text !== "string" || text.startsWith("data:")) return
       const parent = node.parent
-      if (parent && parent.type === "JSXAttribute" && NON_COLOR_ATTRS.has(parent.name.name)) return
+      if (parent && parent.type === "JSXAttribute" && namedIn(NON_COLOR_ATTRS, parent.name)) return
       if (parent && parent.type === "JSXExpressionContainer" && parent.parent.type === "JSXAttribute") {
-        if (NON_COLOR_ATTRS.has(parent.parent.name.name)) return
+        if (namedIn(NON_COLOR_ATTRS, parent.parent.name)) return
       }
       if (parent && (parent.type === "ImportDeclaration" || parent.type === "ExportAllDeclaration" || parent.type === "ExportNamedDeclaration")) return
       const color = HEX_COLOR.exec(text) || COLOR_FUNCTION.exec(text)
@@ -131,21 +137,21 @@ export const noRawBrandValue = {
     }
 
     return {
-      Literal(node) {
+      Literal(node: TSESTree.Literal) {
         scan(node, node.value)
       },
-      TemplateElement(node) {
+      TemplateElement(node: TSESTree.TemplateElement) {
         scan(node, node.value && node.value.cooked)
       },
-      JSXAttribute(node) {
+      JSXAttribute(node: TSESTree.JSXAttribute) {
         if (node.name.type !== "JSXIdentifier" || !PAINT_ATTRS.has(node.name.name)) return
         const value = node.value && node.value.type === "JSXExpressionContainer" ? node.value.expression : node.value
         const text = staticString(value)
         if (text === null || NEUTRAL_COLOR.test(text) || HEX_COLOR.test(text) || COLOR_FUNCTION.test(text)) return
-        claimed.add(value)
+        if (value) claimed.add(value)
         context.report({ node, messageId: "named", data: { key: node.name.name, value: text } })
       },
-      Property(node) {
+      Property(node: TSESTree.Property) {
         if (node.computed || node.key.type !== "Identifier" || !inStyleAttribute(node)) return
         const key = node.key.name
         if (COLOR_KEYS.has(key)) {
@@ -161,12 +167,12 @@ export const noRawBrandValue = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
   "no-raw-brand-value": noRawBrandValue,
-}
+} satisfies Rules
 
 /** Every rule is an error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

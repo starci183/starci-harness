@@ -2,6 +2,12 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"
 import { classNamesInColocatedFile, cnArgumentsAreSingleTokens, noInlineClassName, rules } from "./class-names.ts"
+import type { Context } from "./lib/rule.ts"
+
+/** The part of a rule context the rule reads before it returns its listeners; every real context has at least this. */
+type ReadSourceContext = Pick<Context<"inline", []>, "filename" | "settings"> & {
+  readonly sourceCode: { readonly ast: { readonly body: readonly unknown[] } }
+}
 
 const tester = slotTester()
 const COMPONENT = at("apps/web/src/components/leaves/Badge/index.tsx")
@@ -20,11 +26,13 @@ test("recommended keys use the plugin namespace", async () => {
 })
 
 test("reads sourceCode from the ESLint 10 rule context", () => {
-  const listeners = noInlineClassName.create({
+  // A context with only what an ESLint 10 context is sure to carry for this rule: no getSourceCode, an empty program.
+  const context: ReadSourceContext = {
     filename: COMPONENT,
     settings: { starci: { hfs: fixtureHfs() } },
     sourceCode: { ast: { body: [] } },
-  })
+  }
+  const listeners = noInlineClassName.create(context as Context<"inline", []>)
 
   assert.equal(typeof listeners.JSXAttribute, "function")
 })

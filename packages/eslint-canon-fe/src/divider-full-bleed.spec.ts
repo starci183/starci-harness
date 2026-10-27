@@ -12,6 +12,8 @@ import { dividerFullBleed, recommended, rules } from "./surface-rules.ts"
 
 import { SLOT_FREE_RULES } from "./lib/config.ts"
 import { why } from "./lib/why.ts"
+import { eslintRule } from "./lib/eslint-boundary.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 
 const grammar = 'import { Divider, Separator } from "@starci/grammar/core"; '
 const error = { messageId: "padding" }
@@ -21,9 +23,9 @@ for (const edition of ["lite", "full"]) test(`BOUNDARY-1 ${edition}: valid bands
   assert.equal(why["divider-full-bleed"].code, "FE_DIVIDER_FULL_BLEED")
   assert.equal(rules["divider-full-bleed"], dividerFullBleed)
   assert.equal(recommended["starci-fe/divider-full-bleed"], "error")
-  new RuleTester({
+  canonTester(new RuleTester({
     languageOptions: { parser, parserOptions: { ecmaFeatures: { jsx: true } } },
-  }).run("divider-full-bleed", dividerFullBleed, {
+  })).run("divider-full-bleed", dividerFullBleed, {
     valid: [
       grammar +
         'const Page=()=> <section><header className="px-4">Header</header><Divider /><ul className="px-4"><li>Row</li></ul></section>',
@@ -149,7 +151,7 @@ test("typed classNames.ts imports resolve only the selected constant and object 
       join(root, "classNames.ts"),
       'export const column="px-4"; export const styles={column:"md:ps-4",band:"py-2"};',
     )
-    const cases = [
+    const cases: [string, string, number][] = [
       ['import {column} from "./classNames";', "column", 1],
       ['import {styles} from "./classNames";', "styles.column", 1],
       ['import * as C from "./classNames";', 'C.styles["column"]', 1],
@@ -160,12 +162,12 @@ test("typed classNames.ts imports resolve only the selected constant and object 
       ],
       ['import {styles} from "./classNames";', "styles.band", 0],
     ]
-    for (let i = 0; i < cases.length; i++)
+    for (const [i, [imports, className]] of cases.entries())
       writeFileSync(
         join(root, `Page${i}.tsx`),
         grammar +
-          cases[i][0] +
-          ` const Page=()=> <div className={${cases[i][1]}}><Divider /></div>`,
+          imports +
+          ` const Page=()=> <div className={${className}}><Divider /></div>`,
       )
     const eslint = new ESLint({
       cwd: root,
@@ -181,17 +183,18 @@ test("typed classNames.ts imports resolve only the selected constant and object 
             },
           },
           plugins: {
-            canon: { rules: { "divider-full-bleed": dividerFullBleed } },
+            canon: { rules: { "divider-full-bleed": eslintRule(dividerFullBleed) } },
           },
           rules: { "canon/divider-full-bleed": "error" },
         },
       ],
     })
-    for (let i = 0; i < cases.length; i++) {
+    for (const [i, [, , count]] of cases.entries()) {
       const [result] = await eslint.lintFiles([join(root, `Page${i}.tsx`)])
+      assert.ok(result)
       assert.deepEqual(
         result.messages.map((message) => message.messageId),
-        Array(cases[i][2]).fill("padding"),
+        Array(count).fill("padding"),
       )
     }
   } finally {

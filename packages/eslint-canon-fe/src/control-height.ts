@@ -1,6 +1,8 @@
 /** CONTROL-HEIGHT-1: one control height; the app never picks a larger step or mixes steps in one row. */
 import { attributeValue, stringOf } from "./lib/ast.ts"
+import type { TSESTree } from "@typescript-eslint/utils"
 import { importOf } from "./lib/bindings.ts"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 const CONTROLS = new Set(["Button", "IconButton", "Switch", "Input", "SearchField", "Select", "Tabs", "SegmentedControl", "Textarea", "NumberField", "ComboBox"])
@@ -10,9 +12,9 @@ const LANDING_PATH = /[\\/](?:landing|hero|marketing)[\\/]|(?:Landing|Hero)[^\\/
 const DEFAULT_SIZE = new Set(["md", "control"])
 
 /** The Grammar control a JSX name resolves to; a shadowed or foreign component of the same name is not one. */
-const controlOf = (context, name) => {
+const controlOf = (context: AnyContext, name: TSESTree.JSXTagNameExpression): string | null => {
   let root = name
-  const parts = []
+  const parts: string[] = []
   while (root.type === "JSXMemberExpression") {
     parts.unshift(root.property.name)
     root = root.object
@@ -25,8 +27,8 @@ const controlOf = (context, name) => {
 }
 
 /** The statically authored size of a control: `control` when absent, null when it is dynamic. */
-const sizeOf = (opening) => {
-  const attribute = opening.attributes.find((entry) => entry.type === "JSXAttribute" && entry.name.name === "size")
+const sizeOf = (opening: TSESTree.JSXOpeningElement): string | null => {
+  const attribute = opening.attributes.find((entry): entry is TSESTree.JSXAttribute => entry.type === "JSXAttribute" && entry.name.name === "size")
   if (!attribute) return "control"
   const text = stringOf(attributeValue(attribute))
   if (text === null) return null
@@ -34,44 +36,45 @@ const sizeOf = (opening) => {
 }
 
 /** The Grammar controls a row holds directly, looking through fragments. */
-const rowControls = (context, element) => element.children.flatMap((child) => {
+const rowControls = (context: AnyContext, element: TSESTree.JSXElement | TSESTree.JSXFragment): TSESTree.JSXOpeningElement[] => element.children.flatMap((child): TSESTree.JSXOpeningElement[] => {
   if (child.type === "JSXFragment") return rowControls(context, child)
   if (child.type !== "JSXElement") return []
   return controlOf(context, child.openingElement.name) === null ? [] : [child.openingElement]
 })
 
-const controlHeight = {
+const controlHeight = defineRule({
   meta: { type: "problem", docs: { description: "CONTROL-HEIGHT-1: one 40px control height, no larger step outside a landing hero, no mixed sizes in one row." }, schema: [], messages: {
     FE_CONTROL_HEIGHT: "FE_CONTROL_HEIGHT: {{detail}} Grammar draws every standalone control at one 40px height; omit size (sm is for a control nested in an item or a dense toolbar, lg only for a landing hero call to action).",
   } },
   create(context) {
     const landing = LANDING_PATH.test(context.filename)
-    const reported = new Set()
-    const report = (node, detail) => {
+    const reported = new Set<Node>()
+    const report = (node: Node, detail: string): void => {
       if (reported.has(node)) return
       reported.add(node)
       context.report({ node, messageId: "FE_CONTROL_HEIGHT", data: { detail } })
     }
     return {
-      JSXOpeningElement(opening) {
+      JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
         const role = controlOf(context, opening.name)
         if (role === null) return
         const size = sizeOf(opening)
         if (size === "xl" || (size === "lg" && !landing)) report(opening, `${role} size="${size}" is a larger control step than the app chrome allows.`)
       },
-      "JSXElement, JSXFragment"(element) {
+      "JSXElement, JSXFragment"(element: TSESTree.JSXElement | TSESTree.JSXFragment) {
         const controls = rowControls(context, element)
         const sizes = controls.map(sizeOf)
         if (sizes.includes(null) || new Set(sizes).size < 2) return
         const index = sizes.findIndex((size) => size !== sizes[0])
-        report(controls[index], "this control sits in a row with controls of another size.")
+        const odd = controls[index]
+        if (odd) report(odd, "this control sits in a row with controls of another size.")
       },
     }
   },
-}
+})
 
 /** The one rule of the law. */
-export const rules = { "control-height": controlHeight }
+export const rules = { "control-height": controlHeight } satisfies Rules
 
 /** The rule reaches consumers at error. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

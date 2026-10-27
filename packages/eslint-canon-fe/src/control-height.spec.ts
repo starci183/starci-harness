@@ -7,10 +7,11 @@ import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { rules, recommended } from "./control-height.ts"
 import { recommended as universal, ruleOwners, rules as published, why } from "./index.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 
 const grammar = "import { Button, IconButton, Switch, Input, SearchField, Tabs } from \"@starci/grammar/core\"; "
-const tester = () => new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } })
-const invalid = (code, count = 1, filename) => ({ code: grammar + code, ...(filename ? { filename } : {}), errors: Array.from({ length: count }, () => ({ messageId: "FE_CONTROL_HEIGHT" })) })
+const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
+const invalid = (code: string, count = 1, filename?: string) => ({ code: grammar + code, ...(filename ? { filename } : {}), errors: Array.from({ length: count }, () => ({ messageId: "FE_CONTROL_HEIGHT" })) })
 
 test("CONTROL-HEIGHT-1 is registered universally at error with its finding code", () => {
   assert.equal(published["control-height"], rules["control-height"])

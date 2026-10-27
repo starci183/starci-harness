@@ -18,7 +18,7 @@ import { rules as buttonRules } from "./button-intent.ts";
 const grammar =
   'import {ListBox, Rail, Sidebar, Button} from "@starci/grammar/core";';
 const filename = at("apps/web/src/components/blocks/Messages/index.tsx");
-const fixture = (code, messageId) => ({
+const fixture = (code: string, messageId: string) => ({
   filename,
   code: grammar + code,
   errors: [{ messageId }],

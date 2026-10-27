@@ -3,21 +3,40 @@ import { attributeValue, stringOf, walk } from "./lib/ast.ts"
 import { functionOf, importOf, isFn, patternPath, unwrap, variableOf } from "./lib/bindings.ts"
 import { typedClassStrings, typedPropertyStrings } from "./lib/typed-class-values.ts"
 import { reactHookOf } from "./lib/react.ts"
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
+import type { PathStep } from "./lib/bindings.ts"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import type { TypedString } from "./lib/typed-class-values.ts"
+
+/** A same-file variable definition: its declarator holds the binding pattern and the initializer. */
+type VariableDefinition = TSESLint.Scope.Definitions.VariableDefinition
+
+/** Whether an accordion frame is painted, unpainted, or not set by an entry. */
+type Frame = "painted" | "unpainted" | "absent"
+
+/** True when `text` is a string among `values`; any other value never is. */
+const isOneOf = (values: readonly string[], text: unknown): boolean => typeof text === "string" && values.includes(text)
+
+/** The name a member expression reads: its static computed text or its identifier. */
+const memberName = (node: TSESTree.MemberExpression): string | null => (node.computed ? stringOf(node.property) : node.property.name)
+
+/** True for a present node, as `.filter(Boolean)` keeps it. */
+const present = (value: Node | null | undefined): value is Node => Boolean(value)
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
-const SURFACES = new Set([
+const SURFACES = new Set<string | undefined>([
   "SurfaceCard", "SurfaceListCard", "SurfaceAccordionCard", "Sidebar",
   "Dialog", "Drawer", "AlertDialog", "Popover",
   "WorkspaceShell", "TopBar", "NavigationFeatureNav",
 ])
-const FIELDS = new Set([
+const FIELDS = new Set<string | undefined>([
   "Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField",
   "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput",
 ])
 const CLASS_BUILDERS = new Set(["cn", "clsx", "classNames", "cva", "tv"])
 
 /** Resolve a JSX name to its Grammar export and optional compound parts, preserving lexical import identity. */
-const grammarName = (context, name) => {
+const grammarName = (context: AnyContext, name: TSESTree.JSXTagNameExpression): string[] | null => {
   if (name.type === "JSXMemberExpression") {
     const owner = grammarName(context, name.object)
     return owner === null ? null : [...owner, name.property.name]
@@ -31,7 +50,7 @@ const grammarName = (context, name) => {
 }
 
 /** Class and variant expressions expose their statically authored strings, including const aliases and cn branches. */
-const authoredStrings = (context, input, seen = new Set(), mode = "classes") => {
+const authoredStrings = (context: AnyContext, input: Node | null | undefined, seen = new Set<Node>(), mode = "classes"): TypedString[] => {
   const node = unwrap(input?.type === "JSXExpressionContainer" ? input.expression : input)
   if (!node || seen.has(node)) return []
   seen.add(node)
@@ -43,7 +62,7 @@ const authoredStrings = (context, input, seen = new Set(), mode = "classes") => 
     return values.length ? values.flatMap((value) => authoredStrings(context, value, seen, mode)) : typedClassStrings(context, node, mode)
   }
   if (node.type === "MemberExpression") {
-    const propertyName = node.computed ? stringOf(node.property) : node.property.name
+    const propertyName = memberName(node)
     const values = propertyValues(context, node.object, propertyName)
     return values.length ? values.flatMap((value) => authoredStrings(context, value, seen, mode)) : typedClassStrings(context, node, mode)
   }
@@ -52,56 +71,56 @@ const authoredStrings = (context, input, seen = new Set(), mode = "classes") => 
 }
 
 /** Only value-bearing positions contribute classes; object keys support cn's conditional class dictionary. */
-const stringChildren = (node, mode) => {
+const stringChildren = (node: Node, mode: string): readonly (Node | null)[] => {
   if (node.type === "TemplateLiteral") return mode === "classes" ? [...node.quasis, ...node.expressions] : []
   if (node.type === "ArrayExpression") return node.elements
   if (node.type === "CallExpression") return mode === "classes" ? node.arguments : []
   if (node.type === "ConditionalExpression") return [node.consequent, node.alternate]
   if (node.type === "LogicalExpression") return node.operator === "&&" ? [node.right] : [node.left, node.right]
-  if (node.type === "ObjectExpression") return node.properties.flatMap((property) => property.type === "Property" ? [property.key, property.value] : [property.argument])
+  if (node.type === "ObjectExpression") return node.properties.flatMap((property): Node[] => property.type === "Property" ? [property.key, property.value] : [property.argument])
   return []
 }
 
 /** A declared React component is a separate render tree; inline collection/render callbacks keep the surrounding context. */
-const componentBoundary = (context, node) => {
+const componentBoundary = (context: AnyContext, node: Node): boolean => {
   if (!isFn(node)) return false
-  if (node.parent?.type === "CallExpression" && ["memo", "forwardRef"].includes(reactHookOf(context, node.parent))) return true
-  if (node.parent?.type === "JSXExpressionContainer" || node.parent?.type === "CallExpression" && node.parent.arguments.includes(node)) return false
-  const name = node.id?.name ?? (node.parent?.type === "VariableDeclarator" ? node.parent.id.name : null)
-  return name !== null && /^[A-Z]/.test(name)
+  if (node.parent?.type === "CallExpression" && isOneOf(["memo", "forwardRef"], reactHookOf(context, node.parent))) return true
+  if (node.parent?.type === "JSXExpressionContainer" || node.parent?.type === "CallExpression" && node.parent.arguments.some((argument) => argument === node)) return false
+  const name = node.id?.name ?? (node.parent?.type === "VariableDeclarator" ? (node.parent.id.type === "Identifier" ? node.parent.id.name : undefined) : null)
+  return name !== null && /^[A-Z]/.test(String(name))
 }
 
 /** The Grammar ancestors whose rendered content contains this node, excluding an overlay's trigger. */
-function* surfaceAncestors(context, node) {
-  const triggers = new Set()
-  for (let current = node.parent; current; current = current.parent) {
+function* surfaceAncestors(context: AnyContext, node: Node | undefined): Generator<TSESTree.JSXOpeningElement, void> {
+  const triggers = new Set<Node>()
+  for (let current: Node | undefined = node?.parent; current; current = current.parent) {
     if (componentBoundary(context, current)) return
     if (current.type === "JSXAttribute" && current.name.name === "trigger") triggers.add(current.parent)
     if (current.type === "JSXElement" && !triggers.has(current.openingElement)) yield current.openingElement
   }
 }
 
-const isSurface = (context, node, descendant) => {
+const isSurface = (context: AnyContext, node: TSESTree.JSXOpeningElement, descendant: Node): boolean => {
   const name = grammarName(context, node.name)
   if (name?.length !== 1) return false
   if (name[0] === "SurfaceAccordionCard") {
-    let frame = "painted"
+    let frame: Frame = "painted"
     for (const entry of node.attributes) {
-      const value = entry.type === "JSXSpreadAttribute" ? frameEffect(context, entry.argument, frame)
+      const value: Frame = entry.type === "JSXSpreadAttribute" ? frameEffect(context, entry.argument, frame)
         : entry.name.name === "frame" ? unpaintedFrame(context, attributeValue(entry)) ? "unpainted" : "painted" : "absent"
       if (value !== "absent") frame = value
     }
     return frame !== "unpainted"
   }
   if (name[0] === "WorkspaceShell") {
-    for (let current = descendant; current && current !== node.parent; current = current.parent) {
+    for (let current: Node | undefined = descendant; current && current !== node.parent; current = current.parent) {
       if (current.type === "JSXAttribute" && current.parent === node && current.name.name === "header") return true
     }
     return false
   }
   return SURFACES.has(name[0])
 }
-const classTokens = (text) => text.split(/\s+/).map((token) => {
+const classTokens = (text: string): string[] => text.split(/\s+/).map((token) => {
   let depth = 0
   let start = 0
   for (let index = 0; index < token.length; index++) {
@@ -112,40 +131,41 @@ const classTokens = (text) => text.split(/\s+/).map((token) => {
   return token.slice(start).replace(/^!|!$/g, "")
 })
 /** Paint and typography belong to Grammar even when the app uses a token rather than a raw colour. */
-const paintProperty = (name) => {
+const paintProperty = (name: unknown): boolean => {
   const property = String(name).replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`).replace(/^-(?:webkit|moz|ms)-/, "")
   if (/^text-(?:align|overflow|wrap)(?:-|$)/.test(property)) return false
   return /^(?:background|border|outline|font|text|fill|stroke|mask|color|accent-color|caret-color)(?:-|$)/.test(property)
     || /^(?:opacity|box-shadow|filter|backdrop-filter|mix-blend-mode|appearance|letter-spacing|line-height|clip-path)$/.test(property)
 }
 
-const rawSurface = (token) => {
+const rawSurface = (token: string): boolean => {
   const arbitrary = /^\[([^:]+):/.exec(token)
   if (arbitrary) return paintProperty(arbitrary[1])
   if (/^text-(?:left|right|center|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)$/.test(token)) return false
   return /^-?(?:bg|from|via|to|shadow|inset-shadow|text-shadow|ring|inset-ring|outline|border|divide|rounded|text|font|leading|tracking|fill|stroke|mask|accent|caret|decoration|opacity|mix-blend|bg-blend|blur|brightness|contrast|drop-shadow|grayscale|hue-rotate|invert|saturate|sepia|backdrop|filter|appearance)(?:-|$)/.test(token)
     || /^(?:underline|overline|line-through|no-underline|italic|not-italic|antialiased|subpixel-antialiased)$/.test(token)
 }
-const horizontalPadding = (token) => /^(?:p|px|ps|pe|pl|pr)-.+$/.test(token) || /^\[padding-inline(?:-start|-end)?:.+\]$/.test(token)
+const horizontalPadding = (token: string): boolean => /^(?:p|px|ps|pe|pl|pr)-.+$/.test(token) || /^\[padding-inline(?:-start|-end)?:.+\]$/.test(token)
 
 /** Computed keys select their evaluated static name, rather than the identifier's spelling. */
-const propertyName = (context, property) => {
-  if (!property.computed) return property.key.name ?? property.key.value
+const propertyName = (context: AnyContext, property: TSESTree.Property): PathStep => {
+  if (!property.computed) return property.key.type === "Identifier" ? property.key.name : property.key.value
   const values = authoredStrings(context, property.key, new Set(), "variant")
-  return values.length === 1 ? values[0].text : null
+  const [only] = values
+  return values.length === 1 && only ? only.text : null
 }
 
 /** A binding selects its own object property; sibling declarations do not become its value. */
-const bindingValues = (context, node, seen = new Set()) => {
-  const definition = variableOf(context, node)?.defs.find((entry) => entry.type === "Variable")
+const bindingValues = (context: AnyContext, node: TSESTree.Identifier, seen = new Set<Node>()): Node[] => {
+  const definition = variableOf(context, node)?.defs.find((entry): entry is VariableDefinition => entry.type === "Variable")
   if (!definition) return []
   const path = patternPath(definition.node.id, node.name)
   if (path === null) return []
-  return path.reduce((values, key) => values.flatMap((value) => propertyValues(context, value, key, seen)), [definition.node.init]).filter(Boolean)
+  return path.reduce<(Node | null)[]>((values, key) => values.flatMap((value) => propertyValues(context, value, key, seen)), [definition.node.init]).filter(present)
 }
 
 /** Static object spreads retain the same published-prop obligations as ordinary JSX attributes. */
-const propertyValues = (context, input, key, seen = new Set()) => {
+const propertyValues = (context: AnyContext, input: Node | null | undefined, key: PathStep, seen = new Set<Node>()): Node[] => {
   const node = unwrap(input)
   if (!node || seen.has(node)) return []
   seen.add(node)
@@ -153,18 +173,18 @@ const propertyValues = (context, input, key, seen = new Set()) => {
     return bindingValues(context, node, seen).flatMap((value) => propertyValues(context, value, key, seen))
   }
   if (node.type === "MemberExpression") {
-    const member = node.computed ? stringOf(node.property) : node.property.name
+    const member = memberName(node)
     return propertyValues(context, node.object, member, seen).flatMap((value) => propertyValues(context, value, key, seen))
   }
   if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].flatMap((branch) => propertyValues(context, branch, key, seen))
   if (node.type !== "ObjectExpression") return []
-  return node.properties.flatMap((property) => {
+  return node.properties.flatMap((property): Node[] => {
     if (property.type === "SpreadElement") return propertyValues(context, property.argument, key, seen)
     return propertyName(context, property) === key ? [property.value] : []
   })
 }
 
-const propStrings = (context, entry, name, mode = "classes") => {
+const propStrings = (context: AnyContext, entry: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute, name: string, mode = "classes"): TypedString[] => {
   if (entry.type === "JSXSpreadAttribute") {
     const values = propertyValues(context, entry.argument, name)
     return values.length ? values.flatMap((value) => authoredStrings(context, value, new Set(), mode)) : typedPropertyStrings(context, entry.argument, name, mode)
@@ -173,7 +193,7 @@ const propStrings = (context, entry, name, mode = "classes") => {
 }
 
 /** Only a fully known unpainted frame removes the accordion's bounded surface context. */
-const unpaintedFrame = (context, input, seen = new Set()) => {
+const unpaintedFrame = (context: AnyContext, input: Node | null | undefined, seen = new Set<Node>()): boolean => {
   const node = unwrap(input)
   if (!node || seen.has(node)) return false
   seen.add(node)
@@ -181,12 +201,12 @@ const unpaintedFrame = (context, input, seen = new Set()) => {
   if (text !== null) return text === "unpainted"
   if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].every((branch) => unpaintedFrame(context, branch, new Set(seen)))
   const values = node.type === "Identifier" ? bindingValues(context, node)
-    : node.type === "MemberExpression" ? propertyValues(context, node.object, node.computed ? stringOf(node.property) : node.property.name) : []
+    : node.type === "MemberExpression" ? propertyValues(context, node.object, memberName(node)) : []
   return values.length > 0 && values.every((value) => unpaintedFrame(context, value, new Set(seen)))
 }
 
 /** A spread overrides preceding frame props; an unresolved spread may install a bounded frame. */
-const frameEffect = (context, input, prior, seen = new Set()) => {
+const frameEffect = (context: AnyContext, input: Node | null | undefined, prior: Frame, seen = new Set<Node>()): Frame => {
   const node = unwrap(input)
   if (!node || seen.has(node)) return "painted"
   seen.add(node)
@@ -194,21 +214,22 @@ const frameEffect = (context, input, prior, seen = new Set()) => {
     let effect = prior
     for (const property of node.properties) {
       const key = property.type === "Property" ? propertyName(context, property) : null
-      const value = property.type === "SpreadElement" ? frameEffect(context, property.argument, effect, new Set(seen))
+      const value: Frame = property.type === "SpreadElement" ? frameEffect(context, property.argument, effect, new Set(seen))
         : key === "frame" ? unpaintedFrame(context, property.value) ? "unpainted" : "painted" : key === null ? "painted" : "absent"
       if (value !== "absent") effect = value
     }
     return effect
   }
-  const values = node.type === "Identifier" ? bindingValues(context, node)
-    : node.type === "MemberExpression" ? propertyValues(context, node.object, node.computed ? stringOf(node.property) : node.property.name)
+  const values: Node[] = node.type === "Identifier" ? bindingValues(context, node)
+    : node.type === "MemberExpression" ? propertyValues(context, node.object, memberName(node))
       : node.type === "ConditionalExpression" ? [node.consequent, node.alternate] : []
   const effects = values.map((value) => frameEffect(context, value, prior, new Set(seen)))
-  return effects.length > 0 && effects.every((effect) => effect === effects[0]) ? effects[0] : "painted"
+  const [first] = effects
+  return first !== undefined && effects.every((effect) => effect === first) ? first : "painted"
 }
 
 /** Resolve authored style objects without treating unrelated object siblings or conditions as CSS. */
-const stylePaint = (context, input, seen = new Set()) => {
+const stylePaint = (context: AnyContext, input: Node | null | undefined, seen = new Set<Node>()): Node[] => {
   const node = unwrap(input?.type === "JSXExpressionContainer" ? input.expression : input)
   if (!node || seen.has(node)) return []
   seen.add(node)
@@ -218,7 +239,7 @@ const stylePaint = (context, input, seen = new Set()) => {
       : typedClassStrings(context, node, "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node)
   }
   if (node.type === "MemberExpression") {
-    const member = node.computed ? stringOf(node.property) : node.property.name
+    const member = memberName(node)
     const values = propertyValues(context, node.object, member)
     return values.length ? values.flatMap((value) => stylePaint(context, value, seen))
       : typedClassStrings(context, node, "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node)
@@ -226,26 +247,26 @@ const stylePaint = (context, input, seen = new Set()) => {
   if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].flatMap((branch) => stylePaint(context, branch, seen))
   if (node.type === "LogicalExpression") return (node.operator === "&&" ? [node.right] : [node.left, node.right]).flatMap((branch) => stylePaint(context, branch, seen))
   if (node.type !== "ObjectExpression") return []
-  return node.properties.flatMap((property) => {
+  return node.properties.flatMap((property): Node[] => {
     if (property.type === "SpreadElement") return stylePaint(context, property.argument, seen)
     return paintProperty(propertyName(context, property)) ? [property] : []
   })
 }
 
 /** An explicit section caption excludes the row's own content subtree. */
-const inSectionCaption = (context, node) => {
+const inSectionCaption = (context: AnyContext, node: TSESTree.JSXOpeningElement): boolean => {
   for (const ancestor of surfaceAncestors(context, node.parent)) {
     if (isSurface(context, ancestor, node)) return false
     const owner = grammarName(context, ancestor.name)
     if (owner?.[0] !== "ListBox") continue
     if (owner[1] === "Item") return false
-    if (["Section", "Header", "SectionHeader"].includes(owner[1])) return true
+    if (isOneOf(["Section", "Header", "SectionHeader"], owner[1])) return true
   }
   return false
 }
 
 /** ANATOMY-2: field variants belong to Grammar's context, including across app component boundaries. */
-export const nestedControlVariant = {
+export const nestedControlVariant = defineRule({
   meta: {
     type: "problem",
     docs: { description: "ANATOMY-2: Grammar context supplies field variants; nested Tabs cannot force primary." },
@@ -257,7 +278,7 @@ export const nestedControlVariant = {
   },
   create(context) {
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         const name = grammarName(context, node.name)
         if (name?.length !== 1) return
         if (FIELDS.has(name[0])) {
@@ -270,10 +291,10 @@ export const nestedControlVariant = {
       },
     }
   },
-}
+})
 
 /** App classes carry layout; Grammar owns surface paint. */
-export const noAppSurfacePaint = {
+export const noAppSurfacePaint = defineRule({
   meta: {
     type: "problem",
     docs: { description: "App composition CSS is layout-only; Grammar paints surfaces." },
@@ -281,52 +302,52 @@ export const noAppSurfacePaint = {
     messages: { surface: "FE_GRAMMAR_LAYOUT_ONLY: app CSS paints or styles Grammar content. Keep composition CSS layout-only and use Grammar's published surfaces, typography and tone props." },
   },
   create(context) {
-    const reported = new Set()
-    const checkClassEntries = (entries) => {
+    const reported = new Set<Node>()
+    const checkClassEntries = (entries: readonly TypedString[]): void => {
       for (const entry of entries) {
         if (!classTokens(entry.text).some(rawSurface) || reported.has(entry.node)) continue
         reported.add(entry.node)
         context.report({ node: entry.node, messageId: "surface" })
       }
     }
-    const checkClasses = (value) => checkClassEntries(authoredStrings(context, value))
-    const reportStyle = (nodes) => {
+    const checkClasses = (value: Node | null | undefined): void => checkClassEntries(authoredStrings(context, value))
+    const reportStyle = (nodes: readonly Node[]): void => {
       for (const node of nodes) {
         if (reported.has(node)) continue
         reported.add(node)
         context.report({ node, messageId: "surface" })
       }
     }
-    const checkStyle = (value) => {
+    const checkStyle = (value: Node | null | undefined): void => {
       reportStyle(stylePaint(context, value))
     }
     return {
-      JSXAttribute(node) {
-        if (["className", "class", "classNames"].includes(node.name.name)) checkClasses(node.value)
+      JSXAttribute(node: TSESTree.JSXAttribute) {
+        if (isOneOf(["className", "class", "classNames"], node.name.name)) checkClasses(node.value)
         if (node.name.name === "style") checkStyle(node.value)
       },
-      JSXSpreadAttribute(node) {
+      JSXSpreadAttribute(node: TSESTree.JSXSpreadAttribute) {
         for (const name of ["className", "class", "classNames"]) checkClassEntries(propStrings(context, node, name))
         const values = propertyValues(context, node.argument, "style")
-        if (values.length) values.forEach(checkStyle)
+        if (values.length) values.forEach((value) => checkStyle(value))
         else reportStyle(typedPropertyStrings(context, node.argument, "style", "style-keys").filter((entry) => paintProperty(entry.text)).map((entry) => entry.node))
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         if (node.callee.type === "Identifier" && CLASS_BUILDERS.has(node.callee.name)) checkClasses(node)
       },
-      VariableDeclarator(node) {
-        if (/[Cc]lass/.test(node.id.name ?? "") || /(?:^|[/\\])classNames\.[cm]?[jt]sx?$/.test(context.filename)) checkClasses(node.init)
+      VariableDeclarator(node: TSESTree.VariableDeclarator) {
+        if (/[Cc]lass/.test(node.id.type === "Identifier" ? node.id.name : "") || /(?:^|[/\\])classNames\.[cm]?[jt]sx?$/.test(context.filename)) checkClasses(node.init)
       },
-      Property(node) {
-        if (["className", "class", "classNames"].includes(propertyName(context, node))) checkClasses(node.value)
+      Property(node: TSESTree.Property) {
+        if (isOneOf(["className", "class", "classNames"], propertyName(context, node))) checkClasses(node.value)
         if (propertyName(context, node) === "style") checkStyle(node.value)
       },
     }
   },
-}
+})
 
 /** PADDING-0: app padding wrappers cannot add a second horizontal inset to Grammar's list or section caption. */
-export const noListPanelPadding = {
+export const noListPanelPadding = defineRule({
   meta: {
     type: "problem",
     docs: { description: "PADDING-0: panel lists and section captions share the Grammar surface's content edge." },
@@ -334,30 +355,30 @@ export const noListPanelPadding = {
     messages: { padding: "FE_LIST_PANEL_PADDING: horizontal padding stacks with the Grammar list inset. Remove this wrapper padding and use ListBox inset=\"panel\" so rows and section captions share the panel content edge." },
   },
   create(context) {
-    const reported = new Set()
-    const check = (opening) => {
+    const reported = new Set<Node>()
+    const check = (opening: TSESTree.JSXOpeningElement): void => {
       const className = opening.attributes.find((entry) => ["className", "class"].some((name) => propStrings(context, entry, name).some((value) => classTokens(value.text).some(horizontalPadding))))
       if (!className || reported.has(className)) return
       reported.add(className)
       context.report({ node: className, messageId: "padding" })
     }
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         const ancestors = [...surfaceAncestors(context, node.parent)]
         const surfaceIndex = ancestors.findIndex((ancestor) => isSurface(context, ancestor, node))
         if (surfaceIndex < 0) return
         const name = grammarName(context, node.name)
-        if (name?.[0] === "ListBox" && (name.length === 1 || ["Section", "Header", "SectionHeader"].includes(name[1]))) {
+        if (name?.[0] === "ListBox" && (name.length === 1 || isOneOf(["Section", "Header", "SectionHeader"], name[1]))) {
           check(node)
           for (const ancestor of ancestors.slice(0, surfaceIndex + 1)) check(ancestor)
         } else if (inSectionCaption(context, node)) check(node)
       },
     }
   },
-}
+})
 
 /** BOUNDARY-1 case-5: only content bands carry inset; horizontal separators reach the surface edges. */
-export const dividerFullBleed = {
+export const dividerFullBleed = defineRule({
   meta: {
     type: "problem",
     docs: {
@@ -372,11 +393,11 @@ export const dividerFullBleed = {
   },
   create(context) {
     // Follow rendered same-file components, helper calls and JSX constants, with cycle protection.
-    const containsDivider = (root, seen = new Set()) => {
+    const containsDivider = (root: Node | null | undefined, seen = new Set<Node>()): boolean => {
       if (!root || seen.has(root)) return false
       seen.add(root)
       let found = false
-      const follow = (node) => {
+      const follow = (node: Node | null | undefined): void => {
         found = containsDivider(node, seen) || found
       }
       walk(context.sourceCode, root, (node) => {
@@ -386,7 +407,7 @@ export const dividerFullBleed = {
           const name = grammarName(context, node.name)
           if (
             name?.length === 1 &&
-            ["Divider", "Separator"].includes(name[0])
+            isOneOf(["Divider", "Separator"], name[0])
           ) {
             const orientations = node.attributes.flatMap((entry) =>
               propStrings(context, entry, "orientation", "variant"),
@@ -422,7 +443,7 @@ export const dividerFullBleed = {
       return found
     }
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         const padding = node.attributes.find((entry) =>
           propStrings(context, entry, "className").some((value) =>
             classTokens(value.text).some(horizontalPadding),
@@ -434,10 +455,10 @@ export const dividerFullBleed = {
       },
     }
   },
-}
+})
 
 /** The surface laws ship at error in every composing source tree. */
-export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint }
+export const rules = { "divider-full-bleed": dividerFullBleed, "nested-control-variant": nestedControlVariant, "no-list-panel-padding": noListPanelPadding, "no-app-surface-paint": noAppSurfacePaint } satisfies Rules
 
 /** No app can lower or omit a surface law. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]))

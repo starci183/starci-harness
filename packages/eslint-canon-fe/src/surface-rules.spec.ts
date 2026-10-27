@@ -14,8 +14,10 @@ import { ESLint, RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { nestedControlVariant, noListPanelPadding, noAppSurfacePaint, recommended, rules } from "./surface-rules.ts"
 import { why } from "./lib/why.ts"
+import { eslintRule } from "./lib/eslint-boundary.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 
-const tester = () => new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } })
+const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
 const grammar = 'import { SurfaceCard, SearchField, ListBox } from "@starci/grammar/core"; '
 const variant = { messageId: "variant" }
 const tabs = { messageId: "tabs" }
@@ -256,16 +258,17 @@ test("typed app lint follows imported colocated class declarations for panel pad
       { code: 'import { classProps } from "./classNames"; const Page=()=> <div {...classProps} />', ids: ["surface"] },
       { code: 'import { otherProps } from "./classNames"; const Page=()=> <div {...otherProps} />', ids: [] },
     ]
-    for (let index = 0; index < cases.length; index++) writeFileSync(join(root, `Page${index}.tsx`), cases[index].code)
+    for (const [index, entry] of cases.entries()) writeFileSync(join(root, `Page${index}.tsx`), entry.code)
     const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [{
       files: ["**/*.tsx"],
       languageOptions: { parser: tsParser, parserOptions: { project: join(root, "tsconfig.json"), tsconfigRootDir: root, ecmaFeatures: { jsx: true } } },
-      plugins: { surface: { rules } },
+      plugins: { surface: { rules: Object.fromEntries(Object.entries(rules).map(([name, rule]) => [name, eslintRule(rule)])) } },
       rules: Object.fromEntries(Object.keys(rules).map((name) => [`surface/${name}`, "error"])),
     }] })
-    for (let index = 0; index < cases.length; index++) {
+    for (const [index, entry] of cases.entries()) {
       const [result] = await eslint.lintFiles([join(root, `Page${index}.tsx`)])
-      assert.deepEqual(result.messages.map((message) => message.messageId), cases[index].ids, cases[index].code)
+      assert.ok(result)
+      assert.deepEqual(result.messages.map((message) => message.messageId), entry.ids, entry.code)
     }
   } finally {
     rmSync(root, { recursive: true, force: true })

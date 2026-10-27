@@ -20,10 +20,15 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { rules, recommended } from "./button-intent.ts"
 import { recommended as universal, ruleOwners, rules as published, why } from "./index.ts"
+import { eslintRule } from "./lib/eslint-boundary.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+
+/** The canon entry of a rule name, looked up by its published name. */
+const whyOf = (name: string) => new Map(Object.entries(why)).get(name)
 
 const grammar = 'import { Button, IconButton, AlertDialog, ConfirmDialog, CollectionItem, ItemActions, ListItem, ListBox, Table, GridList, DataTable } from "@starci/grammar/core"; '
-const tester = () => new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } })
-const fixture = (code, messageId, count = 1) => ({ code: grammar + code, errors: Array.from({ length: count }, () => ({ messageId })) })
+const tester = () => canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
+const fixture = (code: string, messageId: string, count = 1) => ({ code: grammar + code, errors: Array.from({ length: count }, () => ({ messageId })) })
 
 test("CTA-6 laws are registered universally at error with their finding codes", () => {
   const codes = ["FE_BUTTON_INTENT_REQUIRED", "FE_BUTTON_NO_VARIANT", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
@@ -32,7 +37,7 @@ test("CTA-6 laws are registered universally at error with their finding codes", 
     assert.equal(ruleOwners[name], "button-intent")
     assert.equal(recommended[`starci-fe/${name}`], "error")
     assert.equal(universal[`starci-fe/${name}`], "error")
-    assert.equal(why[name].code, codes[index])
+    assert.equal(whyOf(name)?.code, codes[index])
   })
 })
 
@@ -188,14 +193,15 @@ test("CTA-6: typed literal intent, step and spread variants retain the laws", as
       { code: 'const Page=(props:{intent:"neutral"})=> <Button {...props}/>', ids: [] },
       { code: 'const Page=(props:{intent?:"neutral"})=> <Button {...props}/>', ids: ["FE_BUTTON_INTENT_REQUIRED"] },
     ]
-    for (let index = 0; index < cases.length; index++) writeFileSync(join(root, `Page${index}.tsx`), grammar + cases[index].code)
+    for (const [index, entry] of cases.entries()) writeFileSync(join(root, `Page${index}.tsx`), grammar + entry.code)
     const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: [{
       files: ["**/*.tsx"], languageOptions: { parser: tsParser, parserOptions: { project: join(root, "tsconfig.json"), tsconfigRootDir: root, ecmaFeatures: { jsx: true } } },
-      plugins: { intent: { rules } }, rules: Object.fromEntries(Object.keys(rules).map((name) => [`intent/${name}`, "error"])),
+      plugins: { intent: { rules: Object.fromEntries(Object.entries(rules).map(([name, rule]) => [name, eslintRule(rule)])) } }, rules: Object.fromEntries(Object.keys(rules).map((name) => [`intent/${name}`, "error"])),
     }] })
-    for (let index = 0; index < cases.length; index++) {
+    for (const [index, entry] of cases.entries()) {
       const [result] = await eslint.lintFiles([join(root, `Page${index}.tsx`)])
-      assert.deepEqual(result.messages.map((message) => message.messageId), cases[index].ids, cases[index].code)
+      assert.ok(result)
+      assert.deepEqual(result.messages.map((message) => message.messageId), entry.ids, entry.code)
     }
   } finally {
     rmSync(root, { recursive: true, force: true })
