@@ -5,8 +5,12 @@ import { basename, join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
-import { git, resolveSha } from "../shared/git.js"
+import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
+import { locateTree } from "../shared/tree.js"
+import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
+import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
 import { underPaths } from "./contract.js"
+import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { runCheck, strayFiles } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
@@ -19,13 +23,17 @@ const LIST_SHOWN = 20
 /** The folder name every clean-verify checkout starts with; the pid in it tells a live verifier's checkout from a leftover. */
 const VERIFY_PREFIX = "starci-verify-"
 
-/** What a clean verify built and what its checks said about it; `paths` are the allowPaths added whole, `notes` what was skipped and why. */
+/**
+ * What a clean verify built and what its checks said about it; `paths` are the allowPaths added whole, `notes` what was skipped
+ * and why, `foreign` the commits under allowPaths the harness did not make while the task ran.
+ */
 export interface CleanVerify {
     readonly candidate: string
     readonly tree: string
     readonly parent: string
     readonly base: string
     readonly changed: readonly string[]
+    readonly foreign: readonly string[]
     readonly paths: readonly string[]
     readonly notes: readonly string[]
     readonly checks: readonly CheckOutcome[]
@@ -53,8 +61,6 @@ interface Built {
     readonly lands: CheckOutcome
 }
 
-const lines = (text: string): string[] => text.split("\n").map((line) => line.trim()).filter((line) => line !== "")
-
 const listed = (files: readonly string[]): string => {
     const shown = files.slice(0, LIST_SHOWN).join(", ")
     const more = files.length > LIST_SHOWN ? ` and ${String(files.length - LIST_SHOWN)} more` : ""
@@ -64,7 +70,7 @@ const listed = (files: readonly string[]): string => {
 const literal = (path: string): string => `:(top,literal)${path}`
 
 // The temporary index lives only in GIT_INDEX_FILE of the child, so the user's index is never touched.
-const gitIndexed = (cwd: string, index: string, args: readonly string[]): Promise<ToolRun> => captureTool("git", args, cwd, { env: { GIT_INDEX_FILE: index } })
+const gitIndexed = (cwd: string, index: string, args: readonly string[]): Promise<ToolRun> => captureGit(args, cwd, { env: { GIT_INDEX_FILE: index } })
 
 const gitIndexedOk = async (cwd: string, index: string, args: readonly string[]): Promise<string> => {
     const run = await gitIndexed(cwd, index, args)
@@ -108,7 +114,22 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
     return { whole, trackedOnly, notes }
 }
 
-const landsDetail = (changed: readonly string[], missing: readonly string[]): string => {
+/**
+ * The commits on `parent` since the task was created (`since`, to the second: git dates carry no more) that change its
+ * `allowPaths` and carry no `Starci-Task:` trailer: work the harness did not land. None without a task to date it.
+ */
+const foreignCommits = async (root: string, since: string | undefined, parent: string, allowPaths: readonly string[]): Promise<string[]> => {
+    if (since === undefined) return []
+    const second = new Date(Math.floor(Date.parse(since) / 1000) * 1000).toISOString()
+    const log = await git(root, ["log", `--since=${second}`, "--format=%H%x1f%B%x1e", parent, "--", ...allowPaths.map(literal)])
+    return log
+        .split("\x1e")
+        .map((entry) => entry.split("\x1f"))
+        .filter(([sha = "", body = ""]) => sha.trim() !== "" && !/^Starci-Task: /m.test(body))
+        .map(([sha = ""]) => sha.trim())
+}
+
+const landsDetail =(changed: readonly string[], missing: readonly string[]): string => {
     if (missing.length > 0) return `changed under allowPaths but not in the candidate, so they would never land: ${listed(missing)}`
     if (changed.length === 0) return "nothing changed under allowPaths; nothing lands"
     return `${String(changed.length)} file(s) land: ${listed(changed)}`
@@ -116,8 +137,10 @@ const landsDetail = (changed: readonly string[], missing: readonly string[]): st
 
 /**
  * Commits HEAD plus the work tree's allowPaths through a temporary index; the user's index and work tree stay
- * as they are. The `lands` outcome is red when a dirty or untracked file under allowPaths is missing from the candidate, so a
- * task can never settle "done, nothing landed" while its work sits in the tree.
+ * as they are. The `lands` outcome is red when work under allowPaths would not land through the harness: a dirty or untracked
+ * file missing from the candidate, or a commit made while the task ran (since its creation) that changed its allowPaths without the
+ * harness trailer (a worker that committed itself). A task never settles "done, nothing landed" while its work sits in the
+ * tree or in a commit nobody verified.
  */
 const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
     const { root, contract, message } = input
@@ -132,22 +155,24 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
         // What the work tree holds under allowPaths that the staged snapshot does not: read against that same temporary index
         // (index to work tree, plus files it does not know), so a file is never judged against a second, later look at HEAD.
         const scope = ["--", ...contract.context.allowPaths.map(literal)]
-        const unstaged = lines(await gitIndexedOk(root, index, ["diff", "--name-only", ...scope]))
-        const unknown = lines(await gitIndexedOk(root, index, ["ls-files", "--others", "--exclude-standard", ...scope]))
+        const unstaged = nulPaths(await gitIndexedOk(root, index, ["diff", "--name-only", "-z", ...scope]))
+        const unknown = nulPaths(await gitIndexedOk(root, index, ["ls-files", "--others", "--exclude-standard", "-z", ...scope]))
         const candidate = await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
-        const changed = lines(await git(root, ["diff", "--name-only", parent, candidate]))
+        const changed = nulPaths(await git(root, ["diff", "--name-only", "-z", parent, candidate]))
         const missing = [...new Set([...unstaged, ...unknown])].filter((file) => underPaths(file, contract.context.allowPaths)).sort((left, right) => left.localeCompare(right))
+        const foreign = await foreignCommits(root, input.since, parent, contract.context.allowPaths)
         const lands: CheckOutcome = {
             name: "lands",
             kind: "files",
-            status: missing.length === 0 ? "green" : "red",
+            status: missing.length === 0 && foreign.length === 0 ? "green" : "red",
             exitCode: null,
             detail: [
                 landsDetail(changed, missing),
+                ...(foreign.length === 0 ? [] : [`committed under allowPaths while the task ran, by someone other than the harness (no Starci-Task trailer), so the harness neither lands nor credits it: ${listed(foreign.map((sha) => sha.slice(0, 12)))}`]),
                 ...plan.notes,
             ].join("\n"),
         }
-        return { facts: { candidate, tree, parent, changed, paths: [...plan.whole, ...plan.trackedOnly], notes: plan.notes }, lands }
+        return { facts: { candidate, tree, parent, changed, foreign, paths: [...plan.whole, ...plan.trackedOnly], notes: plan.notes }, lands }
     } finally {
         rmSync(index, { force: true })
     }
@@ -203,7 +228,7 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
 }
 
 const removeWorktree = async (root: string, dir: string): Promise<void> => {
-    await captureTool("git", ["worktree", "remove", "--force", dir], root)
+    await captureGit(["worktree", "remove", "--force", dir], root)
     rmSync(dir, { recursive: true, force: true })
 }
 
@@ -214,15 +239,41 @@ const verifierPid = (dir: string): number | undefined => {
 
 /** Removes this repository's clean-verify checkouts whose verifier is gone (a killed verify leaves its worktree); returns them. */
 export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
-    const listing = await captureTool("git", ["worktree", "list", "--porcelain"], root)
+    const listing = await captureGit(["worktree", "list", "--porcelain"], root)
     const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => basename(dir).startsWith(VERIFY_PREFIX))
     const pruned = dirs.filter((dir) => {
         const pid = verifierPid(dir)
         return pid === undefined || (pid !== process.pid && !pidAlive(pid))
     })
     await inOrder(pruned, (dir) => removeWorktree(root, dir))
-    await captureTool("git", ["worktree", "prune"], root)
+    await captureGit(["worktree", "prune"], root)
     return pruned
+}
+
+/**
+ * The content gates every candidate meets whatever its contract says: the `secrets` and `loosening` gates of the project's
+ * runtime tier (policy/quality.yaml, its profile resolved from the project's hfs.json), run by the scanners of core/check on the
+ * candidate's checkout `dir` and judged on the files it changes. A finding, or a changed file too large to judge, is red.
+ */
+const policyGates = async (root: string, dir: string, changed: readonly string[]): Promise<CheckOutcome[]> => {
+    const policy = loadPolicy(root)
+    const profile = resolveProfile(policy, locateTree(root).root)
+    const gates: CheckOutcome[] = []
+    const outcome = (name: string, red: boolean, lines: readonly string[]): CheckOutcome => ({ name, kind: "gate", status: red ? "red" : "green", exitCode: null, detail: lines.join("\n") })
+    if (profile.profile.runtime.includes("secrets")) {
+        const report = scanSecrets(dir, changed, policy, profile.name, false)
+        gates.push(outcome("secrets", report.verdict === "red", describeSecrets(report)))
+    }
+    if (profile.profile.runtime.includes("loosening")) {
+        const touched = new Set(changed)
+        const report = await scanLoosening(dir, policy)
+        // Judged on the changed files only: a finding elsewhere, or an exception for a file this task never touched, is not its own.
+        const findings = report.findings.filter((finding) => touched.has(finding.file))
+        const unjudged = report.unjudged.filter((file) => touched.has(file))
+        const red = findings.length + unjudged.length > 0
+        gates.push(outcome("loosening", red, describeLoosening({ ...report, findings, unjudged, stale: [], verdict: red ? "red" : "green" })))
+    }
+    return gates
 }
 
 /** Verifies a task on a clean checkout of HEAD plus its allowPaths, so a dirty or lucky work tree can never turn a check green. */
@@ -243,7 +294,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
             ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
             ...(input.result === undefined ? {} : { result: input.result }),
         }
-        const checks: CheckOutcome[] = [built.lands]
+        const checks: CheckOutcome[] = [built.lands, ...(await policyGates(root, dir, built.facts.changed))]
         const installed = await install(place)
         if (installed !== undefined) checks.push(installed)
         const prepared = installed?.status === "red" ? undefined : await setUp(contract.context.setup ?? [], place)
@@ -257,6 +308,6 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         // A cleanup that fails (a file Windows still holds: EBUSY) must not replace the verdict; the next verify's
         // pruneVerifyWorktrees removes the folder once this pid is gone.
         await removeWorktree(root, dir).catch(() => undefined)
-        await captureTool("git", ["worktree", "prune"], root).catch(() => undefined)
+        await captureGit(["worktree", "prune"], root).catch(() => undefined)
     }
 }

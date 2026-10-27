@@ -22,7 +22,7 @@ the filed result, leases, check runs and preserved work. `seat list --live` asks
 | Seen | Cause | Do |
 | --- | --- | --- |
 | `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its leases and seat | `starci seat start <task> --resume` replays the same request; never send a second task |
-| `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, or died | if none lives: `starci task verify <task> --recover`, then step again |
+| `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, or died | the next `workflow step` recovers it once no verifier holds the settle lock; `starci task verify <task> --recover` does the same by hand |
 | `HEAD_MOVED`, `SETTLE_BUSY` | the branch moved or another settle runs | no try spent: step or verify again |
 | `LEASE_CONFLICT` | a live task holds an overlapping path | wait for it; never widen or steal the lease |
 | `running` with no result | the worker is working or lost | `starci seat ping <seat>`; `seat list` shows live, stale, quiet, unknown or lost. Unknown is never dead |

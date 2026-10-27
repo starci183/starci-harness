@@ -1,16 +1,32 @@
 import { resolve } from "node:path"
 import { Refusal } from "./errors.js"
-import { captureTool, runTool } from "./exec.js"
+import { captureTool, captureToolSync, runTool } from "./exec.js"
+import type { RunOptions, ToolRun } from "./exec.js"
+
+/**
+ * The configuration every harness git call runs under, whatever the user's config says: paths are printed as they are, never
+ * quoted or octal-escaped (core.quotePath), and Windows paths past 260 characters work (core.longpaths).
+ */
+const HARNESS_CONFIG = ["-c", "core.quotePath=false", "-c", "core.longpaths=true"] as const
+
+/** The one git runner: runs git under HARNESS_CONFIG and returns its exit code and output instead of throwing on a non-zero exit. */
+export const captureGit = (args: readonly string[], cwd: string, options: RunOptions = {}): Promise<ToolRun> => captureTool("git", [...HARNESS_CONFIG, ...args], cwd, options)
+
+/** captureGit for code that cannot await (opening the ledger); never throws. */
+export const captureGitSync = (args: readonly string[], cwd: string): ToolRun => captureToolSync("git", [...HARNESS_CONFIG, ...args], cwd)
 
 /** Runs git in `cwd` and returns its trimmed stdout, refusing when git fails. */
-export const git = async (cwd: string, args: readonly string[]): Promise<string> => (await runTool("git", args, cwd)).stdout
+export const git = async (cwd: string, args: readonly string[]): Promise<string> => (await runTool("git", [...HARNESS_CONFIG, ...args], cwd)).stdout
 
 /** True when the git command exits 0; for yes/no questions such as ancestry. */
-export const gitSucceeds = async (cwd: string, args: readonly string[]): Promise<boolean> => (await captureTool("git", args, cwd)).exitCode === 0
+export const gitSucceeds = async (cwd: string, args: readonly string[]): Promise<boolean> => (await captureGit(args, cwd)).exitCode === 0
+
+/** The paths of a `-z` listing (NUL-separated): a path is never quoted, trimmed or split on a newline it carries. */
+export const nulPaths = (listing: string): string[] => listing.split("\0").filter((path) => path !== "")
 
 /** The top directory of the repository that holds `cwd`. */
 export const repositoryRoot = async (cwd: string): Promise<string> => {
-    const root = await captureTool("git", ["rev-parse", "--show-toplevel"], cwd)
+    const root = await captureGit(["rev-parse", "--show-toplevel"], cwd)
     if (root.exitCode !== 0) throw new Refusal("GIT_NOT_A_REPOSITORY", `${cwd} is not inside a git repository`)
     return root.stdout
 }
@@ -28,7 +44,7 @@ export const samePath = (left: string, right: string): boolean => {
 }
 
 /** True when git compares paths of this repository without case (core.ignorecase), as on Windows and macOS by default. */
-export const ignoresCase = async (cwd: string): Promise<boolean> => (await captureTool("git", ["config", "--type=bool", "core.ignorecase"], cwd)).stdout === "true"
+export const ignoresCase = async (cwd: string): Promise<boolean> => (await captureGit(["config", "--type=bool", "core.ignorecase"], cwd)).stdout === "true"
 
 /** The newest commit reachable from `head` (after `since`, when given) whose message is exactly `message`; undefined when none. */
 export const commitWithMessage = async (cwd: string, head: string, message: string, since?: string): Promise<string | undefined> => {

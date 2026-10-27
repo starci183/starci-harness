@@ -1,5 +1,6 @@
 import { Refusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
+import { git } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 
@@ -65,7 +66,7 @@ export const ciStatusVerb = defineVerb({
         sha: { kind: "string", summary: "the commit to judge (default: HEAD of the working directory)" },
     },
     run: async (context, flags) => {
-        const sha = flags.sha ?? (await runTool("git", ["rev-parse", "HEAD"], context.cwd)).stdout
+        const sha = flags.sha ?? (await git(context.cwd, ["rev-parse", "HEAD"]))
         const listed = await runTool("gh", ["run", "list", "--commit", sha, "--json", "name,status,conclusion,url,databaseId", "--limit", "50"], context.cwd)
         const runs = parseRuns(listed.stdout)
         const verdict = verdictOf(runs)

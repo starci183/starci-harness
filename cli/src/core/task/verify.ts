@@ -7,6 +7,7 @@ import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.j
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
 import { now, openExistingLedger, openLedger } from "../../harness/ledger.js"
+import { loadLiveness } from "../../harness/liveness.js"
 import { assertLeasesHeld, inTransaction, releaseLeases } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import type { Ops } from "../../harness/ops.js"
@@ -165,7 +166,7 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
         )
     }
     if (task.status === "verifying") {
-        throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is verifying already; if no verifier is alive any more, put it back with: starci task verify ${task.id} --recover`)
+        throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is verifying already; once no verifier holds the settle lock the next workflow step recovers it (by hand: starci task verify ${task.id} --recover)`)
     }
     if (task.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is ${task.status}; only a reported task is verified and settled`)
     const result = resultOf(db, attempt.id)
@@ -175,12 +176,35 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
     return attempt
 }
 
-/** A verify that reached no verdict (it broke, or HEAD moved under the settle) puts the task back to reported; no try is spent. */
-const noVerdict = (db: DatabaseSync, taskId: string, kind: string, error: unknown): Refusal => {
+/** The events of a verify that reached no verdict. */
+const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused"] as const
+
+/**
+ * A verify that reached no verdict (it broke, or HEAD moved under the settle) puts the task back to reported; no try is spent.
+ * Once the attempt's result has reached no verdict `settleNoVerdictMax` times (ops/liveness.yaml), the failure is persistent
+ * (a path git cannot write, a broken checkout): the task ends awaiting_owner with the last reason, its leases released and its
+ * work left in the work tree, instead of returning to reported for a step to retry forever.
+ */
+const noVerdict = (db: DatabaseSync, taskId: string, attemptId: string, kind: string, error: unknown): Refusal => {
     const refusal = asRefusal(error)
     recordEvent(db, kind, taskId, { error: refusal.message, code: refusal.code })
-    setStatus(db, taskId, "reported")
-    return new Refusal(refusal.code, `${refusal.message}\ntask ${taskId} is reported again (no verdict, no try spent); run starci task verify ${taskId} again`)
+    const since = resultOf(db, attemptId)?.filedAt ?? ""
+    const marks = NO_VERDICT_KINDS.map(() => "?").join(", ")
+    const ends = Number(db.prepare(`SELECT COUNT(*) AS n FROM events WHERE subject = ? AND kind IN (${marks}) AND at >= ?`).get(taskId, ...NO_VERDICT_KINDS, since)?.n ?? 0)
+    const max = loadLiveness().settleNoVerdictMax
+    if (ends < max) {
+        setStatus(db, taskId, "reported")
+        return new Refusal(refusal.code, `${refusal.message}\ntask ${taskId} is reported again (no verdict ${String(ends)} of ${String(max)}, no try spent); run starci task verify ${taskId} again`)
+    }
+    inTransaction(db, () => {
+        setStatus(db, taskId, "awaiting_owner", "verifying")
+        recordEvent(db, "verify-stuck", taskId, { ends, code: refusal.code, reason: refusal.message })
+        releaseLeases(db, taskId)
+    })
+    return new Refusal(
+        refusal.code,
+        `${refusal.message}\ntask ${taskId} reached no verdict ${String(ends)} times in a row: it is awaiting_owner, its work left in the work tree; fix the cause and send a retry (starci task send <contract> --retry-of ${taskId})`,
+    )
 }
 
 /** How a settling verify ended the task: what it settled, preserved and released, and which seats it closed. */
@@ -314,7 +338,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
         if (!commit) {
             const built = await cleanVerify(input)
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
-            recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, settle: false })
+            recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: false })
             return reply(taskId, attempt, task, built, { ...unsettled, status: getTask(db, taskId).status }, false, pruned)
         }
         await settleBranch(root)
@@ -332,10 +356,10 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             try {
                 built = await cleanVerify(input)
             } catch (error: unknown) {
-                throw noVerdict(db, taskId, "verify-error", error)
+                throw noVerdict(db, taskId, attempt.id, "verify-error", error)
             }
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
-            recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, settle: true })
+            recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: true })
             if (built.verdict === "red") {
                 let preserved: Preserved
                 let repair: string | null = null
@@ -343,7 +367,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
                     preserved = await preserveTaskPaths(root, fresh, db)
                 } catch (error: unknown) {
                     // Saved but not all put back: the verdict stands, the leases stay under a repair intent (--recover finishes it).
-                    if (!(error instanceof PreserveIncomplete)) throw noVerdict(db, taskId, "preserve-failed", error)
+                    if (!(error instanceof PreserveIncomplete)) throw noVerdict(db, taskId, attempt.id, "preserve-failed", error)
                     repair = error.dir
                     preserved = { dir: error.dir, patch: null, tracked: [], untracked: [] }
                 }
@@ -357,7 +381,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             try {
                 settlement = await settle(root, built, fresh)
             } catch (error: unknown) {
-                throw noVerdict(db, taskId, "settle-refused", error)
+                throw noVerdict(db, taskId, attempt.id, "settle-refused", error)
             }
             // The branch moved: from here the task is done whatever else happens (a crash here is reconciled by --recover from git).
             const leasesReleased = finishTask(db, taskId, attempt.id, settlement, "task-settled", settlement)

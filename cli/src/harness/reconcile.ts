@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
-import { captureTool, headline } from "../shared/exec.js"
-import { git } from "../shared/git.js"
+import { headline } from "../shared/exec.js"
+import { captureGit, git } from "../shared/git.js"
 import { normaliseRepoPath, parseContract } from "./contract.js"
 import type { Contract } from "./contract.js"
 import { LIVE_STATES, REVERT_PREFIX, isGeneratedKey, nodeHashOf, sha } from "./graph.js"
@@ -29,7 +29,7 @@ const settledAt = async (root: string, db: DatabaseSync, taskId: string, recorde
     if (recorded !== null && recorded !== "") return { landed: recorded, tree: recorded }
     const event = lastEvent(db, "task-settled", taskId) as { readonly commit?: unknown; readonly committed?: unknown } | undefined
     if (event !== undefined && typeof event.commit === "string") return { landed: event.committed === true ? event.commit : null, tree: event.commit }
-    const found = await captureTool("git", ["log", "--all", "-n", "1", "--format=%H", "--fixed-strings", `--grep=Starci-Task: ${taskId}`], root)
+    const found = await captureGit(["log", "--all", "-n", "1", "--format=%H", "--fixed-strings", `--grep=Starci-Task: ${taskId}`], root)
     const commit = found.exitCode === 0 ? found.stdout.trim() : ""
     return commit === "" ? { landed: null, tree: null } : { landed: commit, tree: commit }
 }
@@ -38,7 +38,7 @@ const settledAt = async (root: string, db: DatabaseSync, taskId: string, recorde
 const treeListing = async (root: string, commit: string, paths: readonly string[]): Promise<string> => {
     const normal = [...new Set(paths.map(normaliseRepoPath))].sort((a, b) => (a < b ? -1 : Number(a > b)))
     const scoped = normal.includes(".") ? [] : normal
-    const listed = await captureTool("git", ["ls-tree", "-r", "--full-tree", commit, "--", ...scoped], root)
+    const listed = await captureGit(["ls-tree", "-r", "--full-tree", commit, "--", ...scoped], root)
     if (listed.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `git ls-tree ${commit} failed: ${headline(listed.stderr)}`)
     return listed.stdout
 }
@@ -185,9 +185,9 @@ export const revertTask = (dropped: PlanNode, commits: readonly string[]): PlanT
  */
 export const revertCommits = async (root: string, commits: readonly string[]): Promise<void> => {
     await inOrder(commits, async (commit) => {
-        const reverted = await captureTool("git", ["revert", "--no-commit", commit], root)
+        const reverted = await captureGit(["revert", "--no-commit", commit], root)
         if (reverted.exitCode !== 0) {
-            await captureTool("git", ["revert", "--abort"], root)
+            await captureGit(["revert", "--abort"], root)
             throw new Refusal("REVERT_CONFLICT", `git revert of ${commit.slice(0, 12)} does not apply cleanly: ${headline(reverted.stderr)}; the revert node goes to a worker`)
         }
     })
