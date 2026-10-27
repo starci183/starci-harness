@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, relative, resolve, sep } from "node:path"
 import { parse } from "yaml"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
-import { listPackages, ownerOf } from "../../shared/workspace.js"
+import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { CONFIG_FILES } from "./canon.js"
 import { braceVariants } from "./sonar-scope.js"
@@ -76,6 +76,8 @@ const LINTABLE = /\.(?:[cm]?[jt]sx?)$/
 
 const OUTPUT_LINES = 60
 
+const toSlash = (path: string): string => path.split(sep).join("/")
+
 /** The tracked files under the given repository paths, NUL-separated so no path is quoted or cut. */
 const trackedUnder = async (root: string, paths: readonly string[]): Promise<string[]> =>
     paths.length === 0 ? [] : nulPaths(await git(root, ["ls-files", "-z", "--", ...paths.map((path) => `:(top,literal)${path}`)]))
@@ -125,18 +127,48 @@ export const typecheckPackage = async (scope: Scope, target: ScopeTarget, option
     return { package: pkg.name, step: "typecheck", command: "tsc -p tsconfig.json --noEmit", status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
 }
 
-/** ESLint over the judged source files of the package (every file with --all), warnings counted as errors. */
+
+
+/**
+ * The flat config ESLint itself resolves for a package folder: the nearest `eslint.config.*` from the folder upward, stopping at
+ * the repository root. Undefined when no folder on the way holds one.
+ */
+export const resolveEslintConfig = (root: string, dir: string): { readonly dir: string; readonly file: string } | undefined => {
+    for (let current = dir; ; current = dirname(current)) {
+        const file = ESLINT_CONFIGS.find((name) => existsSync(join(current, name)))
+        if (file !== undefined) return { dir: current, file }
+        if (resolve(current) === resolve(root) || dirname(current) === current) return undefined
+    }
+}
+
+/** Whether the package has any source ESLint would judge: a judged file of the target, or with --all a tracked source file under its folder. */
+const hasSource = async (scope: Scope, target: ScopeTarget): Promise<boolean> => {
+    if (target.files.some((file) => LINTABLE.test(file))) return true
+    if (!scope.all) return false
+    const under = target.pkg.relativeDir === "." ? [] : [target.pkg.relativeDir]
+    return (await trackedUnder(scope.root, under)).some((file) => LINTABLE.test(file))
+}
+
+/** ESLint over the judged source files of the package with the nearest config up to the repository root (every file with --all), warnings counted as errors. */
 export const lintPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
     const { pkg } = target
-    if (!pkg.hasEslintConfig) return skipped(pkg, "lint", "no eslint.config.*")
-    const eslint = localBin(scope, pkg, join("eslint", "bin", "eslint.js"))
+    const config = resolveEslintConfig(scope.root, pkg.dir)
+    if (config === undefined) {
+        if (!(await hasSource(scope, target))) return skipped(pkg, "lint", "no source file and no eslint.config.*")
+        return { package: pkg.name, step: "lint", command: "-", status: "red", reason: "LINT_CONFIG_MISSING: source files and no eslint.config.* in the package or any folder up to the repository root", output: "" }
+    }
+    const eslint = [pkg.dir, config.dir, scope.root].map((dir) => join(dir, "node_modules", "eslint", "bin", "eslint.js")).find((candidate) => existsSync(candidate))
     if (eslint === undefined) return skipped(pkg, "lint", "eslint is not installed (run npm ci)")
     const prefix = pkg.relativeDir === "." ? "" : `${pkg.relativeDir}/`
     const files = target.files.filter((file) => LINTABLE.test(file) && existsSync(join(scope.root, file))).map((file) => file.slice(prefix.length))
     if (!scope.all && files.length === 0) return skipped(pkg, "lint", "no judged source file")
-    const paths = scope.all ? ["."] : files
-    const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], pkg.dir, options)
-    return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 ${paths.join(" ")}`, status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
+    // ESLint runs in the folder of the config it resolved, so the config's file globs and ignores match the package's files.
+    const fromConfig = toSlash(relative(config.dir, pkg.dir))
+    const rooted = (path: string): string => (fromConfig === "" ? path : path === "." ? fromConfig : `${fromConfig}/${path}`)
+    const paths = (scope.all ? ["."] : files).map(rooted)
+    const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], config.dir, options)
+    const counted = scope.all ? "whole package" : `${String(files.length)} file(s)`
+    return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 ${paths.join(" ")}`, status: run.exitCode === 0 ? "green" : "red", reason: `config ${relative(scope.root, join(config.dir, config.file)).split(sep).join("/")}, ${counted} linted`, output: tail(run) }
 }
 
 /** The parenthesised reason of a step, empty when it has none. */
