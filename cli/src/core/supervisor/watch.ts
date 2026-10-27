@@ -27,7 +27,7 @@ export const supervisorWatchVerb = defineVerb({
             const tick = await supervisorTick(context)
             ticks.push(tick)
             const lines = tick.actions.length === 0 ? "" : `\n  ${tick.actions.join("\n  ")}`
-            context.progress(`${new Date().toISOString()} tick ${String(pass)}: ${tick.swept ? "swept" : "not swept"}${lines}`)
+            context.progress(`${new Date().toISOString()} tick ${String(pass)}: ${tick.swept.length === 0 ? "nothing swept" : `swept ${tick.swept.join(", ")}`}${lines}`)
             if (pass < limit) await sleep(seconds * 1000)
         }
         return { data: { ticks: ticks.length, last: ticks.at(-1) ?? null }, message: `supervisor watch: ${String(ticks.length)} tick(s)` }

@@ -1,0 +1,95 @@
+schema: starci/scenario@1
+id: supervisor-host-adoption
+group: upgrade
+title: "a workflow whose Kernel the host Supervisor of a version-2 host store launched is adopted by its project's Supervisor"
+inject: >-
+  the host store still holds its version-2 host Supervisor (table supervisors, live, its terminal alive) and a running workflow's
+  Kernel sits in that host Supervisor's Run; the scheduled tick runs, then the host Supervisor's terminal is closed
+expect: >-
+  the first tick records the workflow as its project's Supervisor's (one workflow-coordinator event naming adoptedFrom) and leaves
+  its live Kernel in the host Run; a second tick adds nothing; once Orca reports the host terminal gone, the tick retires the host
+  row (ended, never deleted) and relaunches the Kernel into the project Supervisor's Run
+pass:
+  - adopted once, Kernel left running while the host Supervisor's terminal lives
+  - the Kernel relaunched into the project Supervisor's Run only after that terminal is gone
+  - the host Supervisor row retired, kept
+  - "no step without evidence: every state change in the ledger has its event"
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: old
+        goal: write doc old
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc old
+            allowPaths: [docs/old.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/old.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: old
+  - name: the host store still holds its version-2 host Supervisor, whose Run the Kernel was launched into
+    sql:
+      db: machine
+      exec: >-
+        CREATE TABLE supervisors (id TEXT PRIMARY KEY, terminal TEXT, run_id TEXT, task_id TEXT, agent TEXT NOT NULL,
+        model TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, lease_until TEXT, launch_op TEXT, launch_json TEXT);
+        INSERT INTO supervisors (id, terminal, run_id, task_id, agent, model, started_at)
+        VALUES ('host-1', 'term-host', 'run-host', 'task-host', 'claude', 'opus', '2026-10-01T00:00:00.000Z')
+  - sql:
+      db: ledger
+      exec: UPDATE seats SET run_id = 'run-host' WHERE role = 'kernel'
+  - orca:
+      terminal:
+        handle: term-host
+        live: true
+  - name: the first tick adopts the workflow and leaves its Kernel where it is
+    starci: [supervisor, tick]
+    expect:
+      contains: "old: adopted from the host Supervisor host-1"
+  - starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'workflow-coordinator' AND data_json LIKE '%adoptedFrom%'"
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\] old$'
+        count: 1
+  - name: the owner closes the host Supervisor's terminal
+    orca:
+      terminal:
+        handle: term-host
+        live: false
+  - starci: [supervisor, tick]
+    expect:
+      contains: "old: relaunched its Kernel"
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM supervisors WHERE id = 'host-1' AND ended_at IS NOT NULL
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\] old$'
+          run: ^${supervisor.run}$
+        count: 2
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT run_id FROM seats WHERE role = 'kernel' AND ended_at IS NULL"
+        equals: ["${supervisor.run}"]

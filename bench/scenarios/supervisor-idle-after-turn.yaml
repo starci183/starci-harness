@@ -68,7 +68,7 @@ steps:
         UPDATE events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-21 minutes')
   - sql:
       db: machine
-      exec: UPDATE supervisors SET lease_until = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+25 minutes') WHERE ended_at IS NULL
+      exec: UPDATE project_supervisors SET lease_until = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+25 minutes') WHERE ended_at IS NULL
   - name: the owner's scheduled tick
     starci: [supervisor, tick]
     expect:
@@ -97,5 +97,5 @@ steps:
   - assert:
       sql:
         db: machine
-        query: SELECT COUNT(*) FROM supervisors
+        query: SELECT COUNT(*) FROM project_supervisors
         equals: [1]

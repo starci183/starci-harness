@@ -1,9 +1,9 @@
 schema: starci/scenario@1
 id: conflict-split-brain-supervisor
 group: conflict
-title: two Supervisors on one host
-inject: supervisor next from two processes
-expect: one Supervisor lease per host; the second is refused; owner mail goes to one
+title: two Supervisors of one project
+inject: supervisor next of one project from two processes
+expect: one Supervisor lease per project; the second is refused; owner mail goes to one
 pass:
   - one supervisor seat live
   - "no step without evidence: every state change in the ledger has its event"

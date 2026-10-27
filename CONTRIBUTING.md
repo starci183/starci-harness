@@ -161,6 +161,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | the edition decides who codes (lite by chat, full by ops) | the runner (`orca` or `inline`) is chosen per workflow or task |
 | the qualification and probation store, admission reason codes | qualification the router derives from member outcomes (`qualification` of `ops/routing.yaml`) |
 | a workflow or task pin (`agent`, `model`, `effort`), a routing bias (`only`, `avoid`, `prefer`), `ROUTE_BIAS_EMPTY` | the router alone picks, from a task's label, `difficulty` and `risk` |
+| one Supervisor per host, a `[Supervisor]` title with no project | one `[Supervisor] <project>` per project (`project_supervisors`); a version-2 host store's `supervisors` table is read only to adopt its workflows |
 | `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in contexts/harness/decisions.md |
 
 ## Commit and push

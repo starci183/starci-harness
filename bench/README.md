@@ -25,18 +25,22 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   or, while it waits for verbs or a person, the `pending` reason with the exact `manual` steps. A scenario that exposes a
   harness defect names it in `finding` with the file:line that owns it and stays red until the harness changes; its
   assertions are never weakened to pass.
-- **An orca workflow runs on the coordinator tree, booted through real verbs.** A `boot` step runs `supervisor start` and
-  `supervisor attach` once per run, then `workflow define <file>`, `workflow start <workflow>` from the Supervisor's
-  terminal and `kernel attach` from the terminal the Kernel's launch got; `boot.adopt` attaches a workflow's current Kernel
-  seat (one `supervisor next` relaunched). It saves `supervisor.{launch,terminal,run}`, `kernel.<workflow>.{launch,terminal,run}`
-  and `worktree.<workflow>`. A verb step's `seat` (`supervisor` or `kernel:<workflow>`) runs it in that seat's terminal
-  (`ORCA_TERMINAL_HANDLE`) and role, a Kernel from its workflow's worktree; `kernel next <workflow> --wait 0` and
+- **An orca workflow runs on the coordinator tree, booted through real verbs.** A scenario's `repos` adds repositories
+  beside the scratch one (`<run>/<name>`, `${repo.<name>}`), each a project of its own unless its `hfs.json` names a Work
+  root. A `boot` step runs `supervisor start` and `supervisor attach` once per project (`boot.project`, default the
+  scratch repository's), then `workflow define <file>` and `workflow start <workflow>` in the workflow's repository
+  (`boot.in`, default the project's) from that Supervisor's terminal, and `kernel attach` from the terminal the Kernel's
+  launch got; `boot.adopt` attaches a workflow's current Kernel seat (one `supervisor next` relaunched). It saves
+  `supervisor.{launch,terminal,run}` (`supervisor.<repo>.*` for another repository's project),
+  `kernel.<workflow>.{launch,terminal,run}` and `worktree.<workflow>`. A verb step's `seat` (`supervisor`,
+  `supervisor:<repo>` or `kernel:<workflow>`) runs it in that seat's terminal (`ORCA_TERMINAL_HANDLE`) and role, a
+  Supervisor from its project's repository and a Kernel from its workflow's worktree; `kernel next <workflow> --wait 0` and
   `kernel submit` drive the workflow, and command files are written with `file`.
 - **Steps** call a verb (`starci`, with `seat`, `expect`, `save` and `parallel`), boot the tree (`boot`), write files
   (`file`, `write`), act as a worker (`worker` writes its files in the task's checkout, the workflow's worktree, and files
   its result there), read a ledger value into a variable (`read`), run git, script the Orca stand-in (`orca`), inject a
   fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), and `assert` on the
-  ledger, git (`in` another checkout such as `${worktree.<workflow>}`), the stand-in's call log (`orcaCalls`, `match`
+  ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`), the stand-in's call log (`orcaCalls`, `match`
   filtering by flag) or the file system. `when` and `unless` tie a step to a `--fault`.
 - **The Orca stand-in** is `stub/orca-stub.mjs`: the runner copies this node binary to `<state base>/bench/bin/orca` and
   points `STARCI_ORCA_BIN` at it, and the stub, preloaded into it, answers the orca CLI subset the harness calls: `agent
@@ -72,6 +76,8 @@ design asks for.
 | [lifecycle-orca-single-op](scenarios/lifecycle-orca-single-op.yaml) | lifecycle | fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed | automated | pass | 2026-10-27 |
 | [lifecycle-resume-after-restart](scenarios/lifecycle-resume-after-restart.yaml) | lifecycle | a workflow resumes from the ledger alone after every harness process restarted | automated | pending |  |
 | [lifecycle-supervisor-handoff](scenarios/lifecycle-supervisor-handoff.yaml) | lifecycle | a finished workflow hands off to the Supervisor, who lands it | automated | pending |  |
+| [project-fe-workflow-under-be-supervisor](scenarios/project-fe-workflow-under-be-supervisor.yaml) | lifecycle | a side (FE) repository's workflow runs under the Supervisor of the project whose Work its hfs.json names | automated | pass | 2026-10-27 |
+| [supervisor-per-project-two-projects](scenarios/supervisor-per-project-two-projects.yaml) | lifecycle | two projects on one host: two Supervisors, each launching and sweeping only its own project's workflows | automated | pass | 2026-10-27 |
 | [crash-after-commit-before-ledger](scenarios/crash-after-commit-before-ledger.yaml) | crash | killed between the harness commit and the ledger write: no second commit | automated | pass | 2026-10-27 |
 | [crash-kernel-during-replan](scenarios/crash-kernel-during-replan.yaml) | crash | the CLI dies halfway through applying a replan | automated | pending |  |
 | [crash-kernel-mid-step](scenarios/crash-kernel-mid-step.yaml) | crash | the CLI dies after the dispatch claim and before the Orca call | automated | pending |  |
@@ -115,12 +121,13 @@ design asks for.
 | [change-stale-dependency-kernel-decides](scenarios/change-stale-dependency-kernel-decides.yaml) | change | a dependency lands a different result: dependents become stale, never auto-cancelled | automated | pending |  |
 | [change-touches-running-node](scenarios/change-touches-running-node.yaml) | change | the change edits a task while it runs (redo-live) | automated | pending |  |
 | [change-while-verify-settling](scenarios/change-while-verify-settling.yaml) | change | an amend arrives while a task's verify is settling | automated | pending |  |
+| [kernel-cannot-drop-owner-deliverable](scenarios/kernel-cannot-drop-owner-deliverable.yaml) | change | a Kernel's replan cannot drop a task of the owner's goal; a replacement or the Supervisor's goal-change can | automated | pass | 2026-10-27 |
 | [conflict-lease-case-insensitive](scenarios/conflict-lease-case-insensitive.yaml) | conflict | Docs/A.md and docs/a.md are one file on Windows and macOS: one lease | automated | pass | 2026-10-27 |
 | [conflict-lease-overlap](scenarios/conflict-lease-overlap.yaml) | conflict | two live tasks over the same path: the second is refused LEASE_CONFLICT | automated | pass | 2026-10-27 |
 | [conflict-scope-blocked](scenarios/conflict-scope-blocked.yaml) | conflict | a worker needing a path outside its scope files blocked, never widens | automated | pass | 2026-10-27 |
 | [conflict-scope-exceeded-escalates](scenarios/conflict-scope-exceeded-escalates.yaml) | conflict | the Kernel needs a path past its scope ceiling: refused SCOPE_EXCEEDED, escalated (kind scope), widened by the Supervisor | automated | pass | 2026-10-27 |
 | [conflict-second-worktree-same-ledger](scenarios/conflict-second-worktree-same-ledger.yaml) | conflict | a linked worktree of the repository sees the same ledger | automated | pass | 2026-10-27 |
-| [conflict-split-brain-supervisor](scenarios/conflict-split-brain-supervisor.yaml) | conflict | two Supervisors on one host | automated | pending |  |
+| [conflict-split-brain-supervisor](scenarios/conflict-split-brain-supervisor.yaml) | conflict | two Supervisors of one project | automated | pending |  |
 | [conflict-two-kernels-one-workflow](scenarios/conflict-two-kernels-one-workflow.yaml) | conflict | two Kernel seats claim the same workflow | automated | pending |  |
 | [conflict-two-workflows-same-path](scenarios/conflict-two-workflows-same-path.yaml) | conflict | two workflows in one repository want the same path: the second waits, then runs | automated | pass | 2026-10-27 |
 | [worker-claims-done-without-output](scenarios/worker-claims-done-without-output.yaml) | worker | done with no output file is refused | automated | pass | 2026-10-27 |
@@ -147,6 +154,7 @@ design asks for.
 | [budget-tries-exhausted-then-raised](scenarios/budget-tries-exhausted-then-raised.yaml) | budget | a workflow out of tries holds dispatch until a raise, then resumes | automated | pass | 2026-10-27 |
 | [verify-clean-checkout-not-worker-env](scenarios/verify-clean-checkout-not-worker-env.yaml) | verify | a check that passes only in the worker's environment is red on the clean checkout | automated | pass | 2026-10-27 |
 | [verify-flaky-test](scenarios/verify-flaky-test.yaml) | verify | a check fails then passes on the same tree | automated | pending |  |
+| [verify-only-task-settles-on-observed-evidence](scenarios/verify-only-task-settles-on-observed-evidence.yaml) | verify | a task whose audit finds nothing to change settles green on the checks over its allowPaths, with no commit | automated | pass | 2026-10-27 |
 | [verify-probe-target-down](scenarios/verify-probe-target-down.yaml) | verify | a probe check's target is down | automated | pending |  |
 | [verify-red-preserves-and-resets](scenarios/verify-red-preserves-and-resets.yaml) | verify | a red verify preserves the work, resets the paths and commits nothing | automated | pass | 2026-10-27 |
 | [verify-slow-suite](scenarios/verify-slow-suite.yaml) | verify | a check runs past its deadline | automated | pending |  |
@@ -187,6 +195,7 @@ design asks for.
 | [resources-unicode-path](scenarios/resources-unicode-path.yaml) | resources | a repository under a Vietnamese path with spaces runs end to end | automated | pass | 2026-10-27 |
 | [orca-reply-schema-changed](scenarios/orca-reply-schema-changed.yaml) | upgrade | an upgraded Orca answers worker-start in a shape this CLI cannot read | automated | pass | 2026-10-27 |
 | [orca-restarted-handles-invalid](scenarios/orca-restarted-handles-invalid.yaml) | upgrade | Orca restarts and every terminal handle and dispatch is unknown to it | semi | pending |  |
+| [supervisor-host-adoption](scenarios/supervisor-host-adoption.yaml) | upgrade | a workflow whose Kernel the host Supervisor of a version-2 host store launched is adopted by its project's Supervisor | automated | pass | 2026-10-27 |
 | [upgrade-intermediate-ledger-read-verb](scenarios/upgrade-intermediate-ledger-read-verb.yaml) | upgrade | a ledger migrated by an intermediate build opens through a read verb | automated | pass | 2026-10-27 |
 | [upgrade-ledger-newer-refused](scenarios/upgrade-ledger-newer-refused.yaml) | upgrade | an older CLI meeting a newer ledger refuses LEDGER_NEWER and never downgrades it | automated | pass | 2026-10-27 |
 | [upgrade-migration-while-seats-run](scenarios/upgrade-migration-while-seats-run.yaml) | upgrade | the CLI is upgraded and migrates the ledger while seats run | automated | pending |  |

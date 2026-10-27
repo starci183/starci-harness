@@ -7,7 +7,7 @@ import type { OrcaBinary, WorkerClosed } from "./orca/client.js"
 import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
 
-/** Who a seat is: a worker (an Op), or a workflow's Kernel (one seat row per Kernel launch). The host Supervisor lives in machine.sqlite. */
+/** Who a seat is: a worker (an Op), or a workflow's Kernel (one seat row per Kernel launch). A project's Supervisor lives in machine.sqlite. */
 export type SeatRole = "worker" | "kernel" | "supervisor" | "debug"
 
 /** The status of a seat whose launch failed and whose leftovers were cleaned up (or never existed). */

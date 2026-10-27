@@ -96,11 +96,11 @@ steps:
       contains: '"action": "started"'
   - read:
       db: machine
-      query: SELECT id FROM supervisors WHERE ended_at IS NULL
+      query: SELECT id FROM project_supervisors WHERE ended_at IS NULL
       as: supervisor.launch
   - read:
       db: machine
-      query: SELECT terminal FROM supervisors WHERE ended_at IS NULL
+      query: SELECT terminal FROM project_supervisors WHERE ended_at IS NULL
       as: supervisor.terminal
   - seat: supervisor
     starci: [supervisor, attach, --launch, "${supervisor.launch}"]
@@ -149,7 +149,7 @@ steps:
   - assert:
       sql:
         db: machine
-        query: SELECT COUNT(*) FROM supervisors
+        query: SELECT COUNT(*) FROM project_supervisors
         equals: [2]
   - assert:
       sql:
