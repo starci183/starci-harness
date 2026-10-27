@@ -1,0 +1,81 @@
+schema: starci/scenario@1
+id: crash-after-commit-before-ledger
+group: crash
+title: "killed between the harness commit and the ledger write: no second commit"
+inject: the task's commit with its Starci-Task trailer is in git, the ledger still says verifying
+expect: "recovery reads git as the authority for landed: the task becomes done from the trailer, no second commit, no redo"
+pass:
+  - task done
+  - exactly one commit with the trailer
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: land
+        goal: bench workflow land
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - land
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - git:
+      - add
+      - docs/a.md
+  - git:
+      - commit
+      - -q
+      - -m
+      - "docs: write doc a"
+      - -m
+      - "Starci-Task: ${a}"
+  - sql:
+      db: ledger
+      exec: UPDATE tasks SET status = 'verifying'
+  - name: step
+    starci:
+      - workflow
+      - step
+      - land
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1

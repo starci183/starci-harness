@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: cost-task-burns-pool-quota
+group: cost
+title: one task burns the pool's quota
+inject: quota reading 95% after one task
+expect: the router stops placing new work on that pool; the task's budget is charged
+pass:
+  - route explain drops the pool at quota
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - provider report --quota 95 --pool claude
+  - route explain

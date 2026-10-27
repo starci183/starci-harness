@@ -1,0 +1,86 @@
+schema: starci/scenario@1
+id: lifecycle-orca-single-op
+group: lifecycle
+title: "fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed"
+inject: "nothing: the orca reference run on the Orca stand-in"
+expect: a [Kernel] terminal, Run and task; the Op launches under the Kernel's Run; after its result the step verifies, commits, releases the worker and closes its tab; the done workflow's Kernel terminal is closed
+pass:
+  - task done, workflow done
+  - one task commit
+  - worker-start under --run and --parent
+  - worker-release and terminal close called
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: one
+        goal: bench workflow one
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - one
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - name: step
+    starci:
+      - workflow
+      - step
+      - one
+    save: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals:
+          - done
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-release
+        min: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        min: 1

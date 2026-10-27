@@ -1,0 +1,89 @@
+schema: starci/scenario@1
+id: owner-stop-hard-closes-seats
+group: owner
+title: "owner stops a running orca workflow hard: tasks cancelled, seats and Kernel closed"
+inject: workflow stop --hard while two seats run
+expect: every live task cancelled, its worker stopped and released, its lease released; the Kernel terminal the harness made is closed
+pass:
+  - workflow stopped
+  - no lease
+  - worker-stop called per seat
+  - terminal close called for the Kernel
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: halt
+        goal: bench workflow halt
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - halt
+    save: {}
+  - starci:
+      - workflow
+      - stop
+      - halt
+      - --hard
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals:
+          - stopped
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM leases
+        equals:
+          - 0
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT DISTINCT status FROM tasks
+        equals:
+          - cancelled
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        min: 2
+  - assert:
+      orcaCalls:
+        command: terminal close
+        min: 1

@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: cost-runaway-token-loop
+group: cost
+title: a worker loops spending tokens without progress
+inject: a model repeating the same tool call
+expect: budget minutes fence it; the router learns
+pass:
+  - timeout
+  - provider event
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: a live Orca beside the bench (semi)
+manual:
+  - live Orca with a looping prompt

@@ -1,0 +1,43 @@
+schema: starci/scenario@1
+id: provider-quota-until-date
+group: provider
+title: "a pool is exhausted until a reset date: rerouted, not stalled, until that date"
+inject: provider report codex --outcome quota --resets-at 2099-11-21T00:00:00Z
+expect: codex is dropped by quota until the named date; the router picks another member; the date is shown
+pass:
+  - route explain still chooses an agent
+  - the drop names the reset date
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - starci:
+      - provider
+      - report
+      - codex
+      - --outcome
+      - quota
+      - --resets-at
+      - 2099-11-21T00:00:00Z
+      - --detail
+      - usage limit until 2099-11-21
+  - starci:
+      - route
+      - explain
+      - --label
+      - code
+    expect:
+      exit: 0
+      contains: 2099-11-21
+    save:
+      chosen: data.chosen.agent
+  - starci:
+      - route
+      - explain
+      - --label
+      - code
+      - --avoid
+      - codex
+    expect:
+      exit: 0

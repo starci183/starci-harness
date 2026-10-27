@@ -1,0 +1,651 @@
+schema: starci/scenario@1
+id: scale-fanout-60-inline
+group: scale
+title: "sixty independent tasks: inline queues exactly one at a time"
+inject: a workflow of 60 independent docs tasks under the inline runner
+expect: define records 60 nodes; start queues one task and leases only its paths; nothing else holds a lease
+pass:
+  - 60 plan nodes at graph v1
+  - exactly one ledger task and its one lease after start
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: fan
+        goal: bench workflow fan
+        runner: inline
+        tasks:
+          - id: n00
+            label: docs
+            summary: write doc n00
+            allowPaths:
+              - docs/n00.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n00.md
+          - id: n01
+            label: docs
+            summary: write doc n01
+            allowPaths:
+              - docs/n01.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n01.md
+          - id: n02
+            label: docs
+            summary: write doc n02
+            allowPaths:
+              - docs/n02.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n02.md
+          - id: n03
+            label: docs
+            summary: write doc n03
+            allowPaths:
+              - docs/n03.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n03.md
+          - id: n04
+            label: docs
+            summary: write doc n04
+            allowPaths:
+              - docs/n04.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n04.md
+          - id: n05
+            label: docs
+            summary: write doc n05
+            allowPaths:
+              - docs/n05.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n05.md
+          - id: n06
+            label: docs
+            summary: write doc n06
+            allowPaths:
+              - docs/n06.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n06.md
+          - id: n07
+            label: docs
+            summary: write doc n07
+            allowPaths:
+              - docs/n07.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n07.md
+          - id: n08
+            label: docs
+            summary: write doc n08
+            allowPaths:
+              - docs/n08.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n08.md
+          - id: n09
+            label: docs
+            summary: write doc n09
+            allowPaths:
+              - docs/n09.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n09.md
+          - id: n10
+            label: docs
+            summary: write doc n10
+            allowPaths:
+              - docs/n10.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n10.md
+          - id: n11
+            label: docs
+            summary: write doc n11
+            allowPaths:
+              - docs/n11.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n11.md
+          - id: n12
+            label: docs
+            summary: write doc n12
+            allowPaths:
+              - docs/n12.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n12.md
+          - id: n13
+            label: docs
+            summary: write doc n13
+            allowPaths:
+              - docs/n13.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n13.md
+          - id: n14
+            label: docs
+            summary: write doc n14
+            allowPaths:
+              - docs/n14.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n14.md
+          - id: n15
+            label: docs
+            summary: write doc n15
+            allowPaths:
+              - docs/n15.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n15.md
+          - id: n16
+            label: docs
+            summary: write doc n16
+            allowPaths:
+              - docs/n16.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n16.md
+          - id: n17
+            label: docs
+            summary: write doc n17
+            allowPaths:
+              - docs/n17.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n17.md
+          - id: n18
+            label: docs
+            summary: write doc n18
+            allowPaths:
+              - docs/n18.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n18.md
+          - id: n19
+            label: docs
+            summary: write doc n19
+            allowPaths:
+              - docs/n19.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n19.md
+          - id: n20
+            label: docs
+            summary: write doc n20
+            allowPaths:
+              - docs/n20.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n20.md
+          - id: n21
+            label: docs
+            summary: write doc n21
+            allowPaths:
+              - docs/n21.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n21.md
+          - id: n22
+            label: docs
+            summary: write doc n22
+            allowPaths:
+              - docs/n22.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n22.md
+          - id: n23
+            label: docs
+            summary: write doc n23
+            allowPaths:
+              - docs/n23.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n23.md
+          - id: n24
+            label: docs
+            summary: write doc n24
+            allowPaths:
+              - docs/n24.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n24.md
+          - id: n25
+            label: docs
+            summary: write doc n25
+            allowPaths:
+              - docs/n25.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n25.md
+          - id: n26
+            label: docs
+            summary: write doc n26
+            allowPaths:
+              - docs/n26.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n26.md
+          - id: n27
+            label: docs
+            summary: write doc n27
+            allowPaths:
+              - docs/n27.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n27.md
+          - id: n28
+            label: docs
+            summary: write doc n28
+            allowPaths:
+              - docs/n28.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n28.md
+          - id: n29
+            label: docs
+            summary: write doc n29
+            allowPaths:
+              - docs/n29.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n29.md
+          - id: n30
+            label: docs
+            summary: write doc n30
+            allowPaths:
+              - docs/n30.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n30.md
+          - id: n31
+            label: docs
+            summary: write doc n31
+            allowPaths:
+              - docs/n31.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n31.md
+          - id: n32
+            label: docs
+            summary: write doc n32
+            allowPaths:
+              - docs/n32.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n32.md
+          - id: n33
+            label: docs
+            summary: write doc n33
+            allowPaths:
+              - docs/n33.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n33.md
+          - id: n34
+            label: docs
+            summary: write doc n34
+            allowPaths:
+              - docs/n34.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n34.md
+          - id: n35
+            label: docs
+            summary: write doc n35
+            allowPaths:
+              - docs/n35.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n35.md
+          - id: n36
+            label: docs
+            summary: write doc n36
+            allowPaths:
+              - docs/n36.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n36.md
+          - id: n37
+            label: docs
+            summary: write doc n37
+            allowPaths:
+              - docs/n37.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n37.md
+          - id: n38
+            label: docs
+            summary: write doc n38
+            allowPaths:
+              - docs/n38.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n38.md
+          - id: n39
+            label: docs
+            summary: write doc n39
+            allowPaths:
+              - docs/n39.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n39.md
+          - id: n40
+            label: docs
+            summary: write doc n40
+            allowPaths:
+              - docs/n40.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n40.md
+          - id: n41
+            label: docs
+            summary: write doc n41
+            allowPaths:
+              - docs/n41.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n41.md
+          - id: n42
+            label: docs
+            summary: write doc n42
+            allowPaths:
+              - docs/n42.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n42.md
+          - id: n43
+            label: docs
+            summary: write doc n43
+            allowPaths:
+              - docs/n43.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n43.md
+          - id: n44
+            label: docs
+            summary: write doc n44
+            allowPaths:
+              - docs/n44.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n44.md
+          - id: n45
+            label: docs
+            summary: write doc n45
+            allowPaths:
+              - docs/n45.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n45.md
+          - id: n46
+            label: docs
+            summary: write doc n46
+            allowPaths:
+              - docs/n46.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n46.md
+          - id: n47
+            label: docs
+            summary: write doc n47
+            allowPaths:
+              - docs/n47.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n47.md
+          - id: n48
+            label: docs
+            summary: write doc n48
+            allowPaths:
+              - docs/n48.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n48.md
+          - id: n49
+            label: docs
+            summary: write doc n49
+            allowPaths:
+              - docs/n49.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n49.md
+          - id: n50
+            label: docs
+            summary: write doc n50
+            allowPaths:
+              - docs/n50.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n50.md
+          - id: n51
+            label: docs
+            summary: write doc n51
+            allowPaths:
+              - docs/n51.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n51.md
+          - id: n52
+            label: docs
+            summary: write doc n52
+            allowPaths:
+              - docs/n52.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n52.md
+          - id: n53
+            label: docs
+            summary: write doc n53
+            allowPaths:
+              - docs/n53.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n53.md
+          - id: n54
+            label: docs
+            summary: write doc n54
+            allowPaths:
+              - docs/n54.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n54.md
+          - id: n55
+            label: docs
+            summary: write doc n55
+            allowPaths:
+              - docs/n55.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n55.md
+          - id: n56
+            label: docs
+            summary: write doc n56
+            allowPaths:
+              - docs/n56.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n56.md
+          - id: n57
+            label: docs
+            summary: write doc n57
+            allowPaths:
+              - docs/n57.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n57.md
+          - id: n58
+            label: docs
+            summary: write doc n58
+            allowPaths:
+              - docs/n58.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n58.md
+          - id: n59
+            label: docs
+            summary: write doc n59
+            allowPaths:
+              - docs/n59.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/n59.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - fan
+    save: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM plan_nodes WHERE workflow_id = 'fan' AND graph_version = 1
+        equals:
+          - 60
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM leases
+        equals:
+          - 1

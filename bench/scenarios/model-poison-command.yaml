@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: model-poison-command
+group: model
+title: the same invalid command is submitted again and again
+inject: kernel submit of one unfit change five times
+expect: backoff then an escalation; never a tight loop
+pass:
+  - escalation after N
+  - submit rate bounded
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci kernel next|submit and the Kernel seat"
+manual:
+  - submit unfit x5
+  - assert escalation

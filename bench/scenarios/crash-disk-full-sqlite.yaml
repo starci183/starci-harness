@@ -1,0 +1,20 @@
+schema: starci/scenario@1
+id: crash-disk-full-sqlite
+group: resources
+title: the disk fills during a ledger write
+inject: fill the volume of STARCI_LOCAL_ROOT while a step writes
+expect: the transaction rolls back; the verb refuses with the IO error; the ledger opens clean afterwards
+pass:
+  - integrity_check ok after space returns
+  - no half state
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - use a small VHD as state base
+  - fill it
+  - run workflow step
+  - free space
+  - PRAGMA integrity_check

@@ -1,0 +1,73 @@
+schema: starci/scenario@1
+id: orca-reply-schema-changed
+group: upgrade
+title: an upgraded Orca answers worker-start in a shape this CLI cannot read
+inject: worker-start answers ok:true with no dispatchId
+expect: "effect unknown, never success and never a blind relaunch: the task is effect_unknown, its lease kept"
+pass:
+  - task effect_unknown
+  - worker-start called once
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      rules:
+        - command: worker-start
+          fault: reply
+          reply:
+            ok: true
+            result:
+              id: w-1
+              status: started
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: shape
+        goal: bench workflow shape
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - shape
+    save: {}
+    expect: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - shape
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - effect_unknown
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 1

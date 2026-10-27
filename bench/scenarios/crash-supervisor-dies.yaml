@@ -1,0 +1,21 @@
+schema: starci/scenario@1
+id: crash-supervisor-dies
+group: crash
+title: the Supervisor seat dies with handoffs and escalations pending
+inject: kill the Supervisor terminal while two escalations wait
+expect: a new Supervisor reads the ledger mailbox and processes each pending command exactly once
+pass:
+  - each escalation answered once
+  - none lost
+  - none duplicated
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
+manual:
+  - start two workflows that escalate
+  - kill the Supervisor
+  - start a new one
+  - supervisor next twice
+  - assert two distinct decisions then none

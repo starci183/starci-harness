@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: git-submodule-in-allowpaths
+group: git
+title: allowPaths names a submodule
+inject: the task edits inside a submodule
+expect: refused at contract time or the settle commits the submodule pointer only after its own commit; never a dirty submodule
+pass:
+  - consistent submodule pointer
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - add a submodule to a scratch repo
+  - contract with it in allowPaths
+  - observe

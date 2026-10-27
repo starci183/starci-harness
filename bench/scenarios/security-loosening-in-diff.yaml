@@ -1,0 +1,61 @@
+schema: starci/scenario@1
+id: security-loosening-in-diff
+group: security
+title: a lint suppression written inside allowPaths never lands
+inject: the worker adds an inline lint suppression to its own file
+expect: the settle's loosening gate turns the verify red; nothing is committed
+pass:
+  - no commit carries the task trailer
+  - the task failed naming loosening
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: loose
+        goal: bench workflow loose
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - src/value.js
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - src/value.js
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - loose
+    save:
+      a: data.nodes.0.task.id
+  - write:
+      path: src/value.js
+      generated: loosening
+  - worker:
+      task: ${a}
+      files: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - loose
+    save: {}
+    expect: {}
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 0

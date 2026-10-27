@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: messaging-impostor-sender
+group: messaging
+title: a command arrives from a dispatch that is not of this Run
+inject: submit with a foreign dispatch id
+expect: "refused: the sender is checked against the Run tree"
+pass:
+  - SENDER_REFUSED
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
+manual:
+  - submit with a fake dispatch
+  - assert refused

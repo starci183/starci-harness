@@ -1,0 +1,103 @@
+schema: starci/scenario@1
+id: model-worker-role-cannot-overstep
+group: model
+title: a process running as worker cannot amend, raise budgets, stop or push
+inject: STARCI_ROLE=worker runs workflow amend, budget raise, workflow stop and release push
+expect: each refuses ROLE_REFUSED before touching anything
+pass:
+  - four ROLE_REFUSED refusals
+  - budgets unchanged
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: role
+        goal: bench workflow role
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - role
+    save: {}
+  - file:
+      path: edit.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: role
+        reason: x
+        changes:
+          - op: remove
+            id: a
+  - starci:
+      - workflow
+      - amend
+      - role
+      - --change
+      - ${run}/edit.yaml
+    env:
+      STARCI_ROLE: worker
+    expect:
+      exit: 1
+      code: ROLE_REFUSED
+  - starci:
+      - budget
+      - raise
+      - role
+      - --tries
+      - "99"
+      - --by
+      - owner
+      - --reason
+      - x
+    env:
+      STARCI_ROLE: worker
+    expect:
+      exit: 1
+      code: ROLE_REFUSED
+  - starci:
+      - workflow
+      - stop
+      - role
+      - --hard
+    env:
+      STARCI_ROLE: worker
+    expect:
+      exit: 1
+      code: ROLE_REFUSED
+  - starci:
+      - release
+      - push
+      - --dry-run
+    env:
+      STARCI_ROLE: worker
+    expect:
+      exit: 1
+      code: ROLE_REFUSED
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals:
+          - running

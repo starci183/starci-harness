@@ -1,0 +1,20 @@
+schema: starci/scenario@1
+id: change-while-verify-settling
+group: change
+title: an amend arrives while a task's verify is settling
+inject: edit of a task whose status is verifying
+expect: the amend waits for the settle intent or applies with the settle's outcome recorded; the verdict is never lost or applied to the wrong contract
+pass:
+  - the settled verdict belongs to the contract it verified
+  - the edit becomes a rework
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - hold the settle lock
+  - amend edit
+  - release
+  - step
+  - assert verdict recorded and rework queued

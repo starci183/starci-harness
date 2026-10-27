@@ -1,0 +1,77 @@
+schema: starci/scenario@1
+id: orca-lost-reply-no-duplicate
+group: orca
+title: "Orca launched the worker but the reply was lost: no second worker"
+inject: worker-start succeeds inside Orca and prints nothing
+expect: effect_unknown; a resume replays the same retry-request and Orca's dedupe returns the same dispatch; one worker exists
+pass:
+  - task effect_unknown after start
+  - one distinct retry-request across all worker-starts
+  - after resume the seat names the first dispatch
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      rules:
+        - command: worker-start
+          fault: lost-reply
+          times: 1
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: lost
+        goal: bench workflow lost
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - lost
+    save:
+      a: data.nodes.0.task.id
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - effect_unknown
+  - starci:
+      - seat
+      - start
+      - ${a}
+      - --resume
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - running
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 1
+        distinct: retry-request

@@ -1,0 +1,20 @@
+schema: starci/scenario@1
+id: resources-disk-full-git-object
+group: resources
+title: the disk fills while the harness writes the task commit
+inject: fill the repository volume during the settle's commit
+expect: the commit fails before update-ref; the ledger keeps the task verifying-then-reported (no verdict, no try spent); no half object referenced
+pass:
+  - git fsck clean
+  - task reported
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - repo on a small VHD
+  - fill it during step
+  - free
+  - fsck
+  - step again

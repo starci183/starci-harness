@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: messaging-question-to-dead-kernel
+group: messaging
+title: an Op's blocked question reaches a Kernel that died
+inject: blocked result while the Kernel seat is gone
+expect: the question waits in the ledger; the Supervisor is escalated after the Kernel's lease lapses; the Op is not left hanging forever
+pass:
+  - escalation to the Supervisor after the TTL
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
+manual:
+  - kill kernel
+  - file blocked
+  - wait TTL
+  - supervisor next

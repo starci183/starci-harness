@@ -1,0 +1,50 @@
+schema: starci/scenario@1
+id: conflict-second-worktree-same-ledger
+group: conflict
+title: a linked worktree of the repository sees the same ledger
+inject: git worktree add; workflow list from the linked worktree
+expect: the project is the git common dir, so both checkouts read one ledger and one workflow list
+pass:
+  - workflow list from the linked worktree names the workflow
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: shared
+        goal: bench workflow shared
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - git:
+      - worktree
+      - add
+      - -q
+      - ${run}/linked
+      - -b
+      - linked
+  - starci:
+      - workflow
+      - list
+    cwd: ${run}/linked
+    expect:
+      exit: 0
+      contains: shared

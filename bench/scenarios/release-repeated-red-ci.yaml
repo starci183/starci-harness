@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: release-repeated-red-ci
+group: release
+title: CI stays red after the fix attempt
+inject: two consecutive red CIs
+expect: the Supervisor escalates to the owner after the second, never loops
+pass:
+  - escalation kind owner
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
+manual:
+  - two red pushes
+  - supervisor next

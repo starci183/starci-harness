@@ -1,0 +1,98 @@
+schema: starci/scenario@1
+id: owner-pause-holds-dispatch
+group: owner
+title: pause holds new dispatch while the live task still settles
+inject: pause after the first task is filed; step; resume; step
+expect: the paused step settles a's result but queues nothing; resume lets b dispatch
+pass:
+  - a done and b not dispatched while paused
+  - b queued after resume
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: hold
+        goal: bench workflow hold
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+            dependsOn:
+              - a
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - hold
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - starci:
+      - workflow
+      - pause
+      - hold
+  - name: step
+    starci:
+      - workflow
+      - step
+      - hold
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done
+  - starci:
+      - workflow
+      - resume
+      - hold
+  - name: step
+    starci:
+      - workflow
+      - step
+      - hold
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks ORDER BY created_at
+        equals:
+          - done
+          - queued

@@ -1,0 +1,53 @@
+schema: starci/scenario@1
+id: time-due-lease-never-frees
+group: time
+title: a lease past its due time still holds its path
+inject: every lease's expires_at is moved into the past (a sleep, a skewed clock); a second task asks for the path
+expect: "a due time never frees a path: the second send refuses LEASE_CONFLICT until the holder ends"
+pass:
+  - second send exits 1 with LEASE_CONFLICT
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - first
+      - --allow
+      - docs/a.md
+      - --check
+      - files-exist:files=docs/a.md
+      - --out
+      - ${run}/c1.json
+  - starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - second
+      - --allow
+      - docs/a.md
+      - --check
+      - files-exist:files=docs/a.md
+      - --out
+      - ${run}/c2.json
+  - starci:
+      - task
+      - send
+      - ${run}/c1.json
+  - sql:
+      db: ledger
+      exec: UPDATE leases SET expires_at = '2000-01-01T00:00:00.000Z'
+  - starci:
+      - task
+      - send
+      - ${run}/c2.json
+    expect:
+      exit: 1
+      code: LEASE_CONFLICT

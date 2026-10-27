@@ -1,0 +1,20 @@
+schema: starci/scenario@1
+id: change-touches-running-node
+group: change
+title: the change edits a task while it runs (redo-live)
+inject: the contract of a running task changes
+expect: fence the worker, preserve its patch, relaunch under the new contract with the patch as its starting point
+pass:
+  - worker-stop then one new worker-start
+  - brief has Prior work
+  - preserved patch applies
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S2 prior-work store: content-addressed patches per (workflow, key, contract hash) and the Prior work brief section"
+manual:
+  - start
+  - amend edit of the running node
+  - step
+  - assert stop + relaunch + prior work

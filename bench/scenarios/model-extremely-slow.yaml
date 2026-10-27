@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: model-extremely-slow
+group: model
+title: a model takes an hour per step
+inject: a slow model that prints rarely
+expect: "stall versus timeout: quiet is reported, not killed, until budget minutes"
+pass:
+  - no kill before budget
+  - quiet event
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: a live Orca beside the bench (semi)
+manual:
+  - pin a slow model on a live Orca
+  - watch seat list

@@ -1,0 +1,90 @@
+schema: starci/scenario@1
+id: orca-duplicate-step-no-double-launch
+group: orca
+title: eight concurrent steps of one workflow launch each task once
+inject: workflow step run 8 times at once right after define+start held dispatch (paused)
+expect: the claim is a compare-and-swap before any Orca call, so each task gets exactly one worker-start and one attempt
+pass:
+  - worker-start count equals the task count
+  - one attempt per task
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: race
+        goal: bench workflow race
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 3
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+          - id: c
+            label: docs
+            summary: write doc c
+            allowPaths:
+              - docs/c.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/c.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - race
+    expect: {}
+  - name: 8 steps at once
+    starci:
+      - workflow
+      - step
+      - race
+    parallel: 8
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 3
+        distinct: retry-request
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT MAX(n) FROM (SELECT COUNT(*) AS n FROM attempts GROUP BY task_id)
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks
+        equals:
+          - 3

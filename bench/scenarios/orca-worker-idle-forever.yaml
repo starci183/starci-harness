@@ -1,0 +1,21 @@
+schema: starci/scenario@1
+id: orca-worker-idle-forever
+group: orca
+title: an Op sits idle past its budget minutes
+inject: worker-show reports running with lastOutputAt older than budget.minutes
+expect: the seat is fenced (worker-stop), the task fails timeout, its work preserved; the Kernel decides
+pass:
+  - task failed with timeout
+  - worker-stop called
+  - preserved
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - start one Op
+  - set the stand-in's lastOutputAt 2 h ago
+  - backdate the seat
+  - step
+  - assert failed timeout

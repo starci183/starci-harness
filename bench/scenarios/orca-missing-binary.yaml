@@ -1,0 +1,61 @@
+schema: starci/scenario@1
+id: orca-missing-binary
+group: orca
+title: "Orca is not installed: start refuses cleanly and spends nothing"
+inject: STARCI_ORCA_BIN names a file that does not exist
+expect: the launch refuses ORCA_MISSING; the task stays queued (or returns to queued), no attempt counts as a try, no lease is kept by a dead launch
+pass:
+  - no running task
+  - no seat left starting
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_ORCA_BIN: ${run}/no-orca.exe
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: down
+        goal: bench workflow down
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - down
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE status IN ('running','effect_unknown')
+        equals:
+          - 0
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM seats WHERE status = 'starting'
+        equals:
+          - 0

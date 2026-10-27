@@ -1,0 +1,72 @@
+schema: starci/scenario@1
+id: worker-commits-itself
+group: worker
+title: a worker that commits its own work is caught, not silently credited
+inject: the worker runs git commit on docs/a.md, then files done
+expect: the settle notices HEAD moved with a commit that has no Starci-Task trailer over the task's paths and does not mark the task done on it
+pass:
+  - task is not done
+  - an event names the foreign commit
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: self
+        goal: bench workflow self
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - self
+    save:
+      a: data.nodes.0.task.id
+  - write:
+      path: docs/a.md
+      content: |
+        # a
+  - git:
+      - add
+      - docs/a.md
+  - git:
+      - commit
+      - -q
+      - -m
+      - "worker: my own commit"
+  - worker:
+      task: ${a}
+      files: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - self
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE status = 'done'
+        equals:
+          - 0

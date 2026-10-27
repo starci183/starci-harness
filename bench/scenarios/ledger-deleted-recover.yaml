@@ -1,0 +1,19 @@
+schema: starci/scenario@1
+id: ledger-deleted-recover
+group: ledger
+title: the project ledger is deleted mid-run
+inject: runtime.sqlite removed
+expect: recovery rebuilds landed state from Starci-Task trailers and running state from Orca; nothing is redone
+pass:
+  - done tasks recognised from git
+  - no duplicate commit
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - chain done
+  - delete ledger
+  - recover verb
+  - assert done

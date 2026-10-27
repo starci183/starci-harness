@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: plan-wrong-dependency-order
+group: plan
+title: the Kernel forgets a dependency
+inject: b needs a's output, no dependsOn
+expect: b runs red (missing input); the Kernel amends dependsOn and retries; no product damage
+pass:
+  - red then green after amend
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: "S4 coordinator agents: starci kernel next|submit and the Kernel seat"
+manual:
+  - define without edge
+  - run
+  - observe

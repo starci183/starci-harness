@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: conflict-split-brain-supervisor
+group: conflict
+title: two Supervisors on one host
+inject: supervisor next from two processes
+expect: one Supervisor lease per host; the second is refused; owner mail goes to one
+pass:
+  - one supervisor seat live
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
+manual:
+  - supervisor next in two processes
+  - assert one refused

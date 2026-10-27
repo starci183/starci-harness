@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: resources-argv-cap-brief
+group: resources
+title: a 50 kB brief never crosses the Windows argv cap
+inject: a contract with a huge details field
+expect: the spec passed to Orca points at the brief file; argv stays short
+pass:
+  - worker-start --spec under 2 kB
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - contract with 50 kB details
+  - start
+  - inspect the stand-in log

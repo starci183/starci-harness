@@ -1,0 +1,60 @@
+schema: starci/scenario@1
+id: provider-model-downgraded
+group: provider
+title: "Orca launches a different model than pinned: the worker is closed and the task requeued"
+inject: worker-start's effective launch says haiku while the workflow pins sonnet
+expect: the attestation mismatch stops and releases the worker and returns the task to queued; nothing runs on the wrong model
+pass:
+  - worker-stop called
+  - task queued, not running
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      set:
+        effectiveModel: haiku
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: down
+        goal: bench workflow down
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - down
+    save: {}
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        min: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - queued

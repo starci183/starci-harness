@@ -1,0 +1,106 @@
+schema: starci/scenario@1
+id: conflict-two-workflows-same-path
+group: conflict
+title: "two workflows in one repository want the same path: the second waits, then runs"
+inject: workflows w1 and w2 each have a task on docs/a.md
+expect: w2's node waits on the lease (no failure, no task holding nothing); after w1's task is done, w2's step dispatches it
+pass:
+  - w2 has no live task while w1 holds the lease
+  - w2's task queued after w1 is done
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: w1.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: w1
+        goal: bench workflow w1
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - file:
+      path: w2.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: w2
+        goal: bench workflow w2
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: rewrite doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/w1.yaml
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/w2.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - w1
+    save:
+      a: data.nodes.0.task.id
+  - name: start
+    starci:
+      - workflow
+      - start
+      - w2
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE workflow_id = 'w2'
+        equals:
+          - 0
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - name: step
+    starci:
+      - workflow
+      - step
+      - w1
+    save: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - w2
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks WHERE workflow_id = 'w2'
+        equals:
+          - queued

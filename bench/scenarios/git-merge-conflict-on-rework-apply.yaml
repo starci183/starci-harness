@@ -1,0 +1,19 @@
+schema: starci/scenario@1
+id: git-merge-conflict-on-rework-apply
+group: git
+title: a rework's prior patch no longer applies to HEAD
+inject: the patch of attempt 1 conflicts with a later commit
+expect: git apply --3way fails; the brief says so and gives the patch path; the worker starts clean
+pass:
+  - brief has the not-applied note and the path
+  - the worktree is clean at launch
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S2 prior-work store: content-addressed patches per (workflow, key, contract hash) and the Prior work brief section"
+manual:
+  - task red with a patch
+  - owner commits over the same lines
+  - amend retry
+  - assert brief note

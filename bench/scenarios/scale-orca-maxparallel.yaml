@@ -1,0 +1,148 @@
+schema: starci/scenario@1
+id: scale-orca-maxparallel
+group: scale
+title: eight ready orca tasks launch no more than maxParallel seats
+inject: 8 independent tasks, maxParallel 3, a healthy Orca stand-in
+expect: one Kernel terminal, Run and task; three worker-starts, each under the Kernel's Run; five tasks wait for a slot without a lease
+pass:
+  - exactly 3 worker-start calls, 3 distinct retry-request ids
+  - exactly 1 run-create
+  - 3 running tasks, 3 leases
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: par
+        goal: bench workflow par
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 3
+        tasks:
+          - id: p0
+            label: docs
+            summary: write doc p0
+            allowPaths:
+              - docs/p0.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p0.md
+          - id: p1
+            label: docs
+            summary: write doc p1
+            allowPaths:
+              - docs/p1.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p1.md
+          - id: p2
+            label: docs
+            summary: write doc p2
+            allowPaths:
+              - docs/p2.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p2.md
+          - id: p3
+            label: docs
+            summary: write doc p3
+            allowPaths:
+              - docs/p3.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p3.md
+          - id: p4
+            label: docs
+            summary: write doc p4
+            allowPaths:
+              - docs/p4.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p4.md
+          - id: p5
+            label: docs
+            summary: write doc p5
+            allowPaths:
+              - docs/p5.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p5.md
+          - id: p6
+            label: docs
+            summary: write doc p6
+            allowPaths:
+              - docs/p6.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p6.md
+          - id: p7
+            label: docs
+            summary: write doc p7
+            allowPaths:
+              - docs/p7.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/p7.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - par
+    save: {}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 3
+        distinct: retry-request
+  - assert:
+      orcaCalls:
+        command: run-create
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE status = 'running'
+        equals:
+          - 3
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM leases
+        equals:
+          - 3
+  - name: step
+    starci:
+      - workflow
+      - step
+      - par
+    save: {}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 3
