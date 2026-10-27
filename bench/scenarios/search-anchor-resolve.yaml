@@ -1,0 +1,127 @@
+schema: starci/scenario@1
+id: search-anchor-resolve
+group: verify
+title: every searchable chunk carries a stable anchor; contexts anchor resolves explicit, DNA, rule and fallback ids to text and file, and a search hit leads with its anchor
+inject: >-
+  a scratch tree with an explicit heading anchor, an HTML anchor, a DNA id and a rule id in yaml, a rule id in a heading and
+  a plain section; then lookups of each form, of an alias, of an unknown id, a search on the harness's own index and a
+  question in Vietnamese
+expect: >-
+  contexts anchor resolves tabs.choose.level, tabs.choose.nesting, DNA-CORE-LABEL-OUTSIDE, R01 and STATE-8 to their file and
+  text; the fallback <file>#<heading slug> of a plain section resolves, and the fallback of an explicitly anchored section
+  resolves as an alias of the explicit anchor; an unknown id is refused ANCHOR_UNKNOWN; the anchors check of the tree is
+  green; on the harness's own tree R01 resolves; a search hit's first field is its anchor; a non-English question is refused
+  SEARCH_QUERY_NOT_ENGLISH
+pass:
+  - an explicit heading anchor and an HTML anchor resolve to their file and text
+  - a DNA id and a rule id declared in yaml resolve
+  - a rule id in a heading resolves
+  - a fallback anchor resolves, and an explicit section's fallback resolves as its alias
+  - an unknown id is refused ANCHOR_UNKNOWN
+  - the anchors check of the fixture is green
+  - a search hit leads with its anchor; a non-English question is refused
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: contexts/ui/components/tabs.md
+      content: |
+        # Tabs
+
+        ## Job
+        Switch which panel of content is shown.
+
+        ## Choose {#tabs.choose}
+        Page tabs or region tabs: the question is what the choice changes.
+
+        ### Level {#tabs.choose.level}
+        Page tabs sit under the page header; region tabs sit inside a surface.
+
+        <a id="tabs.choose.nesting"></a>
+        ### Nesting
+        Never nest two tab sets of the same kind.
+  - write:
+      path: contexts/ui/composition.md
+      content: |
+        # Composition
+
+        ### STATE-8 Loading keeps the page's anatomy
+        Skeletons hold the anatomy; see [tabs](components/tabs.md#choose) and [level](components/tabs.md#tabs.choose.level).
+  - write:
+      path: contexts/hfs/rules.yaml
+      content: |
+        schema: starci/hfs-rules@4
+        rules:
+          - id: R01
+            law: Every tracked path matches exactly one slot.
+          - id: R02
+            law: Every slot holds its required files.
+  - write:
+      path: contexts/grammars/dna.yaml
+      content: |
+        schema: starci/grammar-dna@1
+        constraints:
+          - id: DNA-CORE-LABEL-OUTSIDE
+            law: A card's label sits outside the card's material.
+          - id: DNA-CORE-DIVIDER-FULL-BLEED
+            law: A divider spans the card edge to edge.
+  - name: an explicit heading anchor resolves to its file and text
+    starci: [contexts, anchor, tabs.choose.level, --root, .]
+    expect:
+      exit: 0
+      contains: "region tabs sit inside a surface"
+  - name: an HTML anchor above a heading resolves
+    starci: [contexts, anchor, tabs.choose.nesting, --root, .]
+    expect:
+      exit: 0
+      contains: "\"path\": \"contexts/ui/components/tabs.md\""
+  - name: a DNA id declared in yaml resolves
+    starci: [contexts, anchor, DNA-CORE-LABEL-OUTSIDE, --root, .]
+    expect:
+      exit: 0
+      contains: "\"path\": \"contexts/grammars/dna.yaml\""
+  - name: a rule id declared in yaml resolves
+    starci: [contexts, anchor, R01, --root, .]
+    expect:
+      exit: 0
+      contains: "exactly one slot"
+  - name: a rule id in a heading resolves
+    starci: [contexts, anchor, STATE-8, --root, .]
+    expect:
+      exit: 0
+      contains: "\"path\": \"contexts/ui/composition.md\""
+  - name: a plain section resolves by its file and heading slug
+    starci: [contexts, anchor, "contexts/ui/components/tabs.md#job", --root, .]
+    expect:
+      exit: 0
+      contains: "\"via\": \"anchor\""
+  - name: an explicit section's fallback resolves as an alias of its anchor
+    starci: [contexts, anchor, "contexts/ui/components/tabs.md#choose", --root, .]
+    expect:
+      exit: 0
+      contains: "\"anchor\": \"tabs.choose\""
+  - name: an unknown id is refused
+    starci: [contexts, anchor, tabs.choose.size, --root, .]
+    expect:
+      ok: false
+      code: ANCHOR_UNKNOWN
+  - name: the anchors check of the fixture is green
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 0
+      contains: "\"duplicates\": []"
+  - name: the harness's own tree resolves a rule id
+    starci: [contexts, anchor, R01]
+    expect:
+      exit: 0
+      contains: "\"path\": \"contexts/hfs/rules.yaml\""
+  - name: a search hit leads with its anchor
+    starci: [contexts, search, "control height of a default button", --lexical]
+    expect:
+      exit: 0
+      contains: "\"hits\": [\n      {\n        \"anchor\": "
+  - name: a question in another language is refused
+    starci: [contexts, search, "khi nào dùng tab phụ"]
+    expect:
+      ok: false
+      code: SEARCH_QUERY_NOT_ENGLISH

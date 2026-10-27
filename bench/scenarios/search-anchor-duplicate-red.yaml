@@ -1,0 +1,91 @@
+schema: starci/scenario@1
+id: search-anchor-duplicate-red
+group: verify
+title: the anchors check turns red on an id declared in two places and on a link fragment that names no anchor
+inject: >-
+  a green scratch tree, then a second file declaring the same explicit anchor, then the same DNA id in two yaml files, then a
+  link to a heading that does not exist
+expect: >-
+  contexts anchor --check is green on the clean tree; a heading anchor declared twice is ANCHOR_DUPLICATE and resolving it is
+  refused ANCHOR_AMBIGUOUS; a DNA id declared in two yaml files is ANCHOR_DUPLICATE; a link fragment that names no heading
+  or anchor of its target is ANCHOR_DANGLING; removing the cause turns the check green again
+pass:
+  - the clean tree is green
+  - a duplicated explicit anchor is red ANCHOR_DUPLICATE and its lookup is refused ANCHOR_AMBIGUOUS
+  - a duplicated yaml DNA id is red ANCHOR_DUPLICATE
+  - a dangling link fragment is red ANCHOR_DANGLING
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: contexts/ui/components/tabs.md
+      content: |
+        # Tabs
+
+        ## Choose {#tabs.choose}
+        Page tabs or region tabs.
+  - write:
+      path: contexts/grammars/dna.yaml
+      content: |
+        schema: starci/grammar-dna@1
+        constraints:
+          - id: DNA-CORE-LABEL-OUTSIDE
+            law: A card's label sits outside the card's material.
+  - name: the clean tree is green
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 0
+      contains: "\"dangling\": []"
+  - write:
+      path: contexts/ui/components/segmented-control.md
+      content: |
+        # Segmented control
+
+        ## Choose {#tabs.choose}
+        Copied from the tabs page and never renamed.
+  - name: an explicit anchor declared twice is red
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 1
+      contains: "\"code\": \"ANCHOR_DUPLICATE\",\n          \"id\": \"tabs.choose\""
+  - name: resolving the duplicated anchor is refused
+    starci: [contexts, anchor, tabs.choose, --root, .]
+    expect:
+      ok: false
+      code: ANCHOR_AMBIGUOUS
+  - remove: contexts/ui/components/segmented-control.md
+  - write:
+      path: contexts/grammars/offset-pop-dna.yaml
+      content: |
+        schema: starci/grammar-dna@1
+        constraints:
+          - id: DNA-CORE-LABEL-OUTSIDE
+            law: The same id declared a second time.
+  - name: a DNA id declared in two yaml files is red
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 1
+      contains: "\"id\": \"DNA-CORE-LABEL-OUTSIDE\""
+  - remove: contexts/grammars/offset-pop-dna.yaml
+  - write:
+      path: contexts/ui/composition.md
+      content: |
+        # Composition
+
+        Read [the tabs choice](components/tabs.md#choose-a-level) first.
+  - name: a link fragment naming no anchor is red
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 1
+      contains: "\"ref\": \"contexts/ui/components/tabs.md#choose-a-level\""
+  - write:
+      path: contexts/ui/composition.md
+      content: |
+        # Composition
+
+        Read [the tabs choice](components/tabs.md#choose) and [by id](components/tabs.md#tabs.choose) first.
+  - name: with the link fixed the check is green again
+    starci: [contexts, anchor, --check, --root, .]
+    expect:
+      exit: 0
+      contains: "\"duplicates\": []"

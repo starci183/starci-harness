@@ -1,0 +1,53 @@
+schema: starci/scenario@1
+id: search-recall-threshold
+group: verify
+title: the search eval holds its recall@5 floor on the built index, and an eval under its floor or expecting an unknown anchor is red
+inject: >-
+  the shipped eval over the built index, then an eval whose question cannot reach its expected anchor under a floor of 1, then
+  an eval expecting an anchor the tree does not declare
+expect: >-
+  contexts search --eval exits 0 with every ranking held at or above the eval's floor (the expected anchor in the top 5); an
+  eval under its floor exits 1 with the ranking marked not held; an eval expecting an anchor no chunk carries exits 1 naming it
+pass:
+  - the shipped eval holds its floor in every ranking
+  - an eval under its floor is red
+  - an eval expecting an unknown anchor is red and names it
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: the shipped eval holds its floor
+    starci: [contexts, search, --eval]
+    expect:
+      exit: 0
+      contains: "\"held\": true"
+  - write:
+      path: fixtures/eval-floor.json
+      content: |
+        {
+          "schema": "starci/contexts-search-eval@2",
+          "threshold": { "lexical": 1, "hybrid": 1 },
+          "questions": [
+            { "q": "control height of a default button", "expect": ["control-height-40", "contexts/ui/scale.md#the-ramp"] },
+            { "q": "pinned version of react", "expect": ["R01"] }
+          ]
+        }
+  - name: an eval under its floor is red
+    starci: [contexts, search, --eval, --file, fixtures/eval-floor.json]
+    expect:
+      exit: 1
+      contains: "\"held\": false"
+  - write:
+      path: fixtures/eval-unknown.json
+      content: |
+        {
+          "schema": "starci/contexts-search-eval@2",
+          "threshold": { "lexical": 0, "hybrid": 0 },
+          "questions": [
+            { "q": "control height of a default button", "expect": ["control-height-40", "tabs.choose.no-such-anchor"] }
+          ]
+        }
+  - name: an eval expecting an unknown anchor is red
+    starci: [contexts, search, --eval, --file, fixtures/eval-unknown.json]
+    expect:
+      exit: 1
+      contains: "\"tabs.choose.no-such-anchor\""

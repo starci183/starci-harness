@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
-import { isRuleId } from "../../harness/contract.js"
+import { ruleIdsIn } from "../../harness/contract.js"
 import { SLICE_EDITIONS, SLICE_SIDES, sliceFile } from "./anatomy-render.js"
+import { headingAnchors, isAnchorId, linkFragments, parseHeading, slug } from "./anchors-parse.js"
+import type { LinkFragment } from "./anchors-parse.js"
 import { INDEX_FILE } from "./index-render.js"
 
 /** The scopes a search can be narrowed to: a folder of contexts/, or `harness` for the harness's own documents and data. */
@@ -11,13 +13,18 @@ export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack"
 export type SearchScope = (typeof SEARCH_SCOPES)[number]
 
 /** Bumped whenever chunking changes, so an index built by another chunker reads as stale. */
-export const CHUNKER_VERSION = 1
+export const CHUNKER_VERSION = 2
 
-/** One searchable piece of the corpus: a Markdown section or a yaml entry, with the id a worker cites. */
+/** One searchable piece of the corpus: a Markdown section or a yaml entry, named by the anchor a worker cites. */
 export interface Chunk {
-    /** A rule or record id (a heading token or a yaml `id:` value) when `citable`, else `<path>#<anchor>`. */
-    readonly id: string
-    /** True when the rules-cited trace accepts `id` from the file that holds it. */
+    /**
+     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or record id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
+     * `control-height-40`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor --check`).
+     */
+    readonly anchor: string
+    /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */
+    readonly aliases: readonly string[]
+    /** True when the rules-cited trace accepts `anchor` from the file that holds it. */
     readonly citable: boolean
     readonly path: string
     readonly line: number
@@ -27,11 +34,22 @@ export interface Chunk {
     readonly text: string
 }
 
-/** The corpus: every searched file with its content hash, the chunks and one hash over all of it. */
+/** A link fragment of one corpus file. */
+export interface CorpusLink extends LinkFragment {
+    readonly from: string
+}
+
+/** The corpus: every searched file with its content hash, the chunks, the link fragments and one hash over all of it. */
 export interface Corpus {
     readonly hash: string
     readonly files: readonly string[]
+    /** Each file's sha256, so a stale index names the files that changed. */
+    readonly fileHashes: Readonly<Record<string, string>>
     readonly chunks: readonly Chunk[]
+    /** Every Markdown link with a fragment into a corpus file, for the dangling-anchor check. */
+    readonly links: readonly CorpusLink[]
+    /** Every heading slug GitHub would render, `<path>#<slug>`, so a link GitHub resolves is never called dangling. */
+    readonly renderedSlugs: ReadonlySet<string>
 }
 
 const byCodeUnit = (left: string, right: string): number => Number(left > right) - Number(left < right)
@@ -69,23 +87,12 @@ export const scopeOf = (path: string): SearchScope => {
     return scope ?? "harness"
 }
 
-/** A GitHub-style heading anchor. */
-const slug = (heading: string): string =>
-    heading
-        .toLowerCase()
-        .replace(/[^a-z0-9 _-]/g, "")
-        .trim()
-        .replace(/\s+/g, "-")
-
-/** The rule id a heading carries: its first token with a digit, else an upper-case id (`FE-ROUTE`) the heading opens with. */
-const headingId = (heading: string): string | undefined => {
-    const tokens = heading.split(/[^A-Za-z0-9._-]+/).filter(isRuleId)
-    const first = tokens[0]
-    return tokens.find((token) => /\d/.test(token)) ?? (first !== undefined && heading.startsWith(first) && /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)+$/.test(first) ? first : undefined)
-}
-
 interface Section {
+    /** The heading as written. */
+    readonly raw: string
+    /** The heading without its explicit anchor. */
     readonly heading: string
+    readonly explicit: string | undefined
     readonly level: number
     readonly line: number
     readonly body: string[]
@@ -104,42 +111,60 @@ const headingText = (rest: string): string => {
 /** Splits a Markdown file at its headings (outside code fences); the front matter and text before the first heading are a section of level 0. */
 const markdownSections = (lines: readonly string[]): Section[] => {
     const start = lines[0] === "---" ? lines.indexOf("---", 1) + 1 : 0
-    const sections: Section[] = [{ heading: "", level: 0, line: 1, body: lines.slice(0, start).filter((line) => line !== "---") }]
+    const sections: Section[] = [{ raw: "", heading: "", explicit: undefined, level: 0, line: 1, body: lines.slice(0, start).filter((line) => line !== "---") }]
     let fenced = false
     for (const [offset, line] of lines.slice(start).entries()) {
         if (FENCE.test(line)) fenced = !fenced
         const match = fenced ? null : HEADING.exec(line)
-        if (match?.[1] !== undefined) sections.push({ heading: headingText(line.slice(match[0].length)), level: match[1].length, line: start + offset + 1, body: [] })
-        else sections.at(-1)?.body.push(line)
+        if (match?.[1] === undefined) {
+            sections.at(-1)?.body.push(line)
+            continue
+        }
+        const raw = headingText(line.slice(match[0].length))
+        const parsed = parseHeading(raw, lines[start + offset - 1] ?? "")
+        sections.push({ raw, heading: parsed.text, explicit: parsed.explicit, level: match[1].length, line: start + offset + 1, body: [] })
     }
     return sections
 }
 
-const markdownChunks = (path: string, lines: readonly string[]): Chunk[] => {
+/** The GitHub slugs of a Markdown file's headings as written (an explicit `{#id}` included), each deduplicated as GitHub does. */
+const renderedSlugsOf = (path: string, sections: readonly Section[]): string[] => {
+    const seen = new Map<string, number>()
+    return sections
+        .filter((section) => section.level > 0)
+        .map((section) => {
+            const base = slug(section.raw)
+            const count = seen.get(base) ?? 0
+            seen.set(base, count + 1)
+            return `${path}#${count === 0 ? base : `${base}-${String(count)}`}`
+        })
+}
+
+const markdownChunks = (path: string, sections: readonly Section[]): Chunk[] => {
     const scope = scopeOf(path)
-    const anchors = new Map<string, number>()
+    const slugs = new Map<string, number>()
     const parents: string[] = []
     const chunks: Chunk[] = []
-    for (const section of markdownSections(lines)) {
+    for (const section of sections) {
         if (section.level > 0) {
             parents.length = Math.min(parents.length, section.level - 1)
             parents[section.level - 1] = section.heading
         }
         const text = section.body.join("\n").trim()
         if (section.level === 0 && text === "") continue
-        const id = section.level === 0 ? undefined : headingId(section.heading)
         const base = section.level === 0 ? "top" : slug(section.heading)
-        const seen = anchors.get(base) ?? 0
-        anchors.set(base, seen + 1)
-        const title = [path, ...parents.filter((item) => item !== "")].join(" › ")
-        const anchor = seen === 0 ? base : base + "-" + String(seen)
+        const seen = slugs.get(base) ?? 0
+        slugs.set(base, seen + 1)
+        const fallback = seen === 0 ? base : `${base}-${String(seen)}`
+        const named = section.level === 0 ? { anchor: `${path}#${fallback}`, aliases: [] } : headingAnchors(path, { text: section.heading, explicit: section.explicit }, fallback)
         chunks.push({
-            id: id ?? `${path}#${anchor}`,
-            citable: id !== undefined,
+            anchor: named.anchor,
+            aliases: named.aliases,
+            citable: section.level > 0 && ruleIdsIn(`# ${section.raw}`).has(named.anchor),
             path,
             line: section.line,
             scope,
-            title,
+            title: [path, ...parents.filter((item) => item !== "")].join(" › "),
             text: section.level === 0 ? text : `${"#".repeat(section.level)} ${section.heading}\n${text}`.trim(),
         })
     }
@@ -189,17 +214,23 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
     return cuts
 }
 
+/** A yaml cut's anchor: an id-shaped record id stands alone; a plain record key (`card`) or a key is qualified by the file. */
+const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[]; readonly citable: boolean } => {
+    if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [], citable: false }
+    const qualified = `${path}#${cut.key}.${cut.id}`
+    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
+}
+
 const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
     const scope = scopeOf(path)
     const cuts = yamlCuts(lines)
     const chunks: Chunk[] = []
     const header = lines.slice(0, cuts[0]?.line ?? lines.length).join("\n").trim()
-    if (header !== "") chunks.push({ id: `${path}#top`, citable: false, path, line: 1, scope, title: path, text: header })
+    if (header !== "") chunks.push({ anchor: `${path}#top`, aliases: [], citable: false, path, line: 1, scope, title: path, text: header })
     for (const [at, cut] of cuts.entries()) {
         const text = lines.slice(cut.line, cuts[at + 1]?.line ?? lines.length).join("\n").trim()
         chunks.push({
-            id: cut.id ?? `${path}#${cut.key}`,
-            citable: cut.id !== undefined,
+            ...yamlAnchors(path, cut),
             path,
             line: cut.line + 1,
             scope,
@@ -210,21 +241,39 @@ const yamlChunks = (path: string, lines: readonly string[]): Chunk[] => {
     return chunks
 }
 
-/** The chunks of one file of the corpus. */
-export const chunksOf = (path: string, text: string): Chunk[] => {
-    const lines = text.replaceAll("\r\n", "\n").split("\n")
-    return path.endsWith(".md") ? markdownChunks(path, lines) : yamlChunks(path, lines)
+/** One file read: its chunks, its link fragments and the slugs GitHub renders for it. */
+interface FileRead {
+    readonly chunks: Chunk[]
+    readonly links: CorpusLink[]
+    readonly slugs: string[]
 }
 
-/** Reads and chunks the corpus under the runtime root; the hash covers the chunker version, every path and every byte. */
+const readFile = (path: string, text: string): FileRead => {
+    const lines = text.replaceAll("\r\n", "\n").split("\n")
+    if (!path.endsWith(".md")) return { chunks: yamlChunks(path, lines), links: [], slugs: [] }
+    const sections = markdownSections(lines)
+    return { chunks: markdownChunks(path, sections), links: linkFragments(path, lines).map((link) => ({ ...link, from: path })), slugs: renderedSlugsOf(path, sections) }
+}
+
+/** The chunks of one file of the corpus. */
+export const chunksOf = (path: string, text: string): Chunk[] => readFile(path, text).chunks
+
+/** Reads and chunks the corpus under `root`; the hash covers the chunker version, every path and every byte. */
 export const readCorpus = (root: string): Corpus => {
     const files = corpusFiles(root)
     const hash = createHash("sha256").update(`chunker ${String(CHUNKER_VERSION)}\n`)
+    const fileHashes: Record<string, string> = {}
     const chunks: Chunk[] = []
+    const links: CorpusLink[] = []
+    const renderedSlugs = new Set<string>()
     for (const path of files) {
         const text = readFileSync(join(root, path), "utf8").replaceAll("\r\n", "\n")
         hash.update(`${path}\u0000${text}\u0000`)
-        chunks.push(...chunksOf(path, text))
+        fileHashes[path] = createHash("sha256").update(text).digest("hex")
+        const read = readFile(path, text)
+        chunks.push(...read.chunks)
+        links.push(...read.links)
+        for (const item of read.slugs) renderedSlugs.add(item)
     }
-    return { hash: hash.digest("hex"), files, chunks }
+    return { hash: hash.digest("hex"), files, fileHashes, chunks, links, renderedSlugs }
 }
