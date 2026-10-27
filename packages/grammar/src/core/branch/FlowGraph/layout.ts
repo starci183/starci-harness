@@ -1,4 +1,4 @@
-import type { FlowGraphEdge, FlowGraphNode } from "./types.js"
+import type { FlowGraphDirection, FlowGraphEdge, FlowGraphNode } from "./types.js"
 
 export type FlowGraphPoint = { readonly x: number, readonly y: number }
 
@@ -52,4 +52,51 @@ export const radialPositions = (nodes: ReadonlyArray<FlowGraphNode>, edges: Read
     const orphans = nodes.filter((node) => !positions.has(node.id))
     orphans.forEach((node, index) => place(node.id, deepest + 1, -Math.PI / 2 + (index * Math.PI * 2) / orphans.length))
     return positions
+}
+
+/** Distance between layers along the direction, and between nodes inside one layer. */
+export const FLOW_GRAPH_LAYER_GAP = { TB: 130, LR: 240 } as const
+export const FLOW_GRAPH_LANE_GAP = { TB: 220, LR: 90 } as const
+
+/** The coordinate of layer `index` along the layer axis (y for `TB`, x for `LR`). */
+export const layerCoordinate = (index: number, direction: FlowGraphDirection): number => index * FLOW_GRAPH_LAYER_GAP[direction]
+
+/**
+ * Layered positions for a DAG: a node sits in the layer after its deepest predecessor (longest path), the nodes of a
+ * layer are spread evenly across the other axis in input order. Edges that close a cycle are ignored.
+ */
+export const layeredPositions = (
+    nodes: ReadonlyArray<FlowGraphNode>,
+    edges: ReadonlyArray<FlowGraphEdge>,
+    direction: FlowGraphDirection,
+): { readonly positions: ReadonlyMap<string, FlowGraphPoint>, readonly layers: ReadonlyMap<string, number> } => {
+    const known = new Set(nodes.map((node) => node.id))
+    const layers = new Map<string, number>(nodes.map((node) => [node.id, 0]))
+    const usable = edges.filter((edge) => known.has(edge.source) && known.has(edge.target) && edge.source !== edge.target)
+    // Relaxation bounded by the node count, so a cycle cannot loop for ever.
+    for (let pass = 0; pass < nodes.length; pass += 1) {
+        let changed = false
+        for (const edge of usable) {
+            const next = (layers.get(edge.source) ?? 0) + 1
+            if (next > (layers.get(edge.target) ?? 0) && next < nodes.length) {
+                layers.set(edge.target, next)
+                changed = true
+            }
+        }
+        if (!changed) break
+    }
+    const byLayer = new Map<number, string[]>()
+    for (const node of nodes) {
+        const layer = layers.get(node.id) ?? 0
+        byLayer.set(layer, [...(byLayer.get(layer) ?? []), node.id])
+    }
+    const positions = new Map<string, FlowGraphPoint>()
+    for (const [layer, ids] of byLayer) {
+        ids.forEach((id, index) => {
+            const along = layerCoordinate(layer, direction)
+            const across = (index - (ids.length - 1) / 2) * FLOW_GRAPH_LANE_GAP[direction]
+            positions.set(id, direction === "LR" ? { x: along, y: across } : { x: across, y: along })
+        })
+    }
+    return { positions, layers }
 }
