@@ -1,0 +1,1 @@
+export { logoSrc } from "./logo"

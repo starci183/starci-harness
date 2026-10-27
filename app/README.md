@@ -28,12 +28,50 @@ connection is kept in `localStorage`. A refused token brings the connect screen 
 Routes: `#/` overview, `#/w/:project/:workflow`, `#/t/:project/:task`, `#/inbox`, `#/settings`. Live updates arrive on
 `/api/events` (Server-Sent Events) and refresh only the views they name.
 
+## Source layout: the shape–slot pattern on Vite
+
+The app follows the front-end canon it enforces on products ([contexts/code/fe](../contexts/code/fe/README.md), decisions
+F-1/F-2 in [open-core.md](../contexts/decisions/open-core.md)). The canon is written for Next.js; on Vite with
+react-router the same tiers map like this:
+
+| Canon (Next)                         | Here (Vite + react-router)                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `app/**/page.tsx`, route adapters    | `src/app/router.tsx`: the hash route table, each route mounting one page owner of `features/pages`                  |
+| `app/[locale]/providers.tsx`         | `src/app/providers.tsx`: React Aria locale, Grammar root, connection, the session gate and TanStack Query          |
+| `app/[locale]/layout.tsx` → layout   | the root route's session gate mounts `features/layouts/WorkspaceLayout`, whose `<Outlet />` is the page             |
+| `notFound()` in the page owner       | a 404 read is the region's empty sentence (`slotOfQuery`); an unknown path falls back to the overview route         |
+| `useQuery<X>Swr` + `slotOfSwr`       | TanStack Query hooks in `hooks/query` folded by `slotOfQuery` (`hooks/slot/slot.shared.ts`)                         |
+| next-intl catalog `messages/<l>.json`| `modules/i18n/labels.ts`, the one typed copy owner (Vietnamese only); templates use `{name}` tokens                |
+
+Imports point down only: `app` → `features/{pages,layouts}` → `components/blocks` → `components/composites`
+(`SlotView`, `DecisionBody`, `ListEditor`, `ConfigField`) → `components/leaves` (`StatusWord`, `KeyList`); hooks reach
+`modules/api` only through `hooks/query`.
+
+Every data region is a block in `components/blocks/<X>/`: `index.tsx` is the connected `X` (it calls the query and
+command hooks, folds each read into a `DataSlot` with `slotOfQuery`/`mapSlot`, resolves every label and action) and
+`component.tsx` is the pure `XBase({ shape?, props, on })` of atoms. Each read renders through the one `SlotView`:
+loading draws the ready tree from a same-shape placeholder with `isSkeleton` (or `isLoading` on Grammar collections);
+forbidden hides or says so; error shows the region's notice with a retry of that read; empty shows the region's
+sentence. Only a block with more than one drawn shape takes `shape` (`WorkflowHeaderShape`, `InboxDetailShape`), and
+while its read waits the shape follows the placeholder; there is no `xDefaultState`.
+
+Pages and the layout read no data: a page owner adapts route params to atoms (`WorkflowPage`, `TaskPage`) or holds the
+UI state its blocks share (`InboxPage`: the selection and the last ruling's outcome); the layout keeps the one live
+event stream open. Grammar parts without a skeleton flag (`StatusDot`, `Code`, `Terminal`, `RadioGroup`) rest inside a
+skeleton `Text` line or draw the placeholder's blank values in their own frame.
+
+Stories live in `stories/blocks/` and draw the pure halves: one story per shape member and one `Loading` story per
+block, each with `parameters: { dna: { pair: "<Block>", phase: "ready" | "loading" } }`. `npm run storybook`,
+`npm run build-storybook`.
+
 ## Fixtures mode
 
-`http://localhost:1420/?fixtures=1` runs the whole app on the sample data in `src/api/fixtures.ts`, with no server:
-reads answer from the fixtures, writes answer "accepted" and change nothing. The mode lasts for the browser session;
-`?fixtures=0` leaves it. The connect screen's "Xem bằng dữ liệu mẫu" opens the same mode. `VITE_FIXTURES=1 npm run build`
-bakes it into a build.
+`http://localhost:1420/?fixtures=1` runs the whole app on the sample data in `src/modules/api/fixtures.ts`, with no
+server: reads answer from the fixtures, writes answer "accepted" and change nothing. The mode lasts for the browser
+session; `?fixtures=0` leaves it. The connect screen's "Xem bằng dữ liệu mẫu" opens the same mode. `VITE_FIXTURES=1 npm
+run build` bakes it into a build. To look at the loading layout, `&hold=1` keeps every fixture read pending
+(`&hold=overview,task` only those), and `&delay=1500` answers them that late. `docs/screens/<route>-ready.png` and
+`<route>-loading.png` are the five routes at 1440x960 in both phases.
 
 ## Desktop build
 

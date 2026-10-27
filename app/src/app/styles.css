@@ -1,6 +1,7 @@
 /*
- * HeroUI once, then exactly one Grammar family (core). Everything below the imports is layout: every colour, type,
- * radius and shadow comes from the Grammar, and every gap is one of the Grammar's spacing tokens:
+ * HeroUI once, then exactly one Grammar family (core), then the brand tokens (`modules/brand/brand.css`, the only file
+ * with colour values). Everything below the imports is layout: every colour, type, radius and shadow comes from the
+ * Grammar and the brand, and every gap is one of the Grammar's spacing tokens:
  *   --grammar-region-gap   between the page header and the page's sections, and between sections
  *   --grammar-section-gap  between the blocks inside one section, and between peer cards
  *   --grammar-row-gap      between a field and its neighbour inside a row
@@ -9,6 +10,7 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 @import "@starci/grammar/core/styles.css";
+@import "../modules/brand/brand.css";
 
 @source "../../node_modules/@starci/grammar/dist";
 
