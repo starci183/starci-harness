@@ -4,8 +4,8 @@
 // projectService builds its server host from `tsserver.sys` (typescript/lib/tsserverlibrary) and exposes no host through
 // parserOptions, so without a bound a typed rule reads types from an enclosing repository's node_modules and judges the app
 // greener than its own install allows. Here `sys` of the app's own TypeScript is patched, in place and before ESLint loads
-// the parser, to answer only for paths inside the app root and TypeScript's own lib directory (the same bound the gate's
-// tsc programs use, scripts/gates/gate.mjs boundedSys). realpath is the identity, so an install junctioned inside the app
+// the parser, to answer only for paths inside the app root and TypeScript's own lib directory (the same bound a typed
+// tsc program of the app keeps). realpath is the identity, so an install junctioned inside the app
 // stays inside it. Nothing is patched when STARCI_LINT_BOUND is unset or TypeScript is not installed (nothing typed runs).
 'use strict'
 const path = require('node:path')

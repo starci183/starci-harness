@@ -11,8 +11,8 @@
 //   product trees      treesInOrder       the workflow tree first, then the product's main checkout
 //   Work records       workRecordPath     the first tree that holds the record, else the main checkout's path
 //   tool lookups       toolSearchDirs     the tree the work happens in first, the runtime's own install last
-// The workflow tree itself, a job's placement and the Critic directory are registry facts: scripts/machine/workflow-tree.mjs,
-// placement-rebound.mjs and the worktree registry resolve them, and a caller hands the result in as `tree`.
+// The workflow tree itself, a job's placement and the Critic directory are registry facts: the worktree registry resolves
+// them, and a caller hands the result in as `tree`.
 // The `root-adhoc` self-check (scripts/checks/check-root-adhoc.mjs, rule R240) refuses a new path built from the process working
 // directory or from the Work directory name outside this module.
 import fs from 'node:fs';

@@ -52,8 +52,7 @@ export const loadTypescript = (...dirs) => {
 /**
  * The app's command line and the app implementation behind it: `bin` the `starci` bin of the app's installed @starci/cli, else
  * this runtime's packages/cli/bin/starci.mjs (starciBin); `dir` the @starci/hfs that answers
- * `starci app` - the app's own install, else the one beside its @starci/cli, else this runtime's packages/hfs - whose runtime
- * slice the gate's base lint (scripts/gates/gate.mjs) and the READ digest (scripts/gates/read-digest.mjs) load in-process.
+ * `starci app` - the app's own install, else the one beside its @starci/cli, else this runtime's packages/hfs.
  */
 export function hfsEntry(root) {
   const cli = packageAt(root, '@starci/cli');

@@ -5,7 +5,7 @@ export const invalid=section=>message=>{throw new Error(`Invalid config.yaml: ${
 
 /** The host roots the owner may relocate (config.yaml `roots`): the archive root, the lanes root and the temp root. */
 export const ROOT_KEYS=Object.freeze(['archive','lanes','temp']);
-/** config.yaml `roots` - {archive?, lanes?, temp?}: absolute directories, or null; an absent key means <starciLocalRoot>/archive and the per-user lanes directory (scripts/machine/home.mjs lanesDefault). */
+/** config.yaml `roots` - {archive?, lanes?, temp?}: absolute directories, or null; an absent key means <starciLocalRoot>/archive and the per-user lanes directory. */
 export function validateRoots(roots){
   if(roots===null)return;
   const bad=invalid('roots');

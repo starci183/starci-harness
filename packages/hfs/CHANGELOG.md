@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Removed: 121 bundled runtime scripts that only served the legacy runtime and that no `starci app` verb, package entry or catalogued rule enforcer reaches: `scripts/agent/`, `scripts/reconciler/`, the legacy hook guards of `scripts/guards/` (command, seat, rights, install and launch verdicts), the op gate of `scripts/gates/` (`gate.mjs`, canon pins and digest, type impact), the drawing pipeline of `scripts/work/` other than the DNA judge (`draw-dna*`, `grammar-proposal`, `asset-slot`), the ledger of `engine/db/`, the machine helpers, and the `scripts/api` and `scripts/lib` helpers only they imported; with them the specs that exercised only that code. The `release-push-gate` and `hook-io` cases of `hook-input.spec.mjs` stay.
+
 ## 4.8.0 - 2026-10-27
 
 - Removed: the Heritage family from the bundled Grammar catalog.
