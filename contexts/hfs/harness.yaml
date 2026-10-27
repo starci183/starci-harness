@@ -1,0 +1,465 @@
+# The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where. It is the
+# runtime's counterpart of slots.yaml, in the same field vocabulary; `starci check shape` reads it and places every file
+# of the tree as it stands (tracked and untracked, never what .gitignore ignores). Field meanings are in hfs/README.md
+# ("The harness's own shape"); the code that judges them is cli/src/core/check/shape-scan.ts.
+#
+# Order: forbidden gate slots judge first, then forbidden target slots, then a file goes to the first other slot whose
+# path holds it. A target slot is red outside its dated exceptions; an exception that covers nothing, or is past its
+# date, is red too, so the list only shrinks.
+schema: starci/harness-slots@1
+version: 1.0.0
+kind: runtime
+presenceValues:
+  - required
+  - optional
+  - forbidden
+enforceValues:
+  - gate
+  - target
+
+slots:
+  # --- what must never exist
+  - id: never.env
+    path: "**/{.env,*.env,.env.*}"
+    except:
+      - "**/{.env,*.env}.example"
+    presence: forbidden
+    holds: an env or secret file; secrets stay on the machine and the CLI never reads them
+    rule: policy/security.yaml neverRead; .gitignore
+  - id: never.examples
+    path: "**/examples/"
+    presence: forbidden
+    holds: example apps and example re-pins; a proof is a scratch repository, a package proves itself with its specs
+    rule: CONTRIB-15 removed vocabulary
+  - id: never.plans
+    path:
+      - "**/{PLAN,Plan,plan,MASTER,ROADMAP,TODO}*.md"
+      - "**/*{-plan,.plan,_plan}.md"
+      - "**/plans/"
+    except:
+      - "contexts/decisions/**"
+    presence: forbidden
+    holds: a plan, roadmap or master file outside contexts/decisions; a decided plan is a decisions record, each fact in its owner
+    rule: CONTRIB-4 one owner per fact; CONTRIB-15 (STARCI.md, design documents of plans and phases)
+  - id: never.cli-js
+    path: "cli/src/**/*.{js,mjs,cjs,jsx}"
+    presence: forbidden
+    holds: JavaScript source in the CLI; the CLI is TypeScript built to cli/dist
+    rule: CONTRIB-11; cli/README.md
+  - id: never.build-output
+    path:
+      - "cli/dist/"
+      - "packages/*/dist/"
+      - "app/dist/"
+    presence: forbidden
+    holds: build output; dist is built from src and ignored, never committed
+    rule: .gitignore dist/
+  - id: never.second-cli
+    path:
+      - "packages/{cli,*-cli}/"
+    presence: forbidden
+    holds: a second CLI package; the CLI is one, cli/ (starci-harness)
+    rule: owner ruling, the CLI is one (contexts/decisions/legacy-retirement.md)
+  - id: never.second-cli-bin
+    path: "**/package.json"
+    except:
+      - "cli/package.json"
+      - "packages/hfs/templates/**"
+      - "packages/*/fixtures/**"
+    jsonKey: bin
+    presence: forbidden
+    holds: a package that declares a bin, which makes it a second CLI; only cli/package.json declares one
+    rule: owner ruling, the CLI is one (contexts/decisions/legacy-retirement.md)
+  - id: never.knowledge-outside-contexts
+    path:
+      - "docs/"
+      - "knowledge/"
+      - "notes/"
+    presence: forbidden
+    enforce: target
+    exceptions:
+      - path: docs/knowledge-analysis/
+        until: "2026-12-31"
+        owner: legacy retirement (contexts/decisions/legacy-retirement.md)
+        why: the retirement map relies on the legacy runtime's analysis notes until the M-items land in contexts/ and the legacy runtime is deleted
+    holds: knowledge outside contexts/; knowledge an agent loads lives only in contexts/
+    rule: CONTRIB-4; contexts/README.md load order
+  - id: never.package-js
+    path:
+      - "packages/<name>/**/*.{js,mjs,cjs,jsx}"
+      - "packages/<name>/*.{d.ts,d.cts}"
+    except:
+      - "packages/*/{fixtures,templates,runtime}/**"
+      - "packages/**/*.generated.*"
+    presence: forbidden
+    enforce: target
+    exceptions:
+      - path: packages/ai-router/
+        until: "2026-12-31"
+        owner: package TS plan
+        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
+      - path: packages/eslint-canon-be/
+        until: "2026-12-31"
+        owner: lane ts-canon-be
+        why: the back-end canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
+      - path: packages/eslint-canon-fe/
+        until: "2026-12-31"
+        owner: lane ts-canon-fe
+        why: the front-end canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
+      - path: packages/eslint-grammar-core/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the core Grammar lint factory and its hand-written index.d.ts are being converted to src/ TypeScript
+      - path: packages/eslint-grammar-offset-pop/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the offset-pop lint factory and its hand-written index.d.ts are being converted to src/ TypeScript
+      - path: packages/grammar/
+        until: "2026-12-31"
+        owner: Grammar Storybook lane
+        why: five build and capture tools (capture-refs, shoot, svg-shot, scripts/) are still JavaScript
+      - path: packages/heroicons/
+        until: "2026-12-31"
+        owner: package TS plan
+        why: one spec is still .spec.mjs; it becomes a .spec.ts beside the source
+      - path: packages/hfs/
+        until: "2026-12-31"
+        owner: CLI unification lane
+        why: the starci app implementation is hand-written JavaScript moving into the one CLI
+      - path: packages/jest-preset/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the CommonJS preset and its hand-written .d.ts files are being converted to src/ TypeScript built to CommonJS
+      - path: packages/prettier-config/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: index.cjs, its hand-written index.d.cts and one spec are being converted to TypeScript
+      - path: packages/stylelint-canon/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the CSS canon is hand-written JavaScript being converted to src/ TypeScript built to dist/
+      - path: packages/test-world/
+        until: "2026-12-31"
+        owner: package TS plan
+        why: eslint.config.mjs is the one JavaScript file left; it becomes eslint.config.ts
+      - path: packages/tsconfig/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: config.spec.mjs is the one JavaScript file; it becomes a TypeScript spec
+    holds: hand-written JavaScript or hand-written declarations in a package; a package is TypeScript in src/ built to dist/
+    rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
+
+  # --- the repository root
+  - id: root.declaration
+    path: hfs.json
+    presence: required
+    holds: the tree declaration (hfs 1, kind runtime) a tree is recognised by
+    rule: contexts/harness/state.md
+  - id: root.readme
+    path: README.md
+    presence: required
+    holds: what the harness is, how it works, how to install it, the verb groups and CI
+    rule: CONTRIB-4
+  - id: root.contributing
+    path: CONTRIBUTING.md
+    presence: required
+    holds: the contribution laws CONTRIB-1 to CONTRIB-20
+    rule: CONTRIB-4
+  - id: root.license
+    path: LICENSE
+    presence: required
+    holds: the license of the repository
+    rule: open source repository
+  - id: root.agent-bootstrap
+    path: "{CLAUDE.md,AGENTS.md}"
+    presence: required
+    requires:
+      - CLAUDE.md
+      - AGENTS.md
+    holds: the agent bootstrap each agent host reads first; both point at contexts/README.md
+    rule: contexts/README.md load order
+  - id: root.community
+    path: "{CHANGELOG.md,CODE_OF_CONDUCT.md,SECURITY.md}"
+    presence: optional
+    holds: the CLI changelog, the conduct expected and how to report a vulnerability
+    rule: CONTRIB-4
+  - id: root.git-meta
+    path: "{.gitignore,.gitattributes}"
+    presence: required
+    requires:
+      - .gitignore
+      - .gitattributes
+    holds: what git ignores (env files, build output, state) and the LF line endings
+    rule: CONTRIB-14
+  - id: root.sonar
+    path: sonar-project.properties
+    presence: optional
+    holds: the Sonar scope of the repository
+    rule: policy/quality.yaml ci.sonar-new-code
+  - id: github.ci
+    path: ".github/workflows/ci.yml"
+    presence: required
+    holds: the CI that builds the CLI, runs the harness checks and every package's specs, and publishes on a tag
+    rule: CONTRIB-3; CONTRIB-20
+  - id: github.workflows
+    path: ".github/workflows/*.yml"
+    presence: optional
+    holds: further CI workflows (the desktop app build)
+    rule: CONTRIB-20
+  - id: github.meta
+    path: ".github/{dependabot.yml,pull_request_template.md,ISSUE_TEMPLATE/*.yml}"
+    presence: optional
+    holds: dependency updates, the pull request template and the issue forms
+    rule: open source repository
+
+  # --- knowledge: only in contexts/
+  - id: contexts.load-order
+    path: contexts/README.md
+    presence: required
+    holds: the load order and the map of every knowledge file
+    rule: CONTRIB-4
+  - id: contexts.harness-shape
+    path: contexts/hfs/harness.yaml
+    presence: required
+    holds: this manifest, the harness repository's own shape
+    rule: CONTRIB-10 gates before rules
+  - id: contexts.knowledge
+    path: "contexts/**/*.{md,yaml,html}"
+    presence: optional
+    holds: every piece of knowledge an agent loads (harness, hfs, code, ui, grammars, vendor, stack, project, decisions)
+    rule: CONTRIB-4; knowledge-product-agnostic
+
+  # --- machine rules: ops/ and policy/
+  - id: ops.map
+    path: ops/README.md
+    presence: required
+    holds: the map of ops/, the router's steps, failure classes and their accounting
+    rule: CONTRIB-4
+  - id: ops.data
+    path: "ops/*.yaml"
+    presence: required
+    requires:
+      - ops/checks.yaml
+      - ops/routing.yaml
+      - ops/routes.yaml
+      - ops/lanes.yaml
+      - ops/liveness.yaml
+      - ops/host.yaml
+      - ops/uat.yaml
+    holds: check presets, routing, routes, lanes, liveness thresholds, the host and the uat image, as data the CLI validates
+    rule: CONTRIB-9 data is data
+  - id: ops.labels
+    path: "ops/ops/*.md"
+    presence: required
+    requires:
+      - ops/ops/README.md
+    holds: one op file per label (its base context, inputs, outputs, checks and procedure) and the op pattern
+    rule: CONTRIB-4
+  - id: ops.coordinators
+    path: "ops/coordinators/*.md"
+    presence: optional
+    holds: the Kernel's and the Supervisor's briefs
+    rule: CONTRIB-4
+  - id: policy.rules
+    path: "policy/{README.md,*.yaml}"
+    presence: required
+    requires:
+      - policy/README.md
+      - policy/canon.yaml
+      - policy/loosening.yaml
+      - policy/quality.yaml
+      - policy/security.yaml
+    holds: gate tiers, profiles, overlays, banned markers, the secret scan and the canon packages per stack
+    rule: CONTRIB-9; CONTRIB-11
+
+  # --- the one CLI: cli/
+  - id: cli.package
+    path: "cli/{package.json,package-lock.json,README.md,tsconfig.json,tsconfig.build.json,eslint.config.ts}"
+    presence: required
+    requires:
+      - cli/package.json
+      - cli/package-lock.json
+      - cli/README.md
+      - cli/tsconfig.json
+      - cli/tsconfig.build.json
+      - cli/eslint.config.ts
+    holds: the one CLI package (starci-harness), how it is built and linted
+    rule: owner ruling, the CLI is one; CONTRIB-11
+  - id: cli.entry
+    path: "cli/src/{main.ts,registry.ts}"
+    presence: required
+    requires:
+      - cli/src/main.ts
+      - cli/src/registry.ts
+    holds: the entry point and the registry, the only place verb types are erased
+    rule: CONTRIB-12
+  - id: cli.verbs
+    path:
+      - "cli/src/core/*.ts"
+      - "cli/src/core/<group>/*.ts"
+    presence: required
+    holds: each verb as one defineVerb file at core/<group>/<verb>.ts (core/<verb>.ts for a group of one), beside its group's helpers
+    rule: CONTRIB-12 one verb, one file
+  - id: cli.edition-verbs
+    path: "cli/src/{lite,full}/<group>/*.ts"
+    presence: optional
+    holds: the verbs one edition alone serves
+    rule: CONTRIB-12
+  - id: cli.verb-data
+    path: "cli/src/core/<group>/*.json"
+    presence: optional
+    holds: data a verb group reads and owns (the search evaluation set)
+    rule: CONTRIB-9
+  - id: cli.harness
+    path: "cli/src/harness/**/*.ts"
+    presence: required
+    holds: the shared harness modules (ledgers, settling, graph, routing, seat launch, Orca) the verbs share
+    rule: cli/README.md
+  - id: cli.shared
+    path: "cli/src/shared/*.ts"
+    presence: required
+    holds: the plumbing every module uses (verb standard, errors, git, exec, output, role, tree)
+    rule: CONTRIB-13 no shell
+
+  # --- packages: TypeScript in src/, built to dist/
+  - id: packages.map
+    path: packages/README.md
+    presence: required
+    holds: the map of packages and their build and install convention
+    rule: CONTRIB-4
+  - id: packages.package
+    path: "packages/<name>/{package.json,package-lock.json,README.md,LICENSE,CHANGELOG.md,.gitignore,.npmrc}"
+    presence: required
+    per: "packages/<name>/"
+    requires:
+      - package.json
+      - package-lock.json
+      - README.md
+      - LICENSE
+    holds: one npm package per folder, its manifest, lockfile, readme, license and changelog
+    rule: CONTRIB-2; CONTRIB-20
+  - id: packages.build-config
+    path: "packages/<name>/{tsconfig.json,tsconfig.*.json,eslint.config.ts}"
+    presence: optional
+    holds: a package's typecheck and build configs (tsconfig.build.json emits dist/) and its lint config
+    rule: contexts/decisions/legacy-retirement.md section 3
+  - id: packages.source
+    path: "packages/<name>/src/"
+    presence: required
+    per: "packages/<name>/"
+    exempt:
+      - path: packages/tsconfig/
+        why: the tsconfig package is JSON presets; it has nothing to build
+    enforce: target
+    exceptions:
+      - path: packages/eslint-canon-be/
+        until: "2026-12-31"
+        owner: lane ts-canon-be
+        why: the back-end canon has no src/ until its JavaScript moves there as TypeScript
+      - path: packages/eslint-canon-fe/
+        until: "2026-12-31"
+        owner: lane ts-canon-fe
+        why: the front-end canon has no src/ until its JavaScript moves there as TypeScript
+      - path: packages/eslint-grammar-core/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the core Grammar lint factory has no src/ until its JavaScript moves there as TypeScript
+      - path: packages/eslint-grammar-offset-pop/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the offset-pop lint factory has no src/ until its JavaScript moves there as TypeScript
+      - path: packages/jest-preset/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the jest preset has no src/ until its CommonJS moves there as TypeScript
+      - path: packages/prettier-config/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the Prettier config has no src/ until index.cjs moves there as TypeScript
+      - path: packages/stylelint-canon/
+        until: "2026-12-31"
+        owner: lane ts-small-packages
+        why: the CSS canon has no src/ until its JavaScript moves there as TypeScript
+    holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
+    rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
+  - id: packages.tests
+    path: "packages/<name>/test/"
+    presence: optional
+    holds: a package's tests kept apart from src/ (ai-router)
+    rule: CONTRIB-2
+  - id: packages.generated
+    path:
+      - "packages/<name>/runtime/"
+      - "packages/<name>/**/*.generated.*"
+    presence: optional
+    generated:
+      from:
+        - contexts/stack/pins.yaml
+        - contexts/hfs/slots.yaml
+        - contexts/hfs/rules.yaml
+        - contexts/grammars/contract.yaml
+        - contexts/stack/fe.yaml
+      how: copies of the owner files in contexts/ (and the legacy runtime engine) a package ships; one owner per fact means the package makes them at build, never by hand
+    holds: generated runtime copies and generated modules a package ships
+    rule: CONTRIB-4 one owner per fact (a copy is generated from its owner)
+  - id: packages.data
+    path:
+      - "packages/<name>/fixtures/"
+      - "packages/hfs/templates/"
+      - "packages/<name>/**/*.{fixture,partial}"
+    presence: optional
+    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, emit partials)
+    rule: CONTRIB-9 data is data
+  - id: packages.rule-docs
+    path: "packages/<name>/docs/*.md"
+    presence: optional
+    holds: the page a lint rule's message links to; it names its owner in contexts/ and never restates the law
+    rule: CONTRIB-4
+  - id: packages.presets
+    path: "packages/tsconfig/*.json"
+    presence: optional
+    holds: the strict TypeScript presets base, be, build, next and e2e
+    rule: packages/README.md
+  - id: packages.storybook
+    path: "packages/grammar/.storybook/*.{ts,tsx}"
+    presence: optional
+    holds: the Grammar's Storybook configuration
+    rule: packages/README.md
+
+  # --- bench, skills and the app
+  - id: bench.map
+    path: bench/README.md
+    presence: required
+    holds: how the stress bench runs and its scoreboard
+    rule: cli-proven-by-bench
+  - id: bench.scenarios
+    path: "bench/scenarios/*.yaml"
+    presence: required
+    holds: one scenario per file (starci/scenario@1), validated by cli/src/core/bench/scenario.ts
+    rule: cli-proven-by-bench; CONTRIB-1
+  - id: bench.stub
+    path: "bench/stub/*.mjs"
+    presence: required
+    holds: the Orca stand-in, preloaded into a copied node binary, so it stays plain JavaScript
+    rule: bench/README.md
+  - id: skills.skill
+    path: "skills/<skill>/{SKILL.md,references/*.md,agents/*.yaml}"
+    presence: required
+    per: "skills/<skill>/"
+    requires:
+      - SKILL.md
+    holds: the skill an agent host loads to operate the harness, with its references
+    rule: CONTRIB-4
+  - id: app.package
+    path: "app/{package.json,package-lock.json,README.md}"
+    presence: required
+    requires:
+      - app/package.json
+      - app/README.md
+    holds: the desktop app, one package in app/
+    rule: README.md (the desktop app)
+  - id: app.tree
+    path: app/
+    presence: optional
+    holds: the desktop app's source, Tauri shell, assets and screenshots
+    rule: README.md (the desktop app)

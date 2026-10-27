@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: shape-harness-tree-green
+group: security
+title: the harness checkout itself is green against its own shape, contexts/hfs/harness.yaml
+inject: nothing; check shape runs on the harness checkout the bench runs from
+expect: check shape exits 0 and places every file of the harness tree, the open conversions excepted until their dates
+pass:
+  - check shape is green on the harness checkout
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: the harness tree is green
+    starci: [check, shape]
+    cwd: ${ops}/..
+    expect:
+      exit: 0
+      contains: "\"verdict\": \"green\""
