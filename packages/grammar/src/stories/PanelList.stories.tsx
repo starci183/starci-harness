@@ -21,7 +21,7 @@ export const SectionedPanel: Story = {
             <G.Heading level={2}>Conversations</G.Heading>
             <G.SearchField label="Find a conversation" />
             <G.Tabs label="Conversation views" selectedKey="all" items={[{ id: "all", label: "All" }, { id: "unread", label: "Unread" }]} />
-            <G.ListBox label="Conversations" sections={sections} selectionMode="single" defaultSelectedIds={["team"]} />
+            <G.ListBox label="Conversations" descriptionLines={1} sections={sections} selectionMode="single" defaultSelectedIds={["team"]} />
         </G.SurfaceCard>
     ),
 }
@@ -65,7 +65,7 @@ export const ScrollingIdentityColumns: Story = {
             <G.Heading level={2}>Conversation identities</G.Heading>
             <G.SearchField label="Find a conversation" />
             <G.NavLandmark label="Conversation list" layout="scrolling" style={{ maxHeight: "8rem", overflowY: "auto", alignItems: "start" }}>
-                <G.ListBox label="Conversations" inset="panel" defaultSelectedIds={["group"]} items={[
+                <G.ListBox label="Conversations" descriptionLines={1} inset="panel" defaultSelectedIds={["group"]} items={[
                     { id: "group", label: "Design team", description: "A 40px group identity", leading: <G.AvatarGroup label="Design team" layout="grid" items={[{ id: "mina", name: "Mina Nguyen" }, { id: "alex", name: "Alex Tran" }, { id: "kim", name: "Kim Le" }, { id: "robin", name: "Robin Park" }]} overflowLabel={(count) => `${count} more members`} /> },
                     { id: "person", label: "Mina Nguyen", description: "A smaller avatar in the same column", leading: <G.Avatar name="Mina Nguyen" size="sm" /> },
                     { id: "icon", label: "Pinned conversations", description: "A glyph in the same column", leading: <G.Icon source={GroupGlyph} usage="leading" /> },
@@ -93,7 +93,7 @@ export const LeadingSlotSizes: Story = {
 export const PreviewLinesAndUnread: Story = {
     render: () => (
         <G.NavLandmark label="Preview line limits" layout="scrolling" style={{ width: "20rem", maxWidth: "100%" }}>
-            <G.ListBox label="Conversation previews" defaultSelectedIds={["unread"]} items={[
+            <G.ListBox label="Conversation previews" descriptionLines={1} defaultSelectedIds={["unread"]} items={[
                 { id: "read", label: "Read conversation with a long title that ends in an ellipsis", description: "Mina: Review the project notes and shared decisions before the meeting tomorrow morning. This preview keeps its full accessible text." },
                 { id: "unread", label: "Unread conversation", emphasis: "unread", description: "Alex: Review the project notes and shared decisions before the meeting tomorrow morning. This preview keeps its full accessible text.", trailing: <G.Badge tone="danger">5+</G.Badge> },
                 { id: "one", label: "Explicit one line", descriptionLines: 1, description: "One line is also an explicit choice. Review the project notes and shared decisions before the meeting tomorrow morning." },

@@ -21,6 +21,14 @@
         line-clamp: 2;
     }
 
+    .grammar-common-root [data-slot="description"][data-grammar-description-lines="wrap"] {
+        display: block;
+        -webkit-line-clamp: none;
+        line-clamp: none;
+        overflow: visible;
+        overflow-wrap: anywhere;
+    }
+
     .grammar-common-root [data-slot="description"][data-grammar-description-lines="3"] {
         -webkit-line-clamp: 3;
         line-clamp: 3;
