@@ -797,7 +797,7 @@ mustKeep:
       owner: surfacecard-always-painted
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card
-      law: A labelled card's label is an unpainted row on the page above the card, outside the painted material (ruling card-label-placement-per-grammar).
+      law: A labelled card floating in the content flow carries its label as an unpainted row above the card, outside the material; a card that is a docked panel of the layout carries its title inside, as its header (ruling card-label-placement-per-grammar). Measured on floating cards; the panel case is measured once the grammar exposes its placement signal.
       measure:
         kind: style
         op: "="
