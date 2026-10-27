@@ -130,6 +130,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/shared/typing.md](../code/shared/typing.md) · 4 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides
 - [decisions/README.md](../decisions/README.md) · 1 KB
+- [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
+  - sections: 1. Context map · 2. Missing context worth moving · 3. Package TypeScript plan · 4. Retirement checklist
+  - ids: In-flight
 - [decisions/open-core.md](../decisions/open-core.md) · 22 KB — Choices made while writing patterns, hfs, stack and rulings.yaml, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · Contradictions found, with the resolution written · What `policy/` should take (not ported into knowledge) · Shared coding standard (code/shared) · Front-end coding standard (code/fe) · Back-end coding standard (code/be)
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 16 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
