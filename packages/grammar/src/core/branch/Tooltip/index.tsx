@@ -19,14 +19,31 @@ export type TooltipProps = {
      */
     readonly children: ReactElement
     readonly placement?: TooltipPlacement
+    /**
+     * Marks `children` as a control that cannot take hover or focus itself, such as a disabled Button.
+     * The tooltip then wraps it in the vendor `Tooltip.Trigger`, a focusable element that carries the hover and
+     * keyboard-focus events, so the words still appear for a control the platform skips.
+     */
+    readonly isDisabledTrigger?: boolean
+    /** Id of an element that always holds the words, so assistive technology reads them without opening the tooltip. */
+    readonly triggerDescribedBy?: string
 }
 
 /** Hover/focus annotation with HeroUI's positioning, dismissal and accessible trigger relationship. */
-export const Tooltip = ({ content, children, placement = "top" }: TooltipProps) => {
+export const Tooltip = ({ content, children, placement = "top", isDisabledTrigger = false, triggerDescribedBy }: TooltipProps) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
     return (
         <HeroTooltip delay={0}>
-            {children}
+            {isDisabledTrigger ? (
+                <HeroTooltip.Trigger
+                    className="starci-core-tooltip-disabled-trigger"
+                    data-grammar-tooltip-disabled-trigger="true"
+                    role="group"
+                    {...(triggerDescribedBy === undefined ? {} : { "aria-describedby": triggerDescribedBy })}
+                >
+                    {children}
+                </HeroTooltip.Trigger>
+            ) : children}
             {anchor}
             {container === null ? null : (
                 <HeroTooltip.Content
