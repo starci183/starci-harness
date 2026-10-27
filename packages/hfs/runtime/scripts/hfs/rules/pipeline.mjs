@@ -1,7 +1,7 @@
 // pipeline.mjs - HFS_CI_MISSING_CANON (R13): CI runs the pinned `starci app lint`.
 //   .github/workflows/ci.yml   a `run:` step that runs the one lint entry: `starci app lint`,
-//                              `npx @starci/cli[@<version>] app lint`, or `npm run <script>` whose command runs `starci app lint`
-//                              (`npm run lint`, arguments after `--` allowed); a version named in the step is the @starci/cli pin of
+//                              `npx starci-harness[@<version>] app lint`, or `npm run <script>` whose command runs `starci app lint`
+//                              (`npm run lint`, arguments after `--` allowed); a version named in the step is the starci-harness pin of
 //                              canon-pins.yaml (an installed one is pinned by the pin check, R15)
 //   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mjs keeps its shape)
 // A missing file is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING); a file that is present and lacks the step is this rule's.
@@ -11,10 +11,10 @@ import { isRuntimeExampleApp } from '../../lib/runtime-example.mjs';
 
 const CI_MISSING_CANON = 'HFS_CI_MISSING_CANON';
 const CI_FILE = '.github/workflows/ci.yml';
-const hfsPackage = '@starci/cli';
+const hfsPackage = 'starci-harness';
 const RUN_PREFIX = /^\s*(?:-\s+)?run:/;
 const NPX_PREFIX = /^npx\s+(?:(?:--no-install|-y)\s+)?/;
-const LINT_COMMAND = /^(?:@starci\/cli(?:@(\S+))?|starci)\s+app\s+lint/;
+const LINT_COMMAND = /^(?:starci-harness(?:@(\S+))?|starci)\s+app\s+lint/;
 const NPM_RUN_PREFIX = 'npm run ';
 const EXAMPLE_RUN_PREFIX = 'node node_modules/@starci/hfs/runtime/scripts/hfs/example-secrets.mjs --run . -- ';
 const SCRIPT_NAME = /^[\w:.-]+/;
@@ -57,7 +57,7 @@ function parseNpmRun(command) {
   return args !== null && !LINE_TERMINATOR.test(args) ? { script, args } : null;
 }
 
-/** { version } of a `starci app lint` command (`version` undefined when no @starci/cli version is named), else null. */
+/** { version } of a `starci app lint` command (`version` undefined when no starci-harness version is named), else null. */
 function lintCommandOf(command) {
   const rest = command.replace(NPX_PREFIX, '');
   const match = LINT_COMMAND.exec(rest);

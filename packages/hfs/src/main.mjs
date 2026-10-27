@@ -293,7 +293,7 @@ async function lintMain(argv, { cwd, stdout, presets, prettier, runLinter, check
 
 /**
  * The jest preset a new app renders its Sonar exclusions from: the copy this @starci/hfs ships (bundledPresets), the same version the
- * scaffold pins, so `npx @starci/cli app scaffold` works before any dependency of the app is installed.
+ * scaffold pins, so `npx starci-harness app scaffold` works before any dependency of the app is installed.
  */
 const scaffoldPresets = () => bundledPresets();
 

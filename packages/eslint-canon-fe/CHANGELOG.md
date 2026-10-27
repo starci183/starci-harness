@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.3.0 - 2026-10-27
+
+- Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`. No rule changes.
+
 ## 9.2.0 - 2026-10-27
 
 - Changed: owner ruling two-grammars: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.5.0 - 2026-10-27
+
+- Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`. No rule changes.
+
 ## 3.4.57 - 2026-10-27
 
 - Changed: the bundled runtime copy follows the two-grammars ruling: the Grammar catalog declares `core` and `offset-pop` only, and the canon pins follow the harness packages. The spec fixture app selects `core`. No rule changes.

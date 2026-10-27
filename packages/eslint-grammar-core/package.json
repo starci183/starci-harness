@@ -46,7 +46,7 @@
   "peerDependencies": {
     "eslint": ">=9",
     "typescript": ">=5.9",
-    "@starci/eslint-canon-fe": "9.2.0"
+    "@starci/eslint-canon-fe": "9.3.0"
   },
   "dependencies": {
     "@typescript-eslint/parser": "^8.70.0"

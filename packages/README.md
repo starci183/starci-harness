@@ -12,7 +12,7 @@ A package's `runtime/` is committed source, edited in place. `eslint-canon-fe`, 
 - `stylelint-canon` (`@starci/stylelint-canon`): the CSS canon (Grammar tokens only, brand values only in `brand.css`); consumed by the `stylelint.config.mjs` of StarCi front ends.
 - `heroicons` (`@starci/heroicons`): the glyphs `@heroicons/react` lacks, drawn in its style; imported by StarCi front ends.
 - `event-stream` (`@starci/event-stream`): the server-sent-events client (Bearer renewal, Last-Event-ID resume, backoff, heartbeat, an SWR adapter); one instance per front end.
-- `hfs` (`@starci/hfs`): the implementation behind `starci app` (scaffold, sync, check, lint, stack, db, codemod) for one product repository.
+- `hfs` (`@starci/hfs`): the implementation behind `starci app` (scaffold, sync, check, lint, stack, db, codemod) for one product repository, run in-process by the harness CLI (`starci-harness`, `cli/`), which is the command line a product installs; `@starci/cli`, the app CLI that used to run it, is retired.
 - `tsconfig` (`@starci/tsconfig`): the strict TypeScript presets `base`, `be`, `build`, `next` and `e2e`; extended by the tsconfig files of every StarCi app's back end and front end.
 - `prettier-config` (`@starci/prettier-config`): the one Prettier config; consumed by every StarCi app's `prettier` setting.
 - `jest-preset` (`@starci/jest-preset`): the jest config of a Nest repository and the shared unit-test double kit; consumed by the jest config and unit specs of StarCi back ends.

@@ -22,9 +22,10 @@ workflow, task or debug does not enroll into StarCi.
   (git-ignored): `machine.sqlite` and `projects/<ledger_id>/` with `runtime.sqlite`, `contracts/`,
   `briefs/`, `outputs/`, `preserved/`.
 - **CLI**: `starci` in these files means `node <runtime root>/cli/dist/main.js`. If `cli/dist` is missing,
-  build it in `<runtime root>/cli` with `npm ci` then `npm run build`. A bare `starci` on PATH may be the
-  legacy `@starci/cli` (1.7.x); this CLI is the npm package `starci-harness`, whose `starci-harness` bin the legacy CLI
-  lacks, and a PATH copy serves only when it resolves to this root. The state base follows
+  build it in `<runtime root>/cli` with `npm ci` then `npm run build`. This CLI is the npm package `starci-harness`
+  and carries `starci app`; a product pins it as its devDependency, so `npx starci app ...` there runs the product's
+  pinned copy. `@starci/cli` is retired (a machine may still hold its 1.7.x, which has no `starci-harness` bin), and a
+  PATH copy serves only when it resolves to this root. The state base follows
   the CLI's location, so a CLI built in another worktree reads another ledger: always run the runtime root's.
 - **Product repository**: the git repository the work lands in. Its ledger is found from its git common dir,
   so every worktree of it shares one ledger. Run verbs from inside it, or pass `--cwd <repo>`.

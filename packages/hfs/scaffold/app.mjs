@@ -161,8 +161,8 @@ const STARTER_DEPENDENCIES = Object.freeze({
     'class-transformer': null, 'class-validator': null, 'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, zod: null,
   },
   devDependencies: {
-    turbo: null, '@nestjs/testing': null, '@starci/cli': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null, '@starci/jest-preset': null,
-    '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/test-world': null, '@starci/tsconfig': null, '@tailwindcss/postcss': null, '@types/express': null,
+    turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null, '@starci/jest-preset': null,
+    '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/test-world': null, '@starci/tsconfig': null, 'starci-harness': null, '@tailwindcss/postcss': null, '@types/express': null,
     '@types/jest': null, '@types/node': null, '@types/react': null, '@types/react-dom': null, eslint: null, 'eslint-plugin-react-hooks': null,
     husky: null, jest: null, 'postcss-value-parser': null, prettier: null, stylelint: null, tailwindcss: null, 'ts-jest': null,
     'ts-node-dev': null, 'tsc-alias': null, 'tsconfig-paths': null, typescript: null,
@@ -182,8 +182,8 @@ const LITE_STARTER_DEPENDENCIES = Object.freeze({
     'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, zod: null,
   },
   devDependencies: {
-    turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null, '@starci/cli': null,
-    '@starci/jest-preset': null, '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/tsconfig': null, '@tailwindcss/postcss': null,
+    turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null,
+    '@starci/jest-preset': null, '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/tsconfig': null, 'starci-harness': null, '@tailwindcss/postcss': null,
     '@types/express': null, '@types/jest': null, '@types/node': null, '@types/react': null, '@types/react-dom': null,
     eslint: null, 'eslint-plugin-react-hooks': null, husky: null, jest: null, 'postcss-value-parser': null, prettier: null,
     stylelint: null, supabase: null, tailwindcss: null, 'ts-jest': null, 'ts-node-dev': null, 'tsc-alias': null,

@@ -19,6 +19,7 @@
 - Fixed: a `DataTable` editor fills its column (the hosted field stretches) instead of shrinking to its content.
 - Fixed: a `SurfaceCard` `fact` renders in the muted fact style (`starci-core-surface-fact`) that `SurfaceListCard` uses, instead of an unstyled span inheriting the vendor card header's larger type.
 - Changed: versioned together with the Grammar lint families 0.14.0 (a minor: `Input hint` is removed).
+- Changed: the lint families' bundled canon pins name `starci-harness` in place of the retired `@starci/cli`.
 
 ## 0.13.0 - 2026-10-27
 
