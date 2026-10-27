@@ -33,9 +33,11 @@ empty `catch`, the back-end `catch-must-account` (R40, BE-ERROR-4) and the front
 When a canon rule, the grammar or the harness refuses correct code, the fix is a change to that package, made by its
 own task. A coding op reports it (`blocked`, naming the package, the rule and the finding) and never adds a local rule,
 an override, a shim or an exception to make its checks green. The only exception mechanism is an entry of the
-repository's `policy/loosening.yaml` (one file, one marker, the reason), which an owner decision adds.
+repository's `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a
+live owner ruling covers (its header says the form), which an owner decision adds.
 
 Why: a local workaround forks the standard silently, and the next app repeats the same fight.
 
 Enforced by: R16 HFS_TOOL_CONFIG_LOCAL, R17 HFS_RULE_OFF_WITHOUT_REPLACEMENT, R103 HFS_REPO_LOCAL_CHECK; the
-`loosening` gate reports an exception that matches no finding.
+`loosening` gate reports a pinned line that matches no finding (`EXCEPTION_STALE`) and refuses an exception on any other
+file (`EXCEPTION_KIND_REFUSED`) or one citing no live ruling (`EXCEPTION_RULING_UNKNOWN`).

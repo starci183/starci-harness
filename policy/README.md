@@ -27,6 +27,6 @@ A project picks its profile in its `hfs.json` (`"policy": "<profile>"`); without
 chooses by the kind of tree. `starci doctor` prints the profile and why.
 
 A project may carry its own `policy/loosening.yaml` and `policy/security.yaml` at its repository root. An overlay only
-tightens: it bans more markers, adds `neverRead` globs and declares its own exceptions, each one file, one marker or
-rule, and the reason. It never unbans, and a project that carries `quality.yaml` or `canon.yaml` is refused
+tightens: it bans more markers, adds `neverRead` globs and declares its own exceptions, in the form
+and on the files the header of [loosening.yaml](loosening.yaml) states. It never unbans, and a project that carries `quality.yaml` or `canon.yaml` is refused
 (`POLICY_OVERLAY_REFUSED`).

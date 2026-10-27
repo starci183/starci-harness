@@ -8,6 +8,7 @@ export const DECLARED = [
   "--accent-soft",
   "--accent-soft-foreground",
   "--accent-soft-hover",
+  "--avatar-size",
   "--backdrop",
   "--background",
   "--background-inverse",
@@ -98,6 +99,7 @@ export const DECLARED = [
 /** Un-prefixed custom properties the grammar reads but a vendor layer declares. */
 export const VENDOR = [
   "--code-surface",
+  "--ease-smooth",
   "--field-border-width",
   "--font-mono",
   "--font-sans",

@@ -1,0 +1,65 @@
+{
+  "name": "@starci/eslint-grammar-offset-pop",
+  "version": "0.13.0",
+  "description": "Offset Pop Grammar lint: the inherited Common component contract over its own visual family.",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "starci",
+    "grammar",
+    "offset-pop"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/eslint-grammar-offset-pop#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/eslint-grammar-offset-pop"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "private": false,
+  "main": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "LICENSE",
+    "*.mjs",
+    "*.d.ts",
+    "runtime/**",
+    "!*.spec.mjs",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "peerDependencies": {
+    "eslint": ">=9",
+    "typescript": ">=5.9",
+    "@starci/eslint-grammar-core": "0.13.0"
+  },
+  "devDependencies": {
+    "@starci/eslint-canon-fe": "file:../eslint-canon-fe",
+    "@starci/eslint-grammar-core": "file:../eslint-grammar-core",
+    "@typescript-eslint/parser": "8.71.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "test": "node --test \"*.spec.mjs\""
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

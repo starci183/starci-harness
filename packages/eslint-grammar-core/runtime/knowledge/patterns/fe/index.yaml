@@ -1,0 +1,213 @@
+schema: starci/knowledge-source@1
+id: fe
+title: Frontend code patterns
+purpose: |
+  knowledge/ui/ governs interface semantics, composition, state and accessibility across design systems.
+  The selected Grammar owns concrete renderers, published props and visual values under FE-RULE-OWNERSHIP.
+  knowledge/patterns/fe/ decides how the code that produces that interface is written: where a unit lives, what its files are
+  called, how a component function is shaped, where a class string sits, how a failure is represented, where data, text and colour come from. A pattern rule never chooses a visual; a ui/ rule never chooses a file name. Read
+  knowledge/hfs/README.md (HFS) section 6 first; knowledge/hfs/fe-stack.yaml names the one library, home and pattern of each
+  front-end concern, the same for lite and full. Follow docs/architecture.md and docs/code-pattern-enforcement.md. Each rule cites the HFS rule ids it
+  implements (hfsRules) and the finding codes that judge it (verification.automated).
+appliesTo:
+  - frontend
+family: fe
+provenance:
+  reviewedAt: 2026-10-25
+  sources:
+    - knowledge/hfs/README.md
+    - knowledge/hfs/slots.yaml
+    - knowledge/hfs/fe-stack.yaml
+    - knowledge/grammars/index.yaml
+    - "Lint canon consulted for rule names only: @starci/eslint-canon-fe."
+  limitations: |
+    Patterns place code and shape it. They do not approve business requirements or architecture, which belong to
+    .starciwork, and static checks do not prove rendered behavior. Inspect actual source, manifest, lockfile, aliases and lint
+    configuration in the selected app. Verify the installed Grammar's exports against the explicitly
+    selected family's component contract.
+guidance:
+  - id: FE-RULE-OWNERSHIP
+    requirement: |
+      Classify every requirement and its executable check by asking these questions in order:
+      1. Would the rule still hold for any design system? The governing requirement belongs in universal,
+         product-agnostic knowledge: knowledge/ui for interface semantics and knowledge/hfs for code laws.
+      2. Is it one design family's visual choice, such as a number, token, shape or effect? That Grammar owns
+         the choice in its DNA and styles.css.
+      3. Is it about how to call one Grammar's components, including their names, props, variants or sizes?
+         That Grammar's own lint package owns the executable check.
+      4. Is it checkable on code regardless of the Grammar? The universal frontend canon lint owns the
+         executable check; its rules name no family-specific component, prop, variant or size. Every Grammar
+         follows HeroUI's component roles, anatomy, slots and props, so a check that holds identically for
+         every family through that shared API, such as R318 composition, stays universal.
+      Separate a universal requirement from the family-specific API that realizes it. A moved check cites
+      this ownership rule and the knowledge requirement it enforces; moving its implementation never moves
+      universal semantics into a family or changes the requirement.
+      Universal knowledge requires danger semantics for destructive actions and sign-out, one icon size
+      per region chosen from the Grammar's scale, separation of nested controls from their surfaces,
+      padding that never stacks and lists aligned to the panel edge, app-shell regions with independent
+      scroll ownership, and application CSS limited to layout. The selected Grammar owns their visual
+      values and API realization.
+    rationale: |
+      One owner for meaning, visual choices and executable checks keeps family changes from rewriting
+      universal interface law or coupling the universal frontend canon to a component API.
+topics:
+  - path: architecture-check.yaml
+    title: Architecture check
+    decides: "Route adapters, responsibility direction, acyclic owners, package and app isolation, world ownership"
+    rules: "FE-ARCHITECTURE-1 … FE-ARCHITECTURE-5"
+  - path: folder.yaml
+    title: Folder
+    decides: "Tier directories, the source root, the file set of one unit, route files and mandatory boundaries, what hooks and modules hold"
+    rules: "FE-FOLDER-1 … FE-FOLDER-6"
+  - path: naming.yaml
+    title: Naming
+    decides: "Folder, export, props type, class-name export, hook, operation and constant names"
+    rules: "FE-NAMING-1 … FE-NAMING-7"
+  - path: function.yaml
+    title: Function
+    decides: "Component shape, the { state, props, on } pure half of atoms (drawing law), server and client connected halves, data lifecycle, route files, function line budget"
+    rules: "FE-FUNCTION-1 … FE-FUNCTION-9"
+  - path: imports.yaml
+    title: Imports
+    decides: "Source and package paths, Grammar entry, responsibility direction, public entries; layout is Prettier's"
+    rules: "FE-IMPORTS-1 … FE-IMPORTS-7"
+  - path: comment.yaml
+    title: Comment
+    decides: "Export docblocks, field docs, decision prose, // sentences, banned content, no suppression"
+    rules: "FE-COMMENT-1 … FE-COMMENT-5"
+  - path: typing.yaml
+    title: Typing
+    decides: "Strict flags, type over interface, readonly, literal unions, arrays, no casts, wire and feature and view contracts"
+    rules: "FE-TYPING-1 … FE-TYPING-8"
+  - path: error.yaml
+    title: Error
+    decides: "Failure as a GraphQLResponse and a slot status, hard stops, propagation and ownership"
+    rules: "FE-ERROR-1 … FE-ERROR-5"
+  - path: transport.yaml
+    title: Data transport
+    decides: "The Apollo clients and link chain, one file per operation, the GraphQLResponse envelope, generated wire types from be/contracts"
+    rules: "FE-API-GRAPHQL, FE-WIRE-GENERATED"
+  - path: route.yaml
+    title: Framework and routes
+    decides: "App Router, thin routes, no Server Action and no route handler beyond health/live and the auth callback"
+    rules: "FE-ROUTE"
+  - path: rest.yaml
+    title: REST calls
+    decides: "axios in modules/api/rest for uploads, presigned URLs and auth endpoints only"
+    rules: "FE-API-REST"
+  - path: data.yaml
+    title: Data hooks
+    decides: "One SWR hook per operation in hooks/swr, keys, refresh by refreshInterval or socket, job progress"
+    rules: "FE-DATA-SWR"
+  - path: toast.yaml
+    title: Toast feedback
+    decides: "modules/toast: showGraphQLToast and the use*WithToast hooks"
+    rules: "FE-TOAST"
+  - path: form.yaml
+    title: Forms
+    decides: "react-hook-form with zod in hooks/rhf, submitted through an SWR mutation and the toast"
+    rules: "FE-FORM"
+  - path: redux.yaml
+    title: Global state
+    decides: "The redux store, typed hooks and slices"
+    rules: "FE-STATE-REDUX"
+  - path: zustand.yaml
+    title: Local state
+    decides: "Feature-local zustand stores in hooks/zustand/<store>"
+    rules: "FE-STATE-ZUSTAND"
+  - path: realtime.yaml
+    title: Realtime
+    decides: "socket.io-client singletons per namespace and one side-effect component"
+    rules: "FE-REALTIME"
+  - path: auth.yaml
+    title: Auth client
+    decides: "modules/auth: session and access token, never data"
+    rules: "FE-AUTH"
+  - path: boundaries.yaml
+    title: Boundaries
+    decides: "Mandatory error, not-found and loading boundaries, Outcome rendering, server-first components, layout-level overlay hosts"
+    rules: "FE-BOUNDARY-1 … FE-BOUNDARY-5"
+  - path: i18n.yaml
+    title: Internationalization
+    decides: "next-intl, [locale], default locale vi, as-needed prefix, proxy.ts, no display text outside catalogs, catalog parity"
+    rules: "FE-I18N, FE-I18N-1 … FE-I18N-4"
+  - path: css.yaml
+    title: CSS and tokens
+    decides: "globals.css imports only, colour only in brand.css, forbidden CSS forms, Grammar owns family tokens"
+    rules: "FE-CSS-1 … FE-CSS-4"
+  - path: packages.yaml
+    title: Packages
+    decides: "Built packages with explicit exports, no dead unit, one version of every dependency, declared stack dependencies and core packages"
+    rules: "FE-PACKAGES-1 … FE-PACKAGES-4"
+  - path: multi-app.yaml
+    title: Multiple apps
+    decides: "Independent apps under fe/apps/<app>, drafts as branches, ui-screen records that name their app"
+    rules: "FE-APPS-1 … FE-APPS-3"
+  - path: ui.yaml
+    title: UI kit
+    decides: "The grammar over HeroUI and Tailwind, no second kit"
+    rules: "FE-UI"
+  - path: icon.yaml
+    title: Icons
+    decides: "One icon set"
+    rules: "FE-ICON"
+  - path: theme.yaml
+    title: Theme
+    decides: "next-themes in components/providers"
+    rules: "FE-THEME"
+  - path: motion.yaml
+    title: Motion
+    decides: "One motion library"
+    rules: "FE-MOTION"
+  - path: date.yaml
+    title: Dates
+    decides: "dayjs for math, the next-intl formatter for display"
+    rules: "FE-DATE"
+  - path: number.yaml
+    title: Money and decimals
+    decides: "decimal.js for money, the next-intl formatter for display"
+    rules: "FE-NUMBER"
+  - path: storage.yaml
+    title: Browser storage
+    decides: "modules/storage with superjson"
+    rules: "FE-STORAGE"
+  - path: utils.yaml
+    title: Utilities
+    decides: "Per-method lodash and usehooks-ts"
+    rules: "FE-UTILS"
+  - path: chart.yaml
+    title: Charts
+    decides: "recharts styled by the dataviz grammar"
+    rules: "FE-CHART"
+  - path: flow.yaml
+    title: Flow canvas
+    decides: "@xyflow/react behind the grammar FlowGraph"
+    rules: "FE-FLOW"
+  - path: markdown.yaml
+    title: Markdown
+    decides: "react-markdown with remark-gfm"
+    rules: "FE-MARKDOWN"
+  - path: code.yaml
+    title: Code highlight and editor
+    decides: "react-shiki and Monaco"
+    rules: "FE-CODE"
+  - path: diagram.yaml
+    title: Diagrams
+    decides: "mermaid in a block"
+    rules: "FE-DIAGRAM"
+  - path: upload.yaml
+    title: File upload
+    decides: "react-dropzone and a presigned PUT"
+    rules: "FE-UPLOAD"
+  - path: pdf.yaml
+    title: PDF view
+    decides: "react-pdf in a block"
+    rules: "FE-PDF"
+  - path: observe.yaml
+    title: Observability
+    decides: "@sentry/nextjs"
+    rules: "FE-OBSERVE"
+  - path: lint.yaml
+    title: Lint and format
+    decides: "The canon eslint and prettier configuration"
+    rules: "FE-LINT"

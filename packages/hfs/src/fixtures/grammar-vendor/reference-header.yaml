@@ -1,0 +1,28 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.header"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Header
+dir: header
+anatomy:
+  root: "HeaderRoot"
+  parts: []
+  required: []
+  slots: {}
+  embeds: []
+variants:
+  defaults: {}
+  values: {}
+parts:
+  Root: {"impl":"HeaderRoot","dataSlot":"header","classes":[],"defaults":{},"values":{},"paints":[]}
+css:
+  files: ["header.css"]
+  classes: ["header"]
+  dataSlots: []
+  rules:
+    - {"file":"header.css","selectors":[".header"],"apply":["w-full","px-2","pt-1.5","pb-1","text-start","text-xs","font-medium","text-muted"]}

@@ -1,0 +1,1214 @@
+schema: starci/knowledge-source@1
+id: grammar.core.playbook
+title: StarCi Core — playbook
+purpose: |
+  Which idioms a business shape asks for, and what a supplied reference is allowed to contribute to
+  that answer. The idioms themselves are in idioms.yaml; what the package publishes is in DNA.yaml.
+  A shape not listed here is not a house idiom. It may still be composed for the approved product
+  direction when existing Common semantics, family anatomy and product facts can express it; only
+  promotion into the family's reusable idiom set belongs to the family owner.
+  Shapes marked `since: "0.5.0"` compose the forms, overlay and navigation renderers Common added in
+  0.5.0. They name renderers directly (`composition`) rather than idioms, because no product source
+  has yet shown them twice; `guidance` holds the rules every Core app built on them follows.
+appliesTo:
+  - grammar
+family: core
+provenance:
+  publicEntry: "@starci/grammar/common"
+  package: "@starci/grammar"
+  version: "0.5.0"
+  captured: "2026-09-23"
+  limitations: |
+    Use this playbook only when this family is selected in the current .starciwork specification.
+    Examples below are historical references; verify actually installed exports (prefer
+    @starci/grammar/common as the current public entry where supported), renderers and CSS before
+    promising a capability. Reading steps below are reasoning within one op, not an auto-running op
+    chain. Do not invent Grammar component APIs absent from DNA/installed source.
+shapes:
+  - id: purchase-decision-page
+    title: Purchase decision page — one offer, one price, one commitment (subscriptions)
+    referenceMayContribute: |
+      Keep: the order of regions (what is read before the price), which single decision dominates, and
+      what folds away instead of competing with it. Never crosses over: page layout, brand, palette,
+      type scale, component anatomy, or any control the reference draws that this Grammar does not
+      publish.
+    idiomSequence:
+      - idiom: joined-bands-flush-card
+        role: Explanatory column in primary of PrimaryRailLayout
+      - idiom: neutral-summary-band
+        role: A neutral band opens the card with its summary for its intro line
+      - idiom: generated-art-band
+        role: Generated art is a band, not a card for the journey asset
+      - idiom: title-supporting-line
+        role: Title and one supporting line for each included outcome
+      - idiom: one-highlighted-card
+        role: One highlighted card on the decision itself
+      - idiom: bottom-action-band
+        role: The card's one action closes the bottom band for the purchase
+      - idiom: pending-same-tree
+        role: Pending is the same tree, resting across the offer read
+    notes: |
+      Secondary explanation folds away; whether it folds into a disclosure is a
+      DIRECTION_CHOICE_REQUIRED (seen once). Decision card sits in rail.
+
+  - id: learner-dashboard
+    title: Learner dashboard — many peer sections, one intended next step
+    referenceMayContribute: |
+      Keep: which sections exist and their reading order, and which single section is the reader's
+      next action. Never crosses over: grid geometry, card chrome, densities, or a section that would
+      need a renderer this family does not publish.
+    idiomSequence:
+      - idiom: joined-bands-flush-card
+        role: Per section
+      - idiom: neutral-summary-band
+        role: Where the section states a measure
+      - idiom: title-supporting-line
+        role: Inside every row
+      - idiom: bottom-action-band
+        role: Where a section leads somewhere
+      - idiom: pending-same-tree
+        role: For every read, one slot per api through guidance state-recipes
+      - idiom: one-highlighted-card
+        role: Across the page exactly once, on the resume or next-step section
+
+  - id: sign-in
+    title: Sign-in — one surface, several journeys, one submit per step
+    referenceMayContribute: |
+      Keep: the order of the ways in (shortcut before form, or the reverse), which journeys share one
+      surface, and where the way to the other journey sits. Never crosses over: provider branding,
+      illustration, field chrome, or a social-login row this product does not have a provider for.
+    idiomSequence:
+      - idiom: title-supporting-line
+        role: Surface header (Heading + muted subtitle)
+      - idiom: single-column-form-stack
+        role: Per step, one Button variant="primary" type="submit" each
+      - idiom: pending-same-tree
+        role: Through isPending and isDisabled rather than a replaced tree
+    notes: |
+      The way onward as TextAction, last. Whether the provider shortcut precedes the form is seen
+      once; carry the reference's order and say so.
+
+  - id: account-settings-form
+    title: Settings or profile form — named groups, one submit, server errors in place
+    since: "0.5.0"
+    referenceMayContribute: |
+      Keep: which groups exist, their order, and which fields are required. Never crosses over: field
+      chrome, validation copy style, or a control the package does not publish.
+    composition:
+      - renderer: Form
+        role: |
+          The boundary: `label` (form landmark), `onSubmit(FormData)`, `validationErrors` keyed by field
+          `name` for server-side refusals, `isPending` while the submit is in flight
+      - renderer: Fieldset
+        role: One per named group (`legend`, optional `description`, cross-field `errorMessage`)
+      - renderer: "Select / ComboBox / Textarea / NumberField / SearchField / DateField / DatePicker"
+        role: |
+          Each control carries its own `label`, `description`, `errorMessage`, `isRequired`, `name` —
+          the shared Field contract; a placeholder is never the name
+      - renderer: "Checkbox / CheckboxGroup / RadioGroup / Switch / SegmentedControl / Slider"
+        role: |
+          Choices; a Switch is an immediate setting, a Checkbox a value submitted with the form
+      - renderer: Field
+        role: |
+          Only for a control Grammar does not publish (a third-party widget, OtpInput, a native input):
+          its render prop hands over the id and `aria-describedby`/`aria-invalid` so the control is
+          announced like a Grammar one
+      - renderer: Button
+        role: One `variant="primary" type="submit"` after the last group; `isPending` mirrors the Form's
+    notes: |
+      The base `Input` still speaks `hint`/`isError`; the 0.5.0 controls speak
+      `description`/`errorMessage`/`isInvalid`. Do not mix the two vocabularies in one form without
+      checking that the Form's `validationErrors` reaches the control. In Core, fields are white fills
+      with a transparent border (see family.yaml `fields-on-a-surface`): on a top-level SurfaceCard
+      verify the rendered field edge.
+
+  - id: destructive-confirmation
+    title: Destructive confirmation — one irreversible decision
+    since: "0.5.0"
+    composition:
+      - renderer: AlertDialog
+        role: |
+          `tone="negative"` (the default), `title` naming the consequence, `confirmLabel` and
+          `cancelLabel` in the product's words; `onConfirm` may return a promise, which keeps the confirm
+          pending and the dialog open until it settles
+      - renderer: Button
+        role: |
+          The trigger, inside the Core root: `intent="destructive"` at the entry step, which resolves to
+          `danger-soft` (CTA-6); the confirm inside the AlertDialog is the solid `danger` confirm, dismiss
+          comes first and takes initial focus
+    notes: |
+      Initial focus lands on the cancel action and an outside press never dismisses. A reversible
+      action is not a confirmation: act, then offer undo through a Toast `action`.
+
+  - id: secondary-task-sheet
+    title: Secondary task beside the page — filters, details, an edit
+    since: "0.5.0"
+    composition:
+      - renderer: Drawer
+        role: |
+          `placement="right"` at wide widths; `placement="bottom"` (grab handle shown by default) when
+          the task is thumb-driven on a phone. `footer` may take a render function receiving `close`
+      - renderer: Dialog
+        role: When the task must block the page and is short (`size` sm/md/lg/full)
+    notes: |
+      Both portal into the Core root and restore focus to their trigger. One overlay at a time; a
+      Popover or DropdownMenu opened from inside a Drawer stays inside the same root.
+
+  - id: app-shell-mobile-first
+    title: App shell — WorkspaceShell, navbar and sidebar drawer
+    since: "0.5.0"
+    ownership: FE-RULE-OWNERSHIP
+    knowledge: knowledge/ui/composition/app-shell.yaml
+    composition:
+      - renderer: CoreGrammarRoot
+        role: The single root around everything below
+      - renderer: WorkspaceShell
+        role: |
+          `viewport="fixed"` realizes FE-APP-SHELL-1: exactly 100dvh, a sticky navbar, optional sidebar,
+          and independently scrolling navigation and primary content. The document never scrolls.
+          Under viewport="fixed", navigation resolves navigationVisibility to wide and provides
+          navigationDrawer or a compactHeader containing a left Drawer with Sidebar presentation="drawer".
+          Both opener paths default visibility to wide; an explicit visibility also resolves to wide.
+          Under viewport="fixed",
+          navigationTrack defaults to intrinsic so a collapsed sidebar leaves no empty track.
+      - renderer: NavigationFeatureNav
+        role: |
+          The navbar may use this renderer or the WorkspaceShell header with TopBar. Its family CSS
+          supplies sticky top placement, a 4rem band, a solid surface and a full-width bottom separator.
+      - renderer: Sidebar
+        role: |
+          Desktop navigation uses the expanded or collapsed rail; the left mobile Drawer composes
+          `presentation="drawer"`. Its label, destinations and selectedKey come from the application.
+      - renderer: Toaster
+        role: Once, last child of the root
+    recipes:
+      - id: navbar-controls
+        implements: [FE-APP-SHELL-2]
+        compose: |
+          Every bar control uses `size="control"`, the 2.5rem (40px) shared height. Icon uses the family
+          size-5 token (20px) throughout the region. SearchField or its trigger shows Ctrl K and opens
+          on Ctrl/Cmd+K; inside a surface its variant resolves through the nesting context. A compact
+          language switch in a bar is SegmentedControl size="control" (the HeroUI lg group held to
+          2.75rem); md and lg keep HeroUI's own sizes.
+      - id: site-chrome-bar
+        implements: [FE-APP-SHELL-3]
+        compose: |
+          A public site composes its bar inside the flow shell, in one module (the scaffold SiteShell):
+          WorkspaceShell viewport="flow" header={TopBar brand navigation actions}. navigation is a
+          NavLandmark layout="bar" of TextAction links; actions is the language SegmentedControl
+          size="control", then the sign-in Button intent="neutral" and the call-to-action Button, all
+          size="control". The app right cluster (menu, theme Switch, bell, account) is for the app shell only.
+      - id: workspace-identity
+        implements: [FE-APP-SHELL-2]
+        compose: |
+          IdentityLockup sits inside PlainPressable size="control". Its square logo mark has a
+          transparent background, no radius and object-fit contain; without an image it uses Avatar's
+          bundled DiceBear initials. The title
+          has a muted role subtitle and no caret. PlainPressable has no button shape or hover effect;
+          press uses scale(0.96), focus remains visible and reduced motion removes the zoom.
+      - id: navbar-right-cluster
+        implements: [FE-APP-SHELL-3]
+        compose: |
+          In order: a round tertiary IconButton with the Heroicons Language glyph opening a
+          single-select DropdownMenu, Switch size="control" with sun/moon size-5 thumb icons and
+          isLabelHidden, a bell IconButton with count badge opening Popover, then a circle-only
+          AvatarButton size="control" opening the account DropdownMenu. AvatarButton uses uploaded src
+          first and otherwise the bundled DiceBear initials style: the first and last words of name
+          supply the letters, and userId passed as seed determines colour, falling back to name when
+          seed is absent (owner:avatar-default-dicebear-initials). DropdownMenu preserves HeroUI's
+          anatomy and default selection indicator. The supported language labels use the "Vietnamese"
+          and "English" entries in modules/i18n/messages/app-shell.yaml; each language keeps its autonym.
+      - id: account-menu
+        implements: [FE-APP-SHELL-3]
+        compose: |
+          A workspace section shows identity marks and single selection. An account section shows an
+          icon, account name and description email · role. The sign-out item and every destructive item
+          use `tone="danger"`; the family prop realizes the universal danger semantics. Sections
+          receive automatic separators. Localized sign-out copy comes from
+          modules/i18n/messages/app-shell.yaml.
+      - id: mobile-navigation
+        implements: [FE-APP-SHELL-4]
+        compose: |
+          Below md the navbar holds identity, search trigger, bell and avatar; language and theme move
+          into the drawer. The compactHeader band directly below it is also 4rem, with an edge-to-edge
+          separator and one vertically centred round tertiary IconButton carrying the Heroicons
+          ellipsis at size-5. It opens Drawer placement="left" containing Sidebar
+          presentation="drawer" with every group plus language and theme. The drawer closes on item,
+          backdrop or Escape, traps focus and scrolls independently. The opener band hides at desktop.
+          Inline navigation is hidden below md with navigationVisibility="wide"; navigationDrawer or
+          the compactHeader containing the left Drawer and its drawer Sidebar supplies the opener.
+          The shell has neither tabs in the opener band nor a BottomNav.
+      - id: create-actions
+        implements: [FE-APP-SHELL-5]
+        compose: |
+          The create action stays on its page. The static matcher reads appShell.product from
+          modules/goal/source-phrases.yaml; the navbar never receives that page command.
+      - id: sidebar-rail
+        implements: [FE-APP-SHELL-6]
+        compose: |
+          Sidebar fills the height below the navbar, uses the surface background in both themes and
+          scrolls independently. Groups use translated headings such as Main, Operations and Settings
+          from modules/i18n/messages/app-shell.yaml. The expanded item has a size-5 icon, label and
+          Grammar current-page treatment. A keyboard-accessible toggle collapses it into icon-only
+          destinations with size-5 icons in 2.5rem targets, current-page highlighting, count badges
+          and hover/focus tooltips. Group order is stable, spacing replaces group headings and
+          settings-type groups stay at the end. The application persists collapse state per user.
+      - id: conversation-panel
+        implements: [FE-APP-SHELL-7]
+        compose: |
+          The panel has its title, a nested SearchField and a filter Tabs row, then one list sorted by
+          latest message. The approved reference categories are All, Groups, Customers and Unread
+          when those categories exist in the product; labels come from modules/i18n/messages/ui.yaml
+          and modules/i18n/messages/app-shell.yaml. ListBox panel alignment keeps rows and section
+          captions on the same content edge without padding wrappers. A row shows avatar, name,
+          trailing time, last message and unread badge; the open row is selected through HeroUI.
+          The name and preview each occupy one line with an ellipsis, and the title carries no group
+          glyph (owner:item-description-one-line). Pass emphasis="unread" for unread rows so Grammar
+          strengthens the label and preview; read rows keep the vendor label and muted preview.
+          Group identity uses AvatarGroup layout="grid" with the member/count arrangement declared
+          by presentation.groupIdentity.
+    notes: |
+      FE-RULE-OWNERSHIP in knowledge/patterns/fe/index.yaml separates universal app-shell semantics
+      from these family APIs, values, shapes and effects. @starci/eslint-grammar-core owns their
+      code checks. Inspect installed Grammar exports and the running shell when proving the recipe.
+
+readingSteps:
+  - id: business-shape-first
+    order: 1
+    title: Business shape first
+    instruction: |
+      Name the shape and the one outcome the surface exists to produce. The shape selects the idiom
+      sequence; nothing else does.
+  - id: then-reference
+    order: 2
+    title: Then the reference, if the request supplied one
+    instruction: |
+      A reference contributes region order, which decision dominates, and what folds away. It never
+      contributes layout, brand, palette, or component anatomy — those are already owned, by this
+      family and by knowledge/ui. A reference that can only be honoured by breaking an idiom is
+      evidence about the reference, not about StarCi.
+  - id: then-idioms
+    order: 3
+    title: Then the idioms
+    instruction: |
+      Composed in the order the shape's row gives, each one taken whole: an idiom is a relationship,
+      and half of it is a different shape.
+  - id: compare-dna
+    order: 4
+    title: Compare DNA with actually installed source
+    instruction: |
+      Confirm named renderers/props against DNA.yaml and installed exports (public entry
+      @starci/grammar/common where supported), and read the gaps in family.yaml before promising a
+      capability. A composition that needs a recorded gap is not a direction yet.
+  - id: resolve-product-composition
+    order: 5
+    title: Then resolve the remaining product composition
+    instruction: |
+      Reuse an established idiom where it fits; otherwise compose existing Common semantics and family
+      anatomy, extend an existing owner when evidence shows its declared gap, and add a new owner only
+      for an evidenced gap. A shape absent from this table and a shape seen once are evidence limits
+      on house style, not reasons to stop creative work already inside the approved product scope.
+
+authoritySplit:
+  directionChoiceRequired: |
+    DIRECTION_CHOICE_REQUIRED is reserved for a material product choice whose acceptable options lead
+    to different outcomes and whose answer is absent from the request. A reference/idiom conflict is
+    resolved by the authority split: product facts and approved region order come from the request,
+    Common semantics come from knowledge/ui, and family anatomy and reusable style come from the
+    selected Grammar source. State assumptions for minor in-scope choices; when a material choice has
+    no answer, ask the user. Do not invent a fallback algorithm or run the next op.
+imageryClarification:
+  date: "2026-09-05"
+  guidance: |
+    Imagery can highlight the key idea, explain content, strengthen recognition or create a relevant,
+    evocative focal point. Deliberate visual emphasis is a concrete role; an image need not be a
+    functional diagram to earn its place. Name the subject, the idea or claim it highlights, and the
+    intended order of attention in the selected .starciwork design node. Judge its scale, contrast and
+    crop on the rendered surface: it should support that hierarchy without obscuring the content or
+    competing with the primary action. Blank space alone is never a reason to add an image; filling
+    space or balancing density without a content or emphasis role does not qualify. Record no image
+    when imagery would not improve the composition.
+  limitation: |
+    Extending or adding an owner is not authorized by this playbook; it needs an op with explicit
+    library-edit scope. Historical image notes are design references, not decisions for the current
+    product.
+guidance:
+  - id: owner-ui-rulings-alpha-31
+    ownership: FE-RULE-OWNERSHIP
+    implements: [COLLECTION-1, LAYOUT-1, SURFACE-1, ACTION-3, CTA-6]
+    requirement: |
+      The canonical cases own the rule bodies; this entry only points to them. COLLECTION-1 case-9
+      (owner:selection-fill-no-check): navigation-like single selection uses ListBox
+      selectionIndicator="none", with the selectedKeys and accessibility contract unchanged.
+      LAYOUT-1 case-10 (owner:joined-multi-pane): the selected family realizes one touching pane
+      surface with vertical Dividers. SURFACE-1 case-4 (owner:scroll-region-background-tone):
+      VerticalScrollRegion tone="background" under messages and log entries, with the header and
+      composer on the surface. ACTION-3 case-5 (owner:hover-actions-floating-toolbar): ChatBubble's
+      public floating toolbar owns the IconButtons and tooltips beside the text; apps do not target
+      starci-core internals. CTA-6 case-4 (owner:button-variant-follows-intent): ordinary repeated
+      item commands are neutral and render ghost.
+  - id: nested-controls-and-panel-lists
+    ownership: FE-RULE-OWNERSHIP
+    implements: [ANATOMY-2, PADDING-0]
+    requirement: |
+      SurfaceCard (always painted), SurfaceListCard, a painted SurfaceAccordionCard, Sidebar, Dialog,
+      AlertDialog, Drawer and Popover establish the surface nesting context; Rail and an unpainted
+      SurfaceAccordionCard pass their parent's context through. Input, SearchField, Textarea,
+      NumberField, DateField, TimeField, Select, ComboBox, DatePicker, DateRangePicker, Checkbox,
+      CheckboxGroup, RadioGroup, OtpInput and PressableField resolve variant="secondary" inside it and
+      variant="primary" outside. Compose the surface and omit the field variant.
+      Switch and Slider have no layer variant; a Radio follows its RadioGroup. ChatWorkspace's
+      compact drawer also establishes the context. SurfaceCard and bounded SurfaceAccordionCard derive
+      data-grammar-surface-depth from the parent context. The top layer is raised and a nested layer is
+      subordinate; never raise both. The family DNA owns their surface paint.
+      FE_NESTED_VARIANT rejects a static field variant
+      anywhere in app code and primary Tabs inside a painted surface; FE_GRAMMAR_LAYOUT_ONLY rejects
+      application paint utilities, arbitrary paint properties and inline style paint.
+      DRAW_NESTED_VARIANT checks the corresponding rendered variant and
+      surface stamps.
+      ListBox resolves inset="panel" inside that context; callers may select the same value explicitly
+      elsewhere. Its rows and sections captions share the panel edge. SurfaceListCard owns its list
+      shell with no added inset; SurfaceCard composition="joined" owns flush bands. A grouping wrapper
+      adds no padding. An extra px-*, ps-* or pe-* around ListBox or a section caption stacks the inset
+      and fails FE_LIST_PANEL_PADDING.
+    rationale: |
+      ANATOMY-2 owns nested separation and PADDING-0 owns the single content edge. Their props and
+      variant values belong here under FE-RULE-OWNERSHIP in knowledge/patterns/fe/index.yaml; R318
+      executes the composition checks in the universal @starci/eslint-canon-fe because they hold for
+      every family that publishes the shared surface and field API.
+  - id: overlays-inside-the-root
+    requirement: |
+      Every overlay trigger (Dialog, AlertDialog, Drawer, Popover, DropdownMenu, and the Select,
+      ComboBox and DatePicker fields) must render inside `CoreGrammarRoot`. They portal into the nearest
+      `.grammar-common-root`; a trigger in a separate React tree or outside the root opens its overlay
+      in `<body>`, where no Core token, theme or forced-colours rule applies.
+    rationale: |
+      Core's DNA is scoped to `[data-grammar-family="core"]`; an overlay is only Core while it is a DOM
+      descendant of that scope.
+  - id: one-toaster-placed-clear-of-chrome
+    requirement: |
+      Mount exactly one `Toaster` (with `label` and `dismissLabel`) inside the root and add toasts with
+      `toastQueue.add({ title, description, tone, action })`. Keep the default `bottom-end` on a page
+      with no fixed bottom chrome; choose a placement clear of any page-owned fixed content. A toast
+      with an `action`, or `tone` negative/pending, persists until dismissed.
+    rationale: |
+      A second Toaster duplicates announcements; fixed content must not cover an action.
+  - id: forms-share-the-field-contract
+    requirement: |
+      Compose forms from the Field-contract controls inside `Form` (and `Fieldset` for named groups);
+      reach for `Field` only to give a non-Grammar control the same label/description/error anatomy.
+      Server refusals go in `Form validationErrors` by field `name`, not in a separate banner.
+    rationale: |
+      One contract means one error location a screen reader can find, and one set of
+      `data-grammar-field-*` hooks every family paints.
+  - id: mobile-chrome-by-width
+    requirement: |
+      Follow FE-APP-SHELL-4 in knowledge/ui/composition/app-shell.yaml for mobile navbar content,
+      the subnav trigger row and the Sidebar drawer.
+    rationale: |
+      The shell canon owns responsive navigation composition.
+  - id: state-recipes
+    title: stateRecipes — the one recipe for per-slot data status
+    requirement: |
+      A data status — loading, unauthorized, forbidden, error, empty — belongs to one slot, the data of one api, and
+      renders only through the product's one `SlotView` composite with the recipes below. A data status
+      is never drawn and never a shape: a surface's `XState` lists drawn shapes only
+      (`starci-fe/no-data-status-shape`), and a Block's `component.tsx` never branches on `isLoading`,
+      `isError` or `isForbidden` itself (`starci-grammar/slot-status-through-slotview`). Only a Block owns
+      slots; a page, layout or overlay has no data status. A block with several apis carries one slot
+      per api and each resolves its status independently. The block keeps its SurfaceCard and label in
+      every status; the recipe replaces only that slot's region. Every product built on this family
+      applies it.
+    rationale: |
+      One recipe per status keeps every block's loading, 403, failure and empty identical, and keeps
+      the owner's approved drawings free of states nobody drew.
+    reference:
+      example: examples/shape-slot
+      files:
+        - apps/shape-slot/src/components/composites/SlotView/index.tsx  # SlotView: the recipe, in status order
+        - apps/shape-slot/src/modules/slot/index.ts                     # Slot, toSlot (403 is its own status), SlotLabels
+        - apps/shape-slot/src/hooks/slot/useSlotLabels.ts               # shared forbidden/error/retry copy + the slot's empty sentence
+      codeExample: examples/index.yaml#connected-block
+      consolidates:
+        - idioms.yaml pending-same-tree
+        - knowledge/ui/composition/state.yaml STATE-2, STATE-3
+        - knowledge/ui/composition/feedback.yaml FEEDBACK-1, FEEDBACK-2
+        - DNA.yaml Skeleton, EmptyNotice, Alert
+    order: [loading, unauthorized, forbidden, error, empty, ready]
+    recipes:
+      - status: loading
+        uiRules: [STATE-2]
+        render: |
+          The ready tree, drawn from placeholder data of the slot's type, in the shape the unit's
+          `xDefaultState` names, with isSkeleton on every owner: same card, same bands, same row count
+          (idiom pending-same-tree). Never a spinner and never a different tree. The skeleton renders
+          inert geometry and states no value; an unknown number is a bar, never a rendered zero.
+        skeletonMap:
+          - part: Text line or Heading
+            render: "`isSkeleton` on the owner: one bar at that type-scale step's line height, as long as the placeholder text"
+          - part: Media (Image, MediaFrame viewport)
+            render: "`Skeleton shape=\"rect\"` at the frame's `ratio` (square, landscape, wide); `shape=\"circle\"` for an avatar. A block at the ratio, never a collapsed box"
+          - part: Button
+            render: |
+              A bar at the Button's height with the Button's pill corner (family.yaml button-pill):
+              `isSkeleton` where the installed Button publishes it, otherwise `Skeleton shape="rect"` in
+              the Button's box. It never fires (idiom pending-same-tree action-must-not-fire)
+          - part: A region that exists only on ready data (a disclosure of the loaded lines)
+            render: Absent while isSkeleton (STATE-3)
+      - status: unauthorized
+        uiRules: [STATE-3]
+        render: |
+          401 is its own status, never forbidden and never an error. The slot shows one sign-in prompt in
+          place: `EmptyNotice message={labels.unauthorized} actionLabel={labels.signIn}
+          actionVariant="primary" onAction={signIn}`, where `signIn` opens the product's sign-in route and
+          returns to this address. The prompt discloses none of the slot's data. A secondary slot hides, as
+          forbidden does, so a page whose reads all need a session shows the prompt once, in its primary slot.
+      - status: forbidden
+        uiRules: [STATE-3]
+        render: |
+          403 is its own status, never an error (`toSlot`). The slot's role decides: a secondary slot
+          uses `hide` — it unmounts with its wrapper and leaves nothing focusable; a primary slot uses
+          `notice` — `EmptyNotice message={labels.forbidden}` in place. A primary slot is never hidden
+          and a secondary slot never shows a notice.
+      - status: error
+        uiRules: [FEEDBACK-2]
+        render: |
+          Retry at the slot, re-running that slot's read only (the query's `mutate`), never a page
+          reload. Block form, where the slot is a region: `EmptyNotice message={labels.error}
+          actionLabel={labels.retry} actionVariant="secondary" onAction={retry}` with `isActionPending`
+          bound while the retry runs. Inline form, where the slot is one line inside a row or band too
+          small for a notice: `Alert tone="negative"` in the slot's place, carrying the retry action. A
+          command that is unsafe to repeat is not retried (FEEDBACK-2 case-4); a rejected field value
+          is a field error (FEEDBACK-1), never a slot status.
+      - status: empty
+        uiRules: [FEEDBACK-2, STATE-3]
+        render: |
+          `EmptyNotice message={labels.empty}` with the slot's own empty sentence; `actionLabel` and
+          `onAction` only when a real next step exists, otherwise both are omitted.
+      - status: ready
+        render: The slot's items through the same tree, isSkeleton false.
+    notFound: |
+      A route whose resource does not exist calls `notFound()` in its route adapter (FE-FUNCTION-7
+      case-2). 404 is never a page state, a shape or a slot status.
+    copy: |
+      unauthorized, signIn, forbidden, error and retry come from the shared `slot` message namespace; each slot adds its own
+      empty sentence. The connected half resolves them into `SlotLabels`; no status string is written
+      in a component.
+
+presentation:
+  collectionItems:
+    ownership: FE-RULE-OWNERSHIP
+    requirement: |
+      ListBoxItem, DropdownMenuItem, SidebarItem and the ListOption shared by Select and ComboBox
+      render descriptions in HeroUI's Description slot. The family DNA's collectionItem.descriptionLines
+      defaults to one line with an ellipsis (owner:item-description-one-line); descriptionLines accepts
+      1, 2 or 3 for a bounded override through the packaged stylesheet's line clamp. The complete
+      description remains available to assistive technology. ListBoxItem emphasis="unread" uses
+      collectionItem.unreadWeight for both label and description; omit it for HeroUI's read treatment.
+      labelLeading remains an optional decorative title slot, separate from conversation identity.
+  glyphs:
+    ownership: FE-RULE-OWNERSHIP
+    implements: FE-ICON
+    source: knowledge/hfs/fe-stack.yaml
+    requirement: |
+      The glyph sources and cuts declared by the stack catalog are realized through the Icon leaf.
+      StarCi's Grammar lint checks that concrete boundary and its measured icon scale. Verify the
+      selected region's value against the family DNA and styles rather than inventing an app value.
+      A menu item's brand mark is passed as DropdownMenuItem.mark with iconSource omitted; the public
+      type makes them mutually exclusive and Grammar sizes the mark in the icon's leading slot.
+  groupIdentity:
+    ownership: FE-RULE-OWNERSHIP
+    implements: COLLECTION-3
+    requirement: |
+      Compose AvatarGroup layout="grid" at one Avatar size, including size="control". Two members
+      split the round mark; three show one member above two below; four occupy a 2 by 2 grid. Every cell
+      has a ring in the surface colour. At five or more members the first three remain visible and the
+      fourth cell shows the total member count, such as 5 or 30, through Avatar's shared fallback path.
+      The row layout keeps its +N count. overflowLabel receives the hidden-member count in both layouts
+      for accessible naming, while the grid digits show the total. A single person uses Avatar.
+      Pass an uploaded image as `src`; otherwise Grammar always draws the bundled DiceBear `initials`
+      style, with the first letter of the first word and the first letter of the last word of `name`
+      (one word supplies one letter). `seed`, the user or entity id, determines colour when present;
+      otherwise `name` does. The image clips to the Avatar shape, circle by default, and keeps text
+      contrast in both themes (owner:avatar-default-dicebear-initials).
+      Avatar, AvatarButton and each AvatarGroup member accept `kind="person" | "agent"`, default person.
+      An agent's name is free text and uses exactly the same initials rule, without role-suffix parsing.
+      `kind="agent"` adds a HeroUI Badge at the Avatar's bottom-right edge with a bot glyph, a surface-colour
+      ring and an accessible name containing AI (owner:agent-avatar-initials-bot-badge). The family hides
+      the badge below 32px, including the 16px to 24px cells in a 2 by 2 grid; the identity's accessible
+      name still includes AI. Apps neither declare nor import `@dicebear/*`. Apps supply member identity
+      data; the renderer owns the geometry.
+  padding:
+    ownership: FE-RULE-OWNERSHIP
+    knowledge: knowledge/ui/presentation/padding.yaml
+    ownerVocabulary:
+      owners:
+        - name: App
+          meaning: The boundary belongs to the application
+          applicationWrites: The class
+        - name: A component name
+          meaning: Common already applies the inset inside that component
+          applicationWrites: Nothing. Compose it
+        - name: —
+          meaning: Common exposes no public path for this boundary
+          applicationWrites: The class, recorded as a workaround
+      notes: |-
+        Each case names who owns the inset. The owner decides whether the application writes a class at all.
+
+        Writing a class where a component is the owner is `APP_REIMPLEMENTATION`. Reaching into a Grammar
+        component with a selector or a passed class to change its inset is `APP_OVERRIDE`.
+    scale:
+      steps:
+        - id: PADDING-0
+          class: p-0
+          value: "0"
+        - id: PADDING-1
+          class: p-1
+          value: .25rem
+        - id: PADDING-2
+          class: p-2
+          value: .5rem
+        - id: PADDING-3
+          class: p-3
+          value: .75rem
+        - id: PADDING-4
+          class: p-4
+          value: 1rem
+        - id: PADDING-5
+          class: p-6
+          value: 1.5rem
+        - id: PADDING-6
+          class: p-8
+          value: 2rem
+      notes: |-
+        `COMMON_SPACING_SCALE` is closed. The rule ID is the ordinal position on that scale. It is not the
+        Tailwind step number, and the two diverge from PADDING-5 onward.
+
+        Common publishes no padding token. The internal insets below are reached through the components that
+        own them, not through a variable the application may set.
+        The page inset is the one exception and is not on this scale: `--grammar-page-inset` resolves to
+        `clamp(1rem, 3vw, 2rem)`, a responsive value owned by `PageContainer`. An application never
+        reproduces it with a fixed class.
+        The rem values resolve to `0 / 4 / 8 / 12 / 16 / 24 / 32` CSS pixels only at a computed root of
+        `16px`. Runtime checks use `expectedPx = remFactor * observedRootFontPx`.
+    componentOwnership:
+      title: Padding Common already owns
+      notes: |-
+        Retained ownership reference, not proof of the current package/API. Verify actual installed source/props/tokens before use; correct outdated rows within selected maintenance scope using [source and maintenance](index.yaml#source-and-maintenance).
+        A part that carries one rule per side or per property names that CSS property after the part (`item padding-inline`); one part and property has one rule.
+      rows:
+        - component: ChatWorkspace
+          element: drawer body, hasRail, isCompactRail
+          rule: PADDING-0
+        - component: ChatWorkspace
+          element: overlay rail, hasRail, isCompactRail
+          rule: PADDING-4
+        - component: ChatWorkspace
+          element: overlay rail, hasRail, not isCompactRail
+          rule: PADDING-4
+        - component: ChatWorkspace
+          element: rail trigger boundary padding-block, hasRail, isCompactRail
+          rule: PADDING-2
+        - component: ChatWorkspace
+          element: rail trigger boundary padding-inline, hasRail, isCompactRail
+          rule: PADDING-4
+        - component: ChatWorkspace
+          element: rail trigger, hasRail, isCompactRail
+          rule: PADDING-3
+        - component: EmptyNotice
+          element: root
+          rule: PADDING-4
+        - component: HorizontalScrollRegion
+          element: root
+          rule: PADDING-1
+        - component: NavigationFeatureNav
+          element: primary
+          rule: PADDING-3
+        - component: OtpInput
+          element: root
+          rule: PADDING-1
+        - component: PressableField
+          element: root
+          rule: PADDING-3
+        - component: PressableField
+          element: shortcut, shortcut!=undefined
+          rule: PADDING-1
+        - component: Rail
+          element: body padding-inline, inset="content"
+          rule: PADDING-3
+        - component: Rail
+          element: body padding-block, inset="content"
+          rule: PADDING-5
+        - component: Sidebar
+          element: footer padding-inline padding-block-end, not collapsed, footer!=undefined
+          rule: PADDING-3
+        - component: Sidebar
+          element: footer padding-block-start, not collapsed, footer!=undefined
+          rule: PADDING-0
+        - component: Sidebar
+          element: header, not collapsed, header!=undefined
+          rule: PADDING-3
+        - component: Sidebar
+          element: list, collapsed
+          rule: PADDING-2
+        - component: Sidebar
+          element: list, not collapsed
+          rule: PADDING-3
+        - component: Sidebar
+          element: section label padding-block-end, group.label!=undefined, not collapsed
+          rule: PADDING-1
+        - component: Sidebar
+          element: section label padding-inline, group.label!=undefined, not collapsed
+          rule: PADDING-2
+        - component: Sidebar
+          element: section label padding-block-start, group.label!=undefined, not collapsed
+          rule: PADDING-3
+        - component: Sidebar
+          element: toggle, canToggle
+          rule: PADDING-2
+        - component: StaticStateRow
+          element: root
+          rule: PADDING-4
+        - component: ListRow
+          element: root (carries starci-core-static-row, @starci/grammar 0.9.1)
+          rule: PADDING-4
+        - component: Subnav
+          element: root
+          rule: PADDING-3
+        - component: SurfaceAccordionCard
+          element: accordion panel
+          rule: PADDING-0
+        - component: SurfaceAccordionCard
+          element: accordion trigger
+          rule: PADDING-4
+        - component: SurfaceAccordionCard
+          element: body padding-top
+          rule: PADDING-0
+        - component: SurfaceAccordionCard
+          element: body padding-bottom
+          rule: PADDING-3
+        - component: SurfaceAccordionCard
+          element: body padding-right
+          rule: PADDING-4
+        - component: SurfaceAccordionCard
+          element: body padding-left
+          rule: PADDING-5
+        - component: SurfaceCard
+          element: content, composition!="joined"
+          rule: PADDING-4
+        - component: SurfaceCard
+          element: content, composition="joined"
+          rule: PADDING-0
+        - component: SurfaceListCard
+          element: root
+          rule: PADDING-0
+        - component: Tabs
+          element: hero tabs tab
+          rule: PADDING-3
+        - component: Tabs
+          element: root, inset="page"
+          rule: PADDING-5
+        - component: TextAction
+          element: root padding-inline, appearance="choice"
+          rule: PADDING-2
+        - component: TextAction
+          element: root padding-inline, appearance="route"
+          rule: PADDING-3
+        - component: TextAction
+          element: root padding-inline, appearance="section"
+          rule: PADDING-3
+        - component: TextAction
+          element: root padding-block, appearance="tab"
+          rule: PADDING-3
+        - component: Tooltip
+          element: content padding-block
+          rule: PADDING-1
+        - component: Tooltip
+          element: content padding-inline
+          rule: PADDING-2
+    guidance:
+      - id: side-contact
+        title: Side contact
+        requirement: |-
+          A boundary does not always take one value on all four sides. When a surface is flush and its child
+          bands own their own inset, each side takes its value from what that side touches.
+          | What the side touches | Value | Rule |
+          | --- | --- | --- |
+          | The outer edge of the surface | `1rem` | PADDING-4 |
+          | A separator between bands | `.75rem` | PADDING-3 |
+          | Nothing, because a child owns the edge | `0` | PADDING-0 |
+          A separator already draws the boundary, so the side meeting it needs less clearance than a bare outer
+          edge. Inline sides of a band always meet the outer edge, so they stay at `1rem`.
+          For a stack of bands this resolves to `px-4` throughout, `pt-4` on the first band, `pb-4` on the last,
+          and `.75rem` on every side that meets a separator. A band between two separators is `px-4 py-3`.
+          Common owns the flush surface itself through `composition="joined"`, which sets the content inset to
+          `0`. It exposes no path for the band insets, so those remain an application workaround.
+      - id: composite-insets
+        title: Composite insets
+        requirement: |-
+          `PADDING-0` through `PADDING-6` are the scale: one rule, one value. From `PADDING-7` onward the rules
+          are named recipes whose sides deliberately take different values. The number keeps counting, but it
+          stops meaning a position on the scale, so a composite rule never appears in the scale table and never
+          introduces a value of its own. Every side of a composite resolves to a base rule.
+          Append the next number when a genuinely new asymmetric pattern appears. State the reason each side
+          differs; a recipe without one is a product decision, not a rule.
+      - id: axis-variants
+        title: Axis variants
+        requirement: |-
+          `px-*` and `py-*` are not separate rules. They apply an existing rule to one axis when the two axes
+          carry different boundary decisions.
+          | Axis | Class | Meaning |
+          | --- | --- | --- |
+          | Inline | `px-*` | The chosen rule applies to logical start and end only |
+          | Block | `py-*` | The chosen rule applies to block start and end only |
+          | One side | `pt-*`, `pb-*`, `ps-*`, `pe-*` | The chosen rule applies to that side only |
+          Per-side classes are what the side-contact rule needs, because the two block sides of one band often
+          take different values. `px-4 pt-4 pb-3` is PADDING-4 on three sides and PADDING-3 on the side meeting
+          a separator, and every side still names its own case.
+          On the same element the narrower class wins the sides it names rather than adding, so `p-4 pb-3`
+          resolves to `1rem` on three sides and `.75rem` at the bottom. Between nested elements padding does
+          add, which is why a wrapper introduced only to change one side produces an inset nobody intended.
+    recipes:
+      - rule: PADDING-0
+        title: "`p-0` / `0`"
+        cases:
+          - id: case-1
+            when: A container only groups children which each carry their own boundary
+            owner: "`App`"
+            render: '`<section className="p-0">`'
+          - id: case-2
+            when: Surface bands run flush to the card edge
+            owner: "`SurfaceCard`"
+            render: '`composition="joined"` already sets `0`'
+          - id: case-3
+            when: A Grammar list sits inside a panel or its rows own their own inset
+            owner: "`SurfaceListCard` / `ListBox`"
+            render: ListBox resolves inset="panel" in a surface nesting context, or callers select it explicitly. Its
+              row boxes align with the panel content edge, like the search field and tabs boxes, without
+              negative-margin bleed (owner:panel-list-box-edge). The list retains HeroUI p-1; items retain
+              px-2 py-1.5, rounded-2xl and mt-1 between items, with the same padding and radius for hover,
+              pressed and selected backgrounds. Section captions share the inset content edge. Padding
+              wrappers with px-*, ps-* or pe-* stack this inset and fail FE_LIST_PANEL_PADDING in the universal
+              FE canon (R318).
+      - rule: PADDING-1
+        title: "`p-1` / `.25rem`"
+        cases:
+          - id: case-1
+            when: A compact marker or key floating over an app-owned canvas
+            owner: "`App`"
+            render: '`<aside className="p-1">` with `<Text size="xs">`'
+          - id: case-2
+            when: A scroll region reserving room so focus rings are not clipped
+            owner: "`HorizontalScrollRegion`"
+            render: Compose the region; no padding
+          - id: case-3
+            when: A short hint attached to a control
+            owner: "`Tooltip`"
+            render: Compose the tooltip; no padding
+      - rule: PADDING-2
+        title: "`p-2` / `.5rem`"
+        cases:
+          - id: case-1
+            when: A small auxiliary strip whose four sides share one inset
+            owner: "`App`"
+            render: '`<aside className="p-2">` with `<Text size="sm">`'
+          - id: case-2
+            when: A compact bar of controls above app-owned content
+            owner: "`App`"
+            render: '`<div className="flex items-center gap-2 p-2">`'
+      - rule: PADDING-3
+        title: "`p-3` / `.75rem`"
+        cases:
+          - id: case-1
+            when: A nested app container that owns a boundary distinct from its parent's
+            owner: "`App`"
+            render: '`<aside className="p-3">` inside a `p-4` section'
+          - id: case-2
+            when: The inline inset of a tab strip or secondary navigation
+            owner: "`Tabs`, `Subnav`"
+            render: Compose the component; no padding
+          - id: case-3
+            when: A band side that meets a separator inside a flush surface
+            owner: "`—`"
+            render: '`<div className="px-4 py-3">` between two separators'
+          - id: case-4
+            when: The separator-facing side of a metric cell or list row
+            owner: '`DescriptionList` layout="stat-strip" (its divided cells, @starci/grammar 0.6.0), else `—`'
+            render: '`<div className="p-4 pb-3">`, or `pt-3` when the separator is above'
+      - rule: PADDING-4
+        title: "`p-4` / `1rem`"
+        cases:
+          - id: case-1
+            when: An app section that owns the full distance from its border to its content
+            owner: "`App`"
+            render: '`<section className="p-4">` with `<Heading level={2}>`'
+          - id: case-2
+            when: Content inside a card
+            owner: "`SurfaceCard`"
+            render: Compose the card; no padding
+          - id: case-3
+            when: A disclosure trigger and its expanded panel
+            owner: "`SurfaceAccordionCard`"
+            render: Compose the card; no padding
+          - id: case-4
+            when: An empty-state notice
+            owner: "`EmptyNotice`"
+            render: Compose the notice; no padding
+          - id: case-5
+            when: A fenced code block
+            owner: "`FencedCodeBlock`"
+            render: Compose the block; no padding
+          - id: case-6
+            when: A band side that meets the outer edge of a flush surface
+            owner: "`—`"
+            render: "`pt-4` on the first band, `pb-4` on the last"
+          - id: case-7
+            when: The inline sides of any band inside a flush surface
+            owner: "`—`"
+            render: "`px-4` on every band, unchanged by position"
+      - rule: PADDING-5
+        title: "`p-6` / `1.5rem`"
+        cases:
+          - id: case-1
+            when: A section whose four sides share one deliberately generous boundary decision
+            owner: "`App`"
+            render: '`<section className="p-6">`'
+          - id: case-2
+            when: A tab frame carrying the page-level inline inset
+            owner: "`Tabs`"
+            render: '`inset="page"` already sets `1.5rem`'
+      - rule: PADDING-6
+        title: "`p-8` / `2rem`"
+        cases:
+          - id: case-1
+            when: A page region that needs strong equal clearance on every side
+            owner: "`App`"
+            render: '`<section className="p-8">`'
+          - id: case-2
+            when: An empty or waiting region occupying most of the viewport
+            owner: "`App`"
+            render: '`<section className="p-8">` with `<EmptyNotice>`'
+      - rule: PADDING-7
+        title: Inset step at the wider breakpoint
+        cases:
+          - id: case-1
+            when: A decision surface whose inline inset opens up on a wider viewport
+            owner: "`—`"
+            render: '`<div className="px-4 sm:px-6">`'
+          - id: case-2
+            when: The same surface's outer-edge block sides, stepping with it
+            owner: "`—`"
+            render: '`<div className="px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-6">`'
+          - id: case-3
+            when: A separator-facing side inside that surface
+            owner: "`—`"
+            render: "`pt-3` stays `.75rem` at both widths"
+      - rule: PADDING-8
+        title: Subordinate content indented at the inline start
+        cases:
+          - id: case-1
+            when: A disclosure body that reads as the answer belonging to the trigger above it
+            owner: "`—`"
+            render: '`<div className="ps-6 pe-4 py-3">`'
+          - id: case-2
+            when: A nested group whose rows belong to a named parent row
+            owner: "`—`"
+            render: Same recipe, one step per level of nesting
+      - rule: PADDING-9
+        title: Block inset of a routed block at the wider breakpoint
+        cases:
+          - id: case-1
+            when: The `main` of a routed block that sits directly under the page shell
+            owner: "`App`"
+            render: '`<main className="py-6 sm:py-8">`'
+  font:
+    ownership: FE-RULE-OWNERSHIP
+    knowledge: knowledge/ui/presentation/font.yaml
+    ownerVocabulary:
+      owners:
+        - name: A component name
+          meaning: "`Text` or `Heading` renders this rank"
+          applicationWrites: The prop only
+        - name: —
+          meaning: The rank has no public prop
+          applicationWrites: Nothing. Report the gap
+      notes: |-
+        Typography belongs to Grammar. The owner cell names which component renders the rank.
+
+        There is no `App` owner in this file. An application typography class is `APP_OVERRIDE`, and a raw
+        `font-size` or `font-weight` that changes semantic rank is rejected even when the pixels match.
+    scale:
+      steps:
+        - id: FONT-1
+        - id: FONT-2
+        - id: FONT-3
+        - id: FONT-4
+        - id: FONT-5
+        - id: FONT-6
+      notes: |-
+        The type scale is closed and shared by `Text` and `Heading`. The rule ID is the ordinal position on
+        that scale, smallest first. It is not a Tailwind step and not a heading level.
+
+        `Text` and `Heading` are not interchangeable at the same size. A heading declares document structure;
+        a text line does not. Choosing `Heading` to obtain a size, or `Text` to avoid an outline entry, is a
+        structure error rather than a typography one.
+        Tracking is not an application decision. `Heading` applies `tracking-tight` at FONT-4 and FONT-6 only.
+    componentOwnership:
+      title: Font Common already owns
+      notes: Retained ownership reference, not proof of the current package/API. Verify actual installed
+        source/props/tokens before use; correct outdated rows within selected maintenance scope using [source
+        and maintenance](index.yaml#source-and-maintenance).
+      rows:
+        - component: ChatWorkspace
+          element: rail trigger, hasRail, isCompactRail
+          rule: FONT-2
+        - component: Heading
+          element: root, scale!="display", level=1
+          rule: FONT-4
+        - component: Heading
+          element: root, scale!="display", level=2
+          rule: FONT-3
+        - component: Heading
+          element: root, scale!="display", level=3
+          rule: FONT-2
+        - component: Heading
+          element: root, scale!="display", level=4
+          rule: FONT-1
+        - component: Heading
+          element: root, scale="display"
+          rule: FONT-6
+        - component: Input
+          element: reveal or copy label, action is present and its icon is absent
+          rule: FONT-1
+        - component: Label
+          element: root, depth!="nested"
+          rule: FONT-2
+        - component: Label
+          element: root, depth="nested"
+          rule: FONT-1
+        - component: PressableField
+          element: placeholder
+          rule: FONT-2
+        - component: PressableField
+          element: shortcut, shortcut!=undefined
+          rule: FONT-1
+        - component: Sidebar
+          element: item label, not collapsed
+          rule: FONT-2
+        - component: Sidebar
+          element: section label, group.label!=undefined, not collapsed
+          rule: FONT-1
+        - component: Text
+          element: root, size="md"
+          rule: FONT-3
+        - component: Text
+          element: root, size="metric-lead"
+          rule: FONT-5
+        - component: Text
+          element: root, size="sm"
+          rule: FONT-2
+        - component: Text
+          element: root, size="xs"
+          rule: FONT-1
+        - component: TextAction
+          element: root, size="md"
+          rule: FONT-3
+        - component: TextAction
+          element: root, size="sm"
+          rule: FONT-2
+        - component: TextAction
+          element: root, size="xs"
+          rule: FONT-1
+        - component: Tooltip
+          element: content
+          rule: FONT-1
+        - component: SurfaceListCard
+          element: fact, label is visible and fact is present, depth="nested"
+          rule: FONT-1
+        - component: SurfaceListCard
+          element: fact, label is visible and fact is present, depth!="nested"
+          rule: FONT-2
+    guidance:
+      - id: weight
+        title: Weight
+        requirement: |-
+          Weight is a second axis, not a position on the size scale. Its public set is closed.
+          | Prop | Rendered | Use for |
+          | --- | --- | --- |
+          | `weight="normal"` | `font-normal`, the default | Reading copy and ordinary facts |
+          | `weight="medium"` | `font-medium` | A compact label, or a title above its own description |
+          | `weight="semibold"` | `font-semibold` | A fact that must be found first within its region |
+          Weight refines a rank the application has already chosen. It never manufactures a new hierarchy
+          level, and it never substitutes for a heading. `Heading` applies its own weight per level and takes
+          no weight prop.
+          Bold beyond `semibold` has no public prop. Treat an intent that needs it as a gap rather than writing
+          a class.
+    recipes:
+      - rule: FONT-1
+        title: "`text-xs` / `leading-4`"
+        cases:
+          - id: case-1
+            when: Brief metadata that stays understandable at the smallest size
+            owner: "`Text`"
+            render: '`<Text size="xs">Optional</Text>`'
+          - id: case-2
+            when: The label of a nested region inside an already-titled section
+            owner: "`Heading`"
+            render: "`<Heading level={4}>Card details</Heading>`"
+        remark: |-
+          `Text size="xs"` always resolves to muted and cannot be promoted to another tone. `Heading level={4}`
+          carries the same muted treatment.
+        notThisRule: ordinary sentences, or any fact the reader must not miss. Use FONT-2 or FONT-3.
+      - rule: FONT-2
+        title: "`text-sm` / `leading-5`"
+        cases:
+          - id: case-1
+            when: A complete line ranked below normal body copy, such as a timestamp or short fact
+            owner: "`Text`"
+            render: '`<Text size="sm">Updated 2 minutes ago</Text>`'
+          - id: case-2
+            when: A third-level region heading inside a section
+            owner: "`Heading`"
+            render: "`<Heading level={3}>Payment method</Heading>`"
+        notThisRule: shrinking body copy so it fits a container that is too small. Fix the container.
+      - rule: FONT-3
+        title: "`text-base` / `leading-6`"
+        cases:
+          - id: case-1
+            when: Ordinary explanatory copy with normal reading priority
+            owner: "`Text`"
+            render: "`<Text>Your subscription renews on 12 March.</Text>`"
+          - id: case-2
+            when: The heading of a section inside a page
+            owner: "`Heading`"
+            render: "`<Heading level={2}>Billing</Heading>`"
+      - rule: FONT-4
+        title: "`text-xl`"
+        cases:
+          - id: case-1
+            when: The single heading that names the whole page or route
+            owner: "`Heading`"
+            render: "`<Heading level={1}>Account</Heading>`"
+        notThisRule: a second `level={1}` on the same page. One document, one top-level heading.
+      - rule: FONT-5
+        title: "`text-3xl` / `leading-9`"
+        cases:
+          - id: case-1
+            when: The single leading metric or short value that is the main fact of its region
+            owner: "`Text`"
+            render: '`<Text size="metric-lead" weight="semibold">84%</Text>`'
+        notThisRule: sentences, decoration, or imitating a heading. It creates no heading semantics.
+      - rule: FONT-6
+        title: "`text-4xl` / `leading-tight`"
+        cases:
+          - id: case-1
+            when: A page-root heading that must carry marketing or landing weight
+            owner: "`Heading`"
+            render: '`<Heading level={1} scale="display">Learn without limits</Heading>`'
+        notThisRule: raising the visual size of a nested heading. `scale` changes the recipe, never the outline position.
+anatomyObservations:
+  - id: prompt-shape-b2
+    lane: ui
+    kind: proven-template
+    summary: |-
+      Verified in the draw lab against the real SurfaceListCard render — the prompt shape that
+      produced a direction both faithful and beautiful:
+      1. Frame: flat product UI screenshot, size, light theme.
+      2. SUBJECT: screen name + product name.
+      3. FIXED ANATOMY: literal layout top-to-bottom; containment spelled as inside/outside the
+         surface; known-confusion regions get the anti-pattern callout plus the correct structure.
+      4. BRAND + TOKENS: background, surface, radius, shadow, exact hex for primary and where it
+         may appear; nested controls use the secondary variant.
+      5. CREATIVE LICENSE: an explicit "You MAY" list and an explicit "You MAY NOT" list.
+      6. Text rule: every label spelled exactly, no lorem ipsum.
+      Control runs: the same prompt without section 3's literal containment drew the section
+      label inside the card (wrong vs the real render); the same prompt with unbounded freedom
+      produced a beautiful screen for a different product.
+  - id: surface-label-placement
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      The two card components place their labels differently, and a prompt that treats them
+      alike invents one of them. `SurfaceCard` paints one material box around label AND
+      content — its label ("New task") sits inside the card at the top. `SurfaceListCard`
+      renders its label and fact as siblings on the page background ABOVE the list shell —
+      the card bounds only the rows, the footer sits below it.
+  - id: list-separator-bleed
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      List separators are edge-to-edge, not inset. The list shell ships `PADDING-0`; the
+      divider is a `border-top` on the row element itself, so it spans the card's full width
+      and touches both edges. Only the row's content is inset by the row's own padding.
+      Rows opt into this shipped geometry via `starci-core-static-row` — an app-owned row
+      without the class renders no separator at all.
+  - id: list-row-anatomy
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      An interactive row in a SurfaceListCard is the grammar `ListRow` (@starci/grammar 0.9.1), never an
+      app-owned `<li>` and never a second `<ul>` nested in the card (the card already renders the list,
+      so a nested list loses the row inset and the separator - a defect that leaves rows flush against
+      the card edge). Its slots, in reading order: `leading`
+      (an IconTile, an avatar, or a logo; a horizontal bank wordmark takes a fixed 64x40 frame rather
+      than a square tile, which would shrink it to a sliver), `title`, `badges` (at most two,
+      DISCIPLINE-1 case-3), one muted `description`, `actions` (one visible Button, then a DropdownMenu
+      with destructive commands last behind an AlertDialog), and a `children` detail region under the
+      copy for an Alert about the row or revealed values. It carries `starci-core-static-row`, so the
+      inset, row gap and edge-to-edge separator are the static row's. Collapsed by default (the collapse
+      law): mark and copy share the first line, actions and detail take their own; the surface container
+      query at 28.001rem lays it out leading | copy | actions. Several accounts of one provider are one
+      ListRow each, told apart by the leading mark, the name and the account's last digits; the card's
+      `fact` carries the count and `labelEnd` the add action (0.9.1 renders both).
+  - id: card-division-and-measure
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      Grammar ships card division and card width — a direction that invents either is
+      app-owned and must say so. `SurfaceCard composition="joined"` stacks children
+      edge-to-edge inside one card with shipped separators (the reference
+      joined-card pattern); it divides VERTICALLY only — a
+      side-by-side split inside one card is not shipped anatomy. `SurfaceCard
+      measure="form"/"formCompact"` is the owned width contract for compact forms: a
+      direction drawing a form card full-width and filling the dead space is answering
+      a question `measure` already answers better.
+  - id: joined-band-treatment
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      Emphasis inside a joined card is a flush band, not an inset panel. The reference
+      dashboard's anatomy: children stack full-bleed inside the bounded
+      surface (`joined` sets the content to gap:0/padding:0), adjacent bands separate
+      with an edge-to-edge `border-t` hairline, and a band that needs emphasis carries
+      `bg-surface-secondary` (neutral) or `bg-accent-soft` (accent tint) across the
+      card's full width with its own padding (px-4/pt-4/pb-3 top, p-3 middle). A
+      nested rounded box floating inside the card is not the pattern.
+  - id: special-card-recipe
+    lane: ui
+    kind: anatomy-detail
+    summary: |-
+      The dashboard's "special card" formula is composition, not decoration: IMAGE × joined
+      plus HIGHLIGHT × joined. Proof in source — the reference task card: a joined card whose first band
+      is an accent-filled hero slab (`bg-accent`) carrying a decorative 3D illustration
+      anchored to the trailing edge (`aria-hidden`, `pointer-events-none`, bottom/right
+      absolute); separator; a reward band that is neutral by default and turns
+      `bg-success-soft` ONLY on the claimed state ("only a proven claimed outcome receives
+      success"); separator; a task-cell grid using `divide-y`/`divide-x` for edge-to-edge
+      cell lines. the reference purchase card: joined card = intro band + full-bleed journey
+      illustration band + benefit list, with MISSING-ASSET discipline — the illustration is
+      withheld entirely under the dark scheme rather than repainted. Grammar ships the
+      card-level "special" affordance itself: `SurfaceCard isHighlight` wraps the surface in
+      an animated conic-gradient edge sweep (`starci-core-surface-highlight-sweep`, 3s spin,
+      suppressed while `pending`). Direction prompts MAY therefore use: a tinted hero slab
+      band with anchored decorative art, state-semantic tinted bands (accent-soft /
+      surface-secondary / success-soft), and the card edge highlight — but a highlight or
+      tint must always MEAN a state, never mere prettiness.
+  - id: direction-scale-drift
+    lane: ui
+    kind: known-drift
+    summary: |-
+      Image models inflate type scale — surface labels ship at 0.875rem (0.75rem nested)
+      but directions routinely draw them 1.3–1.5x larger. Scale is token truth, not
+      direction truth: the image fixes containment and composition; the component's own
+      CSS fixes size. A direction drawn with oversized labels is not falsified for it —
+      but an implementation capture that reproduces the oversized size is.

@@ -1,0 +1,66 @@
+{
+  "name": "@starci/eslint-grammar-core",
+  "version": "0.13.0",
+  "description": "ESLint rules for the core Grammar's component, token and composition contracts.",
+  "keywords": [
+    "eslint",
+    "starci",
+    "grammar",
+    "core"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/eslint-grammar-core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/eslint-grammar-core"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "private": false,
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs"
+    }
+  },
+  "main": "./index.mjs",
+  "types": "./index.d.ts",
+  "files": [
+    "LICENSE",
+    "*.mjs",
+    "*.d.ts",
+    "lib/*.mjs",
+    "runtime/**",
+    "docs/*.md",
+    "!*.spec.mjs",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "eslint": ">=9",
+    "typescript": ">=5.9",
+    "@starci/eslint-canon-fe": "9.2.0"
+  },
+  "dependencies": {
+    "@typescript-eslint/parser": "^8.70.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test \"*.spec.mjs\""
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript": "^6.0.3",
+    "@starci/eslint-canon-fe": "file:../eslint-canon-fe"
+  }
+}

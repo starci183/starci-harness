@@ -234,7 +234,7 @@ concerns:
     why: the canon configuration; a missing rule is added to the canon, never locally.
   - id: grammar-lint
     tier: core
-    packages: ['@starci/eslint-grammar-starci', '@starci/eslint-grammar-offset-pop']
+    packages: ['@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop']
     home: [fe.tool-config]
     forbids: []
     why: the selected grammar's API lint beside the universal canon (grammars/contract.yaml names the package per grammar).

@@ -1,0 +1,615 @@
+schema: starci/canon-pins@1
+purpose: >-
+  The exact version of every shared dependency in the StarCi family, including package-owned runtime dependencies. One version per dependency for the whole
+  family. Raising a version is a change to this file first (with the package bump when it is a @starci package),
+  then the repositories' own upgrade lane (each sets the exact version and reinstalls; nothing else installs a @starci package). Read on 2026-09-29 from the packages under
+  .claude/packages and from the installed node_modules of the six product repositories; where they disagreed the
+  newest version installed in more than one repository won, and the runtime's own version won for @starci packages.
+  An app (hfs 4) has ONE package.json for both sides, so a
+  dependency both sides declared at different versions takes one: its pin where it has one, otherwise the higher of the
+  two, pinned here with a why (2026-10-01: every such conflict but graphql was already pinned). The runtime's example apps
+  merged the same way on 2026-10-01: no dependency outside this file was declared at two versions across their sides, so
+  every choice is a pin (each side's older @starci pins and graphql moved to the version here). `side` names the side whose code uses
+  the dependency; the app root package.json declares the direct dependencies and tools its sides need. Package-owned
+  runtime dependencies are declared by their package, not by the app.
+pins:
+  # --- @starci packages. Every @starci package is a PUBLISHED npm package (install: registry): a product repository
+  # installs the exact pinned version from the npm registry in the root and every workspace package.json, never `file:`.
+  '@starci/heroicons':
+    version: 0.3.4
+    group: starci
+    install: registry
+    side: fe
+    source: packages/heroicons/package.json
+    why: 'StarCi custom Heroicons-compatible cuts; eslint-grammar-core (icon.mjs) admits @starci/heroicons/24/outline and /16/solid as icon sources, so an app that uses them gets this exact version.'
+  '@starci/event-stream':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/event-stream/package.json
+    why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
+  '@starci/grammar':
+    version: 0.13.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/grammar/package.json
+    why: 'the grammar front ends read: the brand layer sets `--font-sans` and `--font-mono` and the grammar reads them; it carries the Input tel kind, the copyable and read-only Input, the IconButton disclosure props and count badge, ChatBubble, FillViewport, Textarea mentions and Enter-to-send, the leading PrimaryRailLayout rail, the plate-less Image, ListRow, the soft Alert, Progress steps, the floating primary IconButton, FlowGraph, the STATE-8 loading views and the bordered selectable TagGroup chips. The runtime source version wins for a @starci package.'
+  '@starci/eslint-canon-be':
+    version: 3.4.57
+    group: starci
+    install: registry
+    side: be
+    source: packages/eslint-canon-be/package.json
+    why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
+  '@starci/eslint-canon-fe':
+    version: 9.2.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/eslint-canon-fe/package.json
+    why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
+  '@starci/eslint-grammar-core':
+    version: 0.13.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/eslint-grammar-core/package.json
+    why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
+  '@starci/eslint-grammar-offset-pop':
+    version: 0.13.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/eslint-grammar-offset-pop/package.json
+    why: 'the Offset Pop Grammar component API lint, versioned with @starci/grammar; its shared component contract comes from the StarCi family lint without copying rules.'
+  '@starci/stylelint-canon':
+    version: 2.1.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/stylelint-canon/package.json
+    why: 'the front-end stylelint canon: no-class-selector refuses a compound class selector (`div.card`); the brand layer accepts `--font-sans` and `--font-mono`; status-contrast measures the HeroUI soft pairs per theme; brand-layer-shape reads the shared :root,.light,.dark block and the info soft pair; appTokens come from loadAppTokens(import.meta.url) for the managed one-line stylelint.config.mjs.'
+  '@starci/tsconfig':
+    version: 2.0.8
+    group: starci
+    install: registry
+    side: both
+    source: packages/tsconfig/package.json
+  '@starci/prettier-config':
+    version: 1.0.5
+    group: starci
+    install: registry
+    side: both
+    source: packages/prettier-config/package.json
+  '@starci/jest-preset':
+    version: 2.3.7
+    group: starci
+    install: registry
+    side: be
+    source: packages/jest-preset/package.json
+    why: 'the Jest preset of a back end: the world runner runs up to min(--maxWorkers, slots) world files at once, each in its own process bound to one data slot of the test world (STARCI_TEST_WORLD_SLOT), and reads test-world state protocol 2 only: it pairs exactly with @starci/test-world, and any other state file is JEST_PRESET_WORLD_PAIR_MISMATCH. The unit run writes the lcov Sonar and Codecov import (services only); the integration, e2e and contract projects run every spec file in a worker process of its own (world-runner.cjs), so a process-global framework registry (@nestjs/graphql type metadata) never leaks between e2e files; it ships the unit kit (mockEntityManager, fakeTransaction, fakeIds, FakeClock, Outcome matchers) and the recordingOutbox claim side.'
+  '@starci/test-world':
+    version: 1.2.3
+    group: starci
+    install: registry
+    side: be
+    source: packages/test-world/package.json
+    why: 'the shared e2e library of every back end (R47, R48), a devDependency of every back end: the warm stack behind toxiproxy, the network-edge fakes, the Nest boot, the typed useTestWorld handle, useSandbox for contract specs and the outage lock. Kafka is real own infra (the one digest-pinned apache/kafka KRaft image, a broker listener and proxy per slot, slot-prefixed topics, consumer groups and client ids) and Postgres is schema-per-context (a schema and a login role per context in a shared database). Each worker has its own data slot (<ns>_w<k>) with its own databases, Keycloak realm, leased Redis DB, bucket/collection/topic prefixes, fakes host, toxiproxy proxies and outage lock; a run provisions min(jest workers, workers cap, default 2) slots, and state file protocol 2 pairs exactly with @starci/jest-preset (TEST_WORLD_PAIR_MISMATCH otherwise). A modules world boots real peer apps beside its modules, world.apps.<name>.during(fn) is the outage of a peer app, w.keycloak.clientSecret(client) answers the run-generated secret of a confidential realm client, world.keycloak.events/sessions read the realm user events and live sessions, world.infra.postgresql.connection(name) takes one database connection down while the others serve, and world.resolve and scope.resolve take any Nest token. Every path a declaration names (`stack`, seeds, the realm, Dockerfiles) resolves from the app root (the directory of hfs.json); the globalSetup registers the path aliases as TypeScript resolves them. Its CLI main is exported at ./cli for starci app stack.'
+  '@starci/cli':
+    version: 1.7.47
+    group: starci
+    install: registry
+    side: both
+    why: 'the only StarCi command package; product repositories install it for starci app, while @starci/hfs remains its pinned transitive implementation.'
+  '@starci/hfs':
+    version: 4.8.0
+    group: starci
+    install: registry
+    side: both
+    source: packages/hfs/package.json
+    why: 'the transitive app implementation used by @starci/cli; it carries the generated runtime slice read by starci app commands.'
+  # --- tooling
+  typescript:
+    version: 5.9.3
+    group: tooling
+    side: both
+    why: all six product repositories resolve 5.9.3 already; the declared ranges (^5, ^5.7.3) become exact.
+  turbo:
+    version: 2.11.6
+    group: tooling
+    side: fe
+    why: 'every app is a monorepo (R143): turbo runs build, dev, lint and typecheck over the fe workspaces fe/apps/* and fe/packages/* from the app root turbo.json, as nivo-fe does; 2.11.6 is the newest 2.x on 2026-10-02.'
+  prettier:
+    version: 3.9.6
+    group: tooling
+    side: both
+    why: only one product repository had it installed (3.9.6); the other five adopt it with the formatter change.
+  stylelint:
+    version: 17.15.0
+    group: tooling
+    side: fe
+    why: no repository has it installed; 17.15.0 is the current release, and the canon plugin needs the ESM-only 17 line.
+  postcss-value-parser:
+    version: 4.2.0
+    group: tooling
+    side: fe
+    why: peer of @starci/stylelint-canon (it parses declaration values); 4.2.0 is what stylelint 17.15.0 itself resolves.
+  eslint:
+    version: 9.39.5
+    group: tooling
+    side: both
+    why: five product repositories resolve 9.39.5, the sixth 9.39.4.
+  eslint-plugin-react-hooks:
+    version: 7.1.1
+    group: tooling
+    side: fe
+    why: '2.0.0 (C0 release): the BE-CONVENTION machine, emit-contracts (GraphQL SDL and OpenAPI from the typed operation table), the four-project test layout, FE has no tests, repo.scripts slot, secrets guard in work-hygiene, rule ids R<2-3 digits>.'
+  '@types/node':
+    version: 22.20.4
+    group: tooling
+    side: both
+    why: one front end resolves 20.19.43 and one back end 22.20.0; the package engines are node >=22.
+  '@types/express':
+    version: 4.17.25
+    group: tooling
+    side: be
+    why: the Express types of a back end; the reference app declares ^4.17.21 and resolves 4.17.25.
+  '@types/react':
+    version: 19.3.0
+    group: tooling
+    side: fe
+    why: the React types of a front end; the reference app declares ^19.0.0 and resolves 19.3.0.
+  '@types/react-dom':
+    version: 19.3.0
+    group: tooling
+    side: fe
+    why: the React DOM types of a front end; the reference app declares ^19.0.0 and resolves 19.3.0.
+  husky:
+    version: 9.1.7
+    group: tooling
+    side: both
+    why: the managed git hooks of the app root (pre-commit, pre-push); the reference app declares ^9.1.7 and resolves 9.1.7.
+  ts-node-dev:
+    version: 2.0.0
+    group: tooling
+    side: be
+    why: 'the watch runner of the managed dev:be:<app> script (ts-node-dev --respawn -r tsconfig-paths/register); 2.0.0 is its latest release.'
+  tsc-alias:
+    version: 1.9.7
+    group: tooling
+    side: be
+    why: 'rewrites the path aliases in the compiled output (build:be); the reference app declares ^1.8.10 and resolves 1.9.7.'
+  tsconfig-paths:
+    version: 4.2.0
+    group: tooling
+    side: be
+    why: 'loads the path aliases for the dev runner (dev:be:<app>); the reference app declares ^4.2.0 and resolves 4.2.0.'
+  # --- test
+  jest:
+    version: 29.7.0
+    group: test
+    side: be
+  ts-jest:
+    version: 29.4.12
+    group: test
+    side: be
+  '@types/jest':
+    version: 29.5.14
+    group: test
+    side: be
+  # --- framework
+  next:
+    version: 16.4.2
+    group: framework
+    side: fe
+  react:
+    version: 19.2.3
+    group: framework
+    side: fe
+  react-dom:
+    version: 19.2.3
+    group: framework
+    side: fe
+  nest-commander:
+    version: 3.21.0
+    group: framework
+    side: be
+    why: 'the one command-line framework of a back end (R148-R150): apps/cli boots with CommandFactory.run and every one-off action is a nest-commander command of src/features/cli; 3.21.0 is the newest on 2026-10-02 and takes @nestjs 11 as its peer.'
+  '@nestjs/core':
+    version: 11.2.5
+    group: framework
+    side: be
+    why: one product back end resolves 11.1.27, the others 11.2.5.
+  '@nestjs/common':
+    version: 11.2.5
+    group: framework
+    side: be
+  '@nestjs/platform-express':
+    version: 11.2.7
+    group: framework
+    side: be
+  '@nestjs/testing':
+    version: 11.2.5
+    group: framework
+    side: be
+  '@nestjs/terminus':
+    version: 11.1.1
+    group: framework
+    side: be
+    why: readiness probes with dependency indicators use Terminus (the liveness route of the scaffolded skeleton does not, being a thin door over the liveness service); every measured product back end resolves 11.1.1.
+  '@nestjs/cqrs':
+    version: 11.0.3
+    group: framework
+    side: be
+    why: 'the CQRS module of the application layer (commands, queries, handlers); the reference app declares ^11.0.3 and resolves 11.0.3.'
+  '@nestjs/typeorm':
+    version: 11.0.3
+    group: framework
+    side: be
+    why: 'the Nest bridge of TypeORM; the reference app declares ^11.0.3 and resolves 11.0.3.'
+  typeorm:
+    version: 0.3.31
+    group: framework
+    side: be
+    why: 'the one ORM of a back end; the reference app declares ^0.3.20 and resolves 0.3.31.'
+  pg:
+    version: 8.23.1
+    group: framework
+    side: be
+    why: 'the Postgres driver behind TypeORM; the reference app declares ^8.12.0 and resolves 8.23.1.'
+  bullmq:
+    version: 6.3.11
+    group: framework
+    side: be
+    why: 'the queue transport of both editions behind platform/queue (ruling:R212/case-10); starci app add queue|job declares it in a lite app together with its Redis, and both example apps resolve this version.'
+  reflect-metadata:
+    version: 0.2.2
+    group: framework
+    side: be
+    why: 'the decorator-metadata runtime Nest reads; the reference app declares ^0.2.2 and resolves 0.2.2.'
+  rxjs:
+    version: 7.8.2
+    group: framework
+    side: be
+    why: 'the observable runtime Nest is built on; the reference app declares ^7.8.1 and resolves 7.8.2.'
+  tslib:
+    version: 2.8.1
+    group: framework
+    side: be
+    why: 'the helper runtime the TypeScript emit references (importHelpers); the reference app declares ^2.8.1 and resolves 2.8.1.'
+  server-only:
+    version: 0.0.1
+    group: framework
+    side: fe
+    why: 'the Next.js marker that fails a client bundle that imports it; the i18n workspace of the reference app declares ^0.0.1.'
+  next-intl:
+    version: 4.13.6
+    group: framework
+    side: fe
+    why: every HFS front end uses next-intl with the [locale] segment (starci app scaffold writes it); the measured front end resolves 4.13.6.
+  graphql:
+    version: 16.14.2
+    group: framework
+    side: both
+    why: 'one app package.json for both sides (hfs 4): where the two sides declared different ranges (^16.14.1 on a back end, ^16.14.2 on a front end), the higher wins; the measured product installs resolve 16.14.2. The example apps declared ^16.14.2 as well; each app root now has one dependencies entry at the pin.'
+  supertest:
+    version: 7.3.0
+    group: tooling
+    side: be
+    why: the e2e world of a back end calls the app over HTTP (/health/live in the skeleton); two product back ends resolve 7.3.0, one 7.2.2.
+  # --- ui
+  '@xyflow/react':
+    version: 12.11.6
+    group: ui
+    side: fe
+    why: 'Grammar FlowGraph imports React Flow from @xyflow/react; every Grammar consumer declares this required peer at the version used by the Grammar package.'
+  react-aria-components:
+    version: 1.21.1
+    group: ui
+    side: fe
+    why: 'Grammar imports React Aria Components directly (Sidebar, Field); every Grammar consumer declares this required peer at the version HeroUI resolves.'
+  '@heroui/react':
+    version: 3.2.6
+    group: ui
+    side: fe
+    why: one product front end resolves 3.2.4, the others 3.2.6.
+  '@heroui/styles':
+    version: 3.2.6
+    group: ui
+    side: fe
+    why: one product front end resolves 3.2.4, the others 3.2.6.
+  tailwindcss:
+    version: 4.3.3
+    group: ui
+    side: fe
+    why: 'the styling engine of a front end; the reference app declares ^4 and resolves 4.3.3.'
+  '@tailwindcss/postcss':
+    version: 4.3.3
+    group: ui
+    side: fe
+    why: 'the PostCSS plugin tailwindcss 4 runs through; the reference app declares ^4 and resolves 4.3.3.'
+  # --- front-end stack (knowledge/hfs/fe-stack.yaml; owner ruling 2026-10-13: lite = full)
+  '@apollo/client':
+    version: 4.1.6
+    group: framework
+    side: fe
+    why: 'the GraphQL client of every front end (fe-stack graphql): auth and no-auth clients with the link chain in modules/api/graphql; version read from the starci-academy package-lock on 2026-10-13.'
+  graphql-ws:
+    version: 6.2.1
+    group: framework
+    side: both
+    why: 'the subscription transport: the front end opens it only in the Apollo clients folder (fe-stack graphql, GraphQLWsLink of @apollo/client/link/subscriptions) and the back end serves it only from platform/realtime; the version resolved by the full-app lockfile on 2026-10-24.'
+  '@graphql-codegen/cli':
+    version: 7.4.6
+    group: tooling
+    side: fe
+    why: 'generates the front-end wire types from be/contracts/<app>/schema.graphql into modules/api/graphql/__generated__ (fe-stack codegen); the latest registry version on 2026-10-13, academy has none.'
+  '@graphql-codegen/client-preset':
+    version: 6.2.3
+    group: tooling
+    side: fe
+    why: 'the codegen preset of the front-end wire types (fe-stack codegen); the latest registry version on 2026-10-13.'
+  'axios':
+    version: 1.20.0
+    group: framework
+    side: fe
+    why: 'the REST client of the front end for uploads, presigned URLs and auth endpoints (fe-stack rest); version read from the starci-academy package-lock on 2026-10-13.'
+  'swr':
+    version: 2.4.2
+    group: framework
+    side: fe
+    why: 'the data hooks and cache of every front end, hooks/swr (fe-stack data); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-hook-form':
+    version: 7.77.0
+    group: framework
+    side: fe
+    why: 'the form library, hooks/rhf (fe-stack forms); version read from the starci-academy package-lock on 2026-10-13.'
+  '@hookform/resolvers':
+    version: 5.4.0
+    group: framework
+    side: fe
+    why: 'the zod resolver of react-hook-form (fe-stack forms); version read from the starci-academy package-lock on 2026-10-13.'
+  'zod':
+    version: 4.6.7
+    group: framework
+    side: both
+    why: 'the schema library of front-end forms (fe-stack forms) and, on the back end, of the boundary parsers (R304 and R305: provider responses, model output and queue payloads, never a transport DTO), also an npm override of every app root; 4.6.7 (the registry latest on 2026-10-24) closes GHSA-mrhx-c7xc-m3w5 (high, fixed in 4.6.6), which npm audit --audit-level=high reported against 4.4.3.'
+  '@reduxjs/toolkit':
+    version: 2.11.2
+    group: framework
+    side: fe
+    why: 'app-wide shared state, redux/ (fe-stack state-global); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-redux':
+    version: 9.2.0
+    group: framework
+    side: fe
+    why: 'the React binding of the app-wide store (fe-stack state-global); version read from the starci-academy package-lock on 2026-10-13.'
+  'zustand':
+    version: 5.0.12
+    group: framework
+    side: fe
+    why: 'feature-local client state, hooks/zustand (fe-stack state-local); version read from the starci-academy package-lock on 2026-10-13.'
+  'socket.io-client':
+    version: 4.8.3
+    group: framework
+    side: fe
+    why: 'the realtime client, hooks/socketio (fe-stack realtime); version read from the starci-academy package-lock on 2026-10-13.'
+  'eventemitter2':
+    version: 6.4.9
+    group: framework
+    side: fe
+    why: 'the fan-out emitter behind the socket side-effect component (fe-stack realtime); version read from the starci-academy package-lock on 2026-10-13.'
+  '@heroicons/react':
+    version: 2.2.0
+    group: ui
+    side: fe
+    why: 'the base of the one application icon set (fe-stack icons, with @starci/heroicons for the glyphs it lacks); eslint-grammar-core (icon.mjs) admits @heroicons/react/24/outline and /16/solid.'
+  '@dicebear/core':
+    version: 10.4.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for its seeded circle avatars; apps use the Avatar seed prop and never declare or import @dicebear/*; pinned with @dicebear/styles.'
+  '@dicebear/styles':
+    version: 10.4.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar supplying its fixed avatar DNA style; apps use the Avatar seed prop and never declare or import @dicebear/*; pinned with @dicebear/core.'
+  'next-themes':
+    version: 0.4.6
+    group: ui
+    side: fe
+    why: 'light and dark theme switching in components/providers (fe-stack theme); version read from the starci-academy package-lock on 2026-10-13.'
+  'framer-motion':
+    version: 12.42.2
+    group: ui
+    side: fe
+    why: 'motion (fe-stack motion); version read from the starci-academy package-lock on 2026-10-13.'
+  'dayjs':
+    version: 1.11.21
+    group: framework
+    side: fe
+    why: 'date math and parsing, modules/dayjs (fe-stack dates); display goes through the next-intl formatter; version read from the starci-academy package-lock on 2026-10-13.'
+  'decimal.js':
+    version: 10.6.0
+    group: framework
+    side: fe
+    why: 'money and decimal arithmetic, modules/utils (fe-stack numbers); version read from the starci-academy package-lock on 2026-10-13.'
+  'superjson':
+    version: 2.2.6
+    group: framework
+    side: fe
+    why: 'serialization of stored values, modules/superjson and modules/storage (fe-stack storage); version read from the starci-academy package-lock on 2026-10-13.'
+  'lodash':
+    version: 4.17.23
+    group: framework
+    side: fe
+    why: 'per-method utilities, modules/utils (fe-stack utils); version read from the starci-academy package-lock on 2026-10-13.'
+  'usehooks-ts':
+    version: 3.1.1
+    group: framework
+    side: fe
+    why: 'reusable React hooks, hooks/reuseables (fe-stack utils); version read from the starci-academy package-lock on 2026-10-13.'
+  'recharts':
+    version: 3.8.1
+    group: ui
+    side: fe
+    why: 'charts (fe-stack charts); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-markdown':
+    version: 10.1.0
+    group: ui
+    side: fe
+    why: 'markdown rendering (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+  'remark-gfm':
+    version: 4.0.1
+    group: ui
+    side: fe
+    why: 'GitHub-flavoured markdown for react-markdown (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+  'remark-directive':
+    version: 4.0.0
+    group: ui
+    side: fe
+    why: 'markdown directives for react-markdown (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-shiki':
+    version: 0.9.2
+    group: ui
+    side: fe
+    why: 'code highlighting (fe-stack code); version read from the starci-academy package-lock on 2026-10-13.'
+  '@monaco-editor/react':
+    version: 4.7.0
+    group: ui
+    side: fe
+    why: 'the code editor (fe-stack code); version read from the starci-academy package-lock on 2026-10-13.'
+  'mermaid':
+    version: 11.16.0
+    group: ui
+    side: fe
+    why: 'diagrams (fe-stack diagrams); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-dropzone':
+    version: 15.0.0
+    group: ui
+    side: fe
+    why: 'file drop zones of uploads (fe-stack upload); version read from the starci-academy package-lock on 2026-10-13.'
+  'react-pdf':
+    version: 10.4.1
+    group: ui
+    side: fe
+    why: 'PDF viewing (fe-stack pdf); version read from the starci-academy package-lock on 2026-10-13.'
+  '@fingerprintjs/fingerprintjs':
+    version: 5.2.0
+    group: framework
+    side: fe
+    why: 'the device id of the GraphQL fingerprint link (fe-stack device-id); version read from the starci-academy package-lock on 2026-10-13.'
+  '@sentry/nextjs':
+    version: 11.7.0
+    group: framework
+    side: fe
+    why: 'error reporting through sentry.*.config.ts and instrumentation.ts (fe-stack observability); the latest registry version on 2026-10-13, academy has none.'
+  # --- back-end transports the front end calls, and the realtime gateway
+  '@nestjs/graphql':
+    version: 13.4.5
+    group: framework
+    side: be
+    why: 'the GraphQL transport of every back end (be.transport.graphql) that the front end calls; the full-app resolution on 2026-10-13. Stays on 13.x for alpha.18: the npm-audit advisory fixed by 14.0.3 (semver major) is a documented accepted exception, upgrade deferred to alpha.19 (owner ruling graphql-13-advisory-accepted-until-a19, 2026-10-16).'
+  '@graphql-tools/utils':
+    version: 12.1.0
+    group: framework
+    side: be
+    why: 'an npm override of every app root (and of the examples that serve GraphQL), never a declared dependency: @nestjs/graphql 13.x pulls @graphql-tools/utils <=12.0.0, which npm audit --audit-level=high reports (GHSA-7mx3-vvmw-hjmv, prototype pollution in mergeDeep). 12.1.0 is a fixed release on the same major and the lowest one every declared range accepts (@graphql-tools/schema and /merge, used at runtime, require ^12.1.0; NIVO v0.2.1 6a1d8e80 overrides 12.0.4, below that range), so the advisory closes without the breaking @nestjs/graphql 14. DROP this pin and the override when @nestjs/graphql 14 is adopted (owner ruling graphql-tools-utils-override, 2026-10-18).'
+  'multer':
+    version: 2.5.0
+    group: framework
+    side: be
+    why: 'an npm override of every app root and of the examples, never a declared dependency: @nestjs/platform-express 11.2.x (and 12.x) depends on exactly multer 2.4.0, which npm audit --audit-level=high reports (GHSA-q7qp-rjg7-q26m, a denial of service through a pending asynchronous fileFilter after request teardown, published 2026-10-24). 2.5.0 is the fixed release on the same major. DROP this pin and the override when a @nestjs/platform-express release depends on multer 2.5.0 or later.'
+  '@nestjs/apollo':
+    version: 13.4.5
+    group: framework
+    side: be
+    why: 'the Apollo driver of @nestjs/graphql; the full-app resolution on 2026-10-13. Stays on 13.x with @nestjs/graphql (accepted advisory, major deferred to alpha.19).'
+  '@aws-sdk/client-s3':
+    version: 3.1150.0
+    group: framework
+    side: be
+    why: 'the S3 transport of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces, Supabase Storage); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
+  '@aws-sdk/s3-request-presigner':
+    version: 3.1150.0
+    group: framework
+    side: be
+    why: 'signs the presigned PUT and GET of integrations/object-storage locally, the same release as client-s3.'
+  '@apollo/server':
+    version: 5.5.1
+    group: framework
+    side: be
+    why: 'the Apollo server behind @nestjs/apollo; the full-app resolution on 2026-10-13.'
+  '@nestjs/websockets':
+    version: 11.2.5
+    group: framework
+    side: be
+    why: 'the socket.io gateway of a realtime back end (lite runs it in the api process, owner ruling 2026-10-13); the @nestjs/core pin line.'
+  '@nestjs/platform-socket.io':
+    version: 11.2.5
+    group: framework
+    side: be
+    why: 'the socket.io platform of @nestjs/websockets; the @nestjs/core pin line.'
+  socket.io:
+    version: 4.8.3
+    group: framework
+    side: be
+    why: 'the socket.io server the IoAdapter of platform/realtime builds (types and the adapter contract); the exact version @nestjs/platform-socket.io 11.2.5 depends on, so the workspace keeps one copy (4.8.4 is the latest on 2026-10-24).'
+  '@socket.io/postgres-adapter':
+    version: 0.5.0
+    group: framework
+    side: be
+    why: 'the stateless socket.io adapter of a back end without Redis that runs several api replicas (LISTEN/NOTIFY, no sticky sessions, websocket only), imported only by platform/realtime (knowledge/patterns/be/realtime.yaml BE-REALTIME-7); the latest registry version on 2026-10-24.'
+  '@socket.io/redis-adapter':
+    version: 8.3.0
+    group: framework
+    side: be
+    why: 'the sharded Redis adapter (createShardedAdapter, Redis 7 or later) of a back end with Redis declared that runs several api replicas, imported only by platform/realtime; the latest registry version on 2026-10-24.'
+  ioredis:
+    version: 5.11.1
+    group: framework
+    side: be
+    why: 'the one Redis client of a back end: the cache, the optional peer bullmq loads for the queue of platform/queue, and the Redis hub and sharded socket.io adapter of platform/realtime (its docs recommend ioredis over redis); the latest 5.x on 2026-10-24, because typeorm 0.3.31 declares ioredis ^5.0.4 as a peer and ioredis 6.0.0 (the latest) does not satisfy it.'
+  '@types/pg':
+    version: 8.23.1
+    group: framework
+    side: be
+    why: 'the types of the pg driver the Postgres hub of platform/realtime opens a LISTEN connection with; the pg pin line, the latest registry version on 2026-10-24.'
+  '@as-integrations/express5':
+    version: 1.1.2
+    group: framework
+    side: be
+    why: 'the Express 5 integration @nestjs/apollo loads at boot (R111 nestjs-apollo-express5, knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
+  # --- Supabase lite
+  '@supabase/ssr':
+    version: 0.12.7
+    group: framework
+    side: fe
+    why: the one server/browser client factory for a lite Next app; exact version registry-checked for the lite scaffold.
+  '@supabase/supabase-js':
+    version: 2.117.2
+    group: framework
+    side: both
+    why: the generated Database-typed client used by the FE data owner and the BE Auth/Storage integration.
+  jose:
+    version: 6.2.12
+    group: framework
+    side: be
+    why: verifies Supabase access tokens against the project JWKS with issuer, audience, expiry and algorithm checks.
+  supabase:
+    version: 2.119.0
+    group: tooling
+    side: both
+    why: the root CLI wrapper owns local schema lifecycle and generates the committed database types.
+  class-transformer:
+    version: 0.5.1
+    group: framework
+    side: be
+    why: Nest request transformation in the API runtime, pinned with the validation library.
+  class-validator:
+    version: 0.15.1
+    group: framework
+    side: be
+    why: Nest boundary validation in the API runtime, pinned with the transformation library.

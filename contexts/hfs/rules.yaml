@@ -6,7 +6,7 @@ schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)
   eslint-fe: a universal rule of @starci/eslint-canon-fe
-  eslint-grammar-starci: a rule of the selected Grammar's lint package over the shared component API
+  eslint-grammar-core: a rule of the selected Grammar's lint package over the shared component API
   stylelint: a rule of @starci/stylelint-canon
   machine: a check of the architecture machine over the import graph
   hfs: a check of the app CLI over the tree, configuration, contracts or catalogs
@@ -631,12 +631,12 @@ rules:
       - {kind: stylelint, id: breakpoint-scale}
       - {kind: stylelint, id: source-resolves}
       - {kind: eslint-fe, id: no-raw-brand-value}
-      - {kind: eslint-grammar-starci, id: no-fractional-step}
+      - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
-      - {kind: eslint-grammar-starci, id: no-hand-rolled-heading}
-      - {kind: eslint-grammar-starci, id: no-unresolved-token-class}
-      - {kind: eslint-grammar-starci, id: no-heading-tag-outside-heading-component}
-      - {kind: eslint-grammar-starci, id: status-text-uses-soft-foreground}
+      - {kind: eslint-grammar-core, id: no-hand-rolled-heading}
+      - {kind: eslint-grammar-core, id: no-unresolved-token-class}
+      - {kind: eslint-grammar-core, id: no-heading-tag-outside-heading-component}
+      - {kind: eslint-grammar-core, id: status-text-uses-soft-foreground}
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
     law: Product tiers compose the selected Grammar renderers for form controls, images and structural elements and never reproduce them with raw HTML.
@@ -646,7 +646,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-native-form-control}
       - {kind: eslint-fe, id: no-native-img}
-      - {kind: eslint-grammar-starci, id: no-raw-structural-element}
+      - {kind: eslint-grammar-core, id: no-raw-structural-element}
       - {kind: eslint-fe, id: image-has-size}
   - id: R63
     code: FE_PACKAGE_SHAPE
@@ -936,7 +936,7 @@ rules:
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}
-      - {kind: eslint-grammar-starci, id: slot-status-through-slotview}
+      - {kind: eslint-grammar-core, id: slot-status-through-slotview}
       - {kind: eslint-fe, id: presentational-purity}
       - {kind: eslint-fe, id: connected-block-has-presentational-twin}
       - {kind: eslint-fe, id: no-resting-twin-component}
@@ -954,13 +954,13 @@ rules:
       - ARCH_GRAMMAR_CONTRACT_INVALID
       - ARCH_GRAMMAR_EXPORT_BYPASS
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-vendor-icon-outside-icon-leaf}
-      - {kind: eslint-grammar-starci, id: heroicons-is-the-glyph-vendor}
-      - {kind: eslint-grammar-starci, id: no-off-scale-glyph-size}
-      - {kind: eslint-grammar-starci, id: no-icon-size-class}
-      - {kind: eslint-grammar-starci, id: destructive-menu-entry-needs-danger-tone}
-      - {kind: eslint-grammar-starci, id: no-decorative-icon-in-metric-cell}
-      - {kind: eslint-grammar-starci, id: vendor-primitive-has-named-owner}
+      - {kind: eslint-grammar-core, id: no-vendor-icon-outside-icon-leaf}
+      - {kind: eslint-grammar-core, id: heroicons-is-the-glyph-vendor}
+      - {kind: eslint-grammar-core, id: no-off-scale-glyph-size}
+      - {kind: eslint-grammar-core, id: no-icon-size-class}
+      - {kind: eslint-grammar-core, id: destructive-menu-entry-needs-danger-tone}
+      - {kind: eslint-grammar-core, id: no-decorative-icon-in-metric-cell}
+      - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar}
   - id: R94
@@ -1967,7 +1967,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-copy-in-call}
       - {kind: eslint-fe, id: no-alert}
-      - {kind: eslint-grammar-starci, id: no-inline-svg-outside-brand-mark-leaf}
+      - {kind: eslint-grammar-core, id: no-inline-svg-outside-brand-mark-leaf}
   - id: R287
     code: FE_CALLBACK_SHAPE
     law: The auth callback handler only exchanges the code or verifies the email OTP and redirects, using the auth owner and pure route helpers.
@@ -2137,35 +2137,35 @@ rules:
     failureCodes:
       - FE_APP_SHELL_FRAME
     enforcers:
-      - {kind: eslint-grammar-starci, id: app-shell-frame}
+      - {kind: eslint-grammar-core, id: app-shell-frame}
   - id: R314
     code: FE_NAVBAR_CONTROL_SIZE
     law: Navbar controls share one height and icons one size per region from the selected Grammar scale.
     failureCodes:
       - FE_NAVBAR_CONTROL_SIZE
     enforcers:
-      - {kind: eslint-grammar-starci, id: navbar-control-size}
+      - {kind: eslint-grammar-core, id: navbar-control-size}
   - id: R315
     code: FE_NAVBAR_CLUSTER
     law: Navbar controls appear in the order language, theme, notifications and account, each supplied by the selected Grammar.
     failureCodes:
       - FE_NAVBAR_CLUSTER
     enforcers:
-      - {kind: eslint-grammar-starci, id: navbar-cluster}
+      - {kind: eslint-grammar-core, id: navbar-cluster}
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
     law: An application keeps the selected Grammar shell's navigation model across viewports and never replaces it with a bottom tab bar.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-shell-bottom-tabs}
+      - {kind: eslint-grammar-core, id: no-shell-bottom-tabs}
   - id: R317
     code: FE_NAVBAR_CREATE
     law: Create actions live on the page that owns them, never in the global navbar.
     failureCodes:
       - FE_NAVBAR_CREATE
     enforcers:
-      - {kind: eslint-grammar-starci, id: no-navbar-create}
+      - {kind: eslint-grammar-core, id: no-navbar-create}
   - id: R318
     code: FE_NESTED_VARIANT
     law: Apps compose the Grammar with layout-only CSS; paint, variants and surface edges belong to the Grammar, and app styles never target Grammar internals.

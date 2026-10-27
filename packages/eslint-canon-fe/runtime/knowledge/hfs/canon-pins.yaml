@@ -21,7 +21,7 @@ pins:
     install: registry
     side: fe
     source: packages/heroicons/package.json
-    why: 'StarCi custom Heroicons-compatible cuts; eslint-grammar-starci (icon.mjs) admits @starci/heroicons/24/outline and /16/solid as icon sources, so an app that uses them gets this exact version.'
+    why: 'StarCi custom Heroicons-compatible cuts; eslint-grammar-core (icon.mjs) admits @starci/heroicons/24/outline and /16/solid as icon sources, so an app that uses them gets this exact version.'
   '@starci/event-stream':
     version: 0.1.0
     group: starci
@@ -30,61 +30,61 @@ pins:
     source: packages/event-stream/package.json
     why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
   '@starci/grammar':
-    version: 0.12.15
+    version: 0.13.0
     group: starci
     install: registry
     side: fe
     source: packages/grammar/package.json
     why: 'the grammar front ends read: the brand layer sets `--font-sans` and `--font-mono` and the grammar reads them; it carries the Input tel kind, the copyable and read-only Input, the IconButton disclosure props and count badge, ChatBubble, FillViewport, Textarea mentions and Enter-to-send, the leading PrimaryRailLayout rail, the plate-less Image, ListRow, the soft Alert, Progress steps, the floating primary IconButton, FlowGraph, the STATE-8 loading views and the bordered selectable TagGroup chips. The runtime source version wins for a @starci package.'
   '@starci/eslint-canon-be':
-    version: 3.4.56
+    version: 3.4.57
     group: starci
     install: registry
     side: be
-    source: packages/eslint/be/package.json
+    source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.1.10
+    version: 9.2.0
     group: starci
     install: registry
     side: fe
-    source: packages/eslint/fe/package.json
+    source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
-  '@starci/eslint-grammar-starci':
-    version: 0.12.15
+  '@starci/eslint-grammar-core':
+    version: 0.13.0
     group: starci
     install: registry
     side: fe
-    source: packages/eslint/grammar-starci/package.json
+    source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.12.15
+    version: 0.13.0
     group: starci
     install: registry
     side: fe
-    source: packages/eslint/grammar-offset-pop/package.json
+    source: packages/eslint-grammar-offset-pop/package.json
     why: 'the Offset Pop Grammar component API lint, versioned with @starci/grammar; its shared component contract comes from the StarCi family lint without copying rules.'
   '@starci/stylelint-canon':
-    version: 2.0.13
+    version: 2.1.0
     group: starci
     install: registry
     side: fe
-    source: packages/stylelint/package.json
+    source: packages/stylelint-canon/package.json
     why: 'the front-end stylelint canon: no-class-selector refuses a compound class selector (`div.card`); the brand layer accepts `--font-sans` and `--font-mono`; status-contrast measures the HeroUI soft pairs per theme; brand-layer-shape reads the shared :root,.light,.dark block and the info soft pair; appTokens come from loadAppTokens(import.meta.url) for the managed one-line stylelint.config.mjs.'
   '@starci/tsconfig':
-    version: 2.0.7
+    version: 2.0.8
     group: starci
     install: registry
     side: both
     source: packages/tsconfig/package.json
   '@starci/prettier-config':
-    version: 1.0.4
+    version: 1.0.5
     group: starci
     install: registry
     side: both
     source: packages/prettier-config/package.json
   '@starci/jest-preset':
-    version: 2.3.6
+    version: 2.3.7
     group: starci
     install: registry
     side: be
@@ -102,10 +102,9 @@ pins:
     group: starci
     install: registry
     side: both
-    source: packages/cli/package.json
     why: 'the only StarCi command package; product repositories install it for starci app, while @starci/hfs remains its pinned transitive implementation.'
   '@starci/hfs':
-    version: 4.7.48
+    version: 4.8.0
     group: starci
     install: registry
     side: both
@@ -406,7 +405,7 @@ pins:
     version: 2.2.0
     group: ui
     side: fe
-    why: 'the base of the one application icon set (fe-stack icons, with @starci/heroicons for the glyphs it lacks); eslint-grammar-starci (icon.mjs) admits @heroicons/react/24/outline and /16/solid.'
+    why: 'the base of the one application icon set (fe-stack icons, with @starci/heroicons for the glyphs it lacks); eslint-grammar-core (icon.mjs) admits @heroicons/react/24/outline and /16/solid.'
   '@dicebear/core':
     version: 10.4.0
     group: ui

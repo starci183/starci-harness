@@ -1,0 +1,101 @@
+schema: starci/knowledge-source@1
+id: ui.presentation.font
+title: Font presentation
+appliesTo:
+  - ui
+family: presentation
+purpose: Choose information rank and document semantics before typography. A heading establishes structure;
+  ordinary copy does not. The selected Grammar owns the concrete type scale, renderers, props, weights, line
+  heights and tracking under FE-RULE-OWNERSHIP. Applications compose that public contract and write
+  layout-only CSS.
+ownerVocabulary:
+  owners:
+    - name: The selected text renderer
+      meaning: Ordinary copy has no heading semantics
+      applicationWrites: The published semantic rank through the selected Grammar API
+    - name: The selected heading renderer
+      meaning: A heading declares its actual document position
+      applicationWrites: Its semantic level and any published emphasis treatment
+  notes: Information rank belongs to the application; its visual realization belongs to the selected Grammar. A
+    missing typography capability is a Grammar gap, never permission to override a component with application
+    typography CSS.
+guidance:
+  - id: weight
+    title: Weight
+    requirement: Weight refines an already chosen information rank. It does not create a hierarchy level or
+      substitute for a heading. Use only the selected Grammar's published weight treatment; its concrete
+      weights, defaults and renderer props belong to that family. Document structure remains meaningful when
+      weight or colour is removed.
+rules:
+  - id: FONT-1
+    title: Lowest supporting rank
+    governs: Supporting metadata remains subordinate while staying readable. The selected Grammar chooses its
+      exact size and treatment.
+    cases:
+      - id: case-1
+        when: Brief metadata remains understandable at the lowest supporting rank
+        owner: The selected text renderer
+        render: Compose its published supporting-copy treatment.
+      - id: case-2
+        when: A nested region has a label within an already titled section
+        owner: The selected heading renderer
+        render: Declare the nested region's actual document position; use the selected Grammar's corresponding recipe.
+    notThisRule: Ordinary sentences and important facts must not be demoted to the lowest supporting rank.
+  - id: FONT-2
+    title: Supporting reading rank
+    governs: A complete supporting line remains readable and visibly below ordinary reading copy.
+    cases:
+      - id: case-1
+        when: A complete supporting line such as a timestamp or short fact sits below normal body copy
+        owner: The selected text renderer
+        render: Compose the published supporting reading rank without reducing readability.
+      - id: case-2
+        when: A subordinate region is nested within a section
+        owner: The selected heading renderer
+        render: Keep its document nesting and published heading treatment aligned.
+    notThisRule: Do not shrink body copy to fit an undersized container; repair its layout.
+  - id: FONT-3
+    title: Ordinary reading rank
+    governs: Explanatory copy has the normal reading priority of its region. Its visual recipe comes from the
+      selected Grammar.
+    cases:
+      - id: case-1
+        when: Ordinary explanatory copy has normal reading priority
+        owner: The selected text renderer
+        render: Use the normal reading treatment supplied by the selected Grammar.
+      - id: case-2
+        when: A section has its own heading inside a page
+        owner: The selected heading renderer
+        render: Declare the section's structural position independently of its size.
+  - id: FONT-4
+    title: Page-heading rank
+    governs: The heading that names a page carries the primary structural rank of that document.
+    cases:
+      - id: case-1
+        when: The single heading names the whole page or route
+        owner: The selected heading renderer
+        render: Use the page-heading role and its published family treatment.
+    notThisRule: One document has one top-level page heading. A second page-heading role is a structural conflict.
+  - id: FONT-5
+    title: Leading-value emphasis
+    governs: The principal numeric value or short fact of a region may carry emphasis without acquiring heading
+      semantics.
+    cases:
+      - id: case-1
+        when: A leading metric or short value is the main fact of its region
+        owner: The selected text renderer
+        render: Use the family's published value-emphasis treatment while retaining text semantics.
+    notThisRule: Value emphasis is not decoration, sentence styling or an imitation of a heading.
+  - id: FONT-6
+    title: Display emphasis preserves structure
+    governs: A page introduction may use the selected Grammar's display treatment while preserving the heading's
+      actual semantic position.
+    cases:
+      - id: case-1
+        when: A page introduction needs marketing or landing emphasis
+        owner: The selected heading renderer
+        render: Apply the published display treatment while keeping the document outline unchanged.
+    notThisRule: A nested heading never gains a different outline position merely to obtain visual emphasis.
+doesNotDecide: |-
+  Which colour expresses the rank is [Tone](tone.yaml). How the line wraps, aligns, or truncates is
+  [Text flow](text-flow.yaml). How much room the text region gets is [Measure](measure.yaml).

@@ -1,5 +1,5 @@
 /* Common owns only universal structure/scales. Families supply material DNA. */
-@layer starci-grammar-common, starci-grammar-core, starci-grammar-heritage, starci-grammar-offset-pop;
+@layer starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
 @import "./components-forms.css";
 @import "./components-surface-controls.css";
 @import "./components-overlays.css";
@@ -550,7 +550,7 @@
         display: flex;
         width: 100%;
         min-width: 0;
-        height: 2.25rem;
+        height: var(--starci-core-control-min-size, 2.5rem);
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
@@ -628,6 +628,52 @@
      * `overflow: auto auto` - two scrolling axes under an OVERFLOW-3 claim that promises one. Naming
      * both axes here keeps the render at the one axis the claim describes.
      */
+    .starci-horizontal-scroll-frame {
+        position: relative;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .starci-horizontal-scroll-prev,
+    .starci-horizontal-scroll-next {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        transform: translateY(-50%);
+        display: none;
+    }
+
+    .starci-horizontal-scroll-prev { inset-inline-start: 0.25rem; }
+    .starci-horizontal-scroll-next { inset-inline-end: 0.25rem; }
+    .starci-horizontal-scroll-next svg { rotate: 180deg; }
+    .starci-horizontal-scroll-frame:dir(rtl) > :is(.starci-horizontal-scroll-prev, .starci-horizontal-scroll-next) svg { scale: -1 1; }
+
+    .starci-horizontal-scroll-frame:has(> :is([data-left-scroll="true"], [data-left-right-scroll="true"])) > .starci-horizontal-scroll-prev,
+    .starci-horizontal-scroll-frame:has(> :is([data-right-scroll="true"], [data-left-right-scroll="true"])) > .starci-horizontal-scroll-next {
+        display: inline-flex;
+    }
+
+    /* Preserve the Tabs glyph's vendor size and center, with a small IconButton hit target. */
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] > .starci-horizontal-scroll-prev { inset-inline-start: -0.25rem; }
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] > .starci-horizontal-scroll-next { inset-inline-end: -0.25rem; }
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button {
+        --button-bg-hover: transparent;
+        --button-bg-pressed: transparent;
+        --button-fg: var(--foreground);
+        transform: none;
+        transition: opacity 150ms var(--ease-smooth);
+    }
+    @media (hover: hover) {
+        .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button:hover { opacity: 0.7; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon-button { transition: none; }
+    }
+    .starci-horizontal-scroll-frame[data-scroll-appearance="tabs"] .starci-core-icon {
+        width: 1rem;
+        height: 1rem;
+    }
+
     .starci-core-horizontal-scroll-region {
         width: 100%;
         min-width: 0;
@@ -1860,8 +1906,8 @@
     .starci-core-navigation-feature-nav-actions :where(button, [role="button"], a[href]),
     .starci-core-navigation-feature-nav-navigation :where(button, [role="button"], a[href]),
     .starci-core-navigation-feature-nav-compact-navigation :where(button, [role="button"], a[href]) {
-        min-inline-size: var(--starci-core-control-min-size, 2.75rem);
-        min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        min-inline-size: var(--starci-core-control-min-size, 2.5rem);
+        min-block-size: var(--starci-core-control-min-size, 2.5rem);
     }
 
     /*
@@ -1872,7 +1918,7 @@
      * touch target.
      */
     .starci-core-navigation-feature-nav-identity .starci-core-text-action[data-appearance="plain"] {
-        min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        min-block-size: var(--starci-core-control-min-size, 2.5rem);
     }
 
     .starci-core-navigation-feature-nav-feature {
@@ -1953,8 +1999,8 @@
      */
     .starci-core-subnav-toggle {
         display: inline-flex;
-        width: 2.75rem !important;
-        height: 2.75rem !important;
+        width: var(--starci-core-control-min-size, 2.5rem) !important;
+        height: var(--starci-core-control-min-size, 2.5rem) !important;
         align-items: center;
         justify-content: center;
         border-radius: 0 !important;
@@ -1976,8 +2022,8 @@
      */
     @media (pointer: coarse), (max-width: 40rem) {
         .starci-core-subnav-toggle {
-            min-inline-size: var(--starci-core-control-min-size, 2.75rem);
-            min-block-size: var(--starci-core-control-min-size, 2.75rem);
+            min-inline-size: var(--starci-core-control-min-size, 2.5rem);
+            min-block-size: var(--starci-core-control-min-size, 2.5rem);
         }
     }
 
@@ -2383,8 +2429,8 @@
     }
 
     .starci-core-sidebar[data-collapsed="true"] .starci-core-sidebar-item {
-        width: 2.75rem !important;
-        height: 2.75rem;
+        width: var(--starci-core-control-min-size, 2.5rem) !important;
+        height: var(--starci-core-control-min-size, 2.5rem);
         justify-content: center !important;
         gap: 0 !important;
         border-radius: var(--starci-core-pill-radius, 999px) !important;
@@ -2467,8 +2513,8 @@
 
     .starci-core-chat-workspace-rail-trigger {
         display: inline-flex;
-        min-width: 2.75rem;
-        min-height: 2.75rem;
+        min-width: var(--starci-core-control-min-size, 2.5rem);
+        min-height: var(--starci-core-control-min-size, 2.5rem);
         align-items: center;
         justify-content: center;
         padding-inline: 0.75rem;
@@ -2855,15 +2901,55 @@
     /* --- Icon button: a HeroUI `Button` worn as a circle. --- */
     .starci-core-control-size .starci-core-field-skeleton-control {
         box-sizing: border-box;
-        block-size: var(--starci-core-control-min-size, 2.75rem) !important;
-        min-block-size: var(--starci-core-control-min-size, 2.75rem) !important;
-        max-block-size: var(--starci-core-control-min-size, 2.75rem) !important;
+        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        max-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
     }
 
-    .starci-core-icon-button[data-grammar-control-size="control"] {
-        inline-size: var(--starci-core-control-min-size, 2.75rem) !important;
-        min-inline-size: var(--starci-core-control-min-size, 2.75rem) !important;
-        max-inline-size: var(--starci-core-control-min-size, 2.75rem) !important;
+    /*
+     * Owner ruling `control-height-40`: one control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
+     * standalone control. `md` and `control` are the same square circle in both axes (the vendor's md:h-9 desktop step
+     * is overridden, and a square needs both axes or it collapses into an oval); `sm` (2rem) is for a control nested in
+     * an item or a dense toolbar; `lg` (3rem) is the landing hero step.
+     */
+    .starci-core-icon-button[data-size="md"],
+    .starci-core-icon-button[data-size="control"] {
+        inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        min-inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        max-inline-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        max-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+    }
+
+    .starci-core-icon-button[data-size="sm"] {
+        inline-size: 2rem !important;
+        min-inline-size: 2rem !important;
+        block-size: 2rem !important;
+        min-block-size: 2rem !important;
+    }
+
+    .starci-core-button[data-size="md"]:not([data-width="fill"]),
+    .starci-core-button[data-size="control"]:not([data-width="fill"]) {
+        block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+    }
+
+    .starci-core-button[data-size="sm"]:not([data-width="fill"]) {
+        block-size: 2rem !important;
+        min-block-size: 2rem !important;
+    }
+
+    .starci-core-button[data-size="lg"]:not([data-width="fill"]) {
+        block-size: 3rem !important;
+        min-block-size: 3rem !important;
+    }
+
+    /* The chrome avatar (`control`) is drawn here over the vendor `lg` box: the shared control height. */
+    [data-component="Avatar"][data-grammar-avatar-size="control"] {
+        --avatar-size: var(--starci-core-control-min-size, 2.5rem);
+        inline-size: var(--starci-core-control-min-size, 2.5rem);
+        block-size: var(--starci-core-control-min-size, 2.5rem);
     }
 
     .starci-core-text-action[data-size="control"] {
@@ -2876,9 +2962,9 @@
     }
 
     .starci-core-icon-button[data-size="lg"] {
-        width: 3.5rem !important;
-        height: 3.5rem !important;
-        min-width: 3.5rem !important;
+        width: 3rem !important;
+        height: 3rem !important;
+        min-width: 3rem !important;
     }
 
     .starci-core-icon-button[data-size="lg"] > :is(svg, [data-slot="icon"]) {
@@ -3254,7 +3340,7 @@
         display: inline-flex;
         width: fit-content;
         min-width: 0;
-        min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        min-block-size: var(--starci-core-control-min-size, 2.5rem);
         flex: none;
         align-items: center;
         gap: 0.5rem;
@@ -3309,7 +3395,7 @@
     .starci-core-text-action[data-appearance="route"] {
         border-radius: var(--starci-core-pill-radius, 999px);
         padding: 0.5rem 0.75rem;
-        min-block-size: var(--starci-core-control-min-size, 2.75rem);
+        min-block-size: var(--starci-core-control-min-size, 2.5rem);
         color: var(--muted, var(--starci-core-muted, GrayText));
     }
 

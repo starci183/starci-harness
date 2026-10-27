@@ -1,0 +1,6 @@
+minInputWindowMs: 5000
+maxBytes: 1048576
+outputTimeoutMs: 1000
+verdictTimeoutMs: 20000
+teardownTimeoutMs: 1000
+hookTimeoutSeconds: 30

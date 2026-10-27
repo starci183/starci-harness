@@ -1,0 +1,57 @@
+{
+  "app": {
+    "title": "{{project}}",
+    "shell": {
+      "brand": "{{project}}"
+    },
+    "home": {
+      "title": "Trang chủ"
+    },
+    "signIn": {
+      "title": "Đăng nhập",
+      "email": "Email",
+      "password": "Mật khẩu",
+      "submit": "Tiếp tục",
+      "working": "Đang đăng nhập",
+      "refused": "Thông tin đăng nhập không đúng.",
+      "invalid": "Hãy nhập email và mật khẩu hợp lệ.",
+      "unavailable": "Chưa thể đăng nhập. Hãy thử lại sau."
+    },
+    "signOut": {
+      "signedIn": "Đã đăng nhập",
+      "submit": "Đăng xuất",
+      "working": "Đang đăng xuất"
+    },
+    "toast": {
+      "successTitle": "Thành công",
+      "errorTitle": "Lỗi",
+      "unauthorizedTitle": "Chưa đăng nhập",
+      "unauthorizedDescription": "Hãy đăng nhập để tiếp tục.",
+      "defaultSuccess": "Đã hoàn tất.",
+      "defaultError": "Đã xảy ra lỗi."
+    },
+    "loading": {
+      "message": "Đang tải"
+    },
+    "notFound": {
+      "title": "Không tìm thấy trang",
+      "home": "Về trang chủ"
+    },
+    "errors": {
+      "page": {
+        "title": "Đã xảy ra lỗi",
+        "retry": "Thử lại"
+      },
+      "global": {
+        "title": "Đã xảy ra lỗi nghiêm trọng",
+        "retry": "Thử lại"
+      }
+    },
+    "guide": {
+      "open": "Xem hướng dẫn",
+      "title": "Bắt đầu",
+      "description": "Đăng nhập để sử dụng ứng dụng. Bạn có thể đóng hướng dẫn này và mở lại bất cứ lúc nào.",
+      "close": "Đóng"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+schema: starci/vendor-heroui-roles@1
+id: vendor.heroui.roles
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+taxonomy:
+  package: aria-query
+  version: "5.3.0"
+roles:
+  alert: {"componentRole":true,"contracts":[],"publicApi":"Alert"}
+  alertdialog: {"componentRole":true,"contracts":["AlertDialog.Dialog"],"publicApi":"AlertDialog"}
+  application: {"componentRole":false,"contracts":["Calendar.Root","RangeCalendar.Root"]}
+  button: {"componentRole":true,"contracts":["Accordion.Trigger","AlertDialog.CloseTrigger","AlertDialog.Trigger","Autocomplete.ClearButton","Autocomplete.Indicator","Button.Root","Calendar.Cell","Calendar.NavButton","Calendar.YearPickerCell","Calendar.YearPickerGridBody","Calendar.YearPickerTrigger","CloseButton.Root","ColorPicker.Trigger","ComboBox.Trigger","DatePicker.Trigger","DateRangePicker.Trigger","Disclosure.Trigger","Drawer.CloseTrigger","Drawer.Trigger","Dropdown.Trigger","Modal.CloseTrigger","Modal.Trigger","NumberField.DecrementButton","NumberField.IncrementButton","Pagination.Link","Pagination.Next","Pagination.Previous","Popover.Trigger","RangeCalendar.Cell","RangeCalendar.NavButton","RangeCalendar.YearPickerCell","RangeCalendar.YearPickerGridBody","RangeCalendar.YearPickerTrigger","SearchField.ClearButton","Select.Trigger","Table.Body","Table.Content","Table.Row","Tabs.List","Tag.RemoveButton","Tag.Root","ToggleButton.Root","Tooltip.Trigger"],"publicApi":"Button"}
+  checkbox: {"componentRole":true,"contracts":["Checkbox.Root","Switch.Root"],"publicApi":"Checkbox"}
+  code: {"componentRole":true,"contracts":[],"publicApi":"Code"}
+  columnheader: {"componentRole":true,"contracts":["Table.Column"]}
+  combobox: {"componentRole":true,"contracts":["Autocomplete.Root","ColorField.Root","ComboBox.Root","NumberField.Root","Select.Root"],"publicApi":"ComboBox"}
+  dialog: {"componentRole":true,"contracts":["AlertDialog.Dialog","Autocomplete.Popover","ColorPicker.Popover","ComboBox.Popover","DatePicker.Popover","DateRangePicker.Popover","Drawer.Dialog","Dropdown.Popover","Modal.Dialog","Popover.Content","Popover.Dialog","Select.Popover"]}
+  form: {"componentRole":true,"contracts":[],"publicApi":"Form"}
+  grid: {"componentRole":true,"contracts":["Calendar.Grid","RangeCalendar.Grid","Table.Content","TagGroup.Root"]}
+  gridcell: {"componentRole":true,"contracts":["Calendar.Cell","RangeCalendar.Cell","Table.Body","Table.Cell","Table.Column","Table.Content","Table.Row","Tag.Root"]}
+  group: {"componentRole":false,"contracts":["Accordion.Item","Accordion.Panel","Autocomplete.Trigger","ButtonGroup.Root","ColorArea.Root","ColorField.Group","ColorField.Root","ColorSlider.Root","ColorSwatchPicker.Root","ComboBox.Trigger","DateField.Group","DateField.Input","DateField.Root","DatePicker.Root","DateRangePicker.Root","Disclosure.Content","Disclosure.Root","Dropdown.Menu","Dropdown.Section","InputGroup.Root","ListBox.Root","ListBoxSection.Root","Menu.Root","MenuSection.Root","NumberField.Group","NumberField.Root","SearchField.Group","Slider.Root","TagGroup.Root","TimeField.Group","TimeField.Input","TimeField.Root","ToggleButtonGroup.Root","Toolbar.Root"]}
+  heading: {"componentRole":true,"contracts":[],"publicApi":"Heading"}
+  img: {"componentRole":false,"contracts":["ColorSwatch.Root","ColorSwatchPicker.Swatch"]}
+  input: {"componentRole":true,"contracts":[],"publicApi":"Input"}
+  link: {"componentRole":true,"contracts":["Breadcrumbs.Item","Link.Root"],"publicApi":"Link"}
+  listbox: {"componentRole":true,"contracts":["Calendar.YearPickerGrid","ColorSwatchPicker.Root","ListBox.Root","RangeCalendar.YearPickerGrid"],"publicApi":"ListBox"}
+  menu: {"componentRole":true,"contracts":["Dropdown.Menu","Menu.Root"],"publicApi":"Menu"}
+  menuitem: {"componentRole":true,"contracts":["Dropdown.Item","Dropdown.Menu","Menu.Item","Menu.Root","MenuItem.Root"],"publicApi":"MenuItem"}
+  menuitemcheckbox: {"componentRole":true,"contracts":["Dropdown.Item","Menu.Item","MenuItem.Root"]}
+  menuitemradio: {"componentRole":true,"contracts":["Dropdown.Item","Menu.Item","MenuItem.Root"]}
+  meter: {"componentRole":true,"contracts":["Meter.Root"],"publicApi":"Meter"}
+  navigation: {"componentRole":false,"contracts":["Pagination.Root"]}
+  option: {"componentRole":true,"contracts":["ColorSwatchPicker.Item","ColorSwatchPicker.Root","ListBox.Item","ListBox.Root","ListBoxItem.Root"]}
+  paragraph: {"componentRole":true,"contracts":[],"publicApi":"Paragraph"}
+  progressbar: {"componentRole":true,"contracts":["Meter.Root","ProgressBar.Root","ProgressCircle.Root"],"publicApi":"ProgressBar"}
+  radio: {"componentRole":true,"contracts":["Radio.Root","ToggleButton.Root"],"publicApi":"Radio"}
+  radiogroup: {"componentRole":true,"contracts":["RadioGroup.Root","ToggleButtonGroup.Root"],"publicApi":"RadioGroup"}
+  row: {"componentRole":true,"contracts":["Table.Body","Table.Content","Table.Header","Table.LoadMore","Table.Row","Tag.Root"]}
+  rowgroup: {"componentRole":false,"contracts":["Table.Body","Table.Header"]}
+  rowheader: {"componentRole":true,"contracts":["Table.Body","Table.Cell","Table.LoadMore"]}
+  select: {"componentRole":true,"contracts":[],"publicApi":"Select"}
+  separator: {"componentRole":true,"contracts":["Separator.Root"],"publicApi":"Separator"}
+  slider: {"componentRole":true,"contracts":["ColorArea.Root","ColorSlider.Root","Slider.Thumb","Table.ColumnResizer"],"publicApi":"Slider"}
+  spinbutton: {"componentRole":true,"contracts":["ColorField.Root","DateField.Segment","NumberField.Root","TimeField.Segment"]}
+  status: {"componentRole":false,"contracts":["Spinner.Root"]}
+  switch: {"componentRole":true,"contracts":["Switch.Root"],"publicApi":"Switch"}
+  tab: {"componentRole":true,"contracts":["Tabs.Tab"],"publicApi":"Tab"}
+  table: {"componentRole":true,"contracts":[],"publicApi":"Table"}
+  tablist: {"componentRole":true,"contracts":["Tabs.List"],"publicApi":"TabList"}
+  tabpanel: {"componentRole":true,"contracts":["Tabs.Panel"],"publicApi":"TabPanel"}
+  textbox: {"componentRole":true,"contracts":["Autocomplete.Root","ColorField.Root","DateField.Segment","NumberField.Root","Select.Root","TimeField.Segment"]}
+  toolbar: {"componentRole":true,"contracts":["ToggleButtonGroup.Root","Toolbar.Root"],"publicApi":"Toolbar"}
+  tooltip: {"componentRole":true,"contracts":["Tooltip.Content"],"publicApi":"Tooltip"}
+  treegrid: {"componentRole":true,"contracts":["Table.Content"]}

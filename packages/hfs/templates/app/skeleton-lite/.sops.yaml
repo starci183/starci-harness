@@ -1,0 +1,4 @@
+# The runtime template tracks no sealed members or shared recipient.
+# Scaffolding configures this app's own age recipient and generates sealed placeholders.
+# The private identity lives only in untracked .claude/secret.env as SOPS_AGE_KEY.
+creation_rules: []

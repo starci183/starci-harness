@@ -1,3 +1,5 @@
+import { loadPolicy } from "../../harness/policy.js"
+import { exceptSecrets } from "../check/secrets-scan.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, currentBranch, git, nulPaths, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { scanDiff } from "../../shared/secrets.js"
@@ -63,7 +65,7 @@ export const releasePushVerb = defineVerb({
                 .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
         )
         for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
-        const findings = scanDiff(diff, files, (file) => encrypted.get(file))
+        const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file)), loadPolicy(root))
         if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])

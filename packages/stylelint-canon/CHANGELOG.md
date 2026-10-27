@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0 - 2026-10-27
+
+- Removed: the Heritage family: `@starci/grammar/heritage(.css)` is no longer a Grammar stylesheet import and `--heritage-*` is no longer a family token prefix. The grammar CSS snapshot and the generated vocabulary are refreshed from Grammar 0.13.0.
+
 ## 2.0.14 - 2026-10-27
 
 - Changed: licensed MIT (was UNLICENSED); the package metadata names the repository, homepage and bugs so npm can attach provenance. No rule or behaviour changed.

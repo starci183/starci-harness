@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
+import { runtimeRoot } from "./ledger.js"
 
 /** The runtime gates the CLI implements: `starci check run` runs those a profile selects, in this order of cost. */
 export const RUNTIME_GATES = ["secrets", "loosening", "canon", "typecheck", "lint"] as const
@@ -84,7 +85,22 @@ const literalPath = z
 
 const reason = z.string().trim().min(10, "an exception carries its reason")
 
-const looseningException = z.object({ path: literalPath, marker: z.enum(LOOSENING_MARKERS), reason })
+/** What a file must be for an exception to name it; `exceptionKindProblem` holds the test of each. */
+export const EXCEPTION_KINDS = ["fixture", "template", "detector", "ruling"] as const
+
+/** One exception kind. */
+export type ExceptionKind = (typeof EXCEPTION_KINDS)[number]
+
+// The exact text of each finding the exception covers (its line, trimmed): one entry, or a list for several lines of the file.
+const match = z
+    .union([z.string().trim().min(1), z.array(z.string().trim().min(1)).min(1)])
+    .transform((value) => (typeof value === "string" ? [value] : value))
+    .refine((entries) => new Set(entries).size === entries.length, "an exception lists each match once")
+
+// A `ruling` exception names the id of the owner ruling it rests on (contexts/decisions/rulings.yaml); no other kind names one.
+const exceptionFields = { path: literalPath, kind: z.enum(EXCEPTION_KINDS), decision: z.string().trim().min(1).optional(), match, reason }
+
+const looseningException = z.object({ ...exceptionFields, marker: z.enum(LOOSENING_MARKERS) })
 
 /** One declared loosening exception. */
 export type LooseningException = z.infer<typeof looseningException>
@@ -105,7 +121,7 @@ const looseningOverlay = z.object({
 /** loosening.yaml after the project's overlay: what is banned, how the scan is bounded, the declared exceptions. */
 export type LooseningPolicy = z.infer<typeof looseningSchema>
 
-const securityException = z.object({ path: literalPath, rule: z.string().min(1), reason })
+const securityException = z.object({ ...exceptionFields, rule: z.string().min(1) })
 
 /** One declared secret-scan exception. */
 export type SecurityException = z.infer<typeof securityException>
@@ -127,6 +143,68 @@ const securityOverlay = z.object({
 
 /** security.yaml after the project's overlay. */
 export type SecurityPolicy = z.infer<typeof securitySchema>
+
+// A string literal, or a regular-expression literal opened where an expression starts.
+const PATTERN_LITERAL = /(["'`]).+?\1|(?:^|[=(,:[!&|?{};]\s*)\/(?![/*])(?:\\.|[^/\\\n])+\/[dgimsuyv]*/
+
+type KindView = Pick<LooseningException, "path" | "kind" | "match" | "decision">
+
+/**
+ * Why an exception may not name its file, or undefined when it may. A `fixture` is a file of a `fixtures/` or `__fixtures__/`
+ * folder, or a spec (`*.spec.*`, `*.test.*`); a `template` is a file of a `templates/` folder; a `detector` is a scanner or
+ * rule implementation of a runtime that ships detectors (a file under a `runtime/` folder and, below it, a `rules/`,
+ * `guards/` or `lib/` folder) whose every `match` holds a string or regular-expression literal, the pattern it detects; a
+ * `ruling` is any file, and names in `decision` the owner ruling it rests on (`refuseUnqualified` resolves the id). Only a
+ * `ruling` names a decision.
+ */
+export const exceptionKindProblem = (exception: KindView): string | undefined => {
+    if (exception.kind === "ruling") return exception.decision === undefined ? "a ruling exception names its decision (an id of contexts/decisions/rulings.yaml)" : undefined
+    if (exception.decision !== undefined) return "only a ruling exception names a decision"
+    const dirs = exception.path.split("/").slice(0, -1)
+    const name = exception.path.slice(exception.path.lastIndexOf("/") + 1)
+    if (exception.kind === "fixture") {
+        return dirs.includes("fixtures") || dirs.includes("__fixtures__") || /\.(?:spec|test)\./.test(name) ? undefined : "a fixture sits in a fixtures/ or __fixtures__/ folder or is a *.spec.* or *.test.* file"
+    }
+    if (exception.kind === "template") return dirs.includes("templates") ? undefined : "a template sits in a templates/ folder"
+    const runtime = dirs.indexOf("runtime")
+    if (runtime === -1 || !dirs.slice(runtime + 1).some((dir) => dir === "rules" || dir === "guards" || dir === "lib")) {
+        return "a detector sits in a rules/, guards/ or lib/ folder under a runtime/ folder"
+    }
+    const bare = exception.match.find((entry) => !PATTERN_LITERAL.test(entry))
+    return bare === undefined ? undefined : `a detector's match holds the string or regular-expression literal it detects; ${JSON.stringify(bare)} holds none`
+}
+
+const rulingsSchema = z.object({
+    rulings: z.array(z.object({ id: z.string().min(1), status: z.enum(["live", "proposed"]), absorbs: z.array(z.string().min(1)).optional() })),
+})
+
+/** The ids a `ruling` exception may cite: every live ruling of contexts/decisions/rulings.yaml and the ids it absorbs. */
+const liveRulingIds = (): ReadonlySet<string> => {
+    const file = join(runtimeRoot(), "contexts", "decisions", "rulings.yaml")
+    const { rulings } = readYaml(file, rulingsSchema)
+    return new Set(rulings.filter((ruling) => ruling.status === "live").flatMap((ruling) => [ruling.id, ...(ruling.absorbs ?? [])]))
+}
+
+/**
+ * Refuses EXCEPTION_KIND_REFUSED when an exception of `file` names a file its kind does not qualify, and
+ * EXCEPTION_RULING_UNKNOWN when a ruling exception cites no live ruling.
+ */
+const refuseUnqualified = (file: string, exceptions: readonly KindView[] | undefined): void => {
+    const declared = exceptions ?? []
+    const problems = declared.flatMap((exception) => {
+        const problem = exceptionKindProblem(exception)
+        return problem === undefined ? [] : [`${exception.path} (${exception.kind}): ${problem}`]
+    })
+    if (problems.length > 0) throw new Refusal("EXCEPTION_KIND_REFUSED", `${file}: only a fixture, template, detector or ruling exception is taken; ${problems.join("; ")}`)
+    const cited = declared.flatMap((exception) => (exception.decision === undefined ? [] : [exception]))
+    if (cited.length === 0) return
+    const live = liveRulingIds()
+    const unknown = cited.filter((exception) => exception.decision !== undefined && !live.has(exception.decision))
+    if (unknown.length > 0) {
+        const named = unknown.map((exception) => `${exception.path} cites ${String(exception.decision)}`).join("; ")
+        throw new Refusal("EXCEPTION_RULING_UNKNOWN", `${file}: a ruling exception cites a live id of contexts/decisions/rulings.yaml; ${named}`)
+    }
+}
 
 /** The runtime's policy files with a project's overlay applied. */
 export interface Policy {
@@ -210,6 +288,8 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     const canon = readYaml(join(dir, "canon.yaml"), canonSchema)
     let loosening = readYaml(join(dir, "loosening.yaml"), looseningSchema)
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
+    refuseUnqualified(join(dir, "loosening.yaml"), loosening.exceptions)
+    refuseUnqualified(join(dir, "security.yaml"), security.exceptions)
     checkCrossReferences(dir, quality, canon, security)
     // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
     if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {
@@ -230,11 +310,13 @@ const applyOverlay = (overlay: string, loosening: LooseningPolicy, security: Sec
     const looseningFile = join(overlay, "loosening.yaml")
     if (existsSync(looseningFile)) {
         const extra = readYaml(looseningFile, looseningOverlay)
+        refuseUnqualified(looseningFile, extra.exceptions)
         tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], exceptions: extra.exceptions ?? [] }
     }
     const securityFile = join(overlay, "security.yaml")
     if (existsSync(securityFile)) {
         const extra = readYaml(securityFile, securityOverlay)
+        refuseUnqualified(securityFile, extra.exceptions)
         guarded = { ...security, neverRead: [...new Set([...security.neverRead, ...(extra.neverRead ?? [])])], exceptions: extra.exceptions ?? [] }
     }
     return { loosening: tightened, security: guarded }

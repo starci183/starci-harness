@@ -1,0 +1,15 @@
+/* Field-shaped press targets share HeroUI secondary field paint inside a surface. */
+@layer starci-grammar-common {
+    .starci-core-pressable-field[data-grammar-variant="secondary"] {
+        background: var(--default, var(--surface-secondary, Canvas));
+        box-shadow: none;
+    }
+
+    .starci-core-pressable-field[data-grammar-variant="secondary"]:hover:not(:disabled) {
+        background: var(--default-hover, var(--default, var(--surface-secondary, Canvas)));
+    }
+
+    .starci-core-pressable-field[data-grammar-variant="secondary"]:focus-visible {
+        background: var(--default, var(--surface-secondary, Canvas));
+    }
+}

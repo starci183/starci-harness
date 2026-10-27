@@ -1,0 +1,3 @@
+    "redis:create": "docker create --name {{project}}-dev-redis -p 127.0.0.1:6379:6379 -v {{project}}-dev-redis-data:/data {{redisImage}} redis-server --appendonly yes",
+    "redis:start": "docker start {{project}}-dev-redis",
+    "redis:stop": "docker stop {{project}}-dev-redis",

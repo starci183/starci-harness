@@ -108,7 +108,7 @@ for (const edition of ["lite", "full"]) test(`BOUNDARY-1 ${edition}: valid bands
         errors: [error],
       },
       {
-        code: 'import * as G from "@starci/grammar/heritage"; const Page=()=> <div className="px-4"><G.Divider /></div>',
+        code: 'import * as G from "@starci/grammar/offset-pop"; const Page=()=> <div className="px-4"><G.Divider /></div>',
         errors: [error],
       },
       {

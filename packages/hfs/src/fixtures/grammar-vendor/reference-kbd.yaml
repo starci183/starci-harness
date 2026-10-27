@@ -1,0 +1,33 @@
+schema: starci/vendor-heroui@1
+id: "vendor.heroui.kbd"
+generatedBy: "scripts/work/ui/vendor-heroui.mjs --write"
+provenance:
+  package: "@heroui/react"
+  version: "3.2.6"
+identity:
+  package: "@heroui/styles"
+  version: "3.2.6"
+component: Kbd
+dir: kbd
+anatomy:
+  root: "KbdRoot"
+  parts: ["Abbr","Content"]
+  required: []
+  slots: {"abbr":"kbd__abbr","base":"kbd","content":"kbd__content"}
+  embeds: []
+variants:
+  defaults: {}
+  values: {"variant":["default","light"]}
+parts:
+  Abbr: {"impl":"KbdAbbr","dataSlot":null,"classes":["kbd__abbr"],"defaults":{},"values":{},"paints":["align-items","block-size","display","inline-size","justify-content","text-decoration"]}
+  Content: {"impl":"KbdContent","dataSlot":null,"classes":["kbd__content"],"defaults":{},"values":{},"paints":["align-items","display","justify-content"]}
+  Root: {"impl":"KbdRoot","dataSlot":null,"classes":["kbd"],"defaults":{},"values":{},"paints":["background","block-size","color","font","padding","radius","word-spacing"]}
+css:
+  files: ["kbd.css"]
+  classes: ["kbd","kbd--light","kbd__abbr","kbd__content"]
+  dataSlots: []
+  rules:
+    - {"file":"kbd.css","selectors":[".kbd"],"apply":["inline-flex","h-6","items-center","space-x-0.5","rounded-lg","bg-default","px-2","text-center","font-sans","text-sm","font-medium","whitespace-nowrap","text-muted","rtl:space-x-reverse"],"declarations":["word-spacing: -0.25rem"]}
+    - {"file":"kbd.css","selectors":[".kbd__abbr"],"declarations":["display: flex","justify-content: center","align-items: center","width: 100%","height: 100%","text-decoration: none"]}
+    - {"file":"kbd.css","selectors":[".kbd__content"],"declarations":["display: flex","justify-content: center","align-items: center"]}
+    - {"file":"kbd.css","selectors":[".kbd--light"],"apply":["bg-transparent"]}

@@ -1,8 +1,12 @@
 # What makes a check pass without satisfying it. Every marker is detected by the CLI (cli/src/core/check/markers.ts);
 # this file selects the banned ones and lists the exceptions. The gate reads the tree as it stands (tracked plus
 # untracked, never ignored files), not a diff.
-# Exceptions live only in a repository's own policy/loosening.yaml, never inline: each names one file, one marker and
-# the reason. An exception that no longer matches a finding is itself a finding, so the list cannot accrete.
+# Exceptions live only in a repository's own policy/loosening.yaml, never inline: each names one file, one marker, its
+# kind, the exact text of each line it covers (`match`, the line trimmed; a list for several lines) and the reason. A
+# fixture, template or detector file takes one, and so does any file a live owner ruling covers, as a `ruling` exception
+# naming its id in `decision` (`exceptionKindProblem` in cli/src/harness/policy.ts holds the test of each kind; any other
+# file is refused EXCEPTION_KIND_REFUSED, an id that is no live ruling EXCEPTION_RULING_UNKNOWN). Any other line of the
+# file stays a finding, and a `match` that covers no finding is EXCEPTION_STALE, so the list cannot accrete.
 # A project's policy/loosening.yaml may ban more markers and declare its exceptions; it can never unban.
 schema: starci/loosening-policy@1
 banned:
@@ -20,20 +24,39 @@ banned:
 scan:
   maxFileBytes: 1048576
 # A code marker reads code, never the text of a string, template or comment; a directive marker reads comments, so a
-# canon rule's doc comment that spells the directives it bans needs its exception.
+# comment that spells a directive is a finding wherever it stands, a rule's doc comment included.
 exceptions:
   - path: sonar-project.properties
     marker: gate-widening
-    reason: "owner ruling 2026-10-27: the CLI has no tests, so cli/src is excluded from coverage only; issues and duplication still analyse it"
-  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
-    marker: eslint-disable
-    reason: "the rule source documents the forms it bans in its own doc comment"
-  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
-    marker: ts-ignore
-    reason: "the rule source documents the forms it bans in its own doc comment"
-  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
+    kind: ruling
+    decision: cli-proven-by-bench
+    match: "sonar.coverage.exclusions=cli/src/**"
+    reason: "the CLI is proven by the bench, so cli/src is excluded from coverage only; issues and duplication still analyse it"
+  - path: packages/hfs/runtime/scripts/guards/git-policy.mjs
+    marker: no-verify
+    kind: detector
+    match: "export const HOOK_BYPASS_FLAG = '--no-verify';"
+    reason: "the guard names the hook-bypass flag it refuses"
+  - path: packages/hfs/runtime/scripts/lib/bypass-markers.mjs
+    marker: no-verify
+    kind: detector
+    match:
+      - "[/--no-verify\\b/, '--no-verify'],"
+      - "if (piece.text.trim() !== '--no-verify') return false;"
+      - "if (skipsHooks(piece, code, strings)) hits.push({ line: piece.line, label: '--no-verify', text: piece.text.trim() });"
+    reason: "the bypass-marker scanner spells the flag it detects and the label it reports"
+  - path: packages/hfs/src/fixtures/loosening/forms.mjs
+    marker: no-verify
+    kind: fixture
+    match:
+      - "{ id: 'no-verify as a git argument in a script', file: SCRIPT, text: \"run(['git', 'commit', '--no-verify', '-m', 'x']);\\n\", kind: 'bypass', detail: '--no-verify' },"
+      - "{ id: 'the flag as an argument of a guard, not of git', file: SCRIPT, text: \"if (has(options, '--no-verify')) return refusal('git commit --no-verify skips the hooks');\\n\" },"
+    reason: "the loosening forms the bypass scanner is proved against, one it flags and one it lets pass"
+  - path: packages/hfs/templates/app/quality-config/sonar-project.properties
     marker: gate-widening
-    reason: "the rule source documents the forms it bans in its own doc comment"
-  - path: packages/eslint-canon-fe/lint-escape-hatch.mjs
-    marker: stylelint-disable
-    reason: "the rule source documents the forms it bans in its own doc comment"
+    kind: template
+    match:
+      - "sonar.exclusions={{sonarExclusions}}"
+      - "sonar.cpd.exclusions={{cpdExclusions}}"
+      - "sonar.coverage.exclusions={{coverageExclusions}}"
+    reason: "placeholders the app scaffold fills with the generated Sonar scope, which each app's own file is judged against"

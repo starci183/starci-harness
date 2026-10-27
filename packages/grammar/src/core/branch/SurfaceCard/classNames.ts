@@ -1,0 +1,57 @@
+import { cn } from "@heroui/react"
+import {
+    formCompactSurfaceClassName,
+    formScrollViewportClassName,
+    formSurfaceClassName,
+} from "../../classNames.js"
+
+export type SurfaceCardMeasure = "content" | "form" | "formCompact"
+export type SurfaceCardHeight = "auto" | "fill"
+
+/**
+ * Surface-card geometry is SHIPPED.
+ *
+ * Every name below hooks a `.starci-core-*` rule in `src/common/styles.css`. The card, its header
+ * and its content region are HeroUI `Card` parts, so the sheet re-states their box in the
+ * `starci-grammar-common` layer with `!important` where the vendor's `components` layer sets the
+ * same property.
+ */
+
+/** Identifies the outer labelled surface-card anatomy. */
+export const surfaceCardClassName = cn("starci-core-surface-card") ?? "starci-core-surface-card"
+/**
+ * Selects an owned measure contract without exposing structural class hooks to consumers.
+ *
+ * Height is not a class: the fill form is drawn by `[data-grammar-surface-height="fill"]` on the same
+ * root, so the old `starci-core-surface-card--fill` modifier (which no sheet ever selected) is gone.
+ */
+export const getSurfaceCardClassName = (measure: SurfaceCardMeasure) => cn(
+    surfaceCardClassName,
+    measure === "form" || measure === "formCompact" ? formSurfaceClassName : undefined,
+    measure === "formCompact" ? formCompactSurfaceClassName : undefined,
+)
+/** Identifies the external label row of a surface card. */
+export const surfaceLabelClassName = cn("starci-core-surface-label") ?? "starci-core-surface-label"
+/** Identifies the bounded surface content shell. */
+export const surfaceClassName = cn("starci-core-surface") ?? "starci-core-surface"
+/** Identifies the content region inside a surface. */
+export const surfaceContentClassName = cn("starci-core-surface-content") ?? "starci-core-surface-content"
+/** Binds the form-scroll measure to the Grammar-owned scroll viewport only when it exists. */
+export const getSurfaceContentClassName = (measure: SurfaceCardMeasure, contained: boolean) => cn(
+    surfaceContentClassName,
+    contained && (measure === "form" || measure === "formCompact") ? formScrollViewportClassName : undefined,
+)
+/** Anchor the singular continuation highlight at the surface boundary. */
+export const surfaceHighlightClassName = cn("starci-core-surface-highlight") ?? "starci-core-surface-highlight"
+/** Decorative sweep layer painted behind the highlighted surface. */
+export const surfaceHighlightSweepClassName = cn("starci-core-surface-highlight-sweep") ?? "starci-core-surface-highlight-sweep"
+
+/** `surface` is the ordinary light face; `ink` is the one signature band painted on the family's brand ink. */
+export type SurfaceCardTreatment = "surface" | "ink"
+/** Decorative motif of the ink band's artwork zone. */
+export type SurfaceCardMotif = "none" | "orbit"
+
+/** Decorative, `aria-hidden` artwork zone of the ink band (art slot and motif); it may bleed off the band edge. */
+export const surfaceArtworkClassName = cn("starci-core-surface-artwork") ?? "starci-core-surface-artwork"
+/** The static orbit motif SVG inside the artwork zone. */
+export const surfaceOrbitClassName = cn("starci-core-surface-orbit") ?? "starci-core-surface-orbit"

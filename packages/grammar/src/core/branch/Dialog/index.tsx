@@ -1,0 +1,122 @@
+"use client"
+
+import { Modal as HeroModal } from "@heroui/react"
+import { useId, type ReactNode } from "react"
+import { SurfaceNesting } from "../../surfaceContext.js"
+import { overlayOpenProps, resolveTriggerlessOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
+import { CloseButton } from "../../primitive/CloseButton/index.js"
+import { ButtonPlacementProvider } from "../../buttonIntent.js"
+
+export type DialogSize = "sm" | "md" | "lg" | "full"
+
+/** Footer content, or a function receiving `close` for actions that should dismiss the dialog. */
+export type OverlayFooter = ReactNode | ((close: () => void) => ReactNode)
+
+export type DialogProps = OverlayOpenState & {
+    /** Visible heading; it is the dialog's accessible name (`aria-labelledby`). */
+    readonly title: string
+    /** Supporting sentence under the heading, wired as `aria-describedby`. */
+    readonly description?: ReactNode
+    readonly children?: ReactNode
+    readonly footer?: OverlayFooter
+    /**
+     * The control that opens the dialog: a Common `Button`/`IconButton` (any React Aria pressable).
+     * Omit it and drive `isOpen` for a dialog opened by app state.
+     */
+    readonly trigger?: ReactNode
+    /** Name for the header close button. Omit only when the footer offers its own way out. */
+    readonly closeLabel?: string
+    readonly size?: DialogSize
+    /** Close when the person presses outside the dialog. Default `true`. */
+    readonly isDismissable?: boolean
+    /** Disable Escape. Default `false`; keep Escape unless leaving would lose unsaved work. */
+    readonly isKeyboardDismissDisabled?: boolean
+}
+
+/**
+ * BRANCH - `Dialog` (modal): a focused task above the page.
+ *
+ * React Aria owns the behaviour: focus moves into the dialog and is trapped there, Escape and an
+ * outside press dismiss it (each can be turned off), page scroll is locked, everything outside is
+ * hidden from assistive tech, and focus returns to the trigger on close. The portal lands inside the
+ * nearest `.grammar-common-root` (see `useOverlayContainer`), so the family scope still applies.
+ * Contract: surface FOCUS-3 (modal trap/return) LAYOUT-4 (portalled) BOUNDARY-6 (shadow); container MOTION-2.
+ */
+export const Dialog = ({
+    title,
+    description,
+    children,
+    footer,
+    trigger,
+    closeLabel,
+    size = "md",
+    isDismissable = true,
+    isKeyboardDismissDisabled = false,
+    ...openState
+}: DialogProps) => {
+    const { anchor, container } = useOverlayContainer("Dialog")
+    const descriptionId = useId()
+
+    const surface = container === null ? null : (
+        <HeroModal.Backdrop
+            UNSTABLE_portalContainer={container}
+            isDismissable={isDismissable}
+            isKeyboardDismissDisabled={isKeyboardDismissDisabled}
+            data-grammar-overlay-backdrop="Dialog"
+            className="starci-core-overlay-backdrop"
+            {...resolveTriggerlessOpenProps(trigger, openState)}
+        >
+            <HeroModal.Container placement="center" size={size} scroll="inside" data-size={size} data-contract="MOTION-2" className="starci-core-dialog-container">
+                <HeroModal.Dialog
+                    data-tier="branch"
+                    data-component="Dialog"
+                    data-size={size}
+                    data-grammar-overlay-surface="dialog"
+                    data-grammar-nesting="surface"
+                    data-contract="FOCUS-3 LAYOUT-4 BOUNDARY-6"
+                    {...(description === undefined ? {} : { "aria-describedby": descriptionId })}
+                    className="starci-core-dialog"
+                >
+                    {({ close }) => (
+                        <ButtonPlacementProvider placement="decision">
+                        <SurfaceNesting>
+                            <HeroModal.Header className="starci-core-overlay-header">
+                                <div className="starci-core-overlay-heading-group">
+                                    <HeroModal.Heading className="starci-core-overlay-title">{title}</HeroModal.Heading>
+                                    {description === undefined ? null : (
+                                        <p id={descriptionId} className="starci-core-overlay-description">{description}</p>
+                                    )}
+                                </div>
+                                {closeLabel === undefined ? null : <CloseButton label={closeLabel} onPress={close} />}
+                            </HeroModal.Header>
+                            {children === undefined ? null : (
+                                <HeroModal.Body className="starci-core-overlay-body">{children}</HeroModal.Body>
+                            )}
+                            {footer === undefined ? null : (
+                                <HeroModal.Footer className="starci-core-overlay-footer">
+                                    {typeof footer === "function" ? footer(close) : footer}
+                                </HeroModal.Footer>
+                            )}
+                        </SurfaceNesting>
+                        </ButtonPlacementProvider>
+                    )}
+                </HeroModal.Dialog>
+            </HeroModal.Container>
+        </HeroModal.Backdrop>
+    )
+
+    // With no trigger there is no `DialogTrigger` root (its PressResponder has no pressable child):
+    // the Backdrop, React Aria's `ModalOverlay`, owns the open state itself (see `resolveTriggerlessOpenProps`).
+    return trigger === undefined ? (
+        <>
+            {anchor}
+            {surface}
+        </>
+    ) : (
+        <HeroModal {...overlayOpenProps(openState)}>
+            {trigger}
+            {anchor}
+            {surface}
+        </HeroModal>
+    )
+}

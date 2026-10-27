@@ -21,7 +21,7 @@ node cli/dist/main.js check secrets
 
 `starci check run` runs the runtime tier of this repository's profile (`runtime`, declared in [hfs.json](hfs.json))
 over the scope of your diff: secrets, loosening, typecheck and lint. A package under `packages/` is installed and
-tested inside its own folder ([packages/README.md](packages/README.md) says how, including the two ESLint canons that
+tested inside its own folder ([packages/README.md](packages/README.md) says how, including the siblings that
 must be installed together).
 
 ## How a change is proved

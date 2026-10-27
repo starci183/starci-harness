@@ -3,7 +3,7 @@
  *
  *   1. `tailwindcss`
  *   2. `@heroui/styles/css`
- *   3. the grammar family stylesheet: `@starci/grammar/<common|core|heritage|offset-pop>.css`
+ *   3. the grammar family stylesheet: `@starci/grammar/<common|core|offset-pop>.css`
  *   4. `modules/brand/brand.css`
  *
  * then every `@source`, then the token blocks `globals-shape` allows. The order is the cascade: the brand layer sets
@@ -20,7 +20,7 @@ const STEPS = ["tailwindcss", "@heroui/styles/css", "a grammar family stylesheet
 const stepOf = (specifier) => {
   if (specifier === "tailwindcss") return 0
   if (specifier === "@heroui/styles/css") return 1
-  if (/^@starci\/grammar\/(?:common|core|heritage|offset-pop)(?:\.css|\/styles\.css)$/.test(specifier)) return 2
+  if (/^@starci\/grammar\/(?:common|core|offset-pop)(?:\.css|\/styles\.css)$/.test(specifier)) return 2
   if (/(?:^|\/)modules\/brand\/brand\.css$/.test(specifier)) return 3
   return -1
 }

@@ -1,0 +1,84 @@
+@layer starci-grammar-common {
+    /* The vendor Avatar shell supplies the exact single-avatar dimensions, including the control size. */
+    .starci-core-avatar-group[data-grammar-avatar-layout="grid"] {
+        --starci-avatar-group-text-size: calc(var(--avatar-size, 2.5rem) / 4);
+        overflow: hidden;
+        border-radius: 50%;
+    }
+
+    .starci-core-avatar-group-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 1px;
+        inline-size: 100%;
+        block-size: 100%;
+        background: var(--surface, Canvas);
+    }
+
+    /* Each member and the total-count cell retain a surface ring over uploaded or generated images. */
+    .starci-core-avatar-group-grid > .starci-core-avatar-group-member,
+    .starci-core-avatar-group-grid > .starci-core-avatar-group-count {
+        outline: 1px solid var(--surface, Canvas);
+        outline-offset: -1px;
+    }
+
+    .starci-core-avatar-group[data-grammar-avatar-cells="1"] > .starci-core-avatar-group-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .starci-core-avatar-group[data-grammar-avatar-cells="2"] > .starci-core-avatar-group-grid {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    /*
+     * Two members split the circle into two narrow tall halves. A square initials image covered into a half crops its
+     * letters at the centre line, so each half letterboxes the image: the letters stay centred in their own half and the
+     * same image fills the rest, keeping its solid background.
+     */
+    .starci-core-avatar-group[data-grammar-avatar-cells="2"] .starci-core-avatar-initials {
+        object-fit: contain;
+        background-image: var(--starci-avatar-initials-src);
+        background-size: cover;
+        background-position: center;
+    }
+
+    /* Zalo's three-member identity has one full-width member above the two remaining members. */
+    .starci-core-avatar-group[data-grammar-avatar-cells="3"] .starci-core-avatar-group-member:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .starci-core-avatar-group-grid > .starci-core-avatar-group-member {
+        inline-size: 100% !important;
+        block-size: 100% !important;
+        min-inline-size: 0;
+        min-block-size: 0;
+        border-radius: 0 !important;
+        font-size: inherit;
+    }
+
+    .starci-core-avatar-group-member > * {
+        border-radius: 0 !important;
+    }
+
+    .starci-core-avatar-group:not([data-grammar-avatar-cells="1"]) .starci-core-avatar-group-member [data-grammar-avatar-fallback] {
+        font-size: var(--starci-avatar-group-text-size) !important;
+    }
+
+    .starci-core-avatar-group-member img {
+        object-fit: cover;
+    }
+
+    .starci-core-avatar-group-count {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-inline-size: 0;
+        background: var(--surface-secondary, Canvas);
+        color: var(--foreground, CanvasText);
+        font-size: var(--starci-avatar-group-text-size);
+        font-weight: 600;
+        line-height: 1;
+    }
+}

@@ -1,8 +1,9 @@
 # Changelog
 
-## 9.1.12 - 2026-10-27
+## 9.2.0 - 2026-10-27
 
-- Changed: owner ruling two-grammars: the bundled Grammar catalog names the core family `core` and carries the one alias table (`familyAliases`: `starci`, `starci-core` -> `core`); the bundled grammar-lint resolver answers by the canonical id, so a front end with `sides.fe.grammar: core` resolves its component contract and lint family. The runtime copy is refreshed from starci-academy-backend/.claude 180193f12 (canon pins: the Grammar family 0.12.15, hfs 4.7.48). No rule changes.
+- Changed: owner ruling two-grammars: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).
+- Changed: the doc comment of `lint-escape-hatch.mjs` names the three patterns that own the refused spellings instead of spelling them again. No rule or behaviour changed.
 
 ## 9.1.11 - 2026-10-27
 
