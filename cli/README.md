@@ -196,7 +196,7 @@ that terminal, and relaunched into the project Supervisor's Run once the tick re
 its terminal gone, never deleted; `adoptFromHost` in `core/supervisor/driver.ts`). The scheduler that runs it is registered by the `host` verbs below.
 
 **The desktop app's API.** `starci ui` (`core/ui/`) serves the contract of the StarCi Harness desktop app
-(`core/ui/contract.ts`, a copy of the app's own) on 127.0.0.1 with a bearer token it prints beside its URL; CORS answers only
+(`core/ui/contract.ts`, the one owner of the types, which the app in [app/](../app/README.md) imports) on 127.0.0.1 with a bearer token it prints beside its URL; CORS answers only
 the Tauri origins and the app's dev server, and a Host that is not that loopback address is refused. Its reads go through the
 readers behind the read verbs (`core/ui/read.ts`: the registry's repositories and projects, each ledger's workflows, graph,
 seats, decisions and events, the host store's circuits, quota and Supervisors, the router's recorded pick or a dry run, the
