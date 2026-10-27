@@ -71,6 +71,7 @@ test("a pure half takes shape, atom props and on actions", () => {
       {
         filename: PAGE,
         code: "export const OperatePageBase = (props: { state: \"view\"; props: {}; on: {} }) => <div />",
+        output: "export const OperatePageBase = (props: { shape: \"view\"; props: {}; on: {} }) => <div />",
         errors: [{ messageId: "renamed" }],
       },
       {

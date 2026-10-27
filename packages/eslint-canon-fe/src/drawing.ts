@@ -110,7 +110,7 @@ export const basePropsAtom = defineRule({
       member:
         "`{{key}}` is not part of the pure contract. A pure half takes `shape`, `props` and `on`{{children}}.",
       renamed:
-        "`state` is the old name of the pure half's shape. A pure half takes `{ shape?, props, on? }`: rename the key to `shape` and its union `XState` to `XShape`.",
+        "`state` is the retired name of the drawn shape: rename it `shape` (owner ruling fe-shape-not-state).",
     },
   },
   create(context) {
@@ -311,8 +311,8 @@ const DATA_STATUS = new Set([
   "skeleton", "closed", "idle", "refreshing", "retrying",
 ])
 
-/** The name of a pure half's shape union: `XShape`. */
-const SHAPE_NAME = /^[A-Z][A-Za-z0-9]*Shape$/
+/** The name of a pure half's shape union: `XShape`, and still the retired `XState`, so a status word is caught during the rename. */
+const SHAPE_NAME = /^[A-Z][A-Za-z0-9]*(?:Shape|State)$/
 
 /** A boolean member that names a status or an open/closed lifecycle: `isOpen`, `isLoading`, `isRenewing`. */
 const STATUS_FLAG = /^is[A-Z]/
