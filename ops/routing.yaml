@@ -96,8 +96,8 @@ usage: {refreshMinutes: 10, windows: [session, weekly, monthly]}
 # multiplies that by reopenFactor, capped at probeCapMinutes), whichever comes first; a quota circuit at its reset. One pick sends the probe; a success closes
 # the circuit, a failure re-opens it with the backoff. A probe whose outcome never arrives frees the slot after probeLeaseMinutes.
 circuit:
-  cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2, stall: 10}
-  strikes: {launch: 2, stall: 2}
+  cooldownMinutes: {rate: 10, quota: 60, capacity: 10, auth: 1440, launch: 2}
+  strikes: {launch: 2}
   reopenFactor: 5
   reopenWindowMinutes: 60
   capMinutes: 60

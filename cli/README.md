@@ -207,7 +207,7 @@ renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent i
 tui-idle`, or no output in `terminal list` and worker-show and no dispatch heartbeat for `quietMinutes`). It is nudged with its
 role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge, at most `nudgeMax`); a nudge unanswered past
 `nudgeGraceMinutes`, or a stall after the last nudge, gives it up (`stall-gave-up`): its member records a `stalled` outcome and
-its provider circuit the kind worker-show's failure words name by `failureSignals` (capacity, rate, quota, auth), else `stall`;
+its provider circuit the kind worker-show's failure words name by `failureSignals` (capacity, rate, quota, auth), and no circuit at all when they name none (a plain stall is the model's, judged by its outcomes);
 a Kernel is relaunched and a Supervisor replaced with that pool behind every other, an Op fenced and its task failed
 `stalled` for the Kernel to retry. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
 with the same decision waiting is left for the owner. Nudges and give-ups are never progress.

@@ -33,7 +33,7 @@ export type PoolSpec = z.infer<typeof poolSchema>
 const minutes = z.number().nonnegative()
 
 /** The failure kinds a provider outcome can carry; each has its own circuit cooldown. */
-export const FAILURE_KINDS = ["rate", "quota", "capacity", "auth", "launch", "stall"] as const
+export const FAILURE_KINDS = ["rate", "quota", "capacity", "auth", "launch"] as const
 
 /** A provider failure kind. */
 export type FailureKind = (typeof FAILURE_KINDS)[number]
@@ -63,7 +63,7 @@ const routingSchema = z.object({
     quota: z.object({ reservePercent: z.number(), exhaustedPercent: z.number(), maxAgeMinutes: minutes }),
     usage: z.object({ refreshMinutes: minutes, windows: z.array(z.string().min(1)).min(1) }),
     circuit: z.object({
-        cooldownMinutes: z.object({ rate: minutes, quota: minutes, capacity: minutes, auth: minutes, launch: minutes, stall: minutes }),
+        cooldownMinutes: z.object({ rate: minutes, quota: minutes, capacity: minutes, auth: minutes, launch: minutes }),
         strikes: kindRecord(z.number().int().positive()),
         reopenFactor: z.number().min(1),
         reopenWindowMinutes: minutes,

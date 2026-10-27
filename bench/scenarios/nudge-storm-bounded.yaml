@@ -101,8 +101,9 @@ steps:
   - assert:
       sql:
         db: machine
+        # A plain stall is the model's own idleness: it lowers its member's score and never strikes the provider circuit.
         query: "SELECT status || ':' || failure_kind FROM provider_health WHERE provider = '${kernel.agent}'"
-        equals: ["striking:stall"]
+        equals: []
   - assert:
       sql:
         db: machine

@@ -135,14 +135,22 @@ export const sendNudge = async (binary: OrcaBinary, cwd: string, seat: { readonl
 }
 
 /** The provider failure kind a stalled seat reports: the failure signal Orca's words name (capacity, rate, quota, auth), else `stall`. */
-export const stallKindOf = (failureText: string | null): FailureKind => {
+export const stallKindOf = (failureText: string | null): StallKind => {
     if (failureText === null) return "stall"
     const kind = classifyFailure(loadRouting(), failureText)
     return kind === "launch" ? "stall" : kind
 }
 
-/** Reports a seat the ladder gave up on to its provider's circuit (and pool concurrency for rate and capacity). */
-export const reportStalled = (agent: string, kind: FailureKind, detail: string, at: string = now()): void => {
+/** Why a seat stalled: a provider failure its words name, or "stall", the model's own idleness. */
+export type StallKind = FailureKind | "stall"
+
+/**
+ * Reports a seat the ladder gave up on to its provider's circuit (and pool concurrency for rate and capacity) when a provider
+ * failure caused it. A plain stall is the model's behaviour: its member's stalled outcome lowers its score, and the provider
+ * stays open for every other member and seat.
+ */
+export const reportStalled = (agent: string, kind: StallKind, detail: string, at: string = now()): void => {
+    if (kind === "stall") return
     const routing = loadRouting()
     recordOutcome(providerOfAgent(routing, agent), { kind, pool: poolOfAgent(routing, agent), detail }, at)
 }
