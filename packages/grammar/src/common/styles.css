@@ -3574,18 +3574,19 @@
         border-radius: 999px;
     }
 
+    /* The echo is a ring outside the dot (a box-shadow, no fill), so the dot keeps its full tone under it. */
     .starci-core-status-dot-mark[data-echo="true"]::after {
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        background: var(--starci-core-status-dot-light);
+        box-shadow: 0 0 0 1.5px var(--starci-core-status-dot-light);
         content: "";
         animation: starci-core-status-dot-echo 1.6s ease-out infinite;
     }
 
     @keyframes starci-core-status-dot-echo {
-        from { opacity: 0.9; transform: scale(1); }
-        to { opacity: 0; transform: scale(3.2); }
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(2.6); }
     }
 
     @media (prefers-reduced-motion: reduce) {

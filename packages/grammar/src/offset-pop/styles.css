@@ -210,14 +210,17 @@
         color: var(--offset-pop-ink);
     }
 
-    /* Terminal: ink panel with the family's offset shadow. */
+    /*
+     * Terminal: ink panel with the family's offset shadow. An ink shadow would vanish into an ink panel (it only
+     * notched the corners), so the shadow takes the family's pink.
+     */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Terminal"] {
         --starci-core-terminal-bg: var(--offset-pop-ink);
         --starci-core-terminal-fg: var(--offset-pop-canvas);
         --starci-core-terminal-title-fg: var(--offset-pop-yellow);
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);
-        box-shadow: 0.25rem 0.25rem 0 var(--offset-pop-shadow-ink);
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-pink);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] {
