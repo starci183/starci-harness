@@ -1,5 +1,6 @@
 import { cn } from "@heroui/react"
 import type { ComponentPropsWithoutRef } from "react"
+import { RouterProvider } from "react-aria-components"
 import { ButtonIntentFamilyProvider } from "../../buttonIntent.js"
 import { CollectionItemFamilyProvider } from "../../collectionItem.js"
 
@@ -8,6 +9,13 @@ export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & 
     readonly theme?: "system" | "light" | "dark"
     /** Visual families install their scoped material contract on this neutral root. */
     readonly "data-grammar-family"?: string
+    /**
+     * Client-side navigation. Pass the router's `navigate` (with `useHref`) once here and every Grammar `Link`,
+     * `Button href`, `Breadcrumbs` item and `ListBox`/`Menu` item `href` navigates inside the app without a reload.
+     */
+    readonly navigate?: (path: string) => void
+    /** Maps a router path to the href a link renders, e.g. react-router's `useHref`. Defaults to the identity. */
+    readonly useHref?: (href: string) => string
 }
 
 /**
@@ -16,7 +24,8 @@ export type GrammarRootProps = Omit<ComponentPropsWithoutRef<"div">, "color"> & 
  * Contract: COLOR-5 - the root publishes the theme scope (`data-grammar-theme`) every family keys its
  * light, dark and system token blocks on.
  */
-export const GrammarRoot = ({ className, theme = "system", ...props }: GrammarRootProps) => (
+export const GrammarRoot = ({ className, theme = "system", navigate, useHref, ...props }: GrammarRootProps) => {
+    const root = (
     <ButtonIntentFamilyProvider family={props["data-grammar-family"]}>
     <CollectionItemFamilyProvider family={props["data-grammar-family"]}>
     <div
@@ -30,4 +39,6 @@ export const GrammarRoot = ({ className, theme = "system", ...props }: GrammarRo
     />
     </CollectionItemFamilyProvider>
     </ButtonIntentFamilyProvider>
-)
+    )
+    return navigate === undefined ? root : <RouterProvider navigate={navigate} {...(useHref === undefined ? {} : { useHref })}>{root}</RouterProvider>
+}

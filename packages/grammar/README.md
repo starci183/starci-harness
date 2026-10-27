@@ -144,6 +144,32 @@ offset shadow and a pink decision accent. Text that uses the accent is drawn in 
 `OFFSET_POP_TOKEN_DEFAULTS`, `OFFSET_POP_DARK_TOKEN_DEFAULTS`, `OFFSET_POP_BAND_TOKEN_NAMES`,
 `offsetPopGrammar` and `offsetPopRuleConformance`.
 
+## Client-side navigation
+
+Every Grammar root (`GrammarRoot`, `CoreGrammarRoot`, `OffsetPopGrammarRoot`) accepts `navigate(path)` and `useHref(href)` and
+mounts react-aria's `RouterProvider`. Pass your router's functions once at the root and every Grammar `Link`, `Button href`,
+`Breadcrumbs` item, `ListBox`/`Menu` item `href` and `FlowGraph` node `href` navigates inside the app without a reload.
+
+```tsx
+import { useHref, useNavigate } from "react-router-dom"
+import { CoreGrammarRoot } from "@starci/grammar/core"
+
+export const Root = ({ children }: { children: React.ReactNode }) => {
+  const navigate = useNavigate()
+  return <CoreGrammarRoot navigate={(path) => navigate(path)} useHref={useHref}>{children}</CoreGrammarRoot>
+}
+```
+
+Mount the root inside the router. Without `navigate` the links behave as plain anchors.
+
+### FlowGraph layouts
+
+`FlowGraph` places nodes with `layout`: `radial` (the default), `layered` (a DAG in layers) or `manual` (each node's `position`).
+`direction="TB" | "LR"` puts the target handle on the entering side and the source handle on the leaving side so edges run along the
+layout, and selects `layered` when no layout is given. `headers={[{ label, at }]}` draws a column header above each layer for `LR` and
+a lane header beside it for `TB` (`at` is the layer index in `layered`, graph units in `manual`). `height` takes `sm | md | lg`, a number
+(pixels) or any CSS length. A node with `href` is a link through the root's router and one keyboard stop.
+
 ## Family scope and the overlay portal rule
 
 A family paints only inside its root. Each family stylesheet is scoped to
