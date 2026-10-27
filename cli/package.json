@@ -1,32 +1,60 @@
 {
-  "name": "@starci/cli",
+  "name": "starci-harness",
   "version": "1.0.0-alpha.1",
-  "private": true,
-  "description": "The starci command line: one TypeScript source, core verbs plus the lite and full edition verbs.",
-  "license": "UNLICENSED",
+  "description": "The StarCi harness CLI: every piece of AI agent work gets a contract of machine checks, is verified on a clean checkout, and only then committed.",
+  "keywords": [
+    "starci",
+    "harness",
+    "ai-agents",
+    "agent-orchestration",
+    "contracts",
+    "verification",
+    "cli",
+    "workflow"
+  ],
+  "homepage": "https://github.com/starci183/starci-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "cli"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "author": "starci183",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "starci": "dist/main.js"
+    "starci": "dist/main.js",
+    "starci-harness": "dist/main.js"
   },
   "files": [
     "dist",
     "ops",
     "policy",
     "contexts",
-    "packages/jest-preset/README.md"
+    "skills",
+    "cli/README.md",
+    "packages/README.md",
+    "packages/jest-preset/README.md",
+    "CONTRIBUTING.md"
   ],
   "engines": {
     "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node dist/core/contexts/search-build.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "start": "node dist/main.js",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm run build",
-    "prepack": "node -e \"for (const d of ['ops','policy','contexts','packages/jest-preset/README.md']) require('node:fs').cpSync('../'+d, d, {recursive: true})\" && node dist/core/contexts/search-build.js",
-    "postpack": "node -e \"for (const d of ['ops','policy','contexts','packages']) require('node:fs').rmSync(d, {recursive: true, force: true})\""
+    "prepare": "node -e \"if (require('node:fs').existsSync('src') && !['pack', 'publish'].includes(process.env.npm_command)) require('node:child_process').execSync('npm run build', {stdio: 'inherit'})\"",
+    "prepublishOnly": "npm run typecheck && npm run lint",
+    "prepack": "npm run build && node -e \"const fs = require('node:fs'); for (const d of ['ops','policy','contexts','skills/starci','packages/README.md','packages/jest-preset/README.md','CONTRIBUTING.md','LICENSE']) fs.cpSync('../'+d, d, {recursive: true}); if (!fs.existsSync('cli/README.md')) fs.cpSync('README.md', 'cli/README.md'); fs.cpSync('../README.md', 'README.md')\"",
+    "postpack": "node -e \"const fs = require('node:fs'); fs.cpSync('cli/README.md', 'README.md'); for (const d of ['ops','policy','contexts','skills','packages','cli','CONTRIBUTING.md','LICENSE']) fs.rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
     "commander": "15.0.0",

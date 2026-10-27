@@ -3,6 +3,16 @@
   "version": "1.0.4",
   "description": "The one StarCi Prettier config: 120 columns, 4 spaces, no semicolons, double quotes, trailing commas everywhere.",
   "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/prettier-config#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/prettier-config"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
   "private": false,
   "main": "index.cjs",
   "types": "index.d.cts",

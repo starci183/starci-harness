@@ -58,20 +58,25 @@ jobs:
 
   publish:
     needs: check
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm provenance signs each tarball with this workflow's OIDC identity.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      # Every package under packages/ is published, except a private one and a version already on npm.
-      - name: Publish the packages whose version is not on npm
+      # The CLI (starci-harness) and every package under packages/ are published with provenance, except a private
+      # one and a version already on npm; a prerelease version goes under the dist-tag it names (1.0.0-alpha.1: alpha).
+      - name: Publish the CLI and the packages whose version is not on npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for dir in packages/*/; do
+          for dir in cli/ packages/*/; do
             name=$(node -p "require('./${dir}package.json').name")
             version=$(node -p "require('./${dir}package.json').version")
             if [ "$(node -p "require('./${dir}package.json').private === true")" = "true" ]; then
@@ -83,7 +88,7 @@ jobs:
               continue
             fi
             tag=$(node -p "(/^\d+\.\d+\.\d+-([A-Za-z]+)/.exec('$version') ?? [])[1] ?? 'latest'")
-            (cd "$dir" && npm ci --no-audit --no-fund && npm publish --access public --tag "$tag")
+            (cd "$dir" && npm ci --no-audit --no-fund && npm publish --access public --provenance --tag "$tag")
             test "$(npm view "$name@$version" version)" = "$version"
             echo "published $name@$version ($tag)"
           done

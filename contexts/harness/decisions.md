@@ -4,7 +4,9 @@ The owner's harness decisions, as present-tense rulings, each naming the file th
 goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 
 - **One CLI.** The harness is one TypeScript CLI on `commander`, with no framework; `starci explain`, generated from
-  the verb definitions, is the one list of commands ([cli/README.md](../../cli/README.md)).
+  the verb definitions, is the one list of commands ([cli/README.md](../../cli/README.md)). It publishes to npm as
+  `starci-harness` (bins `starci` and `starci-harness`, [cli/package.json](../../cli/package.json)), a name apart from
+  the legacy app CLI `@starci/cli`, so `npx starci-harness` runs it where no checkout exists.
 - **One brief per task.** Every brief is the worker procedure common to all ops followed by the label's op file
   ([ops/ops/README.md](../../ops/ops/README.md)); there is no catalog of op kinds beyond the labels. The Kernel writes each
   contract; a label also routes (its floor and host tools) and its checks are presets of [ops/checks.yaml](../../ops/checks.yaml).

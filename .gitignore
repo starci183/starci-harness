@@ -5,3 +5,10 @@ dist/
 .claude/worktrees/
 cli/ops/
 cli/policy/
+cli/contexts/
+cli/packages/
+cli/skills/
+cli/cli/
+cli/CONTRIBUTING.md
+cli/LICENSE
+*.tgz

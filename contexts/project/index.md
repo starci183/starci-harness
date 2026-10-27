@@ -154,7 +154,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/questions.md](../harness/questions.md) · 2 KB
 - [harness/roles.md](../harness/roles.md) · 3 KB — The owner talks to the host's `[Supervisor]`; each running orca workflow has a `[Kernel] <workflow>` under it, and each task attempt an `[Op] <task>` under its Kernel, all real ...
 - [harness/rules.md](../harness/rules.md) · 2 KB — These hold for every role and every task.
-- [harness/state.md](../harness/state.md) · 2 KB
+- [harness/state.md](../harness/state.md) · 3 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 5 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · Editing
