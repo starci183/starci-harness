@@ -655,7 +655,9 @@ const tabOutcome = async (binary: OrcaBinary, settled: boolean, release: string,
  * guide forbids `terminal close` in place of an uncertain release, and a retained terminal is not the harness's to close.
  */
 export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string, terminal: string | null = null): Promise<WorkerClosed> => {
-    const stop = await stateOrError(workerStop(binary, dispatchId, cwd))
+    const asked = await stateOrError(workerStop(binary, dispatchId, cwd))
+    // A stop Orca cannot answer (unknown, or an error) is fenced with worker-abandon, the fence Orca offers for an uncertain worker.
+    const stop = asked.startsWith("error: ") || UNKNOWN_STATES.includes(asked) ? await stateOrError(workerAbandon(binary, dispatchId, cwd, requestIdOf("close-abandon", dispatchId))) : asked
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
     const released = RELEASED_STATES.has(release)
     // A dispatch that ended failed or abandoned is settled even when Orca retains its resources: it can never be released, and
