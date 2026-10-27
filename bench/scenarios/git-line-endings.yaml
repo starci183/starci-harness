@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: git-line-endings
+group: git
+title: a worker writes CRLF into an LF repository
+inject: .gitattributes eol=lf; the worker writes CRLF
+expect: the candidate normalises per .gitattributes; the commit holds LF; the check judges the normalised file
+pass:
+  - git show HEAD:<file> has no CR
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - repo with .gitattributes
+  - worker writes CRLF
+  - step
+  - assert no CR

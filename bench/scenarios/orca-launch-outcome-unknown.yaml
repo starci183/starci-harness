@@ -1,0 +1,87 @@
+schema: starci/scenario@1
+id: orca-launch-outcome-unknown
+group: orca
+title: "worker-start says outcome_unknown: hold, then resume replays the same request"
+inject: worker-start answers outcome_unknown once
+expect: the task is effect_unknown with its leases and seat kept; seat start --resume replays the same retry-request id, so Orca dedupes and there is one dispatch
+pass:
+  - task effect_unknown after start
+  - "after resume: task running"
+  - worker-start called twice with one distinct retry-request
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      rules:
+        - command: worker-start
+          fault: unknown
+          times: 1
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: unk
+        goal: bench workflow unk
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - unk
+    save:
+      a: data.nodes.0.task.id
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - effect_unknown
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM leases
+        equals:
+          - 1
+  - starci:
+      - seat
+      - start
+      - ${a}
+      - --resume
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - running
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 1
+        distinct: retry-request
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 2

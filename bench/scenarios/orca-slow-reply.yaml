@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: orca-slow-reply
+group: orca
+title: Orca answers slower than the process deadline
+inject: run-create sleeps past its 30 s deadline
+expect: the call is killed and its effect is unknown; the replay uses the same retry-request; no second Run
+pass:
+  - one distinct run-create request across retries
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - orca rule run-create slow 35000
+  - start
+  - step
+  - "assert one distinct retry-request (slow: ~40 s)"

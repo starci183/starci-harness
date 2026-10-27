@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: security-malicious-postinstall
+group: security
+title: a dependency's postinstall runs during clean verify
+inject: a package with a postinstall that writes outside the candidate
+expect: the candidate install runs with scripts disabled or sandboxed; nothing outside the candidate changes
+pass:
+  - no file outside the candidate dir
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - scratch package with postinstall
+  - task depending on it
+  - verify
+  - inspect

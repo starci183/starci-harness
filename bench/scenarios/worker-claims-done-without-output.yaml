@@ -1,0 +1,59 @@
+schema: starci/scenario@1
+id: worker-claims-done-without-output
+group: worker
+title: done with no output file is refused
+inject: task result --status done with no --output
+expect: refused; the task stays as it was
+pass:
+  - usage refusal (exit 2)
+  - no results row
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: bare
+        goal: bench workflow bare
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - bare
+    save:
+      a: data.nodes.0.task.id
+  - starci:
+      - task
+      - result
+      - ${a}
+      - --status
+      - done
+    expect:
+      exit: 2
+      code: CLI_USAGE
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM results
+        equals:
+          - 0

@@ -1,0 +1,87 @@
+schema: starci/scenario@1
+id: release-push-non-fast-forward
+group: release
+title: release push refuses a non fast-forward and moves nothing
+inject: the remote main has a commit the local main lacks
+expect: release push refuses naming the non fast-forward; the remote keeps its head
+pass:
+  - exit 1
+  - remote head unchanged
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - git:
+      - init
+      - -q
+      - --bare
+      - -b
+      - main
+      - ${run}/remote.git
+  - git:
+      - remote
+      - add
+      - origin
+      - ${run}/remote.git
+  - git:
+      - push
+      - -q
+      - origin
+      - main
+  - git:
+      - clone
+      - -q
+      - ${run}/remote.git
+      - ${run}/other
+  - git:
+      - -C
+      - ${run}/other
+      - -c
+      - user.email=o@x
+      - -c
+      - user.name=o
+      - commit
+      - -q
+      - --allow-empty
+      - -m
+      - someone else
+  - git:
+      - -C
+      - ${run}/other
+      - push
+      - -q
+      - origin
+      - main
+  - write:
+      path: local.md
+      content: |
+        local
+  - git:
+      - add
+      - local.md
+  - git:
+      - commit
+      - -q
+      - -m
+      - local work
+  - git:
+      - fetch
+      - -q
+      - origin
+  - starci:
+      - release
+      - push
+    expect:
+      exit: 1
+      ok: false
+  - assert:
+      gitLog:
+        grep: local work
+        count: 0
+        in: ${run}/remote.git
+  - assert:
+      gitLog:
+        grep: someone else
+        count: 1
+        in: ${run}/remote.git

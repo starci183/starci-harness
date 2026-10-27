@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: messaging-mailbox-backlog
+group: messaging
+title: a dead Kernel leaves a backlog; the new one processes it exactly once
+inject: 20 Op results queued while the Kernel is dead
+expect: the new Kernel drains in order, each once
+pass:
+  - 20 decisions consumed once
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci kernel next|submit and the Kernel seat"
+manual:
+  - queue 20
+  - restart kernel
+  - drain
+  - assert counts

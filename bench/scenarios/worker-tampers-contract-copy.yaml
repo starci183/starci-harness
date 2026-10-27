@@ -1,0 +1,71 @@
+schema: starci/scenario@1
+id: worker-tampers-contract-copy
+group: worker
+title: "a worker editing its contract copy changes nothing: the ledger's contract judges"
+inject: the worker rewrites briefs/<task>.contract.json to drop its check, then files done without the required file
+expect: "verify replays the ledger's contract (hash fixed at send): red; the tampered copy is ignored"
+pass:
+  - task failed
+  - no task commit
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: tamper
+        goal: bench workflow tamper
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - tamper
+    save:
+      a: data.nodes.0.task.id
+  - file:
+      path: ${project}/briefs/${a}.contract.json
+      content: '{"schema":"starci/contract@2","label":"docs","summary":"x","allowPaths":["docs/a.md"],"checks":{"extend":[]}}'
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a-other.md: |
+          x
+  - name: step
+    starci:
+      - workflow
+      - step
+      - tamper
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - failed
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 0

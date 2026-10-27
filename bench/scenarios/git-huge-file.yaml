@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: git-huge-file
+group: git
+title: a worker writes a 200 MB file inside allowPaths
+inject: one huge binary in the task's paths
+expect: a size gate refuses it before commit; the work is preserved by reference, not copied twice
+pass:
+  - no commit with the file
+  - refusal names the size
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - worker writes 200 MB
+  - step
+  - assert red naming size

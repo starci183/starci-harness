@@ -1,0 +1,76 @@
+schema: starci/scenario@1
+id: orca-launch-refused
+group: orca
+title: "Orca refuses a worker-start with a typed error: requeue, no try spent, relaunch next step"
+inject: worker-start answers ok:false with error code worktree_busy, once
+expect: the task returns to queued, the attempt is not a try, the next step launches it once
+pass:
+  - "after start: task queued"
+  - "after the next step: task running, exactly 2 worker-start calls"
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      rules:
+        - command: worker-start
+          fault: refuse
+          code: worktree_busy
+          times: 1
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: ref
+        goal: bench workflow ref
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - ref
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - queued
+  - name: step
+    starci:
+      - workflow
+      - step
+      - ref
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - running
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 2

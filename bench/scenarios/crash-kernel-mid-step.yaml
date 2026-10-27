@@ -1,0 +1,21 @@
+schema: starci/scenario@1
+id: crash-kernel-mid-step
+group: crash
+title: the CLI dies after the dispatch claim and before the Orca call
+inject: workflow step is killed between the running claim and worker-start
+expect: the next step finds a starting seat with a launch record and no dispatch; it replays the launch with the same retry-request (resume), never a fresh one
+pass:
+  - one distinct retry-request
+  - one dispatch
+  - task running
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - set a fault that kills the CLI on worker-start entry (stub fault crash)
+  - step
+  - assert seat starting
+  - step again
+  - assert one distinct retry-request

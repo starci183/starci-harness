@@ -1,0 +1,19 @@
+schema: starci/scenario@1
+id: ledger-worktree-deleted
+group: ledger
+title: the workflow worktree is deleted by hand
+inject: rm -rf of the worktree with live tasks
+expect: step refuses naming the missing worktree; preserved work kept; escalation
+pass:
+  - refusal
+  - no crash
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - git worktree add
+  - start
+  - delete
+  - step

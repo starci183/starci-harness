@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: messaging-lost-wake
+group: messaging
+title: the wake mail is lost
+inject: Orca send drops the wake
+expect: the command is in the ledger already; kernel next finds it on its own timer; nothing lost
+pass:
+  - decision delivered without the mail
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
+manual:
+  - stand-in drops send
+  - kernel next
+  - assert decision

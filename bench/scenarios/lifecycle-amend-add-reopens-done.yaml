@@ -1,0 +1,111 @@
+schema: starci/scenario@1
+id: lifecycle-amend-add-reopens-done
+group: lifecycle
+title: a task found late is added to a done workflow, which reopens and runs it
+inject: after the workflow is done the Kernel amends add c
+expect: the amend reopens the workflow (done -> running); a and b keep; c is queued; their commits stay
+pass:
+  - workflow running after the amend
+  - c queued, a done untouched
+  - classification a keep, c add
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: late
+        goal: bench workflow late
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - late
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - name: step
+    starci:
+      - workflow
+      - step
+      - late
+    save: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM workflows
+        equals:
+          - done
+  - file:
+      path: add.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: late
+        reason: found late
+        changes:
+          - op: add
+            task:
+              id: c
+              label: docs
+              summary: write doc c
+              allowPaths:
+                - docs/c.md
+              checks:
+                - preset: files-exist
+                  args:
+                    files:
+                      - docs/c.md
+  - starci:
+      - workflow
+      - amend
+      - late
+      - --change
+      - ${run}/add.yaml
+    expect: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - late
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks ORDER BY created_at
+        equals:
+          - done
+          - queued
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT json_extract(value, '$.key') || ':' || json_extract(value, '$.class') FROM graph_versions, json_each(classification_json) WHERE graph_version = 2 ORDER BY 1
+        equals:
+          - a:keep
+          - c:add

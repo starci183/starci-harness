@@ -1,0 +1,54 @@
+schema: starci/scenario@1
+id: ledger-machine-store-corrupt
+group: ledger
+title: a corrupted machine.sqlite is refused with a code, never overwritten
+inject: machine.sqlite replaced by garbage bytes
+expect: a verb refuses with a typed code naming the file; the corrupt file is kept for the Debug role
+pass:
+  - exit 1, refusal code is not CLI_UNEXPECTED
+  - the file still holds the garbage
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: corrupt
+        goal: bench workflow corrupt
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - file:
+      path: ${state}/machine.sqlite
+      content: this is not a sqlite database at all, it is garbage
+  - starci:
+      - workflow
+      - start
+      - corrupt
+    expect:
+      exit: 1
+      ok: false
+  - starci:
+      - workflow
+      - start
+      - corrupt
+    expect:
+      exit: 1
+      code: LEDGER_CORRUPT

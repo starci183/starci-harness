@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: plan-replan-oscillation
+group: plan
+title: the Kernel replans A, B, A, B
+inject: four amends toggling one contract
+expect: oscillation detected after the second return; escalation to the Supervisor
+pass:
+  - escalation kind owner
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S1 replan reconcile: goal@n, goal-change, desired-graph reconcile with keep/continue/stale/rework/redo-live/drop"
+manual:
+  - toggle edits x4
+  - assert escalation

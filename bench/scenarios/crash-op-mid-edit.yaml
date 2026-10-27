@@ -1,0 +1,22 @@
+schema: starci/scenario@1
+id: crash-op-mid-edit
+group: crash
+title: an Op dies with half its edit written
+inject: the worker process is killed after writing part of its allowPaths
+expect: liveness proves the worker gone (Orca's word), the task turns effect_unknown, the partial edit is preserved as prior work; the Kernel's retry starts from that patch
+pass:
+  - preserved patch stored under (workflow, key, contract hash)
+  - the retry's brief has a Prior work section
+  - no edit lost
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: "S2 prior-work store: content-addressed patches per (workflow, key, contract hash) and the Prior work brief section"
+manual:
+  - launch one Op on a live Orca
+  - kill its terminal mid-edit
+  - workflow step
+  - assert effect_unknown + preserved
+  - amend retry
+  - assert the brief names the patch

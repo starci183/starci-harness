@@ -1,0 +1,22 @@
+schema: starci/scenario@1
+id: lifecycle-kernel-episodic
+group: lifecycle
+title: the Kernel is woken only for decisions and exits after one command
+inject: an orca workflow runs three tasks, one goes red
+expect: kernel next blocks while mechanics run (dispatch, verify, timeouts) and returns exactly one decision (the red task) with a ledger digest; one submit applies it; the Kernel never polls a terminal
+pass:
+  - one decision per red, none for green
+  - every applied command has its cmdId and sha256 in the ledger
+  - no Kernel verb outside next/submit/status
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci kernel next|submit and the Kernel seat"
+manual:
+  - define a 3-task orca workflow on the stand-in
+  - start
+  - file a green, a red and a green result
+  - run kernel next and expect one decision naming the red task
+  - submit a retry change
+  - expect the task requeued and the decision consumed

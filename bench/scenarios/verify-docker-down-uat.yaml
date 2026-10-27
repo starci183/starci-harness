@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: verify-docker-down-uat
+group: environment
+title: Docker is down when a uat verify needs the pinned image
+inject: stop Docker Desktop; run a uat task's verify
+expect: blocked with evidence (environment), not a red product verdict; no try spent
+pass:
+  - task returned or blocked naming docker
+  - try_no unchanged
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: semi
+pending: a live Orca beside the bench (semi)
+manual:
+  - stop Docker
+  - uat run
+  - assert environment class

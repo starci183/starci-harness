@@ -1,0 +1,62 @@
+schema: starci/scenario@1
+id: orca-repo-unknown-registered
+group: orca
+title: "Orca does not know the repository: repo add, then the launch retries once"
+inject: worker-start refuses selector_not_found once
+expect: the harness runs orca repo add for the repository and retries the launch once; the task runs
+pass:
+  - repo add called once
+  - task running
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - orca:
+      rules:
+        - command: worker-start
+          fault: refuse
+          code: selector_not_found
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: repo
+        goal: bench workflow repo
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - repo
+    save: {}
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: repo add
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - running

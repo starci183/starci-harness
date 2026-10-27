@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: budget-raise-mid-flight
+group: budget
+title: a budget raise arrives while tasks are live
+inject: budget raise during running tasks
+expect: live tasks continue; the raise only widens dispatch; budget_raises keeps who and why
+pass:
+  - no task cancelled by the raise
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - start
+  - raise
+  - step
+  - assert running unchanged

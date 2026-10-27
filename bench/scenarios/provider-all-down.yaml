@@ -1,0 +1,104 @@
+schema: starci/scenario@1
+id: provider-all-down
+group: provider
+title: "every provider is down: dispatch holds with a named reason, no launch, no busy loop"
+inject: auth outcome reported for every provider; an unpinned orca workflow starts
+expect: route explain refuses; the workflow's task stays queued with the router's reason; Orca's worker-start is never called
+pass:
+  - route explain exits 1
+  - no worker-start
+  - no running task
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - starci:
+      - provider
+      - report
+      - claude
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - provider
+      - report
+      - codex
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - provider
+      - report
+      - devin
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - provider
+      - report
+      - cursor
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - provider
+      - report
+      - gemini
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - provider
+      - report
+      - qwen
+      - --outcome
+      - auth
+    expect: {}
+  - starci:
+      - route
+      - explain
+      - --label
+      - docs
+    expect:
+      exit: 1
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: dark
+        goal: bench
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - dark
+    save: {}
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: worker-start
+        count: 0
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE status = 'running'
+        equals:
+          - 0

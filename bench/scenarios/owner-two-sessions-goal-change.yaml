@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: owner-two-sessions-goal-change
+group: owner
+title: two sessions send conflicting goal-changes
+inject: goal-change from two chats based on goal@1
+expect: "basedOn serialises: one becomes goal@2, the other STALE"
+pass:
+  - one goal_version 2
+  - one refusal
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S1 replan reconcile: goal@n, goal-change, desired-graph reconcile with keep/continue/stale/rework/redo-live/drop"
+manual:
+  - two goal-change files basedOn 1
+  - submit both

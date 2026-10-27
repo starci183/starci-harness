@@ -1,0 +1,20 @@
+schema: starci/scenario@1
+id: git-detached-head
+group: git
+title: the workflow worktree is on a detached HEAD
+inject: git checkout --detach before step
+expect: settle refuses to commit onto a detached HEAD with a named code
+pass:
+  - no commit
+  - refusal
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S3 state CAS fixes: intent rows (settling, cancelling), basedOn/cmdId dedupe, recovery that reconciles"
+manual:
+  - start
+  - work
+  - git checkout --detach
+  - step
+  - assert refusal

@@ -1,0 +1,18 @@
+schema: starci/scenario@1
+id: verify-slow-suite
+group: verify
+title: a check runs past its deadline
+inject: tests-pass command sleeping 20 minutes
+expect: killed at the check deadline; red with timeout; no hung verify
+pass:
+  - check_runs status timeout
+  - task not stuck verifying
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - command sleeping beyond deadline
+  - step
+  - assert timeout

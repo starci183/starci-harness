@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: owner-late-gate-approval
+group: owner
+title: the owner approves a gated diff long after it was asked
+inject: approval of a replan diff on graph v2 when v4 is current
+expect: refused STALE; the Kernel re-asks on v4
+pass:
+  - STALE
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S4 coordinator agents: starci supervisor next|submit and the Supervisor seat"
+manual:
+  - supervisor submit approval basedOn 2
+  - assert STALE

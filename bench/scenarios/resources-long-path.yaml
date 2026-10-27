@@ -1,0 +1,63 @@
+schema: starci/scenario@1
+id: resources-long-path
+group: resources
+title: a task path beyond 260 characters is done or refused with a code, never half-committed
+inject: allowPaths is a file 300 characters deep
+expect: the task lands (long paths on) or is refused before any lease with a named code
+pass:
+  - task done and the file in HEAD
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: long
+        goal: bench workflow long
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - long
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/segment-of-a-long-path/a.md: |
+          # deep
+  - name: step
+    starci:
+      - workflow
+      - step
+      - long
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done

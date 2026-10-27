@@ -1,0 +1,69 @@
+schema: starci/scenario@1
+id: scale-ledger-contention
+group: scale
+title: sixteen concurrent read and write verbs on one ledger never fail on a lock
+inject: 16 workflow status and 16 seat ping processes at once while a workflow runs
+expect: every call answers; none fails with database is locked
+pass:
+  - every concurrent call exits 0
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: busy
+        goal: bench workflow busy
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - busy
+    save: {}
+  - starci:
+      - workflow
+      - status
+      - busy
+    parallel: 16
+    expect:
+      exit: 0
+  - starci:
+      - workflow
+      - step
+      - busy
+    parallel: 6
+    expect:
+      exit: 0

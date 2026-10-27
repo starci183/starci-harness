@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: time-clock-skew-dst
+group: time
+title: the clock jumps (DST, NTP correction) during a run
+inject: system clock set back one hour mid-run
+expect: durations never go negative; budget minutes do not double count; leases unaffected
+pass:
+  - budget used minutes monotonic
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - change the clock during a run
+  - budget show

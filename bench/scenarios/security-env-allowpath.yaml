@@ -1,0 +1,46 @@
+schema: starci/scenario@1
+id: security-env-allowpath
+group: security
+title: a contract leasing .env is refused; the harness never opens it
+inject: a docs task whose allowPaths is .env
+expect: contract or send refuses it (a neverRead path); no task
+pass:
+  - send exits 1
+  - no task in the ledger
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: |
+      # bench
+    .env.example: |
+      KEY=
+steps:
+  - starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - env
+      - --allow
+      - .env
+      - --check
+      - paths-only
+      - --out
+      - ${run}/env.json
+    expect: {}
+  - starci:
+      - task
+      - send
+      - ${run}/env.json
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks
+        equals:
+          - 0

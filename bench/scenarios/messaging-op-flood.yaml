@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: messaging-op-flood
+group: messaging
+title: an Op floods its Kernel with mail
+inject: 500 sends from one Op in a minute
+expect: rate-limited per sender; the Kernel sees one coalesced wake; the ledger is not bloated
+pass:
+  - wakes coalesced
+  - message rows bounded
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
+manual:
+  - loop 500 sends
+  - assert bounded

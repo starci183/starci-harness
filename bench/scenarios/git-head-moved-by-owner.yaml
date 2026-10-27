@@ -1,0 +1,84 @@
+schema: starci/scenario@1
+id: git-head-moved-by-owner
+group: git
+title: the owner commits in the workflow worktree between result and verify
+inject: an unrelated owner commit lands after the worker filed
+expect: the verify builds on the new HEAD; the task commit sits on top of the owner's; nothing of the owner's is lost
+pass:
+  - task done
+  - owner commit is an ancestor of HEAD
+  - one task commit
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: moved
+        goal: bench workflow moved
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - moved
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - write:
+      path: owner.txt
+      content: |
+        owner was here
+  - git:
+      - add
+      - owner.txt
+  - git:
+      - commit
+      - -q
+      - -m
+      - "owner: unrelated change"
+  - name: step
+    starci:
+      - workflow
+      - step
+      - moved
+    save: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done
+  - assert:
+      gitLog:
+        grep: "owner: unrelated change"
+        count: 1
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1

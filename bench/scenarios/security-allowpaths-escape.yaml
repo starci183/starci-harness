@@ -1,0 +1,102 @@
+schema: starci/scenario@1
+id: security-allowpaths-escape
+group: security
+title: allowPaths that escape the repository are refused before any lease
+inject: contracts with ../outside, an absolute path, '.', and the whole .starciwork
+expect: contract new / task send refuse each one; no task, no lease
+pass:
+  - each send exits 1
+  - the ledger holds no task
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: contract up
+    starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - up
+      - --allow
+      - ../outside
+      - --check
+      - paths-only
+      - --out
+      - ${run}/up.json
+    expect: {}
+  - name: send up
+    starci:
+      - task
+      - send
+      - ${run}/up.json
+    expect:
+      exit: 1
+  - name: contract abs
+    starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - abs
+      - --allow
+      - ${run}/abs
+      - --check
+      - paths-only
+      - --out
+      - ${run}/abs.json
+    expect: {}
+  - name: send abs
+    starci:
+      - task
+      - send
+      - ${run}/abs.json
+    expect:
+      exit: 1
+  - name: contract dot
+    starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - dot
+      - --allow
+      - .
+      - --check
+      - paths-only
+      - --out
+      - ${run}/dot.json
+    expect: {}
+  - name: send dot
+    starci:
+      - task
+      - send
+      - ${run}/dot.json
+    expect:
+      exit: 1
+  - name: contract work
+    starci:
+      - contract
+      - new
+      - --label
+      - docs
+      - --summary
+      - work
+      - --allow
+      - .starciwork
+      - --check
+      - paths-only
+      - --out
+      - ${run}/work.json
+    expect: {}
+  - name: send work
+    starci:
+      - task
+      - send
+      - ${run}/work.json
+    expect:
+      exit: 1

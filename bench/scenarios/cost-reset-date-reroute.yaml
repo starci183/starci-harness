@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: cost-reset-date-reroute
+group: cost
+title: "a pool exhausted until a date: forecast and reroute"
+inject: quota reset date 30 days ahead on the cheapest pool
+expect: work reroutes now, and budget forecasts name the date; nothing stalls waiting
+pass:
+  - route explain picks another member
+  - status shows the date
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - provider report codex --outcome quota --resets-at <date>
+  - route explain

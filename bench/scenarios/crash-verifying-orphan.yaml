@@ -1,0 +1,82 @@
+schema: starci/scenario@1
+id: crash-verifying-orphan
+group: crash
+title: "the CLI died mid-verify: the next step returns the task to reported and verifies it"
+inject: the task is left in verifying with no process (the verifier was killed)
+expect: the next step sees no live verifier, returns the task to reported (no try spent) and settles it
+pass:
+  - task done after one step
+  - one task commit
+  - try_no still 1
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+faults:
+  - recover-verb
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: orphan
+        goal: bench workflow orphan
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - orphan
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - sql:
+      db: ledger
+      exec: UPDATE tasks SET status = 'verifying'
+  - name: the explicit recover verb
+    when: recover-verb
+    starci:
+      - task
+      - verify
+      - ${a}
+      - --recover
+    expect: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - orphan
+    save: {}
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status || ':' || try_no FROM tasks
+        equals:
+          - done:1
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1

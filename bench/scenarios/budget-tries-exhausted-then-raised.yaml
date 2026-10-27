@@ -1,0 +1,127 @@
+schema: starci/scenario@1
+id: budget-tries-exhausted-then-raised
+group: budget
+title: a workflow out of tries holds dispatch until a raise, then resumes
+inject: the workflow's ceiling is set to 1 try; its task goes red; a retry is amended
+expect: the retry's dispatch holds with BUDGET_EXHAUSTED (no task created); budget raise by the owner lets the next step dispatch it
+pass:
+  - no second ledger task while exhausted
+  - after the raise the retry is queued
+  - budget_raises records who and why
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: bud
+        goal: bench workflow bud
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - starci:
+      - budget
+      - raise
+      - bud
+      - --tries
+      - "1"
+      - --by
+      - owner
+      - --reason
+      - "bench: create the account"
+  - sql:
+      db: machine
+      exec: UPDATE budgets SET tries = 1 WHERE workflow_id = 'bud'
+  - name: start
+    starci:
+      - workflow
+      - start
+      - bud
+    save:
+      a: data.nodes.0.task.id
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a-draft.md: |
+          x
+  - name: step
+    starci:
+      - workflow
+      - step
+      - bud
+    save: {}
+    expect:
+      exit: 1
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: bud
+        reason: bench retry
+        changes:
+          - op: retry
+            id: a
+  - starci:
+      - workflow
+      - amend
+      - bud
+      - --change
+      - ${run}/retry.yaml
+    expect: {}
+  - starci:
+      - workflow
+      - step
+      - bud
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks
+        equals:
+          - 1
+  - starci:
+      - budget
+      - raise
+      - bud
+      - --tries
+      - "3"
+      - --by
+      - owner
+      - --reason
+      - "bench: owner raise"
+  - starci:
+      - workflow
+      - step
+      - bud
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM tasks WHERE status = 'queued'
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM budget_raises WHERE workflow_id = 'bud' AND by = 'owner'
+        equals:
+          - 2

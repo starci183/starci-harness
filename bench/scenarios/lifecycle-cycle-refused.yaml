@@ -1,0 +1,73 @@
+schema: starci/scenario@1
+id: lifecycle-cycle-refused
+group: lifecycle
+title: a workflow whose tasks depend in a cycle is refused at define
+inject: a -> b -> c -> a in dependsOn
+expect: define refuses WORKFLOW_INVALID naming the cycle; no workflow row, no task, no lease
+pass:
+  - define exits 1 with WORKFLOW_INVALID
+  - the ledger holds no workflow and no task
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: cyc
+        goal: bench workflow cyc
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+            dependsOn:
+              - c
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths:
+              - docs/b.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/b.md
+            dependsOn:
+              - a
+          - id: c
+            label: docs
+            summary: write doc c
+            allowPaths:
+              - docs/c.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/c.md
+            dependsOn:
+              - b
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+    expect:
+      exit: 1
+      code: WORKFLOW_INVALID
+  - starci:
+      - workflow
+      - status
+      - cyc
+    expect:
+      exit: 1
+      ok: false

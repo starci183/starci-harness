@@ -1,0 +1,30 @@
+schema: starci/scenario@1
+id: lifecycle-empty-graph
+group: lifecycle
+title: a workflow with no tasks is refused, never 'done' with nothing done
+inject: "tasks: []"
+expect: define refuses WORKFLOW_INVALID; a goal with no work is the Kernel's planning error, not a finished workflow
+pass:
+  - define exits 1 with WORKFLOW_INVALID
+  - no workflow row
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: empty
+        goal: bench workflow empty
+        runner: inline
+        tasks: []
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+    expect:
+      exit: 1
+      code: WORKFLOW_INVALID

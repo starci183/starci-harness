@@ -1,0 +1,95 @@
+schema: starci/scenario@1
+id: orca-kernel-tab-closed-by-hand
+group: orca
+title: "the owner closes the Kernel tab: the next launch recreates it and takes the Run back"
+inject: every Orca terminal disappears after start; a task is added
+expect: the next dispatch sees the Kernel terminal gone, creates a new [Kernel] terminal and binds it to the same Run with run-use; no second Run
+pass:
+  - run-create once
+  - run-use at least once
+  - terminal create twice (Kernel, recreated Kernel)
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: tab
+        goal: bench workflow tab
+        runner: orca
+        agent: claude
+        model: sonnet
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - name: start
+    starci:
+      - workflow
+      - start
+      - tab
+    save: {}
+  - orca:
+      set:
+        terminals: {}
+  - file:
+      path: add.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: tab
+        reason: more
+        changes:
+          - op: add
+            task:
+              id: b
+              label: docs
+              summary: write doc b
+              allowPaths:
+                - docs/b.md
+              checks:
+                - preset: files-exist
+                  args:
+                    files:
+                      - docs/b.md
+  - starci:
+      - workflow
+      - amend
+      - tab
+      - --change
+      - ${run}/add.yaml
+    expect: {}
+  - name: step
+    starci:
+      - workflow
+      - step
+      - tab
+    save: {}
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: run-create
+        count: 1
+  - assert:
+      orcaCalls:
+        command: run-use
+        min: 1
+  - assert:
+      orcaCalls:
+        command: terminal create
+        count: 2

@@ -1,0 +1,17 @@
+schema: starci/scenario@1
+id: messaging-duplicate
+group: messaging
+title: the same command is delivered twice
+inject: kernel submit of one file twice (same cmdId)
+expect: the second is deduplicated by cmdId; one effect
+pass:
+  - one command row
+  - second answer says duplicate
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
+manual:
+  - kernel submit x2
+  - assert dedupe

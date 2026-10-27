@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: security-symlink-escape
+group: security
+title: a worker plants a symlink or junction inside allowPaths pointing outside
+inject: docs/a.md -> ../../secret
+expect: the candidate copy refuses links (no junctions or symlinks rule); nothing outside is read or committed
+pass:
+  - refusal naming the link
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: manual
+pending: a person at the machine (manual)
+manual:
+  - create a junction on Windows in a scratch repo
+  - step

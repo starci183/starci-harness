@@ -1,0 +1,21 @@
+schema: starci/scenario@1
+id: change-goal-change-mid-run
+group: change
+title: the owner changes the goal while tasks run
+inject: goal-change goal@2 arrives with two tasks running, one done, two queued
+expect: the Kernel writes the new desired graph; reconcile classifies by task key; untouched live tasks keep running; done unchanged keep
+pass:
+  - goal_version 2
+  - untouched running tasks keep their attempt
+  - done tasks not redone
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: "S1 replan reconcile: goal@n, goal-change, desired-graph reconcile with keep/continue/stale/rework/redo-live/drop"
+manual:
+  - start a 5-task orca workflow
+  - supervisor submit goal-change
+  - kernel next returns replan
+  - kernel submit desired graph
+  - assert classifications

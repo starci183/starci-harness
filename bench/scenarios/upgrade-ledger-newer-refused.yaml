@@ -1,0 +1,53 @@
+schema: starci/scenario@1
+id: upgrade-ledger-newer-refused
+group: upgrade
+title: an older CLI meeting a newer ledger refuses LEDGER_NEWER and never downgrades it
+inject: the ledger's meta version is set above this build's LEDGER_VERSION
+expect: every ledger-opening verb refuses LEDGER_NEWER; the version marker is left as it was
+pass:
+  - workflow status exits 1 with LEDGER_NEWER
+  - meta version still 99
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: newer
+        goal: bench workflow newer
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: define
+    starci:
+      - workflow
+      - define
+      - ${run}/wf.yaml
+  - sql:
+      db: ledger
+      exec: UPDATE meta SET value = '99' WHERE key = 'version'
+  - starci:
+      - workflow
+      - start
+      - newer
+    expect:
+      exit: 1
+      code: LEDGER_NEWER
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT value FROM meta WHERE key = 'version'
+        equals:
+          - "99"

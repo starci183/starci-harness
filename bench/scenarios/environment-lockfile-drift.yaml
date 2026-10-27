@@ -1,0 +1,16 @@
+schema: starci/scenario@1
+id: environment-lockfile-drift
+group: environment
+title: the lockfile drifts from package.json
+inject: a task changes package.json only
+expect: npm ci fails in the candidate; the check names the drift
+pass:
+  - red naming lockfile
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S5 verification trust tiers
+manual:
+  - package.json edit
+  - verify

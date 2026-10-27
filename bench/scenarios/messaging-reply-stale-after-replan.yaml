@@ -1,0 +1,19 @@
+schema: starci/scenario@1
+id: messaging-reply-stale-after-replan
+group: messaging
+title: an answer to a question made stale by a replan
+inject: the Kernel answers a blocked question after the node was dropped
+expect: refused STALE by basedOn graph version
+pass:
+  - STALE
+  - nothing applied
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+pending: S4 mail commands (result/escalation/handoff through submit, Orca check/send only wakes)
+manual:
+  - block
+  - replan drop
+  - answer
+  - assert STALE
