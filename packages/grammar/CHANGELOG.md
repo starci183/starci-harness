@@ -6,6 +6,14 @@
 - Added: `Text` `mono` and `tabular`; inline `Code`; `Meter size="sm"` (thin track); `Timeline` `isAttention` (tone row background); `Badge` tone `muted`; `Terminal` (dark monospace log tail, `role="log"`, `aria-live="polite"`, follows the end unless scrolled up).
 - Added: client-side navigation. Every Grammar root accepts `navigate` and `useHref` and mounts react-aria's `RouterProvider`, so links, `Button href`, `Breadcrumbs`, `ListBox`/`Menu` items and `FlowGraph` nodes navigate without a reload.
 - Added: `FlowGraph` `direction` (`TB` | `LR`), `layout="layered"`, `headers` (layer titles), `height` as a number or CSS length, and node `href`. The radial default is unchanged.
+- Added: `Button disabledReason` shows its words in a Tooltip on hover and keyboard focus of a disabled Button and carries them as its accessible description; `Tooltip` takes `isDisabledTrigger` and `triggerDescribedBy` for a control the platform skips.
+- Added: `PinnedActionBar` takes `summary` (text or node) with `dismiss` and `commit` actions beside the single-command `children` form.
+- Added: `DataTable` rows take `href` (a whole-row link target); columns take `editor` (a field hosted in the cell, keyboard behaviour switches to React Aria's `tab` mode) and `priority` (`low` columns fold into the first column as stacked secondary text below `collapseBelow`, default 640px); `DataTableColumn` is generic over the row type.
+- Added: `TagGroup onReorder` with `reorderInstructions` and `reorderAnnouncement` (drag, or Alt+arrow keys, with a live-region announcement). The vendor TagGroup has no drag-and-drop collection hooks, so Grammar wires native drag events itself.
+- Added: `ListBox descriptionLines` and the `wrap` value of `ItemDescriptionLines`.
+- Changed: `ListBox` descriptions wrap by default; pass `descriptionLines={1}` for the earlier one-line preview.
+- Changed (breaking): `Input` takes `description` instead of `hint`. The package has no deprecation window, so `hint` is removed. Migrate: rename `hint` to `description`.
+- Fixed: the Tabs selection underline follows a changed tab label at once instead of animating its width.
 
 ## 0.13.0 - 2026-10-27
 

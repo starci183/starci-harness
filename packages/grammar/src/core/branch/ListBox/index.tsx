@@ -22,7 +22,7 @@ export type ListBoxItem = {
      */
     readonly labelLeading?: ReactNode
     readonly description?: ReactNode
-    /** Preview lines before ellipsis; defaults to the family's one-line preview (owner:item-description-one-line). */
+    /** Preview lines before ellipsis; overrides the list's `descriptionLines` for this row. */
     readonly descriptionLines?: ItemDescriptionLines
     /** Unread copy uses the family's strong weight for both label and description. */
     readonly emphasis?: "unread"
@@ -69,6 +69,8 @@ export type ListBoxProps = ListBoxContent & {
     readonly label: string
     /** The panel list box shares the field and tabs edge; its content keeps HeroUI's list and item padding. */
     readonly inset?: "default" | "panel"
+    /** Description lines for every row: `wrap` (default) shows the whole text over as many lines as it needs; 1, 2 or 3 clamp with an ellipsis. */
+    readonly descriptionLines?: ItemDescriptionLines
     /** The leading slot size shared by rows (default md, 40px); a row may override it. */
     readonly size?: ListBoxSize
     /** `none` makes an actionable (not selectable) list; rows then only fire `onAction`. */
@@ -107,6 +109,7 @@ export const ListBox = ({
     sections,
     inset,
     size = "md",
+    descriptionLines = "wrap",
     selectionMode = "single",
     selectedIds,
     defaultSelectedIds,
@@ -149,7 +152,7 @@ export const ListBox = ({
                     {renderLabel(item)}
                     <HeroDescription
                         data-grammar-item-description="true"
-                        data-grammar-description-lines={item.descriptionLines ?? presentation.descriptionLines}
+                        data-grammar-description-lines={item.descriptionLines ?? descriptionLines}
                         style={item.emphasis === "unread" ? { fontWeight: presentation.unreadWeight } : undefined}
                     >{item.description}</HeroDescription>
                 </div>

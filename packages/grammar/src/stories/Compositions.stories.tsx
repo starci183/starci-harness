@@ -64,6 +64,31 @@ export const PinnedActionBar: Story = {
   ),
 };
 
+export const PinnedActionBarSummary: Story = {
+  name: 'PinnedActionBar (summary with dismiss and commit)',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 0' }}>
+      <State label="Summary text, secondary dismiss and primary commit" direction="column">
+        <div style={{ maxWidth: 480, maxHeight: 220, overflow: 'auto' }}>
+          <Placeholder label="Scrolling page content" height={260} />
+          <G.PinnedActionBar
+            label="Unsaved changes"
+            visibility="always"
+            summary="3 lessons changed"
+            dismiss={<G.Button intent="dismiss" onPress={noop}>Discard</G.Button>}
+            commit={<G.Button intent="commit" onPress={noop}>Save changes</G.Button>}
+          />
+        </div>
+      </State>
+      <State label="Summary node with a commit only" direction="column">
+        <div style={{ maxWidth: 390 }}>
+          <G.PinnedActionBar label="Cart" visibility="always" summary={<G.Text>Total <strong>$48.00</strong></G.Text>} commit={<G.Button intent="commit" onPress={noop}>Check out</G.Button>} />
+        </div>
+      </State>
+    </div>
+  ),
+};
+
 export const PageContainer: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 0' }}>

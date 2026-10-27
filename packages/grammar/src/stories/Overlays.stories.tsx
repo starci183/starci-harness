@@ -392,6 +392,24 @@ export const Popover: Story = {
   ),
 };
 
+export const DisabledButtonReason: Story = {
+  name: 'Tooltip (disabled Button with a reason)',
+  render: () => (
+    <Matrix>
+      <State label="disabledReason: hover or focus the wrapper for the words; they are also its accessible description">
+        <div style={{ paddingTop: '2.5rem' }}>
+          <G.Button intent="commit" isDisabled disabledReason="Add a title before publishing." onPress={noop}>Publish</G.Button>
+        </div>
+      </State>
+      <State label="Full width">
+        <div style={{ paddingTop: '2.5rem', width: '16rem' }}>
+          <G.Button intent="commit" width="fill" isDisabled disabledReason="Pick a plan first." onPress={noop}>Continue</G.Button>
+        </div>
+      </State>
+    </Matrix>
+  ),
+};
+
 export const Tooltip: Story = {
   render: () => (
     <Matrix>
