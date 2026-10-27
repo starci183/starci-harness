@@ -4,18 +4,18 @@ import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { noEnvOutsideConfig, noHardcodedEndpointFallback } from "./env-owner.ts"
-import { at, fixtureHfs, LITE_FE_DECLARATION } from "../fixtures/typed/tester.ts"
+import { at, fixtureHfs, LITE_FE_DECLARATION, canonTester } from "../fixtures/typed/tester.ts"
 
 const CONFIG = at("apps/web/src/modules/config/env.ts")
 const COMPONENT = at("apps/web/src/components/blocks/Feed/index.tsx")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R49 ${edition} accepts config-owned reads and rejects reads outside the owner`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("no-env-outside-config", noEnvOutsideConfig, {
       valid: [
         { filename: CONFIG, code: "export const apiUrl = process.env.API_URL" },
@@ -29,10 +29,10 @@ for (const edition of ["lite", "full"]) {
 
   test(`R49 ${edition} accepts deployment values and rejects endpoint fallbacks`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("no-hardcoded-endpoint-fallback", noHardcodedEndpointFallback, {
       valid: [{ filename: CONFIG, code: "export const apiUrl = process.env.API_URL" }],
       invalid: [

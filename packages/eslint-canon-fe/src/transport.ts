@@ -19,18 +19,27 @@
  * standing in for a status.
  */
 
+import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import ts from "typescript"
 import { rules as callbackShapeRules } from "./callback-shape.ts"
+import { isNode } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
+import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 import { globalReferences, inSlot, isApiClient, isApiLayer, isApiRest, isOutcomeModule } from "./lib/scope.ts"
 import { typed } from "./lib/types.ts"
+
+/** Where a canonical transport library may be imported, and the test of that place. */
+interface Placement {
+  readonly where: string
+  readonly allowed: (context: AnyContext) => boolean
+}
 
 /**
  * The canonical transport libraries and the one place each may be imported (fe-stack graphql, rest and realtime): Apollo in
  * the API layer, axios in its REST calls, graphql-ws in the Apollo clients folder, socket.io-client in `hooks/socketio`. Matched on the package a specifier names.
  */
-const PLACED_TRANSPORTS = new Map([
+const PLACED_TRANSPORTS = new Map<string, Placement>([
   ["@apollo/client", { where: "the API layer (`modules/api`)", allowed: (context) => isApiLayer(context) }],
   ["axios", { where: "the REST calls of the API layer (`modules/api/rest/`)", allowed: (context) => isApiRest(context) }],
   ["socket.io-client", { where: "`hooks/socketio/`", allowed: (context) => inSlot(context, "fe.hooks.socketio") }],
@@ -50,7 +59,7 @@ const TRANSPORT_PACKAGES = new Set([
 const TRANSPORT_SCOPES = ["@apollo/", "@urql/", "apollo-"]
 
 /** True when a package name is an HTTP client library no canonical slot owns. */
-const isStrayTransport = (name) =>
+const isStrayTransport = (name: string): boolean =>
   !PLACED_TRANSPORTS.has(name) && (TRANSPORT_PACKAGES.has(name) || TRANSPORT_SCOPES.some((prefix) => name.startsWith(prefix)))
 
 /** The global objects that carry the same globals as the bare names. */
@@ -60,19 +69,27 @@ const GLOBAL_OBJECTS = new Set(["globalThis", "window", "self", "global"])
 const TRANSPORT_GLOBALS = new Set(["fetch", "Request", "EventSource", "WebSocket", "XMLHttpRequest", "navigator"])
 
 /** The static name of a member's property, else null. */
-const propertyName = (member) => {
+const propertyName = (member: TSESTree.MemberExpression): string | null => {
   if (!member.computed) return member.property.type === "Identifier" ? member.property.name : null
   return member.property.type === "Literal" && typeof member.property.value === "string" ? member.property.value : null
 }
 
 /** The call of a value used directly as a callee, else null. */
-const calledBy = (node) => (node.parent?.type === "CallExpression" && node.parent.callee === node ? node.parent : null)
+const calledBy = (node: Node): TSESTree.CallExpression | null => (node.parent?.type === "CallExpression" && node.parent.callee === node ? node.parent : null)
 
 /** True when a value is used directly as a constructor. */
-const constructedBy = (node) => node.parent?.type === "NewExpression" && node.parent.callee === node
+const constructedBy = (node: Node): boolean => node.parent?.type === "NewExpression" && node.parent.callee === node
+
+/** One use of a global transport; `call` is the call of `fetch` when it is called there. */
+interface TransportUse {
+  readonly node: Node
+  readonly kind: "fetch" | "channel" | "websocket" | "xhr"
+  readonly name: string
+  readonly call: TSESTree.CallExpression | null
+}
 
 /** A use of one global transport, or null when the value does not open a connection. */
-const transportUse = (node, name) => {
+const transportUse = (node: Node, name: unknown): TransportUse | null => {
   if (name === "fetch") return { node, kind: "fetch", name, call: calledBy(node) }
   // A reference may save the constructor for a later call. Native realtime has no FE owner, even in the API layer.
   if (name === "WebSocket") return { node, kind: "websocket", name, call: null }
@@ -85,22 +102,24 @@ const transportUse = (node, name) => {
 }
 
 /** References obtained by destructuring a global object; aliasing keeps the same transport ownership. */
-const destructuredTransports = (pattern) => {
-  const uses = []
+const destructuredTransports = (pattern: TSESTree.ObjectPattern): TransportUse[] => {
+  const uses: TransportUse[] = []
   for (const property of pattern.properties) {
     if (property.type !== "Property") continue
-    let name = null
+    let name: unknown = null
     if (!property.computed && property.key.type === "Identifier") name = property.key.name
     else if (property.key.type === "Literal") name = property.key.value
     if (name !== "fetch" && name !== "WebSocket") continue
     if (name === "fetch" && (property.computed || property.key.type !== "Identifier")) continue
-    uses.push(transportUse(property, name))
+    // `fetch` and `WebSocket` always name a use.
+    const use = transportUse(property, name)
+    if (use) uses.push(use)
   }
   return uses
 }
 
 /** References reached through a global object, including static element access and destructuring. */
-const globalObjectTransports = (id) => {
+const globalObjectTransports = (id: TSESTree.Identifier | TSESTree.JSXIdentifier): TransportUse[] => {
   const parent = id.parent
   if (parent?.type === "MemberExpression" && parent.object === id) {
     const use = transportUse(parent, propertyName(parent))
@@ -118,11 +137,11 @@ const globalObjectTransports = (id) => {
  * `const { fetch } = globalThis`), `new Request`, `new EventSource`, `navigator.sendBeacon`, `new XMLHttpRequest`,
  * and a native `WebSocket` constructor reached directly or saved under another name.
  *
- * @param {object} context - The ESLint rule context.
- * @returns {Array<{ node: object, kind: "fetch" | "channel" | "websocket" | "xhr", name: string, call: object | null }>} The uses; `call` is the call of `fetch` when it is called there.
+ * @param context - The ESLint rule context.
+ * @returns The uses; `call` is the call of `fetch` when it is called there.
  */
-const transportUses = (context) => {
-  const uses = []
+const transportUses = (context: AnyContext): TransportUse[] => {
+  const uses: TransportUse[] = []
   for (const id of globalReferences(context, new Set([...TRANSPORT_GLOBALS, ...GLOBAL_OBJECTS]))) {
     // `typeof fetch` names the type of the function; it does not call it.
     if (id.parent?.type === "TSTypeQuery") continue
@@ -146,7 +165,7 @@ const transportUses = (context) => {
  * `socket.io-client` only by `hooks/socketio/`. Native `WebSocket` is refused everywhere, including the API layer.
  * Every other file reaches the back end through an SWR hook over an operation.
  */
-export const fetchOnlyInApiClient = {
+export const fetchOnlyInApiClient = defineRule({
   meta: {
     type: "problem",
     docs: { description: "`fetch` (and `Request`, `EventSource`, `sendBeacon`) lives in the API layer (`modules/api`); native WebSocket is refused; Apollo, axios and socket.io-client are imported only in their homes; no other HTTP library exists." },
@@ -166,7 +185,7 @@ export const fetchOnlyInApiClient = {
   },
   create(context) {
     const layer = isApiLayer(context)
-    const library = (node, source) => {
+    const library = (node: Node, source: unknown): void => {
       const name = packageNameOf(source)
       if (name === null || forbiddingConcern(source)) return
       const placed = PLACED_TRANSPORTS.get(name)
@@ -198,17 +217,18 @@ export const fetchOnlyInApiClient = {
       },
       CallExpression(node) {
         // `require("axios")` where `require` is the CommonJS global.
-        if (node.callee.type !== "Identifier" || node.callee.name !== "require" || node.arguments[0]?.type !== "Literal") return
-        if (globalReferences(context, new Set(["require"])).includes(node.callee)) library(node, node.arguments[0].value)
+        const [first] = node.arguments
+        if (node.callee.type !== "Identifier" || node.callee.name !== "require" || first?.type !== "Literal") return
+        if (globalReferences(context, new Set(["require"])).includes(node.callee)) library(node, first.value)
       },
     }
   },
-}
+})
 
 // -- FE-TRANSPORT-2 --------------------------------------------------------------------------------
 
 /** Every `fetch` of the API layer (a custom fetch handed to the Apollo http link, a raw call) carries an abort signal, so a hung backend cannot hang a reader. */
-export const clientFetchHasSignal = {
+export const clientFetchHasSignal = defineRule({
   meta: {
     type: "problem",
     docs: { description: "Every `fetch` in the API layer (`modules/api`) passes an AbortSignal (timeout or caller)." },
@@ -242,18 +262,18 @@ export const clientFetchHasSignal = {
       },
     }
   },
-}
+})
 
 /**
  * True for a file of the API layer, except the generated wire types (`graphql/__generated__/`: types generated from the be
  * contract snapshots are data, not code the wire law governs).
  */
-const isTransportFile = (context) => isApiLayer(context) && !hfsOf(context).relative(context.filename || context.getFilename()).split("/").includes("__generated__")
+const isTransportFile = (context: AnyContext): boolean => isApiLayer(context) && !hfsOf(context).relative(context.filename || context.getFilename()).split("/").includes("__generated__")
 
 // -- FE-TRANSPORT-3 --------------------------------------------------------------------------------
 
 /** No module-level mutable state in the API layer: a token or locale in a `let` leaks across requests. */
-export const noSharedTransportState = {
+export const noSharedTransportState = defineRule({
   meta: {
     type: "problem",
     docs: { description: "The API layer (`modules/api/**`) holds no module-level `let`/`var`." },
@@ -265,8 +285,8 @@ export const noSharedTransportState = {
   },
   create(context) {
     if (!isTransportFile(context)) return {}
-    const check = (node) => {
-      const declaration = node.type === "VariableDeclaration" ? node : node.declaration
+    const check = (node: Node): void => {
+      const declaration = node.type === "VariableDeclaration" ? node : node.type === "ExportNamedDeclaration" ? node.declaration : undefined
       if (!declaration || declaration.type !== "VariableDeclaration" || declaration.kind === "const") return
       context.report({ node: declaration, messageId: "shared", data: { kind: declaration.kind } })
     }
@@ -275,12 +295,12 @@ export const noSharedTransportState = {
       "Program > ExportNamedDeclaration": check,
     }
   },
-}
+})
 
 // -- FE-TRANSPORT-4 --------------------------------------------------------------------------------
 
 /** Removes the wrappers that do not change what an expression is. */
-const unwrap = (node) => {
+const unwrap = (node: Node | null | undefined): Node | null | undefined => {
   let current = node
   while (
     current &&
@@ -292,8 +312,8 @@ const unwrap = (node) => {
 }
 
 /** The variable a name binds to, walking up from the scope of a node. */
-const variableOf = (context, identifier) => {
-  let scope = (context.sourceCode ?? context.getSourceCode()).getScope(identifier)
+const variableOf = (context: AnyContext, identifier: TSESTree.Identifier): TSESLint.Scope.Variable | null => {
+  let scope: TSESLint.Scope.Scope | null = (context.sourceCode ?? context.getSourceCode()).getScope(identifier)
   while (scope) {
     const variable = scope.set.get(identifier.name)
     if (variable) return variable
@@ -303,13 +323,14 @@ const variableOf = (context, identifier) => {
 }
 
 /** True when the type of an expression is a fetch `Response`: it has `ok`, `status` and `headers`. */
-const isResponseLike = (context, node) => {
+const isResponseLike = (context: AnyContext, node: Node | null | undefined): boolean => {
   const { checker, toTs } = typed(context)
+  if (!node) return false
   const tsNode = toTs(node)
   if (!tsNode) return false
   const type = checker.getTypeAtLocation(tsNode)
-  const parts = type.isUnion?.() ? type.types : [type]
-  return parts.some((part) => ["ok", "status", "headers"].every((name) => part.getProperty?.(name)))
+  const parts = type.isUnion() ? type.types : [type]
+  return parts.some((part) => ["ok", "status", "headers"].every((name) => part.getProperty(name)))
 }
 
 /**
@@ -321,31 +342,38 @@ const isResponseLike = (context, node) => {
  * A parameter stands for the response status when its function is called in this file, and every call passes a response status in
  * that position: `const failureForResponse = (status: number) => ...` called as `failureForResponse(response.status)`.
  */
-const functionBinding = (fn) => {
+const functionBinding = (fn: Node): Node | null => {
   if (fn.type === "FunctionDeclaration") return fn.id
   if (fn.parent?.type === "VariableDeclarator" && fn.parent.init === fn) return fn.parent.id
   return null
 }
 
-const isStatusParameter = (context, definition, depth) => {
+/** True for a call whose callee is the identifier `name`. */
+const isCallOf = (node: Node | undefined, name: string): node is TSESTree.CallExpression =>
+  node?.type === "CallExpression" && node.callee.type === "Identifier" && node.callee.name === name
+
+const isStatusParameter = (context: AnyContext, definition: TSESLint.Scope.Definitions.ParameterDefinition, depth: number): boolean => {
   const fn = definition.node
-  const index = fn.params?.findIndex((param) => param === definition.name || (param.type === "AssignmentPattern" && param.left === definition.name))
-  if (index === undefined || index < 0) return false
+  const index = fn.params.findIndex((param) => param === definition.name || (param.type === "AssignmentPattern" && param.left === definition.name))
+  if (index < 0) return false
   const binding = functionBinding(fn)
   if (!binding || binding.type !== "Identifier") return false
   const variable = variableOf(context, binding)
-  const calls = (variable?.references ?? []).map((reference) => reference.identifier.parent).filter((parent) => parent?.type === "CallExpression" && parent.callee.type === "Identifier" && parent.callee.name === binding.name)
-  return calls.length > 0 && calls.every((call) => call.arguments[index] !== undefined && isResponseStatus(context, call.arguments[index], depth + 1))
+  const calls = (variable?.references ?? []).map((reference) => reference.identifier.parent).filter((parent) => isCallOf(parent, binding.name))
+  return calls.length > 0 && calls.every((call) => {
+    const argument = call.arguments[index]
+    return argument !== undefined && isResponseStatus(context, argument, depth + 1)
+  })
 }
 
 /** The static name or value of an object property key. */
-const keyValue = (key) => {
+const keyValue = (key: Node | undefined): unknown => {
   if (key?.type === "Identifier") return key.name
   if (key?.type === "Literal") return key.value
   return null
 }
 
-const isResponseStatus = (context, node, depth = 0) => {
+const isResponseStatus = (context: AnyContext, node: Node, depth = 0): boolean => {
   const expression = unwrap(node)
   if (!expression || depth > 4) return false
   if (expression.type === "MemberExpression") return propertyName(expression) === "status" && isResponseLike(context, unwrap(expression.object))
@@ -357,19 +385,19 @@ const isResponseStatus = (context, node, depth = 0) => {
   if (declarator.id === definition.name) return declarator.init ? isResponseStatus(context, declarator.init, depth + 1) : false
   if (declarator.id.type !== "ObjectPattern" || !declarator.init) return false
   const bound = declarator.id.properties.find(
-    (property) => property.type === "Property" && (property.value === definition.name || (property.value.type === "AssignmentPattern" && property.value.left === definition.name)),
+    (property): property is TSESTree.Property => property.type === "Property" && (property.value === definition.name || (property.value.type === "AssignmentPattern" && property.value.left === definition.name)),
   )
   const keyName = keyValue(bound?.key)
   return keyName === "status" && isResponseLike(context, unwrap(declarator.init.type === "AwaitExpression" ? declarator.init.argument : declarator.init))
 }
 
 /** The numbers a literal list stands for (`[401, 403]`, `new Set([401, 403])`, or a const bound to one), else null. */
-const numbersOf = (context, node, depth = 0) => {
+const numbersOf = (context: AnyContext, node: Node | null | undefined, depth = 0): Set<number> | null => {
   const expression = unwrap(node)
   if (!expression || depth > 3) return null
   if (expression.type === "ArrayExpression") {
     const values = expression.elements.map((element) => (element && element.type === "Literal" && typeof element.value === "number" ? element.value : null))
-    return values.includes(null) ? null : new Set(values)
+    return values.every((value): value is number => value !== null) ? new Set(values) : null
   }
   if (expression.type === "NewExpression" && expression.callee.type === "Identifier" && expression.callee.name === "Set" && expression.arguments.length === 1) {
     return numbersOf(context, expression.arguments[0], depth + 1)
@@ -385,22 +413,23 @@ const numbersOf = (context, node, depth = 0) => {
  * The status codes a test is true for, when it is a plain status comparison: `status === 401`, `a || b` of such, or a literal list
  * containing the status (`[401, 403].includes(status)`, `new Set([401, 403]).has(status)`). Null for anything else.
  */
-const comparedCodes = (context, expression) => {
-  for (const [side, other] of [[expression.left, expression.right], [expression.right, expression.left]]) {
+const comparedCodes = (context: AnyContext, expression: TSESTree.BinaryExpression): Set<number> | null => {
+  for (const [side, other] of [[expression.left, expression.right], [expression.right, expression.left]] as const) {
     const literal = unwrap(other)
     if (literal?.type === "Literal" && typeof literal.value === "number" && isResponseStatus(context, side)) return new Set([literal.value])
   }
   return null
 }
 
-const includedCodes = (context, expression) => {
-  if (expression.callee.type !== "MemberExpression" || expression.arguments.length !== 1) return null
+const includedCodes = (context: AnyContext, expression: TSESTree.CallExpression): Set<number> | null => {
+  const [argument] = expression.arguments
+  if (expression.callee.type !== "MemberExpression" || expression.arguments.length !== 1 || argument === undefined) return null
   const method = propertyName(expression.callee)
-  if ((method === "includes" || method === "has") && isResponseStatus(context, expression.arguments[0])) return numbersOf(context, expression.callee.object)
+  if ((method === "includes" || method === "has") && isResponseStatus(context, argument)) return numbersOf(context, expression.callee.object)
   return null
 }
 
-const codesOf = (context, test) => {
+const codesOf = (context: AnyContext, test: Node | null | undefined): Set<number> | null => {
   const expression = unwrap(test)
   if (!expression) return null
   if (expression.type === "LogicalExpression" && expression.operator === "||") {
@@ -416,25 +445,28 @@ const codesOf = (context, test) => {
 }
 
 /** A single node that spells the refused kind in an outcome property or constructor call. */
-const namesRefused = (node) => {
+const namesRefused = (node: Node): boolean => {
   if (node.type === "Property" && !node.computed) {
     const value = unwrap(node.value)
     return keyValue(node.key) === "kind" && value?.type === "Literal" && value.value === "refused"
   }
-  return node.type === "CallExpression" && node.arguments[0]?.type === "Literal" && node.arguments[0].value === "refused"
+  if (node.type !== "CallExpression") return false
+  const [first] = node.arguments
+  return first?.type === "Literal" && first.value === "refused"
 }
 
 /** True when a subtree builds an outcome of kind `"refused"`: an object whose `kind` is that literal, or a call whose first argument is it. */
-const buildsRefused = (node) => {
+const buildsRefused = (node: Node): boolean => {
   let found = false
-  const visit = (current) => {
-    if (found || !current || typeof current.type !== "string") return
+  const visit = (current: unknown): void => {
+    if (found || !isNode(current)) return
     // A constructor of the Outcome vocabulary named by its kind: `failed("refused", { ... })`.
     if (namesRefused(current)) found = true
-    for (const [name, child] of Object.entries(current)) {
+    const entries: [string, unknown][] = Object.entries(current)
+    for (const [name, child] of entries) {
       if (name === "parent") continue
-      if (Array.isArray(child)) child.forEach(visit)
-      else if (typeof child?.type === "string") visit(child)
+      if (Array.isArray(child)) child.forEach((item: unknown) => visit(item))
+      else if (isNode(child)) visit(child)
     }
   }
   visit(node)
@@ -451,7 +483,7 @@ const buildsRefused = (node) => {
  * literals lying anywhere in the file do not pass. A mapping delegated to a function in another file is not visible here and does
  * not pass either: the client is the one file that owns the status meaning.
  */
-export const clientMapsAuthToRefused = {
+export const clientMapsAuthToRefused = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A file of the Apollo clients folder that calls `fetch` itself branches on the response status 401 and 403 and builds a `refused` outcome there." },
@@ -463,8 +495,8 @@ export const clientMapsAuthToRefused = {
   },
   create(context) {
     if (!isApiClient(context)) return {}
-    const covered = new Set()
-    const cover = (test, consequent) => {
+    const covered = new Set<number>()
+    const cover = (test: Node, consequent: Node): void => {
       const codes = codesOf(context, test)
       if (codes && buildsRefused(consequent)) codes.forEach((code) => covered.add(code))
     }
@@ -473,7 +505,7 @@ export const clientMapsAuthToRefused = {
       ConditionalExpression: (node) => cover(node.test, node.consequent),
       SwitchStatement(node) {
         if (!isResponseStatus(context, node.discriminant)) return
-        let pending = new Set()
+        let pending = new Set<number>()
         for (const entry of node.cases) {
           const label = unwrap(entry.test)
           if (label?.type === "Literal" && typeof label.value === "number") pending.add(label.value)
@@ -488,18 +520,18 @@ export const clientMapsAuthToRefused = {
       },
     }
   },
-}
+})
 
 // -- FE-STATUS-1 -----------------------------------------------------------------------------------
 
 /** The object of `x.ok`, else null. */
-const okSubject = (node) => {
+const okSubject = (node: Node | null | undefined): TSESTree.Expression | null => {
   if (!node || node.type !== "MemberExpression" || node.computed || node.property.name !== "ok") return null
   return node.object
 }
 
 /** True when a value carries nothing: `null`, `undefined`, `void 0`, nothing, `[]`, `{}`, `false`. */
-const isEmptyValue = (node) => {
+const isEmptyValue = (node: Node | null | undefined): boolean => {
   if (!node) return true
   if (node.type === "Literal") return node.value === null || node.value === false
   if (node.type === "Identifier") return node.name === "undefined"
@@ -515,7 +547,7 @@ const isEmptyValue = (node) => {
  * `!res.ok`, `res.ok === false`, `res.ok !== true` and, since a status compare is the same collapse
  * spelled with a number, `res.status !== 200`, `res.status >= 400` or `res.status === 404`.
  */
-const booleanFailureSubject = (side, other, operator) => {
+const booleanFailureSubject = (side: Node, other: Node, operator: string): TSESTree.Expression | null => {
   const subject = okSubject(side)
   if (!subject || other.type !== "Literal") return null
   if ((operator === "===" || operator === "==") && other.value === false) return subject
@@ -523,18 +555,18 @@ const booleanFailureSubject = (side, other, operator) => {
   return null
 }
 
-const statusFailureSubject = (side, other) => {
+const statusFailureSubject = (side: Node, other: Node): TSESTree.Expression | null => {
   const isStatus = side.type === "MemberExpression" && !side.computed && side.property.name === "status"
   return isStatus && other.type === "Literal" && typeof other.value === "number" ? side.object : null
 }
 
-const failureSubject = (test) => {
+const failureSubject = (test: Node): TSESTree.Expression | null => {
   if (test.type === "UnaryExpression" && test.operator === "!") return okSubject(test.argument)
   if (test.type !== "BinaryExpression") return null
   for (const [side, other] of [
     [test.left, test.right],
     [test.right, test.left],
-  ]) {
+  ] as const) {
     const subject = booleanFailureSubject(side, other, test.operator)
     if (subject) return subject
     if (side === test.left) {
@@ -546,14 +578,14 @@ const failureSubject = (test) => {
 }
 
 /** Statements of a branch body. */
-const bodyStatements = (node) => (node.type === "BlockStatement" ? node.body : [node])
+const bodyStatements = (node: TSESTree.Statement): TSESTree.Statement[] => (node.type === "BlockStatement" ? node.body : [node])
 
 /** True when a subtree mentions a status, an Outcome reason or kind, or the tested value itself, so it can tell the failures apart. */
-const inspectsResponse = (text, subjectName) =>
+const inspectsResponse = (text: string, subjectName: string | null): boolean =>
   /\bstatus\b|\.(?:reason|kind)\b/.test(text) || (subjectName !== null && new RegExp(String.raw`\b${subjectName}\b`).test(text))
 
 /** A failure (a non-ok HTTP response or a failed `Outcome`) is not one branch, and never `null`: its reason survives to the screen. */
-export const noFailureCollapse = {
+export const noFailureCollapse = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A failure, a non-ok HTTP response or a failed `Outcome`, is not folded into one branch or into an empty value; its reason is read and kept." },
@@ -574,7 +606,7 @@ export const noFailureCollapse = {
         if (!subject) return
         const subjectName = subject.type === "Identifier" ? subject.name : null
         const statements = bodyStatements(node.consequent)
-        const returns = statements.filter((statement) => statement.type === "ReturnStatement")
+        const returns = statements.filter((statement): statement is TSESTree.ReturnStatement => statement.type === "ReturnStatement")
         if (returns.some((statement) => isEmptyValue(statement.argument))) {
           context.report({ node, messageId: "empty" })
           return
@@ -601,15 +633,19 @@ export const noFailureCollapse = {
       },
     }
   },
-}
+})
 
 // -- FE-WIRE-1 -------------------------------------------------------------------------------------
 
+/** The operand under an `await` or a non-null assertion. */
+const awaitedOperand = (node: TSESTree.AwaitExpression | TSESTree.TSNonNullExpression): Node =>
+  node.type === "AwaitExpression" ? node.argument : node.expression
+
 /** `x.json()`, possibly awaited. */
-const isJsonRead = (node) => {
+const isJsonRead = (node: Node | null | undefined): boolean => {
   let current = node
   while (current && (current.type === "AwaitExpression" || current.type === "TSNonNullExpression")) {
-    current = current.argument || current.expression
+    current = awaitedOperand(current)
   }
   return Boolean(
     current &&
@@ -624,15 +660,15 @@ const isJsonRead = (node) => {
 const GRAPHQL_TEXT = /^\s*(?:query|mutation|subscription|fragment)\b[^{]*\{/
 
 /** The leftmost identifier of a type name: `Course` in `Course`, `Gql` in `Gql.CourseQuery`. */
-const typeRoot = (name) => (name.type === "TSQualifiedName" ? typeRoot(name.left) : name)
+const typeRoot = (name: TSESTree.EntityName): TSESTree.Identifier | TSESTree.ThisExpression => (name.type === "TSQualifiedName" ? typeRoot(name.left) : name)
 
 /** The value an identifier is initialised with when it is a `const` of this file's scope chain, else null. */
-const constInit = (scope, identifier) => {
-  for (let current = scope; current; current = current.upper) {
+const constInit = (scope: TSESLint.Scope.Scope, identifier: TSESTree.Identifier): TSESTree.Expression | null => {
+  for (let current: TSESLint.Scope.Scope | null = scope; current; current = current.upper) {
     const variable = current.set.get(identifier.name)
     if (!variable) continue
     const definition = variable.defs[0]
-    return definition?.type === "Variable" && definition.parent?.kind === "const" && definition.node.id.type === "Identifier" ? definition.node.init : null
+    return definition?.type === "Variable" && definition.parent.kind === "const" && definition.node.id.type === "Identifier" ? definition.node.init : null
   }
   return null
 }
@@ -641,7 +677,7 @@ const constInit = (scope, identifier) => {
  * Wire types are generated from the contract; nobody types the wire by hand, and a GraphQL document is written only in the API
  * layer (one file per operation, `modules/api/graphql/{queries,mutations}/`), where codegen reads it.
  */
-export const noHandTypedWire = {
+export const noHandTypedWire = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A transport response body is narrowed from `unknown` or typed by a generated wire type, never by a hand-written one." },
@@ -657,24 +693,24 @@ export const noHandTypedWire = {
     const source = context.sourceCode ?? context.getSourceCode()
     const documents = !isApiLayer(context)
     /** Local names of the type imports that resolve into a `__generated__/` directory. */
-    const generated = new Set()
+    const generated = new Set<string>()
     /** True when a type node is `unknown` or names a type imported from the generated wire module. */
-    const sanctioned = (type) => {
+    const sanctioned = (type: TSESTree.TypeNode): boolean => {
       if (type.type === "TSUnknownKeyword") return true
       if (type.type !== "TSTypeReference") return false
       const root = typeRoot(type.typeName)
       return root.type === "Identifier" && (root.name === "const" || generated.has(root.name))
     }
     /** Whether the value is a `.json()` read, directly or through a const initialised with one. */
-    const readsResponse = (node) => {
+    const readsResponse = (node: Node): boolean => {
       if (isJsonRead(node)) return true
-      let current = node
-      while (current && (current.type === "AwaitExpression" || current.type === "TSNonNullExpression")) current = current.argument || current.expression
-      if (current?.type !== "Identifier") return false
+      let current: Node = node
+      while (current.type === "AwaitExpression" || current.type === "TSNonNullExpression") current = awaitedOperand(current)
+      if (current.type !== "Identifier") return false
       const init = constInit(source.getScope(node), current)
       return Boolean(init) && isJsonRead(init)
     }
-    const castCheck = (node) => {
+    const castCheck = (node: TSESTree.TSAsExpression | TSESTree.TSTypeAssertion): void => {
       if (readsResponse(node.expression) && !sanctioned(node.typeAnnotation)) context.report({ node, messageId: "cast" })
     }
     return {
@@ -707,7 +743,7 @@ export const noHandTypedWire = {
       },
     }
   },
-}
+})
 
 // -- TRANSPORT-7 -----------------------------------------------------------------------------------
 
@@ -715,7 +751,7 @@ export const noHandTypedWire = {
 const OUTCOME_KINDS = ["ok", "refused", "invalid", "not-found", "unavailable"]
 
 /** A switch over an Outcome names every kind, so a failure never falls into the success branch or a blank one. */
-export const outcomeKindsExhaustive = {
+export const outcomeKindsExhaustive = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A `switch` over an Outcome's `kind` has a case for every kind." },
@@ -730,30 +766,45 @@ export const outcomeKindsExhaustive = {
       SwitchStatement(node) {
         const subject = node.discriminant
         if (subject.type !== "MemberExpression" || subject.computed || subject.property.type !== "Identifier" || subject.property.name !== "kind") return
-        const cases = new Set(node.cases.filter((entry) => entry.test && entry.test.type === "Literal").map((entry) => entry.test.value))
+        const cases = new Set<unknown>(node.cases.flatMap((entry) => (entry.test && entry.test.type === "Literal" ? [entry.test.value] : [])))
         if (!cases.has("ok")) return
         const missing = OUTCOME_KINDS.filter((kind) => !cases.has(kind))
         if (missing.length > 0) context.report({ node, messageId: "missing", data: { missing: missing.map((kind) => `\`${kind}\``).join(", ") } })
       },
     }
   },
-}
+})
 
 // -- FE-OUTCOME-1 ---------------------------------------------------------------------------------
 
 /** The `kind` values of an Outcome failure (HFS section 6.2, plus the session-accepted-but-denied `forbidden`): a `kind` union that carries one is a result union. */
-const RESULT_KINDS = new Set([...OUTCOME_KINDS, "forbidden"])
+const RESULT_KINDS = new Set<unknown>([...OUTCOME_KINDS, "forbidden"])
 
 const LITERAL_FLAGS = ts.TypeFlags.StringLiteral | ts.TypeFlags.BooleanLiteral
 
+/** The value a literal type pins: `true` / `false` for a boolean literal, the text of a string literal. */
+type LiteralValue = string | boolean
+
+/** The value of one literal-typed part: a boolean literal by its spelling, a string literal by its text. */
+const literalValue = (checker: ts.TypeChecker, part: ts.Type): LiteralValue | undefined => {
+  if ((part.flags & ts.TypeFlags.BooleanLiteral) !== 0) return checker.typeToString(part) === "true"
+  return part.isStringLiteral() ? part.value : undefined
+}
+
 /** The literal values of a property of an object type, or null when the property is missing or not literal-typed. */
-const literalsOf = (checker, type, name, location) => {
-  const property = type.getProperty?.(name)
+const literalsOf = (checker: ts.TypeChecker, type: ts.Type, name: string, location: ts.Node): (LiteralValue | undefined)[] | null => {
+  const property = type.getProperty(name)
   if (!property) return null
   const propertyType = checker.getTypeOfSymbolAtLocation(property, location)
-  const parts = propertyType.isUnion?.() ? propertyType.types : [propertyType]
+  const parts = propertyType.isUnion() ? propertyType.types : [propertyType]
   if (!parts.every((part) => (part.flags & LITERAL_FLAGS) !== 0)) return null
-  return parts.map((part) => (part.flags & ts.TypeFlags.BooleanLiteral ? part.intrinsicName === "true" : part.value))
+  return parts.map((part) => literalValue(checker, part))
+}
+
+/** The TypeScript declaration of a type alias; the parser maps one to the other. */
+const aliasDeclaration = (tsNode: ts.Node): ts.TypeAliasDeclaration => {
+  if (!ts.isTypeAliasDeclaration(tsNode)) throw new TypeError("a type alias mapped to no TypeScript type alias")
+  return tsNode
 }
 
 /**
@@ -769,7 +820,7 @@ const literalsOf = (checker, type, name, location) => {
  * vocabulary and passes. An alias that only composes the one union (`type Read = Outcome<Course>`, `Extract<Outcome<T>, ...>`) is not
  * a union type node and passes; `Outcome<T> | { ok: false; kind: "conflict" }` adds an arm to the one union and is refused.
  */
-export const oneOutcomeUnion = {
+export const oneOutcomeUnion = defineRule({
   meta: {
     type: "problem",
     docs: { description: "A result union (`success` / `ok` / `kind` discriminant) is declared only in the outcome slot (`modules/api/graphql/types.ts`); elsewhere the code composes `GraphQLResponse<T>`." },
@@ -784,18 +835,18 @@ export const oneOutcomeUnion = {
     const { checker, toTs } = typed(context)
     return {
       TSTypeAliasDeclaration(node) {
-        let annotation = node.typeAnnotation
-        while (annotation.type === "TSParenthesizedType") annotation = annotation.typeAnnotation
-        if (annotation.type !== "TSUnionType") return
-        const tsNode = toTs(node)
-        if (!tsNode) return
+        // typescript-eslint 6 and later produce no TSParenthesizedType node: a parenthesised type is its inner node.
+        if (node.typeAnnotation.type !== "TSUnionType") return
+        const mapped = toTs(node)
+        if (!mapped) return
+        const tsNode = aliasDeclaration(mapped)
         const type = checker.getTypeAtLocation(tsNode.name)
-        if (!type.isUnion?.() || type.types.length < 2) return
+        if (!type.isUnion() || type.types.length < 2) return
         // The members must all be object types (an object, or an intersection of them).
         if (!type.types.every((member) => (member.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0)) return
         for (const discriminant of ["success", "ok", "kind"]) {
           const values = type.types.map((member) => literalsOf(checker, member, discriminant, tsNode))
-          if (values.some((entry) => entry === null)) continue
+          if (!values.every((entry): entry is (LiteralValue | undefined)[] => entry !== null)) continue
           const flat = values.flat()
           // `success` / `ok` is a discriminant only when each member pins it to one value; `{ ok: boolean }` on every member is a flag, not a tag.
           const isResult =
@@ -810,10 +861,10 @@ export const oneOutcomeUnion = {
       },
     }
   },
-}
+})
 
 /** The rules this law contributes to the plugin. */
-export const rules = {
+export const rules: Rules = {
   "fetch-only-in-api-client": fetchOnlyInApiClient,
   "client-fetch-has-signal": clientFetchHasSignal,
   "no-shared-transport-state": noSharedTransportState,
@@ -827,4 +878,4 @@ export const rules = {
 }
 
 /** Every rule is an error: a second transport or a status collapse is the defect, not a style. */
-export const recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))
+export const recommended: Recommended = Object.fromEntries(Object.keys(rules).map((name) => [`starci-fe/${name}`, "error"]))

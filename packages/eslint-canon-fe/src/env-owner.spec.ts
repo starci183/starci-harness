@@ -44,7 +44,7 @@ test("FE-ENV-1: only modules/config reads the environment", () => {
   })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`FE-ENV-1: computed, destructured and aliased environment reads in ${edition}`, () => {
   assert.doesNotThrow(() => {
     const settings = { starci: { hfs: fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" }) } }

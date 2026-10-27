@@ -8,7 +8,7 @@ import { isAbsolute, join, relative, resolve } from "node:path"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { at, fixtureHfs, LITE_FE_DECLARATION } from "../fixtures/typed/tester.ts"
+import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION, type CanonRuleTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
 import { operationsOnlyInSwrHooks, rules, subscriptionRefetchesSnapshot, swrOnlyInFamily } from "./swr-family.ts"
@@ -19,10 +19,10 @@ const WRAPPER = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryOrdersSwr
 const SUBSCRIPTION = at("apps/web/src/hooks/swr/api/sse/subscriptions/useSubscribeOrderStatusSwr.ts")
 const OP = "@/modules/api/graphql/queries/query-orders"
 const STREAM_OP = "@/modules/api/sse/order-status/stream-order-status"
-const testerFor = (lite) => new RuleTester({
+const testerFor = (lite: boolean): CanonRuleTester => canonTester(new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
   settings: { starci: { hfs: fixtureHfs(lite ? LITE_FE_DECLARATION : undefined, { lite }) } },
-})
+}))
 
 for (const lite of [false, true]) {
   const edition = lite ? "lite" : "full"
@@ -109,10 +109,10 @@ test("R285: bare workspace API imports use declared package identity", (t) => {
   const hfs = hfsFromDeclaration(appDeclaration("fe", {
     apps: [{ name: "web", kind: "next" }], optionalSlots: ["repo.packages", "fe.package.api"],
   }), root)
-  const tester = new RuleTester({
+  const tester = canonTester(new RuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs } },
-  })
+  }))
   tester.run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
     valid: [{
       filename: join(root, "apps/web/src/hooks/swr/api/graphql/queries/useQueryOrdersSwr.ts"),
@@ -126,7 +126,7 @@ test("R285: bare workspace API imports use declared package identity", (t) => {
 })
 
 const GRAPHQL_STREAM_OP = "@/modules/api/graphql/subscriptions/subscription-order-status"
-const subscribeHook = (operation, name, call) =>
+const subscribeHook = (operation: string, name: string, call: string): string =>
   `import useSWRSubscription from "swr/subscription"; import { ${name} } from "${operation}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", (key, { next }) => { ${call}; return () => undefined })`
 
 for (const lite of [false, true]) {
@@ -148,7 +148,7 @@ for (const lite of [false, true]) {
   })
 }
 
-const ns = (call) =>
+const ns = (call: string): string =>
   `import useSWRSubscription from "swr/subscription"; import * as ops from "${STREAM_OP}"; export const useSubscribeOrderStatusSwr = () => useSWRSubscription("order", (key, { next }) => { ${call}; return () => undefined })`
 const READER = "@/modules/api/sse/clients/read-event-stream"
 
@@ -206,10 +206,10 @@ test("R285: values generated from the contract's input bounds are data, not oper
   writeFileSync(join(api, "graphql", "__generated__", "input-bounds.ts"), "export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\n")
   writeFileSync(join(api, "graphql", "queries", "query-orders.ts"), "export const queryOrders = {}\n")
   const hfs = hfsFromDeclaration(appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] }), root)
-  const tester = new RuleTester({
+  const tester = canonTester(new RuleTester({
     languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
     settings: { starci: { hfs } },
-  })
+  }))
   const form = join(root, "apps/web/src/hooks/rhf/useOrderForm.ts")
   assert.doesNotThrow(() => tester.run("operations-only-in-swr-hooks", operationsOnlyInSwrHooks, {
     valid: [

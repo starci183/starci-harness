@@ -1,10 +1,19 @@
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
+
+/** The project rule published under `name`; a missing one fails the spec. */
+const projectRule = (name: string): Rule => {
+  const found = rules[name]
+  if (!found) throw new Error(`project-graph publishes no rule ${name}`)
+  return found
+}
 
 // proves: FE_COMPONENT_WORLD_OWNERSHIP@lite FE_COMPONENT_WORLD_OWNERSHIP@full
 // proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R92 ${edition} rejects global fetch through a UI hook barrel and accepts intrinsic UI and data owners`, t => {
     const branch = "apps/web/src/components/branches/Remote/index.tsx"
     const intrinsic = "apps/web/src/components/branches/Local/index.tsx"
@@ -21,8 +30,8 @@ for (const edition of ["lite", "full"]) {
     }
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(fixture.cleanup)
-    fixture.tester.run("component-purity", rules["component-purity"], {
-      valid: [intrinsic, block, "apps/web/src/hooks/data/useData.ts"].map(file => ({ filename: fixture.at(file), code: files[file] })),
+    canonTester(fixture.tester).run("component-purity", projectRule("component-purity"), {
+      valid: ([intrinsic, block, "apps/web/src/hooks/data/useData.ts"] as const).map(file => ({ filename: fixture.at(file), code: files[file] })),
       invalid: [{ filename: fixture.at(branch), code: files[branch], errors: [{ message: /FE_COMPONENT_WORLD_OWNERSHIP/ }, { message: /FE_WORLD_OWNER_RENDER_BOUNDARY/ }] }],
     })
   })

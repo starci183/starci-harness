@@ -10,7 +10,22 @@ import { clientFetchHasSignal, fetchOnlyInApiClient, noSharedTransportState } fr
 import { noDataFetchInEffect } from "./hygiene.ts"
 import { rules as localeRules } from "./served-locale.ts"
 import { rules as graphRules } from "./project-graph.ts"
-import { at, fixtureHfs, LITE_FE_DECLARATION, typedTester } from "../fixtures/typed/tester.ts"
+import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION, typedTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
+
+/** The project rule published under `name`; a missing one fails the spec. */
+const projectRule = (name: string): Rule => {
+  const found = graphRules[name]
+  if (!found) throw new Error(`project-graph publishes no rule ${name}`)
+  return found
+}
+
+/** The served-locale rule published under `name`; a missing one fails the spec. */
+const localeRule = (name: string): Rule => {
+  const found = localeRules[name]
+  if (!found) throw new Error(`served-locale publishes no rule ${name}`)
+  return found
+}
 
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
 const CHAIN = at("apps/web/src/modules/api/graphql/clients/create-apollo-client.ts")
@@ -21,13 +36,13 @@ const GRAPH_CLIENT = "apps/web/src/modules/api/graphql/clients/index.ts"
 const GRAPH_HOOK = "apps/web/src/hooks/course/useCourse.ts"
 const GRAPH_BAD = "apps/web/src/hooks/course/useUnowned.ts"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R50 ${edition} accepts owned transport shapes and rejects unowned requests, state or locale`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
       valid: [{ filename: CLIENT, code: "const response = await fetch(url, { signal })" }],
       invalid: [{ filename: HOOK, code: "const response = await fetch(url)", errors: [{ messageId: "outside" }] }],
@@ -40,11 +55,11 @@ for (const edition of ["lite", "full"]) {
       valid: [{ filename: CLIENT, code: "export const read = () => { let token = null; return token }" }],
       invalid: [{ filename: CLIENT, code: "let token = null", errors: [{ messageId: "shared" }] }],
     })
-    tester.run("api-client-attaches-the-locale", localeRules["api-client-attaches-the-locale"], {
+    tester.run("api-client-attaches-the-locale", localeRule("api-client-attaches-the-locale"), {
       valid: [{ filename: CHAIN, code: "export const chain = () => [createAttachLocaleLink({}), createHttpLink({})]" }],
       invalid: [{ filename: CHAIN, code: "export const chain = () => [createHttpLink({})]", errors: [{ messageId: "missing" }] }],
     })
-    tester.run("locale-header-belongs-to-the-link", localeRules["locale-header-belongs-to-the-link"], {
+    tester.run("locale-header-belongs-to-the-link", localeRule("locale-header-belongs-to-the-link"), {
       valid: [{ filename: LOCALE, code: 'const headers = { "Accept-Language": locale }' }],
       invalid: [{ filename: HOOK, code: 'const headers = { "Accept-Language": locale }', errors: [{ messageId: "elsewhere" }] }],
     })
@@ -67,7 +82,7 @@ for (const edition of ["lite", "full"]) {
     }
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(() => fixture.cleanup())
-    fixture.tester.run("transport-owner", graphRules["transport-owner"], {
+    canonTester(fixture.tester).run("transport-owner", projectRule("transport-owner"), {
       valid: [{ filename: fixture.at(GRAPH_HOOK), code: files[GRAPH_HOOK] }],
       invalid: [{ filename: fixture.at(GRAPH_BAD), code: files[GRAPH_BAD], errors: [{ messageId: "finding" }] }],
     })
@@ -91,7 +106,7 @@ for (const edition of ["lite", "full"]) {
     }
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(() => fixture.cleanup())
-    fixture.tester.run("transport-owner", graphRules["transport-owner"], {
+    canonTester(fixture.tester).run("transport-owner", projectRule("transport-owner"), {
       valid: [
         { filename: fixture.at(READER), code: files[READER] },
         { filename: fixture.at(OPERATION), code: files[OPERATION] },

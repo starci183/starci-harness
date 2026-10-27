@@ -21,7 +21,7 @@ import {
   outcomeKindsExhaustive,
   rules,
 } from "./transport.ts"
-import { LITE_FE_DECLARATION, at, fixtureHfs, slotTester, typedTester } from "../fixtures/typed/tester.ts"
+import { LITE_FE_DECLARATION, at, fixtureHfs, slotTester, typedTester, canonTester } from "../fixtures/typed/tester.ts"
 
 // Rules that read the slot of the file (fetch-only-in-api-client, ...) run under the fixture repository: two apps and the
 // shared packages, so `at("apps/web/...")` is an app file and `at("packages/shop-api/...")` the shared api package.
@@ -29,9 +29,9 @@ const slots = slotTester()
 const typed = typedTester()
 const typedLite = typedTester({ declaration: LITE_FE_DECLARATION, lite: true })
 
-const tester = new RuleTester({
+const tester = canonTester(new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
-})
+}))
 
 // The transport owner: the Apollo clients folder (fe.transport.client / fe.package.api.client).
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
@@ -149,10 +149,10 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
 
 // proves: FE_TRANSPORT_OWNER@lite, FE_TRANSPORT_OWNER@full
 test("FE_TRANSPORT_OWNER: native WebSocket is refused and socket.io-client belongs to hooks/socketio in lite and full", () => {
-  for (const edition of ["lite", "full"]) {
+  for (const edition of ["lite", "full"] as const) {
     const declaration = edition === "lite" ? LITE_FE_DECLARATION : undefined
     const settings = { starci: { hfs: fixtureHfs(declaration, { lite: edition === "lite" }) } }
-    const run = new RuleTester({ languageOptions: testerConfig(), settings })
+    const run = canonTester(new RuleTester({ languageOptions: testerConfig(), settings }))
     assert.doesNotThrow(() => run.run("fetch-only-in-api-client", fetchOnlyInApiClient, {
       valid: [
         { filename: SOCKETS, code: 'import { io } from "socket.io-client"; const socket = io(url)' },
@@ -245,7 +245,7 @@ test("FE-TRANSPORT-3: no module-level mutable state in the API layer", () => {
   }))
 })
 
-const REFUSED_BRANCH = (test) => `export const get = async (u: string) => {\n  const res = await fetch(u, { signal })\n  if (${test}) return { ok: false, kind: "refused" }\n  return { ok: true }\n}`
+const REFUSED_BRANCH = (test: string): string => `export const get = async (u: string) => {\n  const res = await fetch(u, { signal })\n  if (${test}) return { ok: false, kind: "refused" }\n  return { ok: true }\n}`
 
 test("FE-TRANSPORT-4: the client maps a 401 and a 403 status to refused", () => {
   assert.doesNotThrow(() => typed.run("client-maps-auth-to-refused", clientMapsAuthToRefused, {

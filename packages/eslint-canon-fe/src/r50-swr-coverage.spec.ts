@@ -5,6 +5,15 @@
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
+
+/** The project rule published under `name`; a missing one fails the spec. */
+const projectRule = (name: string): Rule => {
+  const found = rules[name]
+  if (!found) throw new Error(`project-graph publishes no rule ${name}`)
+  return found
+}
 
 const VALID_QUERY = "src/features/course/use-valid-query.ts"
 const INVALID_QUERY = "src/features/course/use-invalid-query.ts"
@@ -23,13 +32,13 @@ const lifecycle = {
   ],
 }
 
-const querySource = (key) => `import useSWR from "swr";
+const querySource = (key: string): string => `import useSWR from "swr";
 export const useQueryCourse = (params: { courseId?: string }, viewer: string) => {
   const query = useSWR(${key}, async () => null);
   return { query };
 };
 `
-const mutationSource = (key) => `import useSWRMutation from "swr/mutation";
+const mutationSource = (key: string): string => `import useSWRMutation from "swr/mutation";
 export const useMutateCourse = (params: { courseId?: string }) => {
   const { trigger: add } = useSWRMutation(${key}, async () => null);
   return { add };
@@ -63,11 +72,11 @@ const files = {
   [INVALID_MUTATION]: mutationSource('params.courseId === undefined ? null : { operation: "MUTATE_COURSE" }'),
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R50 swr-data-lifecycle valid and invalid query and mutation identities (${edition})`, (t) => {
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(() => fixture.cleanup())
-    fixture.tester.run("swr-data-lifecycle", rules["swr-data-lifecycle"], {
+    canonTester(fixture.tester).run("swr-data-lifecycle", projectRule("swr-data-lifecycle"), {
       valid: [
         { filename: fixture.at(VALID_QUERY), code: files[VALID_QUERY] },
         { filename: fixture.at(VALID_MUTATION), code: files[VALID_MUTATION] },

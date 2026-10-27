@@ -6,14 +6,14 @@ import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { clientMapsAuthToRefused, noFailureCollapse, oneOutcomeUnion, outcomeKindsExhaustive } from "./transport.ts"
-import { at, fixtureHfs, LITE_FE_DECLARATION, typedTester } from "../fixtures/typed/tester.ts"
+import { at, fixtureHfs, LITE_FE_DECLARATION, typedTester, canonTester } from "../fixtures/typed/tester.ts"
 
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
 const OUTCOME = at("apps/web/src/modules/api/graphql/types.ts")
 const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
 const RESULT = 'export type Result<T> = { success: true; data: T } | { success: false; error: string }'
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R51 ${edition} accepts auth status mapping and rejects missing refused branches`, () => {
     const tester = typedTester({ declaration: edition === "lite" ? LITE_FE_DECLARATION : undefined, lite: edition === "lite" })
     tester.run("client-maps-auth-to-refused", clientMapsAuthToRefused, {
@@ -39,10 +39,10 @@ for (const edition of ["lite", "full"]) {
 
   test(`R51 ${edition} accepts preserved reasons and rejects collapsed failures or missing outcome kinds`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
       settings: { starci: { hfs } },
-    })
+    }))
     tester.run("no-failure-collapse", noFailureCollapse, {
       valid: [{ filename: HOOK, code: "if (!result.ok) return messageFor(result.reason)" }],
       invalid: [{ filename: HOOK, code: "if (!result.ok) return null", errors: [{ messageId: "empty" }] }],
