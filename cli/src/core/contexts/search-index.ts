@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { z } from "zod"
 import { inOrder } from "../../harness/sequential.js"
+import { Refusal } from "../../shared/errors.js"
 import { CHUNKER_VERSION, SEARCH_SCOPES, readCorpus } from "./search-corpus.js"
 import type { Chunk, Corpus, SearchScope } from "./search-corpus.js"
 import { EMBED_MODELS, chosenModel, loadEmbedder, modelCache, packVectors, unpackVectors } from "./search-embed.js"
@@ -15,7 +16,8 @@ import type { Bm25 } from "./search-rank.js"
 export const INDEX_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "contexts-search.json")
 
 const chunkSchema = z.object({
-    id: z.string(),
+    anchor: z.string(),
+    aliases: z.array(z.string()).readonly(),
     citable: z.boolean(),
     path: z.string(),
     line: z.number(),
@@ -35,8 +37,9 @@ const embeddingSchema = z.object({
 })
 
 const indexSchema = z.object({
-    schema: z.literal("starci/contexts-search-index@1"),
+    schema: z.literal("starci/contexts-search-index@2"),
     corpusHash: z.string(),
+    fileHashes: z.record(z.string(), z.string()),
     chunker: z.number(),
     files: z.number(),
     chunks: z.array(chunkSchema),
@@ -88,7 +91,7 @@ const embedChunks = async (model: EmbedModel, chunks: readonly Chunk[], progress
 /** Builds the index of the corpus under `root`: chunks always, vectors when the chosen local model loads (else the note says why). */
 export const buildIndex = async (root: string, progress: (line: string) => void): Promise<SearchIndexFile> => {
     const corpus = readCorpus(root)
-    const base = { schema: "starci/contexts-search-index@1" as const, corpusHash: corpus.hash, chunker: CHUNKER_VERSION, files: corpus.files.length, chunks: [...corpus.chunks] }
+    const base = { schema: "starci/contexts-search-index@2" as const, corpusHash: corpus.hash, fileHashes: { ...corpus.fileHashes }, chunker: CHUNKER_VERSION, files: corpus.files.length, chunks: [...corpus.chunks] }
     const model = chosenModel()
     if (model === undefined) return { ...base, embedding: null, embeddingNote: "embeddings turned off (STARCI_SEARCH_MODEL=off)" }
     const embedded = await embedChunks(model, corpus.chunks, progress)
@@ -120,7 +123,9 @@ let loaded: LoadedIndex | undefined
 export const loadIndex = (file = INDEX_PATH): LoadedIndex | undefined => {
     if (loaded !== undefined) return loaded
     if (!existsSync(file)) return undefined
-    const parsed = indexSchema.parse(JSON.parse(readFileSync(file, "utf8")))
+    const read = indexSchema.safeParse(JSON.parse(readFileSync(file, "utf8")))
+    if (!read.success) throw new Refusal("SEARCH_INDEX_STALE", `${file} was built by another CLI version (${read.error.issues[0]?.message ?? "schema"}); run \`npm run build\` in cli/`)
+    const parsed = read.data
     loaded = {
         file: parsed,
         lexical: bm25(parsed.chunks),
@@ -129,15 +134,36 @@ export const loadIndex = (file = INDEX_PATH): LoadedIndex | undefined => {
     return loaded
 }
 
-/** Whether the index matches the corpus (and the chunker) it claims to cover. */
+// A stale verdict names this many changed files and counts the rest.
+const CHANGED_SHOWN = 8
+
+/** The files whose bytes differ between the index and the corpus: changed, added (in the tree only) and removed (in the index only). */
+export const changedFiles = (index: SearchIndexFile, corpus: Corpus): string[] => {
+    const paths = [...new Set([...Object.keys(index.fileHashes), ...corpus.files])].sort()
+    return paths.flatMap((path) => {
+        const built = index.fileHashes[path]
+        const now = corpus.fileHashes[path]
+        if (built === now) return []
+        if (built === undefined) return [`${path} (added)`]
+        return now === undefined ? [`${path} (removed)`] : [`${path} (changed)`]
+    })
+}
+
+/** Whether the index matches the corpus (and the chunker) it claims to cover; when stale, the files that differ. */
 export const staleness = (index: SearchIndexFile, corpus: Corpus): string | undefined => {
     if (index.chunker !== CHUNKER_VERSION) return `index built by chunker ${String(index.chunker)}, this CLI chunks with ${String(CHUNKER_VERSION)}`
-    return index.corpusHash === corpus.hash ? undefined : `index covers corpus ${index.corpusHash.slice(0, 12)}, the tree is ${corpus.hash.slice(0, 12)}`
+    if (index.corpusHash === corpus.hash) return undefined
+    const changed = changedFiles(index, corpus)
+    const more = changed.length > CHANGED_SHOWN ? ` and ${String(changed.length - CHANGED_SHOWN)} more` : ""
+    const named = changed.length === 0 ? "the file list or order differs" : `${changed.slice(0, CHANGED_SHOWN).join(", ")}${more}`
+    return `index covers corpus ${index.corpusHash.slice(0, 12)}, the tree is ${corpus.hash.slice(0, 12)}: ${named}`
 }
 
 /** One search hit. */
 export interface SearchHit {
-    readonly id: string
+    /** The anchor to cite, first: `contexts anchor <anchor>` resolves it. */
+    readonly anchor: string
+    readonly aliases: readonly string[]
     readonly citable: boolean
     readonly path: string
     readonly line: number

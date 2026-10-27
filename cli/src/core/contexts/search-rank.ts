@@ -4,13 +4,19 @@ const STOPWORDS = new Set(
     "a an and are as at be by can do does for from has have how i in is it its my of on or the that this to was what when where which who why with without".split(" "),
 )
 
+// A doubled final consonant left by a stripped ending (`logg` of logging, `runn` of running); l, s and z stay doubled.
+const DOUBLED = /([b-df-hj-km-np-rtv-y])\1$/
+
+/** Drops the doubled consonant an -ing or -ed ending leaves behind, so `logging` and `log` meet. */
+const undouble = (word: string): string => (DOUBLED.test(word) ? word.slice(0, -1) : word)
+
 /** A light English stemmer: plural and -ing/-ed endings only, so ids and code names stay recognisable. */
 const stem = (word: string): string => {
     if (/\d/.test(word) || word.length <= 3) return word
     if (word.endsWith("ies") && word.length > 4) return `${word.slice(0, -3)}y`
     if (word.endsWith("sses")) return word.slice(0, -2)
-    if (word.endsWith("ing") && word.length > 5) return word.slice(0, -3)
-    if (word.endsWith("ed") && word.length > 4) return word.slice(0, -2)
+    if (word.endsWith("ing") && word.length > 5) return undouble(word.slice(0, -3))
+    if (word.endsWith("ed") && word.length > 4) return undouble(word.slice(0, -2))
     if (word.endsWith("s") && !/(ss|us|is)$/.test(word)) return word.slice(0, -1)
     return word
 }
@@ -36,8 +42,40 @@ export const tokenize = (text: string): string[] => {
     return terms
 }
 
+/**
+ * The words the tree writes for a phrase a question uses: ids say `FE` for the front end, a clock answers "time", a missing
+ * list is an empty state, a status with no text is a glyph or dot. Each match appends the tree's words to the query.
+ */
+const QUERY_WORDS: readonly (readonly [RegExp, string])[] = [
+    [/\bfront[ -]?end\b/i, "fe"],
+    [/\b(?:time|now|today|timestamp)\b/i, "clock"],
+    [/\b(?:no data|no items|no results|nothing to show)\b/i, "empty"],
+    [/\b(?:no|without) (?:text|label|words)\b/i, "glyph dot icon"],
+    [/\blog(?:s|ging)?\b/i, "logger"],
+]
+
+/** The query with the tree's words appended for each phrase it uses. */
+export const expandQuery = (query: string): string => [query, ...QUERY_WORDS.flatMap(([phrase, words]) => (phrase.test(query) ? [words] : []))].join(" ")
+
 /** The words of a raw query that may name an id exactly, lower-cased. */
 export const idTokens = (text: string): Set<string> => new Set((text.match(RAW) ?? []).map((token) => token.toLowerCase()))
+
+/**
+ * The words a section heading stands for: a `Choose` section answers "when to use", "which" and "or" questions, so its
+ * title carries those words too.
+ */
+const HEADING_TERMS: Readonly<Record<string, readonly string[]>> = {
+    choose: ["use", "choose", "choice", "pick", "instead"],
+}
+
+/** The extra title words of a chunk, from its own heading (the last part of its title). */
+const headingTerms = (chunk: Chunk): readonly string[] => {
+    const own = chunk.title.split(" › ").at(-1)?.trim().toLowerCase() ?? ""
+    return HEADING_TERMS[own] ?? []
+}
+
+/** The ids of a chunk a query can name word for word: its anchor and aliases that are not a `<file>#<slug>` fallback. */
+const namedIds = (chunk: Chunk): string[] => [chunk.anchor, ...chunk.aliases].filter((id) => !id.includes("#"))
 
 const K1 = 1.2
 const B = 0.75
@@ -59,7 +97,7 @@ export const bm25 = (chunks: readonly Chunk[]): Bm25 => {
         const add = (term: string, weight: number): void => {
             counts.set(term, (counts.get(term) ?? 0) + weight)
         }
-        for (const term of tokenize(`${chunk.title} ${chunk.citable ? chunk.id : ""}`)) add(term, TITLE_WEIGHT)
+        for (const term of tokenize(`${chunk.title} ${namedIds(chunk).join(" ")} ${headingTerms(chunk).join(" ")}`)) add(term, TITLE_WEIGHT)
         let length = 0
         for (const term of tokenize(chunk.text)) {
             add(term, 1)
@@ -75,10 +113,10 @@ export const bm25 = (chunks: readonly Chunk[]): Bm25 => {
         const count = documents.get(term) ?? 0
         return Math.log(1 + (total - count + 0.5) / (count + 0.5))
     }
-    const ids = chunks.map((chunk) => (chunk.citable ? chunk.id.toLowerCase() : ""))
+    const ids = chunks.map((chunk) => namedIds(chunk).map((id) => id.toLowerCase()))
     return {
         score: (query, allowed) => {
-            const terms = [...new Set(tokenize(query))]
+            const terms = [...new Set(tokenize(expandQuery(query)))]
             const named = idTokens(query)
             const scored: { index: number; score: number }[] = []
             for (const [index, counts] of frequencies.entries()) {
@@ -93,7 +131,7 @@ export const bm25 = (chunks: readonly Chunk[]): Bm25 => {
                 if (score > 0) scored.push({ index, score })
             }
             const top = Math.max(0, ...scored.map((item) => item.score))
-            for (const item of scored) if (named.has(ids[item.index] ?? "")) item.score += top + 1
+            for (const item of scored) if ((ids[item.index] ?? []).some((id) => named.has(id))) item.score += top + 1
             return scored.sort((left, right) => right.score - left.score)
         },
     }
