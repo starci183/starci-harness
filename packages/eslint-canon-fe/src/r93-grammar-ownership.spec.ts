@@ -2,26 +2,36 @@
 // proves: ARCH_GRAMMAR_CONTRACT_INVALID@full
 // proves: ARCH_GRAMMAR_EXPORT_BYPASS@lite
 // proves: ARCH_GRAMMAR_EXPORT_BYPASS@full
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import type TypeScript from 'typescript';
 import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.mjs';
 import { rules } from './project-graph.ts';
+import { canonTester } from '../fixtures/typed/tester.ts';
+import type { Rule } from './lib/rule.ts';
+
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name];
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`);
+  return rule;
+};
 import { checkArchitecture } from '#runtime/scripts/hfs/architecture/index.mjs';
 import { checkGrammar } from '#runtime/scripts/hfs/architecture/frontend-grammar.mjs';
 import { loadArchitectureConfig } from '#runtime/scripts/hfs/architecture/config.mjs';
 import { buildTypeScriptContext, relativePath } from '#runtime/scripts/hfs/architecture/typescript.mjs';
 import { LINT_ENFORCERS } from '#runtime/scripts/hfs/architecture/surface.mjs';
 
-const ts = createRequire(import.meta.url)('typescript');
+const ts: typeof TypeScript = createRequire(import.meta.url)('typescript');
 const entry = 'apps/web/src/app/page.tsx';
 const source = 'import { Button } from "@starci/grammar/common"; export default function Route() { return <Button /> }';
 const bypassEntry = 'apps/web/src/app/bypass.tsx';
 const bypassSource = 'import { Button } from "@starci/grammar/private"; export const Bypass = () => <Button />;';
 const peers = { react: '>=18', '@heroui/react': '>=2', '@xyflow/react': '>=12', 'react-aria-components': '>=1' };
 
-function fixture(t, edition, invalid = false, bypass = false) {
-  const exports = { './common': { types: './dist/common/index.d.ts', import: './dist/common/index.js' } };
+function fixture(t: TestContext, edition: 'lite' | 'full', invalid = false, bypass = false) {
+  const exports: Record<string, unknown> = { './common': { types: './dist/common/index.d.ts', import: './dist/common/index.js' } };
   if (!invalid) exports['./common.css'] = './dist/common/styles.css';
   const result = projectFixture({
     profile: 'fe', edition,
@@ -44,7 +54,7 @@ function fixture(t, edition, invalid = false, bypass = false) {
   return result;
 }
 
-function grammarFindings(root) {
+function grammarFindings(root: string) {
   const config = loadArchitectureConfig(root);
   return checkGrammar(config, buildTypeScriptContext(config, ts, []), (owner, file, node, ruleId, message, extra) => ({
     ruleId, path: relativePath(owner.root, file.fileName), line: file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1,
@@ -52,7 +62,7 @@ function grammarFindings(root) {
   }));
 }
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition} invalid package contracts remain app-check findings and never TSX lint reports`, t => {
     const app = fixture(t, edition, true);
     const findings = grammarFindings(app.root);
@@ -60,12 +70,14 @@ for (const edition of ['lite', 'full']) {
     const checked = checkArchitecture({ repositoryRoot: app.root, injectedTypeScript: ts, surface: 'check' });
     const contracts = checked.violations.filter(hit => hit.ruleId === 'ARCH_GRAMMAR_CONTRACT_INVALID');
     assert.equal(contracts.length, 1);
-    assert.match(contracts[0].path, /(?:^|\/)package\.json$/);
-    assert.match(contracts[0].message, /common\.css is not a safe declared style export/);
+    const [contract] = contracts;
+    assert.ok(contract);
+    assert.match(contract.path, /(?:^|\/)package\.json$/);
+    assert.match(contract.message, /common\.css is not a safe declared style export/);
     const linted = checkArchitecture({ repositoryRoot: app.root, injectedTypeScript: ts, surface: 'lint' });
     assert.deepEqual(linted.violations.filter(hit => hit.ruleId === 'ARCH_GRAMMAR_CONTRACT_INVALID'), []);
-    assert.deepEqual(LINT_ENFORCERS.find(enforcer => enforcer.id === 'grammar-entry').codes, ['ARCH_GRAMMAR_EXPORT_BYPASS']);
-    app.tester.run('grammar-entry', rules['grammar-entry'], {
+    assert.deepEqual(LINT_ENFORCERS.find(enforcer => enforcer.id === 'grammar-entry')?.codes, ['ARCH_GRAMMAR_EXPORT_BYPASS']);
+    canonTester(app.tester).run('grammar-entry', ruleOf('grammar-entry'), {
       valid: [{ filename: app.at(entry), code: source }], invalid: [],
     });
   });
@@ -75,7 +87,7 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(grammarFindings(app.root), []);
     const checked = checkArchitecture({ repositoryRoot: app.root, injectedTypeScript: ts, surface: 'check' });
     assert.deepEqual(checked.violations.filter(hit => hit.ruleId === 'ARCH_GRAMMAR_CONTRACT_INVALID'), []);
-    app.tester.run('grammar-entry', rules['grammar-entry'], {
+    canonTester(app.tester).run('grammar-entry', ruleOf('grammar-entry'), {
       valid: [{ filename: app.at(entry), code: source }], invalid: [],
     });
   });
@@ -83,7 +95,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition} invalid grammar imports are rejected by the machine and TSX lint`, t => {
     const app = fixture(t, edition, false, true);
     assert.ok(grammarFindings(app.root).some(hit => hit.ruleId === 'ARCH_GRAMMAR_EXPORT_BYPASS'));
-    app.tester.run('grammar-entry', rules['grammar-entry'], {
+    canonTester(app.tester).run('grammar-entry', ruleOf('grammar-entry'), {
       valid: [{ filename: app.at(entry), code: source }],
       invalid: [{ filename: app.at(bypassEntry), code: bypassSource, errors: [{ message: /ARCH_GRAMMAR_EXPORT_BYPASS/ }] }],
     });

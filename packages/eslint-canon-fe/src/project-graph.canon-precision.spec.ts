@@ -1,10 +1,24 @@
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
 
-const source = (f, files, rel) => ({ filename: f.at(rel), code: files[rel] })
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name]
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`)
+  return rule
+}
 
-const page = (name) => [
+/** A case of one scene file. */
+const source = (f: ReturnType<typeof projectFixture>, files: Readonly<Record<string, string>>, rel: string) => {
+    const code = files[rel]
+    if (code === undefined) throw new Error(`no scene file ${rel}`)
+    return { filename: f.at(rel), code }
+}
+
+const page = (name: string) => [
     "import { useTranslations } from 'next-intl';",
     "import { SiteFrame } from '../../../components/composites/SiteFrame';",
     "import { ROUTES } from '../../../modules/config';",
@@ -32,7 +46,7 @@ const page = (name) => [
 ].join("\n")
 
 // The same kind of object outside a frame is ordinary business data and stays compared.
-const business = (name) => [
+const business = (name: string) => [
     `export const ${name} = (input: { id: string; items: string[]; total: number }) => ({`,
     "    id: input.id,",
     "    value: input.total ?? 1,",
@@ -58,7 +72,7 @@ test("duplicate-code accepts data props of a shared frame while still finding co
     }
     const f = projectFixture({ profile: "fe", files })
     t.after(f.cleanup)
-    f.tester.run("duplicate-code", rules["duplicate-code"], {
+    canonTester(f.tester).run("duplicate-code", ruleOf("duplicate-code"), {
         valid: [
             source(f, files, "apps/web/src/features/pages/AlphaPage/index.tsx"),
             source(f, files, "apps/web/src/features/pages/BetaPage/index.tsx"),

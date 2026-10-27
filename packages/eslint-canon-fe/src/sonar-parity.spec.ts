@@ -8,11 +8,13 @@ import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { SONAR_SYNTAX_RULES } from "#runtime/scripts/lib/sonar-syntax-rules.mjs"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
 import { recommended, rules } from "./sonar-parity.ts"
 
-const tester = new RuleTester({
+const tester = canonTester(new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
-})
+}))
 
 test("the law publishes the shared rules at error under their own names", () => {
   for (const [name, rule] of Object.entries(rules)) {
@@ -23,7 +25,11 @@ test("the law publishes the shared rules at error under their own names", () => 
   assert.ok("no-unused-prop-types" in rules)
 })
 
-const rule = (name) => SONAR_SYNTAX_RULES[name]
+const rule = (name: string): Rule => {
+  const found = SONAR_SYNTAX_RULES[name]
+  if (found === undefined) throw new Error(`the runtime Sonar syntax rules publish no ${name}`)
+  return found
+}
 const LOOP = "async function a(items) { for (const item of items) await send(item) }"
 
 test("S9382: no await in a loop; an endless loop and a spec are outside", () => {
@@ -76,7 +82,7 @@ test("S7763: an import that is only handed on is re-exported with export from", 
 })
 
 test("S6767: a member of the props type that the component never reads is removed", () => {
-  assert.doesNotThrow(() => tester.run("no-unused-prop-types", SONAR_SYNTAX_RULES["no-unused-prop-types"], {
+  assert.doesNotThrow(() => tester.run("no-unused-prop-types", rule("no-unused-prop-types"), {
     valid: [
       // every member is read, through the parameter or through a destructuring
       "type Props = { readonly title: string; readonly on: { go: () => void } }\nconst Block = (props: Props) => <h1 onClick={props.on.go}>{props.title}</h1>",

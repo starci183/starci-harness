@@ -44,12 +44,27 @@ import { recommended as translationRecommended, rules as translationRules } from
 import { recommended as typeSafetyRecommended, rules as typeSafetyRules } from "./type-safety.ts"
 import { recommended as projectGraphRecommended, rules as projectGraphRules } from "./project-graph.ts"
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.ts"
-import { buildFeConfig, buildPlainSourceConfig } from "./lib/config.ts"
+import type { ESLint, Linter } from "eslint"
+import { buildFeConfig, buildPlainSourceConfig, type CanonPlugin, type SonarPlugins } from "./lib/config.ts"
+import type { Recommended, Rule, Rules } from "./lib/rule.ts"
 import { why } from "./lib/why.ts"
 import { recommended as uiRulingsRecommended, rules as uiRulingsRules } from "./ui-rulings.ts"
 
+/** One law's rules and the level it asks for each; the views are replaced when a later law takes a rule over. */
+interface Contribution {
+  readonly law: string
+  rules: Rules
+  recommended: Recommended
+}
+
+/** A rule as declared by its law. */
+interface RuleDeclaration {
+  law: string
+  readonly name: string
+}
+
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
-const CONTRIBUTIONS = [
+const CONTRIBUTIONS: Contribution[] = [
   { law: "ui-rulings", rules: uiRulingsRules, recommended: uiRulingsRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
@@ -91,7 +106,7 @@ const CONTRIBUTIONS = [
 ]
 
 /** Every gathered law. */
-export const lawOwners = CONTRIBUTIONS.map((entry) => entry.law)
+export const lawOwners: string[] = CONTRIBUTIONS.map((entry) => entry.law)
 
 /**
  * Which law declares each rule.
@@ -100,7 +115,7 @@ export const lawOwners = CONTRIBUTIONS.map((entry) => entry.law)
  * to the document that explains it is this map. It is also what the twin test walks to prove no two
  * laws claim one name.
  */
-export const ruleOwners = Object.fromEntries(
+export const ruleOwners: Record<string, string> = Object.fromEntries(
   CONTRIBUTIONS.flatMap((entry) => Object.keys(entry.rules).map((name) => [name, entry.law])),
 )
 
@@ -117,12 +132,12 @@ export const ruleOwners = Object.fromEntries(
  * has no collision today; publishing the raw declarations is what keeps that a FACT rather than an
  * assumption nobody can test.
  */
-export const ruleDeclarations = CONTRIBUTIONS.flatMap((entry) =>
+export const ruleDeclarations: RuleDeclaration[] = CONTRIBUTIONS.flatMap((entry) =>
   Object.keys(entry.rules).map((name) => ({ law: entry.law, name })),
 )
 
 /** Every rule this canon publishes, keyed by its published name. */
-export const rules = Object.fromEntries(
+export const rules: Record<string, Rule> = Object.fromEntries(
   CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.rules)),
 )
 
@@ -132,7 +147,7 @@ export const rules = Object.fromEntries(
  * Every FE canon rule is an error. Existing debt is fixed before adoption; lowering architecture
  * to warn teaches every later author that the boundary is optional and is not a supported rollout.
  */
-export const recommended = Object.fromEntries(
+export const recommended: Record<string, "error"> = Object.fromEntries(
   CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),
 )
 
@@ -148,7 +163,7 @@ export { loadHfs } from "./lib/hfs.ts"
 export { why }
 
 /** The plugin object, shaped the way a flat config expects it. */
-const plugin = {
+const plugin: CanonPlugin = {
   meta: { name: "eslint-plugin-starci-fe" },
   rules,
 }
@@ -165,25 +180,38 @@ export default plugin
  * is found either way, and one that did not gets a message naming the install rather than a
  * resolver stack trace.
  */
-const loadReactHooks = () => {
+/** A property of a value, read as `value?.[key]` reads it. */
+const field = (value: unknown, key: string): unknown =>
+  value === null || value === undefined ? undefined : Reflect.get(Object(value), key)
+
+/** A loaded plugin module: any object is a plugin to ESLint's flat config, which reads only the fields it knows. */
+const asPlugin = (loaded: unknown, name: string): ESLint.Plugin => {
+  if ((typeof loaded !== "object" && typeof loaded !== "function") || loaded === null) throw new TypeError(`${name} did not load as a plugin object`)
+  return loaded
+}
+
+const loadReactHooks = (): ESLint.Plugin => {
   for (const base of [import.meta.url, pathToFileURL(join(process.cwd(), "noop.js")).href]) {
+    let loaded: unknown
     try {
-      return createRequire(base)("eslint-plugin-react-hooks")
+      loaded = createRequire(base)("eslint-plugin-react-hooks")
     } catch {
       // try the next place
+      continue
     }
+    return asPlugin(loaded, "eslint-plugin-react-hooks")
   }
   throw new Error("starciFeConfig needs eslint-plugin-react-hooks 7 or newer: npm i -D eslint-plugin-react-hooks")
 }
 
 /** The typescript-eslint plugin whose type-aware rules the factory borrows (Sonar S1874, S6551 and S7503); a dependency of this package. */
-const loadTsPlugin = () => createRequire(import.meta.url)("@typescript-eslint/eslint-plugin")
+const loadTsPlugin = (): ESLint.Plugin => asPlugin(createRequire(import.meta.url)("@typescript-eslint/eslint-plugin"), "@typescript-eslint/eslint-plugin")
 
 /** The Sonar way plugins (scripts/lib/sonar-way.mjs); dependencies of this package, pinned exactly. */
-const loadSonarPlugins = () => {
+const loadSonarPlugins = (): SonarPlugins => {
   const require = createRequire(import.meta.url)
-  const unicorn = require("eslint-plugin-unicorn")
-  return { sonarjs: require("eslint-plugin-sonarjs"), unicorn: unicorn.default ?? unicorn }
+  const unicorn: unknown = require("eslint-plugin-unicorn")
+  return { sonarjs: asPlugin(require("eslint-plugin-sonarjs"), "eslint-plugin-sonarjs"), unicorn: asPlugin(field(unicorn, "default") ?? unicorn, "eslint-plugin-unicorn") }
 }
 
 /**
@@ -196,11 +224,15 @@ const loadSonarPlugins = () => {
  * would otherwise be adopted silently with the rules that catch effect-driven state and ref reads
  * during render missing.
  *
- * @param {object} reactHooks - The plugin object.
- * @returns {Record<string, "error">} Every recommended hooks rule at error.
+ * @param reactHooks - The plugin object.
+ * @returns Every recommended hooks rule at error.
  */
-export const reactHooksRules = (reactHooks) => {
-  const configured = reactHooks.configs?.flat?.recommended?.rules ?? {}
+export const reactHooksRules = (reactHooks: unknown): Record<string, "error"> => {
+  if (reactHooks === null || reactHooks === undefined) throw new TypeError(`Cannot read properties of ${String(reactHooks)} (reading 'configs')`)
+  const configured = field(field(field(field(reactHooks, "configs"), "flat"), "recommended"), "rules") ?? {}
+  if ((typeof configured !== "object" && typeof configured !== "function") || configured === null) {
+    throw new TypeError("Cannot use 'in' operator to search in the React Hooks recommended rules")
+  }
   for (const required of [
     "react-hooks/set-state-in-effect",
     "react-hooks/refs",
@@ -222,10 +254,10 @@ export const reactHooksRules = (reactHooks) => {
  * switch one off. NO RULE IS OFF - the factory throws rather than emit a block in which a published rule is missing or
  * below error, so a rule added to this package reaches every repository or the build of this package fails.
  *
- * @param {{ hfs: object }} input - The HFS view of the repository (`loadHfs(import.meta.url)`).
- * @returns {object[]} The flat config: ignores and the typed source block.
+ * @param input - The HFS view of the repository (`loadHfs(import.meta.url)`).
+ * @returns The flat config: ignores and the typed source block.
  */
-export const starciFeConfig = ({ hfs } = {}) => {
+export const starciFeConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter.Config[] => {
   const published = Object.keys(rules).map((name) => `starci-fe/${name}`)
   const notRequested = published.filter((name) => recommended[name] !== "error")
   if (notRequested.length > 0) {
@@ -247,10 +279,10 @@ export const starciFeConfig = ({ hfs } = {}) => {
  * `export default starciPlainSourceConfig({ root: import.meta.dirname })`. It lints the tree's `src/` with types, with the inline-directive fence, the
  * React Hooks rules, the type-aware rules and the Sonar way rules, and with every canon rule that needs no slot view, all at `error`.
  *
- * @param {{ root: string }} input - The absolute directory holding the tree's `tsconfig.json` and `src/`.
- * @returns {object[]} The flat config: ignores, the typed source block and the Sonar way block.
+ * @param input - The absolute directory holding the tree's `tsconfig.json` and `src/`.
+ * @returns The flat config: ignores, the typed source block and the Sonar way block.
  */
-export const starciPlainSourceConfig = ({ root } = {}) => {
+export const starciPlainSourceConfig = ({ root }: { readonly root?: unknown } = {}): Linter.Config[] => {
   const reactHooks = loadReactHooks()
   return buildPlainSourceConfig({ root, plugin, hooks: reactHooksRules(reactHooks), reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins() })
 }
@@ -261,10 +293,10 @@ export const starciPlainSourceConfig = ({ root } = {}) => {
  * `starciPlainSourceConfig` without the canon's own product-structure rules (`SLOT_FREE_RULES`: jsdoc on exports, arrow exports, English-only
  * source, grammar controls, ...), for a tree that has not been brought to them yet; a tree that has uses `starciPlainSourceConfig`.
  *
- * @param {{ root: string }} input - The absolute directory holding the tree's `tsconfig.json` and `src/`.
- * @returns {object[]} The flat config: ignores, the typed source block and the Sonar way block.
+ * @param input - The absolute directory holding the tree's `tsconfig.json` and `src/`.
+ * @returns The flat config: ignores, the typed source block and the Sonar way block.
  */
-export const starciTypedSourceConfig = ({ root } = {}) => {
+export const starciTypedSourceConfig = ({ root }: { readonly root?: unknown } = {}): Linter.Config[] => {
   const reactHooks = loadReactHooks()
   return buildPlainSourceConfig({ root, plugin, hooks: reactHooksRules(reactHooks), reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins(), canon: false })
 }
@@ -283,7 +315,7 @@ Object.assign(recommended, functionBudgetRecommended)
 import { recommended as swrFamilyRecommended, rules as swrFamilyRules } from "./swr-family.ts"
 import { recommended as callbackShapeRecommended, rules as callbackShapeRules } from "./callback-shape.ts"
 
-const A14_CONTRIBUTIONS = [
+const A14_CONTRIBUTIONS: Contribution[] = [
   { law: "swr-family", rules: swrFamilyRules, recommended: swrFamilyRecommended },
   { law: "callback-shape", rules: callbackShapeRules, recommended: callbackShapeRecommended },
 ]
@@ -308,7 +340,8 @@ for (const addition of A14_CONTRIBUTIONS) {
   for (const name of names) {
     const declarations = ruleDeclarations.filter((entry) => entry.name === name)
     if (declarations.length > 1) throw new Error("A14 registration: duplicate declarations for " + name)
-    if (declarations.length === 1) declarations[0].law = addition.law
+    const [declared] = declarations
+    if (declared !== undefined) declared.law = addition.law
     else ruleDeclarations.push({ law: addition.law, name })
     ruleOwners[name] = addition.law
   }

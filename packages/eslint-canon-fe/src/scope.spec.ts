@@ -4,19 +4,19 @@ import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import test from "node:test"
+import test, { type TestContext } from "node:test"
 import { appDeclaration } from "../../eslint-canon-be/fixtures/app.mjs"
+import { contextAt } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { classifyImport } from "./lib/scope.ts"
 
-const setup = (t, edition) => {
+const setup = (t: TestContext, edition: "lite" | "full") => {
   const root = mkdtempSync(join(tmpdir(), "fe-import-owner-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  const declaration = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
-  declaration.edition = edition
+  const declaration = { ...appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] }), edition }
   const hfs = hfsFromDeclaration(declaration, root)
-  const context = { filename: join(root, "apps/web/src/app/auth/callback/route.ts"), settings: { starci: { hfs } } }
-  const write = (file) => {
+  const context = contextAt(join(root, "apps/web/src/app/auth/callback/route.ts"), hfs)
+  const write = (file: string) => {
     const target = join(root, "apps/web/src", file)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, "export const fixture = true\n")
@@ -24,7 +24,7 @@ const setup = (t, edition) => {
   return { context, write }
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`${edition} classifies an existing public auth barrel instead of a hypothetical module file`, (t) => {
     const { context, write } = setup(t, edition)
     write("modules/auth/index.ts")

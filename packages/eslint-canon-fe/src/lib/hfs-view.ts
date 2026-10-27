@@ -11,7 +11,8 @@ export interface HfsSlot {
   readonly tier?: string
   readonly kinds?: readonly string[]
   readonly layers?: readonly string[]
-  readonly roles?: readonly string[]
+  readonly roles?: Readonly<Record<string, string>>
+  readonly budget?: Readonly<Record<string, number>>
   readonly allows?: readonly string[]
   readonly outcomeHome?: boolean
 }

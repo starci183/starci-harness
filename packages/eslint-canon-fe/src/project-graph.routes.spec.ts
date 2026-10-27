@@ -5,22 +5,42 @@
  *
  *   node --test src/project-graph.routes.spec.ts
  */
-import test from "node:test"
+import test, { type TestContext } from "node:test"
+import type { RuleTester } from "eslint"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
 
-const finding = (extra = {}) => ({ messageId: "finding", ...extra })
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name]
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`)
+  return rule
+}
+
+const finding = (extra: Partial<RuleTester.TestCaseError> = {}): RuleTester.TestCaseError => ({ messageId: "finding", ...extra })
 /** The finding whose message carries `pattern`. */
-const saying = (pattern) => ({ message: pattern })
+const saying = (pattern: RegExp): RuleTester.TestCaseError => ({ message: pattern })
+
+/** The files of a fixture, by path. */
+type Files = Readonly<Record<string, string>>
+
+/** The text of one fixture file. */
+const codeOf = (files: Files, rel: string): string => {
+    const code = files[rel]
+    if (code === undefined) throw new Error(`no fixture file ${rel}`)
+    return code
+}
 
 /** A fixture of the front-end profile and its two case makers: `ok(rel)` is a clean file, `bad(rel, ...errors)` a violating one. */
-const repo = (t, files, extra = {}) => {
+const repo = (t: TestContext, files: Files, extra: Omit<NonNullable<Parameters<typeof projectFixture>[0]>, "profile" | "files"> = {}) => {
     const f = projectFixture({ profile: "fe", files, ...extra })
     t.after(() => f.cleanup())
     return {
-        tester: f.tester,
-        ok: (rel) => ({ filename: f.at(rel), code: files[rel] }),
-        bad: (rel, ...errors) => ({ filename: f.at(rel), code: files[rel], errors: errors.length ? errors : [finding()] }),
+        tester: canonTester(f.tester),
+        ok: (rel: string): RuleTester.ValidTestCase => ({ filename: f.at(rel), code: codeOf(files, rel) }),
+        bad: (rel: string, ...errors: RuleTester.TestCaseError[]): RuleTester.InvalidTestCase => ({ filename: f.at(rel), code: codeOf(files, rel), errors: errors.length ? errors : [finding()] }),
     }
 }
 
@@ -39,7 +59,8 @@ const GOOD_TRANSPORT = {
     [`${API}/rest/uploads/presign.ts`]: "import axios from 'axios';\nexport const presign = (name: string) => axios.post('/uploads', { name });\n",
     "apps/web/src/hooks/course/useCourse.ts": "import { queryCourse } from '../../modules/api/graphql/queries/query-course';\nexport const useCourse = (id: string) => queryCourse(id);\n",
 }
-const TWO_APPS = [{ name: "web", kind: "next" }, { name: "admin", kind: "next" }]
+const WEB_APP = { name: "web", kind: "next" }
+const TWO_APPS = [WEB_APP, { name: "admin", kind: "next" }]
 const PKG = "packages/shop-api"
 const PACKAGE = {
     "tsconfig.json": `${JSON.stringify({
@@ -52,9 +73,9 @@ const PACKAGE = {
     [`${PKG}/src/graphql/clients/index.ts`]: CLIENT,
     [`${PKG}/src/graphql/types.ts`]: OUTCOME,
 }
-const appOperation = (app) => ({ [`apps/${app}/src/modules/api/graphql/queries/query-course.ts`]: "import { authClient } from '@shop/api';\nexport const queryCourse = (id: string) => authClient.query({ query: id });\n" })
-const NOTHING = (app) => ({ [`apps/${app}/src/hooks/course/useNothing.ts`]: "export const useNothing = () => 1;\n" })
-const packaged = (files, apps = TWO_APPS) => ({ apps, declaration: { optionalSlots: ["fe.package.api"] }, files })
+const appOperation = (app: string): Files => ({ [`apps/${app}/src/modules/api/graphql/queries/query-course.ts`]: "import { authClient } from '@shop/api';\nexport const queryCourse = (id: string) => authClient.query({ query: id });\n" })
+const NOTHING = (app: string): Files => ({ [`apps/${app}/src/hooks/course/useNothing.ts`]: "export const useNothing = () => 1;\n" })
+const packaged = (files: Files, apps: { name: string; kind: string }[] = TWO_APPS) => ({ apps, declaration: { optionalSlots: ["fe.package.api"] }, files })
 
 test("transport-owner: one client folder owns the global fetch, axios stays in modules/api/rest, every operation imports the client", (t) => {
     const files = {
@@ -72,7 +93,7 @@ test("transport-owner: one client folder owns the global fetch, axios stays in m
         [`${API}/rest/uploads/got.ts`]: "declare function require(name: string): unknown;\nexport const viaGot = () => require('got');\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [
             // the client folder is the one place that references fetch; operations import it; hooks never touch it; axios is the rest owner's
             ok(`${API}/graphql/clients/index.ts`), ok(`${API}/graphql/queries/query-course.ts`), ok(`${API}/rest/uploads/presign.ts`),
@@ -96,7 +117,7 @@ test("transport-owner: an operation that does not import the client, and an Apol
         "apps/web/src/hooks/course/useOwnClient.ts": "import { ApolloClient } from '@apollo/client';\nexport const useOwnClient = () => new ApolloClient({ uri: '/graphql' });\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok(`${API}/graphql/queries/query-course.ts`), ok("apps/web/src/hooks/course/useCourse.ts")],
         invalid: [
             bad(`${API}/graphql/mutations/mutation-lonely.ts`, saying(/does not import the transport client/)),
@@ -111,7 +132,7 @@ test("transport-owner: one client folder and one GraphQLResponse union in the ap
         "apps/admin/src/hooks/course/useCalled.ts": "export const useCalled = () => fetch('/x');\n",
     }
     const { tester, ok, bad } = repo(t, files, packaged(files))
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [
             ok(`${PKG}/src/graphql/clients/index.ts`), ok(`${PKG}/src/graphql/types.ts`), ok(`${PKG}/src/index.ts`),
             ok("apps/web/src/modules/api/graphql/queries/query-course.ts"), ok("apps/admin/src/modules/api/graphql/queries/query-course.ts"),
@@ -124,7 +145,7 @@ test("transport-owner: one client folder and one GraphQLResponse union in the ap
 test("transport-owner: two apps that each keep their own client folder", (t) => {
     const files = { "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT, "apps/admin/src/modules/api/graphql/clients/index.ts": CLIENT, ...NOTHING("web") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok("apps/web/src/hooks/course/useNothing.ts")],
         invalid: [
             bad("apps/web/src/modules/api/graphql/clients/index.ts", saying(/2 transport clients/)),
@@ -135,8 +156,8 @@ test("transport-owner: two apps that each keep their own client folder", (t) => 
 
 test("transport-owner: a package client folder next to an app client folder", (t) => {
     const files = { ...PACKAGE, "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT }
-    const { tester, ok, bad } = repo(t, files, packaged(files, [TWO_APPS[0]]))
-    tester.run("transport-owner", rules["transport-owner"], {
+    const { tester, ok, bad } = repo(t, files, packaged(files, [WEB_APP]))
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok(`${PKG}/src/index.ts`), ok(`${PKG}/src/graphql/types.ts`)],
         invalid: [bad("apps/web/src/modules/api/graphql/clients/index.ts"), bad(`${PKG}/src/graphql/clients/index.ts`)],
     })
@@ -146,7 +167,7 @@ test("transport-owner: two apps that keep one app client folder with no package:
     // admin calls the back end too (an operation file of its own modules/api), so the one app client folder is shared by two callers
     const files = { "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT, "apps/admin/src/modules/api/graphql/queries/query-course.ts": "export const queryCourse = () => 1;\n", ...NOTHING("admin") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok("apps/admin/src/hooks/course/useNothing.ts")],
         invalid: [bad("apps/web/src/modules/api/graphql/clients/index.ts", saying(/repository of 2 apps/))],
     })
@@ -154,8 +175,8 @@ test("transport-owner: two apps that keep one app client folder with no package:
 
 test("transport-owner: two GraphQLResponse unions, a package one and an app one", (t) => {
     const files = { ...PACKAGE, "apps/web/src/modules/api/graphql/types.ts": OUTCOME }
-    const { tester, ok, bad } = repo(t, files, packaged(files, [TWO_APPS[0]]))
-    tester.run("transport-owner", rules["transport-owner"], {
+    const { tester, ok, bad } = repo(t, files, packaged(files, [WEB_APP]))
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok(`${PKG}/src/graphql/clients/index.ts`), ok(`${PKG}/src/index.ts`)],
         invalid: [bad("apps/web/src/modules/api/graphql/types.ts"), bad(`${PKG}/src/graphql/types.ts`)],
     })
@@ -164,7 +185,7 @@ test("transport-owner: two GraphQLResponse unions, a package one and an app one"
 test("transport-owner: an app GraphQLResponse union in a two-app repository", (t) => {
     const files = { ...PACKAGE, "apps/admin/src/modules/api/graphql/types.ts": OUTCOME }
     const { tester, ok, bad } = repo(t, files, packaged(files))
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok(`${PKG}/src/graphql/clients/index.ts`)],
         invalid: [bad("apps/admin/src/modules/api/graphql/types.ts"), bad(`${PKG}/src/graphql/types.ts`)],
     })
@@ -173,7 +194,7 @@ test("transport-owner: an app GraphQLResponse union in a two-app repository", (t
 test("transport-owner: a module that fetches in a repository with no client; a repository with no fetch has nothing to own", (t) => {
     const files = { "apps/web/src/hooks/course/useCalled.ts": "export const useCalled = () => fetch('/x');\n", ...NOTHING("web") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
-    tester.run("transport-owner", rules["transport-owner"], {
+    tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [ok("apps/web/src/hooks/course/useNothing.ts")],
         invalid: [bad("apps/web/src/hooks/course/useCalled.ts", saying(/no transport client/))],
     })
@@ -245,7 +266,7 @@ export const useCourse=(params:{courseId?:string})=>{
 `,
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("swr-data-lifecycle", rules["swr-data-lifecycle"], {
+    tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
         valid: [ok("src/features/course/use-disabled.ts"), ok("src/features/course/use-lesson.ts"), ok("src/shared/cache.ts")],
         invalid: [bad("src/features/course/use-course.ts",
             { ...saying(/^\[FE_SWR_KEY_IDENTITY\] course-query key must include declared identity viewer/), line: 6 },
@@ -268,7 +289,7 @@ export const useCourse=(params:{courseId?:string})=>{
         "src/features/course/use-disabled.ts": "import {cache} from '../../shared/cache'; export const useDisabled=()=>cache(false,async()=>null);\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("swr-data-lifecycle", rules["swr-data-lifecycle"], {
+    tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
         // the aliased SWR 2 array and object keys carry every declared identity
         valid: [ok("src/features/course/use-course.ts"), ok("src/features/course/use-lesson.ts")],
         invalid: [bad("src/features/course/use-disabled.ts", saying(/explicit null/))],
@@ -276,7 +297,7 @@ export const useCourse=(params:{courseId?:string})=>{
 })
 
 test("swr-data-lifecycle: a lossy or discarded identity in a key is a finding", (t) => {
-    const course = (key) => `${swrHeader}
+    const course = (key: string) => `${swrHeader}
 export const useCourse=(params:{courseId?:string})=>{
   const viewer=useViewerKey();
   const query=cache(${key},async()=>null);
@@ -286,7 +307,7 @@ export const useCourse=(params:{courseId?:string})=>{
 `
     const files = { ...SWR, "src/features/course/use-course.ts": course("()=>params.courseId===undefined?null:[QUERY_COURSE,params.courseId,(viewer,'same')]") }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("swr-data-lifecycle", rules["swr-data-lifecycle"], {
+    tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
         valid: [ok("src/features/course/use-lesson.ts"), ok("src/features/course/use-disabled.ts")],
         invalid: [bad("src/features/course/use-course.ts")],
     })
@@ -302,7 +323,7 @@ const THIN_FEATURES = {
     "apps/web/src/hooks/session/useSession.ts": "export const useSession = () => 1;\n",
 }
 /** A route file whose relative imports climb `up` directories to src. */
-const layoutAt = (up, body, imports = "") => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\nimport { AuthLayout } from '${"../".repeat(up)}features/layouts/AuthLayout';\n${imports}${body}\n`
+const layoutAt = (up: number, body: string, imports = "") => `import { Shell } from '@fixture/shell';\nimport { ShopLayout } from '${"../".repeat(up)}features/layouts/ShopLayout';\nimport { AuthLayout } from '${"../".repeat(up)}features/layouts/AuthLayout';\n${imports}${body}\n`
 
 test("route-files-thin: a route file mounts one feature and draws nothing, and holds no hook", (t) => {
     const files = {
@@ -326,7 +347,7 @@ test("route-files-thin: a route file mounts one feature and draws nothing, and h
         [`${ROUTES}/session/page.tsx`]: "import { useSession } from '../../../hooks/session/useSession';\nimport { CartPage } from '../../../features/pages/CartPage';\nexport default () => {\n  useSession();\n  return <CartPage />;\n};\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("route-files-thin", rules["route-files-thin"], {
+    tester.run("route-files-thin", ruleOf("route-files-thin"), {
         valid: [ok(`${ROUTES}/layout.tsx`), ok(`${ROUTES}/loading.tsx`), ok(`${ROUTES}/not-found.tsx`), ok(`${ROUTES}/cart/page.tsx`), ok(`${ROUTES}/orders/page.tsx`)],
         invalid: [
             bad(`${ROUTES}/host/layout.tsx`, saying(/<div> is drawing/)),
@@ -351,7 +372,7 @@ test("route-files-thin: a route file that mounts its feature through the app's `
         [`${ROUTES}/two/layout.tsx`]: "import { ShopLayout } from '@/features/layouts/ShopLayout';\nimport { AuthLayout } from '@/features/layouts/AuthLayout';\nexport default () => (\n  <>\n    <ShopLayout content={null} />\n    <AuthLayout />\n  </>\n);\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("route-files-thin", rules["route-files-thin"], {
+    tester.run("route-files-thin", ruleOf("route-files-thin"), {
         valid: [ok(`${ROUTES}/layout.tsx`), ok(`${ROUTES}/loading.tsx`)],
         invalid: [bad(`${ROUTES}/two/layout.tsx`, saying(/mounts 2 feature owners/))],
     })
@@ -383,7 +404,7 @@ test("route-adapter: a page route is a server adapter mounting one pages-tier co
         [`${PAGE_OF}/choice/page.tsx`]: "import { HomePage } from '../../features/pages/HomePage';\nimport { AboutPage } from '../../features/pages/AboutPage';\nexport default function Route({ flag }: { flag: boolean }) { if (flag) return <AboutPage />; return <HomePage />; }\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("route-adapter", rules["route-adapter"], {
+    tester.run("route-adapter", ruleOf("route-adapter"), {
         valid: [ok(`${PAGE_OF}/home/page.tsx`), ok(`${PAGE_OF}/old/page.tsx`), ok(`${PAGE_OF}/guarded/page.tsx`)],
         invalid: [
             bad(`${PAGE_OF}/none/page.tsx`, saying(/FE_ROUTE_DEFAULT_EXPORT/)),
@@ -426,7 +447,7 @@ test("client-reaches-server: no module reachable from a use client module import
         "apps/web/src/hooks/typed/useTypes.ts": "'use client';\nimport type { NextRequest } from 'next/server';\nexport type Req = NextRequest;\nexport const useTypes = () => 1;\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("client-reaches-server", rules["client-reaches-server"], {
+    tester.run("client-reaches-server", ruleOf("client-reaches-server"), {
         valid: [
             ok("apps/web/src/app/page.tsx"), ok("apps/web/src/modules/order/session.ts"), ok("apps/web/src/components/blocks/Order/index.tsx"),
             ok("apps/web/src/hooks/order/useOrder.ts"), ok("apps/web/src/modules/order/format.ts"),
@@ -468,7 +489,7 @@ test("hooks-are-hooks: one shared file named for its domain, and no helper decla
         [`${HOOKS}/useB.ts`]: "function buildKey(id: string) { return id; }\nexport const useB = () => buildKey('b');\n",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("hooks-are-hooks", rules["hooks-are-hooks"], {
+    tester.run("hooks-are-hooks", ruleOf("hooks-are-hooks"), {
         valid: [
             ok(`${HOOKS}/index.ts`), ok(`${HOOKS}/useCourse.ts`), ok(`${HOOKS}/useLesson.ts`), ok(`${HOOKS}/course.shared.ts`), ok(`${HOOKS}/useA.ts`),
             ok("apps/web/src/hooks/cart/useCart.ts"), ok("apps/web/src/hooks/cart/cart.shared.ts"),
@@ -512,7 +533,7 @@ test("hook-location: a custom hook is defined in the hooks folder and imported t
         "apps/web/src/hooks/ui/use-bad-scroll.ts": "import {readCatalog} from \"@/modules/catalog/read-catalog\";export const useBadScroll=()=>readCatalog();",
     }
     const { tester, ok, bad } = repo(t, files)
-    tester.run("hook-location", rules["hook-location"], {
+    tester.run("hook-location", ruleOf("hook-location"), {
         valid: [
             ok("apps/web/src/components/blocks/catalog/CatalogBlock/index.tsx"), ok("apps/web/src/components/leaves/CatalogLeaf/index.tsx"),
             ok("apps/web/src/hooks/index.ts"), ok("apps/web/src/hooks/catalog/use-catalog.ts"), ok("apps/web/src/hooks/ui/use-auto-scroll.ts"),

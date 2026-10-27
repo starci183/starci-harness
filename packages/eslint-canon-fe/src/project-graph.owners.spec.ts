@@ -6,24 +6,35 @@
  *
  *   node --test src/project-graph.owners.spec.ts
  */
-import test from "node:test"
+import test, { type TestContext } from "node:test"
+import type { RuleTester } from "eslint"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
 import { rules } from "./project-graph.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
+
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name]
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`)
+  return rule
+}
 
 const TWO_APPS = [{ name: "web", kind: "next" }, { name: "admin", kind: "next" }]
 
 /** A repository of `files` with `good(rel)` (a clean case) and `bad(rel, ...lines)` (one finding on each line named). */
-const scene = (t, { files, ...options }) => {
+const scene = (t: TestContext, { files, ...options }: Omit<NonNullable<Parameters<typeof projectFixture>[0]>, "profile" | "files"> & { readonly files: Readonly<Record<string, string>> }) => {
     const f = projectFixture({ profile: "fe", files, ...options })
     t.after(f.cleanup)
-    const at = (rel) => {
-        if (files[rel] === undefined) throw new Error(`${rel} is not a file of this scene`)
-        return { filename: f.at(rel), code: files[rel] }
+    const at = (rel: string): RuleTester.ValidTestCase => {
+        const code = files[rel]
+        if (code === undefined) throw new Error(`${rel} is not a file of this scene`)
+        return { filename: f.at(rel), code }
     }
     return {
-        tester: f.tester,
-        good: (rel) => at(rel),
-        bad: (rel, ...lines) => ({ ...at(rel), errors: lines.map((line) => ({ messageId: "finding", line })) }),
+        tester: canonTester(f.tester),
+        good: (rel: string) => at(rel),
+        bad: (rel: string, ...lines: number[]): RuleTester.InvalidTestCase => ({ ...at(rel), errors: lines.map((line) => ({ messageId: "finding", line })) }),
     }
 }
 
@@ -88,7 +99,7 @@ test("FE_OWNER_REACHABLE, FE_HREF_RESOLVES: a page owner a route mounts and an h
             "apps/web/src/features/pages/typed/index.tsx": "export type Home = number\n",
         },
     })
-    s.tester.run("owner-reachable", rules["owner-reachable"], {
+    s.tester.run("owner-reachable", ruleOf("owner-reachable"), {
         valid: [
             s.good("apps/web/src/features/pages/links/index.tsx"),
             s.good("apps/web/src/app/[locale]/page.tsx"),
@@ -130,7 +141,7 @@ test("FE_TIER_DIRECTION: an import goes only to a tier the slot matrix allows", 
             "apps/web/src/modules/catalog/types.ts": "import { useCart } from '../../hooks/cart'\nexport type CatalogValue = ReturnType<typeof useCart>\n",
         },
     })
-    s.tester.run("tier-direction", rules["tier-direction"], {
+    s.tester.run("tier-direction", ruleOf("tier-direction"), {
         valid: [
             s.good("apps/web/src/modules/i18n/index.ts"),
             s.good("apps/web/src/app/[locale]/page.tsx"),
@@ -160,7 +171,7 @@ test("FE_APP_ISOLATION: an app never imports another app", (t) => {
             "apps/web/src/modules/m/index.ts": "export const m = 1\n",
         },
     })
-    s.tester.run("app-isolation", rules["app-isolation"], {
+    s.tester.run("app-isolation", ruleOf("app-isolation"), {
         valid: [
             // one app importing its own modules is not an isolation finding
             s.good("apps/web/src/features/pages/C/index.tsx"),
@@ -183,7 +194,7 @@ test("ARCH_OWNER_CYCLE: owners that import each other form a cycle, a type-only 
             "apps/web/src/modules/c/index.ts": "export const c = 1\n",
         },
     })
-    s.tester.run("owner-cycle", rules["owner-cycle"], {
+    s.tester.run("owner-cycle", ruleOf("owner-cycle"), {
         valid: [
             s.good("apps/web/src/modules/a/index.ts"),
             s.good("apps/web/src/modules/b/index.ts"),
@@ -208,7 +219,7 @@ test("ARCH_OWNER_EXPORT_BYPASS, ARCH_OWNER_EXPORT_STAR: another owner is importe
             "apps/web/src/hooks/dom/useDom.ts": "export const useDom = 1\n",
         },
     })
-    s.tester.run("owner-export-bypass", rules["owner-export-bypass"], {
+    s.tester.run("owner-export-bypass", ruleOf("owner-export-bypass"), {
         valid: [
             // through the entry, inside the owner, and to the transport entry
             s.good("apps/web/src/hooks/shop/index.ts"),
@@ -260,7 +271,7 @@ test("FE_SOURCE_LAYOUT_INVALID: a source file sits in a tier folder; the framewo
             "apps/web/src/middleware/standalone-self-proxy.ts": "export const selfProxy = () => false\n",
         },
     })
-    s.tester.run("frontend-source-layout", rules["frontend-source-layout"], {
+    s.tester.run("frontend-source-layout", ruleOf("frontend-source-layout"), {
         valid: [
             ...Object.keys(ACCEPTED).map((rel) => s.good(rel)),
             s.good("apps/web/src/middleware.ts"),
@@ -311,7 +322,7 @@ test("component-purity: a pure component reaches no data or world state, its con
             "apps/web/src/components/leaves/WorldLeaf/index.tsx": 'import { useThing } from "../../../hooks"\nexport const WorldLeaf = () => {\n  const value = useThing()\n  return <span>{value}</span>\n}\n',
         },
     })
-    s.tester.run("component-purity", rules["component-purity"], {
+    s.tester.run("component-purity", ruleOf("component-purity"), {
         valid: [
             s.good("apps/web/src/components/blocks/catalog/CatalogBlock/index.tsx"),
             s.good("apps/web/src/components/blocks/catalog/CatalogBlock/component.tsx"),
@@ -364,7 +375,7 @@ test("HFS_UNUSED_EXPORT, HFS_UNUSED_FILE: an owner export a production file outs
             "apps/web/next.config.ts": "const request = './src/modules/i18n/request.ts'\nexport default { request }\n",
         },
     })
-    s.tester.run("dead-exports", rules["dead-exports"], {
+    s.tester.run("dead-exports", ruleOf("dead-exports"), {
         valid: [
             s.good("apps/web/src/app/[locale]/page.tsx"),
             s.good("apps/web/src/features/pages/home/index.tsx"),
@@ -383,23 +394,30 @@ test("HFS_UNUSED_EXPORT, HFS_UNUSED_FILE: an owner export a production file outs
 
 // ---- duplicate-code (HFS_DUPLICATE_CODE) ------------------------------------------------------------------------------------
 
+/** Line `i` of a run: the shape at `i` modulo the shapes, filled with `i`. */
+const lineOf = (patterns: readonly ((i: number) => string)[], i: number): string => {
+    const pattern = patterns[i % patterns.length]
+    if (pattern === undefined) throw new Error("no line shapes")
+    return pattern(i)
+}
+
 /** A function of `statements + 4` lines whose body is a run of line shapes that never repeats within 77 statements. */
-const helper = (name, statements, { literal = 1, variable = "value" } = {}) => {
-    const chain = (i) => ` + ${literal}`.repeat(i % 7)
+const helper = (name: string, statements: number, { literal = 1, variable = "value" }: { readonly literal?: number; readonly variable?: string } = {}) => {
+    const chain = (i: number) => ` + ${literal}`.repeat(i % 7)
     const patterns = [
-        (i) => `  const ${variable}${i} = input.items[${i}] ?? ${literal}${chain(i)};`,
-        (i) => `  if (${variable}${i - 1} > ${literal + i}${chain(i)}) total += ${variable}${i - 1};`,
-        (i) => `  total = total * ${literal + 2} + ${i}${chain(i)};`,
-        (i) => `  for (const entry of input.items) { total += entry * ${literal + i}${chain(i)}; }`,
-        (i) => `  while (total > ${literal + i}${chain(i)}) total -= ${i};`,
-        (i) => `  total = Math.max(total, input.items.length + ${literal + i}${chain(i)});`,
-        (i) => `  input.items.push(total % ${literal + i + 1}${chain(i)});`,
-        (i) => `  total += input.items.reduce((sum, item) => sum + item * ${literal + i}${chain(i)}, 0);`,
-        (i) => `  if (!input.items.length) return ${literal + i}${chain(i)};`,
-        (i) => `  total = input.items.map((item) => item + ${literal + i}${chain(i)}).length;`,
-        (i) => `  try { total += JSON.parse(String(${i}${chain(i)})); } catch { total = ${literal}; }`,
+        (i: number) => `  const ${variable}${i} = input.items[${i}] ?? ${literal}${chain(i)};`,
+        (i: number) => `  if (${variable}${i - 1} > ${literal + i}${chain(i)}) total += ${variable}${i - 1};`,
+        (i: number) => `  total = total * ${literal + 2} + ${i}${chain(i)};`,
+        (i: number) => `  for (const entry of input.items) { total += entry * ${literal + i}${chain(i)}; }`,
+        (i: number) => `  while (total > ${literal + i}${chain(i)}) total -= ${i};`,
+        (i: number) => `  total = Math.max(total, input.items.length + ${literal + i}${chain(i)});`,
+        (i: number) => `  input.items.push(total % ${literal + i + 1}${chain(i)});`,
+        (i: number) => `  total += input.items.reduce((sum, item) => sum + item * ${literal + i}${chain(i)}, 0);`,
+        (i: number) => `  if (!input.items.length) return ${literal + i}${chain(i)};`,
+        (i: number) => `  total = input.items.map((item) => item + ${literal + i}${chain(i)}).length;`,
+        (i: number) => `  try { total += JSON.parse(String(${i}${chain(i)})); } catch { total = ${literal}; }`,
     ]
-    const body = Array.from({ length: statements }, (_, i) => patterns[i % patterns.length](i))
+    const body = Array.from({ length: statements }, (_, i) => lineOf(patterns, i))
     return `export function ${name}(input: { items: number[] }) {\n  let total = 0;\n${body.join("\n")}\n  return total;\n}\n`
 }
 
@@ -415,7 +433,7 @@ test("HFS_DUPLICATE_CODE: a block copied with renamed identifiers and changed li
             "apps/web/src/modules/shape/index.ts": `export function shape(input: string[]) {\n${Array.from({ length: 30 }, (_, i) => `  for (const entry of input) { if (entry.length > ${i}) { console.log(entry); } }`).join("\n")}\n}\n`,
         },
     })
-    s.tester.run("duplicate-code", rules["duplicate-code"], {
+    s.tester.run("duplicate-code", ruleOf("duplicate-code"), {
         valid: [
             s.good("apps/web/src/modules/small-a/index.ts"),
             s.good("apps/web/src/modules/small-b/index.ts"),
@@ -446,7 +464,7 @@ test("HFS_DUPLICATE_SYMBOL: a public name another file also declares is a findin
             "apps/web/src/modules/w/local.ts": "export default 3\n",
         },
     })
-    s.tester.run("duplicate-symbol", rules["duplicate-symbol"], {
+    s.tester.run("duplicate-symbol", ruleOf("duplicate-symbol"), {
         valid: [
             s.good("apps/web/src/hooks/orders/useThing.ts"),
             s.good("apps/web/src/modules/x/used.ts"),
@@ -518,7 +536,7 @@ test("HFS_ALIAS_REEXPORT: a re-export under another name, and a const, type or i
             "apps/web/src/modules/config/base.ts": "export interface Base { id: string }\nexport const Settings = { limit: 3 }\nexport const limit = 4\n",
         },
     })
-    s.tester.run("alias-reexport", rules["alias-reexport"], {
+    s.tester.run("alias-reexport", ruleOf("alias-reexport"), {
         valid: [
             s.good("apps/web/src/modules/config/fine.ts"),
             s.good("apps/web/src/modules/config/base.ts"),
@@ -544,7 +562,7 @@ test("HFS_ALIAS_REEXPORT: a route file binding a declaration to a name Next.js r
             "apps/web/src/modules/seo/index.ts": "import { homeMetadata } from '../../features/pages/HomePage'\nexport const generateMetadata = homeMetadata\n",
         },
     })
-    s.tester.run("alias-reexport", rules["alias-reexport"], {
+    s.tester.run("alias-reexport", ruleOf("alias-reexport"), {
         valid: [s.good("apps/web/src/app/[locale]/page.tsx"), s.good("apps/web/src/app/[locale]/about/page.tsx")],
         invalid: [s.bad("apps/web/src/modules/seo/index.ts", 2)],
     })
@@ -576,7 +594,7 @@ test("FE_CROSS_APP_DUPLICATE: a file copied between apps is a finding on every c
             "apps/web/src/testing/two.ts": "export const counter = () => 1 + 1\n",
         },
     })
-    s.tester.run("cross-app-duplicate", rules["cross-app-duplicate"], {
+    s.tester.run("cross-app-duplicate", ruleOf("cross-app-duplicate"), {
         valid: [
             s.good("apps/web/src/app/not-found.tsx"),
             s.good("apps/admin/src/app/not-found.tsx"),
@@ -627,7 +645,7 @@ test("FE_I18N_KEYS: a literal key read through next-intl is held by every locale
             "apps/web/src/modules/i18n/use-missing.ts": "import { useTranslations } from 'next-intl'\nexport const useMissing = () => {\n  const t = useTranslations('home')\n  return [t('nope'), t.rich('gone')]\n}\n",
         },
     })
-    s.tester.run("i18n-keys", rules["i18n-keys"], {
+    s.tester.run("i18n-keys", ruleOf("i18n-keys"), {
         valid: [
             s.good("apps/web/src/modules/i18n/use-copy.ts"),
             s.good("apps/web/src/modules/i18n/use-orders.ts"),
@@ -640,7 +658,7 @@ test("FE_I18N_KEYS: a literal key read through next-intl is held by every locale
 
 // ---- grammar-entry (ARCH_GRAMMAR_EXPORT_BYPASS, ARCH_GRAMMAR_CONTRACT_INVALID) ----------------------------------------------
 
-const grammarPackage = (version) => ({
+const grammarPackage = (version: string) => ({
     "package.json": JSON.stringify({
         name: "@starci/grammar",
         version,
@@ -655,7 +673,7 @@ const grammarPackage = (version) => ({
 
 // The app root's one package.json declares the grammar and its peers for every app; the one install is at the app root.
 const grammarFiles = () => {
-    const files = {
+    const files: Record<string, string> = {
         "../package.json": JSON.stringify({ name: "fixture", private: true, dependencies: { "@starci/grammar": "0.4.11", react: "19.0.0", "@heroui/react": "2.0.0" } }),
     }
     for (const [file, text] of Object.entries(grammarPackage("0.4.11"))) files[`../node_modules/@starci/grammar/${file}`] = text
@@ -679,7 +697,7 @@ test("ARCH_GRAMMAR_EXPORT_BYPASS: vendor grammar is reached only through its dec
             "apps/app/src/app/direct.ts": 'export const direct = require("@starci/grammar/private")\n',
         },
     })
-    s.tester.run("grammar-entry", rules["grammar-entry"], {
+    s.tester.run("grammar-entry", ruleOf("grammar-entry"), {
         valid: [
             s.good("apps/app/src/app/page.tsx"),
             s.good("apps/landing/src/app/page.tsx"),
@@ -721,7 +739,7 @@ test("ARCH_PACKAGE_EXPORT_BYPASS: a package is imported only through its declare
             "packages/ui/src/public/index.tsx": "export const Public = () => <span />\n",
         },
     })
-    s.tester.run("package-export-bypass", rules["package-export-bypass"], {
+    s.tester.run("package-export-bypass", ruleOf("package-export-bypass"), {
         valid: [
             // the declared export, by its package name
             s.good("apps/web/src/features/pages/Shown/index.tsx"),
@@ -741,7 +759,7 @@ test("ARCH_PACKAGE_IMPORTS_APP: a package never imports an app", (t) => {
             "packages/ui/src/private/clean.tsx": "export const Clean = () => <span />\n",
         },
     })
-    s.tester.run("package-imports-app", rules["package-imports-app"], {
+    s.tester.run("package-imports-app", ruleOf("package-imports-app"), {
         valid: [
             // an app importing a package is the allowed direction
             s.good("apps/web/src/features/pages/Shown/index.tsx"),

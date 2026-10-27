@@ -11,11 +11,27 @@
  * the canon.
  */
 import tsParser from "@typescript-eslint/parser"
+import type { ESLint, Linter } from "eslint"
 import { OUTSIDE_THE_SCAN_FILES } from "#runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { sonarWayRules } from "#runtime/scripts/lib/sonar-way.mjs"
+import { eslintPlugin } from "./eslint-boundary.ts"
+import { isHfsView } from "./hfs.ts"
+import type { Rules } from "./rule.ts"
+
+/** The canon plugin as this package builds it: its name and its rules. */
+export interface CanonPlugin {
+  readonly meta: { readonly name: string }
+  readonly rules: Rules
+}
+
+/** The plugins of the Sonar way rules (scripts/lib/sonar-way.mjs). */
+export interface SonarPlugins {
+  readonly sonarjs: ESLint.Plugin
+  readonly unicorn: ESLint.Plugin
+}
 
 /** A disable directive is a weakening of lint, and one that suppresses nothing is dead weight. */
-export const linterOptions = Object.freeze({ noInlineConfig: true, reportUnusedDisableDirectives: "error" })
+export const linterOptions: Readonly<{ noInlineConfig: true; reportUnusedDisableDirectives: "error" }> = Object.freeze({ noInlineConfig: true, reportUnusedDisableDirectives: "error" })
 
 /** The product source of a front end: every app's `src/` and every workspace package's `src/` (slots fe.* and repo.packages). */
 export const SOURCE_FILES = Object.freeze(["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"])
@@ -28,7 +44,7 @@ export const IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/d
  * handled (`no-floating-promises`, `no-misused-promises`), a `switch` over a union names every member, nothing flows out of an `any` (the `no-unsafe-*` family),
  * and the Sonar rules that need the checker: S1874 (a deprecated API), S6551 (an object turned into text) and S7503 (an `async` function that never awaits).
  */
-export const BORROWED = Object.freeze({
+export const BORROWED: Readonly<Record<string, "error">> = Object.freeze({
   "@typescript-eslint/no-floating-promises": "error",
   "@typescript-eslint/no-misused-promises": "error",
   "@typescript-eslint/switch-exhaustiveness-check": "error",
@@ -42,22 +58,29 @@ export const BORROWED = Object.freeze({
   "@typescript-eslint/require-await": "error",
 })
 
-const levelOf = (setting) => (Array.isArray(setting) ? setting[0] : setting)
+const levelOf = (setting: Linter.RuleEntry | undefined): Linter.RuleEntry | undefined => (Array.isArray(setting) ? setting[0] : setting)
 
 /**
  * The flat config of one front-end repository.
  *
- * @param {object} input - Attachment options.
- * @param {object} input.hfs - The HFS view of the repository (`loadHfs(import.meta.url)`).
- * @param {object} input.plugin - The canon plugin.
- * @param {Record<string, unknown>} input.source - The source-tree levels (canon rules plus the React Hooks rules).
- * @param {object} input.reactHooks - The React Hooks plugin.
- * @param {object} input.tsPlugin - The typescript-eslint plugin.
- * @param {{ sonarjs: object, unicorn: object }} input.sonar - The plugins of the Sonar way rules (scripts/lib/sonar-way.mjs).
- * @returns {Array<object>} The flat config: one ignore block, one typed source block and the Sonar way block.
+ * @param input - Attachment options.
+ * @param input.hfs - The HFS view of the repository (`loadHfs(import.meta.url)`).
+ * @param input.plugin - The canon plugin.
+ * @param input.source - The source-tree levels (canon rules plus the React Hooks rules).
+ * @param input.reactHooks - The React Hooks plugin.
+ * @param input.tsPlugin - The typescript-eslint plugin.
+ * @param input.sonar - The plugins of the Sonar way rules (scripts/lib/sonar-way.mjs).
+ * @returns The flat config: one ignore block, one typed source block and the Sonar way block.
  */
-export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar }) => {
-  if (!hfs || typeof hfs.slotOf !== "function" || typeof hfs.repoRoot !== "string") {
+export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar }: {
+  readonly hfs: unknown
+  readonly plugin: CanonPlugin
+  readonly source: Linter.RulesRecord
+  readonly reactHooks: ESLint.Plugin
+  readonly tsPlugin: ESLint.Plugin
+  readonly sonar: SonarPlugins
+}): Linter.Config[] => {
+  if (!isHfsView(hfs) || typeof hfs.repoRoot !== "string") {
     throw new Error("starciFeConfig needs { hfs: loadHfs(import.meta.url) } - the rules read the repository's slots through it")
   }
   if (hfs.profile !== "fe") throw new Error(`starciFeConfig lints the fe side of an app (its eslint.config.mjs lives in fe/); this view is ${hfs.side ? `the ${hfs.side} side` : "the app root"}`)
@@ -76,7 +99,7 @@ export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar
         parserOptions: { projectService: true, tsconfigRootDir: hfs.repoRoot, ecmaFeatures: { jsx: true } },
       },
       linterOptions: { ...linterOptions },
-      plugins: { "starci-fe": plugin, "react-hooks": reactHooks, "@typescript-eslint": tsPlugin },
+      plugins: { "starci-fe": eslintPlugin(plugin), "react-hooks": reactHooks, "@typescript-eslint": tsPlugin },
       settings,
       rules: { ...source, ...BORROWED },
     },
@@ -109,18 +132,27 @@ export const PLAIN_SOURCE_FILES = Object.freeze(["src/**/*.{ts,tsx}"])
  * The flat config of a TypeScript front-end tree that is no HFS app: the same fences as an app (typed linting, no inline directive, every rule at
  * `error`) over the rules that need no slot view. It takes the root of the tree and nothing else.
  *
- * @param {object} input - Attachment options.
- * @param {string} input.root - The absolute directory holding the tree's `tsconfig.json` and `src/`.
- * @param {object} input.plugin - The canon plugin.
- * @param {Record<string, unknown>} input.hooks - The React Hooks rules at error.
- * @param {object} input.reactHooks - The React Hooks plugin.
- * @param {object} input.tsPlugin - The typescript-eslint plugin.
- * @param {{ sonarjs: object, unicorn: object }} input.sonar - The plugins of the Sonar way rules.
- * @returns {Array<object>} The flat config: one ignore block, one typed source block and the Sonar way block.
+ * @param input - Attachment options.
+ * @param input.root - The absolute directory holding the tree's `tsconfig.json` and `src/`.
+ * @param input.plugin - The canon plugin.
+ * @param input.hooks - The React Hooks rules at error.
+ * @param input.reactHooks - The React Hooks plugin.
+ * @param input.tsPlugin - The typescript-eslint plugin.
+ * @param input.sonar - The plugins of the Sonar way rules.
+ * @param input.canon - Whether the slot-free canon rules are on.
+ * @returns The flat config: one ignore block, one typed source block and the Sonar way block.
  */
-export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlugin, sonar, canon = true }) => {
+export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlugin, sonar, canon = true }: {
+  readonly root: unknown
+  readonly plugin: CanonPlugin
+  readonly hooks: Linter.RulesRecord
+  readonly reactHooks: ESLint.Plugin
+  readonly tsPlugin: ESLint.Plugin
+  readonly sonar: SonarPlugins
+  readonly canon?: boolean
+}): Linter.Config[] => {
   if (typeof root !== "string" || root === "") throw new Error("starciPlainSourceConfig needs { root } - the directory of the tree's tsconfig.json and src/")
-  const canonRules = canon ? Object.fromEntries(SLOT_FREE_RULES.map((name) => [`starci-fe/${name}`, "error"])) : {}
+  const canonRules: Linter.RulesRecord = canon ? Object.fromEntries(SLOT_FREE_RULES.map((name) => [`starci-fe/${name}`, "error"])) : {}
   const missing = SLOT_FREE_RULES.filter((name) => !(name in plugin.rules))
   if (missing.length > 0) throw new Error(`starciPlainSourceConfig lists rules the canon plugin does not publish: ${missing.join(", ")}`)
   return [
@@ -134,7 +166,7 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
         parserOptions: { projectService: true, tsconfigRootDir: root, ecmaFeatures: { jsx: true } },
       },
       linterOptions: { ...linterOptions },
-      plugins: { "starci-fe": plugin, "react-hooks": reactHooks, "@typescript-eslint": tsPlugin },
+      plugins: { "starci-fe": eslintPlugin(plugin), "react-hooks": reactHooks, "@typescript-eslint": tsPlugin },
       rules: { ...canonRules, ...hooks, ...BORROWED },
     },
     { files: [...PLAIN_SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },

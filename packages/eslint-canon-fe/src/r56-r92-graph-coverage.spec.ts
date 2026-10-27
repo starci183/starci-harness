@@ -1,6 +1,16 @@
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.mjs"
+import { canonTester } from "../fixtures/typed/tester.ts"
+import type { Rule } from "./lib/rule.ts"
 import { rules } from "./project-graph.ts"
+
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name]
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`)
+  return rule
+}
+
 // proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
 // proves: FE_CUSTOM_HOOK_LOCATION@lite FE_CUSTOM_HOOK_LOCATION@full
 // proves: FE_BLOCK_PRODUCT_HOOK_DEFINITION@lite FE_BLOCK_PRODUCT_HOOK_DEFINITION@full
@@ -9,7 +19,7 @@ import { rules } from "./project-graph.ts"
 // proves: FE_PURE_WORLD_HOOK@lite FE_PURE_WORLD_HOOK@full
 // proves: FE_PURE_WORLD_IMPORT@lite FE_PURE_WORLD_IMPORT@full
 // proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
-for (const edition of ["lite", "full"]) {
+for (const edition of ["lite", "full"] as const) {
   test(`R56 R92 ${edition} accepts owned hooks and pure rendering and rejects misplaced hooks and world imports`, t => {
     const hook = "apps/web/src/hooks/data/useData.ts"
     const shared = "apps/web/src/hooks/data/wrong.shared.ts"
@@ -34,11 +44,12 @@ for (const edition of ["lite", "full"]) {
     }
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(fixture.cleanup)
-    fixture.tester.run("hooks-are-hooks", rules["hooks-are-hooks"], {
+    const tester = canonTester(fixture.tester)
+    tester.run("hooks-are-hooks", ruleOf("hooks-are-hooks"), {
       valid: [{filename: fixture.at(hook), code: files[hook]}],
       invalid: [{filename: fixture.at(shared), code: files[shared], errors: [{message: /FE_HOOKS_ARE_HOOKS/}]}],
     })
-    fixture.tester.run("hook-location", rules["hook-location"], {
+    tester.run("hook-location", ruleOf("hook-location"), {
       valid: [{filename: fixture.at(hook), code: files[hook]}],
       invalid: [
         {filename: fixture.at(deep), code: files[deep], errors: [{message: /FE_COMPONENT_DEEP_HOOK_IMPORT/}]},
@@ -46,7 +57,7 @@ for (const edition of ["lite", "full"]) {
         {filename: fixture.at(own), code: files[own], errors: [{message: /FE_BLOCK_PRODUCT_HOOK_DEFINITION/}, {message: /FE_CUSTOM_HOOK_LOCATION/}]},
       ],
     })
-    fixture.tester.run("component-purity", rules["component-purity"], {
+    tester.run("component-purity", ruleOf("component-purity"), {
       valid: [{filename: fixture.at(clean), code: files[clean]}],
       invalid: [
         {filename: fixture.at(data), code: files[data], errors: [{message: /FE_PURE_REACHES_DATA/}]},

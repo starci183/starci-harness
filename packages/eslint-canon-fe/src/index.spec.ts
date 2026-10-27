@@ -14,7 +14,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import plugin, { lawOwners, linterOptions, recommended, ruleDeclarations, ruleOwners, rules } from "./index.ts"
+import plugin, { lawOwners, linterOptions, recommended, ruleDeclarations, rules } from "./index.ts"
 import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -35,7 +35,7 @@ const lawListing = (): string => {
 gatheredPluginSpec({ side: "fe", dir: lawListing(), plugin, lawOwners, recommended, ruleDeclarations, rules })
 
 test("fe: the plugin publishes rules only - no repository audit rides beside it", async () => {
-  const module = await import("./index.ts")
+  const module: Readonly<Record<string, unknown>> = await import("./index.ts")
   assert.equal(module.audits, undefined, "the plugin exports rules only; the managed eslint.config.mjs carries the effective config (R17)")
   assert.equal(module.auditOwners, undefined)
 })

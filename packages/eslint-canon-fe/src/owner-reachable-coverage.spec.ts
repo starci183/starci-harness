@@ -8,11 +8,20 @@ import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.mjs';
-import { at, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
+import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/typed/tester.ts';
+import type { Rule } from './lib/rule.ts';
 import { noHardcodedRoute } from './next-conventions.ts';
 import { rules } from './project-graph.ts';
 
-for (const edition of ['lite', 'full']) {
+/** The rule project-graph publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name];
+  if (rule === undefined) throw new Error(`project-graph publishes no ${name}`);
+  return rule;
+};
+
+
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition} reachable owners and served hrefs pass; orphan owners and dead hrefs fail`, (t) => {
     const files = {
       'apps/web/src/app/[locale]/page.tsx': "import Home from '../../features/pages/home'; export default Home;",
@@ -24,7 +33,7 @@ for (const edition of ['lite', 'full']) {
     };
     const fixture = projectFixture({ profile: 'fe', edition, files });
     t.after(fixture.cleanup);
-    fixture.tester.run('owner-reachable', rules['owner-reachable'], {
+    canonTester(fixture.tester).run('owner-reachable', ruleOf('owner-reachable'), {
       valid: [{ filename: fixture.at('apps/web/src/features/pages/home/index.tsx'), code: files['apps/web/src/features/pages/home/index.tsx'] }],
       invalid: [
         { filename: fixture.at('apps/web/src/features/pages/links/index.tsx'), code: files['apps/web/src/features/pages/links/index.tsx'], errors: [{ message: /\[FE_HREF_RESOLVES\]/, line: 1 }] },
@@ -34,10 +43,10 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition} route builders pass while inline route paths fail`, () => {
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs: fixtureHfs(LITE_FE_DECLARATION, { lite: edition === 'lite' }) } },
-    });
+    }));
     const filename = at('apps/web/src/components/blocks/Nav/index.tsx');
     tester.run('no-hardcoded-route', noHardcodedRoute, {
       valid: [{ filename, code: 'router.push(routes.home());' }],

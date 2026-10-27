@@ -4,9 +4,12 @@
 export declare function resolveGrammarFamily(family: string): { readonly id: string }
 
 /** The declared family's lint contract. */
-export declare function grammarLintFor(family: string):
-  | { readonly family: string; readonly package: null }
-  | { readonly family: string; readonly package: string; readonly factory: string; readonly prefix: string }
+export declare function grammarLintFor(family: string): {
+  readonly family: string
+  readonly package: string | null
+  readonly factory?: string
+  readonly prefix?: string
+}
 
 /** The declared family's shared component and export contract. */
 export declare function grammarContractFor(family: string): { readonly entry: string; readonly [field: string]: unknown }

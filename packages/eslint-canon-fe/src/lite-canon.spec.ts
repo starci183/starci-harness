@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { RuleTester } from "eslint"
 import { monorepoTierBelongsToItsSide } from "./file-layout.ts"
 import { serverModuleMarksServerOnly } from "./client-boundary.ts"
+import { defineRule } from "./lib/rule.ts"
 import { isOutcomeModule } from "./lib/scope.ts"
-import { at, FE_DECLARATION, slotTester, typedTester } from "../fixtures/typed/tester.ts"
+import { at, canonTester, FE_DECLARATION, slotTester, typedTester } from "../fixtures/typed/tester.ts"
 
 const ONE_APP = {
   ...FE_DECLARATION,
@@ -32,17 +34,27 @@ test("one app may own shell composites while two apps must share them", () => {
 })
 
 test("the result vocabulary home follows slot data rather than a remembered slot id", () => {
-  const context = (slot, outcomeHome) => ({
-    filename: at("apps/web/src/modules/custom/result.ts"),
-    settings: { starci: { hfs: {
-      slotOf: () => slot,
-      slot: id => id === slot ? { outcomeHome } : null,
-    } } },
-  })
+  // The question is asked from a real rule context whose settings carry a slot view that answers from its own slot data.
+  const outcomeHomeOf = (slot: string | null, outcomeHome: boolean): boolean | undefined => {
+    let answer: boolean | undefined
+    const probe = defineRule({
+      meta: { type: "problem", schema: [], messages: {} },
+      create(context) {
+        answer = isOutcomeModule(context)
+        return {}
+      },
+    })
+    const hfs = { slotOf: () => slot, slot: (id: string) => id === slot ? { outcomeHome } : null }
+    canonTester(new RuleTester({ settings: { starci: { hfs } } })).run("outcome-home", probe, {
+      valid: [{ filename: at("apps/web/src/modules/custom/result.ts"), code: "" }],
+      invalid: [],
+    })
+    return answer
+  }
 
-  assert.equal(isOutcomeModule(context("fe.custom.result", true)), true)
-  assert.equal(isOutcomeModule(context("fe.transport.outcome", false)), false)
-  assert.equal(isOutcomeModule(context(null, true)), false)
+  assert.equal(outcomeHomeOf("fe.custom.result", true), true)
+  assert.equal(outcomeHomeOf("fe.transport.outcome", false), false)
+  assert.equal(outcomeHomeOf(null, true), false)
 })
 
 test("the server-only marker follows a BOM/CRLF directive prologue", () => {

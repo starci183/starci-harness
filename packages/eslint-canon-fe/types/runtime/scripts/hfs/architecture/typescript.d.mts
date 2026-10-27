@@ -1,5 +1,5 @@
 // The types of runtime/scripts/hfs/architecture/typescript.mjs, the parts the specs call.
-import type * as ts from "typescript"
+import type ts from "typescript"
 import type { ArchitectureConfig } from "./config.mjs"
 
 /** The TypeScript programs of a repository's owners: handed on unread. */

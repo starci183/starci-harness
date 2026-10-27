@@ -5,17 +5,17 @@ import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import { appDeclaration } from '../../eslint-canon-be/fixtures/app.mjs';
-import { at, TYPED_ROOT } from '../fixtures/typed/tester.ts';
+import { at, canonTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { noServerAction } from './client-boundary.ts';
 import { feStackImport } from './fe-stack.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite', 'full'] as const) {
   test(`no-server-action accepts valid modules and rejects directives in ${edition}`, () => {
     const declaration = { ...appDeclaration('fe', { apps: [{ name: 'web', kind: 'next' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
     assert.equal(hfs.edition, edition);
-    const tester = new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } });
+    const tester = canonTester(new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } }));
     tester.run('no-server-action', noServerAction, {
       valid: [
         { filename: at('apps/web/src/modules/orders/format.ts'), code: "export const label = 'use server';" },
@@ -33,7 +33,7 @@ for (const edition of ['lite', 'full']) {
     const declaration = { ...appDeclaration('fe', { apps: [{ name: 'web', kind: 'next' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
     assert.equal(hfs.edition, edition);
-    const tester = new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } });
+    const tester = canonTester(new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } }));
     const filename = at('apps/web/src/components/blocks/Orders/index.tsx');
     tester.run('fe-stack-import', feStackImport, {
       valid: [

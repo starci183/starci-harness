@@ -1,5 +1,5 @@
 // The types of runtime/scripts/hfs/architecture/frontend-grammar.mjs, the part the specs call.
-import type * as ts from "typescript"
+import type ts from "typescript"
 import type { ArchitectureConfig } from "./config.mjs"
 import type { TypeScriptContext } from "./typescript.mjs"
 

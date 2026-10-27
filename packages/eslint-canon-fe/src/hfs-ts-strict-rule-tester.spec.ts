@@ -4,28 +4,37 @@ import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import { rules } from './type-safety.ts';
-import { at, fixtureHfs } from '../fixtures/typed/tester.ts';
+import { at, canonTester, fixtureHfs } from '../fixtures/typed/tester.ts';
+import type { Rule } from './lib/rule.ts';
 
-for (const edition of ['lite', 'full']) {
+/** The rule type-safety publishes as `name`; a missing one fails the run. */
+const ruleOf = (name: string): Rule => {
+  const rule = rules[name];
+  if (rule === undefined) throw new Error(`type-safety publishes no ${name}`);
+  return rule;
+};
+
+
+for (const edition of ['lite', 'full'] as const) {
   test(`${edition}: type escape rules reject unsafe expressions and accept checked types`, () => {
-    const tester = new RuleTester({
+    const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },
       settings: { starci: { hfs: fixtureHfs(undefined, { lite: edition === 'lite' }) } },
-    });
+    }));
     const filename = at('apps/web/src/modules/api/client.ts');
-    tester.run('no-double-cast', rules['no-double-cast'], {
+    tester.run('no-double-cast', ruleOf('no-double-cast'), {
       valid: [{ filename, code: 'const id = typeof value === "string" ? value : "";' }],
       invalid: [{ filename, code: 'const id = value as unknown as string;', errors: [{ messageId: 'double' }] }],
     });
-    tester.run('no-type-assertion', rules['no-type-assertion'], {
+    tester.run('no-type-assertion', ruleOf('no-type-assertion'), {
       valid: [{ filename, code: 'const id = typeof value === "string" ? value : "";' }],
       invalid: [{ filename, code: 'const id = value as string;', errors: [{ messageId: 'assertion' }] }],
     });
-    tester.run('no-non-null-assertion', rules['no-non-null-assertion'], {
+    tester.run('no-non-null-assertion', ruleOf('no-non-null-assertion'), {
       valid: [{ filename, code: 'const id = values[0] ?? "";' }],
       invalid: [{ filename, code: 'const id = values[0]!;', errors: [{ messageId: 'bang' }] }],
     });
-    tester.run('no-explicit-any', rules['no-explicit-any'], {
+    tester.run('no-explicit-any', ruleOf('no-explicit-any'), {
       valid: [{ filename, code: 'const id: unknown = value;' }],
       invalid: [{ filename, code: 'const id: any = value;', errors: [{ messageId: 'any' }] }],
     });
