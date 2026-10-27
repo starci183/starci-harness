@@ -12,15 +12,6 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      rules:
-        - command: worker-start
-          fault: reply
-          reply:
-            ok: true
-            result:
-              id: w-1
-              status: started
   - file:
       path: wf.yaml
       yaml:
@@ -42,24 +33,28 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - shape
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: shape
+  - orca:
+      rules:
+        - command: worker-start
+          match:
+            task-title: '^\[Op\]'
+          fault: reply
+          reply:
+            ok: true
+            result:
+              id: w-1
+              status: started
+  - name: kernel next dispatches
+    seat: kernel:shape
+    starci: [kernel, next, shape, --wait, "0"]
     expect: {}
-  - name: step
-    starci:
-      - workflow
-      - step
-      - shape
-    save: {}
+  - name: kernel next
+    seat: kernel:shape
+    starci: [kernel, next, shape, --wait, "0"]
     expect: {}
   - assert:
       sql:
@@ -70,4 +65,6 @@ steps:
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 1

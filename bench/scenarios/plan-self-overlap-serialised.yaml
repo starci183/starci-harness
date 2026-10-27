@@ -43,20 +43,18 @@ steps:
                 args:
                   files:
                     - docs/b.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - self
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: self
+  - name: kernel next dispatches
+    seat: kernel:self
+    starci: [kernel, next, self, --wait, "0"]
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 1
   - assert:
       sql:

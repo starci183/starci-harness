@@ -3,7 +3,7 @@ id: owner-stop-hard-closes-seats
 group: owner
 title: "owner stops a running orca workflow hard: tasks cancelled, seats and Kernel closed"
 inject: workflow stop --hard while two seats run
-expect: every live task cancelled, its worker stopped and released, its lease released; the Kernel terminal the harness made is closed
+expect: every live task cancelled, its worker stopped and released, its lease released; the Kernel dispatch is stopped and released and its terminal closed
 pass:
   - workflow stopped
   - no lease
@@ -45,17 +45,13 @@ steps:
                 args:
                   files:
                     - docs/b.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - halt
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: halt
+  - name: kernel next dispatches
+    seat: kernel:halt
+    starci: [kernel, next, halt, --wait, "0"]
   - starci:
       - workflow
       - stop
@@ -87,3 +83,19 @@ steps:
       orcaCalls:
         command: terminal close
         min: 1
+  - assert:
+      orcaCalls:
+        command: worker-release
+        min: 3
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT kernel_closed_at IS NOT NULL FROM workflows
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM seats WHERE role = 'kernel' AND status = 'released'
+        equals:
+          - 1

@@ -3,7 +3,7 @@ id: scale-orca-maxparallel
 group: scale
 title: eight ready orca tasks launch no more than maxParallel seats
 inject: 8 independent tasks, maxParallel 3, a healthy Orca stand-in
-expect: one Kernel terminal, Run and task; three worker-starts, each under the Kernel's Run; five tasks wait for a slot without a lease
+expect: one Kernel seat with its child Run and task; three worker-starts, each under the Kernel's Run; five tasks wait for a slot without a lease
 pass:
   - exactly 3 worker-start calls, 3 distinct retry-request ids
   - exactly 1 run-create
@@ -104,25 +104,25 @@ steps:
                 args:
                   files:
                     - docs/p7.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - par
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: par
+  - name: kernel next dispatches
+    seat: kernel:par
+    starci: [kernel, next, par, --wait, "0"]
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 3
         distinct: retry-request
   - assert:
       orcaCalls:
         command: run-create
+        match:
+          objective: "^StarCi workflow "
         count: 1
   - assert:
       sql:
@@ -136,13 +136,12 @@ steps:
         query: SELECT COUNT(*) FROM leases
         equals:
           - 3
-  - name: step
-    starci:
-      - workflow
-      - step
-      - par
-    save: {}
+  - name: kernel next
+    seat: kernel:par
+    starci: [kernel, next, par, --wait, "0"]
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 3

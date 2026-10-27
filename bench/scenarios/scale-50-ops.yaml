@@ -3,7 +3,7 @@ id: scale-50-ops
 group: scale
 title: "fifty Ops under one Kernel: the cap holds, nothing launches twice"
 inject: 50 independent orca tasks at maxParallel 16 (the schema cap)
-expect: one Run, 16 worker-starts with 16 distinct request ids, 16 leases; 34 tasks wait without a ledger task
+expect: one Kernel child Run, 16 worker-starts with 16 distinct request ids, 16 leases; 34 tasks wait without a ledger task
 pass:
   - 16 distinct worker-start requests
   - one run-create
@@ -524,25 +524,25 @@ steps:
                 args:
                   files:
                     - docs/o49.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - fifty
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: fifty
+  - name: kernel next dispatches
+    seat: kernel:fifty
+    starci: [kernel, next, fifty, --wait, "0"]
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 16
         distinct: retry-request
   - assert:
       orcaCalls:
         command: run-create
+        match:
+          objective: "^StarCi workflow "
         count: 1
   - assert:
       sql:

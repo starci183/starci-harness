@@ -33,18 +33,17 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - died
-    save:
-      a: data.nodes.0.task.id
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: died
+  - name: kernel next dispatches
+    seat: kernel:died
+    starci: [kernel, next, died, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks ORDER BY rowid
+      as: a
   - name: worker files done
     worker:
       task: ${a}
@@ -58,14 +57,10 @@ steps:
         state: exited
   - sql:
       db: ledger
-      exec: UPDATE seats SET started_at = '2020-01-01T00:00:00.000Z'
-  - name: step
-    starci:
-      - workflow
-      - step
-      - died
-    save: {}
-    expect: {}
+      exec: UPDATE seats SET started_at = '2020-01-01T00:00:00.000Z' WHERE role = 'worker'
+  - name: kernel next
+    seat: kernel:died
+    starci: [kernel, next, died, --wait, "0"]
   - assert:
       sql:
         db: ledger
@@ -76,3 +71,4 @@ steps:
       gitLog:
         grep: "Starci-Task: ${a}"
         count: 1
+        in: ${worktree.died}

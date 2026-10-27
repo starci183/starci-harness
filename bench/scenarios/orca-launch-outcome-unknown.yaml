@@ -13,11 +13,6 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      rules:
-        - command: worker-start
-          fault: unknown
-          times: 1
   - file:
       path: wf.yaml
       yaml:
@@ -39,19 +34,25 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - unk
-    save:
-      a: data.nodes.0.task.id
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: unk
+  - orca:
+      rules:
+        - command: worker-start
+          match:
+            task-title: '^\[Op\]'
+          fault: unknown
+          times: 1
+  - name: kernel next dispatches
+    seat: kernel:unk
+    starci: [kernel, next, unk, --wait, "0"]
     expect: {}
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks ORDER BY rowid
+      as: a
   - assert:
       sql:
         db: ledger
@@ -79,9 +80,13 @@ steps:
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 1
         distinct: retry-request
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 2

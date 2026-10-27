@@ -7,6 +7,7 @@ import { Refusal } from "../../shared/errors.js"
 
 /** The groups of the catalog, in scoreboard order. */
 export const GROUPS = [
+    "acceptance",
     "lifecycle",
     "crash",
     "orca",
@@ -55,7 +56,10 @@ const assertSchema = z.strictObject({
     gitLog: z.strictObject({ grep: z.string(), count: z.number().int(), in: z.string().optional() }).optional(),
     gitClean: z.boolean().optional(),
     gitHas: z.strictObject({ path: z.string(), present: z.boolean(), in: z.string().optional() }).optional(),
-    orcaCalls: z.strictObject({ command: z.string(), count: z.number().int().optional(), min: z.number().int().optional(), max: z.number().int().optional(), distinct: z.string().optional() }).optional(),
+    /** `match` keeps only the calls whose named flags each match a regular expression (`task-title: "^\[Op\]"`). */
+    orcaCalls: z
+        .strictObject({ command: z.string(), match: z.record(z.string(), z.string()).optional(), count: z.number().int().optional(), min: z.number().int().optional(), max: z.number().int().optional(), distinct: z.string().optional() })
+        .optional(),
     exists: z.strictObject({ path: z.string(), present: z.boolean() }).optional(),
 })
 
@@ -69,6 +73,21 @@ const stepSchema = z.strictObject({
     /** The step is skipped under this fault. */
     unless: z.string().optional(),
     starci: z.array(z.string()).optional(),
+    /**
+     * Who runs the verb: `supervisor` (the booted Supervisor's terminal and role) or `kernel:<workflow>` (that workflow's Kernel
+     * terminal and role, from its worktree unless `cwd` says otherwise). Unset, the owner runs it outside Orca.
+     */
+    seat: z.string().regex(/^(?:supervisor|kernel:[\w.-]+)$/).optional(),
+    /**
+     * Boots the coordinator tree through real verbs on the stand-in: `supervisor start` and `supervisor attach` (once per run),
+     * `workflow define <file>` when a file is named, `workflow start <workflow>` from the Supervisor terminal and `kernel attach`
+     * from the Kernel terminal it launched (unless `attach` is false); `adopt` attaches a workflow's current Kernel seat
+     * (one `supervisor next` relaunched). It saves supervisor.{launch,terminal,run} and
+     * kernel.<workflow>.{launch,terminal,run}, worktree.<workflow>.
+     */
+    boot: z.strictObject({ file: z.string().optional(), workflow: z.string().optional(), attach: z.boolean().optional(), adopt: z.string().optional() }).optional(),
+    /** Saves the first value of a query's first row under a variable name. */
+    read: z.strictObject({ db: z.enum(["ledger", "machine"]), query: z.string(), as: z.string() }).optional(),
     /** Runs the verb this many times at once (contention); each copy is held to `expect`. */
     parallel: z.number().int().min(2).max(64).optional(),
     /** Where the verb runs; default the scratch repository. */
@@ -90,7 +109,19 @@ const stepSchema = z.strictObject({
         })
         .optional(),
     git: z.array(z.string()).optional(),
-    orca: z.strictObject({ rules: z.array(z.record(z.string(), z.unknown())).optional(), set: z.record(z.string(), z.unknown()).optional(), worker: z.strictObject({ dispatch: z.string(), state: z.string() }).optional() }).optional(),
+    /**
+     * Scripts the stand-in: fault rules, raw state, a worker state (`dispatch` `*` names every Op dispatch so far, `kernel` every
+     * Kernel dispatch), and mail put into a mailbox as if a seat had sent it (`to` is `run:<id>` or `dispatch:<id>`).
+     */
+    orca: z
+        .strictObject({
+            rules: z.array(z.record(z.string(), z.unknown())).optional(),
+            set: z.record(z.string(), z.unknown()).optional(),
+            worker: z.strictObject({ dispatch: z.string(), state: z.string() }).optional(),
+            mail: z.array(z.strictObject({ to: z.string(), type: z.string(), from: z.string().optional(), subject: z.string().optional(), body: z.string().optional(), payload: z.unknown().optional(), count: z.number().int().min(1).max(500).optional() })).optional(),
+            terminal: z.strictObject({ handle: z.string(), live: z.boolean() }).optional(),
+        })
+        .optional(),
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), exec: z.string() }).optional(),
     assert: assertSchema.optional(),
 })
@@ -112,6 +143,8 @@ const scenarioSchema = z.strictObject({
     automation: z.enum(AUTOMATION),
     /** Why it is not automated today: the verbs or harness pieces it waits for (empty when it runs). */
     pending: z.string().optional(),
+    /** A harness defect this scenario exposes, with the file:line that owns it; the scenario stays red until the harness changes. */
+    finding: z.string().optional(),
     /** The exact steps a person or a later automation follows while it is pending. */
     manual: z.array(z.string()).optional(),
     faults: z.array(z.string()).optional(),

@@ -12,11 +12,6 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      rules:
-        - command: worker-start
-          fault: refuse
-          code: selector_not_found
   - file:
       path: wf.yaml
       yaml:
@@ -38,17 +33,20 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - repo
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: repo
+  - orca:
+      rules:
+        - command: worker-start
+          match:
+            task-title: '^\[Op\]'
+          fault: refuse
+          code: selector_not_found
+  - name: kernel next dispatches
+    seat: kernel:repo
+    starci: [kernel, next, repo, --wait, "0"]
     expect: {}
   - assert:
       orcaCalls:

@@ -12,12 +12,6 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 steps:
-  - orca:
-      rules:
-        - command: worker-start
-          fault: refuse
-          code: worktree_busy
-          times: 1
   - file:
       path: wf.yaml
       yaml:
@@ -39,17 +33,21 @@ steps:
                 args:
                   files:
                     - docs/a.md
-  - name: define
-    starci:
-      - workflow
-      - define
-      - ${run}/wf.yaml
-  - name: start
-    starci:
-      - workflow
-      - start
-      - ref
-    save: {}
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: ref
+  - orca:
+      rules:
+        - command: worker-start
+          match:
+            task-title: '^\[Op\]'
+          fault: refuse
+          code: worktree_busy
+          times: 1
+  - name: kernel next dispatches
+    seat: kernel:ref
+    starci: [kernel, next, ref, --wait, "0"]
     expect: {}
   - assert:
       sql:
@@ -57,12 +55,9 @@ steps:
         query: SELECT status FROM tasks
         equals:
           - queued
-  - name: step
-    starci:
-      - workflow
-      - step
-      - ref
-    save: {}
+  - name: kernel next
+    seat: kernel:ref
+    starci: [kernel, next, ref, --wait, "0"]
     expect: {}
   - assert:
       sql:
@@ -73,4 +68,6 @@ steps:
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Op\]'
         count: 2
