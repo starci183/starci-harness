@@ -8,7 +8,8 @@ import type { StepAction } from "./engine.js"
 
 /**
  * `starci workflow stop <id> --graceful|--hard`: graceful dispatches nothing new and lets live tasks report and settle (each
- * step verifies them; the workflow is stopped once none is live); hard cancels every live task now through task cancel, which
+ * step verifies them; the workflow is stopped once none is live) and cancels the tasks that already came back unfinished, which
+ * only a Kernel amend would move and none comes after a stop; hard cancels every live task now through task cancel, which
  * stops and releases its seats. A task that cannot be cancelled yet (a verify in flight) keeps the workflow stopping. Once the
  * workflow is stopped, after its ops, its Kernel terminal is closed (a graceful stop: by the step that stops it).
  */
@@ -38,7 +39,8 @@ export const workflowStopVerb = defineVerb({
                 db.close()
             }
         })()
-        const actions: StepAction[] = mode === "hard" ? await cancelTasks(context, live.map((task) => ({ key: task.key, task: task.id })), `workflow ${flags.workflow}: hard stop`) : []
+        const ending = mode === "hard" ? live : live.filter((task) => task.status === "reported" && task.result !== "done")
+        const actions: StepAction[] = await cancelTasks(context, ending.map((task) => ({ key: task.key, task: task.id })), `workflow ${flags.workflow}: ${mode} stop`)
         const snapshot = reconcile(root, flags.workflow)
         actions.push(...(await closeKernelActions(context, root, snapshot)))
         const report = reportOf(root, readSnapshot(root, flags.workflow), actions)
