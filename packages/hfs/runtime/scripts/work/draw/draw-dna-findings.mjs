@@ -12,7 +12,7 @@ export function appendDnaFindings({ all, dna, proposals, label, assetRequests, t
   alertFindings(all, dna, rules, add, helpers);
   meterTrackFindings(all, rules, add, helpers);
   artworkFindings(all, assetRequests, add, helpers);
-  badgeDotFindings(all, rules, add, helpers);
+  statusDotFindings(all, rules, add, helpers);
   return groupedFindings(groups, label);
 }
 
@@ -221,29 +221,40 @@ function artworkFindingFor(el, assetRequests, add, h) {
   if (assetRequests && !assetRequests.has(id)) add(h.DRAW_ASSET_SLOT_UNDECLARED, 'asset slot without a request', slotEl, `${h.ASSET_SLOT_ATTR}="${id}" has no entry in the drawing's asset-request.md`);
 }
 
-function badgeDotFindings(all, rules, add, h) {
-  for (const el of all) badgeDotFindingFor(el, rules, add, h);
+function statusDotFindings(all, rules, add, h) {
+  for (const el of all) statusDotFindingFor(el, rules, add, h);
 }
 
-function badgeDotFindingFor(el, rules, add, h) {
+/** The nearest declaration of the dot-size token on the element or an ancestor, in px; null when none is declared. */
+function statusDotTokenPx(el, rules, h) {
+  for (const node of [el, ...h.ancestorsOf(el)]) {
+    const px = h.declaredPx(node, h.STATUS_DOT_SIZE_TOKEN, rules);
+    if (px != null) return px;
+  }
+  return null;
+}
+
+function statusDotFindingFor(el, rules, add, h) {
   if (h.insideSvg(el)) return;
   const part = (el.attrs[h.PART_ATTR] ?? '').trim();
+  const slot = (el.attrs['data-slot'] ?? '').trim();
   const cls = h.classesOf(el);
-  const dotLike = /(^|-)dot$/.test(part) || cls.some((c) => h.DOT_CLASS.test(c));
+  const inDotComponent = h.inComponent(el, h.COMPONENTS_WITH_DOT);
+  if (inDotComponent && (h.STATUS_DOT_ANATOMY.test(part) || cls.some((c) => h.STATUS_DOT_ANATOMY.test(c)))) return;
+  const dotLike = /(^|-)dot(-mark)?$/.test(part) || cls.some((c) => h.DOT_CLASS.test(c));
   if (!dotLike) return;
-  const dnaDot = ['badge-dot', 'dot'].includes(part) || cls.includes(h.BADGE_DOT_CLASS);
-  const inBadge = h.inComponent(el, ['Badge']);
-  if (!dnaDot || !inBadge) {
-    add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'hand-made status dot', el, `a status dot is DNA Badge isDot (data-grammar-part="badge-dot" / ${h.BADGE_DOT_CLASS} inside a Badge), never a hand-drawn dot`);
+  const dnaDot = [part, slot].includes(h.STATUS_DOT_MARK_PART) || cls.includes(h.STATUS_DOT_MARK_CLASS);
+  if (!dnaDot || !inDotComponent) {
+    add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'hand-made status dot', el, `a status dot is the DNA StatusDot mark (data-grammar-part="${h.STATUS_DOT_MARK_PART}" / ${h.STATUS_DOT_MARK_CLASS} inside a StatusDot or a Badge isDot), never a hand-drawn dot`);
     return;
   }
   const inline = h.declsOf(el.attrs.style);
   const ruled = rules.filter((r) => h.selectorMatches(r.selector, el)).map((r) => r.decls);
   const ring = [inline, ...ruled].some((d) => ['box-shadow', 'outline', 'border'].some((key) => d[key] && !/^(none|0|0px)$/i.test(d[key].trim())))
     || cls.some((c) => /^(ring|shadow|outline)(-|$)/.test(c) && !/^(ring|shadow|outline)-none$/.test(c));
-  if (ring) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'Badge dot with a halo', el, 'the Badge dot is a plain 6px solid circle in the tone colour: no box-shadow, ring, outline or border halo');
-  const px = Math.max(h.declaredPx(el, 'width', rules) ?? 0, h.declaredPx(el, 'height', rules) ?? 0, Number(el.attrs.width) || 0, Number(el.attrs.height) || 0);
-  if (px && Math.abs(px - h.BADGE_DOT_PX) > 0.5) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'Badge dot off its size', el, `the dot declares ${px}px: the Badge dot is ${h.BADGE_DOT_PX}px (<CircleFill width={6} />), no size variants`);
+  if (ring) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'status dot with a halo', el, `the status dot is a plain ${h.STATUS_DOT_PX}px solid circle in the tone colour: no box-shadow, ring, outline or border halo (the echo ring is the StatusDot's own)`);
+  const px = Math.max(h.declaredPx(el, 'width', rules) ?? 0, h.declaredPx(el, 'height', rules) ?? 0, Number(el.attrs.width) || 0, Number(el.attrs.height) || 0, statusDotTokenPx(el, rules, h) ?? 0);
+  if (px && Math.abs(px - h.STATUS_DOT_PX) > 0.5) add(h.DRAW_OFF_GRAMMAR_COMPONENT, 'status dot off its size', el, `the dot declares ${px}px: the status dot is ${h.STATUS_DOT_PX}px, read from ${h.STATUS_DOT_SIZE_TOKEN}, no size variants`);
 }
 
 function groupedFindings(groups, label) {
