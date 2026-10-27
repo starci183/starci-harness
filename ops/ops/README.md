@@ -1,8 +1,9 @@
 # Op files: one per label, base and extend
 
-Every worker task has a label (`code`, `test`, `ui`, `verify`, `uat`, `docs`, `deliver`), and each label has one op file
-here, `<label>.md`. The op file owns the **base** of a task of that label; the Kernel's contract adds an **extend**. The
-harness works the union, base then extend, and the worker reads nothing else.
+Every worker task has a label (`code`, `test`, `draw`, `image`, `audit`, `review`, `verify`, `uat`, `docs`, `deliver`), and
+each label has one op file here, `<label>.md`. The op file owns the **base** of a task of that label; the Kernel's contract
+adds an **extend**. The harness works the union, base then extend, and the worker reads nothing else. Which labels a Work
+record needs, in which order, is its lane ([../lanes.yaml](../lanes.yaml)).
 
 `cli/src/harness/ops.ts` loads and validates these files (`OPS_INVALID` names the file and the fault);
 `cli/src/harness/contract.ts` resolves a contract against its op and judges it; `cli/src/harness/brief.ts` renders the
@@ -15,7 +16,7 @@ differs from the procedure below. A body never restates the common procedure.
 
 | key | holds |
 |---|---|
-| `summary`, `floor`, `hostTools` | what the label is for, its difficulty floor and the host tools it needs; the router reads the last two ([../README.md](../README.md)) |
+| `summary`, `floor`, `hostTools`, `independentOf` | what the label is for, its difficulty floor, the host tools it needs and the labels whose authors it is never routed to; the router reads the last three ([../README.md](../README.md)) |
 | `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads the app files for `side: be|fe` and CONTRIBUTING.md plus cli/README.md for `side: harness`). An entry marked `shared: true` is read by every task of the label for orientation, so its ids are never a read trace. `context.budget` caps the resolved context in tokens (bytes / 4); `contract check` refuses a heavier one |
 | `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |
 | `output.base` | the keys the worker's output json must carry: `type` (`string`, `number`, `boolean`, `object`, `array`, `string[]`), optional `minItems`, `when: work` (only for a work-driven task), `cites` (a read trace), `summary` |
@@ -74,7 +75,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
      nothing, the checks judge the files under your allowPaths as they stand, and the harness settles it without a commit.
    - `blocked`: you cannot finish without something outside the contract; say what, in one sentence.
    - `mismatch`: the contract itself is wrong or contradictory; show why.
-   - `failed`: the budget ran out; attach the last red checks.
+   - `failed`: the budget ran out (attach the last red checks), or, for a label that measures the product (`audit`,
+     `review`, `verify`, `uat`), what you measured is wrong: your verdict is `failed` and your findings say why. You never
+     repair it; the Kernel routes the findings ([../routes.yaml](../routes.yaml)).
 
 A defect that belongs to a package the app consumes (the grammar, a canon package, the harness) is reported, never worked
 around in the app: file `blocked` naming the package, the component and the error, even when a shim inside allowPaths

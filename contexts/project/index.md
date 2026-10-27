@@ -174,8 +174,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Read with
 - [project/stacks.md](../project/stacks.md) · 9 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed and how ...
   - sections: One root per app · The manifest · Environments · Ingress · Secret custody · Operations · Local runs · Read with
-- [project/work.md](../project/work.md) · 10 KB — `.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built and how it is accepted.
-  - sections: The tree · Record families · State and activity · Who writes what · UAT flows · Read with
+- [project/work.md](../project/work.md) · 11 KB — `.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built and how it is accepted.
+  - sections: The tree · Record families · State and activity · Who writes what · Lanes · UAT flows · Read with
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 10 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, auth-supabase, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons and 17 more

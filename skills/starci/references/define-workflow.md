@@ -27,8 +27,10 @@ architecture, `features/<f>`) and the code the goal touches. Fold what you find 
 
 Split the goal into tasks, one outcome each. Per task decide:
 
-- `label`: one of the op files of `ops/ops/` (code, test, ui, verify, uat, docs, deliver). Its op gives the base
-  context, inputs, output keys and checks, and the difficulty floor; the task only extends them.
+- `label`: one of the op files of `ops/ops/` (code, test, draw, image, audit, review, verify, uat, docs, deliver). Its op
+  gives the base context, inputs, output keys and checks, and the difficulty floor; the task only extends them. Every Work
+  record a task is over walks its lane ([ops/lanes.yaml](../../../ops/lanes.yaml)): plan a task for each step its evidence
+  does not satisfy yet, each behind the step before it, or define refuses `FLOW_INCOMPLETE` and names the missing step.
 - `allowPaths`: literal files or folders, never a glob, never `.` and never the whole `.starciwork`. Inside
   `.starciwork` lease one scope, for example `.starciwork/features/<f>`.
 - `checks`: presets from `ops/checks.yaml`. At least one behavioural check (`tests-pass`, `json-required`,

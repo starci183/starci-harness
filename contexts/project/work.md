@@ -40,7 +40,7 @@ commands that prove it, each `{required, command, note}`), `change` (`{rev, kind
 | `sds` | `work/sds-component@1` | a logical component of the design: responsibility, interfaces, sequence; no repository path until code proves it | `responsibility`, `interfaces`, `owners`, `stateMachine`, `sequence` |
 | `contract` | `work/contract@1` | a synchronous surface one feature provides and others consume | `owner`, `between`, `surface`, `guarantees`, `consumerObligations` |
 | `integration` | `work/integration@1` | the boundary to one external provider, proven only against it | `provider`, `boundary`, `endpoints`, `credential`, `sandbox` |
-| `ui` | `work/ui-screen@1` | one screen: route, surface, persona and its interface spec | `brand`, `shell`, `route`, `routeParent`, `surface`, `persona`, `ui` |
+| `ui` | `work/ui-screen@1` | one screen: route, surface, persona and its interface spec | `brand`, `shell`, `route`, `routeParent`, `surface`, `persona`, `ui`, `direction` (the repository path of its drawn HTML), `assets` (`{slot, summary, file?}`, the artwork the drawing leaves for real art) |
 | `impl/<repository>` | `work/implementation@1` | the code that proves records, in one repository named by `workspace.yaml` | `repository`, `owners` (`{role, path}`, module-root directories, never files), `proves` |
 | `uat` | `work/uat-flow@1` | one acceptance walk in a browser (below) | `entry`, `actor`, `accounts`, `environment`, `steps`, `failurePaths`, `recording`, `effects`, `cleanup` |
 | `gap` | `work/gap@1` | a known absence, closed by the records that fill it | `statement`, `closedBy` (ids) |
@@ -61,7 +61,7 @@ id. A family folder exists only when the feature has a record for it.
   `verifying` while a task holds it, and `blocked` after a settle saw its proof red. There is no in-progress state.
 - **Blocking** is `blockedBy` (ids) or `blockers` (words), never a state.
 - **Proof cannot outrun its target.** An `impl` is `done` only when every record in its `proves` is; a `gap` only
-  when every id in `closedBy` is; a `ui` only when the screen's approved direction exists. A change to a record
+  when every id in `closedBy` is; a `ui` only when the owner approved the direction its `direction` names. A change to a record
   that was `done` returns its dependents to `todo` until they are proven again.
 
 ## Who writes what
@@ -69,7 +69,8 @@ id. A family folder exists only when the feature has a record for it.
 | writer | writes |
 |---|---|
 | the Kernel (its own reasoning) or a `docs` task it sends | every record's content: new records, revisions, `change`, `refs`, `blockers`, `requiresProof` |
-| a `code`, `ui` or `test` task | code, never a record; what it learned goes into its result for the Kernel to record |
+| a `code` or `test` task | code, never a record; what it learned goes into its result for the Kernel to record |
+| a `draw` or `image` task | a ui record's `direction` and its drawing, or an asset slot's `file` and its image; never its `state` |
 | a `uat` task | the run's evidence beside the flow (below), never the flow's steps or expectations |
 | the harness, at settle | only `state`, `activity` and the flow's `evidence.yaml` of the uat record the settled task walked |
 | the owner | decisions (`decision` outcomes) and taste; the Kernel records them |
@@ -78,6 +79,14 @@ The harness writes a uat record at settle ([cli/src/harness/settle.ts](../../cli
 `state: done` and `activity: idle` inside the task's harness commit, red sets `activity: blocked` in a Work commit of its
 own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside a
 leased scope (`.starciwork/features/<f>`), held by review.
+
+## Lanes
+
+Each record family walks a lane of steps, each a label ([ops/lanes.yaml](../../ops/lanes.yaml)): requirements, design
+and the brand are decided once by `docs`; a screen is drawn, then its art made; front-end code waits for its feature's
+screens and is audited and walked; back-end code is tested, proven end to end and reviewed. A step the record's evidence
+already satisfies (its state, its drawing, its owners' commits, a receipted run, a green task over it) is skipped, and a
+workflow covering the record carries every other step ([cli/src/harness/lanes.ts](../../cli/src/harness/lanes.ts)).
 
 ## UAT flows
 

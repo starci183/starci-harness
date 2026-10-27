@@ -1,0 +1,32 @@
+# Bounded repair routes: what the Kernel may do with a red or question decision on a task. cli/src/harness/routes.ts reads
+# this file. Routes are ordered: the first one that matches a decision and whose `to` resolves is its legal route, carried
+# in the decision's evidence; the Kernel's workflow-change answering it names it as `route` and does what its `to` says, or
+# `kernel submit` refuses ROUTE_ILLEGAL. Past that route's limit the decision carries none and the Kernel escalates (kind
+# owner) to the Supervisor.
+#
+# on.decision: red (the task failed, was lost or stuck) or question (its worker filed blocked or mismatch).
+# on.from: the label of the task the decision is about, or any.
+# on.cause, read from the task's newest attempt:
+#   findings   its result's verdict is failed: a prove step measured the product wrong
+#   failed     its worker filed failed with no failed verdict (the budget ran out)
+#   rejected   its worker filed done but the harness verify was red
+#   no-report  it ended with no result (timeout, stall, lost worker, launch failure)
+#   blocked, mismatch  the question its worker filed
+# to: same (the task's own label: retry or edit the task itself, or add a scoped task of its label for the change it
+#   needs outside its allowPaths), build (the build label of the lane of a record the task is over), or {label: <label>}.
+#   A change does it by adding a task of that label, or by retrying or editing a task the graph holds with it.
+# limit: how many applied commands may take this route for one task key; the router moves a retry of a timed-out, stalled
+# or never-started attempt to another pool (ops/README.md "The router", step 4).
+schema: starci/routes@1
+routes:
+  - {id: audit-drift-repairs-code, on: {decision: red, from: audit, cause: findings}, to: {label: code}, limit: 5}
+  - {id: audit-systemic-redraws, on: {decision: question, from: audit, cause: blocked}, to: {label: draw}, limit: 5}
+  - {id: uat-red-repairs-build, on: {decision: red, from: uat, cause: findings}, to: build, limit: 3}
+  - {id: verify-red-repairs-build, on: {decision: red, from: verify, cause: findings}, to: build, limit: 3}
+  - {id: review-findings-repair-build, on: {decision: red, from: review, cause: findings}, to: build, limit: 3}
+  - {id: rejected-retries, on: {decision: red, from: any, cause: rejected}, to: same, limit: 2}
+  - {id: no-report-retries-elsewhere, on: {decision: red, from: any, cause: no-report}, to: same, limit: 2}
+  - {id: failed-retries, on: {decision: red, from: any, cause: failed}, to: same, limit: 3}
+  - {id: findings-retry-without-lane, on: {decision: red, from: any, cause: findings}, to: same, limit: 2}
+  - {id: blocked-answered, on: {decision: question, from: any, cause: blocked}, to: same, limit: 2}
+  - {id: mismatch-rewrites-contract, on: {decision: question, from: any, cause: mismatch}, to: same, limit: 2}

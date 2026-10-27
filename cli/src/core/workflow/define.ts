@@ -2,7 +2,8 @@ import { resolve } from "node:path"
 import { workflowBudgets } from "../../harness/budget.js"
 import { assertScope } from "../../harness/goal.js"
 import { buildGraph, planPlace, readPlanSource, uatWalksOf } from "../../harness/graph.js"
-import { openLedger } from "../../harness/ledger.js"
+import { assertFlow, flowLines } from "../../harness/lanes.js"
+import { openExistingLedger, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { assertRunPlace } from "../../harness/work.js"
 import { insertWorkflow } from "../../harness/workflow.js"
@@ -13,7 +14,8 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 /**
  * `starci workflow define <file>`: records the Kernel's workflow file as graph version 1. Every contract must be fit, every
  * dependency known and the edges acyclic; the harness never invents a task, it only records the graph it is given. The file's
- * goal (text, acceptance, scope ceiling) is recorded as goal v1, and the graph must fit that ceiling (SCOPE_EXCEEDED).
+ * goal (text, acceptance, scope ceiling) is recorded as goal v1, and the graph must fit that ceiling (SCOPE_EXCEEDED) and walk
+ * the lane of every Work record it covers (FLOW_INCOMPLETE, harness/lanes.ts).
  */
 export const workflowDefineVerb = defineVerb({
     path: ["workflow", "define"],
@@ -40,6 +42,14 @@ export const workflowDefineVerb = defineVerb({
         // Goal v1 is the file's goal; a scope ceiling it carries holds from the first graph on.
         assertScope(source.header.id, built.nodes, { version: 1, scope: source.header.scope ?? null })
         const root = place.repo
+        const known = openExistingLedger(root)
+        const lanes = (() => {
+            try {
+                return flowLines(assertFlow(source.header.id, built.nodes, { repo: root, db: known, requires: source.header.requires ?? [] }, ops))
+            } finally {
+                known?.close()
+            }
+        })()
         await Promise.all(uatWalksOf(source, ops).map((walk) => assertRunPlace(root, walk)))
         const db = openLedger(root)
         const workflow = (() => {
@@ -57,9 +67,10 @@ export const workflowDefineVerb = defineVerb({
             `defined workflow ${workflow.id} (${workflow.header.runner}): ${String(nodes.length)} task(s), graph v1`,
             table,
             ...built.notes.map((note) => `note: ${note}`),
+            ...lanes.map((line) => `lane: ${line}`),
             ...(budget === null ? [] : [`budget: ${String(budget.ceiling.minutes)} minutes, ${String(budget.ceiling.tries)} tries`]),
             `start it: starci workflow start ${workflow.id}`,
         ].join("\n")
-        return { data: { workflow: workflow.id, runner: workflow.header.runner, status: workflow.status, graphVersion: workflow.graphVersion, goal: workflow.header.goal, budget, nodes, notes: built.notes }, message }
+        return { data: { workflow: workflow.id, runner: workflow.header.runner, status: workflow.status, graphVersion: workflow.graphVersion, goal: workflow.header.goal, budget, nodes, notes: built.notes, lanes }, message }
     },
 })

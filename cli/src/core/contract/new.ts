@@ -71,7 +71,7 @@ export const contractNewVerb = defineVerb({
     roles: ["owner", "kernel", "supervisor", "agent"],
     schema: "starci/contract-new@1",
     flags: {
-        label: { kind: "string", summary: "the worker label (code, test, ui, verify, uat, docs, deliver, image)", required: true },
+        label: { kind: "string", summary: "the worker label, an op file of ops/ops/ (code, test, draw, image, audit, review, verify, uat, docs, deliver)", required: true },
         summary: { kind: "string", summary: "what the task must do, in one sentence", required: true },
         allow: { kind: "string", summary: "comma-separated repository paths the task may write (literal folders or files, no globs)", required: true },
         read: { kind: "string", summary: "comma-separated files the task reads beyond its op's base: repository paths, or harness:<path> for a file of the harness" },

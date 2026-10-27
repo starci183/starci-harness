@@ -6,7 +6,9 @@ validated by the CLI when it is read; a key no code reads is deleted.
 | file | holds | read by |
 |---|---|---|
 | [ops/ops/README.md](ops/README.md) | the op pattern (base and extend) and the worker procedure every brief starts with | `cli/src/harness/ops.ts`, `brief.ts` |
-| `ops/ops/<label>.md` | one op per label (`code`, `test`, `ui`, `verify`, `uat`, `docs`, `deliver`): base context, inputs, output keys and checks, the difficulty floor, the host tools and the label's procedure | `ops.ts`, `contract.ts`, `brief.ts`, the router |
+| `ops/ops/<label>.md` | one op per label (`code`, `test`, `draw`, `image`, `audit`, `review`, `verify`, `uat`, `docs`, `deliver`): base context, inputs, output keys and checks, the difficulty floor, the host tools, the labels whose authors it avoids (`independentOf`) and the label's procedure | `ops.ts`, `contract.ts`, `brief.ts`, the router |
+| [lanes.yaml](lanes.yaml) | the standard build flow: the lane of steps each Work record family walks, what satisfies a step, what makes it optional and what holds it | `lanes.ts` (`FLOW_INCOMPLETE` at define and replan, the Kernel's planning digest) |
+| [routes.yaml](routes.yaml) | the bounded repair routes of a red or question decision: what may repair what, and how many times | `routes.ts` (decision evidence, `ROUTE_ILLEGAL` at `kernel submit`) |
 | [checks.yaml](checks.yaml) | the check presets an op or a contract names, each expanding into one primitive check | `contract.ts`, `run-checks.ts` |
 | [routing.yaml](routing.yaml) | tiers, pools, host probes, balance, quota, usage, the provider circuit and its probe, failure signals, outcomes, qualification, scoring, pool concurrency, workflow budgets: every number of the router | `router.ts`, `circuit.ts`, `usage.ts`, `outcomes.ts`, `pools.ts`, `budget.ts` |
 | [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner) | `liveness.ts` |
@@ -33,14 +35,17 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
    `tierOrder`; an infrastructure failure keeps the tier.
 2. **Hard filter.** A member of the tier is dropped when its pool does not take the label, when a host tool the label
    needs has a probe that fails on this host, when this task's lineage has two contract-red attempts on its pool, when
-   its provider's circuit is open and its probe is not due (or already in flight), or when its pool is at its cap
-   (`maxParallel`, lowered by the pool's concurrency backoff). A task whose `risk` names one of `qualification.riskTags`
+   its provider's circuit is open and its probe is not due (or already in flight), when its pool is at its cap
+   (`maxParallel`, lowered by the pool's concurrency backoff), or when its provider authored the dependency work of a label
+   the task's op names in `independentOf` (a `review` never reads its own provider's code); when that alone empties the
+   tier, the task looks one tier up. A task whose `risk` names one of `qualification.riskTags`
    also drops a member below `qualification.riskMinimum` for the label, and never probes; when that alone empties the
    tier, the task looks one tier up (`ROUTE_UNQUALIFIED` at the top).
 3. **Quota.** A member at `exhaustedPercent` of its binding window is dropped until that window resets; one at
    `reservePercent` only while a member below it is left. No reading, a stale one or one past its reset is unknown and kept.
 4. **Lineage.** One contract-red attempt of this task on a pool, or a seat of this lineage (a task's attempts, a
-   coordinator's relaunch) that the stall ladder gave up on, puts that pool's members behind every other.
+   coordinator's relaunch) that timed out, never started or the stall ladder gave up on, puts that pool's members behind
+   every other.
 5. **Probe.** A provider whose circuit is half-open (`circuit`: its cooldown ended, or its probe interval passed) takes this
    pick as its one probe; the probe is marked in flight until its launch reports, and a success closes the circuit.
 6. **Score.** Every member left is ordered by expected success over expected cost: the Beta posterior mean of its green
@@ -56,8 +61,7 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
 
 Qualification is earned per member and label from the verdicts of the last `outcomes.windowDays`: `qualification.high`
 and `.standard` name the verdicts and green share each needs, a member of a `startStandard` tier is standard until its
-verdicts say otherwise, and anything else is probation. A label that reviews another task's work does not exist (the
-contract's machine checks are the review), so no step prefers a provider other than the author's.
+verdicts say otherwise, and anything else is probation.
 
 ## Failures and their accounting
 
@@ -66,8 +70,8 @@ contract's machine checks are the review), so no step prefers a provider other t
 | provider-unavailable (rate, quota, capacity, auth) | the provider's circuit opens for its kind (`circuit`), the task is re-picked on another pool; no try is spent; the circuit closes on its own through its half-open probe or an ok usage reading | the circuit's cooldowns and probe backoff |
 | worker-lost | Orca's explicit word that the worker is gone makes the seat `worker-lost` and the task `effect_unknown`; it is cancelled and retried on another pool | 2, then the Supervisor |
 | worker-hung | Orca answers but the worker printed nothing for `activeStaleMinutes`; handled as worker-lost | 2, then the Supervisor |
-| contract-red | `task verify` is red; the next attempt carries the red checks and goes to another member | 2, then the Kernel replans |
-| mismatch | the worker shows the contract is wrong; the Kernel rewrites it, and no try is spent | 1, then the Supervisor |
+| contract-red | `task verify` is red; the Kernel takes the decision's legal route ([routes.yaml](routes.yaml)), and a retry carries the red checks and goes to another member | the route's limit, then the owner through the Supervisor |
+| mismatch | the worker shows the contract is wrong; the Kernel rewrites it on its route, and no try is spent | the route's limit, then the owner through the Supervisor |
 | blocked | `env` goes to the Supervisor, `authority` to the owner, a `gap` to the Kernel's plan | |
 
 - A failure with no effect is free: a launch that certainly failed returns its task to `queued`, and a verify that

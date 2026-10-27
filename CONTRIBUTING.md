@@ -50,6 +50,7 @@ A second copy is a defect even while both agree.
 |---|---|
 | a verb: path, flags, effect, roles, json schema | its one `defineVerb({...})` file, listed in `cli/src/registry.ts`; `starci explain` prints it |
 | a label: its base context, inputs, output keys and checks, floor, host tools and procedure | its op file `ops/ops/<label>.md` |
+| the standard build flow (which labels a Work record walks, in which order, what satisfies a step) and the bounded repair routes | `ops/lanes.yaml` and `ops/routes.yaml`, read by `cli/src/harness/lanes.ts` and `routes.ts` |
 | the op pattern (base and extend) and the worker procedure common to every brief | [ops/ops/README.md](ops/ops/README.md) |
 | check presets, routing, failure bounds, budgets, liveness thresholds, the uat image | `ops/checks.yaml`, `ops/routing.yaml`, `ops/liveness.yaml`, `ops/uat.yaml` |
 | the map of ops/, the router's steps, failure classes and their accounting | [ops/README.md](ops/README.md) |
@@ -145,10 +146,11 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 
 | removed | instead |
 |---|---|
-| op manifests, op kinds (`request.analyze`, `review.verify`, `code.fix`, ...), `route op`, the ops registry | one op file per label, `ops/ops/<label>.md`, owning the base; the Kernel's contract extends it |
+| op manifests, op kinds (`request.analyze`, `interface.draw`, `review.verify`, `code.fix`, ...), `route op`, the ops registry | one op file per label, `ops/ops/<label>.md`, owning the base; the Kernel's contract extends it; a record's lane (`ops/lanes.yaml`) orders the labels |
+| the `ui` label | `draw` (a screen's direction) and `code` with `side: fe` (its implementation) |
 | `ops/labels.yaml`, `ops/worker.md`, a contract's `expectedOutput` and `readPaths` | the op files and their README; a contract@2's checks and context, base ∪ extend (the contract@1 reader in `cli/src/harness/contract.ts` still names them) |
 | ops as planners (an op that analyses, scopes or decides) | planning and decisions are the Kernel's own work |
-| the Critic role, independent reviewers | the contract's machine checks (base ∪ extend); taste goes to the owner ("CI is the critic" names CI after a push) |
+| the Critic role, a reviewer whose taste gates a task | the contract's machine checks (base ∪ extend); a `review` task's findings route back to the build (`ops/routes.yaml`); taste goes to the owner ("CI is the critic" names CI after a push) |
 | `observe`, `nudge`, `redesign`, Kernel verbs that watch an op's terminal | the task protocol: contract, result, `task verify`; liveness by ping and pong |
 | `starci kernel <command>`, `driver-loop`, `settle` as a verb | `task send/result/verify`, `workflow step` |
 | the reconciler and its controllers | one host daemon for seat liveness and sweeps (not built yet) |

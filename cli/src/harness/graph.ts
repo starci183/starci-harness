@@ -91,6 +91,8 @@ export const headerSchema = z.strictObject({
     goal: z.string().min(1),
     acceptance: z.array(z.string().min(1)).optional(),
     scope: scopeSchema.optional(),
+    // The goal's requirements that make optional lane steps mandatory (ops/lanes.yaml optionalUnless); a replan keeps them.
+    requires: z.array(z.enum(["security", "perf"])).optional(),
     runner: z.enum(["orca", "inline"]),
     worktree: z.string().min(1).optional(),
     maxParallel: z.number().int().min(1).max(MAX_PARALLEL).default(DEFAULT_PARALLEL),

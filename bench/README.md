@@ -212,10 +212,17 @@ design asks for.
 | [model-worker-role-cannot-overstep](scenarios/model-worker-role-cannot-overstep.yaml) | model | a process running as worker cannot amend, raise budgets, stop or push | automated | pass | 2026-10-27 |
 | [worker-mismatch-no-try-spent](scenarios/worker-mismatch-no-try-spent.yaml) | model | the model refuses the task as specified: mismatch returns it without spending a try | automated | pass | 2026-10-27 |
 | [budget-task-always-over](scenarios/budget-task-always-over.yaml) | plan | a task blows its budget every try | automated | pending |  |
+| [flow-incomplete-refused](scenarios/flow-incomplete-refused.yaml) | plan | a replan that adds back-end code without the rest of its lane is refused and the graph stays as it was | automated | pass | 2026-10-27 |
+| [lane-be-needs-test-e2e-review](scenarios/lane-be-needs-test-e2e-review.yaml) | plan | back-end code is tested, proven end to end and reviewed before the plan is recorded | automated | pass | 2026-10-27 |
+| [lane-fe-code-held-until-ui](scenarios/lane-fe-code-held-until-ui.yaml) | plan | front-end code waits for its feature's screens to be drawn | automated | pass | 2026-10-27 |
+| [lane-ui-already-drawn-skips](scenarios/lane-ui-already-drawn-skips.yaml) | plan | a screen the owner already drew is not drawn again; its front end is built, audited and walked | automated | pass | 2026-10-27 |
+| [lane-ui-draw-then-image](scenarios/lane-ui-draw-then-image.yaml) | plan | a screen not yet drawn walks its ui lane, draw then image, before define records the graph | automated | pass | 2026-10-27 |
 | [plan-replan-oscillation](scenarios/plan-replan-oscillation.yaml) | plan | the Kernel replans A, B, A, B | automated | pending |  |
 | [plan-self-overlap-serialised](scenarios/plan-self-overlap-serialised.yaml) | plan | the Kernel plans two independent tasks over one path: the lease serialises them | automated | pass | 2026-10-27 |
 | [plan-unachievable-goal](scenarios/plan-unachievable-goal.yaml) | plan | the goal cannot be met | automated | pending |  |
 | [plan-wrong-dependency-order](scenarios/plan-wrong-dependency-order.yaml) | plan | the Kernel forgets a dependency | semi | pending |  |
+| [route-audit-drift-repairs-code](scenarios/route-audit-drift-repairs-code.yaml) | plan | an audit that finds drift is repaired by code, never re-run at the same head | automated | pass | 2026-10-27 |
+| [route-limit-escalates](scenarios/route-limit-escalates.yaml) | plan | past a route's limit the Kernel may not repair again; it escalates to the owner through the Supervisor | automated | pass | 2026-10-27 |
 | [environment-keycloak-down-uat](scenarios/environment-keycloak-down-uat.yaml) | environment | an external dependency is down during uat | semi | pending |  |
 | [environment-lockfile-drift](scenarios/environment-lockfile-drift.yaml) | environment | the lockfile drifts from package.json | automated | pending |  |
 | [environment-npm-registry-down](scenarios/environment-npm-registry-down.yaml) | environment | the npm registry is down during clean verify | manual | pending |  |

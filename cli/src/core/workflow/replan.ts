@@ -3,6 +3,7 @@ import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../ha
 import type { Goal } from "../../harness/goal.js"
 import { applyChanges, buildGraph, isGeneratedKey, readPlanSource, uatWalksOf } from "../../harness/graph.js"
 import type { Classified, PlanNode, PlanPlace, PlanSource, PlanTask, WorkflowHeader } from "../../harness/graph.js"
+import { assertFlow } from "../../harness/lanes.js"
 import type { Ops } from "../../harness/ops.js"
 import { carryHashes, classifyReplan, freshRounds, readResults, revertRows } from "../../harness/reconcile.js"
 import type { Results } from "../../harness/reconcile.js"
@@ -35,6 +36,13 @@ export interface ReplanOptions {
 }
 
 const sameHeader = (left: WorkflowHeader, right: WorkflowHeader): boolean => JSON.stringify(left) === JSON.stringify(right)
+
+/** A header carrying the workflow's goal requirements (`requires`, fixed at define) in place of its own, as it carries the goal. */
+const withRequires = (header: WorkflowHeader, requires: WorkflowHeader["requires"]): WorkflowHeader => {
+    const rest: WorkflowHeader = { ...header }
+    delete rest.requires
+    return requires === undefined ? rest : { ...rest, requires }
+}
 
 /**
  * Reads the replan file of a workflow and checks the run place of every uat walk it asks for (assertRunPlace), the async part
@@ -106,7 +114,8 @@ const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["
  * Builds the replan a file asks for (`source`, read by readReplanSource): a change file (add, edit, remove, retry, accept)
  * applied to the current graph, or a desired graph (a whole workflow file of the same id and runner) reconciled against it by
  * task key. The header always carries the current goal (only a goal change moves it); the new graph must be fit, inside the
- * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK) and every new attempt within its try
+ * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK), walk the lane of every Work record it
+ * covers (FLOW_INCOMPLETE) and keep every new attempt within its try
  * budget. Drops of done tasks add their revert nodes. `unchanged` says it moves nothing.
  */
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace, options: ReplanOptions = {}): Replan => {
@@ -114,7 +123,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     const goal = currentGoal(db, workflow.id, workflow.header, workflow.goalVersion)
     const asked = source.kind === "change" ? tasksOfChange(snapshot, file, source, ops, place) : tasksOfWorkflowFile(snapshot, file, source, options)
     if (asked.problems.length > 0) throw unfit(workflow.id, asked.problems)
-    const header = withGoal(asked.header, goal)
+    const header = withRequires(withGoal(asked.header, goal), workflow.header.requires)
     const results = options.results ?? readResults(db, workflow.id, snapshot.tasks)
     const first = nodesOf(db, snapshot, asked.tasks, ops)
     const judged = classifyReplan({ before: snapshot.views, beforeNodes: snapshot.nodes, after: first.nodes, retries: asked.retries, keepEffect: asked.keepEffect, accepts: asked.accepts, results })
@@ -123,6 +132,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     assertScope(workflow.id, built.nodes, goal)
     const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
     assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
+    assertFlow(workflow.id, built.nodes, { repo: place.repo, db, requires: header.requires ?? [] }, ops)
     const problems: string[] = []
     for (const row of classification) {
         if (!STARTS.has(row.class)) continue

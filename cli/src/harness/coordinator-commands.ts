@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
+import { dirname } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
@@ -7,6 +8,7 @@ import { Refusal } from "../shared/errors.js"
 import { scopeSchema } from "./graph.js"
 import { now } from "./ledger.js"
 import { inTransaction } from "./leases.js"
+import { assertRoute, isRouted, withRoutes } from "./routes.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
 
@@ -37,6 +39,8 @@ const commandSchema = z.strictObject({
     accept: z.array(z.string().min(1)).optional(),
     keepEffect: z.array(z.string().min(1)).optional(),
     change: z.string().min(1).optional(),
+    // The legal route (ops/routes.yaml) a workflow-change takes for the red or question decisions it answers (harness/routes.ts).
+    route: z.string().min(1).optional(),
     escalation: z.strictObject({ kind: z.enum(ESCALATION_KINDS), question: z.string().min(1), paths: z.array(z.string()).optional() }).optional(),
     handoff: z.strictObject({ summary: z.string().min(1) }).optional(),
     mode: z.enum(["graceful", "hard"]).optional(),
@@ -46,10 +50,11 @@ const commandSchema = z.strictObject({
 /** A command file as parsed: what it asks, plus the sha256 of its bytes (stored with it). */
 export type Command = z.infer<typeof commandSchema>
 
-/** A parsed command with the hash of the exact bytes submitted. */
+/** A parsed command with the hash of the exact bytes submitted and the folder its change file is named from. */
 export interface CommandFile {
     readonly command: Command
     readonly sha256: string
+    readonly dir: string
 }
 
 const needs: Readonly<Record<Command["kind"], readonly (keyof Command)[]>> = {
@@ -85,7 +90,7 @@ export const readCommand = (file: string, scope: CommandScope): CommandFile => {
     if (command.kind === "workflow-change" && command.change === undefined && (command.answers ?? []).length === 0) {
         throw new Refusal("COMMAND_INVALID", "workflow-change needs change (a workflow-change or whole workflow file), or answers that close decisions without one")
     }
-    return { command, sha256: createHash("sha256").update(bytes).digest("hex") }
+    return { command, sha256: createHash("sha256").update(bytes).digest("hex"), dir: dirname(file) }
 }
 
 /** A command row of the ledger. */
@@ -128,7 +133,8 @@ export type Admission = { readonly kind: "new" } | { readonly kind: "replay"; re
 /**
  * Admits a command under compare-and-swap, before any side effect: a known cmdId with the same bytes replays its recorded
  * outcome (a failed one is applied again), with other bytes refuses CMD_CONFLICT; a basedOn that is not the current graph or
- * goal version refuses STALE (re-read and resubmit). The intent row `applying` lets recovery reconcile instead of guess.
+ * goal version refuses STALE (re-read and resubmit); a workflow-change answering a red or question decision off its legal route
+ * refuses ROUTE_ILLEGAL (harness/routes.ts). The intent row `applying` lets recovery reconcile instead of guess.
  */
 export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: CommandFile): Admission =>
     inTransaction(db, () => {
@@ -150,6 +156,7 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
             if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
         }
+        if (scope === "kernel") assertRoute(db, command, file.dir)
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,
@@ -209,12 +216,17 @@ const toDecision = (row: Record<string, unknown>): Decision => ({
 export const decisionId = (scope: CommandScope, workflowId: string, kind: string, subject: string): string =>
     `d-${createHash("sha256").update(`${scope}\0${workflowId}\0${kind}\0${subject}`).digest("hex").slice(0, 12)}`
 
-/** Raises a decision once (a fact already raised, answered or not, is not raised again); returns its id. */
+/**
+ * Raises a decision once (a fact already raised, answered or not, is not raised again); returns its id. A red or question
+ * decision on a task carries its cause and legal route (harness/routes.ts withRoutes) in its evidence.
+ */
 export const raiseDecision = (db: DatabaseSync, input: { readonly scope: CommandScope; readonly workflowId: string; readonly kind: Decision["kind"]; readonly subject: string; readonly evidence: unknown }): string => {
     const id = decisionId(input.scope, input.workflowId, input.kind, input.subject)
+    if (getDecision(db, id) !== undefined) return id
+    const evidence = isRouted(input) ? withRoutes(db, input.workflowId, input.kind, input.subject, input.evidence) : input.evidence
     const inserted = db
         .prepare("INSERT INTO decisions (id, scope, workflow_id, kind, subject, evidence_json, raised_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING")
-        .run(id, input.scope, input.workflowId, input.kind, input.subject, JSON.stringify(input.evidence), now())
+        .run(id, input.scope, input.workflowId, input.kind, input.subject, JSON.stringify(evidence), now())
     if (inserted.changes > 0) recordEvent(db, "decision-raised", input.workflowId, { id, scope: input.scope, kind: input.kind, subject: input.subject })
     return id
 }
