@@ -6,7 +6,11 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 
 // A list of names may be written as one name: `contract new --check result-json:keys=summary` gives a string, not a list.
-const namesSchema = z.union([z.string().min(1).transform((name) => [name]), z.array(z.string())])
+// A comma in that one name is a list written as text (`a,b`), which would silently become one name: write [a, b] or a|b.
+const namesSchema = z.union([
+    z.string().min(1).refine((name) => !name.includes(","), { message: "a list of names is written as [a, b] (or a|b in contract new), not \"a,b\"" }).transform((name) => [name]),
+    z.array(z.string()),
+])
 
 /** The value types an output key may declare; `string[]` is an array of strings. */
 export const outputTypeSchema = z.enum(["string", "number", "boolean", "object", "array", "string[]"])
