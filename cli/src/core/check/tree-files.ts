@@ -23,14 +23,16 @@ export const readTreeFile = (root: string, file: string, maxBytes: number): File
     if (!existsSync(path)) return { unread: "missing" }
     const stat = statSync(path)
     if (!stat.isFile()) return { unread: "missing" }
-    if (stat.size > maxBytes) return { unread: "too-large" }
-    const buffer = Buffer.alloc(stat.size)
+    // The head is sniffed before the size is judged: a large image is binary, not a text file too large to read.
+    const size = stat.size > maxBytes ? Math.min(stat.size, SNIFF_BYTES) : stat.size
+    const buffer = Buffer.alloc(size)
     const handle = openSync(path, "r")
     try {
-        readSync(handle, buffer, 0, stat.size, 0)
+        readSync(handle, buffer, 0, size, 0)
     } finally {
         closeSync(handle)
     }
     if (buffer.subarray(0, SNIFF_BYTES).includes(0)) return { unread: "binary" }
+    if (stat.size > maxBytes) return { unread: "too-large" }
     return { text: buffer.toString("utf8") }
 }
