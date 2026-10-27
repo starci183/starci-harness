@@ -5,6 +5,11 @@ export const why = {
     en: "The app frame must use Grammar WorkspaceShell with its fixed viewport.",
     fix: "Compose WorkspaceShell viewport=\"fixed\" and supply its header, navigation and primary slots.",
   },
+  "chip-label-starts-uppercase": {
+    code: "FE_CHIP_LABEL_CASE",
+    en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
+    fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
+  },
   "navbar-cluster": {
     code: "FE_NAVBAR_CLUSTER",
     en: "Navbar action component kinds or order differ from the app-shell canon.",

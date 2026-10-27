@@ -793,6 +793,9 @@
     /* Loading meter (knowledge STATE-8, `isSkeleton`): the label stays real, the bar is a static Skeleton bar of the track height. */
     .starci-core-meter-skeleton-bar { display: block; block-size: 0.5rem; overflow: hidden; border-radius: 999px; }
 
+    /* `size="sm"`: the thin track is HeroUI's own `.meter--sm` (h-1); only the loading bar, which is ours, follows it. */
+    .starci-core-meter-skeleton[data-size="sm"] .starci-core-meter-skeleton-bar { block-size: 0.25rem; }
+
     .starci-core-meter-skeleton-bar > .starci-core-skeleton {
         block-size: 100%;
         aspect-ratio: auto;

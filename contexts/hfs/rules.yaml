@@ -2211,3 +2211,10 @@ rules:
       - FE_GRAMMAR_SHIM
     enforcers:
       - {kind: eslint-fe, id: no-grammar-shim}
+  - id: R322
+    code: FE_CHIP_LABEL_CASE
+    law: The label of a status chip (a StatusDot with text, a Badge) starts with an uppercase letter, so every chip of an app reads in one vocabulary.
+    failureCodes:
+      - FE_CHIP_LABEL_CASE
+    enforcers:
+      - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}

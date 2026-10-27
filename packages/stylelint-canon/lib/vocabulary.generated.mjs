@@ -109,6 +109,7 @@ export const VENDOR = [
   "--radius-xl",
   "--radius-xs",
   "--starci-drag-item-leading",
+  "--starci-flow-height",
 ]
 
 /** Width breakpoints of the grammar's media queries, ascending. */

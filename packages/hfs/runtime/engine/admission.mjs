@@ -187,7 +187,7 @@ export const AWAITING_OWNER='awaiting-owner';
  */
 export const AWAITING_OWNER_STATUS='awaiting_owner';
 export const RETRYABLE_JOB_STATUSES=Object.freeze(['failed',AWAITING_OWNER_STATUS]);
-/** Every jobs.status that holds nothing the runtime still needs (mirrors engine/db/ledger.mjs JOB_STATUSES.settled). */
+/** Every jobs.status that holds nothing the runtime still needs. */
 export const SETTLED_JOB_LIST=Object.freeze(['succeeded','failed',AWAITING_OWNER_STATUS,'cancelled']);
 /** The tries of a unit that spent budget: every try but the ones that only waited on the owner. */
 export const spentTries=tries=>tries.filter(job=>job.status!==AWAITING_OWNER_STATUS).length;

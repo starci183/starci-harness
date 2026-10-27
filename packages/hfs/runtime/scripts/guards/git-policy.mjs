@@ -1,7 +1,6 @@
 // git-policy.mjs — which git commands an op worker may run in a checkout it
-// shares with other workflows. Pure: argv in, verdict out; scripts/guards/command-guard.mjs
-// (a PreToolUse hook) applies it to the agent's shell command before it runs, and the
-// reference-transaction hook git itself runs backs it (scripts/guards/hook-install.mjs).
+// shares with other workflows. Pure: argv in, verdict out; a caller applies it to a
+// shell command before it runs.
 //
 // Several workflows of one product ledger build in ONE checkout on ONE branch.
 // Their workers damaged each other with commands that are harmless alone:

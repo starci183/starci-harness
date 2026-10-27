@@ -37,7 +37,7 @@ A badge has no hover or press. A badge with a status glyph uses the soft foregro
 ## Owner split
 - **Grammar owns:** tone x emphasis paint, the status dot, sizes, selection treatment, remove action.
 - **Knowledge decides:** badge vs text vs tag; which state earns a tone; how many badges an entity carries.
-- **App author decides:** the state (from authority), the words, the filter items.
+- **App author decides:** the state (from authority), the words (a chip label starts uppercase, R322), the filter items.
 
 ## Rules
 ACCENT-2, ACCENT-5, DISCIPLINE-1 (`budgets.badgesPerEntity`), HIERARCHY-4, CTA-1. Proof: TASTE-5, TRUTH-1,

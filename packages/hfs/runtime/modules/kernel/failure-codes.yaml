@@ -2284,6 +2284,16 @@ FE_CONSOLE_CALL:
   owner: op-retry
   kind: check-finding
 
+FE_CHIP_LABEL_CASE:
+  title: "A status chip label starts with a lowercase letter"
+  title_vi: "Nhãn chip trạng thái bắt đầu bằng chữ thường"
+  meaning_vi: "Nhãn chữ của một StatusDot hoặc Badge tại <file> bắt đầu bằng chữ cái thường, nên các chip trong cùng một màn hình đọc thành hai lối viết."
+  causes_vi:
+    - "Viết nhãn chip như `running` thay vì `Running`."
+  nextStep_vi: "Viết hoa chữ cái đầu của nhãn chip; luật tự sửa nhãn viết thẳng trong mã (quy định chip-label-uppercase)."
+  owner: op-retry
+  kind: check-finding
+
 FE_CONTROL_HEIGHT:
   title: "A control picks a larger size or mixes sizes in one row"
   title_vi: "Điều khiển chọn cỡ lớn hơn hoặc trộn nhiều cỡ trong một hàng"

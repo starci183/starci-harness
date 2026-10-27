@@ -17,9 +17,10 @@
 //                               inherits its parent's; an svg's inner shapes inherit the svg's); a component name DNA
 //                               does not publish; a part none of the enclosing components publishes; a closed prop
 //                               value outside its DNA values; a proposal with no entry in a grammar-proposal file;
-//                               a status dot that is not the DNA Badge isDot dot (grammar 0.5.3: HeroUI's
-//                               <CircleFill width={6} />, part badge-dot / class starci-core-badge-dot inside a Badge) -
-//                               a hand-made dot span, a dot with a box-shadow/ring/outline halo, or a dot not 6px;
+//                               a status dot that is not the DNA StatusDot mark (grammar 0.14: class
+//                               starci-core-status-dot-mark / part status-dot-mark inside a StatusDot or a Badge isDot,
+//                               sized by --starci-core-status-dot-size, 6px) - a hand-made dot span, a dot with a
+//                               box-shadow/ring/outline halo, or a dot (or a redefined size token) not 6px;
 //   DRAW_NOTICE_NOT_ALERT       a notice that is not DNA `Alert` with a tone: an Alert without a tone in the
 //                               PresentationState vocabulary, or a container (SurfaceCard, a bare div ...) posing as a
 //                               notice - role alert/status or aria-live, notice/callout/banner vocabulary in its
@@ -67,9 +68,14 @@ export { anatomyFindings } from './draw-dna-anatomy.mjs';
 export const DRAW_OFF_GRAMMAR_COMPONENT = 'DRAW_OFF_GRAMMAR_COMPONENT';
 export const DRAW_NOTICE_NOT_ALERT = 'DRAW_NOTICE_NOT_ALERT';
 export const DRAW_RATIO_NOT_METER = 'DRAW_RATIO_NOT_METER';
-/** Grammar 0.5.3 Badge isDot: the dot's class and its one size (HeroUI's <CircleFill width={6} />). */
-const BADGE_DOT_CLASS = 'starci-core-badge-dot';
-const BADGE_DOT_PX = 6;
+/** Grammar 0.14 StatusDot (also behind Badge isDot): the dot's class, part, size custom property and its one value. */
+const STATUS_DOT_MARK_CLASS = 'starci-core-status-dot-mark';
+const STATUS_DOT_MARK_PART = 'status-dot-mark';
+const STATUS_DOT_SIZE_PROPERTY = '--starci-core-status-dot-size';
+const STATUS_DOT_PX = 6;
+/** The StatusDot's own anatomy around the mark (root, chip, label): parts of the component, never a dot. */
+const STATUS_DOT_ANATOMY = /^(starci-core-)?status-dot(-chip|-label)?$/;
+const COMPONENTS_WITH_DOT = ['StatusDot', 'Badge'];
 const DOT_CLASS = /(?:^|[-_])(dot|status-dot|dot-indicator)(?:$|[-_])/i;
 /**
  * The grammar Alert's action Button variant for a PresentationState tone (@starci/grammar 0.5.3 Alert, after HeroUI v3's
@@ -425,8 +431,8 @@ function isArtwork(el) {
  * its asset-request.md requests (null: not judged).
  */
 const DNA_FINDING_HELPERS = {
-  ACTION_COMPONENTS, ALERT_INDICATOR_MAX_PX, ASSET_SLOT_ATTR, BADGE_DOT_CLASS, BADGE_DOT_PX, BAR_CLASS, CONTAINERS,
-  DOT_CLASS, DRAW_ALERT_ANATOMY, DRAW_ASSET_SLOT_UNDECLARED, DRAW_METER_TRACK, DRAW_NOTICE_NOT_ALERT, DRAW_OFF_GRAMMAR_COMPONENT, DRAW_RATIO_NOT_METER,
+  ACTION_COMPONENTS, ALERT_INDICATOR_MAX_PX, ASSET_SLOT_ATTR, BAR_CLASS, COMPONENTS_WITH_DOT, CONTAINERS,
+  DOT_CLASS, STATUS_DOT_ANATOMY, STATUS_DOT_MARK_CLASS, STATUS_DOT_MARK_PART, STATUS_DOT_PX, STATUS_DOT_SIZE_PROPERTY, DRAW_ALERT_ANATOMY, DRAW_ASSET_SLOT_UNDECLARED, DRAW_METER_TRACK, DRAW_NOTICE_NOT_ALERT, DRAW_OFF_GRAMMAR_COMPONENT, DRAW_RATIO_NOT_METER,
   METER_FULL_WIDTH_SHARE, METER_SEGMENTED_TRACK_PX, METER_SEGMENTS_PROPOSAL, METER_TRACK_PX, METER_SEGMENT_GAP_MAX_PX, NOTICE_CLASS, OUTCOME_STATES,
   PART_ATTR, PROPOSAL_ATTR, RATIO_RX, alertActionVariantFor, ancestorsOf, classesOf, componentNameOf, componentRootOf,
   declaredBackgroundsOf, declaredPx, declsOf, describe, dnaSegment, inComponent, insideSvg, isAction, isArtwork, kebab,

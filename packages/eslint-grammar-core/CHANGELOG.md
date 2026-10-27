@@ -2,7 +2,8 @@
 
 ## 0.14.0 - 2026-10-27
 
-- Changed: versioned together with Grammar 0.14.0; the bundled canon pins name the 0.14.0 Grammar family. No rule changes.
+- Changed: versioned together with Grammar 0.14.0; the bundled canon pins name the 0.14.0 Grammar family.
+- Added: `starci-grammar/chip-label-starts-uppercase` (R322 `FE_CHIP_LABEL_CASE`): a literal `StatusDot` or `Badge` label starts with an uppercase letter, Vietnamese included; the fix uppercases it in place.
 
 ## 0.13.0 - 2026-10-27
 

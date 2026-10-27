@@ -136,7 +136,7 @@
     .grammar-common-root[data-grammar-family="core"]
         .starci-core-surface-card[data-grammar-surface-labelled="true"][data-grammar-frame="bounded"]
         > [data-grammar-surface-label] {
-        padding: var(--starci-core-surface-inset, 1rem) var(--starci-core-surface-inset, 1rem) 0;
+        --starci-core-surface-label-padding: var(--starci-core-surface-inset, 1rem) var(--starci-core-surface-inset, 1rem) 0;
     }
 
     .grammar-common-root[data-grammar-family="core"]

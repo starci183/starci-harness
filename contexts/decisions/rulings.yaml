@@ -169,6 +169,11 @@ rulings:
     owner: "contexts/vendor/wrappers.yaml; contexts/decisions/open-grammar.md D-11"
 
   # --- ui composition (owner decisions folded into ui/ as plain rules)
+  - id: chip-label-uppercase
+    date: '2026-10-27'
+    status: live
+    ruling: "A chip label starts uppercase: StatusDot capitalises the text it renders, and a literal StatusDot or Badge label is written with an uppercase first letter."
+    owner: "contexts/hfs/rules.yaml R322; packages/eslint-grammar-core/chip-label.mjs"
   - id: CTA-1/case-5
     date: '2026-10-11'
     status: live

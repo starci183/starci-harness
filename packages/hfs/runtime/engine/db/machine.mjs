@@ -64,8 +64,7 @@ export const CONTROLLERS = Object.freeze(['job', 'workflow', 'resource', 'host',
 // Paths
 // ---------------------------------------------------------------------------------------------------------------------
 /**
- * Overrides the per-host state base itself (machine.sqlite, projects/, archive/), the one seam starciLocalRoot and
- * engine/db/ledger.mjs (which re-exports starciLocalRoot for its own projectsRootFor) both read. Debug probes and
+ * Overrides the per-host state base itself (machine.sqlite, projects/, archive/), the one seam starciLocalRoot reads. Debug probes and
  * throwaway repos point this at a temp directory so they never touch the real
  * <runtime root>/.runtime and leak fake ledgers/workflows into it (2026-09-30 incident: probe-*, dbg-ask-*, dbg-env*
  * repos left six fake-worker ledgers in the live store). STARCI_PROJECTS_ROOT (ledger-db.mjs) and
@@ -138,7 +137,7 @@ function corruptIncident(file, error, details) {
 
 /**
  * The rev of the runtime this process runs, as its callers know it: '<HEAD committer time, ms, 13 digits>:<short sha>' of
- * the .claude checkout, which scripts/machine/home.mjs runtimeRevOf computes and the caller passes in (`rev`,
+ * the harness checkout, which the caller computes and passes in (`rev`,
  * `writerRev`, `sourceRev`). The db never spawns git: with no rev passed the default is STARCI_RUNTIME_REV, else
  * 'unknown'. The time prefix orders two revs, so a writer can refuse a store row written by a NEWER runtime (MB-15);
  * 'unknown' sorts before every real rev.

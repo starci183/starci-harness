@@ -1,20 +1,16 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { HOOK_INPUT_LIMITS, readInput, writeHookOutput } from '../runtime/scripts/guards/hook-io.mjs';
-import { main as commandMain } from '../runtime/scripts/guards/command-guard.mjs';
-import { main as seatMain } from '../runtime/scripts/guards/seat-tools.mjs';
 import { main as pushMain, pushRefusals } from '../runtime/scripts/guards/release-push-gate.mjs';
 
 const bundledRoot = fileURLToPath(new URL('../runtime/', import.meta.url));
 const hookFiles = [
-  { file: 'command-guard.mjs', code: 0 },
-  { file: 'seat-tools.mjs', code: 0 },
   { file: 'release-push-gate.mjs', code: 1 },
 ];
 
@@ -139,165 +135,6 @@ test('a Writable callback error and its subsequent error event are contained', a
   await assert.rejects(writeHookOutput(stream, 'refused\n'), /broken pipe/);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(stream.listenerCount('error'), 0);
-});
-
-test('normal hook requests retain their command and seat verdicts', async (t) => {
-  const { root, env } = fixture(t);
-  let stderr = '';
-  const allowed = await commandMain({ stdin: Readable.from([JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git status' } })]),
-    stderr: { write: (chunk, done) => { stderr += chunk; done?.(); } }, env, root });
-  assert.equal(allowed, 0);
-  assert.equal(stderr, '');
-  const seats = path.join(root, 'runtime', 'guards', 'seats');
-  mkdirSync(seats, { recursive: true });
-  writeFileSync(path.join(seats, 'fixture-seat.json'), JSON.stringify({ role: 'supervisor', deniedTools: ['Agent'] }));
-  let stdout = '';
-  const denied = await seatMain({ stdin: Readable.from([JSON.stringify({ tool_name: 'Agent' })]),
-    stdout: { write: (chunk, done) => { stdout += chunk; done?.(); } }, env: { ...env, ORCA_TERMINAL_HANDLE: 'fixture-seat' }, root });
-  assert.equal(denied, 0);
-  const decision = JSON.parse(stdout).hookSpecificOutput;
-  assert.equal(decision.permissionDecision, 'deny');
-  assert.equal(decision.hookEventName, 'PreToolUse');
-  assert.match(decision.permissionDecisionReason, /Agent/);
-});
-
-test('unbound PreToolUse input failures pass through with one diagnostic line', async (t) => {
-  const { root, env } = fixture(t);
-  for (const main of [commandMain, seatMain]) {
-    const stdin = new PassThrough();
-    let note = '';
-    const result = main({ stdin, stderr: { write: (text, done) => { note += text; done(); } }, root, env });
-    stdin.destroy(new Error('fixture first line\nsecond line'));
-    assert.equal(await result, 0);
-    assert.equal(note.trim().split(/\r?\n/).length, 1);
-    assert.match(note, /fixture first line second line/);
-  }
-});
-
-test('a complete command request still refuses a read outside its bound critic directory', async (t) => {
-  const { root, env } = fixture(t);
-  const terminals = path.join(env.STARCI_GUARDS_ROOT, 'terminals');
-  mkdirSync(terminals, { recursive: true });
-  writeFileSync(path.join(terminals, 'fixture-critic.json'), JSON.stringify({ role: 'critic',
-    reach: { dir: path.join(root, 'owned'), verdictFile: 'verdict.yaml' } }));
-  const input = JSON.stringify({ tool_name: 'Read', tool_input: { file_path: path.join(root, 'outside.txt') } });
-  const result = await runHook(t, { file: 'command-guard.mjs', env: { ...env, ORCA_TERMINAL_HANDLE: 'fixture-critic' }, input, closeInput: true });
-  assert.equal(result.killed, false);
-  assert.equal(result.signal, null, result.stderr);
-  assert.equal(result.code, 2, result.stderr);
-  assert.match(result.stderr, /RIGHTS_CRITIC_REACH/);
-});
-
-test('padding a refused Write beyond the input ceiling cannot bypass its critic guard', async (t) => {
-  const { root, env } = fixture(t);
-  const terminals = path.join(env.STARCI_GUARDS_ROOT, 'terminals');
-  mkdirSync(terminals, { recursive: true });
-  writeFileSync(path.join(terminals, 'padded-critic.json'), JSON.stringify({ role: 'critic',
-    reach: { dir: path.join(root, 'owned'), verdictFile: 'verdict.yaml' } }));
-  const boundEnv = { ...env, ORCA_TERMINAL_HANDLE: 'padded-critic' };
-  for (const content of ['refused', 'x'.repeat(HOOK_INPUT_LIMITS.maxBytes)]) {
-    const input = JSON.stringify({ tool_name: 'Write', tool_input: { file_path: path.join(root, 'outside.txt'), content } });
-    const result = await runHook(t, { file: 'command-guard.mjs', env: boundEnv, input, closeInput: true });
-    assert.equal(result.killed, false);
-    assert.equal(result.code, 2, result.stderr);
-    assert.match(result.stderr, content === 'refused' ? /RIGHTS_CRITIC_REACH/ : /exceeds.*bytes/);
-  }
-});
-
-test('an extra shell command field cannot bypass a protected file Write', async (t) => {
-  const { root, env } = fixture(t);
-  const runtime = path.join(root, 'checkout');
-  mkdirSync(path.join(runtime, 'knowledge', 'hfs'), { recursive: true });
-  writeFileSync(path.join(runtime, 'knowledge', 'hfs', 'runtime-slots.yaml'), '');
-  const seats = path.join(root, 'runtime', 'guards', 'seats');
-  mkdirSync(seats, { recursive: true });
-  writeFileSync(path.join(seats, 'file-seat.json'), JSON.stringify({ role: 'supervisor' }));
-  const boundEnv = { ...env, ORCA_TERMINAL_HANDLE: 'file-seat' };
-  for (const command of [undefined, 'ls']) {
-    let stderr = '';
-    const input = { tool_name: 'Write', tool_input: {
-      file_path: path.join(runtime, 'modules', 'kernel', 'hook-input.yaml'), content: 'replacement',
-      ...(command ? { command } : {}),
-    } };
-    const code = await commandMain({ stdin: Readable.from([JSON.stringify(input)]), root, env: boundEnv,
-      stderr: { write: (text, done) => { stderr += text; done(); } } });
-    assert.equal(code, 2, stderr);
-    assert.match(stderr, /RIGHTS_PROTECTED_ZONE/);
-  }
-  let stderr = '';
-  const code = await commandMain({ stdin: Readable.from([JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } })]), root, env: boundEnv,
-    stderr: { write: (text, done) => { stderr += text; done(); } } });
-  assert.equal(code, 0, stderr);
-  assert.equal(stderr, '');
-});
-
-test('bound seats refuse stalled stdin within the input deadline', async (t) => {
-  const { root, env } = fixture(t);
-  const seats = path.join(env.STARCI_GUARDS_ROOT, 'seats');
-  mkdirSync(seats, { recursive: true });
-  writeFileSync(path.join(seats, 'stalled-seat.json'), JSON.stringify({ role: 'supervisor', deniedTools: ['Agent'] }));
-  const preload = path.join(root, 'keep-alive.mjs');
-  writeFileSync(preload, 'setInterval(() => {}, 60000);\n');
-  await Promise.all(['command-guard.mjs', 'seat-tools.mjs'].map(async (file) => {
-    const result = await runHook(t, { file, env: { ...env, ORCA_TERMINAL_HANDLE: 'stalled-seat' }, preload });
-    assert.equal(result.killed, false, `${file} needed the parent watchdog`);
-    assert.equal(result.code, 2, result.stderr);
-    assert.ok(result.elapsed < HOOK_INPUT_LIMITS.minInputWindowMs + 2_500, `${result.elapsed} ms`);
-    assert.match(result.stderr, /deadline.*refusing/);
-    if (file === 'seat-tools.mjs') assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny');
-  }));
-});
-
-test('a seat binding or role claim refuses oversized input for both PreToolUse guards', async (t) => {
-  const { root, env } = fixture(t);
-  const seats = path.join(root, 'runtime', 'guards', 'seats');
-  mkdirSync(seats, { recursive: true });
-  writeFileSync(path.join(seats, 'large-seat.json'), JSON.stringify({ role: 'supervisor', deniedTools: ['Agent'] }));
-  for (const boundEnv of [{ ...env, ORCA_TERMINAL_HANDLE: 'large-seat' }, { ...env, STARCI_ROLE: 'op' }]) {
-    for (const main of [commandMain, seatMain]) {
-      let stderr = '';
-      let stdout = '';
-      const code = await main({ stdin: Readable.from(['x'.repeat(HOOK_INPUT_LIMITS.maxBytes + 1)]), root, env: boundEnv,
-        stderr: { write: (text, done) => { stderr += text; done(); } },
-        stdout: { write: (text, done) => { stdout += text; done(); } } });
-      assert.equal(code, 2);
-      assert.match(stderr, /exceeds.*bytes.*refusing/);
-      if (main === seatMain) assert.equal(JSON.parse(stdout).hookSpecificOutput.permissionDecision, 'deny');
-    }
-  }
-});
-
-test('a failed refusal diagnostic cannot turn a critic denial into an allow', async (t) => {
-  const { root, env } = fixture(t);
-  const terminals = path.join(root, 'runtime', 'guards', 'terminals');
-  mkdirSync(terminals, { recursive: true });
-  writeFileSync(path.join(terminals, 'broken-pipe.json'), JSON.stringify({ role: 'critic',
-    reach: { dir: path.join(root, 'owned'), verdictFile: 'verdict.yaml' } }));
-  const stdin = Readable.from([JSON.stringify({ tool_name: 'Read', tool_input: { file_path: path.join(root, 'outside.txt') } })]);
-  const code = await commandMain({ stdin, root, env: { ...env, ORCA_TERMINAL_HANDLE: 'broken-pipe' },
-    stderr: { write: (text, done) => done(new Error('fixture EPIPE')) } });
-  assert.equal(code, 2);
-});
-
-test('a direct guard child preserves exit 2 when its real stderr pipe closes', async (t) => {
-  const { root, env } = fixture(t);
-  const terminals = path.join(env.STARCI_GUARDS_ROOT, 'terminals');
-  mkdirSync(terminals, { recursive: true });
-  writeFileSync(path.join(terminals, 'closed-stderr.json'), JSON.stringify({ role: 'critic',
-    reach: { dir: path.join(root, 'owned'), verdictFile: 'verdict.yaml' } }));
-  const child = spawn(process.execPath, [path.join(bundledRoot, 'scripts', 'guards', 'command-guard.mjs')], {
-    env: { ...env, ORCA_TERMINAL_HANDLE: 'closed-stderr' }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, timeout: 5000,
-  });
-  t.after(() => { if (child.exitCode === null) child.kill(); });
-  const exited = new Promise((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', (code, signal) => resolve({ code, signal }));
-  });
-  child.stderr.destroy();
-  child.stdout.resume();
-  child.stdin.end(JSON.stringify({ tool_name: 'Read', tool_input: { file_path: path.join(root, 'outside.txt') } }));
-  assert.deepEqual(await exited, { code: 2, signal: null });
-  assert.equal(child.killed, false);
 });
 
 test('a complete push ref list retains its allowed branch and protected-main refusal', async (t) => {
