@@ -2,6 +2,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 .runtime/
+# Secrets stay on the machine: secret.env at the root (and any env file) is never tracked; the CLI never reads them (policy/security.yaml neverRead).
+*.env
+.env
+.env.*
+!*.env.example
 .claude/worktrees/
 cli/ops/
 cli/policy/
