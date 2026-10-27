@@ -12,7 +12,7 @@ sopsEnvelopes:
 neverRead:
   - "**/.env"
   - "**/.env.*"
-  - "**/secret.env"
+  - "**/*.env"
   - "**/*.pem"
   - "**/*.key"
   - "**/*.p12"
