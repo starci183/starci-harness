@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { AiRouterError, createFakeProvider, parseSse } from "../src/index.ts"
-import type { ChatCompletionChunk, SseEvent } from "../src/index.ts"
+import { AiRouterError } from "../src/errors.ts"
+import { createFakeProvider } from "../src/fake.ts"
+import { parseSse } from "../src/sse.ts"
+import type { SseEvent } from "../src/sse.ts"
+import type { ChatCompletionChunk } from "../src/types.ts"
 import { ask, drain, provider, record, setup, sleep } from "./helpers.ts"
 
 function bytes(parts: readonly string[]): ReadableStream<Uint8Array> {

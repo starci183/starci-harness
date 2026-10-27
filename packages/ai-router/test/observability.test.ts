@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { AiRouterError, createRouter, EMPTY_RECORD, MemoryStateStore, createFakeProvider } from "../src/index.ts"
-import type { HealthRecord, StateStore } from "../src/index.ts"
+import { AiRouterError } from "../src/errors.ts"
+import { createFakeProvider } from "../src/fake.ts"
+import { createRouter } from "../src/router.ts"
+import { EMPTY_RECORD, MemoryStateStore } from "../src/store.ts"
+import type { HealthRecord, StateStore } from "../src/store.ts"
 import { ask, provider, record, setup, standardProviders } from "./helpers.ts"
 
 const SECRET_PROMPT = "my private prompt 7f3a"

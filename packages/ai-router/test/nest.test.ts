@@ -1,16 +1,15 @@
 import assert from "node:assert/strict"
-import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { describe, test } from "node:test"
 import { Module } from "@nestjs/common"
 import type { DynamicModule } from "@nestjs/common"
 import { Test } from "@nestjs/testing"
 import type { TestingModule } from "@nestjs/testing"
-import { AiRouterError, createFakeProvider } from "../src/index.ts"
-import type { AiRouter, FakeProvider, PoolConfig, RouterEvents } from "../src/index.ts"
-import { AI_ROUTER, AiRouterModule, AiRouterService, getAiRouterServiceToken, getAiRouterToken, InjectAiRouter, InjectAiRouterService } from "../src/nest/index.ts"
-import type { AiRouterModuleOptions } from "../src/nest/index.ts"
+import * as root from "../src/index.ts"
+import { AI_ROUTER, AiRouterError, AiRouterModule, AiRouterService, getAiRouterServiceToken, getAiRouterToken, InjectAiRouter, InjectAiRouterService } from "../src/index.ts"
+import type { AiRouter, AiRouterModuleOptions, PoolConfig, RouterEvents } from "../src/index.ts"
+import * as testing from "../src/testing.ts"
+import { AiRouterTestingModule, createFakeProvider } from "../src/testing.ts"
+import type { FakeProvider } from "../src/testing.ts"
 import { ask, provider } from "./helpers.ts"
 
 /** A pool over one fake provider, at test-speed backoff. */
@@ -230,11 +229,28 @@ describe("visibility and names", () => {
         assert.equal(getAiRouterServiceToken(), AiRouterService)
         assert.equal(getAiRouterServiceToken("x"), "AiRouterService:x")
     })
+})
 
-    test("only the nest entry imports Nest; the root entry stays dependency-free", () => {
-        const src = fileURLToPath(new URL("../src/", import.meta.url))
-        const root = readdirSync(src, { recursive: true, encoding: "utf8" }).filter((name) => name.endsWith(".ts") && !name.startsWith("nest"))
-        assert.ok(root.includes("index.ts"))
-        for (const file of root) assert.doesNotMatch(readFileSync(join(src, file), "utf8"), /from "(@nestjs\/|\.\/nest)/, file)
+describe("AiRouterTestingModule", () => {
+    test("registers the router over a fake provider, with the real module's extras", async () => {
+        const fake = createFakeProvider()
+        fake.on({}, { text: "faked" })
+        const app = await compile(AiRouterTestingModule.register({ fake, name: "t", isGlobal: true, providers: [provider("a", ["k1"], [{ id: "m1" }])] }))
+        const service = app.get<AiRouterService>(getAiRouterServiceToken("t"))
+        assert.equal((await service.chat(ask())).choices[0]?.message.content, "faked")
+        assert.equal(fake.calls[0]?.key, "sk-a-k1")
+        assert.throws(() => app.get(AI_ROUTER))
+        await app.close()
+    })
+})
+
+describe("the package entries", () => {
+    test("the root exports the Nest API and nothing of the engine", () => {
+        const names = ["AI_ROUTER", "AiRouterError", "AiRouterModule", "AiRouterService", "InjectAiRouter", "InjectAiRouterService", "getAiRouterServiceToken", "getAiRouterToken"]
+        assert.deepEqual(Object.keys(root).sort(), names.sort())
+    })
+
+    test("the testing entry exports the fake provider and the testing module", () => {
+        assert.deepEqual(Object.keys(testing).sort(), ["AiRouterTestingModule", "createFakeProvider"])
     })
 })

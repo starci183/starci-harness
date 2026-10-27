@@ -11,7 +11,7 @@ import type {
     ResetTarget,
     RouterEvents,
     StatsSnapshot,
-} from "../types.ts"
+} from "./types.ts"
 import type { AiRouterHandlers } from "./ai-router.options.ts"
 
 /**

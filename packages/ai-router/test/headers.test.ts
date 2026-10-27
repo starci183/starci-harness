@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { classifyStatus, parseDuration, readRateLimit } from "../src/index.ts"
+import { classifyStatus } from "../src/errors.ts"
+import { parseDuration, readRateLimit } from "../src/headers.ts"
 
 describe("rate-limit headers", () => {
     test("parseDuration reads OpenAI durations and plain seconds", () => {

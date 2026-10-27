@@ -443,7 +443,7 @@ export interface ResetTarget {
     readonly key?: string
 }
 
-/** The router `createRouter` returns. */
+/** The raw router behind `AiRouterService`, injected with `@InjectAiRouter()` (token `AI_ROUTER`). */
 export interface AiRouter<Profiles extends string = string> {
     /** Sends a chat-completions request through the pool. */
     chat(request: ChatCompletionRequest, options?: CallOptions<Profiles>): Promise<ChatCompletion>

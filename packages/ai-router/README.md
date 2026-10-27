@@ -1,13 +1,13 @@
 # @starci/ai-router
 
-A pool router for OpenAI-compatible APIs. Put many keys, many models and many providers behind one `chat`, `stream`
-and `embeddings` call, and the router picks a healthy key for each attempt, backs off what is failing, honours rate
-limits, retries on a different key or provider, falls back to another model when you allow it, and tells you what it
-did without ever exposing a key or a prompt.
+A NestJS module that routes OpenAI-compatible calls across a pool. Register many keys, many models and many providers
+once at the app root, inject `AiRouterService`, and call `chat`, `stream` and `embeddings`: the router picks a healthy
+key for each attempt, backs off what is failing, honours rate limits, retries on a different key or provider, falls
+back to another model when you allow it, and tells you what it did without ever exposing a key or a prompt.
 
-- Zero runtime dependencies: `fetch`, `AbortController` and `ReadableStream`. ESM, typed, Node 20 or newer. The
-  optional [NestJS module](#nestjs) lives at `@starci/ai-router/nest`, with `@nestjs/common` and `@nestjs/core` as
-  optional peers; the root entry never loads them.
+- A Nest package: `@nestjs/common` and `@nestjs/core` 11 or 12, and `reflect-metadata`, are peer dependencies your app
+  already has. No other runtime dependency: `fetch`, `AbortController` and `ReadableStream`. ESM, typed, Node 20 or
+  newer.
 - OpenAI chat-completions and embeddings shapes in and out, so any OpenAI-compatible endpoint (OpenAI, Azure OpenAI
   behind a compatible gateway, OpenRouter, Groq, Together, DeepSeek, vLLM, Ollama, LiteLLM...) is a provider.
 - Keys are references (an environment variable name or a resolver function), read at each attempt and named by alias
@@ -17,78 +17,117 @@ did without ever exposing a key or a prompt.
 
 One key hits its rate limit, another is revoked, a provider has a bad five minutes, and a model is briefly overloaded.
 Hand-written retry loops get each of those slightly wrong: they retry a 400, hammer a key that answered 401, ignore
-`retry-after`, or retry the same overloaded key. This package owns that loop once, with a test double to prove your use
-of it.
+`retry-after`, or retry the same overloaded key. This package owns that loop once, as a Nest capability, with a testing
+module to prove your use of it.
 
 ## Install
 
 ```sh
-npm install @starci/ai-router
+npm install @starci/ai-router @nestjs/common @nestjs/core reflect-metadata
 ```
 
-## Quick start
+## Register
+
+The module follows the Nest configurable-module shape: `AiRouterModule.register(options)` or
+`AiRouterModule.registerAsync(...)`, registered once at the app root. The options are the pool
+([Configuration reference](#configuration-reference)) plus `on` (one handler per [event](#observability)), and the
+extras `isGlobal` (default `false`) and `name` (for [several pools](#named-pools)).
 
 ```ts
-import { createRouter } from "@starci/ai-router"
+import { Module } from "@nestjs/common"
+import { AiRouterModule } from "@starci/ai-router"
 
-const router = createRouter({
-    providers: [
-        {
-            id: "openai",
-            baseUrl: "https://api.openai.com/v1",
-            keys: [
-                { alias: "team-a", env: "OPENAI_KEY_A" },
-                { alias: "team-b", env: "OPENAI_KEY_B", maxConcurrency: 8 },
+@Module({
+    imports: [
+        AiRouterModule.register({
+            isGlobal: true,
+            providers: [
+                {
+                    id: "openai",
+                    baseUrl: "https://api.openai.com/v1",
+                    keys: [
+                        { alias: "team-a", env: "OPENAI_KEY_A" },
+                        { alias: "team-b", env: "OPENAI_KEY_B", maxConcurrency: 8 },
+                    ],
+                    models: [
+                        { id: "gpt-4o-mini", aliases: ["fast"], contextWindow: 128_000, cost: { input: 0.15, output: 0.6 } },
+                        { id: "gpt-4o", aliases: ["smart"], cost: { input: 2.5, output: 10 } },
+                        { id: "text-embedding-3-small", capabilities: ["embeddings"] },
+                    ],
+                },
+                {
+                    id: "openrouter",
+                    baseUrl: "https://openrouter.ai/api/v1",
+                    keys: [{ alias: "or-1", env: "OPENROUTER_KEY" }],
+                    models: [{ id: "openai/gpt-4o-mini", aliases: ["fast"] }],
+                },
             ],
-            models: [
-                { id: "gpt-4o-mini", aliases: ["fast"], contextWindow: 128_000, cost: { input: 0.15, output: 0.6 } },
-                { id: "gpt-4o", aliases: ["smart"], cost: { input: 2.5, output: 10 } },
-                { id: "text-embedding-3-small", capabilities: ["embeddings"] },
-            ],
-        },
-        {
-            id: "openrouter",
-            baseUrl: "https://openrouter.ai/api/v1",
-            keys: [{ alias: "or-1", resolve: () => vault.read("openrouter") }],
-            models: [{ id: "openai/gpt-4o-mini", aliases: ["fast"] }],
-        },
+            defaults: { model: "fast", fallbacks: ["smart"], deadlineMs: 60_000 },
+            profiles: { strict: { model: "smart", allowFallback: false, maxAttempts: 3 } },
+        }),
     ],
-    defaults: { model: "fast", fallbacks: ["smart"], deadlineMs: 60_000 },
-    profiles: { strict: { model: "smart", allowFallback: false, maxAttempts: 3 } },
 })
-
-const reply = await router.chat({ messages: [{ role: "user", content: "Hello" }] })
-console.log(reply.choices[0]?.message.content, reply.routing) // routing: provider, key alias, model, attempts, cost
-
-for await (const chunk of router.stream({ model: "fast", messages: [{ role: "user", content: "Count to 5" }] })) {
-    process.stdout.write(chunk.choices[0]?.delta.content ?? "")
-}
-
-const vectors = await router.embeddings({ model: "text-embedding-3-small", input: ["a", "b"] })
+export class AppModule {}
 ```
 
-The same pool with the typed builder; profile names become a type, so `{ profile: "strcit" }` does not compile:
+When the options come from another provider, use `registerAsync` with `imports`, `inject` and `useFactory`, or
+`useClass` / `useExisting` with a class whose `createAiRouterOptions()` returns them. With `@nestjs/config`:
 
 ```ts
-import { createRouter, definePool } from "@starci/ai-router"
+import { ConfigModule, ConfigService } from "@nestjs/config"
+import { AiRouterModule } from "@starci/ai-router"
 
-const config = definePool()
-    .provider("openai", { baseUrl: "https://api.openai.com/v1" })
-    .key("team-a", { env: "OPENAI_KEY_A" })
-    .model("gpt-4o-mini", { aliases: ["fast"] })
-    .model("gpt-4o", { aliases: ["smart"] })
-    .profile("strict", { model: "smart", allowFallback: false })
-    .options({ defaults: { model: "fast", fallbacks: ["smart"] } })
-    .build()
-
-const router = createRouter(config)
-await router.chat({ messages: [{ role: "user", content: "Hi" }] }, { profile: "strict" })
+AiRouterModule.registerAsync({
+    isGlobal: true,
+    imports: [ConfigModule],
+    inject: [ConfigService],
+    useFactory: (config: ConfigService) => ({
+        providers: [
+            {
+                id: "openai",
+                baseUrl: config.getOrThrow<string>("OPENAI_BASE_URL"),
+                keys: [{ alias: "main", resolve: () => config.get<string>("OPENAI_API_KEY") }],
+                models: [{ id: "gpt-4o-mini", aliases: ["fast"] }],
+            },
+        ],
+        defaults: { model: "fast" },
+    }),
+})
 ```
 
-## API
+The router is created, and its pool validated, when Nest instantiates the module, so a bad pool fails the bootstrap
+with an `AiRouterError` of class `config` naming the problem.
 
-`createRouter(config)` validates the pool (it throws an `AiRouterError` of class `config` naming the problem) and
-returns:
+## Inject and call
+
+Each registration provides:
+
+| Token | Value | Inject with |
+| --- | --- | --- |
+| `AiRouterService` | the service: `chat`, `stream`, `embeddings`, `health`, `stats`, `on`, `reset`, and `router` | the constructor type, or `@InjectAiRouterService()` |
+| `AI_ROUTER` | the raw `AiRouter` the service delegates to | `@InjectAiRouter()` |
+
+```ts
+import { Injectable } from "@nestjs/common"
+import { AiRouterService } from "@starci/ai-router"
+
+@Injectable()
+export class SummaryService {
+    constructor(private readonly ai: AiRouterService<"strict">) {}
+
+    async summarise(text: string): Promise<string> {
+        const reply = await this.ai.chat({ messages: [{ role: "user", content: `Summarise: ${text}` }] }, { profile: "strict" })
+        return reply.choices[0]?.message.content ?? "" // reply.routing: provider, key alias, model, attempts, cost
+    }
+
+    embed(input: string[]) {
+        return this.ai.embeddings({ model: "text-embedding-3-small", input })
+    }
+}
+```
+
+The service's type parameter names the profiles a call may select, so `{ profile: "strcit" }` does not compile; type
+the options the same way (`AiRouterModuleOptions<"strict">`) to keep the two in step.
 
 | member | does |
 |---|---|
@@ -97,7 +136,7 @@ returns:
 | `embeddings(request, options?)` | sends an embeddings request; resolves to the OpenAI response plus `routing` |
 | `health()` | reads every breaker, disabled key, headroom and latency EWMA |
 | `stats()` | this process's counters: requests, attempts, failures by class, tokens and cost per lane |
-| `on(event, handler)` | subscribes to `attempt`, `request`, `breaker` or `key-disabled`; returns the unsubscribe function |
+| `on(event, handler)` | subscribes to `attempt`, `request`, `breaker` or `key-disabled` until shutdown; returns the unsubscribe function |
 | `reset(target?)` | closes breakers, re-enables keys and clears headroom for everything, one provider or one key |
 
 `options` is `{ profile?, policy?, signal?, requestId?, headers? }`. `requestId` (generated when absent) is sent as
@@ -107,6 +146,29 @@ returns:
 Every failure is an `AiRouterError` with `errorClass`, `retryable`, `status`, `provider`, `key` (alias), `model`,
 `requestId`, `attempts` (every failed attempt: where and why), `afterFirstToken` and `retryAt` (when a 429 said to
 come back).
+
+On application shutdown (`app.close()`, or a signal after `enableShutdownHooks()`), the service aborts every call still
+in flight through it (a stream ends with `cancelled`), rejects later calls as `cancelled`, and releases the `on`
+handlers and every handler it subscribed. Calls made on the raw `AI_ROUTER` are the caller's to cancel.
+
+## Named pools
+
+Give each registration a `name` to hold several pools in one app; its tokens become `AI_ROUTER:<name>` and
+`AiRouterService:<name>` (`getAiRouterToken(name)`, `getAiRouterServiceToken(name)`), injected by name:
+
+```ts
+imports: [
+    AiRouterModule.register({ name: "chat", isGlobal: true, ...chatPool }),
+    AiRouterModule.registerAsync({ name: "embed", isGlobal: true, imports: [ConfigModule], inject: [ConfigService], useFactory: embedPool }),
+]
+
+constructor(
+    @InjectAiRouterService("chat") private readonly chat: AiRouterService,
+    @InjectAiRouterService("embed") private readonly embed: AiRouterService,
+) {}
+```
+
+A named registration provides no default instance; `@InjectAiRouterService()` without a name needs an unnamed one.
 
 ## Configuration reference
 
@@ -227,11 +289,19 @@ reply; breaking out of the loop cancels the body and frees the key's slot.
 
 ## Observability
 
+Handlers given in the options as `on` are subscribed when the module is instantiated; `service.on(event, handler)`
+subscribes later. Both are released at application shutdown.
+
 ```ts
-router.on("attempt", (event) => metrics.histogram("llm.attempt", event.latencyMs, { provider: event.provider, key: event.key, model: event.model, outcome: event.outcome, class: event.errorClass }))
-router.on("breaker", (event) => log.warn("breaker", event))
-router.on("key-disabled", (event) => alert(`key ${event.provider}/${event.key} disabled: ${event.reason}`))
-router.on("request", (event) => log.info("llm call", event))
+AiRouterModule.register({
+    ...pool,
+    on: {
+        attempt: (event) => metrics.histogram("llm.attempt", event.latencyMs, { provider: event.provider, key: event.key, model: event.model, outcome: event.outcome, class: event.errorClass }),
+        breaker: (event) => log.warn("breaker", event),
+        "key-disabled": (event) => alert(`key ${event.provider}/${event.key} disabled: ${event.reason}`),
+        request: (event) => log.info("llm call", event),
+    },
+})
 ```
 
 | event | when | carries |
@@ -243,108 +313,48 @@ router.on("request", (event) => log.info("llm call", event))
 
 Events never carry message content unless `telemetry.includeContent` is `true`; then `attempt` events add `content`
 with the request body and, for `chat` and `embeddings`, the response. A handler that throws is isolated from the call.
+The module itself logs nothing.
 
 ## Sharing state between processes
 
-Breakers, disabled keys and headroom live in a `StateStore`; the default keeps them in memory. Several processes (or
-several routers) share them through one store: an adapter implements `get`, `set`, `delete`, `keys(prefix)`, and an
-atomic `lease(key, ttlMs)` / `release(key)` pair for the half-open probe. Methods may return values or promises.
-Records are plain JSON (`HealthRecord`); a Redis adapter is a `GET`/`SET`, a `SCAN` and a `SET NX PX` lease. In-flight
-counts, latency EWMAs and round-robin positions stay per process. Updates are read-modify-write, so two processes
-failing at the same instant may count one failure between them: breakers are a health signal, not a ledger.
+Breakers, disabled keys and headroom live in the `store` option; the default keeps them in memory. Several processes
+(or several registrations) share them through one store: an adapter implements the exported `StateStore` type (`get`,
+`set`, `delete`, `keys(prefix)`, and an atomic `lease(key, ttlMs)` / `release(key)` pair for the half-open probe).
+Methods may return values or promises. Records are plain JSON (`HealthRecord`); a Redis adapter is a `GET`/`SET`, a
+`SCAN` and a `SET NX PX` lease. In-flight counts, latency EWMAs and round-robin positions stay per process. Updates
+are read-modify-write, so two processes failing at the same instant may count one failure between them: breakers are a
+health signal, not a ledger.
 
-## NestJS
+## Testing
 
-`@starci/ai-router/nest` registers the router as a Nest module (Nest 11 or 12, `@nestjs/common` and `@nestjs/core`
-installed by your app). The options are the pool config above plus `on` (one handler per event), and the extras
-`isGlobal` (default `false`) and `name` (for several pools in one app). Register it once, at the app root:
-
-```ts
-import { Module } from "@nestjs/common"
-import { AiRouterModule } from "@starci/ai-router/nest"
-
-@Module({
-    imports: [
-        AiRouterModule.register({
-            isGlobal: true,
-            providers: [{ id: "openai", baseUrl: "https://api.openai.com/v1", keys: [{ alias: "main", env: "OPENAI_KEY_MAIN" }], models: [{ id: "gpt-4o-mini" }] }],
-            profiles: { fast: { model: "gpt-4o-mini" } },
-            on: { request: (event) => metrics.observe(event.operation, event.latencyMs) },
-        }),
-    ],
-})
-export class AppModule {}
-```
-
-When the options come from another provider (an env or config module), use `registerAsync` with `useFactory` and
-`inject`, or `useClass` / `useExisting` with a class whose `createAiRouterOptions()` returns them:
+`@starci/ai-router/testing` holds an in-process OpenAI-compatible fake provider and `AiRouterTestingModule`, which
+registers the real module (the same options, `isGlobal` and `name`) with every request sent to the fake and a fixed
+jitter. Script replies per base URL, key, model or path; replies are used in order and the last one repeats.
 
 ```ts
-AiRouterModule.registerAsync({
-    isGlobal: true,
-    imports: [AppConfigModule],
-    inject: [AppConfig],
-    useFactory: (config: AppConfig) => ({ providers: config.aiProviders, profiles: config.aiProfiles }),
-})
-```
-
-Each registration provides:
-
-| Token | Value | Inject with |
-| --- | --- | --- |
-| `AiRouterService` | the facade: `chat`, `stream`, `embeddings`, `health`, `stats`, `on`, `reset`, and `router` | the constructor type, or `@InjectAiRouterService()` |
-| `AI_ROUTER` | the raw `AiRouter` | `@InjectAiRouter()` |
-
-```ts
-@Injectable()
-export class SummaryService {
-    constructor(private readonly ai: AiRouterService<"fast">) {}
-
-    summarise(text: string) {
-        return this.ai.chat({ messages: [{ role: "user", content: `Summarise: ${text}` }] }, { profile: "fast" })
-    }
-}
-```
-
-The router is created, and its pool validated, when Nest instantiates the module, so a bad pool fails the bootstrap.
-On application shutdown (`app.close()`, or a signal after `enableShutdownHooks()`), the service aborts every call still
-in flight through it (a stream ends with `cancelled`), rejects later calls as `cancelled`, and releases the `on`
-handlers and every handler it subscribed. Calls made on the raw `AI_ROUTER` are the caller's to cancel.
-
-For several pools, give each registration a `name`; its tokens become `AI_ROUTER:<name>` and `AiRouterService:<name>`
-(`getAiRouterToken(name)`, `getAiRouterServiceToken(name)`):
-
-```ts
-imports: [
-    AiRouterModule.register({ name: "chat", isGlobal: true, ...chatPool }),
-    AiRouterModule.registerAsync({ name: "embed", isGlobal: true, inject: [AppConfig], useFactory: (config: AppConfig) => config.embedPool }),
-]
-
-constructor(@InjectAiRouterService("chat") private readonly chat: AiRouterService, @InjectAiRouter("embed") private readonly embed: AiRouter) {}
-```
-
-Keys stay references (`env` names or resolvers) and the module logs nothing. In tests, pass a fake provider's `fetch`
-in the options (below) and build the module with `@nestjs/testing`.
-
-## Testing with the fake provider
-
-`createFakeProvider()` is an in-process OpenAI-compatible provider for your own tests. Pass its `fetch` to the router
-and script replies per base URL, key, model or path; replies are used in order and the last one repeats.
-
-```ts
-import { createFakeProvider, createRouter } from "@starci/ai-router"
+import { Test } from "@nestjs/testing"
+import { AiRouterService } from "@starci/ai-router"
+import { AiRouterTestingModule, createFakeProvider } from "@starci/ai-router/testing"
 
 const fake = createFakeProvider()
 fake.on({ key: "sk-test-1" }, { status: 429, headers: { "retry-after": "30" } })
 fake.on({ key: "sk-test-2" }, { latencyMs: 20, text: "hello" })
 fake.on({ model: "m-stream" }, { stream: { chunks: ["a", "b"], failAfter: 1 } })
 
-const router = createRouter({
-    providers: [{ id: "p", baseUrl: "https://p.test/v1", keys: [{ alias: "one", resolve: () => "sk-test-1" }, { alias: "two", resolve: () => "sk-test-2" }], models: [{ id: "m" }, { id: "m-stream" }] }],
-    fetch: fake.fetch,
-})
-const reply = await router.chat({ model: "m", messages: [{ role: "user", content: "hi" }] })
+const app = await Test.createTestingModule({
+    imports: [
+        AiRouterTestingModule.register({
+            fake,
+            isGlobal: true,
+            providers: [{ id: "p", baseUrl: "https://p.test/v1", keys: [{ alias: "one", resolve: () => "sk-test-1" }, { alias: "two", resolve: () => "sk-test-2" }], models: [{ id: "m" }, { id: "m-stream" }] }],
+        }),
+    ],
+    providers: [SummaryService],
+}).compile()
+
+const reply = await app.get(AiRouterService).chat({ model: "m", messages: [{ role: "user", content: "hi" }] })
 // reply.routing.key === "two"; fake.calls lists both requests with their key, model, headers and body
+await app.close()
 ```
 
 A reply may set `status`, `headers`, `latencyMs`, `error: "network"`, `text`, `usage`, `embedding`, a raw `body`, and
@@ -364,7 +374,9 @@ Everything is deterministic except the latencies you script.
 
 ## FAQ
 
-**Is this a proxy server?** No, it is a library inside your process. Wrap it in a server if you need one.
+**Is this a proxy server?** No, it is a module inside your Nest process. Expose it through a controller if you need one.
+
+**Can I use it outside Nest?** No. The package is the Nest module; the engine behind the service is not exported.
 
 **Does it work with providers that are not OpenAI-compatible?** Only through a compatible gateway; the wire format is
 the OpenAI chat-completions and embeddings API.
@@ -373,7 +385,7 @@ the OpenAI chat-completions and embeddings API.
 breaker cooldown, a concurrency slot). Lower `deadlineMs` to fail sooner.
 
 **Why is a key never used again?** It answered 401/403, or its resolver returned nothing, and `authDisableMs` is `null`
-by default. Fix the key and call `router.reset({ provider, key })`, or set `authDisableMs`.
+by default. Fix the key and call `service.reset({ provider, key })`, or set `authDisableMs`.
 
 **How do I keep calls on one model?** `allowFallback: false` in the policy or a profile. `providers: [...]` keeps them
 on chosen providers.
