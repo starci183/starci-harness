@@ -36,6 +36,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   harness's `.claude/worktrees/` and installs a pre-push guard; `pkg handoff [--urgent]` records the branch and head for
   Debug (`--list` is the queue); `release push`, `release publish` and the guard refuse a `pkg/` branch to every role but
   debug and owner (`PKG_EDIT_PUSH_REFUSED`). Bench: `pkg-edit-branch-handoff`.
+- **The Supervisor delegates to workers.** `supervisor dispatch --brief <file|text> [--label] [--repo] [--allow] [--input]`
+  hands one job to a `[Worker] <project>: <topic>` seat under the Supervisor: its own worktree on branch `starci/<worker>`, a
+  task whose contract is the brief on the label's op, launched into the Supervisor's Run and routed by the worker tiers.
+  `supervisor next` tends the workers and returns each one's report or end once as kind `worker`; `supervisor accept`
+  settles one by `task verify`, `supervisor reject` cancels it, `supervisor workers` lists them. The Supervisor no longer
+  pushes; Debug alone merges, pushes (`release push`, `release cut` now take role `debug`) and publishes. Bench:
+  `supervisor-dispatch-worker-report`.
+- **A project runs at most `projectMaxWorkers` worker seats** (ops/routing.yaml, 10): its Kernels' Ops and its Supervisor's
+  workers together. A launch past it waits queued and starts once a seat is released, before any route is picked. Bench:
+  `supervisor-worker-cap-queues`, `supervisor-worker-cap-counts-kernel-ops`.
+- **A held decision no longer stops a workflow's dispatch.** `kernel next` steps the workflow before it returns an open
+  decision, so a task returned and held never keeps the other ready tasks from launching; a ready task waiting on another
+  task's lease names the path and its holder in `workflow status`. Bench: `workflow-blocked-keeps-dispatching`.
+- **`supervisor next` always answers.** Its wait stops early by its longest sweep, so it returns inside the caller's shell
+  timeout, and a failure no verb catches still prints its refusal (the json envelope under `--json`) with exit 1. Bench:
+  `supervisor-next-always-answers`.
 
 ### Fixed
 

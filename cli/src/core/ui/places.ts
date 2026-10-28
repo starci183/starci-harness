@@ -5,7 +5,7 @@ import { inOrder } from "../../harness/sequential.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
 import { Refusal } from "../../shared/errors.js"
-import { registeredRepositories } from "../supervisor/driver.js"
+import { registeredRepositories } from "../../harness/project-workers.js"
 
 /** A registered repository with the project it belongs to: the ledger every read and write of the server opens. */
 export interface Place {

@@ -62,7 +62,8 @@ attempt, kind and sha256 every attempt's work (the preserved patch of a cancelle
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
 `pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, `project_supervisors`, one live
-Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), and the Telegram channel's
+Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
+Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
 `telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`).
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
 and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's one worktree. Seats and leases stay
@@ -165,8 +166,9 @@ debug and owner (`PKG_EDIT_PUSH_REFUSED`).
 
 **Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
 found") > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <label> (<task id>) - <summary>` (one per attempt),
-each a real Orca agent, so Orca lists a project's main checkout with its Supervisor and each workflow worktree with its
-Kernel and Ops. Every `supervisor` verb takes its project from the working directory (any checkout or worktree of the
+and `[Supervisor] <project>` > `[Worker] <project>: <topic>` (one per job the Supervisor hands out), each a real Orca agent, so
+Orca lists a project's main checkout with its Supervisor, each workflow worktree with its Kernel and Ops, and each worker's
+worktree with its worker. Every `supervisor` verb takes its project from the working directory (any checkout or worktree of the
 project's repositories) or `--project <path>`. The owner runs `supervisor start` once per project: it reserves the
 project's one Supervisor in machine.sqlite (`project_supervisors`, keyed by the Work-root repository's ledger id) and
 launches the router's coordinator member (`orca agent launch --worktree path:<main checkout>`, terminal surface) in the
@@ -221,13 +223,30 @@ it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Super
 `harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
 and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
+The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--label]
+[--repo] [--allow]... [--input name=value]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
+project's Work-root repository, or any other checkout; a `@starci` package fix stays in the app's repository with
+`--input package=<name>`, and the worker cuts its own package edit branch, `pkg branch`, and hands it off) at `<project state>/worktrees/<worker>` on branch `starci/<worker>`, queues in that repository's ledger a task
+whose contract is the brief on the label's op (default `code`; with no `--allow`, its one report file), leases its paths,
+records the worker in `supervisor_workers`, and launches it as `seat start` does (`startSeat` with the Supervisor as
+coordinator: `--run/--parent/--from` of the Supervisor, title `[Worker] <project>: <topic>`), routed by the label's worker
+tier. Every `supervisor next` round from the Supervisor's terminal tends the project's workers (`tendWorkers`): it pings each
+running one past its launch grace (Orca's word that it is gone makes it lost), closes the seat of one that reported, failed
+or was lost, and launches the queued ones into free slots; then it returns, after the escalations and handoffs the
+Supervisor rules and before owner requests, each worker completion once as kind `worker` (`nextWorkerEvent`). `supervisor
+accept <worker>` settles one that reported done with `task verify` (green commits on its branch, red fails it), `supervisor
+reject <worker>` cancels a live one, and `supervisor workers` lists them with their seat's liveness. A project runs at most
+`projectMaxWorkers` worker seats at once (ops/routing.yaml), every open worker seat of its repositories' ledgers and its own
+workers elsewhere counted together (`projectSlots` in `harness/project-workers.ts`): a dispatch past it waits queued, and a
+Kernel's launch past it is a wait whose task stays queued (`launchTask` in `core/workflow/engine.ts`), before any route is
+picked, so the cap never sends work to another provider.
 
 **The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
 every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and once a new build of the
 CLI's dist stands it starts its replacement from that build, detached onto its own stdout and stderr, records a
 `supervisor-watch-reloaded` host event and exits, so it never ticks with modules a build replaced and one watch process runs): first the terminal sweep
 (`harness/terminal-sweep.ts`) closes the tab of every Orca terminal the harness made — its handle recorded by a seat of a
-registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] ` (or Orca's `worker-task_` inside a
+registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] ` (or Orca's `worker-task_` inside a
 workflow worktree) — that Orca lists orphaned or that no open seat, open Kernel record or live Supervisor holds (an unrecorded
 one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (`--dry-run` reports what it
 would close and does nothing else); then it records Orca's full terminal list, by which a pool count (`runningWorkers` in
@@ -318,7 +337,8 @@ retained), and the tick's sweep closes one that outlived it (`closeWorker` in `h
 their Kernel, and `kernel next` returns `idle` naming its next task.
 
 **Routing and liveness** are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, Orca usage,
-provider circuit and its half-open probe, outcomes, qualification, scoring, AIMD concurrency, workflow budgets, and the
+provider circuit and its half-open probe, outcomes, qualification, scoring, AIMD concurrency, the workflow and project
+parallel caps, workflow budgets, and the
 `coordinators` tiers: a Supervisor or Kernel is routed through the same circuit, quota, probe, scoring and balance as an
 Op; the router's steps are [ops/README.md](../ops/README.md)'s) and
 [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, the Orca answers that prove a worker gone — anything else is

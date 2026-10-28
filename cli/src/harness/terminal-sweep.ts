@@ -7,10 +7,11 @@ import { CLOSED_SEAT_STATUSES } from "./seats.js"
 import { inOrder } from "./sequential.js"
 
 /**
- * The titles the harness gives the terminals it launches (`[Op] `, `[Kernel] `, `[Supervisor] `, set by `opTitle`, `kernelTitle`
- * and `supervisorTitle` through `terminal rename`), and Orca's own title of a worker terminal before that rename (`worker-task_`).
+ * The titles the harness gives the terminals it launches (`[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] `, set by `opTitle`,
+ * `kernelTitle`, `supervisorTitle` and `workerTitle` through `terminal rename`), and Orca's own title of a worker terminal before
+ * that rename (`worker-task_`).
  */
-const HARNESS_TITLE = /^\[(?:Op|Kernel|Supervisor)\] /
+const HARNESS_TITLE = /^\[(?:Op|Kernel|Supervisor|Worker)\] /
 const WORKER_TITLE = "worker-task_"
 
 /** Who recorded a terminal handle: a seat or a Supervisor row, and whether that record still holds the terminal. */

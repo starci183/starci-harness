@@ -82,6 +82,10 @@ import { kernelNextVerb } from "./core/kernel/next.js"
 import { kernelSubmitVerb } from "./core/kernel/submit.js"
 import { supervisorEnsureVerb } from "./core/supervisor/ensure.js"
 import { supervisorNextVerb } from "./core/supervisor/next.js"
+import { supervisorDispatchVerb } from "./core/supervisor/dispatch.js"
+import { supervisorWorkersVerb } from "./core/supervisor/worker-list.js"
+import { supervisorAcceptVerb } from "./core/supervisor/accept.js"
+import { supervisorRejectVerb } from "./core/supervisor/reject.js"
 import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
 import { supervisorTickVerb } from "./core/supervisor/tick.js"
 import { supervisorWatchVerb } from "./core/supervisor/watch.js"
@@ -195,6 +199,10 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     kernelSubmitVerb,
     supervisorEnsureVerb,
     supervisorNextVerb,
+    supervisorDispatchVerb,
+    supervisorWorkersVerb,
+    supervisorAcceptVerb,
+    supervisorRejectVerb,
     supervisorSubmitVerb,
     supervisorTickVerb,
     supervisorWatchVerb,

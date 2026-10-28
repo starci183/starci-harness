@@ -20,6 +20,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   and its sides) has its own `[Supervisor] <project>` in its main checkout, which starts, owns and sweeps only that
   project's workflows; one host driver (`supervisor tick`) keeps every project's Supervisor alive
   (`cli/src/harness/supervisor.ts`, `cli/src/core/supervisor/driver.ts`).
+- **The Supervisor delegates; Debug lands.** The Supervisor never works hands-on: every code or package fix and every
+  investigation that touches files goes to a `[Worker] <project>: <topic>` seat it dispatches under itself, in its own worktree,
+  routed by the worker tiers; the Supervisor reads the worker's result and accepts or rejects it. Merging, pushing and
+  publishing harness packages are Debug's alone (`cli/src/core/supervisor/workers.ts`, the `release` verbs' roles). A project
+  runs at most `projectMaxWorkers` worker seats at once, its Kernels' Ops and its Supervisor's workers together; a launch past
+  it waits queued and starts once a seat is released ([ops/routing.yaml](../../ops/routing.yaml),
+  `cli/src/harness/project-workers.ts`).
 - **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
   every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the
   owner's answer there becomes an owner request that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's

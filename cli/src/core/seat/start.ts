@@ -65,7 +65,7 @@ export interface SeatStartData {
     readonly requestId: string | null
     readonly effective: unknown
     readonly attested: EffectiveLaunch | null
-    /** The Kernel the worker nests under (its Run, task and coordinator terminal), or null when it launched flat. */
+    /** The coordinator the worker nests under (its Kernel, or the Supervisor of a `[Worker]`: Run, task and terminal), or null when it launched flat. */
     readonly kernel: KernelLaunch | null
 }
 
@@ -83,6 +83,10 @@ export interface SeatStartOptions {
     readonly dryRun?: boolean | undefined
     /** The router's pick that chose agent and model, stored on the attempt (pick_json). */
     readonly pick?: RoutePick | undefined
+    /** The coordinator a task outside any workflow nests under (a Supervisor's `[Worker]`: its Run, task and terminal); a workflow task nests under its Kernel. */
+    readonly coordinator?: KernelLaunch | undefined
+    /** The seat's title; default `opTitle` of the task. */
+    readonly title?: string | undefined
 }
 
 const TITLE_CHARS = 80
@@ -154,7 +158,7 @@ const launchRecord = (task: TaskRow, files: BriefFiles, options: SeatStartOption
         runRequest: requestIdOf("run-create", attempt),
         start: {
             spec: pointerSpec(task.id, files),
-            taskTitle: opTitle(task),
+            taskTitle: options.title ?? opTitle(task),
             worktree: worktreeSelector(options.worktree, options.cwd, options.root),
             agent: options.agent,
             // An agent that takes no launch-time model (modelSelection: false) runs its own; Orca refuses --model for it.
@@ -448,7 +452,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         const options: SeatStartOptions = { ...given, worktree: given.worktree ?? recorded }
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
         const binary = await locateOrca(cwd)
-        const kernel = nestingOf(await kernelOf(db, task, binary, options), options)
+        const kernel = options.coordinator ?? nestingOf(await kernelOf(db, task, binary, options), options)
         if (options.dryRun === true) {
             const files = writeBrief(task, ops, root)
             const record = launchRecord(task, files, options, "dry-run", kernel)

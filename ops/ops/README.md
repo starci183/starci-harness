@@ -94,13 +94,14 @@ The harness verifies your result again on a clean checkout and commits it; a gre
 
 ### Orca mail
 
-Under the Orca runner you talk only to your Kernel: never to the Supervisor, the owner or another Op. Your filed result
-and `task verify` are the state; mail only wakes the Kernel. Use the terminal, Orca task and dispatch ids of your injected
+Under the Orca runner you talk only to your coordinator, the seat whose Run you were launched into: your Kernel, or for a
+`[Worker]` the Supervisor that dispatched you; never to the owner or another seat. Your filed result and `task verify` are the
+state; mail only wakes your coordinator. Use the terminal, Orca task and dispatch ids of your injected
 Orca preamble (the Orca task id is not the StarCi task id above). Upward mail omits `--to` and `--run`, so Orca delivers
-it to your dispatch's owning Run, which is your Kernel's.
+it to your dispatch's owning Run, which is your coordinator's.
 
 - Stuck, or the work needs a change outside your allowPaths: never wait on a blocking `ask`. File the StarCi result with
-  `--status blocked` (or `mismatch`) and your question in its output; the Kernel takes it as one decision.
+  `--status blocked` (or `mismatch`) and your question in its output; your coordinator takes it as one decision.
 - Done: file the StarCi result, then report exactly once with both ids and an honest outcome (`failed` when the requested
   work is incomplete); the body is three sentences: what you did, what you found, what remains.
 

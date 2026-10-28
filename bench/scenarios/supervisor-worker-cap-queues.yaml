@@ -1,0 +1,132 @@
+schema: starci/scenario@1
+id: supervisor-worker-cap-queues
+group: scale
+title: "an 11th [Worker] of one project waits queued past projectMaxWorkers and starts once a worker seat is released"
+inject: eleven supervisor dispatches in one project, past the projectMaxWorkers cap of 10 (ops/routing.yaml)
+expect: >-
+  the first ten dispatches launch a [Worker] each; the eleventh records its worker, task, worktree and leases but launches nothing
+  and says it is queued, never refused and never routed elsewhere; once the first worker reports done, supervisor next releases
+  its seat, launches the eleventh into the freed slot and returns the first worker's report
+pass:
+  - 10 [Worker] worker-starts, then 11 after the release
+  - the eleventh task queued with no seat until the release, running after it
+  - "no step without evidence: every state change in the ledger has its event"
+  - no human intervention beyond the injected load
+automation: automated
+steps:
+  - name: boot the project's Supervisor
+    boot: {}
+  - name: dispatch worker 1
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w1", --label, docs, --allow, docs/w1.md]
+    expect:
+      contains: routed
+    save:
+      task1: data.task
+  - name: dispatch worker 2
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w2", --label, docs, --allow, docs/w2.md]
+    expect:
+      contains: routed
+    save:
+      task2: data.task
+  - name: dispatch worker 3
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w3", --label, docs, --allow, docs/w3.md]
+    expect:
+      contains: routed
+    save:
+      task3: data.task
+  - name: dispatch worker 4
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w4", --label, docs, --allow, docs/w4.md]
+    expect:
+      contains: routed
+    save:
+      task4: data.task
+  - name: dispatch worker 5
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w5", --label, docs, --allow, docs/w5.md]
+    expect:
+      contains: routed
+    save:
+      task5: data.task
+  - name: dispatch worker 6
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w6", --label, docs, --allow, docs/w6.md]
+    expect:
+      contains: routed
+    save:
+      task6: data.task
+  - name: dispatch worker 7
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w7", --label, docs, --allow, docs/w7.md]
+    expect:
+      contains: routed
+    save:
+      task7: data.task
+  - name: dispatch worker 8
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w8", --label, docs, --allow, docs/w8.md]
+    expect:
+      contains: routed
+    save:
+      task8: data.task
+  - name: dispatch worker 9
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w9", --label, docs, --allow, docs/w9.md]
+    expect:
+      contains: routed
+    save:
+      task9: data.task
+  - name: dispatch worker 10
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w10", --label, docs, --allow, docs/w10.md]
+    expect:
+      contains: routed
+    save:
+      task10: data.task
+  - name: dispatch worker 11
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write doc w11", --label, docs, --allow, docs/w11.md]
+    expect:
+      contains: queued
+    save:
+      task11: data.task
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Worker\] '
+        count: 10
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || (SELECT COUNT(*) FROM seats WHERE task_id = '${task11}') FROM tasks WHERE id = '${task11}'"
+        equals: ["queued:0"]
+  - name: the first worker reports done
+    worker:
+      task: ${task1}
+      files:
+        docs/w1.md: "# w1\n"
+  - name: supervisor next releases its seat, starts the eleventh and returns the report
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "worker"'
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Worker\] '
+        count: 11
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${task11}'"
+        equals: [running]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM seats WHERE task_id = '${task1}'"
+        equals: [released]

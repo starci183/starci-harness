@@ -32,7 +32,7 @@ export const releasePushVerb = defineVerb({
     summary: "push main right after a green scoped check: refuses a dirty tree, a non fast-forward or a secret in the pushed range",
     editions: ["lite", "full"],
     effect: "remote",
-    roles: ["owner", "release", "coordinator", "lead"],
+    roles: ["owner", "release", "coordinator", "lead", "debug"],
     schema: "starci/release-push@1",
     flags: {
         remote: { kind: "string", summary: "the remote to push to (default origin)" },

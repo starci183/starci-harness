@@ -175,6 +175,12 @@ concurrency: {floor: 2, decreaseCooldownMinutes: 2, quietMinutes: 15, increaseSt
 # ready tasks past it wait for a free slot (engine.ts queueReady).
 workflowParallel: 10
 
+# The most worker seats one project runs at once: its Kernels' Ops across all of its workflows and the [Worker] seats its
+# Supervisor dispatched (`supervisor dispatch`), wherever they work. A launch past it waits queued and starts once a seat of the
+# project is released (engine.ts launchTask, core/supervisor/workers.ts); it is never refused and never routed elsewhere for
+# it. The pools' maxParallel still binds every launch.
+projectMaxWorkers: 10
+
 # Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise).
 budgets:
   workflow: {minutes: 480, tries: 40}
