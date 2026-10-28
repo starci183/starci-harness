@@ -1,0 +1,85 @@
+schema: starci/scenario@1
+id: security-loosening-sonar-block
+group: security
+title: the generated Sonar block, with the ruled cpd line the template renders, is green; a cpd line written by hand stays red
+inject: an app's sonar-project.properties carrying the block `app sonar --write` writes, then a hand-added cpd exclusion, then an edited cpd line inside the block
+expect: >-
+  check loosening is green on the block as `app sonar` derives it (the coverage scope from the slots and the cpd exclusions the
+  design truths of @starci/hfs allow, which the app template renders inside the same block); a sonar.cpd.exclusions line written
+  outside the block is a finding, and so is a block whose cpd line differs from the derivation
+pass:
+  - the derived block carries the ruled cpd line and check loosening is green on it
+  - app sonar --check is green on the written file
+  - a hand-added cpd exclusion outside the block is red
+  - an edited cpd line inside the block is red
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: hfs.json
+      content: |
+        {
+          "hfs": 3,
+          "kind": "app",
+          "project": "bench-app",
+          "sides": {
+            "be": { "apps": [{ "name": "core", "kind": "api" }], "kinds": ["api"] },
+            "fe": { "apps": [{ "name": "web", "kind": "next" }], "grammar": "core" }
+          }
+        }
+  - write:
+      path: sonar-project.properties
+      content: |
+        sonar.projectKey=bench-app
+        sonar.sources=be/apps,be/src,fe/apps
+  - name: the block is derived with the ruled cpd line
+    starci: [app, sonar]
+    expect:
+      exit: 0
+      contains: "sonar.cpd.exclusions=**/messages/*.messages.ts,**/messages/*.json"
+    save:
+      begin: data.block.0
+      coverage: data.block.1
+      cpd: data.block.2
+      end: data.block.3
+  - name: the block is written
+    starci: [app, sonar, --write]
+    expect:
+      exit: 0
+  - name: the written file carries the block
+    starci: [app, sonar, --check]
+    expect:
+      exit: 0
+  - name: the rendered block is green
+    starci: [check, loosening]
+    expect:
+      exit: 0
+  - write:
+      path: sonar-project.properties
+      content: |
+        sonar.projectKey=bench-app
+        sonar.sources=be/apps,be/src,fe/apps
+        sonar.cpd.exclusions=be/src/**
+        ${begin}
+        ${coverage}
+        ${cpd}
+        ${end}
+  - name: a hand-added cpd exclusion is red
+    starci: [check, loosening]
+    expect:
+      exit: 1
+      contains: "a Sonar scope exclusion outside the generated block (be/src/**)"
+  - write:
+      path: sonar-project.properties
+      content: |
+        sonar.projectKey=bench-app
+        sonar.sources=be/apps,be/src,fe/apps
+        ${begin}
+        ${coverage}
+        ${cpd},be/src/**
+        ${end}
+  - name: an edited cpd line inside the block is red
+    starci: [check, loosening]
+    expect:
+      exit: 1
+      contains: "a generated Sonar block that differs"

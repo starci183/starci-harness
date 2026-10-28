@@ -36,6 +36,9 @@ import { ciWorkflowCommands } from './ci-commands.mjs';
 import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
+import { LIST } from '../runtime/scripts/lib/loosening-config.mjs';
+import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
+import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
 const NODE_MAJOR = 22;
@@ -194,11 +197,18 @@ export function bundledPresets() {
 
 /** Where the be unit run writes the lcov report (jest `coverageDirectory` coverage under be/, reporter lcov), from the app root. */
 const LCOV_REPORT = 'be/coverage/lcov.info';
+/** The design truths this package ships: the one list of the exceptions the canon allows, each with its owner ruling. */
+const DESIGN_TRUTHS = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'design-truths.yaml');
+/** Every entry the design truths allow on `list`, in manifest order. */
+const designTruthEntries = list => [...new Set(readTruths(bundledParseYaml(fs.readFileSync(DESIGN_TRUTHS, 'utf8'))).literal.filter(allow => allow.list === list).flatMap(allow => allow.entries))];
 /**
- * The message catalogs Sonar's copy-paste detection leaves out (owner ruling 2026-10-22): a catalog holds one block per language
- * with the same keys, which CPD reads as duplicated code. They are still sources: linted, analysed and held to every other rule.
+ * The entries Sonar's copy-paste detection leaves out: every `cpd-exclusions` entry the design truths
+ * (knowledge/hfs/design-truths.yaml) allow, today the message catalogs (ruling message-catalogs-not-duplicate-code): a catalog
+ * holds one block per language with the same keys, which CPD reads as duplicated code. They are still sources: linted, analysed
+ * and held to every other rule. The rendered properties carry them inside the generated Sonar block, and `starci check loosening`
+ * accepts the block only as this manifest derives it.
  */
-export const SONAR_CPD_EXCLUSIONS = Object.freeze(['**/messages/*.messages.ts', '**/messages/*.json']);
+export const SONAR_CPD_EXCLUSIONS = Object.freeze(designTruthEntries(LIST.cpd));
 
 /**
  * The Sonar scope of the jest preset's exclusions (presets.sonarExclusions): its file patterns are the tests, which

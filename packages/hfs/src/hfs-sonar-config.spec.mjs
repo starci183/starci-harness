@@ -34,7 +34,8 @@ for (const edition of ['lite', 'full']) {
     const lines = target.content.split('\n');
     const coverage = lines.findIndex(line => line.startsWith('sonar.coverage.exclusions='));
     assert.match(lines[coverage - 1], /^# starci:sonar-scope begin /);
-    assert.equal(lines[coverage + 1], '# starci:sonar-scope end');
+    assert.match(lines[coverage + 1], /^sonar\.cpd\.exclusions=/);
+    assert.equal(lines[coverage + 2], '# starci:sonar-scope end');
   });
 }
 
