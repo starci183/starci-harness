@@ -1,0 +1,53 @@
+schema: starci/scenario@1
+id: heavy-cpu-starved-queue-admits
+group: resources
+title: "a CPU that never drops under its ceiling slows the heavy queue and never starves it"
+inject: >-
+  the heavy rules of an ops/ copy set so the host's CPU average is always above maxCpuPercent (another app's gate, a virus
+  scan), with RAM to spare; two check runs queue at once
+expect: >-
+  high CPU holds new heavy commands back only until the queue admitted nothing for heavy.cpuStarveMinutes; then the oldest
+  queued command that RAM admits starts, one at a time, so both check runs end green instead of waiting forever; host load
+  names the rule
+pass:
+  - two check runs at once both exit 0 under a CPU ceiling no host is under
+  - at least one of them waited for its slot
+  - host load names the starvation rule
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+repo:
+  files:
+    package.json: '{"name": "bench-heavy-starve", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "setTimeout(() => process.exit(0), 1000)\n"
+    node_modules/eslint/bin/eslint.js: "process.exit(0)\n"
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - name: RAM never holds a command back
+    starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - name: a CPU ceiling no host is under
+    starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
+  - name: the queue counts as starved after three seconds with nothing admitted
+    starci: [config, set, liveness.heavy.cpuStarveMinutes, "0.05"]
+  - git: [commit, -q, -am, "bench: a CPU that never cools"]
+  - write: { path: src/changed.ts, content: "export const changed = 1\n" }
+  - name: host load names the starvation rule
+    starci: [host, load]
+    expect: { exit: 0, contains: "then the oldest fitting one does" }
+  - name: two check runs at once both end green
+    starci: [check, run, --base, HEAD]
+    parallel: 2
+    expect: { exit: 0 }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) >= 1 FROM host_events WHERE kind = 'heavy-wait'"
+        equals: [1]

@@ -8,9 +8,10 @@ import { coordinatorLaunch } from "./coordinator-launch.js"
 import { leaseEnd, loadCoordinatorLiveness, olderThan } from "./coordinator-liveness.js"
 import { now, runtimeRoot } from "./ledger.js"
 import { readMachine, withMachine } from "./machine.js"
-import { agentLaunch, isSelectorNotFound, launchOperationOf, locateOrca, mailSend, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
+import { agentLaunch, isSelectorNotFound, launchOperationOf, locateOrca, mailOrType, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
 import type { AgentLaunchInput, MailSend, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
+import { loadStallRules, promptOf } from "./stall.js"
 import { loadRouting, selectsModel } from "./routing.js"
 import type { Project } from "./work.js"
 
@@ -232,12 +233,14 @@ export const wakeSupervisor = async (project: string, cwd: string, mail: Omit<Ma
     if (supervisor?.run_id == null) return "no Supervisor attached: it waits for supervisor next"
     try {
         // Orca needs a sender terminal: the caller's when it runs inside one (a Kernel), else the Supervisor's own terminal,
-        // so the owner's `supervisor ask` from a shell or the desktop app still wakes it.
+        // so the owner's `supervisor ask` from a shell or the desktop app still wakes it. A mail Orca refuses (a Kernel that is a
+        // Dispatch of a replaced Supervisor's Run) is replaced by the loop prompt typed into the Supervisor's terminal.
         const from = process.env.ORCA_TERMINAL_HANDLE ?? supervisor.terminal ?? undefined
-        await mailSend(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from }, cwd)
-        return "mailed the Supervisor's Run"
+        const text = promptOf(loadStallRules().prompts.supervisor, { wait: String(loadCoordinatorLiveness().nextWaitSeconds) })
+        const woke = await mailOrType(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from }, { terminal: supervisor.terminal, text }, cwd)
+        return woke === "mailed" ? "mailed the Supervisor's Run" : `${woke}; the ledger row waits for supervisor next`
     } catch (error: unknown) {
-        return `mail not sent (${asRefusal(error).code}); it waits for supervisor next`
+        return `mail not sent (${asRefusal(error).code}: ${asRefusal(error).message.split("\n")[0] ?? ""}); it waits for supervisor next`
     }
 }
 

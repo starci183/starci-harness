@@ -1,0 +1,83 @@
+schema: starci/scenario@1
+id: orca-wake-mail-refused-typed
+group: orca
+title: "a wake-up mail Orca refuses is replaced by the wake prompt typed into the target's terminal"
+inject: >-
+  Orca refuses every mail to the Supervisor's Run, as it refuses a mail from a Kernel that is a Dispatch of a replaced
+  Supervisor's Run (ORCA_FAILED all evening); the Kernel escalates a scope question
+expect: >-
+  `kernel submit` records the escalation as the Supervisor's decision, the mail fails, and the Supervisor's loop prompt is typed
+  into its terminal instead, once (a replay of the same command types nothing more); the command's outcome names Orca's own
+  words for the refusal, never only its code
+pass:
+  - the escalation is a Supervisor decision
+  - one terminal send into the Supervisor's terminal carries its loop prompt
+  - the applied command's outcome names the refusal's message and the typed prompt
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: hush
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: hush
+  - name: Orca refuses mail to the Supervisor's Run
+    orca:
+      rules:
+        - command: send
+          match:
+            to: "^run:${supervisor.run}$"
+          fault: refuse
+          code: sender_not_in_run
+          message: the sender is a dispatch of another run
+          times: 5
+  - file:
+      path: esc.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-hush-ask-1
+        kind: escalation
+        workflow: hush
+        basedOn: {graph: 1}
+        escalation:
+          kind: scope
+          question: may doc a also write docs/b.md?
+  - seat: kernel:hush
+    starci: [kernel, submit, "${run}/esc.yaml"]
+    expect:
+      contains: typed the wake prompt into terminal ${supervisor.terminal}
+  - name: a replay of the same command types nothing more
+    seat: kernel:hush
+    starci: [kernel, submit, "${run}/esc.yaml"]
+    expect: {}
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: "^${supervisor.terminal}$"
+          text: "supervisor next"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM commands WHERE cmd_id = 'k-hush-ask-1' AND json_extract(outcome_json, '$.mail') LIKE '%sender_not_in_run%the sender is a dispatch of another run%'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+        equals: [1]

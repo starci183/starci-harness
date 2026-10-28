@@ -1,0 +1,74 @@
+schema: starci/scenario@1
+id: kernel-next-never-waits-on-heavy
+group: orca
+title: "a Kernel's turn never waits in the heavy queue: the verify of a reported task that runs a tool starts as a detached job"
+inject: >-
+  the Op files done on a task whose own verify runs a starci check (a tool), so verifying it inline would hold the Kernel's
+  `kernel next` for the length of the verify and, on a loaded host, queue it for a heavy-command slot
+expect: >-
+  `kernel next --wait 0` returns at once: the task's verify starts as a detached job (one per task, a second turn starts none),
+  never inline in the turn; the job settles the task, and a later `kernel next` reads the
+  verdict and returns the workflow's `done`
+pass:
+  - kernel next says the verify started as a detached job and records verify-job-started for the task
+  - a second kernel next starts no second job
+  - the task ends done and the next kernel next returns done
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: detach
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+              - check:
+                  kind: starci
+                  args: [check, secrets]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: detach
+  - seat: kernel:detach
+    starci: [kernel, next, detach, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# Doc a\n"
+  - name: the Kernel's turn starts the verify as a job and returns
+    seat: kernel:detach
+    starci: [kernel, next, detach, --wait, "0"]
+    expect:
+      contains: "the verify of task ${a} started as a detached job"
+  - name: a second turn starts no second job
+    seat: kernel:detach
+    starci: [kernel, next, detach, --wait, "0"]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'verify-job-started' AND subject = '${a}'"
+        equals: [1]
+  - name: the job settles the task; the Kernel reads the verdict
+    seat: kernel:detach
+    starci: [kernel, next, detach, --wait, "90"]
+    expect:
+      contains: '"kind": "done"'
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals: [done]

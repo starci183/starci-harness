@@ -27,6 +27,32 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
+  the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
+  time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`
+  commands is passed over while another project's command waits, so one gate cannot starve another project's small typecheck.
+  `kernel next`, `kernel submit`, `supervisor next` and `supervisor tick` never wait in the queue: their step starts a heavy task
+  verify, the wave and the final verify as detached jobs (`harness/jobs.ts`; `workflow wave --final` runs a final verify), and
+  any other heavy command in their turn is refused `HEAVY_DEFERRED` at once. A `kernel submit` hung 25 min and a `kernel next
+  --wait 30` over 8 min because the step they run verified reported tasks inline, under the heavy queue. Two settlers deleting
+  the same landed Op branch no longer fail the second. Bench: `heavy-cpu-starved-queue-admits`, `heavy-project-fair-share`,
+  `kernel-next-never-waits-on-heavy`.
+- **A Supervisor idle past its lease is stalled, never alive.** The tick's stall ladder fired only while a decision or owner
+  request waited, so a Supervisor that ended its turn with nothing waiting sat at its prompt with an expired lease for 50 min
+  and was never typed its loop prompt; an expired lease now counts as a stall on its own, and `supervisor status` says
+  `stalled (lease expired at ...)`. Bench: `supervisor-lease-expired-nudged`.
+- **A wake-up mail Orca refuses is typed instead.** A Kernel a replaced Supervisor dispatched stays a Dispatch of the old
+  Supervisor's Run, and Orca refused its mail to the new one's Run (`ORCA_FAILED` all evening, with only the code kept). The
+  Kernel's wake of its Supervisor and the Supervisor's wake of a Kernel now type the target's loop prompt into its terminal when
+  the mail fails, and record Orca's own words. Bench: `orca-wake-mail-refused-typed`.
+- **One task out of tries has a way out.** `budget raise <workflow> --task <key> --tries <n>` raises that node's try budget over
+  its contract's `budget.tries` (its Kernel, the Supervisor or the owner); a workflow-wide `--tries`, which the briefs named,
+  never freed a `TRIES_EXHAUSTED` retry. The Kernel and Supervisor briefs name it for a harness-caused exhaustion. Bench:
+  `budget-task-tries-raised`.
+- **`host load` names Defender burning CPU.** On Windows it reads the CPU of the real-time scan (MsMpEng) and, at
+  `heavy.scannerCpuPercent` or more, prints the owner's `Add-MpPreference -ExclusionPath` command for the state base and every
+  registered repository; it never runs it, since security settings are the owner's.
+
 - **A held worktree no longer loops or fails a settle.** Removing a harness worktree first closes every Orca terminal whose
   worktree it is (a seat's or a plain shell's; the caller's own aside), since Windows refuses to remove a folder a process works
   in (EBUSY). A folder git emptied and deregistered but whose rmdir was refused is removed as the empty folder it is, instead of

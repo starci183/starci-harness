@@ -330,12 +330,22 @@ export const removeOpWorktree = async (root: string, taskId: string): Promise<Wo
     return { task: taskId, path: made.path, removed: true, branch, detail }
 }
 
+/**
+ * Deletes a removed Op worktree's branch once its tip is on the target branch. Another settler (a detached verify job, a step's
+ * sweep) may delete it at any point between the looks and the delete: a git failure while the branch is gone means it is gone.
+ */
 const settleBranch = async (made: OpWorktree): Promise<WorktreeRemoval["branch"]> => {
-    if (!(await refExists(made.target, `refs/heads/${made.branch}`))) return "gone"
-    const tip = await resolveSha(made.target, `refs/heads/${made.branch}`)
-    if (tip !== made.fork && !(await isAncestor(made.target, tip, `refs/heads/${made.targetBranch}`))) return "kept"
-    await git(made.target, ["branch", "-D", made.branch])
-    return "deleted"
+    const ref = `refs/heads/${made.branch}`
+    try {
+        if (!(await refExists(made.target, ref))) return "gone"
+        const tip = await resolveSha(made.target, ref)
+        if (tip !== made.fork && !(await isAncestor(made.target, tip, `refs/heads/${made.targetBranch}`))) return "kept"
+        await git(made.target, ["branch", "-D", made.branch])
+        return "deleted"
+    } catch (error: unknown) {
+        if (!(await refExists(made.target, ref))) return "gone"
+        throw error
+    }
 }
 
 /**

@@ -8,13 +8,15 @@ import type { WaveReport } from "../../harness/wave.js"
 import { asRefusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { reconcile } from "./engine.js"
+import { finalVerifyDue, readSnapshot, reconcile, runFinalVerify } from "./engine.js"
 
 /** What `workflow wave` did: the wave it ran, or nothing when none was due; `last` is the newest recorded wave verdict. */
 interface WaveData {
     readonly workflow: string
     readonly wave: WaveReport | null
     readonly last: { readonly verdict: string; readonly head: string; readonly at: string } | null
+    /** With --final: what the final verify did (its verdict line), or null when none was due. */
+    readonly final?: string | null
 }
 
 const WAIT_POLL_MS = 1_000
@@ -40,7 +42,8 @@ const waitFree = async (db: DatabaseSync, workflow: string, deadline: number): P
  * batch has landed: its scope decision recorded first, then the heavy checks the landed tasks left, once over their union.
  * One wave of a workflow runs at a time: when another process runs it, this one refuses with WAVE_RUNNING, or with `--wait`
  * waits for it and reports the verdict it recorded. Exit 1 when the wave is red (its owning tasks are failed, back to the Kernel).
- * The detached wave job a coordinator's step starts is this verb.
+ * The detached wave job a coordinator's step starts is this verb; with `--final` it runs the workflow's due final verify instead
+ * (core/workflow/engine.ts runFinalVerify), the detached final-verify job of a coordinator's step.
  */
 export const workflowWaveVerb = defineVerb({
     path: ["workflow", "wave"],
@@ -52,9 +55,18 @@ export const workflowWaveVerb = defineVerb({
     flags: {
         workflow: { kind: "string", summary: "the workflow id", required: true, positional: true },
         wait: { kind: "string", summary: "seconds to wait for a wave another process runs (or a job starting) before running a due one or reporting its verdict" },
+        final: { kind: "boolean", summary: "run the workflow's due final verify (check run --workflow over its checkout) and record its verdict, instead of a wave" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
+        if (flags.final) {
+            const snapshot = readSnapshot(root, flags.workflow)
+            const done = finalVerifyDue(snapshot) ? await runFinalVerify(context, root, snapshot) : []
+            reconcile(root, flags.workflow)
+            const line = done[0]?.detail ?? null
+            const data: WaveData = { workflow: flags.workflow, wave: null, last: null, final: line }
+            return { data, message: `workflow ${flags.workflow}: ${line ?? "no final verify is due"}`, exitCode: done[0]?.action === "problem" ? 1 : 0 }
+        }
         const db = openLedger(root)
         try {
             const waitMs = flags.wait === undefined ? 0 : Number(flags.wait) * 1000

@@ -437,11 +437,38 @@ export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode
     if (row === undefined) return undefined
     const previous = getTask(db, text(row.id))
     if (previous.label !== node.contract.label || pathSet(previous.contract) !== pathSet(node.contract)) return undefined
-    const budget = Math.min(previous.contract.budget.tries, node.contract.budget.tries)
+    const budget = Math.min(previous.contract.budget.tries, node.contract.budget.tries) + triesRaisedFor(db, workflowId, node.key)
     if (tryAfter(db, previous) > budget) {
-        throw new Refusal("TRIES_EXHAUSTED", `${node.key} was try ${String(previous.tryNo)} of ${String(budget)} (task ${previous.id}); the try budget is spent, only the Supervisor or the owner raises it`)
+        throw new Refusal(
+            "TRIES_EXHAUSTED",
+            `${node.key} was try ${String(previous.tryNo)} of ${String(budget)} (task ${previous.id}); the try budget is spent: raise this task's tries (starci budget raise ${workflowId} --task ${node.key} --tries <n> --by <kernel|supervisor|owner> --reason <why>), then retry it`,
+        )
     }
     return previous
+}
+
+/** The event a task-scoped tries raise records (subject `<workflow>/<plan key>`, data: tries, by, reason), read by `retryOfNode`. */
+export const TRIES_RAISED = "tries-raised"
+
+/** The tries raised for one node of a workflow, over every task of its plan key (`raiseNodeTries`). */
+export const triesRaisedFor = (db: DatabaseSync, workflowId: string, key: string): number =>
+    Number(db.prepare("SELECT COALESCE(SUM(json_extract(data_json, '$.tries')), 0) AS n FROM events WHERE kind = ? AND subject = ?").get(TRIES_RAISED, `${workflowId}/${key}`)?.n ?? 0)
+
+/**
+ * Raises the try budget of one node of a workflow (its plan key, whichever task of it ran last) by `tries`, over the contract's
+ * `budget.tries`: the route out of TRIES_EXHAUSTED for a single task, whose tries the harness spent (a red not its own, a verify the
+ * infrastructure stopped) or that the Supervisor rules worth another try. The workflow's own ceiling (`budget raise` without
+ * --task) is untouched. Returns the node's try budget before and after.
+ */
+export const raiseNodeTries = (db: DatabaseSync, workflowId: string, key: string, raise: { readonly tries: number; readonly by: string; readonly reason: string }): { readonly task: string | null; readonly before: number; readonly after: number } => {
+    const node = db.prepare("SELECT 1 FROM plan_nodes WHERE workflow_id = ? AND plan_key = ?").get(workflowId, key)
+    const last = db.prepare("SELECT id FROM tasks WHERE workflow_id = ? AND plan_key = ? ORDER BY created_at DESC, rowid DESC LIMIT 1").get(workflowId, key)
+    if (node === undefined && last === undefined) throw new Refusal("TASK_UNKNOWN", `workflow ${workflowId} has no task ${key}`)
+    const task = last === undefined ? null : getTask(db, String(last.id))
+    const base = task === null ? 0 : task.contract.budget.tries
+    const before = base + triesRaisedFor(db, workflowId, key)
+    recordEvent(db, TRIES_RAISED, `${workflowId}/${key}`, { tries: raise.tries, by: raise.by, reason: raise.reason, task: task?.id ?? null })
+    return { task: task?.id ?? null, before, after: before + raise.tries }
 }
 
 /**

@@ -930,3 +930,29 @@ export const mailSend = async (binary: OrcaBinary, input: MailSend, cwd: string)
     const flags = { to: input.to, from: input.from, type: input.type, subject: input.subject, body: input.body, payload: JSON.stringify(input.payload), "retry-request": input.retryRequest }
     await callOrca(binary, "send", flags, z.unknown(), cwd)
 }
+
+const failureOf = (error: unknown): Refusal => (error instanceof Refusal ? error : new Refusal("ORCA_FAILED", error instanceof Error ? error.message : String(error)))
+
+/**
+ * Wakes a coordinator: the mail first; when Orca refuses it, the wake prompt is typed into the target's own terminal instead
+ * (`terminal send`, replay-safe by the mail's retry request), so a refused mail never leaves it asleep. Orca refuses a mail whose
+ * sender is a Dispatch of another Run: a Kernel a replaced Supervisor dispatched stays a Dispatch of the old Supervisor's Run, so
+ * its mail to the new one's Run fails. Returns what reached the target, naming the mail's failure in full (the message's first
+ * line, never only its code).
+ */
+export const mailOrType = async (binary: OrcaBinary, mail: MailSend, fallback: { readonly terminal: string | null; readonly text: string }, cwd: string): Promise<string> => {
+    try {
+        await mailSend(binary, mail, cwd)
+        return "mailed"
+    } catch (error: unknown) {
+        const refusal = failureOf(error)
+        const failed = `mail not sent (${refusal.code}: ${refusal.message.split("\n")[0] ?? ""})`
+        if (fallback.terminal === null) return `${failed}; no terminal to type the wake prompt into`
+        try {
+            await terminalSend(binary, { terminal: fallback.terminal, text: fallback.text, retryRequest: requestIdOf("wake-typed", mail.retryRequest) }, cwd)
+            return `${failed}; typed the wake prompt into terminal ${fallback.terminal}`
+        } catch (typed: unknown) {
+            return `${failed}; the wake prompt was not typed either (${failureOf(typed).code})`
+        }
+    }
+}

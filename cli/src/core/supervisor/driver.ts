@@ -19,7 +19,7 @@ import { reconcileStaleLaunches } from "../../harness/stale-launch.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
 import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerRequests, ownerRequestProjects } from "../../harness/owner-requests.js"
 import type { OwnerRequest } from "../../harness/owner-requests.js"
-import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerShow } from "../../harness/orca/client.js"
+import { closeWorker, locateOrca, mailCheck, mailOrType, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harness/orca/client.js"
 import { holdTerminal, kernelSeatOf, launchUnreconciled, noteTab, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -33,6 +33,7 @@ import { getTask, latestAttempt, recordEvent, resultOf } from "../../harness/tas
 import { activeHolds } from "../../harness/holds.js"
 import { ticketEscalations } from "../../harness/tickets.js"
 import { tickNotices } from "../../harness/telegram-bridge.js"
+import { refuseHeavyWaits } from "../../harness/heavy.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
 import { DISPATCHING, getWorkflow, listWorkflows, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -622,7 +623,7 @@ const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBina
         // A filed result is verified, a dead verify reclaimed and a settled worker's seat closed without waiting for the Kernel's turn.
         try {
             // The tick and `supervisor next` never wait on a wave: it starts as a detached job (harness/wave.ts) and they move on.
-            lines.push(...(await settleWorkflow({ ...context, cwd: root }, root, workflow.id, { detachWave: true })).filter((action) => action.action !== "wait").map((action) => `${workflow.id}: ${action.action} ${action.task ?? "-"} ${action.detail}`))
+            lines.push(...(await settleWorkflow({ ...context, cwd: root }, root, workflow.id)).filter((action) => action.action !== "wait").map((action) => `${workflow.id}: ${action.action} ${action.task ?? "-"} ${action.detail}`))
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             lines.push(`${workflow.id}: not settled (${refusal.code}): ${refusal.message.split("\n")[0] ?? ""}`)
@@ -664,6 +665,7 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
  * tick` sweeps for it.
  */
 export const supervisorNext = async (context: VerbContext, project: Project, waitSeconds?: number): Promise<SupervisorNext> => {
+    refuseHeavyWaits()
     const rules = loadCoordinatorLiveness()
     const deadline = Date.now() + (waitSeconds ?? rules.nextWaitSeconds) * 1000
     const seat = supervisorRecord(project.key)
@@ -746,12 +748,14 @@ const decisionOf = (data: unknown): unknown => (typeof data === "object" && data
 
 /**
  * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while a decision of its project that it rules or an owner
- * request waits (a decision awaiting the owner or Debug is not its work: it waits for their answer) and
+ * request waits (a decision awaiting the owner or Debug is not its work: it waits for their answer), or while its lease has
+ * expired (its loop, `supervisor next`, stopped: with nothing waiting it still owes the loop), and
  * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
  * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
  * new launch on the coordinator tier's listed order (another member only while the circuit or quota takes the first out);
  * repeated plain stalls also escalate kind harness (`coordinatorStallEscalates`). Once kernelRelaunchMax
- * replacements left the same decision waiting, the tick stops replacing and reports it for the owner.
+ * replacements left the same decision waiting (or, for an expired lease alone, within coordinatorStallWindowMinutes), the tick
+ * stops replacing and reports it for the owner.
  */
 const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSupervisor, repos: readonly string[], inventory: TerminalInventory | null, rules: CoordinatorLiveness): Promise<string | null> => {
     const stall = loadStallRules()
@@ -759,32 +763,35 @@ const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSu
     const title = supervisorTitle(project.name)
     const decision = openSupervisorDecisions(repos).find((open) => !awaitsOwner(open)) ?? openOwnerRequests(project.key)[0]
     const lastCall = lastCallOf(seat.lease_until, rules.supervisorTtlMinutes, seat.started_at)
-    if (decision === undefined || !olderThan(lastCall, stall.idleMinutes)) return null
+    const expired = seat.lease_until !== null && seat.lease_until < now()
+    if ((decision === undefined && !expired) || !olderThan(lastCall, stall.idleMinutes)) return null
+    // What the stall holds up: the waiting work, else the loop its expired lease says it stopped.
+    const waiting = decision === undefined ? `its lease expired at ${seat.lease_until ?? "-"}` : `${decision.id} waiting`
     const signals = await askIdle(binary, cwd, { terminal: seat.terminal, handle: null }, inventory, stall)
     if (signals.idle !== true) return null
     const step = stallStep(lastCall, hostEventsOf(STALL_NUDGED, seat.id).map((event) => event.at), stall)
-    if (step.kind === "wait") return `${title} idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}); ${step.detail}`
+    if (step.kind === "wait") return `${title} idle at its prompt with ${waiting} (${signals.evidence.join("; ")}); ${step.detail}`
     if (step.kind === "nudge") {
         const claimed = withMachine((db) => {
             if (Number(db.prepare("SELECT COUNT(*) AS n FROM host_events WHERE kind = ? AND subject = ?").get(STALL_NUDGED, seat.id)?.n ?? 0) !== step.n - 1) return false
-            db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), STALL_NUDGED, seat.id, JSON.stringify({ n: step.n, lastCall, project: project.key, decision: decision.id, evidence: signals.evidence }))
+            db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), STALL_NUDGED, seat.id, JSON.stringify({ n: step.n, lastCall, project: project.key, decision: decision?.id ?? null, leaseExpired: expired, evidence: signals.evidence }))
             return true
         })
         if (!claimed) return null
         await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, promptOf(stall.prompts.supervisor, { wait: String(rules.nextWaitSeconds) }))
-        return `${title} idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
+        return `${title} idle at its prompt with ${waiting} (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
     }
     const gaveUp = readMachine((db) => db.prepare("SELECT at, data_json FROM host_events WHERE kind = ?").all(STALL_GAVE_UP), []).map((row) => ({ at: String(row.at), data: JSON.parse(String(row.data_json)) as Readonly<Record<string, unknown>> }))
-    const replaced = gaveUp.filter((row) => decisionOf(row.data) === decision.id).length
-    if (replaced >= rules.kernelRelaunchMax) return `${title} stalled again with ${decision.id} waiting after ${String(replaced)} replacements: left for the owner (starci supervisor status)`
+    const since = new Date(Date.now() - stall.coordinatorStallWindowMinutes * 60_000).toISOString()
+    const replaced = gaveUp.filter((row) => (decision === undefined ? decisionOf(row.data) === null && row.data.project === project.key && row.at > since : decisionOf(row.data) === decision.id)).length
+    if (replaced >= rules.kernelRelaunchMax) return `${title} stalled again with ${waiting} after ${String(replaced)} replacements: left for the owner (starci supervisor status)`
     const kind = stallKindOf(signals.failureText)
     const member = `${seat.agent}/${seat.model}`
-    const since = new Date(Date.now() - stall.coordinatorStallWindowMinutes * 60_000).toISOString()
     const stalls = 1 + gaveUp.filter((row) => row.at > since && row.data.project === project.key && row.data.kind === "stall" && row.data.member === member).length
-    recordHostEvent(STALL_GAVE_UP, seat.id, { member, kind, why: step.detail, project: project.key, decision: decision.id, failure: signals.failureText })
+    recordHostEvent(STALL_GAVE_UP, seat.id, { member, kind, why: step.detail, project: project.key, decision: decision?.id ?? null, failure: signals.failureText })
     recordSeatOutcome({ ledger: "machine", id: seat.id, agent: seat.agent, model: seat.model, role: "supervisor", startedAt: seat.started_at })
     reportStalled(seat.agent, kind, `${title} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
-    const escalated = coordinatorStallEscalates(kind, stalls, stall) ? escalateSupervisorStalls(decision, repeatedStallQuestion(title, member, stalls, stall), seat.id) : null
+    const escalated = decision !== undefined && coordinatorStallEscalates(kind, stalls, stall) ? escalateSupervisorStalls(decision, repeatedStallQuestion(title, member, stalls, stall), seat.id) : null
     await stopSupervisor(binary, cwd, project, false, "stalled")
     const started = await startSupervisor(binary, cwd, project)
     return `${title} stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}${escalated === null ? "" : `; escalated to Debug (harness ${escalated})`}`
@@ -892,6 +899,7 @@ const blockedPromptLines = (root: string): string[] =>
  * closed (`reconcileStaleLaunches`). `dryRun` reports what the terminal sweep would close and does nothing else.
  */
 export const supervisorTick = async (context: VerbContext, dryRun = false): Promise<SupervisorTick> => {
+    refuseHeavyWaits()
     const rules = loadCoordinatorLiveness()
     const binary = await locateOrca(context.cwd)
     const terminals = await sweepTerminals(binary, context.cwd, registeredRepositories(), dryRun)
@@ -935,17 +943,22 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
     return { supervisors: ensured, swept, terminals, actions }
 }
 
-/** Wakes a workflow's Kernel by mail (`dispatch:<its dispatch>`); the decision in the ledger is the content. */
+/**
+ * Wakes a workflow's Kernel by mail (`dispatch:<its dispatch>`), or, when Orca refuses the mail (a Kernel another Supervisor
+ * dispatched is no Dispatch of this one's Run), by its loop prompt typed into its terminal; the decision in the ledger is the content.
+ */
 const wakeKernel = async (root: string, cwd: string, command: Command, decision: string): Promise<string> => {
     const seat = withLedger(root, (db) => kernelSeatOf(db, command.workflow))
     const supervisor = supervisorRecord((await projectOf(root)).key)
     if (seat?.handle == null || !inSupervisorTerminal(supervisor)) return "the Kernel reads the decision with its next kernel next"
     try {
         const binary = await locateOrca(cwd)
-        await mailSend(binary, { to: `dispatch:${seat.handle}`, from: supervisor.terminal, type: "status", subject: `[Supervisor] ${command.kind}`, body: command.note ?? command.goal ?? command.kind, payload: { cmdId: command.cmdId, decision }, retryRequest: requestIdOf("supervisor-mail", command.cmdId) }, cwd)
-        return "mailed the Kernel"
+        const text = promptOf(loadStallRules().prompts.kernel, { workflow: command.workflow, launch: seat.id, wait: String(loadCoordinatorLiveness().nextWaitSeconds) })
+        const mail = { to: `dispatch:${seat.handle}`, from: supervisor.terminal, type: "status", subject: `[Supervisor] ${command.kind}`, body: command.note ?? command.goal ?? command.kind, payload: { cmdId: command.cmdId, decision }, retryRequest: requestIdOf("supervisor-mail", command.cmdId) } as const
+        const woke = await mailOrType(binary, mail, { terminal: seat.terminal, text }, cwd)
+        return woke === "mailed" ? "mailed the Kernel" : `${woke}; the Kernel reads the decision with its next kernel next`
     } catch (error: unknown) {
-        return `mail not sent (${asRefusal(error).code}); the Kernel reads the decision with its next kernel next`
+        return `mail not sent (${asRefusal(error).code}: ${asRefusal(error).message.split("\n")[0] ?? ""}); the Kernel reads the decision with its next kernel next`
     }
 }
 
