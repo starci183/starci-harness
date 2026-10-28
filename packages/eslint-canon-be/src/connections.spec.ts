@@ -191,6 +191,8 @@ test("R88: an EntityManager is injected only in application handlers, domain ser
               // the replay table of the Postgres realtime hub is owned by platform/realtime
               { filename: at("src/modules/platform/realtime/postgres-realtime-hub.service.ts"), code: injected },
               { filename: at("src/modules/platform/realtime/realtime-retention.service.ts"), code: injected },
+              // the shared rate limit windows are owned by platform/http-security, counted by its guard
+              { filename: at("src/modules/platform/http-security/rate-limit.guard.ts"), code: injected },
               { filename: at("src/modules/projections/user-xp/user-xp.projection.ts"), code: injected },
               // no manager, no finding
               { filename: RESOLVER, code: "class R { constructor(private readonly commandBus: CommandBus) {} }" },

@@ -62,3 +62,44 @@ grant usage on schema public to app_be;
 revoke all on table public.profiles from public, anon, authenticated;
 grant select, insert on table public.profiles to app_be;
 grant update (display_name) on table public.profiles to app_be;
+
+-- The rate limit windows of platform/http-security: every api replica counts a caller's hits in the same row, and a hit
+-- that opens a fresh window prunes a bounded batch of the ended ones.
+create table public.http_security_rate_windows (
+    key varchar(128) primary key,
+    hits integer not null check (hits > 0),
+    reset_at timestamptz not null
+);
+
+create index http_security_rate_windows_reset_at_idx on public.http_security_rate_windows (reset_at);
+
+alter table public.http_security_rate_windows enable row level security;
+alter table public.http_security_rate_windows force row level security;
+
+create policy http_security_rate_windows_app_be_select
+on public.http_security_rate_windows
+for select
+to app_be
+using (current_user = 'app_be');
+
+create policy http_security_rate_windows_app_be_insert
+on public.http_security_rate_windows
+for insert
+to app_be
+with check (current_user = 'app_be');
+
+create policy http_security_rate_windows_app_be_update
+on public.http_security_rate_windows
+for update
+to app_be
+using (current_user = 'app_be')
+with check (current_user = 'app_be');
+
+create policy http_security_rate_windows_app_be_delete
+on public.http_security_rate_windows
+for delete
+to app_be
+using (current_user = 'app_be');
+
+revoke all on table public.http_security_rate_windows from public, anon, authenticated;
+grant select, insert, update, delete on table public.http_security_rate_windows to app_be;

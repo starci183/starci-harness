@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.9.9 - 2026-10-29
+
+- Fixed: the back-end skeleton's `RateLimitGuard` counts in a store every replica shares (BE-AUTH-4), not a process-local map. Each hit is one upsert of the caller's window (tier and address) in the primary database, answering its hits; a hit that opens a fresh window prunes up to 100 ended windows (`FOR UPDATE SKIP LOCKED`). `platform/http-security` owns the table `http_security_rate_windows`: in full through its `persistence/` entity and migration (`httpSecurityEntities`, `httpSecurityMigrations`, registered on the primary connection by the api and cli apps), in lite in the Supabase baseline with forced RLS and `app_be` policies. The lite starter now ships `platform/database/database.sql.ts` (with `DATABASE_IDENTIFIER_REJECTED`) and exports `sql`, `InjectPrimaryEntityManager` and `PRIMARY_ENTITY_MANAGER`, which the guard and its spec consume; a lite starter leaves out a platform capability's TypeORM schema files. Needs `@starci/eslint-canon-be` 3.6.5, which admits `http-security` as a persistence capability.
+- Unchanged on purpose: `platform/http` and `platform/http-security` still export only what the skeleton consumes (R25 HFS_UNUSED_EXPORT); code that first consumes `InjectHttpClient` or `RateLimit`/`RateTier` adds the export line to the owner entry in the same change, as the webhook generators already do.
+- Changed: the bundled canon pins name hfs 4.9.9 and eslint-canon-be 3.6.5.
+
 ## 4.9.8 - 2026-10-28
 
 - Added: `starci app add page <route> --tabs a,b` puts the page tabs in the `Page` header as link tabs (Grammar 0.15.6): the first tab is the route itself, every other one its sub-route `<route>/<tab>`; the server owner resolves the labels (`<page>.tabs.label` and `<page>.tabs.items.<tab>` in every catalog) and passes no state or handler, and the stories carry the tabs. Fewer than two or repeated tab ids are refused (`HFS_ADD_TABS_INVALID`).

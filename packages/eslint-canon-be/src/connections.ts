@@ -228,7 +228,7 @@ export const emInjectionSlots: RuleModule = {
         schema: [],
         messages: {
             slot:
-                "`EntityManager` is injected in a file of slot `{{slot}}`. Only an application `*.handler.ts`, a domain `*.service.ts`, a projection's `*.projection.ts` and the platform database, inbox, event-bus, queue and jobs capabilities reach the database. Transport dispatches a command or query, an integration calls its provider, an app composes: move the data access into a handler or a domain service.",
+                "`EntityManager` is injected in a file of slot `{{slot}}`. Only an application `*.handler.ts`, a domain `*.service.ts`, a projection's `*.projection.ts` and the platform capabilities that own a `persistence/` (database, inbox, event-bus, queue, jobs, saga, outbox, realtime, http-security) reach the database. Transport dispatches a command or query, an integration calls its provider, an app composes: move the data access into a handler or a domain service.",
         },
     },
     create(context) {

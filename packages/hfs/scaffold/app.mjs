@@ -407,11 +407,12 @@ const declaresCliApp = app => app.sides.be.apps.some(entry => entry.kind === 'cl
 
 const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
 const LITE_DEFERRED_GENERATOR_FILES = new Set([
-  'src/modules/platform/database/database.sql.ts',
   'src/modules/platform/database/migration-runner.service.ts',
   'src/modules/platform/database/seed-runner.service.ts',
   'src/modules/platform/primitives/sequence.policy.ts',
 ]);
+/** The TypeORM schema files of a platform capability: lite's schema authority is supabase/migrations (be.persistence lite overlay). */
+const LITE_TYPEORM_SCHEMA = /^src\/modules\/platform\/[^/]+\/persistence\/(?:connection\.ts$|entities\/|migrations\/)/;
 const liteBaseSource = (rel) => !rel.startsWith('apps/cli/')
     && !rel.startsWith('src/features/cli/')
     && !rel.startsWith('src/modules/domain/note/')
@@ -419,6 +420,7 @@ const liteBaseSource = (rel) => !rel.startsWith('apps/cli/')
     && rel !== 'src/modules/platform/database/migrate-connections.client.ts'
     && rel !== 'src/modules/platform/database/seed-connections.client.ts'
     && !LITE_DEFERRED_GENERATOR_FILES.has(rel)
+    && !LITE_TYPEORM_SCHEMA.test(rel)
     && !rel.startsWith('src/tests/');
 /** The be files the lite overlay replaces: a base unit spec of such a file tests the full variant, so lite carries its own. */
 const liteOverlaid = (() => {
