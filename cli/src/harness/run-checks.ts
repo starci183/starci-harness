@@ -8,7 +8,7 @@ import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { testWorkerArgs, withHeavySlot } from "./heavy.js"
-import { changedCoverageScope, runsJest, withCoverageArgs } from "./coverage-scope.js"
+import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
@@ -389,18 +389,25 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
 }
 
 /**
- * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. With
- * `coverage: changed` a command that runs jest (`runsJest`) has its coverage narrowed to the task's changed logic files
- * (harness/coverage-scope.ts), and the detail opens with the files it judged; any other command runs as named.
+ * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. A command that
+ * runs jest (`runsJest`) runs the task's own spec files by path when it names test paths or runs the test world alone
+ * (harness/coverage-scope.ts `scopedTests`: never a live-provider spec it did not name), and with `coverage: changed` has its
+ * coverage narrowed to the task's changed logic files; the detail opens with the files it ran and judged. Any other command runs
+ * as named.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
     const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        const scope = primitive.coverage === "changed" && runsJest(named, place.cwd) ? await changedCoverageScope(place, allowPaths) : undefined
-        const argv = scope === undefined ? named : withCoverageArgs(named, scope)
+        const jest = runsJest(named, place.cwd)
+        const tests = jest ? await scopedTests(named, place, allowPaths) : undefined
+        if (tests !== undefined && "problem" in tests) return outcome(check, [tests.problem], "")
+        const scoped = tests?.argv ?? named
+        const scope = primitive.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
+        const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
         const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await heavyCommand(argv, place.cwd, options))
-        return scope === undefined ? judged : { ...judged, detail: `${scope.detail}\n${judged.detail}` }
+        const lead = [tests?.detail, scope?.detail].filter((line): line is string => line !== undefined)
+        return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }

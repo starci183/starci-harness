@@ -5,10 +5,14 @@ import { loadStallRules } from "./stall.js"
 
 /**
  * Why the harness, not the task, ended a task: a wave red no file of it was proven to own (`wave-foreign`), a launch Orca fenced
- * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), or a verify stopped by an install or setup
- * out of time (`verify-infra`) or by its lock's deadline (`verify-deadline`).
+ * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), a verify stopped by an install or setup
+ * out of time (`verify-infra`) or by its lock's deadline (`verify-deadline`), or a done task whose work never landed, returned
+ * with that work preserved by `task verify --recover` (`land-orphaned`, core/task/verify.ts).
  */
-export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline"
+export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned"
+
+/** The event `task verify --recover` records when it returns a done task whose work never landed. */
+export const LAND_ORPHANED = "land-orphaned"
 
 /** The event a dispatch records when it brings a harness-killed task back at the same try. */
 export const TASK_REVIVED = "task-revived"
@@ -41,6 +45,7 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
 export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | null => {
     const status = text(db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)?.status)
     if (status !== "failed" && status !== "cancelled") return null
+    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
     const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
     if (attempt === undefined || text(attempt.verdict) === "red") return null
     const attemptId = text(attempt.id) ?? ""

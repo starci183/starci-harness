@@ -1,0 +1,113 @@
+schema: starci/scenario@1
+id: land-orphan-recover-returns-task
+group: verify
+title: "a done task whose named files never landed is returned by task verify --recover with its work preserved, and comes back at the same try"
+inject: >-
+  a verify from before the `lands` check knew the case settled a task done with no commit while its result names docs/a/a.md,
+  which sits uncommitted in the checkout the task lands on
+expect: >-
+  task verify --recover preserves docs/a/a.md from that checkout as the task's work, puts the checkout back, and fails the task
+  land-orphaned, a harness cause: the next step revives it at the same try with no Kernel decision, and the retry starts from
+  the preserved file; a done task that landed, or names nothing, is refused
+pass:
+  - "after --recover: the task failed, one land-orphaned event, the file preserved, the checkout clean"
+  - "after the step: a retry of it at the same try, task-revived naming land-orphaned, the preserved file applied to its checkout"
+  - no red decision
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - git: [commit, -q, --allow-empty, -m, "bench: base"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: orphan
+        goal: bench workflow orphan
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, orphan]
+    save:
+      a: data.nodes.0.task.id
+  - name: the worker files done naming nothing, so the task settles done with no commit
+    worker:
+      task: ${a}
+      status: done
+      output:
+        summary: wrote doc a
+        files: []
+        rulesApplied: []
+  - starci: [workflow, step, orphan]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || COALESCE(settle_commit, '-') FROM tasks WHERE id = '${a}'"
+        equals:
+          - "done:-"
+  - name: the ledger as an older verify left it, its result naming a file that sits uncommitted in the checkout it lands on
+    sql:
+      db: ledger
+      exec: "UPDATE results SET output_json = json_set(output_json, '$.files', json('[\"docs/a/a.md\"]'))"
+  - write:
+      path: docs/a/a.md
+      content: |
+        doc a
+  - name: recover returns it with its work preserved
+    starci: [task, verify, "${a}", --recover]
+    expect:
+      contains: '"orphaned"'
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals:
+          - failed
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.untracked[0]') FROM events WHERE kind = 'land-orphaned'"
+        equals:
+          - docs/a/a.md
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}/untracked/docs/a/a.md
+        present: true
+  - assert:
+      gitClean: true
+  - name: a second recover finds nothing to return
+    starci: [task, verify, "${a}", --recover]
+    expect:
+      exit: 1
+  - name: the step revives it at the same try
+    starci: [workflow, step, orphan]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.cause') FROM events WHERE kind = 'task-revived'"
+        equals:
+          - land-orphaned
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT try_no || ':' || (retry_of = '${a}') FROM tasks WHERE id <> '${a}' AND plan_key = 'a'"
+        equals:
+          - "1:1"
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.outcome') FROM events WHERE kind = 'prior-applied' AND subject <> '${a}'"
+        equals:
+          - applied
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'kernel' AND kind = 'red'"
+        equals:
+          - 0

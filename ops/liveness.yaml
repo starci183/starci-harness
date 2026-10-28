@@ -151,9 +151,17 @@ stall:
   # gives up a stalled Kernel (its member's `stalled` outcome, a relaunch the Kernel relaunch limit bounds), once per Kernel seat.
   readyIdleMinutes: 10
   readyStallMinutes: 25
+  # Work nobody decides (run by `supervisor tick`): an orca workflow that dispatches and waits on its Kernel for an open Kernel
+  # decision, or for a failed or returned task whose last decision was answered without moving it and no escalation of that
+  # answer is still open, each since the later of that decision (raised or answered), its task's last change and the Kernel's
+  # launch. Past decisionIdleMinutes the Kernel is woken once per Kernel seat and item with prompts.decisionIdle, naming each;
+  # past decisionStallMinutes the item escalates once to the Supervisor (kind harness), which files it as a ticket.
+  decisionIdleMinutes: 15
+  decisionStallMinutes: 45
   # The prompts the ladder types; {workflow}, {launch}, {task}, {tasks}, {since} and {wait} (coordinators.nextWaitSeconds) are filled in.
   prompts:
     supervisor: "Continue your loop: run starci supervisor next --json --wait {wait} in the foreground, answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
     kernel: "Continue your loop: run starci kernel next {workflow} --json --wait {wait} in the foreground (starci kernel attach {workflow} --launch {launch} first if you never attached), answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
     op: "Continue task {task}: finish it within its contract and file it with starci task result {task}."
     readyIdle: "Workflow {workflow} has ready work and no live Op since {since}: {tasks}. Run starci kernel next {workflow} --json --wait {wait} in the foreground now; it dispatches them. If it answers a decision, answer it; if a task stays ready, its next answer names why (a refusal, a budget, a wait), so act on that. Never end your turn while the driver is yours."
+    decisionIdle: "Workflow {workflow} waits on you and nothing was decided since {since}: {tasks}. Run starci kernel next {workflow} --json --wait {wait} in the foreground now and decide each: an open decision by its route; a failed or returned task whose last answer held it, by a workflow-change (retry, edit or remove it) or an escalation naming what it waits for. Never end your turn while the driver is yours."

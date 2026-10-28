@@ -1,0 +1,131 @@
+schema: starci/scenario@1
+id: supervisor-tick-wakes-kernel-on-undecided
+group: orca
+title: "work the Kernel leaves undecided wakes it from the tick, naming the decision, then escalates to the Supervisor as a ticket"
+inject: >-
+  the workflow's task fails and its Kernel, alive, never answers the red decision: fifteen minutes pass, then forty-five; later
+  a decision on the dead task is answered by a hold that moves nothing, and fifteen minutes pass again
+expect: >-
+  past decisionIdleMinutes the tick types the Kernel one prompt naming the open decision (once per seat and item); past
+  decisionStallMinutes it raises one Supervisor escalation (kind harness) naming it, which the tick files as a ticket; a failed task
+  whose decision was answered without moving it wakes the Kernel again, naming the task; nothing relaunches the Kernel
+pass:
+  - one decision-idle wake naming the open red decision, and no second one in the same spell
+  - one Supervisor escalation kernel-undecided and its ticket
+  - a held dead task wakes the Kernel once more, naming the task
+  - no Kernel relaunch
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: idle
+        goal: bench workflow idle
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: idle
+  - seat: kernel:idle
+    starci: [kernel, next, idle, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - name: the worker files done without the file its check requires
+    worker:
+      task: ${a}
+      files: {}
+      output:
+        summary: wrote nothing
+        files: []
+        rulesApplied: []
+  - name: kernel next verifies it red and returns the red decision, which the Kernel never answers
+    seat: kernel:idle
+    starci: [kernel, next, idle, --wait, "0"]
+    expect:
+      contains: '"kind": "red"'
+    save:
+      red: data.decision.id
+  - name: a tick right away wakes nothing
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'decision-idle'"
+        equals: [0]
+  - &idle
+    name: fifteen minutes pass with nothing decided
+    sql:
+      db: ledger
+      exec: >-
+        UPDATE events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-16 minutes');
+        UPDATE decisions SET raised_at = strftime('%Y-%m-%dT%H:%M:%fZ', raised_at, '-16 minutes'), answered_at = CASE WHEN answered_at IS NULL THEN NULL ELSE strftime('%Y-%m-%dT%H:%M:%fZ', answered_at, '-16 minutes') END;
+        UPDATE tasks SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '-16 minutes'), created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '-16 minutes');
+        UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', started_at, '-16 minutes')
+  - name: the tick wakes the Kernel naming the open decision
+    starci: [supervisor, tick]
+    expect:
+      contains: "Kernel woken"
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${kernel.idle.terminal}
+          text: "${red}"
+        count: 1
+  - name: a second tick in the same spell types nothing more
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${kernel.idle.terminal}
+        count: 1
+  - *idle
+  - *idle
+  - name: past the second threshold the tick escalates to the Supervisor, which files a ticket
+    starci: [supervisor, tick]
+    expect:
+      contains: "escalated to the Supervisor"
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND subject LIKE 'kernel-undecided:${red}@%' AND json_extract(evidence_json, '$.escalation.kind') = 'harness'"
+        equals: [1]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM tickets WHERE kind = 'harness-defect' AND title LIKE '%${red}%'"
+        equals: [1]
+  - name: the red decision is answered by a hold that moves nothing
+    sql:
+      db: ledger
+      exec: "UPDATE decisions SET answered_by = 'k-idle-hold-1', answered_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = '${red}'"
+  - *idle
+  - name: the dead task, held, wakes the Kernel again, naming the task
+    starci: [supervisor, tick]
+    expect:
+      contains: "Kernel woken"
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${kernel.idle.terminal}
+          text: '${a} failed, ${red} .red. answered by k-idle-hold-1'
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'kernel-relaunched'"
+        equals: [0]

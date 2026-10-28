@@ -127,8 +127,10 @@ shares (one sent from the owner's checkout) records its checkout's tree as its b
 (`beginWork` in `harness/baseline.ts`), and a dirty file unchanged since then is left out of its candidate, its
 `paths-only` stray files, the lint and typecheck of its `check run --task`, and its preserve and reset; an Op worktree
 holds only its task's work and records none. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
-through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
-them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
+through the harness (a dirty file missing from the candidate, a commit without the `Starci-Task:` trailer made under
+them while the task ran, as a worker that commits itself leaves, or a result naming files under them while the candidate
+changes none, as a worker that wrote outside its checkout leaves; a worker's brief names its Op worktree as its repository,
+`renderBrief` in `harness/brief.ts`), and the `secrets` and `loosening` gates of the
 project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract
 says (`harness/clean-verify.ts`). Its scoped `starci check` runs over what the candidate changes, or, when it changes
 nothing, over the tracked files under the `allowPaths` (`runScopedCheck` in `harness/run-checks.ts`), red when no step
@@ -137,7 +139,12 @@ the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.t
 [contexts/project/lint.md](../contexts/project/lint.md) states. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
 reads the tree of its `allowPaths` at the head it settled on) and makes the task done and records its settle commit
 (`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it; either way the task's Op
-worktree is removed. A verify holds its task's verifier lock throughout, and the land lock of the branch it lands on
+worktree is removed. Every ending of an Op's task, under the land lock, also preserves as the task's work whatever sits
+dirty under its `allowPaths` in the checkout it lands on and puts that checkout back (`land-escaped`, `preserveEscaped` in
+`core/task/verify.ts`), so the fast-forward never meets it and a retry starts from it: green lands on the branch or the task
+returns with its work preserved, never done with its work left beside the branch. A done task an older verify settled with
+nothing while its result names files is returned by `task verify --recover`: its work is preserved from that checkout and
+it fails `land-orphaned`, a harness cause (below), reopening its workflow when that had ended done. A verify holds its task's verifier lock throughout, and the land lock of the branch it lands on
 (one per branch, `landLockKey` in `harness/land.ts`) only while its verified commit is integrated: an Op's lands by
 `git merge --ff-only` in the target checkout, which moves branch, index and work tree together and refuses rather than
 overwrite a local edit, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
@@ -234,11 +241,15 @@ unless the removal says `keepEffect`). `plan diff` prints the classification wit
 `workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
 blocks its dependents and the workflow, naming the red checks; independent tasks keep going. A task the harness ended with no
 red of its own (`harnessCause` in `harness/revive.ts`: a wave red not proven its own, a launch Orca fenced or one whose worker
-never started its turn, a verify stopped by an install or setup out of time or by its lock's deadline) carries its node no
+never started its turn, a verify stopped by an install or setup out of time or by its lock's deadline, a done task returned
+`land-orphaned`) carries its node no
 more, so the node is ready and its next dispatch retries it at the same try, its last included (`tryAfter` in
 `harness/tasks.ts`, a `task-revived` event), up to `reviveMax` of [ops/liveness.yaml](../ops/liveness.yaml) per node, past
-which its red names the cause. Every other retry is the Kernel's amend: the red or question decision carries its one legal
-route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
+which its red names the cause. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
+one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A failed task whose only reds are command checks its contract wrote, each output stating an
+expectation the otherwise green result contradicts, is a `check-premise` decision carrying each check's command and output
+(`premiseChecks` in `harness/check-premise.ts`), answered only by an edit that sets the task's checks: a worker never
+changes its own checks, so the Kernel amends a stale premise. `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
 **Shared needs.** A worker that finds a shared thing missing never builds it: it files `task result --status blocked
@@ -488,9 +499,11 @@ decision, the red tail, redacted), what was tried, its proposed default, who ope
 that reported it. A ticket is deduped by its fingerprint (a defect's kind, error code and module, else its normalized title;
 a question's kind and normalized title): a repeat bumps `occurrences`, reopens a `fixed` defect for another round, and finds an
 answered question answered. `supervisor next` from the Supervisor's terminal, every `supervisor tick` and every notice sweep
-file each open `owner` escalation `awaitsOwner` holds as a `question:business` ticket (its topic, its `default` as the
-proposed default) and each `harness` escalation as a blocking `harness-defect` ticket, the escalation waiting on it in
-`ticket_waiters` (`ticketEscalation`); the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
+file each open `owner` escalation `awaitsOwner` holds, with or without a topic, as a `question:business` ticket (its topic,
+its `default` as the proposed default), each `harness` escalation as a blocking `harness-defect` ticket, the escalation
+waiting on it in `ticket_waiters` (`ticketEscalation`), and each task left `awaiting_owner` as a blocking `verify` ticket
+naming its verify's last reason, the task waiting on it (`ticketEscalations`); `supervisor next` sends the owner's Telegram
+notices in the same round when it filed one (`tickNotices`), as the tick does; the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
 the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--state] [--project]` is Debug's queue, blocking first,
 then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by
 <sha> | --wontfix --reason | --duplicate <id>` (debug, owner) ends it, a duplicate of a live ticket handing over its waiters;
@@ -513,7 +526,12 @@ with the same decision waiting is left for the owner. A Kernel alive by Orca's w
 queued tasks and no live Op since the later of its last progress and the seat's launch, while its project has a free worker
 slot, meets the same ladder from the tick (`readyIdle` in `core/supervisor/driver.ts`): past `readyIdleMinutes` it is typed
 `prompts.readyIdle` naming the ready tasks, once per seat and idle spell; past `readyStallMinutes` it is given up and relaunched
-as remedy 2 does, once per seat (`ready-idle-woken` events). Nudges, wakes and give-ups are never progress.
+as remedy 2 does, once per seat (`ready-idle-woken` events). Work the Kernel leaves undecided meets the tick the same way
+(`decisionIdle` in `core/supervisor/driver.ts`): an open Kernel decision, or a failed or returned task whose last decision
+was answered without moving it while no escalation of that answer is open, past `decisionIdleMinutes` (from the later of
+that decision, the task's last change and the seat's launch) types the Kernel `prompts.decisionIdle` naming each, once per
+seat and item; past `decisionStallMinutes` the item escalates once to the Supervisor (kind `harness`, so it is ticketed);
+neither relaunches the Kernel (`decision-idle` events). Nudges, wakes and give-ups are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
 (decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`; `project` for the Supervisor). It is

@@ -1,0 +1,145 @@
+schema: starci/scenario@1
+id: verify-e2e-scoped-to-own-specs
+group: verify
+title: "a world test run is scoped to the task's own spec files by path, and a live-provider spec runs only when named"
+inject: >-
+  the managed e2e script ends in `--selectProjects e2e`, an array option that swallows a path appended after it, so jest runs
+  every e2e suite, among them a live-provider suite that needs sandbox keys the world does not declare
+expect: >-
+  the harness passes the spec files as `--runTestsByPath <files>`: a command naming a folder runs the specs under it; a world
+  run naming nothing runs every e2e spec but the live one; a command naming a broad folder leaves the live spec out; only a
+  command naming the live spec's own folder runs it (and it fails without its keys)
+pass:
+  - the named folder runs its own spec alone, green
+  - the unnamed world run and the broad folder run every spec but the live one, green, naming what they left out
+  - the live folder named runs the live spec, which fails on its undeclared keys
+  - no human intervention beyond the injected fault
+automation: automated
+# The jest stand-in parses like jest's yargs: --selectProjects takes every word after it until the next option, so a path
+# appended after it is a project name and every spec of the project runs; --runTestsByPath runs exactly the paths it is given.
+# A spec calling useSandbox( fails TEST_WORLD_NOT_DECLARED, as a live-provider suite does without its keys.
+repo:
+  files:
+    README.md: "# bench scratch e2e\n"
+    package.json: '{"name": "bench-e2e", "version": "1.0.0", "private": true, "scripts": {"test:e2e": "cd be && node ../node_modules/jest/bin/jest.js --selectProjects e2e"}}'
+    be/jest.config.js: |
+      module.exports = { projects: [{ displayName: "e2e", testMatch: ["<rootDir>/src/tests/e2e/**/*.e2e-spec.ts"] }] }
+    be/src/tests/e2e/pool/pool.e2e-spec.ts: "it('pool', () => {})\n"
+    be/src/tests/e2e/live/live.e2e-spec.ts: "useSandbox({ keys: ['LIVE_KEY'] })\n"
+    node_modules/jest/bin/jest.js: |
+      const { readFileSync, readdirSync, statSync } = require("node:fs")
+      const { join, relative, sep } = require("node:path")
+      const args = process.argv.slice(2)
+      const byPath = args.includes("--runTestsByPath")
+      const walk = (dir) => readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? walk(join(dir, n)) : [join(dir, n)]))
+      const all = walk(join(process.cwd(), "src", "tests", "e2e")).map((f) => relative(process.cwd(), f).split(sep).join("/")).filter((f) => f.endsWith(".e2e-spec.ts"))
+      const files = byPath ? args.filter((a) => !a.startsWith("-") && a !== "e2e") : all
+      let failed = 0
+      for (const f of files) {
+        if (readFileSync(f, "utf8").includes("useSandbox(")) {
+          failed += 1
+          console.log("FAIL " + f + " TestWorldError: TEST_WORLD_NOT_DECLARED: LIVE_KEY")
+        } else console.log("PASS " + f)
+      }
+      process.exit(failed === 0 ? 0 : 1)
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: e2e
+        goal: bench workflow e2e scope
+        runner: inline
+        tasks:
+          - id: named
+            label: docs
+            summary: run the pool suite
+            allowPaths: [be/src/tests/reports/named]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e -- src/tests/e2e/pool
+          - id: world
+            label: docs
+            summary: run the e2e world
+            allowPaths: [be/src/tests/reports/world]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e
+            dependsOn: [named]
+          - id: broad
+            label: docs
+            summary: run the e2e folder
+            allowPaths: [be/src/tests/reports/broad]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e -- src/tests/e2e
+            dependsOn: [world]
+          - id: live
+            label: docs
+            summary: run the live suite
+            allowPaths: [be/src/tests/reports/live]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e -- src/tests/e2e/live
+            dependsOn: [broad]
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, e2e]
+    save:
+      named: data.nodes.0.task.id
+  - worker:
+      task: ${named}
+      files:
+        be/src/tests/reports/named/run.txt: "ran\n"
+  - starci: [workflow, step, e2e]
+    save:
+      world: data.nodes.1.task.id
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${named}' AND name = 'tests-pass' AND status = 'green' AND detail LIKE '%1 spec file(s) run by path%src/tests/e2e/pool/pool.e2e-spec.ts%' AND detail NOT LIKE '%PASS src/tests/e2e/live%' AND detail NOT LIKE '%FAIL%'"
+        equals:
+          - 1
+  - worker:
+      task: ${world}
+      files:
+        be/src/tests/reports/world/run.txt: "ran\n"
+  - starci: [workflow, step, e2e]
+    save:
+      broad: data.nodes.2.task.id
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${world}' AND name = 'tests-pass' AND status = 'green' AND detail LIKE '%every e2e spec under be, live-provider specs left out%' AND detail NOT LIKE '%FAIL%'"
+        equals:
+          - 1
+  - worker:
+      task: ${broad}
+      files:
+        be/src/tests/reports/broad/run.txt: "ran\n"
+  - starci: [workflow, step, e2e]
+    save:
+      live: data.nodes.3.task.id
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${broad}' AND name = 'tests-pass' AND status = 'green' AND detail LIKE '%live-provider specs not named, left out: src/tests/e2e/live/live.e2e-spec.ts%' AND detail NOT LIKE '%FAIL%'"
+        equals:
+          - 1
+  - worker:
+      task: ${live}
+      files:
+        be/src/tests/reports/live/run.txt: "ran\n"
+  - starci: [workflow, step, e2e]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${live}' AND name = 'tests-pass' AND detail LIKE '%run by path, the spec files under src/tests/e2e/live: src/tests/e2e/live/live.e2e-spec.ts%' AND detail LIKE '%FAIL src/tests/e2e/live/live.e2e-spec.ts TestWorldError: TEST_WORLD_NOT_DECLARED%'"
+        equals:
+          - 1

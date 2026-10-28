@@ -36,6 +36,7 @@ import { workflowAmendVerb } from "../workflow/amend.js"
 import { readSnapshot, stepWorkflow } from "../workflow/engine.js"
 import { carriesNeeds } from "../../harness/needs.js"
 import { harnessCause } from "../../harness/revive.js"
+import { CHECK_PREMISE, premiseChecks } from "../../harness/check-premise.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
 import type { StepAction } from "../workflow/engine.js"
 
@@ -159,8 +160,9 @@ type Raise = (kind: KernelDecisionKind, subject: string, evidence: unknown) => s
 
 /**
  * A failed or lost node is red, unless its verified work did not rebase onto the workflow's head (attempt outcome
- * `conflict`, harness/land.ts): that is a conflict, whose work is preserved for an amend on the new head; a node a worker
- * returned (blocked or mismatch) is a question.
+ * `conflict`, harness/land.ts): that is a conflict, whose work is preserved for an amend on the new head; or its only reds are
+ * the contract's own command checks contradicted by an otherwise green result (harness/check-premise.ts): that is a
+ * check-premise, whose checks the Kernel amends. A node a worker returned (blocked or mismatch) is a question.
  */
 const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): void => {
     for (const view of snapshot.views) {
@@ -168,7 +170,11 @@ const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): vo
         if (task === null) continue
         const outcome = view.state === "failed" ? (latestAttempt(db, task.id)?.outcome ?? null) : null
         if (outcome === LAND_CONFLICT) raise("conflict", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, conflict: lastEvent(db, LAND_CONFLICT_EVENT, task.id) ?? null })
-        else if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id), harnessCause: harnessCause(db, task.id) })
+        else if (view.state === "failed") {
+            const premise = premiseChecks(db, task.id)
+            if (premise === undefined) raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id), harnessCause: harnessCause(db, task.id) })
+            else raise(CHECK_PREMISE, task.id, { key: view.key, why: view.why, tryNo: task.tryNo, checks: premise })
+        }
         if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its worktree" })
         if (view.state === "returned") {
             const attempt = latestAttempt(db, task.id)

@@ -33,7 +33,9 @@ cd be && npx jest --selectProjects unit --findRelatedTests <changed files>
 ```
 
 Enforced by: R47 (`staged-spec-presence`, BE_UNIT_SPEC_NOT_STAGED); the contract's `tests-pass` check names the
-command and narrows its coverage to the changed logic files (`coverage: changed`, `cli/src/harness/coverage-scope.ts`).
+command, runs the spec files it names (or, for an integration, e2e or contract run naming none, the task's own) by path, a
+live-provider spec only when named, and narrows its coverage to the changed logic files (`coverage: changed`,
+`cli/src/harness/coverage-scope.ts`).
 
 ## SHARED-TEST-3 An op writes no test kind its edition forbids
 

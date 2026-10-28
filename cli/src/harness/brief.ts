@@ -156,10 +156,13 @@ const answersSection = (task: TaskRow): string | undefined => {
 /**
  * Renders the brief a worker reads: the common procedure of ops/ops/README.md, then the task's op and its resolved contract
  * (base then extend) in plain words, with a "Prior work" section when earlier tasks of the same key left work (prior.ts);
- * `role` is who works it (an Orca worker, or the inline chat agent).
+ * `role` is who works it (an Orca worker, or the inline chat agent). The repository it names, and every repository file it
+ * lists, is the task's own checkout (its Op worktree), never the checkout `root` the brief was written from (the workflow's
+ * worktree): a worker writes where its brief points, and only its own checkout lands.
  */
 export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefFiles, role: Role = "worker"): string => {
     const { contract } = task
+    const checkout = task.worktree ?? root
     const resolved = resolveContract(contract, ops)
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
@@ -185,7 +188,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         [
             `Label: ${contract.label} (${op.summary})`,
             `Try: ${String(task.tryNo)} of ${String(contract.budget.tries)}`,
-            `Repository: ${slashed(root)}`,
+            `Repository: ${slashed(checkout)}`,
             `Revision: ${contract.context.revision}`,
             `Working folder: ${contract.context.cwd ?? "the repository root"}`,
             `CLI: \`starci\`; when it is not on PATH, run \`node ${cli}\` in its place`,
@@ -206,7 +209,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         "### Read exactly these files",
         bullets(
             // A shared file is background every task of the label reads; its ids are never cited (citableContext).
-            fixed.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
+            fixed.map((file) => `${slashed(contextPath(file, ops, checkout))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
         ...(paged.length === 0
@@ -215,7 +218,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
                   "### Rule pages of your paths",
                   // The second layer: each page owns rules over a path you may write; it is citable, and outside the op's budget.
                   `Each page owns rules governing a path under your allowPaths. Before you write a file, open the sections of its page that govern it; the rule ids you apply from these pages are citable.\n\n${bullets(
-                      paged.map((file) => slashed(contextPath(file, ops, root))),
+                      paged.map((file) => slashed(contextPath(file, ops, checkout))),
                       "none",
                   )}`,
               ]),

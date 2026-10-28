@@ -1,0 +1,97 @@
+schema: starci/scenario@1
+id: ticket-legacy-owner-escalation-and-awaiting-task
+group: owner
+title: "an owner escalation with no topic and a task left awaiting the owner each become a ticket, with the owner's Telegram notice, on the Supervisor's next"
+inject: >-
+  the ledger holds an owner escalation filed before escalations named a topic, and a task whose verify reached no verdict three
+  times (awaiting_owner, verify-stuck); no ticket and no notice exist for either
+expect: >-
+  supervisor next files the escalation as a blocking question:business ticket and the awaiting task as a blocking verify ticket
+  (each waiting on it), and sends the owner's Telegram notices in the same round: the question asked, the defect noticed; a
+  second next files nothing again
+pass:
+  - one question:business ticket waiting on the topicless escalation, one verify ticket waiting on the task
+  - both notices sent to the owner's chat by supervisor next
+  - a second supervisor next files no second ticket
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: legacy
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: legacy
+  - seat: kernel:legacy
+    starci: [kernel, next, legacy, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - name: an owner escalation from before the topic field, and a task its verify gave up on
+    sql:
+      db: ledger
+      exec: >-
+        INSERT INTO decisions (id, scope, workflow_id, kind, subject, evidence_json, raised_at) VALUES ('d-0legacy0001a', 'supervisor', 'legacy', 'escalation', 'k-legacy-owner-1',
+        '{"escalation": {"kind": "owner", "question": "approve the revised session contract errors?"}}', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 hours'));
+        UPDATE tasks SET status = 'awaiting_owner' WHERE id = '${a}';
+        INSERT INTO events (at, kind, subject, data_json) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'verify-stuck', '${a}',
+        '{"ends": 3, "code": "SETTLE_REF_FAILED", "reason": "git merge --ff-only failed: local changes would be overwritten"}')
+  - name: the Supervisor's next files both and notices the owner
+    seat: supervisor
+    env: *tg
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: "telegram: sent"
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT t.kind || ':' || t.severity || ':' || w.subject FROM tickets t JOIN ticket_waiters w ON w.ticket_id = t.id ORDER BY t.kind"
+        equals: ["question:business:blocking:decision:d-0legacy0001a", "verify:blocking:task:${a}"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM telegram_notices WHERE kind = 'ticket' AND status = 'sent'"
+        equals: [2]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: approve the revised session contract errors?
+  - name: a second next files nothing again
+    seat: supervisor
+    env: *tg
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      lacks: filed as ticket
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM tickets
+        equals: [2]

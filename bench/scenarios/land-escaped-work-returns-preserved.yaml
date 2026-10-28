@@ -1,0 +1,93 @@
+schema: starci/scenario@1
+id: land-escaped-work-returns-preserved
+group: verify
+title: "a worker that wrote into the checkout its task lands on, not its own, is returned with that work preserved, never settled done with nothing landed"
+inject: >-
+  the worker files done naming docs/a/a.md, but wrote that file into the checkout the task lands on (the workflow's), not into
+  its Op worktree, so its candidate changes nothing
+expect: >-
+  the task's brief names its Op worktree as its repository; verify is red on `lands` (the result names a file the candidate does
+  not change), the escaped file is preserved as the task's work (land-escaped, task-preserved) and put back, the task fails and
+  nothing is committed; a done with no commit never happens while the result names files
+pass:
+  - the brief's repository is the task's Op worktree
+  - "verify red on lands: task failed, no commit with its trailer"
+  - one land-escaped event, the escaped file preserved under preserved/<task> and gone from the target checkout, which is clean
+  - "no step without evidence: every state change in the ledger has its event"
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: esc
+        goal: bench workflow esc
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start, which cuts the task's Op worktree and writes its brief
+    starci: [workflow, start, esc]
+    save:
+      a: data.nodes.0.task.id
+  - name: the brief names the Op worktree, not the checkout the task lands on
+    assert:
+      exists:
+        path: ${project}/briefs/${a}.md
+        present: true
+        contains: "esc.ops/${a}"
+  - name: the worker writes its file into the checkout the task lands on
+    write:
+      path: docs/a/a.md
+      content: |
+        doc a
+  - name: and files done naming it, from its own Op worktree that holds nothing
+    worker:
+      task: ${a}
+      status: done
+      output:
+        summary: wrote doc a
+        files: [docs/a/a.md]
+        rulesApplied: []
+  - name: step verifies it
+    starci: [workflow, step, esc]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - failed
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM check_runs WHERE name = 'lands'"
+        equals:
+          - red
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.untracked[0]') FROM events WHERE kind = 'land-escaped'"
+        equals:
+          - docs/a/a.md
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 0
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}/untracked/docs/a/a.md
+        present: true
+  - assert:
+      exists:
+        path: docs/a/a.md
+        present: false
+  - assert:
+      gitClean: true

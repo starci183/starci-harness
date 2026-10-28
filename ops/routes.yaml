@@ -1,10 +1,12 @@
-# Bounded repair routes: what the Kernel may do with a red or question decision on a task. cli/src/harness/routes.ts reads
+# Bounded repair routes: what the Kernel may do with a red, check-premise or question decision on a task. cli/src/harness/routes.ts reads
 # this file. Routes are ordered: the first one that matches a decision and whose `to` resolves is its legal route, carried
 # in the decision's evidence; the Kernel's workflow-change answering it names it as `route` and does what its `to` says, or
 # `kernel submit` refuses ROUTE_ILLEGAL. Past that route's limit the decision carries none and the Kernel escalates (kind
 # owner) to the Supervisor.
 #
-# on.decision: red (the task failed, was lost or stuck) or question (its worker filed blocked or mismatch).
+# on.decision: red (the task failed, was lost or stuck), check-premise (its only reds are the contract's own command checks
+#   contradicted by an otherwise green result: cli/src/harness/check-premise.ts; its one cause is rejected, and the change
+#   that answers it edits the task's checks) or question (its worker filed blocked or mismatch).
 # on.from: the label of the task the decision is about, or any.
 # on.cause, read from the task's newest attempt:
 #   findings   its result's verdict is failed: a prove step measured the product wrong
@@ -24,6 +26,7 @@ routes:
   - {id: uat-red-repairs-build, on: {decision: red, from: uat, cause: findings}, to: build, limit: 3}
   - {id: verify-red-repairs-build, on: {decision: red, from: verify, cause: findings}, to: build, limit: 3}
   - {id: review-findings-repair-build, on: {decision: red, from: review, cause: findings}, to: build, limit: 3}
+  - {id: check-premise-amends-checks, on: {decision: check-premise, from: any, cause: rejected}, to: same, limit: 2}
   - {id: rejected-retries, on: {decision: red, from: any, cause: rejected}, to: same, limit: 2}
   - {id: no-report-retries-elsewhere, on: {decision: red, from: any, cause: no-report}, to: same, limit: 2}
   - {id: failed-retries, on: {decision: red, from: any, cause: failed}, to: same, limit: 3}
