@@ -32,6 +32,7 @@ import { claimWaveJob, recordWaveJob, runWave, WAVE_RUNNING } from "../../harnes
 import { startDetached } from "../../shared/exec.js"
 import { fileURLToPath } from "node:url"
 import { tendNeeds } from "../needs/tend.js"
+import { releaseHolds } from "../../harness/holds.js"
 
 /**
  * What one step did to one task: settled it, dispatched it, launched or cancelled it, closed its seats once its result was
@@ -514,7 +515,7 @@ export interface SettleOptions {
  * The settling half of a step, which needs no coordinator's turn: reconcile each verifying task whose verifier died (`task
  * verify --recover`, git first), verify every reported task, close the seats of every task whose result is in, remove the Op
  * worktrees of ended tasks, tend the shared needs its tasks wait on, own or resolve (core/needs/tend.ts: park, route, judge the
- * resolver, release), and run a due wave, then move the workflow's status. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
+ * resolver, release), release each hold whose condition is met (harness/holds.ts), and run a due wave, then move the workflow's status. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
  * whose Supervisor it acts for, so a filed result is verified and its worker's seat closed whether or not its Kernel takes a turn.
  * It launches nothing itself; the amend a released need runs steps the workflow, whose launches only a caller that may act as the
  * Kernel's terminal makes (launchWaits).
@@ -527,6 +528,7 @@ export const settleWorkflow = async (context: VerbContext, root: string, id: str
         ...(await closeSettledSeats(root, readSnapshot(root, id))),
         ...(await worktreeSweepActions(root, id)),
         ...(await tendNeeds(context, root, id)),
+        ...(await releaseHolds(root, { workflow: id })).map((detail): StepAction => ({ key: null, task: null, action: "released", detail })),
     ]
     actions.push(...(await waveActions(root, readSnapshot(root, id), options.detachWave === true)))
     reconcile(root, id)

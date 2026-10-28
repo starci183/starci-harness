@@ -30,6 +30,7 @@ import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
 import { getTask, latestAttempt, recordEvent, resultOf } from "../../harness/tasks.js"
+import { activeHolds } from "../../harness/holds.js"
 import { ticketEscalations } from "../../harness/tickets.js"
 import { tickNotices } from "../../harness/telegram-bridge.js"
 import { projectOf } from "../../harness/work.js"
@@ -368,14 +369,17 @@ const rulingEscalations = (db: DatabaseSync, workflowId: string, item: string): 
  * What a workflow waits on its Kernel for: each open Kernel decision (since it was raised), and each failed or returned task with
  * no open decision whose last Kernel decision was answered without moving it (since that answer, or the task's last change), unless
  * an escalation that answer or a Supervisor ruling on the task filed is still open with the Supervisor (that wait is the owner's
- * or Debug's, ticketed already) or it never had a Kernel decision (parked on a shared need).
+ * or Debug's, ticketed already), a hold on it is in force (its condition releases it, harness/holds.ts) or it never had a Kernel
+ * decision (parked on a shared need).
  */
 const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
     const open = openDecisions(db, "kernel", workflowId)
     const subjects = new Set(open.map((decision) => decision.subject))
+    const onHold = new Set(activeHolds(db, workflowId).map((hold) => hold.task))
     const stuck = snapshotOf(db, workflowId).views.flatMap((view): Undecided[] => {
         const task = view.task
-        if (task === null || (view.state !== "failed" && view.state !== "returned") || subjects.has(task.id)) return []
+        // A held task waits on its hold's condition (harness/holds.ts), which releases it on its own: no one's to decide meanwhile.
+        if (task === null || (view.state !== "failed" && view.state !== "returned") || subjects.has(task.id) || onHold.has(task.id)) return []
         const row = db.prepare("SELECT * FROM decisions WHERE scope = 'kernel' AND workflow_id = ? AND subject = ? ORDER BY raised_at DESC, id DESC LIMIT 1").get(workflowId, task.id)
         // A task with no Kernel decision at all is parked (on a shared need, whose router decides): not the Kernel's to wake on.
         const last = row === undefined ? undefined : getDecision(db, String(row.id))

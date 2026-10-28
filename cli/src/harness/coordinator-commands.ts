@@ -10,6 +10,7 @@ import { inTransaction, now } from "./ledger.js"
 import { isOwnerRequestId } from "./owner-requests.js"
 import { assertRoute, isRouted, withRoutes } from "./routes.js"
 import { assertNeedAnswer } from "./need-answer.js"
+import { assertHold, holdSchema, isHold } from "./holds.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
 import type { WorkflowRow } from "./workflow.js"
@@ -106,6 +107,9 @@ const commandSchema = z.strictObject({
     // (a Kernel's workflow-change, or a need-owner naming tasks its owner workflow holds), or why it is not shared; a need-owner
     // with neither gives the need to its workflow's Kernel.
     need: z.strictObject({ key: z.string().min(1), resolver: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(), reject: z.string().min(1).optional() }).optional(),
+    // What releases a workflow-change that answers a decision on a task without moving it (harness/holds.ts): one ticket, harness
+    // commit, need or time.
+    hold: holdSchema.optional(),
 })
 
 /** A command file as parsed: what it asks, plus the sha256 of its bytes (stored with it). */
@@ -231,14 +235,19 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
         }
         if (scope === "kernel") {
-            assertRoute(db, command, file.dir)
+            assertHold(db, command)
+            if (!isHold(command)) assertRoute(db, command, file.dir)
             assertNeedAnswer(db, scope, command, file.dir)
         } else if (isRuling(command)) {
             assertRuling(db, command)
             const ruled = rulingAsKernel(db, command)
-            assertRoute(db, ruled, file.dir)
+            assertHold(db, ruled)
+            if (!isHold(ruled)) assertRoute(db, ruled, file.dir)
             assertNeedAnswer(db, "kernel", ruled, file.dir)
-        } else assertNeedAnswer(db, scope, command, file.dir)
+        } else {
+            assertNeedAnswer(db, scope, command, file.dir)
+            if (command.hold !== undefined) throw new Refusal("COMMAND_INVALID", `a ${command.kind} carries no hold; a hold is a workflow-change's, the Kernel's or a ruling's`)
+        }
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,

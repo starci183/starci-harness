@@ -36,6 +36,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   defect for Debug); any other is refused `RULING_WITHIN_AUTHORITY`. The Kernel brief and the `decisionIdle` prompt say a
   woken decision is answered in that turn: never leave a decision open across a wake. Bench:
   `supervisor-tick-wakes-kernel-on-undecided`, `supervisor-rules-kernel-undecided`.
+- **A hold names what releases it.** A `workflow-change` that answers a decision on a task without moving it (no change, no
+  need) carries `hold: {ticket | commit | need | time}`, else it is refused `HOLD_UNCONDITIONED`. The hold is recorded on the
+  task (`task-held`), keeps the task out of the undecided wakes, and is released by the harness once its condition is met (the
+  ticket closed or answered, harness main contains the commit, the need ended, the time passed), from every workflow step and
+  tick and from the ticket's close or answer: a task the harness ended comes back at the same try, any other returns to its
+  reopened Kernel decision (`cli/src/harness/holds.ts`). A hold with no release condition held a dead task for hours.
+  Bench: `kernel-hold-released-by-ticket`.
 - **Telegram carries only what needs the owner's decision** (owner, 2026-10-29). ops/telegram.yaml `notices` lists the notice
   kinds that go out, `question` alone by default: a question ticket awaiting the owner is sent once as its card, reminded at
   most once per `reminderHours` (24) while it stays open as a reply to the card with its buttons, and an answer is acknowledged

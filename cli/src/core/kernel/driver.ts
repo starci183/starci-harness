@@ -38,6 +38,7 @@ import { carriesNeeds } from "../../harness/needs.js"
 import { harnessCause } from "../../harness/revive.js"
 import { CHECK_PREMISE, premiseChecks } from "../../harness/check-premise.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
+import { recordHolds } from "../../harness/holds.js"
 import type { StepAction } from "../workflow/engine.js"
 
 /** The reason a workflow carries while the harness holds it for an unreachable Orca; only this pause is lifted by the driver. */
@@ -667,14 +668,18 @@ const answersSharedNeed = (root: string, command: Command): boolean =>
 
 /**
  * Applies a Kernel command, the Kernel's own or a Supervisor's ruling in its place (`rulingAsKernel`): a workflow-change through
- * `workflow amend` (and the shared need it answers), an escalation or handoff as a Supervisor decision with a wake-up mail.
+ * `workflow amend` (and the shared need it answers), or with no change the holds it makes (`recordHolds`); an escalation or
+ * handoff as a Supervisor decision with a wake-up mail.
  */
 export const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
     // An escalation answering a shared-need decision hands the need to the Supervisor: the need's router raises its decision there.
     if (command.kind === "escalation" && answersSharedNeed(root, command)) return { needEscalated: true, answered: command.answers ?? [] }
     if (command.kind === "workflow-change") {
         await assertKernelNeed(root, command)
-        if (command.change === undefined) return { amended: false, answered: command.answers ?? [], need: await recordKernelNeed(root, command) }
+        if (command.change === undefined) {
+            const held = withLedger(root, (db) => recordHolds(db, command))
+            return { amended: false, answered: command.answers ?? [], need: await recordKernelNeed(root, command), held, until: command.hold ?? null }
+        }
         const change = resolve(dir, command.change)
         const list = (values: readonly string[] | undefined): string | undefined => (values === undefined || values.length === 0 ? undefined : values.join(","))
         const amended = await workflowAmendVerb.run(context, {

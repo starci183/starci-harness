@@ -127,8 +127,9 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `ruled-by-supervisor` and told to the Kernel on its next turn, and it becomes a ticket only by the escalation the Supervisor
   rules with, an owner topic to the owner and a real harness defect to Debug, never as a harness defect by itself (`decisionIdle`
   and `handUndecided`; both thresholds in `stall` of [ops/liveness.yaml](../../ops/liveness.yaml); `assertRuling` in
-  `cli/src/harness/coordinator-commands.ts`). Owner, 2026-10-29: Debug cannot rule a workflow's product decision, and the
-  coordinators are self-sufficient. A
+  `cli/src/harness/coordinator-commands.ts`). A hold names its release condition (a ticket, a commit on harness main, a need
+  or a time) and the harness releases it when that is met; a hold with none is refused (`cli/src/harness/holds.ts`). Owner,
+  2026-10-29: Debug cannot rule a workflow's product decision, and the coordinators are self-sufficient. A
   task the harness ended with no red of its own returns to ready at the same try, its last included (`harnessCause` in
   `cli/src/harness/revive.ts`). Landing is atomic: a green task is on its workflow's branch or returned with its work
   preserved, never done with its work beside the branch (`lands` in `cli/src/harness/clean-verify.ts`, `preserveEscaped` in

@@ -33,7 +33,12 @@ round when a batch of tasks lands and before your handoff; a contract never asks
 
 Never leave a decision open across a wake. A decision, or a failed or returned task your last answer held without moving
 it, that the host driver wakes you about (`decisionIdle` of ops/liveness.yaml, a prompt naming each) is answered in that
-turn, by its route or by an escalation naming what it waits for; a hold that moves nothing is no answer. One still undecided
+turn, by its route or by an escalation naming what it waits for. A hold, a `workflow-change` that answers a decision on a task
+without a change, names what releases it: `hold: {ticket: <id>}` (the ticket it waits on, preferred), `{commit: <sha>}` (once
+harness main holds it), `{need: <key>}` (once the shared need ends) or `{time: <iso>}`, plus `tasks: [<key>...]` for the
+tasks it keeps when it answers an `escalation-answer` or `goal-change` rather than their own decisions; one with none is refused
+`HOLD_UNCONDITIONED`, and a hold answers a task's decision off its route. The harness releases it on its own when the condition is met: a task the harness ended comes back at the
+same try, any other returns to you as its decision, reopened. One still undecided
 past `decisionStallMinutes` is handed to the Supervisor, who rules it in your place with the commands you would have used
 (a `workflow-change` that retries, edits, removes or adds a task or amends its checks, after `budget raise` when its tries are
 spent, or an escalation to the owner or Debug). `kernel next` tells you each such ruling once, on your next turn (its

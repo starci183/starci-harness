@@ -558,7 +558,14 @@ question to the owner or a defect for Debug. A route a ruling takes counts towar
 wakes, give-ups and a ruling told are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
-(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`; `project` for the Supervisor). It is
+(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor).
+A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
+the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
+`time`; `tasks` names, by plan key, the tasks a hold answering an `escalation-answer` or `goal-change` keeps), refused
+`HOLD_UNCONDITIONED` without one (`assertHold` in `harness/holds.ts`) and admitted off the decision's route; the hold is a `task-held` event, the
+task leaves `decisionIdle` while it holds, and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
+`wakeOnClose` for a ticket's close or answer) releases it once the condition is met (`hold-released`): a task the harness ended
+comes back to ready at the same try (`hold-revived`, past `reviveMax` too), any other has its Kernel decision reopened. It is
 admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its
 outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
 `decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca
