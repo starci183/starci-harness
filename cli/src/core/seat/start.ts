@@ -36,7 +36,7 @@ import {
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
 import { ensureKernel, launchableKernel, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
-import { applyPriorWork } from "../../harness/prior.js"
+import { beginWork } from "../../harness/baseline.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -476,7 +476,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
             const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
             return { task: running, seat, record, files }
         })
-        await applyPriorWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
+        await beginWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
         // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
         // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
         const synced = await reapplyLocal(root, worktreeFolder(options.worktree, cwd, root))
@@ -521,7 +521,7 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             return { task, seat, record: parsed.data, runId }
         })
         const recorded = claim.task.workflowId === null ? undefined : workflowWorktreeOf(db, claim.task.workflowId)
-        await applyPriorWork(root, recorded ?? root, claim.task)
+        await beginWork(root, recorded ?? root, claim.task)
         const files = writeBrief(claim.task, loadOps(), root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
         const parent = claim.record.start.parent

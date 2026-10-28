@@ -6,19 +6,19 @@ import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
+import { evidenceTail } from "../shared/output.js"
 import { locateTree } from "../shared/tree.js"
 import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
+import { excludedSpec, notOwn } from "./baseline.js"
 import { reapplyLocal } from "../core/deps/packages.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
-import { runCheck, strayFiles } from "./run-checks.js"
+import { olderNote, runCheck, strayFiles } from "./run-checks.js"
 import { assertWorktreeHooks } from "./worktree.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
-
-const DETAIL_LINES = 30
 
 const LIST_SHOWN = 20
 
@@ -138,8 +138,8 @@ const landsDetail =(changed: readonly string[], missing: readonly string[]): str
 }
 
 /**
- * Commits HEAD plus the work tree's allowPaths through a temporary index; the user's index and work tree stay
- * as they are. The `lands` outcome is red when work under allowPaths would not land through the harness: a dirty or untracked
+ * Commits HEAD plus the task's own work under its allowPaths through a temporary index; the user's index and work tree stay
+ * as they are. A dirty file under allowPaths that is not the task's own (harness/baseline.ts notOwn) is left out and named in a note. The `lands` outcome is red when work under allowPaths would not land through the harness: a dirty or untracked
  * file missing from the candidate, or a commit made while the task ran (since its creation) that changed its allowPaths without the
  * harness trailer (a worker that committed itself). A task never settles "done, nothing landed" while its work sits in the
  * tree or in a commit nobody verified.
@@ -151,12 +151,14 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
     try {
         await gitIndexedOk(root, index, ["read-tree", "HEAD"])
         const plan = await stagePlan(root, index, contract.context.allowPaths)
-        if (plan.whole.length > 0) await gitIndexedOk(root, index, ["add", "-A", "--", ...plan.whole.map(literal)])
-        if (plan.trackedOnly.length > 0) await gitIndexedOk(root, index, ["add", "-u", "--", ...plan.trackedOnly.map(literal)])
+        const others = input.taskId === undefined ? [] : await notOwn(root, input.taskId, contract.context.allowPaths)
+        const leftOut = others.map(excludedSpec)
+        if (plan.whole.length > 0) await gitIndexedOk(root, index, ["add", "-A", "--", ...plan.whole.map(literal), ...leftOut])
+        if (plan.trackedOnly.length > 0) await gitIndexedOk(root, index, ["add", "-u", "--", ...plan.trackedOnly.map(literal), ...leftOut])
         const tree = await gitIndexedOk(root, index, ["write-tree"])
         // What the work tree holds under allowPaths that the staged snapshot does not: read against that same temporary index
         // (index to work tree, plus files it does not know), so a file is never judged against a second, later look at HEAD.
-        const scope = ["--", ...contract.context.allowPaths.map(literal)]
+        const scope = ["--", ...contract.context.allowPaths.map(literal), ...leftOut]
         const unstaged = nulPaths(await gitIndexedOk(root, index, ["diff", "--name-only", "-z", ...scope]))
         const unknown = nulPaths(await gitIndexedOk(root, index, ["ls-files", "--others", "--exclude-standard", "-z", ...scope]))
         const candidate = await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
@@ -172,6 +174,7 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
                 landsDetail(changed, missing),
                 ...(foreign.length === 0 ? [] : [`committed under allowPaths while the task ran, by someone other than the harness (no Starci-Task trailer), so the harness neither lands nor credits it: ${listed(foreign.map((sha) => sha.slice(0, 12)))}`]),
                 ...plan.notes,
+                ...(others.length === 0 ? [] : [`dirty under allowPaths before the task's work began, not its own, left out: ${listed(others)}`]),
             ].join("\n"),
         }
         return { facts: { candidate, tree, parent, changed, foreign, paths: [...plan.whole, ...plan.trackedOnly], notes: plan.notes }, lands }
@@ -180,7 +183,6 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
     }
 }
 
-const tail = (stdout: string, stderr: string): string => [stdout, stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
 
 /**
  * `npm ci` where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none.
@@ -191,7 +193,7 @@ const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => 
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")))
     if (dir === undefined) return undefined
     const run = await captureNpm(["ci", "--no-audit", "--no-fund"], dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
-    const installed: CheckOutcome = { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: tail(run.stdout, run.stderr) }
+    const installed: CheckOutcome = { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: evidenceTail(run.stdout, run.stderr) }
     if (installed.status === "red") return installed
     const local = await reapplyLocal(place.source ?? place.root, dir)
     if (local === undefined) return installed
@@ -204,7 +206,7 @@ const setUp = async (commands: readonly (readonly string[])[], place: CheckPlace
     const options = place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }
     for (const [tool = "", ...args] of commands) {
         const run = tool === "npm" ? await captureNpm(args, place.cwd, options) : await captureTool(tool, args, place.cwd, options)
-        if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${tail(run.stdout, run.stderr)}` }
+        if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${evidenceTail(run.stdout, run.stderr)}` }
     }
     return { name: "setup", kind: "setup", status: "green", exitCode: 0, detail: commands.map((command) => command.join(" ")).join("\n") }
 }
@@ -227,7 +229,7 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
         const rest = await runCheck({ ...check, check: { kind: "files", mustExist: primitive.mustExist } }, input.contract, place)
         if (rest.status === "red") problems.push(rest.detail)
     }
-    const notes = stray.older.length > 0 ? [`outside allowPaths but older than the task, not judged: ${listed(stray.older)}`] : []
+    const notes = stray.older.length > 0 ? [olderNote(stray.older)] : []
     return {
         name: check.name,
         kind: "files",
@@ -303,6 +305,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
             source: root,
             cwd: join(dir, contract.context.cwd ?? "."),
             diffBase: built.facts.parent,
+            ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
             ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
             ...(input.result === undefined ? {} : { result: input.result }),
         }

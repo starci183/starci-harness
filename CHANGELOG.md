@@ -29,6 +29,27 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   Debug (`--list` is the queue); `release push`, `release publish` and the guard refuse a `pkg/` branch to every role but
   debug and owner (`PKG_EDIT_PUSH_REFUSED`). Bench: `pkg-edit-branch-handoff`.
 
+### Fixed
+
+- **`check run` judges a package against its workspace dependencies built.** A package that imports a sibling exporting
+  only its git-ignored build output (`exports` or `main` at `dist/`) failed its typecheck with TS2307 and its lint with
+  cascaded `no-unsafe-*` errors on every clean checkout, so every `task verify` of such an app was red. Before typecheck
+  and lint, `check run` now finds each target's workspace dependencies (npm, yarn or pnpm), transitively and in
+  topological order, and for each whose manifest entries are missing restores its output from the build cache under its
+  content key (`<state base>/cache/workspace-builds/<key>`) or runs its own `build` script and caches the output. A
+  dependency that cannot be built is a red `dep-build` step with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and the
+  steps of the packages that need it are held. `check run` is now `local-write`. Bench: `check-run-workspace-dep-built`,
+  `check-run-workspace-dep-build-failed`.
+- **A task is judged only on its own work.** Another task's uncommitted files in a shared workflow worktree failed a
+  task's `paths-only` and reached the lint of its `check-run-green`. When a task's work begins (its seat starts, or the
+  inline step hands it out) `beginWork` records the tree of its checkout as its baseline; a dirty file unchanged since
+  then is not the task's: its candidate, its stray files, `check run --task` (which `task verify` and the dry replay
+  pass) and its preserve and reset leave it be, and it never widens the scope. Bench: `verify-sibling-dirt-not-judged`.
+- **A red check's output is kept and shown.** Every check of a verify keeps the last 200 lines of its tools' output as
+  its detail, with every value the secret scan recognises redacted (`redactSecrets`), and `task status <task>` prints the
+  detail of the red checks of the newest verify (`checkRuns[].detail` in `--json`). Bench:
+  `verify-check-run-output-in-task-status`.
+
 ## [1.1.0-alpha.5] - 2026-10-28
 
 - **A returned task no longer holds its lease past its due time.** A task that came back to the Kernel (blocked, mismatch,

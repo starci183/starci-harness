@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
+import { evidenceTail } from "../shared/output.js"
+import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
@@ -42,14 +44,12 @@ export interface CheckPlace {
     readonly source?: string
 }
 
-const DETAIL_LINES = 30
-
 const PROBE_TIMEOUT_MS = 10_000
 
 /** The `starci check` verbs that take `--base` and answer with scope steps. */
 const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typecheck"])
 
-const tailOf = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
+const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
 const selfEntry = (): string => fileURLToPath(new URL("../main.js", import.meta.url))
@@ -92,19 +92,25 @@ const otherLeasedPaths = (root: string, taskId: string | undefined): string[] =>
     }
 }
 
-/** Work-tree files outside a task's allowPaths: `written` could be the task's (changed since it began, or undatable), `older` predate it. */
+/** Work-tree files outside a task's allowPaths: `written` are the task's (changed since its work began, or undatable), `older` were there before it. */
 export interface StrayFiles {
     readonly written: readonly string[]
     readonly older: readonly string[]
 }
 
+/** The note naming the stray files a task is cleared of. */
+export const olderNote = (older: readonly string[]): string => `outside allowPaths but there before the task's work began, not judged: ${listed(older)}`
+
 /**
  * Dirty and untracked files of the work tree at `root` (against HEAD) that lie outside `allowPaths` and outside the paths
- * other live tasks lease. With `since`, a file last written before it is not the task's.
+ * other live tasks lease, split by whose they are: a task with a baseline (harness/baseline.ts) owns only the files changed
+ * since its work began; one without owns the files written since `since`, and every file without a date.
  */
 export const strayFiles = async (root: string, allowPaths: readonly string[], scope: { readonly taskId?: string; readonly since?: string }): Promise<StrayFiles> => {
     const leased = otherLeasedPaths(root, scope.taskId)
     const outside = (await changedFiles(root, "HEAD")).filter((file) => !underPaths(file, allowPaths) && !underPaths(file, leased))
+    const own = scope.taskId === undefined ? undefined : await ownChanges(root, scope.taskId)
+    if (own !== undefined) return { written: outside.filter((file) => own.has(file)), older: outside.filter((file) => !own.has(file)) }
     const sinceMs = scope.since === undefined ? undefined : Date.parse(scope.since)
     const written: string[] = []
     const older: string[] = []
@@ -125,7 +131,7 @@ const runFilesCheck = async (check: ResolvedCheck & { readonly check: { readonly
     if (check.check.onlyAllowPaths === true) {
         const stray = await strayFiles(place.root, contract.context.allowPaths, { ...(place.taskId === undefined ? {} : { taskId: place.taskId }), ...(place.since === undefined ? {} : { since: place.since }) })
         if (stray.written.length > 0) problems.push(`changed outside allowPaths: ${listed(stray.written)}`)
-        if (stray.older.length > 0) notes.push(`outside allowPaths but older than the task, not judged: ${listed(stray.older)}`)
+        if (stray.older.length > 0) notes.push(olderNote(stray.older))
     }
     for (const pattern of check.check.mustExist ?? []) {
         const present = /[*?[\]{}]/.test(pattern) ? globSync(pattern, { cwd: place.cwd }).length > 0 : existsSync(join(place.cwd, pattern))
@@ -305,7 +311,9 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
  */
 const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], place: CheckPlace, allowPaths: readonly string[]): Promise<CheckOutcome> => {
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
-    const withPaths = withBase.includes("--") ? withBase : [...withBase, "--", ...allowPaths]
+    // check run judges as the task: its own changes since its work began (core/check/scope.ts).
+    const asTask = place.taskId === undefined || args[1] !== "run" || withBase.includes("--task") ? withBase : [...withBase, "--task", place.taskId]
+    const withPaths = asTask.includes("--") ? asTask : [...asTask, "--", ...allowPaths]
     const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withPaths], place.cwd, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
     let envelope: Record<string, unknown>
     try {

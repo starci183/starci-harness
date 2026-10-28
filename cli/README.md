@@ -56,7 +56,7 @@ src/
 every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`, `edges` and `graph_versions` (each
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
-`check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees the path of a task that may still write, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
+`check_runs` (every check of every verify with its status, exit code and detail: the tail of its output, at most `EVIDENCE_LINES` of `shared/output.ts` per tool run, with every value `redactSecrets` of `shared/secrets.ts` recognises redacted, which `task status` prints for the red checks of the newest verify); `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees the path of a task that may still write, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
 `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
@@ -88,15 +88,20 @@ without case on every host, since a product is also checked out where `Docs/A.md
 token only names the grant.
 
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
-Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's `allowPaths` and
-replays every check there, never in the worker's environment; what the candidate misses is read against the same
-staged snapshot. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
+Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's own work under its
+`allowPaths` and replays every check there, never in the worker's environment; what the candidate misses is read against
+the same staged snapshot. A task's own work is what changed since its work began: `beginWork` (`harness/baseline.ts`)
+records the tree of its checkout as its baseline when its seat starts or its inline step hands it out, and a dirty file
+unchanged since then (another task's leftovers in a shared worktree) is left out of its candidate, its `paths-only` stray
+files, the lint and typecheck of its `check run --task`, and its preserve and reset. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
 through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
 them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
 project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract
 says (`harness/clean-verify.ts`). Its scoped `starci check` runs over what the candidate changes, or, when it changes
 nothing, over the tracked files under the `allowPaths` (`runScopedCheck` in `harness/run-checks.ts`), red when no step
-ran. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
+ran; `check run` first builds the workspace dependencies whose entries the clean checkout lacks, or restores them from
+the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.ts`), as
+[contexts/project/lint.md](../contexts/project/lint.md) states. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
 reads the tree of its `allowPaths` at the HEAD it settled on) and makes the task done, records its settle commit
 (`tasks.settle_commit`) and releases its leases in one transaction; red preserves and resets them and releases the
 leases. Settles of one project run one at a time under the settle lock (`harness/settle.ts`), so each candidate builds

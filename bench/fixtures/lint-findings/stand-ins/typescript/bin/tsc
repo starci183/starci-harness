@@ -1,0 +1,2 @@
+// The tsc stand-in: every program typechecks.
+process.exit(0)
