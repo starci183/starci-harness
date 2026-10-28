@@ -2,7 +2,7 @@ import { worktreeGc } from "../../harness/worktree-gc.js"
 import { reconcileLineage } from "../../harness/orca/lineage.js"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
+import { admitCommand, answerDecision, awaitsOwner, defaultRuling, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
 import type { Command, Decision, KernelDecisionKind, SupervisorDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
@@ -19,7 +19,7 @@ import { reconcileStaleLaunches } from "../../harness/stale-launch.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
 import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerRequests, ownerRequestProjects } from "../../harness/owner-requests.js"
 import type { OwnerRequest } from "../../harness/owner-requests.js"
-import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerShow } from "../../harness/orca/client.js"
+import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harness/orca/client.js"
 import { holdTerminal, kernelSeatOf, launchUnreconciled, noteTab, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -28,7 +28,7 @@ import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, ke
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
-import { projectRepositories, registeredRepositories } from "../../harness/project-workers.js"
+import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
 import { recordEvent } from "../../harness/tasks.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
@@ -85,8 +85,11 @@ const DECISION_RELAYED = "decision-relayed"
 const relayed = (decision: SupervisorDecision): boolean =>
     withLedger(decision.project, (db) => db.prepare(`SELECT 1 FROM events WHERE kind = '${DECISION_RELAYED}' AND subject = ? AND json_extract(data_json, '$.id') = ?`).get(decision.workflowId, decision.id) !== undefined)
 
-/** The events the drivers record about a seat rather than the work: relaunching a Kernel, nudging or giving up a stalled seat, or handing the Supervisor a decision, is not progress. */
-const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED]
+/** The event the tick records when it wakes, or gives up, a Kernel whose workflow has ready work and no live Op (`readyIdle`). */
+const READY_IDLE_WOKEN = "ready-idle-woken"
+
+/** The events the drivers record about a seat rather than the work: relaunching a Kernel, nudging, waking or giving up a stalled seat, or handing the Supervisor a decision, is not progress. */
+const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED, READY_IDLE_WOKEN]
 
 /** The last time a workflow's work moved (its own events and its tasks', but none a driver records about a seat), the Kernel's progress clock. */
 const lastProgress = (db: DatabaseSync, workflowId: string): string | null => {
@@ -249,7 +252,7 @@ const lastCallOf = (leaseUntil: string | null, leaseMinutes: number, startedAt: 
  * Supervisor (`coordinatorStallEscalates`).
  */
 const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, inventory: TerminalInventory | null): Promise<string | null> => {
-    const { root, binary, cwd, rules, acting } = scope
+    const { root, binary, cwd, rules } = scope
     const stall = loadStallRules()
     if (seat.handle === null || seat.terminal === null) return null
     const { pending, nudges } = withLedger(root, (db) => ({ pending: kernelPending(db, workflow.id), nudges: nudgesOf(db, seat.id) }))
@@ -268,19 +271,75 @@ const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatR
         await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, text)
         return `${workflow.id}: Kernel idle at its prompt with work pending (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
     }
-    const kind = stallKindOf(signals.failureText)
+    return giveUpKernel(scope, workflow, seat, signals.failureText, step.detail)
+}
+
+/**
+ * Remedy 2 of the stall ladder for a Kernel seat: its member records a `stalled` outcome (seat evidence and the provider circuit,
+ * by the kind Orca's failure words name, else `stall`), repeated plain stalls escalate kind harness to the Supervisor
+ * (`coordinatorStallEscalates`), and the Kernel is relaunched on the coordinator tier's listed order.
+ */
+const giveUpKernel = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, failureText: string | null, detail: string): Promise<string> => {
+    const { root, binary, cwd, rules, acting } = scope
+    const stall = loadStallRules()
+    const kind = stallKindOf(failureText)
     const agent = seat.agent ?? "?"
     const member = `${agent}/${seat.model ?? "?"}`
     const since = new Date(Date.now() - stall.coordinatorStallWindowMinutes * 60_000).toISOString()
     const stalls = withLedger(root, (db) => {
-        recordEvent(db, STALL_GAVE_UP, workflow.id, { seat: seat.id, role: "kernel", member, kind, why: step.detail, failure: signals.failureText })
+        recordEvent(db, STALL_GAVE_UP, workflow.id, { seat: seat.id, role: "kernel", member, kind, why: detail, failure: failureText })
         return Number(db.prepare(`SELECT COUNT(*) AS n FROM events WHERE kind = '${STALL_GAVE_UP}' AND subject = ? AND at > ? AND json_extract(data_json, '$.kind') = 'stall' AND json_extract(data_json, '$.member') = ?`).get(workflow.id, since, member)?.n ?? 0)
     })
     recordSeatOutcome({ ledger: ledgerFileOf(root), id: seat.id, agent, model: seat.model, role: "kernel", startedAt: seat.startedAt })
-    reportStalled(agent, kind, `Kernel of ${workflow.id} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
+    reportStalled(agent, kind, `Kernel of ${workflow.id} ${detail}${failureText === null ? "" : ": " + failureText}`)
     if (coordinatorStallEscalates(kind, stalls, stall)) withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `coordinator-stalls:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: repeatedStallQuestion(`the Kernel of ${workflow.id}`, member, stalls, stall) } } }))
-    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting }, rules)
+    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${detail}`, { replace: true, acting }, rules)
 }
+
+/** The node states of a live Op: a dispatched attempt that has not ended. */
+const LIVE_OP: ReadonlySet<NodeState> = new Set<NodeState>(["running", "launch-unknown", "lost", "reported", "verifying"])
+
+/**
+ * Ready work nobody runs: a dispatching workflow with ready or queued nodes and no live Op since the later of its last progress
+ * and its Kernel seat's launch (`clock`), while its project has a free worker slot. Past stall.readyIdleMinutes the tick types
+ * the Kernel a prompt naming the ready tasks (stall.prompts.readyIdle, once per seat and clock); past stall.readyStallMinutes the
+ * Kernel is given up as the stall ladder gives one up (`giveUpKernel`), once per seat and clock, so the relaunch limit still bounds
+ * the relaunches.
+ */
+const readyIdle = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow | undefined): Promise<string | null> => {
+    const { root, binary, cwd, rules } = scope
+    const stall = loadStallRules()
+    if (seat?.handle == null || seat.terminal === null || !DISPATCHING.includes(workflow.status)) return null
+    const { views, progress, woken } = withLedger(root, (db) => ({ views: snapshotOf(db, workflow.id).views, progress: lastProgress(db, workflow.id), woken: eventsOfSeat(db, READY_IDLE_WOKEN, workflow.id, seat.id) }))
+    const ready = views.filter((view) => view.state === "ready" || view.state === "queued").map((view) => view.key)
+    if (ready.length === 0 || views.some((view) => LIVE_OP.has(view.state))) return null
+    const clock = progress === null || progress < seat.startedAt ? seat.startedAt : progress
+    if (!olderThan(clock, stall.readyIdleMinutes)) return null
+    const slots = await slotsOfRepository(root)
+    if (slots.running >= slots.cap) return null
+    const named = ready.join(", ")
+    if (olderThan(clock, stall.readyStallMinutes)) {
+        if (woken.some((event) => event.clock === clock && event.step === "gave-up")) return null
+        withLedger(root, (db) => { recordEvent(db, READY_IDLE_WOKEN, workflow.id, { seat: seat.id, clock, step: "gave-up", ready }); })
+        return giveUpKernel(scope, workflow, seat, null, `ready work (${named}) with no live Op since ${clock}, past ${String(stall.readyStallMinutes)} min`)
+    }
+    if (woken.some((event) => event.clock === clock)) return null
+    withLedger(root, (db) => { recordEvent(db, READY_IDLE_WOKEN, workflow.id, { seat: seat.id, clock, step: "woken", ready }); })
+    const text = promptOf(stall.prompts.readyIdle, { workflow: workflow.id, tasks: named, since: clock, wait: String(rules.nextWaitSeconds) })
+    try {
+        await terminalSend(binary, { terminal: seat.terminal, text, retryRequest: requestIdOf("ready-idle", `${seat.id}\0${clock}`) }, cwd)
+    } catch (error: unknown) {
+        return `${workflow.id}: ready work (${named}) idle since ${clock}; the wake was not delivered (${asRefusal(error).code})`
+    }
+    return `${workflow.id}: ready work (${named}) with no live Op since ${clock}: Kernel woken`
+}
+
+/** The ready-idle events of one Kernel seat: the clock each was recorded for and its step (woken, gave-up). */
+const eventsOfSeat = (db: DatabaseSync, kind: string, workflowId: string, seatId: string): { readonly clock: string; readonly step: string }[] =>
+    db
+        .prepare("SELECT json_extract(data_json, '$.clock') AS clock, json_extract(data_json, '$.step') AS step FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.seat') = ?")
+        .all(kind, workflowId, seatId)
+        .map((row) => ({ clock: String(row.clock), step: String(row.step) }))
 
 /** The Run a Kernel seat was launched into: Orca's receipt, else the `--run` its launch sent. */
 const runOfSeat = (seat: SeatRow): string | null => {
@@ -311,6 +370,37 @@ const adoptFromHost = async (scope: SweepScope, workflow: WorkflowRow, seat: Sea
     return { line: adopted ? `${workflow.id}: adopted from the host Supervisor ${host.id}; its Kernel stays in that Run while ${host.terminal ?? "its terminal"} lives` : null, moved: false }
 }
 
+/** The event the Supervisor's driver records when it decides an owner escalation on its default. */
+const ESCALATION_DEFAULTED = "escalation-defaulted"
+
+/**
+ * Decides, for the Supervisor and without the owner, every open escalation of a repository's ledger that carries a default it
+ * may rule (`defaultRuling`: a product choice inside the goal with the answer the Kernel proposed and why): in one transaction its
+ * Kernel gets an `escalation-answer` whose ruling is that default, the escalation is answered by `default:<Supervisor>`, and an
+ * `escalation-defaulted` event keeps the ruling and its reasoning. Returns a line per ruling.
+ */
+const ruleDefaults = (root: string, acting: AttachedSupervisor): string[] =>
+    withLedger(root, (db) =>
+        inTransaction(db, () =>
+            openDecisions(db, "supervisor").flatMap((decision) => {
+                const ruled = defaultRuling(decision)
+                if (ruled === null) return []
+                const question = questionOf(decision)
+                const reasoning = `a product choice inside the accepted goal with a proposed default, so the Supervisor decides it on that default without the owner (${ruled.reason})`
+                const answer = raiseDecision(db, {
+                    scope: "kernel",
+                    workflowId: decision.workflowId,
+                    kind: "escalation-answer",
+                    subject: `default:${decision.id}`,
+                    evidence: { answers: decision.id, question, ruling: ruled.ruling, reasoning, by: "default", supervisor: acting.id, workflow: decision.workflowId, goal: null },
+                })
+                answerDecision(db, decision.id, `default:${acting.id}`, "supervisor")
+                recordEvent(db, ESCALATION_DEFAULTED, decision.workflowId, { id: decision.id, answer, question, ruling: ruled.ruling, reasoning, supervisor: acting.id })
+                return [`${decision.workflowId}: escalation ${decision.id} decided on its default (${ruled.ruling}); the Kernel has ${answer}`]
+            }),
+        ),
+    )
+
 /**
  * The Kernel sweep of one repository of the Supervisor's project: every orca workflow the Supervisor owns (its recorded
  * coordinator, set when `kernel start` or `workflow start` launched its Kernel) keeps exactly one live Kernel, by Orca's word. A
@@ -321,6 +411,7 @@ const adoptFromHost = async (scope: SweepScope, workflow: WorkflowRow, seat: Sea
  */
 const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBinary, rules: CoordinatorLiveness, acting: AttachedSupervisor, ops: boolean): Promise<string[]> => {
     const { cwd } = context
+    const ruled = ruleDefaults(root, acting)
     const owned = withLedger(root, (db) =>
         listWorkflows(db)
             .filter((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR)
@@ -355,10 +446,16 @@ const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBina
         if (ops && workflow.status !== "paused") {
             const opActions = [...(await sweepOpBudgets(root, binary, cwd, workflow.id)), ...(await sweepOpStalls(root, binary, cwd, workflow.id, live))]
             lines.push(...opActions.map((action) => `${workflow.id}: ${action.task ?? "-"} ${action.detail}`))
+            try {
+                const current = withLedger(root, (db) => ({ workflow: getWorkflow(db, workflow.id), seat: kernelSeatOf(db, workflow.id) }))
+                lines.push((await readyIdle(scope, current.workflow, current.seat)) ?? "")
+            } catch (error: unknown) {
+                lines.push(`${workflow.id}: ready work not judged (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
+            }
         }
         return lines.filter((line) => line !== "")
     })
-    return done.flat()
+    return [...ruled, ...done.flat()]
 }
 
 /**

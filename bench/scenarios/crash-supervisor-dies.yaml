@@ -65,6 +65,7 @@ steps:
         basedOn: {graph: 1}
         escalation:
           kind: owner
+          topic: product
           question: may doc one name the product?
   - file:
       path: esc-two.yaml
@@ -76,6 +77,7 @@ steps:
         basedOn: {graph: 1}
         escalation:
           kind: owner
+          topic: product
           question: may doc two name the product?
   - seat: kernel:one
     starci: [kernel, submit, "${run}/esc-one.yaml"]

@@ -97,9 +97,20 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   Claude out hands the seat to the next member (`decide` in `cli/src/harness/router.ts`).
 - **Harness problems never wait on the owner.** An escalation of kind `harness` is Debug's: the Supervisor keeps it in the
   ledger, never asks the owner about it, keeps its other work moving and relays Debug's answer, which arrives as a
-  `supervisor ask` by `debug`; only an `owner` escalation (a product decision, credentials, scope, money) goes to the owner.
-  Neither makes a waiting Supervisor stalled (`awaitsOwner` in `cli/src/harness/coordinator-commands.ts`,
-  [ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md)).
+  `supervisor ask` by `debug`. Neither it nor an owner escalation makes a waiting Supervisor stalled (`awaitsOwner` in
+  `cli/src/harness/coordinator-commands.ts`, [ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md)).
+- **Coordinators run on their own (`coordinators-self-sufficient`).** The monitor diagnoses harness bugs and Debug fixes the
+  harness; nobody nudges a Supervisor or a Kernel by hand. An `owner` escalation names its topic; a product choice inside the
+  accepted goal that carries a proposed default (the goal's or the plan's, with its reason) is decided by the Supervisor's
+  driver on that default and recorded with its reasoning, and only scope changes, money or real charges, credentials or
+  custody, legal matters and a product choice with no default reach the owner (`OWNER_TOPICS` and `defaultRuling` in
+  `cli/src/harness/coordinator-commands.ts`, `ruleDefaults` in `cli/src/core/supervisor/driver.ts`). The tick wakes a Kernel
+  whose ready work idles with no live Op and gives it up to the stall ladder past a second threshold (`readyIdle` in
+  `cli/src/core/supervisor/driver.ts`, `stall` of [ops/liveness.yaml](../../ops/liveness.yaml)). A task the harness ended
+  with no red of its own returns to ready at the same try, its last included (`harnessCause` in `cli/src/harness/revive.ts`).
+  A contract that takes another workflow's branch or landed commit as its source is refused `NEEDS_REQUIRED`: shared needs
+  are mandatory across workflows (`cli/src/harness/foreign-source.ts`). Owner, 2026-10-29: the Supervisor and Kernels must
+  run on their own.
 - **A failed launch says why.** A launch Orca fails at agent readiness has the agent terminal it created read once,
   before the worker is released, and the seat keeps its last lines; an agent waiting at a host or config prompt is the
   host's to fix, never a provider strike, and goes to the Supervisor as a `harness` escalation (`blockedPrompts` of

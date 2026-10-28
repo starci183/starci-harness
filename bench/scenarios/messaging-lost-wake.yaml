@@ -46,6 +46,7 @@ steps:
         basedOn: {graph: 1}
         escalation:
           kind: owner
+          topic: product
           question: may doc a name the product?
   - seat: kernel:quiet
     starci: [kernel, submit, "${run}/escalate.yaml"]

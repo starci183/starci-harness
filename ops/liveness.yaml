@@ -1,6 +1,6 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone; settle liveness; the host's heavy-command slots; the coordinators' mechanics; the budget
-# ladder; owner feedback; and the stall ladder. Read by `seat ping`, `workflow step`, `task verify`, `check run`, the
+# explicit word that a worker is gone; settle liveness and the revival of a task the harness ended; the host's heavy-command
+# slots; the coordinators' mechanics; the budget ladder; owner feedback; and the stall ladder with its idle-ready wake. Read by `seat ping`, `workflow step`, `task verify`, `check run`, the
 # coordinator drivers, `feedback check` and `supervisor tick`; nothing here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
@@ -26,6 +26,10 @@ settleNoVerdictMax: 3
 # and its task reaches no verdict, and a holder still listed past it (hung in-process, its heartbeat beating) counts as gone, so
 # the next `workflow step`, `kernel next` or `supervisor tick` reconciles its task (`task verify --recover`) and verifies it again.
 verifyDeadlineMinutes: 45
+# A task the harness ended (cli/src/harness/revive.ts `harnessCause`: a wave red not proven its own, a fenced or lost launch, a
+# verify stopped by infrastructure or its deadline) with no red of its own returns to ready at the same try, on any try, its last
+# included. At most this many of one node's tasks come back so; the next stays ended and its node is red for the Kernel.
+reviveMax: 3
 
 # Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build, npm ci or
 # install, a uat container. Each runs under a row of a machine-wide governor in machine.sqlite (cli/src/harness/heavy.ts),
@@ -141,8 +145,15 @@ stall:
   # spent), a `stall` reported for its member, and the task queued again for another member. A completed request is never replayed.
   startUnknownStates: [start_unknown, turn_start_unobserved]
   startDeadlineMinutes: 10
-  # The loop prompts a nudge types; {workflow}, {launch}, {task} and {wait} (coordinators.nextWaitSeconds) are filled in.
+  # Ready work nobody runs (run by `supervisor tick`): an orca workflow that dispatches, has ready or queued tasks and no live Op
+  # since the later of its last progress and its Kernel's launch, while its project has a free worker slot. Past readyIdleMinutes
+  # its Kernel is woken once with prompts.readyIdle, naming the ready tasks; past readyStallMinutes it is given up as remedy 2
+  # gives up a stalled Kernel (its member's `stalled` outcome, a relaunch the Kernel relaunch limit bounds), once per Kernel seat.
+  readyIdleMinutes: 10
+  readyStallMinutes: 25
+  # The prompts the ladder types; {workflow}, {launch}, {task}, {tasks}, {since} and {wait} (coordinators.nextWaitSeconds) are filled in.
   prompts:
     supervisor: "Continue your loop: run starci supervisor next --json --wait {wait} in the foreground, answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
     kernel: "Continue your loop: run starci kernel next {workflow} --json --wait {wait} in the foreground (starci kernel attach {workflow} --launch {launch} first if you never attached), answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
     op: "Continue task {task}: finish it within its contract and file it with starci task result {task}."
+    readyIdle: "Workflow {workflow} has ready work and no live Op since {since}: {tasks}. Run starci kernel next {workflow} --json --wait {wait} in the foreground now; it dispatches them. If it answers a decision, answer it; if a task stays ready, its next answer names why (a refusal, a budget, a wait), so act on that. Never end your turn while the driver is yours."

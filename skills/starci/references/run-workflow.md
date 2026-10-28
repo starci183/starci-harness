@@ -64,7 +64,9 @@ the result and the verify are the only truth.
 | `BUDGET_EXHAUSTED` | ask the owner; see [routing-and-providers.md](routing-and-providers.md) |
 | a launch refused or unknown | see [debug.md](debug.md) |
 
-A retry is never automatic.
+A retry of a red, returned or stuck task is always an amend. A task the harness ended with no red of its own (a wave red not
+proven its own, a fenced or lost launch, a verify stopped by infrastructure) is the one the harness retries itself, at the same
+try (cli/README.md "Workflow graph").
 
 ## Amend
 

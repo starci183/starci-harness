@@ -2,7 +2,7 @@ import { basename } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { registeredRepositories } from "./project-workers.js"
 import { asRefusal } from "../shared/errors.js"
-import { openDecisions } from "./coordinator-commands.js"
+import { awaitsOwner, escalationOf, openDecisions } from "./coordinator-commands.js"
 import type { Decision } from "./coordinator-commands.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf } from "./machine.js"
@@ -31,20 +31,13 @@ const clip = (text: string, chars: number): string => {
     return flat.length <= chars ? flat : `${flat.slice(0, chars - 1)}…`
 }
 
-const field = (value: unknown, name: string): unknown => (typeof value === "object" && value !== null && name in value ? (value as Record<string, unknown>)[name] : undefined)
-
-const escalationOf = (decision: Decision): { readonly kind: string; readonly question: string } => {
-    const escalation = field(decision.evidence, "escalation")
-    const kind = field(escalation, "kind")
-    const question = field(escalation, "question")
-    return { kind: typeof kind === "string" ? kind : "", question: typeof question === "string" ? question : decision.subject }
-}
-
 const decisionNotice = (project: Project, decision: Decision, chars: number): Notice => {
-    const { kind, question } = escalationOf(decision)
+    const escalation = escalationOf(decision)
+    const topic = escalation?.topic === undefined ? "" : `, ${escalation.topic}`
     const text = [
         `[StarCi] ${project.name} · workflow ${decision.workflowId}`,
-        `Question ${decision.id} (${kind}): ${clip(question, chars)}`,
+        `Question ${decision.id} (${escalation?.kind ?? ""}${topic}): ${clip(escalation?.question ?? decision.subject, chars)}`,
+        ...(escalation?.default === undefined ? [] : [`Proposed: ${clip(escalation.default, chars)}`]),
         `Answer: reply to this message, or send /answer ${decision.id} <your answer>.`,
     ].join("\n")
     return { key: `decision:${decision.id}`, kind: "decision", project, workflow: decision.workflowId, subject: decision.id, text, at: decision.raisedAt }
@@ -58,7 +51,7 @@ const ledgerNotices = (repo: string, project: Project, since: string, chars: num
     if (db === undefined) return []
     try {
         const decisions = openDecisions(db, "supervisor")
-            .filter((decision) => decision.kind === "escalation" && escalationOf(decision).kind === "owner" && decision.raisedAt > since)
+            .filter((decision) => awaitsOwner(decision) && escalationOf(decision)?.kind === "owner" && decision.raisedAt > since)
             .map((decision) => decisionNotice(project, decision, chars))
         const workflows = listWorkflows(db).flatMap((workflow): Notice[] => {
             const ended = ENDED[workflow.status]
