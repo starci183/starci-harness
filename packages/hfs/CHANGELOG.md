@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 4.9.6 - 2026-10-28
 
+- Changed: the bundled canon pins name hfs 4.9.6, Grammar 0.15.5 and eslint-canon-fe 9.4.5.
 - Changed: the app pre-push hook runs `node node_modules/starci-harness/dist/main.js deps check` after the bundled push gate (under `set -e`), so a push whose committed @starci pins npm cannot install, or whose local package copies run ahead of npm, is refused; RT_HOOK_SHAPE (R225) requires the call. Spec: `src/pre-push-hook.spec.mjs`.
 
 ## 4.9.5 - 2026-10-28
