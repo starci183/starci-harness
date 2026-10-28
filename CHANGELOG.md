@@ -27,6 +27,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A vanished local package folder no longer burns tries.** A project's local package record (`deps-local.json`) that named a
+  package edit worktree Debug had landed and removed made every Op launch log `deps-local-sync-failed`, the wave's install red,
+  and both landed tasks come back as wave-foreign revivals at the same try. Every reader of the record now heals it first
+  (`healRecord` in `cli/src/core/deps/packages.ts`): an entry whose folder no longer holds its package is repointed to the
+  harness's own `packages/<name>` (of its main checkout, also the `deps source --local` default), or dropped so the package
+  resolves from npm, with a `deps-local-healed` event; `worktree gc` heals every project's record once it removed a package
+  edit worktree. An install red although the work changed no file an install reads is now the harness's failure
+  (`assertNoInfraFailure` in `cli/src/harness/clean-verify.ts`): the verify or wave reaches no verdict, spends no try, fails
+  and revives no task (`wave-infra`), opens one harness-defect ticket (`INSTALL_RED_HARNESS`), and the next step verifies
+  again. Bench: `deps-local-vanished-folder-heals-on-launch`, `wave-install-red-harness-stop`.
 - **A held worktree no longer loops or fails a settle.** Removing a harness worktree first closes every Orca terminal whose
   worktree it is (a seat's or a plain shell's; the caller's own aside), since Windows refuses to remove a folder a process works
   in (EBUSY). A folder git emptied and deregistered but whose rmdir was refused is removed as the empty folder it is, instead of

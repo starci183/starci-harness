@@ -4,15 +4,17 @@ group: lifecycle
 title: "worktree gc removes every harness worktree whose owner ended, and an orphan's dirty work is preserved first"
 inject: >-
   a cancelled inline task, an Op worktree a crash left behind its failed task, a done workflow's worktree, an ended Supervisor
-  worker's worktree, a package edit landed on main, a live task's worktree, and an orphan no ledger row owns holding uncommitted work
+  worker's worktree, a package edit landed on main whose packages/ the project's local package record names, a live task's worktree, and an orphan no ledger row owns holding uncommitted work
 expect: >-
   task cancel removes its Op worktree at once; worktree gc --dry-run lists the due ones and changes nothing; worktree gc
   preserves the orphan's work (its changed and untracked files), unlinks links, removes every due worktree and prunes, keeps
-  the live task's, and keeps every branch but a landed Op's
+  the live task's, keeps every branch but a landed Op's, and repoints the record entry inside the removed package edit worktree
+  to the harness's own packages/ folder
 pass:
   - the cancelled task's Op worktree is gone right after the cancel
   - the dry run removes nothing
   - the gc removes the failed task's, the workflow's, the worker's, the package's and the orphan's worktrees and keeps the live one
+  - the local package record no longer names the removed package worktree
   - the orphan's tracked change and untracked file are in its preserved folder
   - the workflow's and the orphan's branches remain
   - no human intervention beyond the injected fault
@@ -102,6 +104,17 @@ steps:
   - sql:
       db: machine
       exec: "CREATE TABLE IF NOT EXISTS package_handoffs (branch TEXT NOT NULL, head TEXT NOT NULL, harness TEXT NOT NULL, worktree TEXT NOT NULL, app TEXT NOT NULL, packages TEXT NOT NULL, urgent INTEGER NOT NULL, note TEXT, by_role TEXT, at TEXT NOT NULL, PRIMARY KEY (branch, head)); INSERT INTO package_handoffs VALUES ('pkg/bench-landed', '${head}', '${repo}', '${run}/pkg-landed', 'bench', '[]', 0, NULL, NULL, '2026-10-28T00:00:00Z')"
+  - name: the project takes @starci/tsconfig from the package edit worktree
+    write:
+      path: ${run}/pkg-landed/packages/tsconfig/package.json
+      content: '{"name": "@starci/tsconfig", "version": "9.9.9"}'
+  - file:
+      path: ${project}/deps-local.json
+      json:
+        schema: starci/deps-local@1
+        packages:
+          - name: "@starci/tsconfig"
+            folder: ${run}/pkg-landed/packages/tsconfig
   - name: an orphan holding uncommitted work
     git: [worktree, add, -q, -b, starci/stray, "${project}/worktrees/stray", HEAD]
   - write:
@@ -138,6 +151,12 @@ steps:
       exists:
         path: ${run}/pkg-landed
         present: false
+  - name: the removed package worktree's record entry now names the harness's own packages/tsconfig
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) || ':' || SUM(instr(json_extract(data_json, '$.healed[0].from'), 'pkg-landed') > 0 AND json_extract(data_json, '$.healed[0].to') LIKE '%/packages/tsconfig') FROM events WHERE kind = 'deps-local-healed'"
+        equals: ["1:1"]
   - assert:
       exists:
         path: ${project}/worktrees/stray

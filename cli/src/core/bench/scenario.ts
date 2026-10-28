@@ -110,7 +110,8 @@ const stepSchema = z.strictObject({
     /** Writes `content` (or a `generated` fixture) to a path of the scratch repository, or copies the file or folder `from` there (`${ops}` is the ops/ folder the CLI reads). */
     write: z.strictObject({ path: z.string(), content: z.string().optional(), generated: z.enum(GENERATED).optional(), crlf: z.boolean().optional(), from: z.string().optional() }).optional(),
     remove: z.string().optional(),
-    file: z.strictObject({ path: z.string(), content: z.string().optional(), yaml: z.unknown().optional(), crlf: z.boolean().optional() }).optional(),
+    /** Writes a file of the run folder (or an absolute path): `content` as text, or `yaml` or `json` serialized after its variables are expanded (a Windows path stays valid JSON). */
+    file: z.strictObject({ path: z.string(), content: z.string().optional(), yaml: z.unknown().optional(), json: z.unknown().optional(), crlf: z.boolean().optional() }).optional(),
     worker: z
         .strictObject({
             task: z.string(),

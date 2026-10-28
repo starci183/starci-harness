@@ -200,8 +200,11 @@ command plus its own, fewer than floor(logical cores / 2) may run, and none star
 (samples in `cpu_samples`) is above its ceiling; the reserve, estimates, per-kind timeouts, memory caps and seat floor are
 the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
 queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
-fails it. A verify or wave stopped by an install or setup out of time reaches no verdict (VERIFY_INFRA): no try is spent and
-the task is verified again. Each child runs below normal priority, a node tool under
+fails it. A verify or wave stopped by the harness reaches no verdict (VERIFY_INFRA, `assertNoInfraFailure` of
+`harness/clean-verify.ts`): an install or setup out of time, or an install red although the work changed no file an install
+reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
+(`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
+due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
 its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
 pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
 it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
@@ -262,7 +265,7 @@ unless the removal says `keepEffect`). `plan diff` prints the classification wit
 `workflowActions` gives the step and `kernel next` the same per-key actions for the current graph. A red or stuck task
 blocks its dependents and the workflow, naming the red checks; independent tasks keep going. A task the harness ended with no
 red of its own (`harnessCause` in `harness/revive.ts`: a wave red not proven its own, a launch Orca fenced or one whose worker
-never started its turn, a verify stopped by an install or setup out of time or by its lock's deadline, a done task returned
+never started its turn, a verify the harness stopped (VERIFY_INFRA) or its lock's deadline stopped, a done task returned
 `land-orphaned`) carries its node no
 more, so the node is ready and its next dispatch retries it at the same try, its last included (`tryAfter` in
 `harness/tasks.ts`, a `task-revived` event), up to `reviveMax` of [ops/liveness.yaml](../ops/liveness.yaml) per node, past
@@ -327,7 +330,11 @@ shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with 
 takes them from a package folder on this machine instead, the mechanism and its reasons in the doc comment of
 `core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
 before its launch (`seat start`), a clean verify's after its `npm ci`, a work tree's after its own (`deps source
---sync`). The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
+--sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
+the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
+event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals every project's record once it
+removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--from` names another
+folder. The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
 `@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
 (`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg handoff` records it in
 the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but

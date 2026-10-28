@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, relative, sep } from "node:path"
 import { captureGit, git, isAncestor, mainCheckout, nulPaths, samePath } from "../shared/git.js"
+import { describeHealed, healRecords } from "../core/deps/packages.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"
 import { opWorktreeOf, removeOpWorktree, removeTracked } from "./land.js"
 import { now, openExistingLedger, openMachine, projectDir } from "./ledger.js"
@@ -305,5 +306,10 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
         }
         return { ...entry, preserved, ...removal }
     })
-    return [...done, ...verify, ...retired]
+    // A removed package edit worktree may be the folder a project's local package record names: every record is healed to the
+    // harness's own packages/ (core/deps/packages.ts healRecord), so no install, sync or launch meets the vanished folder.
+    const healed = done.some((entry) => entry.kind === "package" && entry.removed) ? healRecords() : []
+    const note = healed.map((one) => `${one.repo}: ${one.healed.map(describeHealed).join("; ")}`).join("; ")
+    const noted = note === "" ? done : done.map((entry) => (entry.kind === "package" && entry.removed ? { ...entry, detail: `${entry.detail}; local package records healed: ${note}` } : entry))
+    return [...noted, ...verify, ...retired]
 }

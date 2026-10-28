@@ -5,8 +5,8 @@ import { loadStallRules } from "./stall.js"
 
 /**
  * Why the harness, not the task, ended a task: a wave red no file of it was proven to own (`wave-foreign`), a launch Orca fenced
- * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), a verify stopped by an install or setup
- * out of time (`verify-infra`) or by its lock's deadline (`verify-deadline`), or a done task whose work never landed, returned
+ * (`consumer-fenced`), a launch that never started its worker's turn (`launch-lost`), a verify the harness stopped (`verify-infra`,
+ * clean-verify.ts `assertNoInfraFailure`) or its lock's deadline stopped (`verify-deadline`), or a done task whose work never landed, returned
  * with that work preserved by `task verify --recover` (`land-orphaned`, core/task/verify.ts).
  */
 export type HarnessCause = "wave-foreign" | "consumer-fenced" | "launch-lost" | "verify-infra" | "verify-deadline" | "land-orphaned"

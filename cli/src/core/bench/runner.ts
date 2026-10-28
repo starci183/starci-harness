@@ -375,7 +375,7 @@ const boot = async (run: RunState, step: NonNullable<Step["boot"]>, label: strin
 const writeFiles = (run: RunState, step: Step): void => {
     if (step.file !== undefined) {
         const target = isAbsolute(expand(run, step.file.path)) ? expand(run, step.file.path) : join(run.dir, expand(run, step.file.path))
-        const content = step.file.content ?? stringify(deepExpand(run, step.file.yaml))
+        const content = step.file.content ?? (step.file.json === undefined ? stringify(deepExpand(run, step.file.yaml)) : `${JSON.stringify(deepExpand(run, step.file.json), null, 2)}\n`)
         writeText(target, expand(run, content), step.file.crlf === true)
     }
     if (step.write?.from !== undefined) cpSync(expand(run, step.write.from), inRepo(run, step.write.path), { recursive: true })
