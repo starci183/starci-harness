@@ -44,9 +44,9 @@ jobs:
         working-directory: app
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -86,14 +86,14 @@ jobs:
           done
 
       - name: Build desktop bundles
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         with:
           projectPath: app
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
 
       - name: Upload bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: starci-harness-${{ matrix.name }}
           path: ${{ matrix.bundles }}
