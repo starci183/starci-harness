@@ -18,7 +18,7 @@ src/
   main.ts                 builds the commander program for the tree of the working directory; prints the envelope
   registry.ts             every verb, core first, then each edition; which verbs a tree offers
   shared/                 verb, errors, output, tree, exec, git, role, secrets, workspace
-  harness/                ledger and host store, contracts, tasks, settle, router, workflow graph, seats, liveness, uat, settings
+  harness/                ledger and host store, contracts, tasks, settle, router, workflow graph, seats, liveness, uat, settings, secret loader
   core/<group>/<verb>.ts  verbs of both editions (the harness verbs among them)
   lite/<group>/<verb>.ts  verbs of lite apps
 ```
@@ -239,12 +239,19 @@ platforms are refused (`supervisor watch` in a terminal serves there). `host sta
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 
+**Host secrets.** `harness/secret-env.ts` is the one reader of a credential: `lookupSecret(key)` returns the key from the
+process environment, else from `secret.env` at the harness root (the folder above policy/; `STARCI_SECRET_ENV` replaces the
+path, and the bench points it at its run's own file), parsing dotenv lines (`KEY=VALUE`, `export`, quotes, `#` comments) and
+keeping no other key. It reads only the keys [policy/security.yaml](../policy/security.yaml) `secretKeys` lists and refuses any
+other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
+(`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.
+[secret.env.example](../secret.env.example) names every key the host's secret.env holds.
+
 **The owner's Telegram channel.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram
-([ops/telegram.yaml](../ops/telegram.yaml), `harness/telegram.ts`, `harness/telegram-bridge.ts`). The bot token is read by
-name from the process environment (`tokenVariable`, set by the owner in the user environment) and never from a file, since
-the harness opens no secret file ([policy/security.yaml](../policy/security.yaml) `neverRead`); a verb that would call the
-bot without it refuses `TELEGRAM_NOT_CONFIGURED`, naming the variable and where it is set, and every error text has the
-token replaced. `connect telegram discover-chat` reads the bot's updates once and stores the one private chat that wrote to
+([ops/telegram.yaml](../ops/telegram.yaml), `harness/telegram.ts`, `harness/telegram-bridge.ts`). The bot token
+(`tokenVariable`) comes from the secret loader above; a verb that would call the bot without it refuses
+`TELEGRAM_NOT_CONFIGURED`, naming the key and where it is set, `connect telegram status` reports its `source` (never its value),
+and every error text has the token replaced. `connect telegram discover-chat` reads the bot's updates once and stores the one private chat that wrote to
 it (`--chat` picks among several) in machine.sqlite `telegram_channel`, never in a repository; no fact older than that moment
 is sent. A notice sweep (`connect telegram notify`, every bridge cycle, and every `supervisor tick` once the token is set and the
 chat stored, its failure reported and never failing the tick) sends, oldest first and at most `sendPerMinute`,

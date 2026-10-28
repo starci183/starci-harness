@@ -11,7 +11,9 @@ sopsEnvelopes:
   default: allowed
   profiles:
     runtime: refused
-# Files the CLI never opens, in any gate: their presence is judged by name only.
+# Files no agent, tool or gate opens: their presence is judged by name only. The one reader is the CLI's secret loader
+# (cli/src/harness/secret-env.ts), which at run time reads a key `secretKeys` lists from the process environment, else from
+# secret.env at the harness root (its keys are named in secret.env.example), and returns that key alone.
 neverRead:
   - "**/.env"
   - "**/.env.*"
@@ -26,6 +28,9 @@ neverRead:
   - "**/.secrets/**"
   - "**/keys.txt"
   - "**/credentials.toml"
+# The keys the secret loader reads; it refuses any other (SECRET_KEY_UNLISTED). Only the runtime's policy lists them.
+secretKeys:
+  - TELEGRAM_BOT_TOKEN
 exceptions:
   - path: packages/eslint-canon-be/runtime/scripts/hfs/rules/secrets.mjs
     rule: assigned-secret

@@ -22,9 +22,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   (`cli/src/harness/supervisor.ts`, `cli/src/core/supervisor/driver.ts`).
 - **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
   every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the
-  owner's answer there becomes an owner request that wakes the Supervisor. The bot token stays in the owner's user
-  environment, read by name, never from a file ([cli/README.md](../../cli/README.md) "The owner's Telegram channel",
-  `cli/src/harness/telegram-bridge.ts`).
+  owner's answer there becomes an owner request that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's
+  Telegram channel", `cli/src/harness/telegram-bridge.ts`).
+- **Host credentials live in the harness's secret.env.** The owner keeps every host credential in `secret.env` at the harness
+  root, untracked; the committed [secret.env.example](../../secret.env.example) names its keys and where to get each. Agents
+  and tools never open it; the CLI's secret loader reads a key policy/security.yaml `secretKeys` lists, the environment
+  winning over the file ([cli/README.md](../../cli/README.md) "Host secrets", `cli/src/harness/secret-env.ts`).
 - **Project pattern.** `contexts/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.

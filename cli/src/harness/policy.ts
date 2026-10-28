@@ -132,6 +132,7 @@ const securitySchema = z.object({
     schema: z.literal("starci/security-policy@1"),
     sopsEnvelopes: z.object({ default: envelopeMode, profiles: z.record(z.string(), envelopeMode).optional() }),
     neverRead: z.array(z.string().min(1)),
+    secretKeys: z.array(z.string().regex(/^[A-Z_][A-Z0-9_]*$/)),
     exceptions: z.array(securityException),
 })
 
