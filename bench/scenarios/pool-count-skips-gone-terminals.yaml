@@ -3,8 +3,9 @@ id: pool-count-skips-gone-terminals
 group: orca
 title: "seats whose terminals Orca no longer lists fill the claude pool on paper: once the tick records the terminal list they stop counting and the Kernel routes to Claude again"
 inject: >-
-  six open claude worker seats from an hour ago, each recording a terminal Orca does not list (the state a crashed host or an
-  abandoned project leaves), so the claude pool reads full
+  six open claude Kernel seats from an hour ago, each recording a terminal Orca does not list (the state a crashed host or an
+  abandoned project leaves), so the claude pool reads full even for a coordinator pick: its coordinatorReserve is spent and
+  the pool is past its maxParallel
 expect: >-
   before any tick the pool counts them and the Kernel route falls to codex; supervisor tick records Orca's full terminal list,
   and from then on the pool count leaves those seats out, so route explain picks claude for the Kernel, by order
@@ -39,17 +40,19 @@ steps:
     boot:
       file: ${run}/wf.yaml
       workflow: pc
-  - name: six claude seats whose terminals are long gone
+  # Kernel seats, not worker seats: a coordinator pick takes a reserved slot whatever the workers hold, so only coordinator
+  # seats past the reserve make the pool full for the Kernel route.
+  - name: six claude Kernel seats whose terminals are long gone
     sql:
       db: ledger
       exec: >-
         INSERT INTO seats (id, role, agent, model, status, started_at, terminal) VALUES
-        ('s-g1', 'worker', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-1'),
-        ('s-g2', 'worker', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-2'),
-        ('s-g3', 'worker', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-3'),
-        ('s-g4', 'worker', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-4'),
-        ('s-g5', 'worker', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-5'),
-        ('s-g6', 'worker', 'claude', 'claude-opus-5-5', 'launch-unknown', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-6')
+        ('s-g1', 'kernel', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-1'),
+        ('s-g2', 'kernel', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-2'),
+        ('s-g3', 'kernel', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-3'),
+        ('s-g4', 'kernel', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-4'),
+        ('s-g5', 'kernel', 'claude', 'claude-opus-5-5', 'ready', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-5'),
+        ('s-g6', 'kernel', 'claude', 'claude-opus-5-5', 'launch-unknown', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 minutes'), 'term-gone-6')
   - name: before a tick the gone seats fill the claude pool
     starci: [route, explain, --label, kernel]
     save:
