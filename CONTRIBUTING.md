@@ -193,11 +193,16 @@ block the next push.
 
 Apps consume the harness packages from this checkout (`starci deps source --local`), so a change is usable the moment it
 is coded; reaching npm is a separate step CI takes alone. Every push to main whose plan affects a package or the CLI
-runs the `publish` job of [.github/workflows/ci.yml](.github/workflows/ci.yml) once the `ci` job is green:
+runs the two publish jobs of [.github/workflows/ci.yml](.github/workflows/ci.yml), which never wait for the `ci` job:
 `starci release publish --base <the plan's base>` judges the plan, then publishes in two phases every package under
 `packages/` and then the CLI (`starci-harness`, from `cli/`) whose version is not on npm yet, a dependency before its
 dependent, skipping a private one and a version already on npm, with npm provenance, under the dist-tag a prerelease version names
-(`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). Runs queue and never overlap, and a re-run publishes only
+(`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). Each phase waits only for its own jobs. A package
+(`publish-packages`) publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
+`package` job of every folder of its build order the plan tested, itself and the siblings it needs; a due package any of
+them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mjs](.github/scripts/publish-gate.mjs)).
+The CLI (`publish-cli`) publishes after it, once the harness job and every gate are green. The harness bench, Sonar and
+the app job never hold a package; Sonar and the app job never hold the CLI. Runs of one phase queue and never overlap, and a re-run publishes only
 what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
@@ -207,8 +212,8 @@ same run. A change to a package therefore raises the version in its `package.jso
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves (the folder's or an older one), every CI job
 installs it with the siblings of the commit packed over those copies ([.github/actions/cli-install](.github/actions/cli-install/action.yml)),
-and the publish job moves its requirements and lockfile to the sibling versions the first phase published before
-publishing it. `starci release publish --publish` from a
+and `publish-cli` moves its requirements and lockfile to the sibling versions the first phase published before
+publishing it, refusing while a sibling it requires is held. `starci release publish --publish` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
 
 The job reads one repository secret, `NPM_TOKEN`, handed to npm alone in the publish step: an npm granular access token

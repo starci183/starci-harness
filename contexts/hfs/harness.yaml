@@ -179,8 +179,13 @@ slots:
   - id: github.ci
     path: ".github/workflows/ci.yml"
     presence: required
-    holds: the CI that plans the affected packages, runs the gates, those packages' specs, the harness and the app jobs, and publishes every due version on a green push to main
+    holds: the CI that plans the affected packages, runs the gates, those packages' specs, the harness and the app jobs, and on a push to main publishes every due version once its own jobs are green
     rule: CONTRIB-3; CONTRIB-20
+  - id: github.scripts
+    path: ".github/scripts/*.mjs"
+    presence: optional
+    holds: scripts a CI job runs (the publish gate that picks the packages whose own jobs are green)
+    rule: CONTRIB-20
   - id: github.actions
     path: ".github/actions/*/action.yml"
     presence: optional

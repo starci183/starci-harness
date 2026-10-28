@@ -134,9 +134,9 @@ jobs run. Then, in parallel: one `gates` job per light gate over the whole tree 
 and itself, its declarations name `.js`, its specs), the `harness` job when `cli/`, `contexts/`, `ops/`, `policy/`, `bench/`
 or a package the CLI requires changed (the CLI's typecheck, lint and build, and the bench), the `app` job when the desktop
 app is affected, and the Sonar new-code gate; a change under `.github/`, a manual run or an unreadable base checks
-everything. The `ci` job is the one required check, green when every job the plan needed passed. Once it is green on a
-push to main that affects a package or the CLI, the `publish` job publishes every version not yet on npm
-([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag (which must equal the
+everything. The `ci` job is the one required check, green when every job the plan needed passed. On a push to main that
+affects a package or the CLI, the `publish-packages` and `publish-cli` jobs publish every version not yet on npm once its
+own jobs are green, without waiting for `ci` ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag (which must equal the
 app's version) and publishes them, with `SHA256SUMS.txt`, on a GitHub Release; a manual run only builds them.
 
 ## License
