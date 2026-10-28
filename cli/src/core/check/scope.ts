@@ -13,7 +13,7 @@ import { evidenceTail } from "../../shared/output.js"
 import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { CONFIG_FILES } from "./canon.js"
-import { NO_COMPOSITION, judgeDeferred, taskComposition, workflowComposition } from "./composition.js"
+import { NO_COMPOSITION, judgeDeferred, taskComposition, waveComposition, workflowComposition } from "./composition.js"
 import type { Composition } from "./composition.js"
 import { braceVariants } from "./sonar-scope.js"
 
@@ -46,6 +46,8 @@ export interface Scope {
 export interface Judging {
     readonly task?: string
     readonly workflow?: string
+    /** A wave's tasks: the union they landed is judged under each one's deferral and the obligations of the composers among them. */
+    readonly wave?: readonly string[]
 }
 
 /** The result of one check step on one package. */
@@ -105,7 +107,8 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
  * no package, so nothing runs. Judging as a task, a changed file counts only when the task changed it since its work began, so
  * another task's dirt in a shared checkout neither is judged nor widens the scope, and the tracked files of the modules whose
  * composition the task answers for are judged too; judging a workflow's final verify, the judged files are those modules alone.
- * With `within`, a changed file counts only under `paths` (a wave hands the files its tasks landed).
+ * With `within`, a changed file counts only under `paths` (a wave hands the files its tasks landed); judging a wave, its tasks'
+ * deferrals and the obligations of the composers among them apply to that union (composition.ts waveComposition).
  */
 export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}, within = false): Promise<Scope> => {
     const root = await repositoryRoot(cwd)
@@ -119,7 +122,14 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     const diff = (await changedFiles(root, base)).filter((file) => !within || underPaths(file, paths))
     const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
     const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
-    const composition = judging.workflow !== undefined ? workflowComposition(root, judging.workflow) : judging.task === undefined ? NO_COMPOSITION : taskComposition(root, judging.task)
+    const composition =
+        judging.workflow !== undefined
+            ? workflowComposition(root, judging.workflow)
+            : judging.task !== undefined
+              ? taskComposition(root, judging.task)
+              : judging.wave !== undefined && judging.wave.length > 0
+                ? waveComposition(root, judging.wave)
+                : NO_COMPOSITION
     const obligated = await trackedUnder(root, composition.obligations.flatMap((each) => each.paths))
     const judged = judging.workflow !== undefined ? [] : changed.length === 0 ? await trackedUnder(root, paths) : changed
     const files = [...new Set([...judged, ...obligated])]

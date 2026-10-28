@@ -43,6 +43,8 @@ export interface CheckPlace {
     readonly source?: string
     /** A scoped `starci check` judges only the changed files under the paths it is handed (`--within`): a wave's landed union. */
     readonly within?: boolean
+    /** The wave's tasks a scoped `starci check run` judges for (`--wave`): their composition deferrals and obligations. */
+    readonly wave?: readonly string[]
 }
 
 const PROBE_TIMEOUT_MS = 10_000
@@ -344,7 +346,9 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
 const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], place: CheckPlace, allowPaths: readonly string[]): Promise<CheckOutcome> => {
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
     // check run judges as the task: its own changes since its work began, its deferral and its obligations (core/check/scope.ts).
-    const asTask = place.taskId === undefined || args[1] !== "run" || withBase.includes("--task") ? withBase : [...withBase, "--task", place.taskId]
+    // A wave's run judges as its tasks together: their deferrals and the modules their composers answer for.
+    const judging = args[1] !== "run" || withBase.includes("--task") || withBase.includes("--wave") ? [] : place.taskId !== undefined ? ["--task", place.taskId] : place.wave !== undefined && place.wave.length > 0 ? ["--wave", place.wave.join(",")] : []
+    const asTask = judging.length === 0 ? withBase : withBase.includes("--") ? [...withBase.slice(0, withBase.indexOf("--")), ...judging, ...withBase.slice(withBase.indexOf("--"))] : [...withBase, ...judging]
     const rest = asTask.indexOf("--")
     const within = place.within !== true || asTask.includes("--within") ? asTask : rest < 0 ? [...asTask, "--within"] : [...asTask.slice(0, rest), "--within", ...asTask.slice(rest)]
     const withPaths = within.includes("--") ? within : [...within, "--", ...allowPaths]

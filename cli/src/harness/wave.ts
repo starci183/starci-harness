@@ -295,7 +295,9 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
                     // A task that landed nothing proves the tracked files under its own allowPaths: an empty diff (head..head) over them.
                     const landedNothing = each.task.settleCommit === null
                     const scope = check.check.kind === "starci" && !landedNothing ? scoped : each.task.contract
-                    const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir, within: !landedNothing && landed.length > 0 } : place(each.task, each.parent)
+                    // It judges as the wave's tasks (`--wave`): each one's composition deferral and its composers' obligations hold on the union.
+                    const wave = landedNothing ? [each.task.id] : tasks.map((one) => one.task.id)
+                    const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir, within: !landedNothing && landed.length > 0, wave } : place(each.task, each.parent)
                     const outcome = await runCheck(check, scope, at)
                     ran.set(key, outcome)
                     return outcome

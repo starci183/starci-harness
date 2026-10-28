@@ -73,6 +73,21 @@ export const taskComposition = (root: string, taskId: string): Composition =>
         NO_COMPOSITION,
     )
 
+/**
+ * The composition a wave's check applies to the union its tasks landed: each task's deferral on its own allowPaths, except a
+ * producer whose composer is among the wave's tasks (that composer answers for the module now), and every module those
+ * composers answer for, judged with no deferral.
+ */
+export const waveComposition = (root: string, taskIds: readonly string[]): Composition => {
+    const each = taskIds.map((taskId) => taskComposition(root, taskId))
+    const obligations = [...new Map(each.flatMap((one) => one.obligations).map((obligation) => [obligation.producer, obligation])).values()]
+    const composers = new Set(obligations.map((obligation) => obligation.to))
+    const deferrals = each.flatMap((one) => (one.deferral === null || composers.has(one.deferral.to) ? [] : [one.deferral]))
+    const first = deferrals[0]
+    const deferral = first === undefined ? null : { to: [...new Set(deferrals.map((one) => one.to))].join(","), paths: [...new Set(deferrals.flatMap((one) => one.paths))], rules: first.rules }
+    return { deferral, obligations }
+}
+
 /** Every module of a workflow whose composition rules a task deferred: what the workflow's final verify judges with no deferral. */
 export const workflowComposition = (root: string, workflowId: string): Composition => withLedger(root, (db) => ({ deferral: null, obligations: obligationsOf(db, workflowId) }), NO_COMPOSITION)
 
