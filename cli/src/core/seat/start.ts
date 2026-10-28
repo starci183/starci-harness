@@ -16,6 +16,7 @@ import {
     closeWorker,
     dispatchOfFailure,
     effectiveLaunch,
+    awaitWorktree,
     isSelectorNotFound,
     locateOrca,
     orcaArgv,
@@ -170,8 +171,8 @@ type Launched =
     | { readonly kind: "unknown"; readonly record: LaunchRecord; readonly runId: string | null; readonly dispatchId: string | null; readonly terminal: string | null; readonly error: Refusal }
 
 /**
- * Runs worker-start; when Orca answers selector_not_found (it does not know the repository yet) the repository is registered
- * (`orca repo add`) and the start tried once more under a request id of its own, recorded on the seat first so a resume
+ * Runs worker-start; when Orca answers selector_not_found (it does not know the repository or the new worktree yet) the repository is registered
+ * (`orca repo add`), Orca is given time to discover the worktree, and the start tried once more under a request id of its own, recorded on the seat first so a resume
  * replays the retry. Returns the record the launch ran under.
  */
 const startWorker = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, record: LaunchRecord, runId: string, root: string, cwd: string): Promise<{ readonly record: LaunchRecord; readonly started: WorkerStarted }> => {
@@ -181,6 +182,7 @@ const startWorker = async (db: DatabaseSync, binary: OrcaBinary, seat: SeatRow, 
         if (!isSelectorNotFound(error) || record.start.retryRequest === requestIdOf("worker-start-after-repo-add", record.attempt)) throw error
         const repository = await repositoryOfSelector(record.start.worktree, root)
         await repoAdd(binary, repository, cwd)
+        await awaitWorktree(binary, record.start.worktree, cwd)
         const retried: LaunchRecord = { ...record, start: { ...record.start, retryRequest: requestIdOf("worker-start-after-repo-add", record.attempt) } }
         recordSeatLaunch(db, seat.id, retried, retried.start.retryRequest)
         recordEvent(db, "seat-repo-added", seat.taskId, { seat: seat.id, repository, request: retried.start.retryRequest })

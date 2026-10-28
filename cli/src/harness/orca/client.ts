@@ -391,6 +391,27 @@ export const repoAdd = async (binary: OrcaBinary, path: string, cwd: string): Pr
     await callOrcaArgv(binary, orcaToolArgv("repo", "add", { path }), "orca repo add", z.unknown(), cwd, ORCA_TIMEOUT_MS)
 }
 
+/** How long a freshly made git worktree may take to appear in Orca's worktree list after `repo add`. */
+const WORKTREE_DISCOVERY_MS = 30_000
+const WORKTREE_DISCOVERY_POLL_MS = 1_000
+
+const pause = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+
+/**
+ * Waits until Orca resolves a worktree selector (`orca worktree show`): a git worktree the harness just made is discovered by
+ * Orca a moment later, and a worker-start before that is refused selector_not_found. Gives up silently at the deadline, so the
+ * caller's own retry reports Orca's refusal.
+ */
+export const awaitWorktree = async (binary: OrcaBinary, selector: string, cwd: string, deadline = Date.now() + WORKTREE_DISCOVERY_MS): Promise<void> => {
+    const known = await callOrcaArgv(binary, orcaToolArgv("worktree", "show", { worktree: selector }), "orca worktree show", z.unknown(), cwd, ORCA_TIMEOUT_MS).then(
+        () => true,
+        () => false,
+    )
+    if (known || Date.now() >= deadline) return
+    await pause(WORKTREE_DISCOVERY_POLL_MS)
+    await awaitWorktree(binary, selector, cwd, deadline)
+}
+
 /** True for an OrcaFailure saying a worktree selector resolved to nothing: Orca does not know the repository yet (`repo add` fixes it). */
 export const isSelectorNotFound = (error: unknown): boolean => error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found"
 

@@ -9,7 +9,7 @@ import { coordinatorLaunch } from "./coordinator-launch.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { now, openLedger, projectDir } from "./ledger.js"
 import { inTransaction } from "./leases.js"
-import { closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
+import { awaitWorktree, closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import type { RouteMember } from "./router.js"
@@ -243,6 +243,7 @@ export const launchKernelSeat = async (root: string, cwd: string, seatId: string
             } catch (error: unknown) {
                 if (!isSelectorNotFound(error)) throw error
                 await repoAdd(binary, await repositoryOfSelector(input.worktree, root), cwd)
+                await awaitWorktree(binary, input.worktree, cwd)
                 return workerStart(binary, input, cwd)
             }
         })
