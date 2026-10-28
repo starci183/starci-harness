@@ -8,7 +8,7 @@ import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { testWorkerArgs, withHeavySlot } from "./heavy.js"
-import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
+import { changedCoverageScope, runsJest, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
@@ -369,14 +369,14 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
 
 /**
  * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. With
- * `coverage: changed` a jest run's coverage is narrowed to the task's changed logic files (harness/coverage-scope.ts), and the
- * detail opens with the files it judged.
+ * `coverage: changed` a command that runs jest (`runsJest`) has its coverage narrowed to the task's changed logic files
+ * (harness/coverage-scope.ts), and the detail opens with the files it judged; any other command runs as named.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
     const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        const scope = primitive.coverage === "changed" ? await changedCoverageScope(place, allowPaths) : undefined
+        const scope = primitive.coverage === "changed" && runsJest(named, place.cwd) ? await changedCoverageScope(place, allowPaths) : undefined
         const argv = scope === undefined ? named : withCoverageArgs(named, scope)
         const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await heavyCommand(argv, place.cwd, options))
         return scope === undefined ? judged : { ...judged, detail: `${scope.detail}\n${judged.detail}` }

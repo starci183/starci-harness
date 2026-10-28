@@ -6,7 +6,7 @@ import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
-import { ownChanges } from "../../harness/baseline.js"
+import { opForkOf, ownChanges } from "../../harness/baseline.js"
 import { underPaths } from "../../harness/contract.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
@@ -108,7 +108,9 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
  */
 export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}): Promise<Scope> => {
     const root = await repositoryRoot(cwd)
-    const base = baseFlag ?? ((await refExists(root, "origin/main")) ? "origin/main" : "HEAD")
+    // A task in its Op worktree is judged on its own diff: from the workflow head its worktree was cut from, never from main.
+    const fork = baseFlag !== undefined || judging.task === undefined ? undefined : await opForkOf(root, judging.task)
+    const base = baseFlag ?? fork ?? ((await refExists(root, "origin/main")) ? "origin/main" : "HEAD")
     if (!(await refExists(root, base))) throw new Refusal("CHECK_BASE_UNKNOWN", `the base ${base} does not exist here`)
     const packages = listPackages(root)
     if (packages.length === 0) throw new Refusal("CHECK_NO_PACKAGE", `no package.json with a name and version under ${root}`)

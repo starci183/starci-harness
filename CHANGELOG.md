@@ -6,7 +6,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
-### Added
+### Fixed
+
+- **A task in its Op worktree is judged on its own diff.** `starci check run --task` and the worker's `task verify --contract`
+  replay diff from the Op worktree's fork (the workflow head it was cut from), never from `origin/main`, so lint, typecheck
+  and the changed-file coverage no longer judge what earlier tasks left on the workflow branch (`LINT_CONFIG_MISSING` and
+  `TYPECHECK_CONFIG_MISSING` on `.starciwork` files, whole-suite coverage thresholds). A tests-pass run that changed no source
+  file judges no coverage, and coverage arguments go only to a command that runs jest (`jest`, `npx jest`, or a package
+  script that calls jest); any other command, such as `git diff --no-index`, runs as named.
 
 - **`starci app add` takes every front-end unit.** The noun names `page`, `overlay` and `layout` beside `block`,
   `composite`, `branch` and `leaf`, and the verb hands @starci/hfs `--kind modal|drawer` and `--form` (an overlay) and
