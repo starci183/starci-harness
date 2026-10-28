@@ -1,5 +1,5 @@
 import { AiRouterError } from "./errors.ts"
-import type { Capability, CallOptions, ModelConfig, ModelPolicy, PoolConfig } from "./types.ts"
+import type { Capability, CallOptions, CatalogModel, ModelConfig, ModelPolicy, PoolConfig, RouterCatalog } from "./types.ts"
 
 /** The capabilities of a model that declares none. */
 export const DEFAULT_CAPABILITIES: readonly Capability[] = ["chat", "streaming", "tools", "json"]
@@ -164,5 +164,44 @@ export function resolvePolicy<P extends string>(config: PoolConfig<P>, options: 
         maxCost: merged.budget?.maxCost ?? null,
         providers: merged.providers === undefined ? null : new Set(merged.providers),
         require: merged.require ?? [],
+    }
+}
+
+function fallbacksOf(policy: ModelPolicy): readonly string[] {
+    return policy.allowFallback === false ? [] : (policy.fallbacks ?? [])
+}
+
+/** Lists the profiles and models of a validated pool; a model id served by several providers is one entry. */
+export function buildCatalog(config: PoolConfig): RouterCatalog {
+    const models = new Map<string, { aliases: Set<string>; providers: string[]; capabilities: Set<Capability>; contextWindow?: number; cost?: ModelConfig["cost"] }>()
+    for (const provider of config.providers) {
+        for (const model of provider.models) {
+            let entry = models.get(model.id)
+            if (entry === undefined) {
+                entry = { aliases: new Set(), providers: [], capabilities: new Set() }
+                models.set(model.id, entry)
+            }
+            for (const alias of model.aliases ?? []) entry.aliases.add(alias)
+            entry.providers.push(provider.id)
+            for (const capability of model.capabilities ?? DEFAULT_CAPABILITIES) entry.capabilities.add(capability)
+            if (entry.contextWindow === undefined && model.contextWindow !== undefined) entry.contextWindow = model.contextWindow
+            if (entry.cost === undefined && model.cost !== undefined) entry.cost = model.cost
+        }
+    }
+    const defaults = config.defaults ?? {}
+    return {
+        defaults: { ...(defaults.model === undefined ? {} : { model: defaults.model }), fallbacks: fallbacksOf(defaults) },
+        profiles: Object.entries<ModelPolicy>(config.profiles ?? {}).map(([name, policy]) => {
+            const merged: ModelPolicy = { ...defaults, ...policy }
+            return { name, ...(merged.model === undefined ? {} : { model: merged.model }), fallbacks: fallbacksOf(merged) }
+        }),
+        models: [...models].map(([id, entry]): CatalogModel => ({
+            id,
+            aliases: [...entry.aliases],
+            providers: entry.providers,
+            capabilities: [...entry.capabilities],
+            ...(entry.contextWindow === undefined ? {} : { contextWindow: entry.contextWindow }),
+            ...(entry.cost === undefined ? {} : { cost: entry.cost }),
+        })),
     }
 }

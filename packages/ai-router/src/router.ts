@@ -1,4 +1,4 @@
-import { resolvePolicy, resolveSettings, validateConfig } from "./config.ts"
+import { buildCatalog, resolvePolicy, resolveSettings, validateConfig } from "./config.ts"
 import type { ResolvedPolicy, Settings } from "./config.ts"
 import { AiRouterError, classifyProviderError, classifyStatus, isRetryable, scrub } from "./errors.ts"
 import type { AttemptFailure } from "./errors.ts"
@@ -250,6 +250,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
     const state = new PoolState(config.providers, settings, config.store ?? new MemoryStateStore(), emitter)
     const fetchImpl: FetchLike = config.fetch ?? ((input, init) => fetch(input, init))
     const random = config.random ?? Math.random
+    const catalog = buildCatalog(config)
 
     // The policy is resolved at once, so a bad profile or model throws from the call itself; the clock starts at start().
     function prepare(operation: Operation, model: string | undefined, options: CallOptions<P>, need: (policy: ResolvedPolicy) => Need): { requestId: string; start: () => Call } {
@@ -590,6 +591,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             }))
             return { ...value, routing }
         },
+        catalog: () => catalog,
         health: () => state.health(),
         stats: () => state.stats(),
         on: (event, handler) => emitter.on(event, handler),

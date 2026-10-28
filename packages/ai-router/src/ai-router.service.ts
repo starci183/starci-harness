@@ -9,6 +9,7 @@ import type {
     EmbeddingsResponse,
     HealthSnapshot,
     ResetTarget,
+    RouterCatalog,
     RouterEvents,
     StatsSnapshot,
 } from "./types.ts"
@@ -76,6 +77,11 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
     /** Closes breakers, re-enables keys and clears headroom for the target (everything by default). */
     reset(target?: ResetTarget): Promise<void> {
         return this.router.reset(target)
+    }
+
+    /** Lists the pool's profiles and models by name. */
+    catalog(): RouterCatalog {
+        return this.router.catalog()
     }
 
     /** Aborts every call still in flight through this service and releases its handlers. */

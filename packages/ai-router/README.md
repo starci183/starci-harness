@@ -1,13 +1,21 @@
 # @starci/ai-router
 
-A NestJS module that routes OpenAI-compatible calls across a pool. Register many keys, many models and many providers
-once at the app root, inject `AiRouterService`, and call `chat`, `stream` and `embeddings`: the router picks a healthy
-key for each attempt, backs off what is failing, honours rate limits, retries on a different key or provider, falls
-back to another model when you allow it, and tells you what it did without ever exposing a key or a prompt.
+A router for OpenAI-compatible calls across a pool of keys, models and providers, usable three ways over one engine:
 
-- A Nest package: `@nestjs/common` and `@nestjs/core` 11 or 12, and `reflect-metadata`, are peer dependencies your app
-  already has. No other runtime dependency: `fetch`, `AbortController` and `ReadableStream`. ESM, typed, Node 20 or
-  newer.
+- **as a gateway service** (`run.js serve`): an OpenAI-compatible HTTP endpoint (`/v1/chat/completions`, streaming
+  included, `/v1/embeddings`, `/v1/models`) with its own virtual API keys, per-key quotas and usage accounting, so any
+  app (LangChain, an OpenAI SDK, curl, a non-Node service) uses the pool by pointing its base URL at it;
+- **as a NestJS module**: register the pool once at the app root, inject `AiRouterService`, and call `chat`, `stream`
+  and `embeddings`; `AiRouterGatewayModule` hosts the gateway in the same process;
+- **as a plain Node library**: `createRouter(config)` from `@starci/ai-router/gateway`, with no Nest at all.
+
+The router picks a healthy key for each attempt, backs off what is failing, honours rate limits, retries on a different
+key or provider, falls back to another model when you allow it, and tells you what it did without ever exposing a key or
+a prompt.
+
+- ESM, typed, Node 20 or newer (the durable key store needs Node 22.13 or newer for `node:sqlite`). One runtime
+  dependency, `yaml`, for the config file. `@nestjs/common`, `@nestjs/core` (11 or 12) and `reflect-metadata` are
+  optional peer dependencies: the root entry needs them, `@starci/ai-router/gateway`, `@starci/ai-router/cli` and the `run.js` process entry do not.
 - OpenAI chat-completions and embeddings shapes in and out, so any OpenAI-compatible endpoint (OpenAI, Azure OpenAI
   behind a compatible gateway, OpenRouter, Groq, Together, DeepSeek, vLLM, Ollama, LiteLLM...) is a provider.
 - Keys are references (an environment variable name or a resolver function), read at each attempt and named by alias
@@ -17,16 +25,221 @@ back to another model when you allow it, and tells you what it did without ever 
 
 One key hits its rate limit, another is revoked, a provider has a bad five minutes, and a model is briefly overloaded.
 Hand-written retry loops get each of those slightly wrong: they retry a 400, hammer a key that answered 401, ignore
-`retry-after`, or retry the same overloaded key. This package owns that loop once, as a Nest capability, with a testing
-module to prove your use of it.
+`retry-after`, or retry the same overloaded key. This package owns that loop once, behind one gateway every app can
+call, or as a Nest capability with a testing module to prove your use of it.
 
 ## Install
 
 ```sh
-npm install @starci/ai-router @nestjs/common @nestjs/core reflect-metadata
+npm install @starci/ai-router                                          # the gateway and plain Node
+npm install @starci/ai-router @nestjs/common @nestjs/core reflect-metadata  # in a Nest app
 ```
 
-## Register
+## Run it as a gateway
+
+One process (one container) holds the pool, the virtual keys and the admin API. The package declares no `bin` (the
+harness has one CLI); the process entry is `dist/gateway/run.js`, and `main(argv, io)` from `@starci/ai-router/cli` runs
+the same commands in process:
+
+```sh
+node node_modules/@starci/ai-router/dist/gateway/run.js serve --config pool.yaml
+# {"listening":"http://0.0.0.0:8080"}
+```
+
+### The config file
+
+YAML (or JSON, by the `.json` extension). It is the pool of the [Configuration reference](#configuration-reference) plus
+a `gateway` section; every secret is a reference by name, `{ env: NAME }` or `{ file: path }` (a mounted Docker or
+Kubernetes secret, re-read at each attempt so rotation needs no restart). A field that would hold a secret's value
+(`apiKey`, `value`, `token`, ...) or a provider header that would carry one (`authorization`, `x-api-key`, ...) is
+refused when the file loads, as is any unknown field.
+
+```yaml
+gateway:
+  port: 8080                     # default 8080
+  host: 0.0.0.0                  # default 127.0.0.1; 0.0.0.0 in a container
+  adminToken: { env: AI_ROUTER_ADMIN_TOKEN }   # absent: the admin API is off
+  keyStore: { type: sqlite, path: /data/keys.sqlite }   # or { type: memory }; a relative path is from this file
+  maxBodyBytes: 4194304          # default 4 MiB
+providers:
+  - id: openai
+    baseUrl: https://api.openai.com/v1
+    keys:
+      - { alias: team-a, env: OPENAI_KEY_A }
+      - { alias: team-b, file: /run/secrets/openai_key_b, maxConcurrency: 8 }
+    models:
+      - { id: gpt-4o-mini, aliases: [fast], cost: { input: 0.15, output: 0.6 } }
+      - { id: gpt-4o, aliases: [smart], cost: { input: 2.5, output: 10 } }
+      - { id: text-embedding-3-small, capabilities: [embeddings] }
+  - id: openrouter
+    baseUrl: https://openrouter.ai/api/v1
+    keys: [{ alias: or-1, env: OPENROUTER_KEY }]
+    models: [{ id: openai/gpt-4o-mini, aliases: [fast] }]
+defaults: { fallbacks: [smart], deadlineMs: 60000 }
+profiles:
+  lesson: { model: fast, fallbacks: [smart] }
+  grading: { model: smart, allowFallback: false, maxAttempts: 3 }
+```
+
+### Routes
+
+| route | auth | does |
+|---|---|---|
+| `POST /v1/chat/completions` | virtual key | a chat completion; `stream: true` answers OpenAI `chat.completion.chunk` events over SSE ending with `data: [DONE]` |
+| `POST /v1/embeddings` | virtual key | an embeddings response |
+| `GET /v1/models`, `GET /v1/models/{id}` | virtual key | the profiles and pool models (ids and aliases) this key may call |
+| `GET /health` | none; the admin token adds the pool's breakers and keys | `{ "status": "ok" }`, or `degraded` when no provider has a usable key |
+| `/admin/keys...` | admin token | the [admin API](#admin-api) |
+
+A request's `model` names a profile (`lesson`) or a pool model by id or alias (`gpt-4o-mini`, `fast`); a profile wins
+when a name is both. A profile call routes by the profile's policy; a direct model call falls back only to the pool
+defaults' fallbacks that the key may call itself. The answer is the provider's OpenAI body without the router's
+`routing`; the response carries `x-request-id`, and a unary one `x-ai-router-model` (the model that answered) and
+`x-ai-router-attempts`. For a stream the gateway always asks the provider for usage (for accounting) and forwards the
+usage chunk only when the client set `stream_options.include_usage`. Nothing is sent before the first chunk, so a pool
+failure before the first token is an ordinary error response; after it, the stream ends with an OpenAI error event.
+
+Errors are OpenAI error objects, `{ "error": { "message", "type", "param", "code" } }`:
+
+| status | code | when |
+|---|---|---|
+| 400 | `invalid_json`, `invalid_request`, `missing_model`, `model_not_supported` | a body the gateway cannot route |
+| 401 | `missing_api_key`, `invalid_api_key` | no key, an unknown, revoked or disabled key |
+| 403 | `model_not_allowed` | a profile or model the key is not bound to |
+| 404 | `model_not_found`, `not_found` | a name the pool does not serve, an unknown route |
+| 413 | `request_too_large` | a body past `maxBodyBytes` |
+| 429 | `requests_per_minute_exceeded`, `tokens_per_day_exceeded`, `cost_per_day_exceeded`, `cost_per_month_exceeded` | the key's quota, with `Retry-After` |
+| 4xx | `upstream_invalid_request` | the provider refused the request (its status and message, e.g. a context-length error) |
+| 502 | `upstream_error`, `pool_auth_failed` | every attempt failed upstream, or no upstream key was accepted |
+| 503 | `pool_unavailable`, `pool_rate_limited` | no lane can serve it, or every key is rate limited (`Retry-After` when known) |
+| 504 | `pool_timeout` | the policy's deadline passed |
+
+### Virtual keys
+
+The gateway issues its own keys, `sk-starci-<label>-<48 hex>`, and stores only their SHA-256: the secret is shown once,
+when the key is created or rotated, and never again. Each key is bound to:
+
+| field | meaning | default |
+|---|---|---|
+| `label` | lowercase letters, digits, `_`; part of the secret | required |
+| `owner` | free text naming who holds it | none |
+| `profiles` | profile names it may call, or `["*"]` | `[]` |
+| `models` | pool model ids or aliases it may call directly, or `["*"]` | `[]` (at least one profile or model) |
+| `allowFallback` | `false` pins every call to the profile's or named model | `true` |
+| `quota.requestsPerMinute` | requests per UTC minute | none |
+| `quota.tokensPerDay` | prompt plus completion tokens per UTC day | none |
+| `quota.costPerDay`, `quota.costPerMonth` | estimated cost per UTC day or month, from usage and the model's `cost` (a model without one counts 0) | none |
+| `enabled` | a disabled key answers 401 until enabled | `true` |
+
+Tokens and cost are counted after a call, so a quota stops the request after the one that crossed it. Every request a
+key makes is accounted per UTC day: requests, successes, failures, prompt and completion tokens, estimated cost, summed
+latency and the outcomes (`success`, `error:<class>`, `rejected:<code>`). No prompt, response or end-user identifier is
+stored.
+
+Keys live in a key store. `{ type: memory }` loses them on restart; `{ type: sqlite, path }` is the durable store
+(`node:sqlite`, WAL, several processes may share the file). Another database implements the exported `KeyStore`
+interface; `KEY_STORE_SCHEMA` is the reference schema (it carries over to Postgres with `BIGINT` times,
+`DOUBLE PRECISION` cost and `JSONB` lists).
+
+### Admin API
+
+Guarded by `Authorization: Bearer <admin token>` (403 `admin_disabled` when no token is configured).
+
+| route | does |
+|---|---|
+| `POST /admin/keys` | create from a key spec; 201 `{ key, secret }` |
+| `GET /admin/keys` | list (never a secret or hash) |
+| `GET /admin/keys/{id}`, `PATCH /admin/keys/{id}` | read, or change bindings (`owner`, `profiles`, `models`, `allowFallback`, `quota`, `enabled`) |
+| `POST /admin/keys/{id}/revoke` | revoke for good |
+| `POST /admin/keys/{id}/rotate` | new secret, same id, bindings and usage; 200 `{ key, secret }` |
+| `GET /admin/keys/{id}/usage?from=YYYY-MM-DD&to=YYYY-MM-DD` | day rows and totals (default: this month) |
+
+### CLI
+
+```sh
+RUN="node node_modules/@starci/ai-router/dist/gateway/run.js"
+$RUN keys create --label lesson_app --profiles lesson --rpm 60 --cost-per-month 20 --config pool.yaml
+$RUN keys list   --config pool.yaml
+$RUN keys usage  key_1a2b3c4d5e6f7a8b --from 2026-10-01 --config pool.yaml
+$RUN keys rotate key_1a2b3c4d5e6f7a8b --url http://gateway:8080      # admin token from AI_ROUTER_ADMIN_TOKEN
+$RUN keys revoke key_1a2b3c4d5e6f7a8b --url http://gateway:8080 --admin-token-env MY_ADMIN_TOKEN
+```
+
+`keys create|list|get|update|revoke|rotate|usage` run on the config's durable store directly (`--config`), or through a
+running gateway's admin API (`--url`, required for a memory store). Every command prints JSON; `--help` lists
+the flags.
+
+### Call it from any OpenAI client
+
+LangChain (JS):
+
+```ts
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai"
+
+const llm = new ChatOpenAI({
+    model: "lesson", // a profile, or a pool model such as "gpt-4o-mini"
+    apiKey: process.env.STARCI_AI_KEY, // sk-starci-...
+    configuration: { baseURL: "http://ai-router:8080/v1" },
+})
+const reply = await llm.invoke("Explain closures in one paragraph.")
+for await (const chunk of await llm.stream("Count to five.")) process.stdout.write(String(chunk.content))
+
+const embeddings = new OpenAIEmbeddings({ model: "text-embedding-3-small", apiKey: process.env.STARCI_AI_KEY, configuration: { baseURL: "http://ai-router:8080/v1" } })
+```
+
+LangChain (Python): `ChatOpenAI(model="lesson", api_key=..., base_url="http://ai-router:8080/v1")`.
+
+The OpenAI SDK, or any compatible client:
+
+```ts
+import OpenAI from "openai"
+
+const client = new OpenAI({ apiKey: process.env.STARCI_AI_KEY, baseURL: "http://ai-router:8080/v1" })
+const completion = await client.chat.completions.create({ model: "lesson", messages: [{ role: "user", content: "hi" }] })
+```
+
+```sh
+curl http://ai-router:8080/v1/chat/completions -H "Authorization: Bearer $STARCI_AI_KEY" \
+  -H "content-type: application/json" -d '{"model":"lesson","stream":true,"messages":[{"role":"user","content":"hi"}]}'
+```
+
+### Deploy
+
+One container or process: `node node_modules/@starci/ai-router/dist/gateway/run.js serve --config
+/etc/ai-router/pool.yaml` as its command, `host: 0.0.0.0` in the config, the port published,
+a volume for the SQLite file, and SIGTERM for a graceful stop. The environment holds only what the config names: the
+upstream key variables (`OPENAI_KEY_A`, `OPENROUTER_KEY`, ... or mounted files), and the admin token variable
+(`AI_ROUTER_ADMIN_TOKEN` by convention). The CLI's `--url` mode reads the admin token from `AI_ROUTER_ADMIN_TOKEN`
+unless `--admin-token-env` names another variable. Breakers and headroom are per process unless the pool's `store` is
+shared; run one gateway per pool, or several behind a load balancer sharing the SQLite file on one host.
+
+### Plain Node and in-process hosting
+
+```ts
+import { createGateway, createRouter, openSqliteKeyStore } from "@starci/ai-router/gateway"
+
+const router = createRouter(pool) // the same engine AiRouterService wraps: chat, stream, embeddings, health, stats, on, reset, catalog
+const gateway = createGateway(router, { keys: await openSqliteKeyStore("keys.sqlite"), adminToken: () => process.env.AI_ROUTER_ADMIN_TOKEN })
+await gateway.listen(8080, "0.0.0.0") // or mount gateway.handle on an existing node:http, Express or Nest adapter
+```
+
+In a Nest app, `AiRouterGatewayModule` fronts a registered router (the default one, or `name` for a named one) and
+listens on its own port at bootstrap when `listen` is given, closing at shutdown; the gateway is injected with
+`@InjectAiRouterGateway(name?)` (token `AI_ROUTER_GATEWAY`):
+
+```ts
+@Module({
+    imports: [
+        AiRouterModule.register({ isGlobal: true, ...pool }),
+        AiRouterGatewayModule.registerAsync({
+            useFactory: async () => ({ keys: await openSqliteKeyStore("/data/keys.sqlite"), adminToken: () => process.env.AI_ROUTER_ADMIN_TOKEN, listen: { port: 8080 } }),
+        }),
+    ],
+})
+export class AppModule {}
+```
+
+## Use it in a Nest app
 
 The module follows the Nest configurable-module shape: `AiRouterModule.register(options)` or
 `AiRouterModule.registerAsync(...)`, registered once at the app root. The options are the pool
@@ -138,6 +351,7 @@ the options the same way (`AiRouterModuleOptions<"strict">`) to keep the two in 
 | `stats()` | this process's counters: requests, attempts, failures by class, tokens and cost per lane |
 | `on(event, handler)` | subscribes to `attempt`, `request`, `breaker` or `key-disabled` until shutdown; returns the unsubscribe function |
 | `reset(target?)` | closes breakers, re-enables keys and clears headroom for everything, one provider or one key |
+| `catalog()` | the pool's profiles (resolved model and fallbacks) and models (ids, aliases, providers), with no key |
 
 `options` is `{ profile?, policy?, signal?, requestId?, headers? }`. `requestId` (generated when absent) is sent as
 `x-request-id` and `idempotency-key` on every attempt of the call, so a provider that deduplicates sees one request.
@@ -371,12 +585,16 @@ Everything is deterministic except the latencies you script.
 - Prompts and responses are not in events unless you set `telemetry.includeContent`.
 - `headers` in a provider or a call cannot override `authorization`.
 - The fake provider records the key values your tests send in `fake.calls`; it is a test double, use test values.
+- The gateway never forwards a client's `Authorization` upstream, never answers with `routing` (the key alias), and keeps
+  virtual keys as SHA-256 hashes; the admin token is compared in constant time.
 
 ## FAQ
 
-**Is this a proxy server?** No, it is a module inside your Nest process. Expose it through a controller if you need one.
+**Is this a proxy server?** It can be: `run.js serve` is an OpenAI-compatible gateway with virtual keys. Inside a Nest
+app it is also a module you call directly, and `AiRouterGatewayModule` serves the gateway from that process.
 
-**Can I use it outside Nest?** No. The package is the Nest module; the engine behind the service is not exported.
+**Can I use it outside Nest?** Yes: through the gateway over HTTP from any language, or in Node with `createRouter` and
+`createGateway` from `@starci/ai-router/gateway`, which loads no Nest code.
 
 **Does it work with providers that are not OpenAI-compatible?** Only through a compatible gateway; the wire format is
 the OpenAI chat-completions and embeddings API.

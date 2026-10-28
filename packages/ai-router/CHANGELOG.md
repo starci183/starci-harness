@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-10-28
+
+- Added: an OpenAI-compatible HTTP gateway over the same router (`createGateway(router, options)`): `POST /v1/chat/completions` (SSE streaming in OpenAI's chunk format, ending with `[DONE]`), `POST /v1/embeddings`, `GET /v1/models` (the profiles and pool models the calling key may use), `GET /health`, and OpenAI error objects with 400, 401, 403, 404, 413, 429 (with `Retry-After`), 502, 503 and 504. A request's `model` names a profile or a pool model id or alias.
+- Added: virtual API keys (`sk-starci-<label>-<random>`), stored as SHA-256 only and shown once at create and rotate, each bound to profiles, models, fallback, quotas (requests per minute, tokens per day, cost per day and month), enabled and revoked state, label and owner; usage per key and UTC day (requests, outcomes, tokens, estimated cost, latency), with no prompt or end-user identifier. `KeyAdmin` (create, list, get, update, revoke, rotate, usage), the `KeyStore` interface, `MemoryKeyStore`, and the durable `openSqliteKeyStore(path)` over `node:sqlite` with its `KEY_STORE_SCHEMA`.
+- Added: the admin API under `/admin/keys`, guarded by an admin token, and the commands `serve --config <pool.yaml|json>` and `keys create|list|get|update|revoke|rotate|usage`, on the durable store (`--config`) or through a running gateway (`--url`), run by the process entry `dist/gateway/run.js` or in process with `main` from `@starci/ai-router/cli`; the package declares no `bin`, since the harness has one CLI. The config file names every secret by reference (`{ env }` or `{ file }`) and refuses one written inline. `loadGatewayConfig`, `parseGatewayConfig`, `serveGateway`, `openKeyStore`.
+- Added: `AiRouterGatewayModule.register` / `registerAsync` hosting the gateway in a Nest app over a registered router, `AI_ROUTER_GATEWAY`, `getAiRouterGatewayToken` and `@InjectAiRouterGateway()`.
+- Added: `catalog()` on the router and `AiRouterService`: the pool's profiles and models by name.
+- Changed: `createRouter(config)` is exported again, from the root and from the new Nest-free entry `@starci/ai-router/gateway`. 0.2.0 removed it to make the Nest module the one entry, not because the engine changed; with the gateway it is again the one engine behind the service, the gateway and plain Node apps.
+- Changed: the Nest peer dependencies are optional, since the gateway and cli entries load no Nest code; `yaml` is a dependency for the config file.
+
 ## 0.2.1 - 2026-10-28
 
 - Fixed: 0.2.0 shipped corrupt declarations: the build rewrote `.ts` specifiers with a `$1` that sh expanded to nothing, so every `dist/*.d.ts` read `export { X } .js";` and a consumer tsc failed. The declaration step now names `.js` with a replacer function and `"`, and reads alike under sh and cmd.
