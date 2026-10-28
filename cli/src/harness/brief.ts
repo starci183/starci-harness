@@ -61,7 +61,9 @@ const describeCheck = (check: PrimitiveCheck): string => {
         case "command": {
             const run = code(Array.isArray(check.run) ? check.run.join(" ") : check.run)
             // A verdict check reruns the suite: green when the result's verdict agrees with its exit, not when it exits 0.
-            return check.verdict === undefined ? `${run} exits 0` : `${run} reruns on the clean checkout and your verdict must agree with its exit`
+            const judged = check.verdict === undefined ? `${run} exits 0` : `${run} reruns on the clean checkout and your verdict must agree with its exit`
+            // With coverage: changed the app's thresholds hold every changed logic file, so a file of yours below them is red.
+            return check.coverage === "changed" ? `${judged}, its coverage narrowed to the logic files you changed (each held to the app's thresholds)` : judged
         }
         case "files":
             return describeFilesCheck(check)

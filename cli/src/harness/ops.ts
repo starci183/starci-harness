@@ -22,8 +22,15 @@ export type OutputType = z.infer<typeof outputTypeSchema>
 export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("starci"), args: z.array(z.string()).min(1) }),
     // `verdict` names a key of the filed result that must agree with the exit code the harness observed (0: passed, else
-    // failed), so a suite report is judged by the run itself and the worker's verdict can only make it red.
-    z.object({ kind: z.literal("command"), run: z.union([z.string().min(1), z.array(z.string()).min(1)]), verdict: z.string().regex(/^[A-Za-z]\w*$/).optional() }),
+    // failed), so a suite report is judged by the run itself and the worker's verdict can only make it red. `coverage: changed`
+    // narrows a jest run's coverage to the changed logic files under allowPaths (harness/coverage-scope.ts), so the app's own
+    // thresholds judge what the task changed and the whole measured scope stays CI's.
+    z.object({
+        kind: z.literal("command"),
+        run: z.union([z.string().min(1), z.array(z.string()).min(1)]),
+        verdict: z.string().regex(/^[A-Za-z]\w*$/).optional(),
+        coverage: z.literal("changed").optional(),
+    }),
     z.object({ kind: z.literal("files"), onlyAllowPaths: z.boolean().optional(), mustExist: namesSchema.optional() }),
     // `expect` pins values a key must hold, so a report that names its own failure can never pass by carrying the key.
     z.object({

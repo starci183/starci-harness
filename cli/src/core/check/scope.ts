@@ -74,6 +74,9 @@ const appWideFiles = (): RegExp => {
 
 const LINTABLE = /\.(?:[cm]?[jt]sx?)$/
 
+/** The folders ESLint ignores by default (`**\/node_modules/`, `.git/`), so a file under one is never judged. */
+const ESLINT_DEFAULT_IGNORED = /(?:^|\/)(?:node_modules|\.git)\//
+
 const OUTPUT_LINES = 60
 
 const toSlash = (path: string): string => path.split(sep).join("/")
@@ -141,38 +144,104 @@ export const resolveEslintConfig = (root: string, dir: string): { readonly dir: 
     }
 }
 
-/** Whether the package has any source ESLint would judge: a judged file of the target, or with --all a tracked source file under its folder. */
-const hasSource = async (scope: Scope, target: ScopeTarget): Promise<boolean> => {
-    if (target.files.some((file) => LINTABLE.test(file))) return true
-    if (!scope.all) return false
-    const under = target.pkg.relativeDir === "." ? [] : [target.pkg.relativeDir]
-    return (await trackedUnder(scope.root, under)).some((file) => LINTABLE.test(file))
+/**
+ * The source files of the package ESLint judges: its judged files, and with --all every tracked source file it owns (a file of a
+ * nested package is that package's).
+ */
+const lintableFiles = async (scope: Scope, target: ScopeTarget): Promise<string[]> => {
+    const { pkg } = target
+    const tracked = !scope.all ? [] : pkg.relativeDir === "." ? nulPaths(await git(scope.root, ["ls-files", "-z"])) : await trackedUnder(scope.root, [pkg.relativeDir])
+    const owners = scope.targets.map((each) => each.pkg)
+    const owned = (file: string): boolean => !scope.all || ownerOf(owners, file) === pkg
+    return [...new Set([...target.files, ...tracked])].filter((file) => LINTABLE.test(file) && !ESLINT_DEFAULT_IGNORED.test(file) && owned(file) && existsSync(join(scope.root, file))).sort((left, right) => left.localeCompare(right))
 }
 
-/** ESLint over the judged source files of the package with the nearest config up to the repository root (every file with --all), warnings counted as errors. */
+/** The longest command line one ESLint run takes, under the Windows limit of 32767 characters with the tool paths in front. */
+const ARGV_BUDGET = 24_000
+
+/** Splits paths into runs whose joined length stays within the budget, so a whole package lints on any host. */
+const chunked = (paths: readonly string[]): string[][] => {
+    const chunks: string[][] = []
+    let current: string[] = []
+    let length = 0
+    for (const path of paths) {
+        if (current.length > 0 && length + path.length + 1 > ARGV_BUDGET) {
+            chunks.push(current)
+            current = []
+            length = 0
+        }
+        current.push(path)
+        length += path.length + 1
+    }
+    return current.length === 0 ? chunks : [...chunks, current]
+}
+
+/** One ESLint config and the files it judges, each relative to the config's folder. */
+interface LintGroup {
+    readonly dir: string
+    readonly file: string
+    readonly paths: readonly string[]
+}
+
+/** ESLint over one group from its config's folder, so the config's file globs and ignores match; a file the config ignores is not linted and is no warning. */
+const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, options: RunOptions): Promise<{ readonly label: string; readonly run: ToolRun | undefined }> => {
+    const counted = scope.all ? `whole package linted (${String(group.paths.length)} file(s))` : `${String(group.paths.length)} file(s) linted`
+    const label = `config ${toSlash(relative(scope.root, join(group.dir, group.file)))}, ${counted}`
+    const eslint = [pkg.dir, group.dir, scope.root].map((dir) => join(dir, "node_modules", "eslint", "bin", "eslint.js")).find((candidate) => existsSync(candidate))
+    if (eslint === undefined) return { label, run: undefined }
+    let last: ToolRun | undefined
+    for (const paths of chunked(group.paths)) {
+        const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...paths], group.dir, options)
+        if (last === undefined || run.exitCode !== 0) last = run
+        if (run.exitCode !== 0) break
+    }
+    return { label, run: last }
+}
+
+/**
+ * ESLint over the judged source files of the package (every file it owns with --all), warnings counted as errors. Each file is
+ * linted with the config ESLint itself resolves for it, the nearest `eslint.config.*` from its folder up to the repository root,
+ * so one package holding several configs (a one-app repository's `be/` and `fe/`) runs one ESLint per config. A judged file of
+ * the scope (a changed one, or one under the paths a task that changes nothing proves) with no config up to the root is red with
+ * LINT_CONFIG_MISSING, naming it; an unchanged file the whole-package lint meets outside every config is counted, not linted.
+ */
 export const lintPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
     const { pkg } = target
-    const config = resolveEslintConfig(scope.root, pkg.dir)
-    if (config === undefined) {
-        if (!(await hasSource(scope, target))) return skipped(pkg, "lint", "no source file and no eslint.config.*")
-        return { package: pkg.name, step: "lint", command: "-", status: "red", reason: "LINT_CONFIG_MISSING: source files and no eslint.config.* in the package or any folder up to the repository root", output: "" }
+    const files = await lintableFiles(scope, target)
+    if (files.length === 0) return skipped(pkg, "lint", "no judged source file")
+    const groups = new Map<string, { file: string; paths: string[] }>()
+    const judged = new Set(scope.files)
+    const missing: string[] = []
+    const outside: string[] = []
+    for (const file of files) {
+        const config = resolveEslintConfig(scope.root, dirname(join(scope.root, file)))
+        if (config === undefined) {
+            if (judged.has(file)) missing.push(file)
+            else outside.push(file)
+            continue
+        }
+        const group = groups.get(config.dir) ?? { file: config.file, paths: [] }
+        group.paths.push(toSlash(relative(config.dir, join(scope.root, file))))
+        groups.set(config.dir, group)
     }
-    const eslint = [pkg.dir, config.dir, scope.root].map((dir) => join(dir, "node_modules", "eslint", "bin", "eslint.js")).find((candidate) => existsSync(candidate))
-    if (eslint === undefined) return skipped(pkg, "lint", "eslint is not installed (run npm ci)")
-    const prefix = pkg.relativeDir === "." ? "" : `${pkg.relativeDir}/`
-    const files = target.files.filter((file) => LINTABLE.test(file) && existsSync(join(scope.root, file))).map((file) => file.slice(prefix.length))
-    if (!scope.all && files.length === 0) return skipped(pkg, "lint", "no judged source file")
-    // ESLint runs in the folder of the config it resolved, so the config's file globs and ignores match the package's files.
-    const fromConfig = toSlash(relative(config.dir, pkg.dir))
-    const rooted = (path: string): string => {
-        if (fromConfig === "") return path
-        return path === "." ? fromConfig : `${fromConfig}/${path}`
-    }
-    const paths = (scope.all ? ["."] : files).map(rooted)
-    const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", ...paths], config.dir, options)
-    const counted = scope.all ? "whole package" : `${String(files.length)} file(s)`
-    return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 ${paths.join(" ")}`, status: run.exitCode === 0 ? "green" : "red", reason: `config ${relative(scope.root, join(config.dir, config.file)).split(sep).join("/")}, ${counted} linted`, output: tail(run) }
+    const runs = await Promise.all([...groups].map(([dir, group]) => lintGroup(scope, pkg, { dir, ...group }, options)))
+    const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
+    if (missing.length === 0 && ran.length === 0) return skipped(pkg, "lint", groups.size === 0 ? "no judged source file under an eslint.config.*" : "eslint is not installed (run npm ci)")
+    const failed = ran.filter((each) => each.run.exitCode !== 0)
+    const reasons = [
+        ...(missing.length === 0 ? [] : [`LINT_CONFIG_MISSING: no eslint.config.* in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
+        ...runs.map((each) => (each.run === undefined ? `${each.label} skipped: eslint is not installed (run npm ci)` : each.label)),
+        ...(outside.length === 0 ? [] : [`${String(outside.length)} unchanged file(s) under no eslint.config.*, not linted: ${listedFiles(outside)}`]),
+    ]
+    const output = failed.map((each) => `--- ${each.label}\n${tail(each.run)}`).join("\n")
+    const red = missing.length > 0 || failed.length > 0
+    return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 --no-warn-ignored over ${String(groups.size)} config(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
 }
+
+const LISTED_FILES = 5
+
+/** The first few files of a list and how many more. */
+const listedFiles = (files: readonly string[]): string => (files.length > LISTED_FILES ? `${files.slice(0, LISTED_FILES).join(", ")} and ${String(files.length - LISTED_FILES)} more` : files.join(", "))
 
 /** The parenthesised reason of a step, empty when it has none. */
 const reasonSuffix = (reason: string): string => (reason === "" ? "" : " (" + reason + ")")

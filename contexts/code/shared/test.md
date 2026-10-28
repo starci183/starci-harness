@@ -20,8 +20,9 @@ Enforced by: R97 FE_NO_TESTS, R47 BE_TEST_TOPOLOGY. Open: the `fe` profile of
 ## SHARED-TEST-2 An op tests what it changed and runs only those tests
 
 An op that adds or changes a back-end source writes or updates its spec in the same task, even when the goal does not
-mention tests, and runs only the specs related to the files it changed. The whole unit suite with per-file coverage,
-and the integration, e2e and contract suites, are CI's or a `verify` task's, never a coding op's. No test is skipped,
+mention tests, and runs only the specs related to the files it changed, which hold every logic file it changed at the
+app's per-file coverage. The whole unit suite with the per-file coverage of every measured file, and the integration,
+e2e and contract suites, are CI's or a `verify` task's, never a coding op's. No test is skipped,
 focused or weakened to pass (SHARED-LOOSENING-1).
 
 Why: a scoped run keeps a task fast and deterministic; CI judges the rest after the push and a red CI becomes its own
@@ -32,7 +33,7 @@ cd be && npx jest --selectProjects unit --findRelatedTests <changed files>
 ```
 
 Enforced by: R47 (`staged-spec-presence`, BE_UNIT_SPEC_NOT_STAGED); the contract's `tests-pass` check names the
-command.
+command and narrows its coverage to the changed logic files (`coverage: changed`, `cli/src/harness/coverage-scope.ts`).
 
 ## SHARED-TEST-3 An op writes no test kind its edition forbids
 

@@ -7,10 +7,10 @@ interface LintData {
     readonly steps: readonly StepResult[]
 }
 
-/** `starci check lint`: ESLint on the changed source files of each package that owns one. */
+/** `starci check lint`: ESLint on the changed source files of each package that owns one, each file with its nearest config. */
 export const checkLintVerb = defineVerb({
     path: ["check", "lint"],
-    summary: "lint the changed source files with each package's own ESLint config (the whole package with --all)",
+    summary: "lint the changed source files, each with the nearest ESLint config up to the repository root (every file of each package with --all)",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
