@@ -115,6 +115,12 @@ import { depsCheckVerb } from "./core/deps/check.js"
 import { depsSourceVerb } from "./core/deps/source.js"
 import { pkgBranchVerb } from "./core/pkg/branch.js"
 import { pkgHandoffVerb } from "./core/pkg/handoff.js"
+import { ticketAnswerVerb } from "./core/ticket/answer.js"
+import { ticketCloseVerb } from "./core/ticket/close.js"
+import { ticketListVerb } from "./core/ticket/list.js"
+import { ticketOpenVerb } from "./core/ticket/open.js"
+import { ticketShowVerb } from "./core/ticket/show.js"
+import { ticketTakeVerb } from "./core/ticket/take.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -239,6 +245,12 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     depsCheckVerb,
     pkgBranchVerb,
     pkgHandoffVerb,
+    ticketOpenVerb,
+    ticketListVerb,
+    ticketShowVerb,
+    ticketTakeVerb,
+    ticketCloseVerb,
+    ticketAnswerVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */

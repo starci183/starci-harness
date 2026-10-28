@@ -1,0 +1,52 @@
+import { closeLine, closeTicket, wakeOnClose } from "../../harness/tickets.js"
+import type { Resolution } from "../../harness/tickets.js"
+import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
+import { callerRole } from "../../shared/role.js"
+import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+
+const SHA = /^[0-9a-f]{7,40}$/
+
+/** The one resolution the flags name, refused CLI_USAGE for none or several. */
+const resolutionOf = (flags: { readonly "fixed-by"?: string | undefined; readonly wontfix: boolean; readonly reason?: string | undefined; readonly duplicate?: string | undefined }): Resolution => {
+    const named = [flags["fixed-by"] !== undefined, flags.wontfix, flags.duplicate !== undefined].filter(Boolean).length
+    if (named !== 1) throw new Refusal("CLI_USAGE", "ticket close takes exactly one of --fixed-by <sha>, --wontfix --reason <why>, --duplicate <id>", EXIT_USAGE)
+    const fixedBy = flags["fixed-by"]
+    if (fixedBy !== undefined) {
+        if (!SHA.test(fixedBy)) throw new Refusal("TICKET_FIX_INVALID", `--fixed-by names the harness commit that fixed it (7 to 40 lowercase hex digits), not ${fixedBy}`)
+        return { state: "fixed", fixedBy }
+    }
+    if (flags.duplicate !== undefined) return { state: "duplicate", of: flags.duplicate }
+    const reason = flags.reason?.trim() ?? ""
+    if (reason === "") throw new Refusal("CLI_USAGE", "--wontfix needs --reason <why it is not fixed>", EXIT_USAGE)
+    return { state: "wontfix", reason }
+}
+
+/**
+ * `starci ticket close <id>`: Debug (or the owner) closes a live ticket, a defect fixed by a harness commit, or any ticket wontfix
+ * with a reason or as a duplicate of another (a question is answered with `ticket answer`). Every task and decision waiting on it is released and its project's Supervisor woken with an owner request
+ * naming them (`wakeOnClose` in harness/tickets.ts); a duplicate of a live ticket hands its waiters over instead.
+ */
+export const ticketCloseVerb = defineVerb({
+    path: ["ticket", "close"],
+    summary: "close a ticket: --fixed-by <sha>, --wontfix --reason, or --duplicate <id>; releases what waits on it and wakes its Supervisor",
+    editions: BOTH_EDITIONS,
+    effect: "host",
+    roles: ["debug", "owner"],
+    schema: "starci/ticket-close@1",
+    flags: {
+        id: { kind: "string", required: true, positional: true, summary: "the ticket id (tk-...)" },
+        "fixed-by": { kind: "string", summary: "the harness commit that fixed it" },
+        wontfix: { kind: "boolean", summary: "it is not fixed; --reason says why" },
+        reason: { kind: "string", summary: "why it is not fixed (with --wontfix)" },
+        duplicate: { kind: "string", summary: "the ticket it duplicates" },
+    },
+    run: async (context, flags) => {
+        const resolution = resolutionOf(flags)
+        const by = callerRole() ?? "debug"
+        const closed = closeTicket(flags.id, resolution, by)
+        const woken = await wakeOnClose(closed, by, context.cwd)
+        const released = closed.movedTo === null ? `released ${String(closed.released.length)}` : `waiters moved to ${closed.movedTo}`
+        const wake = woken.map((one) => `; ${one.project}: ${one.request} (${one.mail})`).join("")
+        return { data: { ticket: closed.ticket, released: closed.released, movedTo: closed.movedTo, woken }, message: `ticket ${closed.ticket.id} ${closeLine(closed.ticket)}; ${released}${wake}` }
+    },
+})

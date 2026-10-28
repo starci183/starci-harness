@@ -30,6 +30,7 @@ import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
 import { recordEvent } from "../../harness/tasks.js"
+import { ticketEscalation } from "../../harness/tickets.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
 import { DISPATCHING, getWorkflow, listWorkflows, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -468,6 +469,19 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
         .toSorted((a, b) => Number(awaitsOwner(a)) - Number(awaitsOwner(b)) || a.raisedAt.localeCompare(b.raisedAt))
 
 /**
+ * Files every open `harness` escalation of the project's repositories as a ticket for Debug (`ticketEscalation` in
+ * harness/tickets.ts: blocking, deduped onto the live ticket of the same defect, the escalation waiting on it), once each, as
+ * lines for `next`'s actions; the ticket's close releases the escalation and wakes the Supervisor.
+ */
+const ticketHarnessEscalations = (repos: readonly string[], project: Project): string[] =>
+    openSupervisorDecisions(repos)
+        .filter((decision) => awaitsOwner(decision) && (decision.evidence as { readonly escalation?: { readonly kind?: unknown } } | null)?.escalation?.kind === "harness")
+        .flatMap((decision) => {
+            const filed = ticketEscalation(decision.project.replaceAll("\\", "/"), project, decision)
+            return filed === null ? [] : [`harness escalation ${decision.id} filed as ticket ${filed.ticket.id} (${filed.outcome}, seen ${String(filed.ticket.occurrences)} times)`]
+        })
+
+/**
  * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch Orca never confirmed is reconciled through
@@ -513,6 +527,7 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
             actions.push(...(await tendWorkers(context, attached, binary, project)))
         }
         sweepMs = Math.max(sweepMs, Date.now() - swept)
+        if (attached !== null) actions.push(...ticketHarnessEscalations(repos, project))
         const decisions = openSupervisorDecisions(repos).filter((open) => !awaitsOwner(open) || attached === null || !relayed(open))
         const handOver = (decision: SupervisorDecision): SupervisorNext => {
             const digest = withLedger(decision.project, (db) => {

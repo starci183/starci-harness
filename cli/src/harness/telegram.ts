@@ -20,6 +20,7 @@ const configSchema = z.strictObject({
     sendPerMinute: z.number().int().positive(),
     sendTries: z.number().int().positive(),
     questionChars: z.number().int().min(80).max(3500),
+    ticketOccurrences: z.number().int().positive(),
 })
 
 /** ops/telegram.yaml, validated: the owner's Telegram channel. */
