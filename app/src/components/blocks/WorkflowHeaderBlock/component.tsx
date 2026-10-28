@@ -1,4 +1,4 @@
-import { Alert, AlertDialog, Breadcrumbs, Button, Dialog, RadioGroup, SectionHeader, Text, Textarea } from "@starci/grammar/core"
+import { Alert, AlertDialog, Breadcrumbs, Button, Dialog, Divider, RadioGroup, Region, SectionHeader, Text, Textarea } from "@starci/grammar/core"
 import type { DataSlot, ResultNotice, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -22,7 +22,7 @@ export type StopMode = "stop-graceful" | "stop-hard"
 
 /** Copy the connected header resolves. */
 export interface WorkflowHeaderBlockLabels {
-    readonly trail: { readonly label: string; readonly overview: string; readonly project: string; readonly workflow: string }
+    readonly trail: { readonly label: string; readonly project: string; readonly workflows: string }
     readonly reason: string
     readonly changeGoal: string
     readonly changeGoalHint: string
@@ -162,23 +162,25 @@ const WorkflowActions = (props: ActionsProps) => {
     )
 }
 
-/** Pure half: where the workflow sits, its title, status and versions, its goal and reason, and the owner's verbs. */
+/**
+ * Pure half: the page header band (where the workflow sits, its title, status and versions, its goal and reason, and the
+ * owner's verbs) closed by a full-width separator. It is the one block the Grammar's PageHeader replaces.
+ */
 export const WorkflowHeaderBlockBase = (props: WorkflowHeaderBlockBaseProps) => {
     const { labels, result } = props.props
     return (
         <div className="app-stack">
-            <div className="app-pair">
-                <Breadcrumbs
-                    label={labels.trail.label}
-                    items={[
-                        { id: "overview", label: labels.trail.overview, href: props.props.overviewHref },
-                        { id: "project", label: labels.trail.project },
-                        { id: "workflow", label: labels.trail.workflow },
-                    ]}
-                />
-                <SlotView slot={props.props.header} placeholder={HEADER_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                    {(header, isSkeleton) => (
-                        <div className="app-stack">
+            <Region label={labels.trail.label}>
+                <div className="app-stack">
+                    <Breadcrumbs
+                        label={labels.trail.label}
+                        items={[
+                            { id: "project", label: labels.trail.project, href: props.props.overviewHref },
+                            { id: "workflows", label: labels.trail.workflows },
+                        ]}
+                    />
+                    <SlotView slot={props.props.header} placeholder={HEADER_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
+                        {(header, isSkeleton) => (
                             <div className="app-pair">
                                 <SectionHeader
                                     level={1}
@@ -187,22 +189,23 @@ export const WorkflowHeaderBlockBase = (props: WorkflowHeaderBlockBaseProps) => 
                                     description={
                                         <span className="app-row">
                                             <StatusWord status={header.status} />
-                                            <Text as="span" size="sm" tone="muted">
+                                            <Text as="span" size="sm" tone="muted" mono>
                                                 {header.versions}
                                             </Text>
                                         </span>
                                     }
                                     action={<WorkflowActions {...props} isSkeleton={isSkeleton} />}
                                 />
-                                <Text as="p" isSkeleton={isSkeleton}>
+                                <Text as="p" tone="muted" isSkeleton={isSkeleton}>
                                     {header.goal}
                                 </Text>
+                                {header.reason === null ? null : <Alert tone="cautionary" title={labels.reason} description={header.reason} />}
                             </div>
-                            {header.reason === null ? null : <Alert tone="cautionary" title={labels.reason} description={header.reason} />}
-                        </div>
-                    )}
-                </SlotView>
-            </div>
+                        )}
+                    </SlotView>
+                </div>
+            </Region>
+            <Divider />
             {result === null ? null : (
                 <Alert
                     key={result.n}

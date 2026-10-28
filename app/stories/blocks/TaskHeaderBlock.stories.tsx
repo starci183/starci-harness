@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { TaskHeaderBlockBase } from "../../src/components/blocks/TaskHeaderBlock/component"
-import { NAV, NODE_STATE, TASK } from "../../src/modules/i18n"
+import { NODE_STATE, TASK } from "../../src/modules/i18n"
 import { loading, noop, ready, slotLabels } from "../support"
 
 const meta = {
@@ -16,8 +16,7 @@ const meta = {
                 state: NODE_STATE.running,
                 elapsed: "11m",
             }),
-            overviewHref: "/",
-            labels: { trail: TASK.breadcrumbs, overview: NAV.overview, slot: slotLabels(TASK.notFound) },
+            labels: { trail: TASK.breadcrumbs, slot: slotLabels(TASK.notFound) },
         },
         on: { retry: noop },
     },

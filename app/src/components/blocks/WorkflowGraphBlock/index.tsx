@@ -1,12 +1,12 @@
 import type { GraphNode, WorkflowDetail } from "@contract"
-import { layeredPositions, type FlowGraphEdge, type FlowGraphLayerHeader, type FlowGraphNode } from "@starci/grammar/core"
-import { useMemo, useState } from "react"
+import { layeredPositions, type FlowGraphEdge, type FlowGraphNode } from "@starci/grammar/core"
+import { useMemo } from "react"
 import { useWorkflowQuery } from "../../../hooks/query"
 import { mapSlot, slotOfQuery, useSlotLabels } from "../../../hooks/slot"
 import { elapsedText, memberText } from "../../../modules/format"
-import { COMMON, NODE_LEGEND, NODE_STATE, WORKFLOW } from "../../../modules/i18n"
+import { NODE_LEGEND, NODE_STATE, WORKFLOW } from "../../../modules/i18n"
 import { taskPath } from "../../../modules/routes"
-import { WorkflowGraphBlockBase, type NodeDetailView, type WorkflowGraphView } from "./component"
+import { WorkflowGraphBlockBase, type WaveCellView, type WaveView, type WorkflowGraphView } from "./component"
 
 /** Input of WorkflowGraphBlock: the route's atoms. */
 export interface WorkflowGraphBlockProps {
@@ -14,83 +14,61 @@ export interface WorkflowGraphBlockProps {
     readonly workflow: string
 }
 
-const nodeDescription = (node: GraphNode, now: number): string => {
+const cellDescription = (node: GraphNode, now: number): string => {
     const parts = [node.label, NODE_STATE[node.state].label]
-    if (node.member !== null) parts.push(node.member.model)
+    if (node.member !== null) parts.push(memberText(node.member))
     if (node.startedAt !== null && (node.state === "running" || node.state === "verifying")) parts.push(elapsedText(node.startedAt, now))
     if (node.why !== null && node.state !== "done") parts.push(node.why)
     return parts.join(" · ")
 }
 
-const detailOf = (project: string, node: GraphNode): NodeDetailView => {
+const cellOf = (project: string, node: GraphNode, now: number): WaveCellView => {
     const state = NODE_STATE[node.state]
     return {
         id: node.key,
-        title: WORKFLOW.nodeTitle(node.label, node.title),
+        title: node.title,
+        description: cellDescription(node, now),
         state: { label: state.label, tone: state.tone },
         presentation: state.presentation,
-        member: node.member === null ? COMMON.unassigned : memberText(node.member),
-        side: node.side === null ? COMMON.shared : node.side.toUpperCase(),
-        dependsOn: node.dependsOn,
-        record: node.record,
-        why: node.why,
-        task: node.task === null ? null : { href: taskPath(project, node.task), label: `${WORKFLOW.openTask} ${node.task}` },
+        taskHref: node.task === null ? null : taskPath(project, node.task),
     }
 }
-
-const span = (values: readonly number[]) => (values.length === 0 ? 0 : Math.max(...values) - Math.min(...values))
 
 /** The DAG in waves: a wave is a layer of the Grammar's layered layout, one more than the node's deepest dependency. */
 const toView = (workflow: WorkflowDetail): WorkflowGraphView => {
     const now = Date.now()
     const keys = new Set(workflow.nodes.map((node) => node.key))
-    const nodes: FlowGraphNode[] = workflow.nodes.map((node) => {
-        const state = NODE_STATE[node.state]
-        return {
-            id: node.key,
-            label: node.title,
-            description: nodeDescription(node, now),
-            tone: state.graphTone,
-            size: "sm",
-            isPlaceholder: state.isPending,
-            ...(node.side === null ? {} : { count: node.side.toUpperCase() }),
-            ...(node.task === null ? {} : { href: taskPath(workflow.project, node.task) }),
-        }
-    })
+    const nodes: FlowGraphNode[] = workflow.nodes.map((node) => ({ id: node.key, label: node.title }))
     const edges: FlowGraphEdge[] = workflow.nodes.flatMap((node) =>
-        node.dependsOn
-            .filter((dep) => keys.has(dep))
-            .map((dep) => ({ id: `${dep}->${node.key}`, source: dep, target: node.key, isPlaceholder: NODE_STATE[node.state].isPending })),
+        node.dependsOn.filter((dep) => keys.has(dep)).map((dep) => ({ id: `${dep}->${node.key}`, source: dep, target: node.key })),
     )
-    const layout = layeredPositions(nodes, edges, "TB")
-    const sizes: number[] = []
-    for (const layer of layout.layers.values()) sizes[layer] = (sizes[layer] ?? 0) + 1
-    const headers: FlowGraphLayerHeader[] = Array.from(sizes, (count, layer) => ({ at: layer, label: WORKFLOW.wave(layer + 1, count) }))
-    const points = [...layout.positions.values()]
+    const layers = layeredPositions(nodes, edges, "TB").layers
+    const cells: WaveCellView[][] = []
+    for (const node of workflow.nodes) {
+        const layer = layers.get(node.key) ?? 0
+        const wave = cells[layer] ?? []
+        wave.push(cellOf(workflow.project, node, now))
+        cells[layer] = wave
+    }
+    const waves: WaveView[] = cells.flatMap((wave, layer) => (wave.length === 0 ? [] : [{ id: `wave-${layer}`, label: WORKFLOW.wave(layer + 1, wave.length), cells: wave }]))
     const done = workflow.nodes.filter((node) => node.state === "done").length
     return {
-        label: WORKFLOW.graphLabel(workflow.id, headers.length),
         stats: {
             live: String(workflow.parallel.live),
             cap: `/ ${workflow.parallel.cap}`,
             queued: String(workflow.parallel.queued),
-            waves: String(headers.length),
+            waves: String(waves.length),
             done: String(done),
             total: `/ ${workflow.nodes.length}`,
         },
-        nodes,
-        edges,
-        headers,
-        extent: { across: span(points.map((point) => point.x)), along: span(points.map((point) => point.y)) },
-        details: workflow.nodes.map((node) => detailOf(workflow.project, node)),
+        waves,
     }
 }
 
-/** One workflow's graph region: stats, legend, the DAG and the selected Op. */
+/** One workflow's graph region: stats, legend and the waves of Op cells. */
 export const WorkflowGraphBlock = (props: WorkflowGraphBlockProps) => {
     const query = useWorkflowQuery(props.project, props.workflow)
     const slotLabels = useSlotLabels()
-    const [selectedId, setSelectedId] = useState<string | null>(null)
     const { data, error, isLoading } = query
     // The layout pass is the costly part; it re-runs only when the answer changes.
     const graph = useMemo(() => mapSlot(slotOfQuery({ data, error, isLoading }), toView), [data, error, isLoading])
@@ -98,7 +76,6 @@ export const WorkflowGraphBlock = (props: WorkflowGraphBlockProps) => {
         <WorkflowGraphBlockBase
             props={{
                 graph,
-                selectedId,
                 labels: {
                     title: WORKFLOW.graphTitle,
                     statLive: WORKFLOW.statLive,
@@ -109,18 +86,11 @@ export const WorkflowGraphBlock = (props: WorkflowGraphBlockProps) => {
                     legendEntries: NODE_LEGEND,
                     legendSide: WORKFLOW.legendSide,
                     empty: WORKFLOW.graphEmpty,
-                    selectHint: WORKFLOW.selectHint,
-                    member: WORKFLOW.member,
-                    side: WORKFLOW.side,
-                    deps: WORKFLOW.deps,
-                    record: WORKFLOW.record,
-                    why: WORKFLOW.why,
-                    none: COMMON.none,
-                    noTask: WORKFLOW.noTask,
+                    openTask: WORKFLOW.openTask,
                     slot: slotLabels(WORKFLOW.notFound, WORKFLOW.notFoundHint(props.project, props.workflow)),
                 },
             }}
-            on={{ retry: () => void query.refetch(), select: setSelectedId }}
+            on={{ retry: () => void query.refetch() }}
         />
     )
 }

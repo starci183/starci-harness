@@ -22,7 +22,7 @@ const meta = {
             isPending: false,
             result: null,
             labels: {
-                trail: { label: WORKFLOW.breadcrumbs, overview: NAV.overview, project: "starci-next", workflow: "next-subscription-sepay" },
+                trail: { label: WORKFLOW.breadcrumbs, project: "starci-next", workflows: NAV.workflows },
                 reason: WORKFLOW.reason,
                 changeGoal: WORKFLOW.changeGoal,
                 changeGoalHint: WORKFLOW.changeGoalHint(27),
