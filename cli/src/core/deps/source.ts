@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
@@ -11,11 +11,14 @@ import {
     clearRecord,
     copyLocal,
     defaultPackagesRoot,
+    installedNames,
+    installMissing,
     installsOf,
     localPackages,
     manifestFiles,
     packageName,
     readRecord,
+    reapplyLocal,
     writeRecord,
     workingPins,
 } from "./packages.js"
@@ -32,7 +35,7 @@ interface PackageState {
 
 interface SourceData {
     readonly root: string
-    readonly action: "status" | "local" | "npm"
+    readonly action: "status" | "local" | "npm" | "sync"
     readonly packages: readonly PackageState[]
     readonly copied: readonly Copied[]
     readonly warnings: readonly string[]
@@ -46,7 +49,7 @@ const modeOf = (installs: readonly Install[]): PackageState["mode"] => {
 
 const statesOf = async (root: string, pins: readonly Pin[], record: LocalRecord | undefined): Promise<PackageState[]> => {
     const manifests = await manifestFiles(root)
-    const names = [...new Set([...pins.map((pin) => pin.name), ...(record?.packages.map((entry) => entry.name) ?? [])])].sort((left, right) => left.localeCompare(right))
+    const names = [...new Set([...pins.map((pin) => pin.name), ...installedNames(root), ...(record?.packages.map((entry) => entry.name) ?? [])])].sort((left, right) => left.localeCompare(right))
     return names.map((name) => {
         const installs = installsOf(root, manifests, [name])
         return {
@@ -91,15 +94,18 @@ export const depsSourceVerb = defineVerb({
         package: { kind: "list", summary: "with --local, the package to take locally (grammar or @starci/grammar), repeatable; default every pinned @starci package the folder holds" },
         from: { kind: "string", summary: "with --local, the folder holding the @starci package folders (default packages/ of this harness)" },
         prebuilt: { kind: "boolean", summary: "with --local, copy each package's dist as it stands instead of building it first" },
+        sync: { kind: "boolean", summary: "re-apply the repository's recorded local packages here as they stand (after an npm ci, or in another worktree of the repository)" },
     },
     run: async (context, flags) => {
-        if (flags.local && flags.npm) throw new UsageError("--local and --npm are two modes; pass one")
+        if ([flags.local, flags.npm, flags.sync].filter(Boolean).length > 1) throw new UsageError("--local, --npm and --sync are three actions; pass one")
         if (!flags.local && (flags.package.length > 0 || flags.from !== undefined || flags.prebuilt)) throw new UsageError("--package, --from and --prebuilt go with --local")
         const root = await repositoryRoot(context.cwd)
         const pins = await workingPins(root)
         const warnings: string[] = []
         let copied: Copied[] = []
         let action: SourceData["action"] = "status"
+        let added: string[] = []
+        let syncDetail = ""
         if (flags.npm) {
             action = "npm"
             assertNpm(root)
@@ -110,7 +116,8 @@ export const depsSourceVerb = defineVerb({
             assertNpm(root)
             const from = resolve(flags.from ?? defaultPackagesRoot())
             const available = localPackages(from)
-            const pinnedNames = [...new Set(pins.map((pin) => pin.name))]
+            // Every @starci package the app uses: those it pins and those installed through another package (hfs through starci-harness).
+            const pinnedNames = [...new Set([...pins.map((pin) => pin.name), ...installedNames(root)])]
             const wanted = flags.package.length > 0 ? flags.package.map(packageName) : pinnedNames.filter((name) => available.has(name))
             const unknown = wanted.filter((name) => !available.has(name))
             if (unknown.length > 0) throw new Refusal("DEPS_PACKAGE_UNKNOWN", `${from} holds no folder for ${unknown.join(", ")}; it holds ${[...available.keys()].join(", ") || "no @starci package"}`)
@@ -126,21 +133,34 @@ export const depsSourceVerb = defineVerb({
                     return buildPackage(pkg)
                 })
             }
+            // npm's reify (installMissing) puts every @starci package back to its locked version, so every recorded package is copied again after it.
+            const kept = (readRecord(root)?.packages ?? []).filter((entry) => !chosen.some((pkg) => pkg.name === entry.name))
+            const keptPackages = kept.flatMap((entry) => {
+                const pkg = localPackages(dirname(entry.folder)).get(entry.name)
+                return pkg === undefined ? [] : [pkg]
+            })
+            added = await installMissing(root, [...chosen, ...keptPackages])
             const manifests = await manifestFiles(root)
-            copied = await inOrder(chosen, (pkg) => copyLocal(root, manifests, pkg))
+            copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))
             for (const one of copied) {
                 warnings.push(...one.warnings)
                 const differing = pins.filter((pin) => pin.name === one.name && pin.spec !== one.version)
-                if (differing.length > 0) warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")}; a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
+                if (differing.length > 0) warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")}; CI installs the pinned version, and a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
             }
-            const kept = (readRecord(root)?.packages ?? []).filter((entry) => !copied.some((one) => one.name === entry.name))
-            writeRecord(root, [...kept, ...copied.map((one) => ({ name: one.name, folder: one.folder }))])
+            writeRecord(root, copied.map((one) => ({ name: one.name, folder: one.folder })))
+        } else if (flags.sync) {
+            action = "sync"
+            const synced = await reapplyLocal(root, root)
+            if (synced?.status === "red") throw new Refusal("DEPS_SYNC_FAILED", synced.detail)
+            syncDetail = synced === undefined ? "the repository is in npm mode; nothing to sync" : synced.detail
         }
         const record = readRecord(root)
         const packages = await statesOf(root, pins, record)
         const data: SourceData = { root, action, packages, copied, warnings, record: record === undefined ? undefined : "local" }
         const message = [
             ...copied.map((one) => `copied ${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")} (${String(one.files)} files)`),
+            ...(added.length === 0 ? [] : [`installed without saving (the local packages need them): ${added.join(", ")}`]),
+            ...(syncDetail === "" ? [] : [syncDetail]),
             ...(action === "npm" ? ["npm ci done; every @starci package resolves from npm"] : []),
             ...packages.map(describeState),
             ...warnings.map((warning) => `warning: ${warning}`),

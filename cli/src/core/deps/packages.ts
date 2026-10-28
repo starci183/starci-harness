@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, sep } from "node:path"
 import { z } from "zod"
 import { depsLocalPath, existingDepsLocalPath, runtimeRoot } from "../../harness/ledger.js"
@@ -150,6 +150,12 @@ const readMark = (dir: string): LocalMark | undefined => {
 const installDirs = (root: string, manifests: readonly string[], name: string): string[] =>
     [...new Set(["", ...manifests.map((file) => posix.dirname(file)).filter((dir) => dir !== ".")])].map((base) => join(root, base, "node_modules", ...name.split("/")))
 
+/** The `@starci` packages installed at the app root, pinned or brought in by another package. */
+export const installedNames = (root: string): string[] => {
+    const scope = join(root, "node_modules", ...SCOPE.slice(0, -1).split("/"))
+    return existsSync(scope) ? readdirSync(scope, { withFileTypes: true }).filter((entry) => entry.isDirectory() || entry.isSymbolicLink()).map((entry) => `${SCOPE}${entry.name}`) : []
+}
+
 /** Every installed copy of the named packages, at the root and in each workspace's own node_modules. */
 export const installsOf = (root: string, manifests: readonly string[], names: readonly string[]): Install[] =>
     names.flatMap((name) =>
@@ -163,10 +169,18 @@ export const installsOf = (root: string, manifests: readonly string[], names: re
 
 const tail = (stdout: string, stderr: string): string => [stdout, stderr].join("\n").trim().split("\n").slice(-15).join("\n")
 
-/** Builds a package in its folder (`npm ci` first when it has no node_modules); DEPS_BUILD_FAILED with the output's tail. */
+// A package folder's install is stale when npm's record of it is missing or older than the lockfile it was made from.
+const installStale = (folder: string): boolean => {
+    const installed = join(folder, "node_modules", ".package-lock.json")
+    const lock = join(folder, "package-lock.json")
+    if (!existsSync(installed)) return true
+    return existsSync(lock) && statSync(lock).mtimeMs > statSync(installed).mtimeMs
+}
+
+/** Builds a package in its folder (installing it first when its install is missing or stale); DEPS_BUILD_FAILED with the output's tail. */
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
-    if (!existsSync(join(pkg.folder, "node_modules"))) {
+    if (installStale(pkg.folder)) {
         const install = await captureNpm(existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"], pkg.folder)
         if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
     }
@@ -200,6 +214,27 @@ const resolvable = (dependency: string, dir: string, root: string): boolean => {
         if (parent === at) return false
         at = parent
     }
+}
+
+/**
+ * Installs, without saving (`npm install --no-save`: neither package.json nor package-lock.json is written), the
+ * dependencies the local packages declare that the app has not installed, at the spec each package asks for; a newer
+ * local Grammar may need a library its published version did not. It runs before the copies, since npm's reify puts every
+ * `@starci` package back to its locked version. Returns the specs it installed.
+ */
+export const installMissing = async (root: string, packages: readonly LocalPackage[]): Promise<string[]> => {
+    const specs = new Map<string, string>()
+    for (const pkg of packages) {
+        for (const [dependency, spec] of Object.entries(readManifest(join(pkg.folder, "package.json")).dependencies ?? {})) {
+            if (typeof spec !== "string" || dependency.startsWith(SCOPE) || resolvable(dependency, join(root, "node_modules"), root)) continue
+            specs.set(dependency, `${dependency}@${spec}`)
+        }
+    }
+    const wanted = [...specs.values()].sort((left, right) => left.localeCompare(right))
+    if (wanted.length === 0) return []
+    const run = await captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root)
+    if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm install --no-save ${wanted.join(" ")} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
+    return wanted
 }
 
 /** What one package's local copy did: where it came from, where it went, how many files, and what to look at. */
@@ -279,21 +314,30 @@ export interface Reapplied {
 }
 
 /**
- * Applies the repository's recorded local sources (`source` is any checkout of it) to `checkout`, another checkout that
- * has just run `npm ci`: each recorded folder is copied as it stands, without building, so a clean verify runs against
- * the same unpublished package the work tree does.
+ * Applies the repository's recorded local sources (`source` is any checkout of it) to `checkout`, another checkout of it
+ * or the same one: a workflow worktree before an Op launches into it (`seat start`), a clean-verify checkout after its
+ * `npm ci`, or a work tree after its own `npm ci` (`deps source --sync`). It runs `npm ci` first when the checkout has no
+ * node_modules, installs the dependencies the local packages add (`installMissing`), then copies each recorded folder as
+ * it stands, without building, so every checkout runs against the same unpublished package.
  */
 export const reapplyLocal = async (source: string, checkout: string): Promise<Reapplied | undefined> => {
     const record = readRecord(source)
     if (record === undefined || record.packages.length === 0) return undefined
-    const manifests = await manifestFiles(checkout)
     try {
-        const copied = await inOrder(record.packages, (entry) => {
+        if (!existsSync(join(checkout, "node_modules"))) {
+            const run = await captureNpm(["ci", "--no-audit", "--no-fund"], checkout)
+            if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${checkout} failed:\n${tail(run.stdout, run.stderr)}`)
+        }
+        const packages = record.packages.map((entry) => {
             const pkg = localPackages(dirname(entry.folder)).get(entry.name)
             if (pkg === undefined) throw new Refusal("DEPS_FROM_MISSING", `${entry.folder} no longer holds ${entry.name}`)
-            return copyLocal(checkout, manifests, pkg)
+            return pkg
         })
-        return { status: "green", detail: copied.map((one) => `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${one.warnings.map((warning) => `\n  warning: ${warning}`).join("")}`).join("\n") }
+        const added = await installMissing(checkout, packages)
+        const manifests = await manifestFiles(checkout)
+        const copied = await inOrder(packages, (pkg) => copyLocal(checkout, manifests, pkg))
+        const lines = copied.map((one) => `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${one.warnings.map((warning) => `\n  warning: ${warning}`).join("")}`)
+        return { status: "green", detail: [...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
     } catch (error: unknown) {
         return { status: "red", detail: `the repository is in local package mode (starci deps source) but its copy failed: ${error instanceof Error ? error.message : String(error)}` }
     }
