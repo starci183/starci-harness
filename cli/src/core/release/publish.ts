@@ -42,7 +42,7 @@ const actionOf = async (pkg: WorkspacePackage, cwd: string): Promise<Action> => 
 }
 
 /** How long a published version may take to become readable: the registry answers a fresh version only after a delay. */
-const REGISTRY_SETTLE_MS = 180_000
+const REGISTRY_SETTLE_MS = 900_000
 const REGISTRY_POLL_MS = 10_000
 
 /** True once the registry serves the package's version, polled until REGISTRY_SETTLE_MS has passed. */
