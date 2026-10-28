@@ -35,6 +35,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- **A package publishes once its own CI jobs are green.** The publish no longer waits for the `ci` aggregate: `publish-packages`
+  publishes each due package once the repo-wide gates and the `package` jobs of its build order are green, holding and naming
+  the rest (`.github/scripts/publish-gate.mjs`), and `publish-cli` publishes the CLI after it once the harness job and every
+  gate are green. A red bench, Sonar or app job no longer holds a package (CONTRIBUTING.md CONTRIB-20). `release publish
+  --publish --package cli` now moves the CLI's sibling requirements to their folder versions, as a run without `--package` does.
 - **Each Op runs in a worktree of its own; path leases are gone.** Every task of a workflow, under `orca` and `inline`, works
   in `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut from the workflow
   branch's head when its seat starts, with the hooks and the workflow checkout's install linked in, never a fresh install

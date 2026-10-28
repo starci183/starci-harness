@@ -81,7 +81,8 @@ jobs:
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n")
           '
 
-  # The always-on light gates, one job each, over the whole tree.
+  # The always-on light gates, one job each, over the whole tree. A `repo` gate judges every package and gates the packages
+  # publish; a `harness` gate judges the CLI and the trees it reads and gates only the CLI publish.
   gates:
     needs: plan
     runs-on: ubuntu-latest
@@ -90,20 +91,28 @@ jobs:
       matrix:
         include:
           - gate: anatomy drift (contexts/project/anatomy.md)
+            scope: harness
             run: contexts anatomy --check
           - gate: loosening (policy/loosening.yaml)
+            scope: repo
             run: check loosening
           - gate: secret scan of the whole tree (policy/security.yaml)
+            scope: repo
             run: check secrets --all
           - gate: harness shape (contexts/hfs/harness.yaml)
+            scope: repo
             run: check shape
           - gate: heavy spawn sites (every heavy command through the governor of cli/src/harness/heavy.ts)
+            scope: harness
             run: check heavy-sites
           - gate: contexts anchors (one place per anchor, no dangling link)
+            scope: harness
             run: contexts anchor --check
           - gate: contexts search index (cli/dist/contexts-search.json matches the tree)
+            scope: harness
             run: contexts search --check
-    name: gate (${{ matrix.gate }})
+    # publish-packages reads the `repo` gates by this name's prefix.
+    name: gate (${{ matrix.scope }}) ${{ matrix.gate }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -132,6 +141,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # publish-packages reads each leg by this name.
     name: package (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
@@ -239,22 +249,28 @@ jobs:
             if (bad.length > 0) { console.log(`not green: ${bad.map(([job]) => job).join(", ")}`); process.exit(1) }
           '
 
-  # The one publishing path (CONTRIBUTING.md CONTRIB-20): on a push to main whose plan affects a package or the CLI, once `ci`
-  # is green, `starci release publish` (cli/src/core/release/publish.ts) judges the plan, then publishes in two phases: every
-  # package under packages/ whose version is not on npm yet, a dependency before its dependent, then the CLI (starci-harness),
-  # its sibling requirements and lockfile moved to the versions just published. With provenance; a version already on npm is
-  # skipped, so a re-run publishes only what is still missing; runs queue, never overlap.
-  publish:
-    needs: [plan, ci]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')
+  # The one publishing path (CONTRIBUTING.md CONTRIB-20), on a push to main whose plan affects a package or the CLI, in two
+  # jobs that never wait for `ci`: publish-packages publishes each package as soon as its own jobs are green, publish-cli the
+  # CLI after it once the harness jobs are green. Each runs `starci release publish` (cli/src/core/release/publish.ts), which
+  # judges the plan before anything reaches npm and reads every version back. With provenance; a version already on npm is
+  # skipped, so a re-run publishes only what is still missing; runs of one job queue, never overlap.
+  publish-packages:
+    needs: [plan, gates, package]
+    if: >-
+      !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.plan.result == 'success'
+      && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')
     runs-on: ubuntu-latest
     concurrency:
-      group: npm-publish
+      group: npm-publish-packages
       cancel-in-progress: false
     permissions:
       contents: read
+      # The check step reads this run's job conclusions.
+      actions: read
       # npm provenance signs each tarball with this workflow's OIDC identity.
       id-token: write
+    outputs:
+      held: ${{ steps.due.outputs.held }}
     steps:
       # Full history: the plan diffs each affected package from the commit npm recorded for its published version, and the
       # publish reads that this commit is on origin/main.
@@ -273,36 +289,99 @@ jobs:
         run: npm run build
       # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
       # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings
-      # (the CLI may require an older sibling npm serves: it is published last, moved to the folder's version).
-      - name: Judge the plan
+      # (the CLI may require an older sibling npm serves: publish-cli moves it to the folder's version). A due package then
+      # publishes only when every `gate (repo)` job is green and the `package` job of each folder of its build order (itself
+      # and the siblings it needs) that this run tested is green; any other due package is held, and named.
+      - name: Judge the plan and this run's jobs
         id: due
         env:
           BASE: ${{ needs.plan.outputs.base }}
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           plan="$RUNNER_TEMP/publish-plan.json"
           every="$RUNNER_TEMP/every-package.json"
+          jobs="$RUNNER_TEMP/jobs.json"
           node cli/dist/main.js release publish --base "$BASE" --json > "$plan" || { cat "$plan"; exit 1; }
           node cli/dist/main.js release affected --json > "$every"
-          PLAN="$plan" EVERY="$every" node -e '
-            const fs = require("fs")
-            const rows = JSON.parse(fs.readFileSync(process.env.PLAN, "utf8")).data.rows
-            const every = JSON.parse(fs.readFileSync(process.env.EVERY, "utf8")).data.packages
-            const due = rows.filter((row) => row.action === "publish")
-            for (const row of rows) console.log(`${row.package}@${row.version}: ${row.action}`)
-            const build = []
-            for (const row of due) for (const dir of every.find((pkg) => pkg.dir === row.dir)?.build ?? []) if (!build.includes(dir)) build.push(dir)
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${due.length}\nbuild=${build.join(" ")}\n`)
-          '
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" \
+            --jq '.jobs[] | {name, conclusion}' > "$jobs"
+          PLAN="$plan" EVERY="$every" JOBS="$jobs" node .github/scripts/publish-gate.mjs
       # npm publish packs each package through its prepack build, which needs its devDependencies and the siblings it installs.
-      - name: Install and build the due packages after the siblings they need
+      - name: Install and build the publishable packages after the siblings they need
         if: steps.due.outputs.build != ''
         env:
           BUILD: ${{ steps.due.outputs.build }}
         run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
-      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed.
-      - name: Publish every version not on npm
-        if: steps.due.outputs.count != '0'
+      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed. One package per
+      # call, in the judged order (a dependency before its dependent), stopping at the first refusal.
+      - name: Publish each publishable package not on npm
+        if: steps.due.outputs.publish != ''
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          PUBLISH: ${{ steps.due.outputs.publish }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          for dir in $PUBLISH; do node cli/dist/main.js release publish --publish --base "$BASE" --package "$dir"; done
+
+  # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
+  # job never gate a publish). Its sibling requirements and lockfile move to the folder versions the packages publish put on
+  # npm; a due sibling it requires that publish-packages held refuses it here.
+  publish-cli:
+    needs: [plan, gates, harness, publish-packages]
+    if: >-
+      !cancelled() && needs.publish-packages.result == 'success' && needs.gates.result == 'success'
+      && (needs.harness.result == 'success' || needs.harness.result == 'skipped')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: npm-publish-cli
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
+      - name: Build the CLI
+        working-directory: cli
+        run: npm run build
+      - name: Judge the plan and the held siblings
+        id: due
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          HELD: ${{ needs.publish-packages.outputs.held }}
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/publish-plan.json"
+          node cli/dist/main.js release publish --base "$BASE" --package cli --json > "$plan" || { cat "$plan"; exit 1; }
+          PLAN="$plan" node -e '
+            const fs = require("fs")
+            const row = JSON.parse(fs.readFileSync(process.env.PLAN, "utf8")).data.rows.find((candidate) => candidate.dir === "cli")
+            console.log(`${row.package}@${row.version}: ${row.action}`)
+            const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
+            const requires = new Set(Object.keys({ ...cli.dependencies, ...cli.peerDependencies }))
+            const held = (process.env.HELD ?? "").split(" ").filter((dir) => dir !== "")
+              .filter((dir) => requires.has(JSON.parse(fs.readFileSync(`${dir}/package.json`, "utf8")).name))
+            if (row.action === "publish" && held.length > 0) {
+              console.log(`::error::${row.package}@${row.version} requires ${held.join(", ")}, held by publish-packages; it publishes once they do`)
+              process.exit(1)
+            }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `due=${row.action === "publish"}\n`)
+          '
+      - name: Publish the CLI
+        if: steps.due.outputs.due == 'true'
         env:
           BASE: ${{ needs.plan.outputs.base }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -310,4 +389,4 @@ jobs:
           set -euo pipefail
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          node cli/dist/main.js release publish --publish --base "$BASE"
+          node cli/dist/main.js release publish --publish --base "$BASE" --package cli

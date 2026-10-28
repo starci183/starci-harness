@@ -236,7 +236,7 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
  * `starci release publish`: plans which package versions are missing from npm and judges the plan (each due package requires its
  * siblings at their versions here, published or due; with `--base`, no package changed since it is on npm at its old version); with
  * --publish it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
- * publish job runs it on every push to main; from a workstation it is Debug's fallback.
+ * publish jobs run it on every push to main; from a workstation it is Debug's fallback.
  */
 export const releasePublishVerb = defineVerb({
     path: ["release", "publish"],
@@ -271,7 +271,8 @@ export const releasePublishVerb = defineVerb({
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push); a published version must come from a commit on main")
             }
             await requireCiGreen(context, root, "release.publish", head)
-            await publishDue(due, packages, root, published)
+            // Every package, not the --package selection: the held CLI moves its requirements to its siblings' folder versions.
+            await publishDue(due, all, root, published)
         }
         const data: PublishData = { mode: flags.publish ? "publish" : "plan", rows, published }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])

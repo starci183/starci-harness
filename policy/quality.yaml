@@ -20,7 +20,7 @@ runtime:
 verify:
   tier: wave
 # Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
-# release.publish is not listed: on the harness CI's own publish job runs it after its ci job is green, and Debug's
+# release.publish is not listed: on the harness CI's own publish jobs run it once each package's own jobs are green, and Debug's
 # workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
 requireCi: [release.cut, deploy.prod]
 # The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
