@@ -62,8 +62,8 @@ the knowledge to be true.
   repository; the new harness states its own in `policy/` and `contexts/harness/decisions.md`.
 - **Harness rulings** not logged here: supervisor-mission, supervisor-self-learning, supervisor-machine-log,
   ram-aware-concurrency, autopilot-run-to-finish, settle-runtime-service, evidence-in-db-and-blobs,
-  providers-claude-codex-devin, one-pattern-no-legacy, no-runtime-specs, speed-flow, release-waves,
-  push-main-after-scoped-check, publish-as-soon-as-done, scope-before-check, candidate-ci, release-require-ci-per-project,
+  providers-claude-codex-devin, one-pattern-no-legacy, no-runtime-specs, release-waves,
+  candidate-ci, release-require-ci-per-project,
   loosening-always-red, loosening-state-check, design-truths-*, hook-input-budget-pins, orca-terminal-create-official,
   lite-chat-full-op, handover-owner-approval, credential-build-placeholders, owner-language-logs, push-scan-test-secrets-encrypted,
   alpha20-secrets-by-consumer, and the draw-loop rulings (draw-shapes-only, draw-content-region-only, draw-token-render,

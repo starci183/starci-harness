@@ -10,36 +10,36 @@ Node 24 (`node:sqlite` unflagged). The CLI builds with `tsc` into `cli/dist`, wh
 
 ```sh
 cd cli
-npm ci                  # also builds cli/dist (prepare)
-npm run typecheck
-npm run lint
-npm run build
+npm ci                  # also builds cli/dist (prepare); once per checkout, never per branch where it is shared
 cd ..
 node cli/dist/main.js check loosening
 node cli/dist/main.js check secrets
 ```
 
-`starci check run` runs the runtime tier of this repository's profile (`runtime`, declared in [hfs.json](hfs.json))
-over the scope of your diff: secrets, loosening, typecheck and lint. A package under `packages/` is installed and
-tested inside its own folder ([packages/README.md](packages/README.md) says how, including the siblings that
-must be installed together).
+Which checks you run, and when, is [contexts/authority/](contexts/authority/README.md): a branch runs at most a typecheck
+or lint of the files it touched, the merged batch runs one scoped round (`starci check run` runs the runtime tier of this
+repository's profile, `runtime` in [hfs.json](hfs.json), over the round's diff), and CI the rest. A package under
+`packages/` is installed and built inside its own folder ([packages/README.md](packages/README.md) says how, including
+the siblings that must be installed together).
 
 ## How a change is proved
 
 ### CONTRIB-1 The CLI keeps no spec suite
 
 A CLI change is proved by running the built CLI (`node cli/dist/main.js ...`) against a scratch git repository created
-under a temp directory, with `STARCI_LOCAL_ROOT` pointed at a temp state base. The proof is scoped to what the change
-touches; never run it inside a real project or this checkout's `.runtime/`. Do not add a test framework to `cli/`.
+under a temp directory, with `STARCI_LOCAL_ROOT` pointed at a temp state base, in the wave round on the merged tree
+([contexts/authority/wave.md](contexts/authority/wave.md)). The proof is scoped to what the change touches; never run it
+inside a real project or this checkout's `.runtime/`. Do not add a test framework to `cli/`.
 
 ### CONTRIB-2 Packages keep their specs
 
-Each package under `packages/` proves itself with its own `node:test` specs (`npm test` in its folder). A rule change
-in a canon comes with the spec that holds it.
+Each package under `packages/` proves itself with its own `node:test` specs (`npm test` in its folder), which CI runs. A
+rule change in a canon comes with the spec that holds it. The Grammar keeps none ([contexts/authority/packages.md](contexts/authority/packages.md)).
 
 ### CONTRIB-3 Test only what you changed
 
-The full suite is CI's, after the push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+A branch runs no tests, the wave runs the tests its scope decision names, and the full suite is CI's, after the push
+([contexts/authority/](contexts/authority/README.md)).
 
 ## CONTRIB-4 One owner per fact
 
@@ -60,6 +60,7 @@ A second copy is a defect even while both agree.
 | task states and their transitions | `TRANSITIONS` in `cli/src/harness/tasks.ts`, changed only through `setStatus` |
 | how the CLI is built, the verb standard, how the harness inside it works (ledgers, settling, graph, seat launch) | [cli/README.md](cli/README.md), naming the code that implements each |
 | load order | [contexts/README.md](contexts/README.md) |
+| who may edit, commit, merge, push and publish, and which tier of checks each role runs | [contexts/authority/](contexts/authority/README.md) |
 | axes, roles, where state lives and how a project is found, hard rules, the owner's harness decisions, open questions | one file each in [contexts/harness/](contexts/README.md#harness) |
 | what the harness is, how it works, how to install it, the verb groups, CI | [README.md](README.md) |
 | how a release is published and the secret it needs | CONTRIB-20 below |
@@ -179,8 +180,9 @@ Commit with hooks, in small commits whose message says what the change does.
 
 ### CONTRIB-18 Push after a green scoped check
 
-Main is pushed right after a green scoped check: run `starci check run` on your diff, then `starci release push` (it
-refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges everything else.
+Main is pushed right after a green wave round ([contexts/authority/wave.md](contexts/authority/wave.md)) with
+`starci release push` (it refuses a dirty tree, a non fast-forward and a secret in the pushed range). CI judges
+everything else.
 
 ### CONTRIB-19 A red CI is the next commit
 

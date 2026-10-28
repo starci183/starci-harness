@@ -11,7 +11,9 @@ harness). [README.md](../README.md) is the overview and says how it works.
 ## Load order
 
 Read the files of your task's row, in order, before planning or editing. A task that spans rows reads each row. Every
-row starts with [harness/rules.md](harness/rules.md), the rules no task may bend.
+row starts with [harness/rules.md](harness/rules.md), the rules no task may bend, then
+[authority/README.md](authority/README.md), what your role may edit, commit, merge, push and publish and which tier of
+checks it runs, under either runner.
 
 | task | read |
 |---|---|
@@ -47,6 +49,16 @@ files alone.
 | [harness/state.md](harness/state.md) | where harness state and product Work live, how a project is found, the bootstrap an app carries |
 | [harness/decisions.md](harness/decisions.md) | the owner's harness decisions, each naming the file that implements it |
 | [harness/questions.md](harness/questions.md) | the open questions awaiting the owner |
+
+## Authority
+
+| file | holds |
+|---|---|
+| [authority/README.md](authority/README.md) | the role table (edit, commit, merge to main, push, publish, check tier) and the three tiers, for `inline` and `orca` alike |
+| [authority/branch.md](authority/branch.md) | tier 1: what any branch or worktree runs, and never runs |
+| [authority/wave.md](authority/wave.md) | tier 2: one scoped round on a merged tree, the scope decision first, reuse and repair |
+| [authority/ci.md](authority/ci.md) | tier 3: CI's full suite, the npm publish of new versions, a red CI |
+| [authority/packages.md](authority/packages.md) | package edits by apps, and Grammar edits as content only |
 
 ## The boundary model: four owners, one app
 

@@ -5,8 +5,9 @@ workflow of the project has a `[Kernel] <workflow>` under it, each task attempt 
 `supervisor next` do the mechanics and hand them one decision, which they answer with one command (`kernel submit`,
 `supervisor submit`), never ending their turn while the driver is theirs (`supervisor tick` nudges one that does, then
 relaunches it on another model); [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs. Inline workflows use the chat
-agent as Kernel and worker without Orca seats. A role's rights come from each verb's `effect` and `roles` (cli/README.md
-"The verb standard" says when they are enforced).
+agent as Kernel and worker without Orca seats. Who may edit, commit, merge to main, push and publish, and which checks
+each role runs, is [contexts/authority/](../authority/README.md), the same under both runners; a verb's `effect` and
+`roles` (cli/README.md "The verb standard") hold it where the CLI enforces it.
 
 | role | job | never | escalates to |
 |---|---|---|---|

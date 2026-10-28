@@ -2,7 +2,9 @@
 
 Selection authorizes no release. Resolve the repository, the commit, the package and version; when any is
 unclear, present the plan and get the owner's OK. Continue an unchanged approved release without asking
-again. Push main after a green scoped check; CI is the critic and runs the full suite on main.
+again. Push main after a green wave round ([contexts/authority/wave.md](../../../contexts/authority/wave.md): the
+scope decision first, then one scoped round); CI is the critic, runs the full suite on main and publishes new package
+versions ([contexts/authority/ci.md](../../../contexts/authority/ci.md)).
 
 ## 1. Scoped check
 
@@ -52,7 +54,6 @@ main, with its finished CHANGELOG section as the notes, and pushes the tag alone
 
 ```text
 starci release publish
-starci release publish --publish
 ```
 
 On the harness, CI publishes on every push to main (CONTRIBUTING.md CONTRIB-20); run it by hand only as Debug's fallback

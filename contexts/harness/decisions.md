@@ -49,11 +49,25 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   checks a machine runs (`command`, `starci`, `files`, `json`, `probe`, `cited`, `uat-flow`), and an op whose
   `checks.behavioural` is true makes a contract without a behavioural check unfit (`contractProblems` in
   `cli/src/harness/contract.ts`). Anything no machine can judge (taste, UX) is an owner review step, never part of a contract.
-- **Tests stay inside the task; CI judges the rest.** A contract's checks cover only what the task changed, or, for a task
-  that changes nothing, its allowPaths as they stand: the scoped `check run` (`runScopedCheck` in
-  `cli/src/harness/run-checks.ts`), the tests related to the changed files (never a whole suite) and `paths-only`. A `verify` worker runs a
-  heavy suite only when the goal itself is that suite. CI runs the full suite on main after the push; a red CI becomes
-  a `code` contract scoped to the red checks and never blocks the next push.
+- **Speed flow (`speed-flow`).** Checks run in three tiers: a branch runs at most a fast typecheck or lint of the files it
+  touched, a merged batch runs one scoped round, CI runs the full suite; no tests, build or bench on a branch
+  ([contexts/authority/](../authority/README.md)). Owner, 2026-10-28: "lên master plan để tối ưu hóa thời gian làm việc
+  tránh thủ tục rườm rà ... vừa chậm vừa block cpu/ram như lint, tests, typescript"; "contexts/<quyền> ghi rõ code nhánh
+  không tests".
+- **No grammar tests (`no-grammar-tests`).** A Grammar edit is content only (component, CSS, props, a story for a new
+  state), proved by `typecheck` and `build`, with no specs and no local plays or DNA run, bumping and re-pinning only `@starci/grammar`
+  ([contexts/authority/packages.md](../authority/packages.md), `packages/grammar/package.json` `test`). Owner, 2026-10-12,
+  restated 2026-10-28: "ghi rõ grammar sửa chỉ sửa nội dung".
+- **Scope before check (`scope-before-check`).** A wave writes its scope decision (diff, changed files, reach, exact
+  commands, what is skipped and why) before any command, reuses green rows for unchanged inputs and reruns only red rows
+  and their dependents ([contexts/authority/wave.md](../authority/wave.md)). Owner, 2026-10-28: "tránh thủ tục rườm rà".
+- **Push main after a scoped check (`push-main-after-scoped-check`).** A green wave goes to main at once with
+  `release push`, and CI is the critic; a red CI opens the next fix and blocks nobody
+  ([contexts/authority/ci.md](../authority/ci.md), [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-18, CONTRIB-19). Owner,
+  2026-10-28: "tối ưu hóa thời gian làm việc tránh thủ tục rườm rà".
+- **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
+  [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
+  Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".
 - **The router alone picks.** Every Op and Kernel is routed by [ops/routing.yaml](../../ops/routing.yaml) from real
   signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
   from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers
@@ -86,10 +100,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   rule lives once, in the CLI or a canon package.
 - **One CI workflow.** [.github/workflows/ci.yml](../../.github/workflows/ci.yml) gates every push and pull request to main
   ([README.md](../../README.md) "CI"); its tokens live only in GitHub secrets.
-- **Coded is usable; publishing is CI's.** Apps consume the harness packages from the harness checkout (`deps source
+- **Coded is usable; publishing is CI's (`publish-by-ci`, `publish-as-soon-as-done`).** Apps consume the harness packages from the harness checkout (`deps source
   --local`, `cli/src/core/deps/`), so finished code serves both apps before any release. Publishing to npm is separate and
   automatic: every push to main publishes, once CI is green, each package and CLI version not on npm yet, and refuses a
   package changed under a version already there (`RELEASE_VERSION_NOT_BUMPED`, `cli/src/core/release/publish.ts`;
-  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --publish` is Debug's fallback.
+  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --publish` is Debug's fallback. Only the
+  edited package is bumped and re-pinned ([contexts/authority/packages.md](../authority/packages.md)).
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
   ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.

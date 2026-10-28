@@ -70,9 +70,9 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    `BE-ERROR-1` or a yaml `id: R01`); never cite a rule you did not read.
 3. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget.
    It judges only what you may have written: files leased by other tasks are not yours. A check on `@result` reads the
-   output file. Test only what the task changed; the full suite is CI's after the push. The harness gives your checkout
-   the app's `@starci` packages as the app takes them (npm, or local copies under `starci deps source --local`); an
-   `npm ci` or `npm install` of your own puts them back to npm, so run `starci deps source --sync` after it.
+   output file. Beyond it you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
+   no tests, build, bench or full suite, and no install of your own; the harness gives your checkout the app's `@starci`
+   packages as the app takes them (npm, or local copies under `starci deps source --local`).
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):
    - `done`: verify is green. Work that finds nothing to change (the code already meets the task) is done too: you change
      nothing, the checks judge the files under your allowPaths as they stand, and the harness settles it without a commit.
@@ -84,12 +84,11 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 
 A defect that belongs to a package the app consumes (the grammar, a canon package, the harness) is never worked around in
 the app, even when a shim inside allowPaths would make your checks green. A task whose input names a `@starci` package to
-fix is a package edit: cut its branch with `starci pkg branch <topic>`, edit and commit in the worktree it prints, run
-that package's own build and specs there, take it into the app with the `starci deps source --local --from ...` line it
-prints, and record it with `starci pkg handoff` (`--urgent` when a deploy waits on it); Debug alone merges, pushes and
-publishes it. Any other task files `blocked` naming the package, the component and the error.
+fix is a package edit, done as [contexts/authority/packages.md](../../contexts/authority/packages.md) says. Any other
+task files `blocked` naming the package, the component and the error.
 
-Never commit in your checkout (only a package edit's own branch takes your commits), push, merge into main, change the contract, edit tests or configs outside allowPaths, or ask the owner.
+Never commit in your checkout (only a package edit's own branch takes your commits), push, merge into main, change the
+contract, edit tests or configs outside allowPaths, or ask the owner ([contexts/authority/](../../contexts/authority/README.md)).
 The harness verifies your result again on a clean checkout and commits it; a green you did not earn is refused.
 
 ### Orca mail

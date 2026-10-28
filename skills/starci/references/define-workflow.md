@@ -34,8 +34,8 @@ Split the goal into tasks, one outcome each. Per task decide:
 - `allowPaths`: literal files or folders, never a glob, never `.` and never the whole `.starciwork`. Inside
   `.starciwork` lease one scope, for example `.starciwork/features/<f>`.
 - `checks`: presets from `ops/checks.yaml`. At least one behavioural check (`tests-pass`, `json-required`,
-  `result-json`, `probe`, `ci-green` or a command) for every label that requires it. Tests cover only what
-  the task changes; never ask for a full suite. CI judges the rest after the push.
+  `result-json`, `probe`, `ci-green` or a command) for every label that requires it. What a task, the
+  merged batch and CI each run is [contexts/authority/](../../../contexts/authority/README.md); never ask a task for a suite.
 - `dependsOn`: only real order. Overlapping `allowPaths` without an order are allowed; the lease serializes them.
 - `difficulty`, and `risk` when the work carries one of the risks `qualification.riskTags` of
   [ops/routing.yaml](../../../ops/routing.yaml) names: a risk-tagged task refuses a member still on probation for its
