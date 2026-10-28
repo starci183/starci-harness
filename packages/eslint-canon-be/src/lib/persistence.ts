@@ -116,7 +116,7 @@ export const connectionFileOf = (hfs: HfsView, file: string, role: string): HfsC
 }
 
 /** The platform capabilities that own a `persistence/` and so may hold an `EntityManager` (a pattern capability is named by its folder). */
-const PERSISTENCE_CAPABILITIES: ReadonlyArray<string | null | undefined> = ["database", "inbox", "event-bus", "queue", "jobs", "saga", "outbox", "realtime"]
+const PERSISTENCE_CAPABILITIES: ReadonlyArray<string | null | undefined> = ["database", "inbox", "event-bus", "queue", "jobs", "saga", "outbox", "realtime", "http-security"]
 
 /**
  * Whether a class in this file may receive an `EntityManager`: an application handler, a domain service, a projection, a typed queue producer (it takes the transaction of its caller), a platform persistence capability.

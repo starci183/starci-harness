@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 3.6.5 - 2026-10-29
 
+- Changed: `starci-be/em-injection-slots` (R88) admits `platform/http-security` as a persistence capability: it owns the shared rate limit windows (BE-AUTH-4), and its guard counts in them through the primary `EntityManager`. Spec: `src/connections.spec.ts`.
+- Changed: the bundled canon pins name hfs 4.9.9 and eslint-canon-be 3.6.5.
 - Changed: the bundled canon pins name the Grammar family 0.15.5 (grammar, eslint-grammar-core, eslint-grammar-offset-pop). No rule changed.
 - Changed: the bundled rule catalog states R225 with the app pre-push hook's dependency push gate (`starci deps check`). No rule changed.
 
