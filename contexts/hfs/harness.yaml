@@ -41,6 +41,13 @@ slots:
     presence: forbidden
     holds: a plan, roadmap or master file outside contexts/decisions; a decided plan is a decisions record, each fact in its owner
     rule: CONTRIB-4 one owner per fact; CONTRIB-15 (STARCI.md, design documents of plans and phases)
+  - id: never.grammar-tests
+    path:
+      - "packages/grammar/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs}"
+      - "packages/grammar/**/{jest,vitest,playwright}.config.*"
+    presence: forbidden
+    holds: a spec, test or test-runner config in the Grammar package; a Grammar edit is proved by its typecheck and build, its plays and DNA gate are CI's
+    rule: contexts/authority/packages.md
   - id: never.cli-js
     path: "cli/src/**/*.{js,mjs,cjs,jsx}"
     presence: forbidden

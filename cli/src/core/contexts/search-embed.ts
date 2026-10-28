@@ -58,7 +58,19 @@ export const chosenModel = (): EmbedModel | undefined => {
 }
 
 /** Where model weights are cached: downloaded once at build, read offline at query time, never committed. */
-export const modelCache = (): string => process.env[MODEL_CACHE_ENV] ?? join(runtimeRoot(), ".runtime", "models")
+export const modelCache = (): string => process.env[MODEL_CACHE_ENV] ?? join(sharedCheckout(runtimeRoot()), ".runtime", "models")
+
+/**
+ * The harness's main checkout, so every linked worktree of it shares one model and vector cache: a worktree's `.git` is a file
+ * naming `<main>/.git/worktrees/<name>`; a main checkout (a `.git` folder) or an installed package is its own.
+ */
+const sharedCheckout = (root: string): string => {
+    const dotGit = join(root, ".git")
+    if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return root
+    const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+    const main = gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]
+    return main !== undefined && existsSync(join(main, "cli")) ? main : root
+}
 
 const modelDir = (model: EmbedModel): string => join(modelCache(), model.repo, model.revision)
 
