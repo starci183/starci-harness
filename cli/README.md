@@ -190,7 +190,15 @@ wake-up mail); a command whose content (all but its cmdId, with its change file)
 escalates to the Supervisor (kind harness), and every later submit of it is refused at once (`COMMAND_POISONED`).
 `supervisor next` sweeps the workflows the Supervisor owns in its project's registered repositories: a Kernel whose lease lapsed with no
 progress past its TTL (a relaunch is not progress) is relaunched on Orca's word (gone, or idle), and once the relaunch
-limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a live Kernel idle at
+limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a Kernel launch Orca
+never confirmed (`launch-unknown`, or still `starting`) is reconciled, never launched beside: its dispatch (the one the failed
+worker-start named, else request-show's receipt, else a replay of worker-start under the same request id) is adopted when its
+worker started, when the Kernel's own `kernel attach` came through from that dispatch's live terminal, or when that live
+terminal printed after the launch (Orca may keep such a worker at `start_unknown`); while it waits, a dispatch left pasted in the
+agent's composer is submitted again with a bare Enter (routing.yaml `pendingComposer`, for Ops too); a live terminal that stayed quiet is never
+fenced (waited on past `stall.startDeadlineMinutes`, escalated past `effectUnknownDeadlineMinutes`); only a worker Orca reports
+gone, or one never started past the deadline whose terminal Orca no longer lists, is fenced, closed `launch-failed` and
+relaunched once, and only once the fence held (`resolveKernelLaunch` in `core/supervisor/driver.ts`); a live Kernel idle at
 its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
 it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
 `harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
@@ -200,13 +208,18 @@ and its `answers` close escalations and owner requests (each recording the comma
 every open decision of its workflow.
 
 **The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
-every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and runs itself again once a
-new build of the CLI's dist stands, so it never ticks with modules a build replaced): first the terminal sweep
+every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and once a new build of the
+CLI's dist stands it starts its replacement from that build, detached onto its own stdout and stderr, records a
+`supervisor-watch-reloaded` host event and exits, so it never ticks with modules a build replaced and one watch process runs): first the terminal sweep
 (`harness/terminal-sweep.ts`) closes the tab of every Orca terminal the harness made — its handle recorded by a seat of a
 registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] ` (or Orca's `worker-task_` inside a
 workflow worktree) — that Orca lists orphaned or that no open seat, open Kernel record or live Supervisor holds (an unrecorded
 one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (`--dry-run` reports what it
-would close and does nothing else); then `ensureSupervisors` keeps
+would close and does nothing else); then it records Orca's full terminal list, by which a pool count (`runningWorkers` in
+`harness/machine.ts`) leaves out a seat whose terminal Orca no longer lists, and closes `launch-failed` every Kernel launch of
+any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` with nothing of it alive
+(`harness/stale-launch.ts`), so an abandoned launch stops holding a slot; a ledger `project retire` retired is read by none of
+it; then `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
 owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
@@ -272,9 +285,9 @@ role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge,
 `nudgeGraceMinutes`, or a stall after the last nudge, gives it up (`stall-gave-up`): its member records a `stalled` outcome and
 its provider circuit the kind worker-show's failure words name by `failureSignals` (capacity, rate, quota, auth), and no circuit at all when they name none (a plain stall is the model's, judged by its outcomes);
 an Op is fenced and its task failed `stalled` for the Kernel to retry, and a Kernel is relaunched and a Supervisor replaced
-with the lineage `coordinatorRelaunch` gives: that pool behind every other for a provider kind, the coordinator tier's first
-member again for a plain stall, until that member gave up `coordinatorStallMax` plain stalls of the same seat within
-`coordinatorStallWindowMinutes`, which puts it behind and raises a `harness` escalation. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
+on the coordinator tier's listed order (another member only while the circuit or quota takes the first out, `decide` in
+`harness/router.ts`); a member that gave up `coordinatorStallMax` plain stalls of the same seat within
+`coordinatorStallWindowMinutes` raises a `harness` escalation. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
 with the same decision waiting is left for the owner. Nudges and give-ups are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`

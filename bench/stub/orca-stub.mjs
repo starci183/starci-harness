@@ -206,6 +206,12 @@ const defaults = (command, flags, state) => {
             const key = flags["retry-request"] ?? String(state.calls)
             state.typed = state.typed ?? {}
             if (state.typed[key] === undefined) state.typed[key] = { terminal: flags.terminal, text: flags.text, enter: flags.enter === true }
+            // An Enter submits a prompt the scenario left pasted in the composer (`composer`): the screen clears and the agent prints.
+            if (flags.enter === true && state.composer?.[flags.terminal] === true) {
+                state.composer[flags.terminal] = false
+                state.screens = { ...(state.screens ?? {}), [flags.terminal]: ["working on the dispatch"] }
+                state.lastOutput = { ...(state.lastOutput ?? {}), [flags.terminal]: new Date().toISOString() }
+            }
             return { ok: true, result: { accepted: true, retryRequest: key } }
         }
         case "terminal close":
@@ -261,6 +267,16 @@ if (self === "orca" || self === "orca.exe") {
         save(reply)
         if (rule.fault === "slow") sleep(rule.ms ?? 1000)
         answer(rule.fault === "lost-reply" ? undefined : reply, 0)
+    }
+    // Orca made the dispatch and its agent terminal and typed the prompt, but never saw the turn start: worker-start exits 1 with
+    // outcome_unknown naming both, and the worker stays start_unknown, as Orca keeps it even once the agent runs.
+    if (rule.fault === "turn-unobserved") {
+        const reply = defaults(command, flags, state)
+        if (reply.ok) state.workers[reply.result.dispatchId] = "start_unknown"
+        save(reply)
+        if (!reply.ok) answer(reply, 1)
+        const terminal = reply.result.worker.agentTerminalHandle
+        answer({ ok: false, result: { ...reply.result, state: "outcome_unknown", stage: "turn_start_unobserved", worker: { agentTerminalHandle: terminal, state: "start_unknown" }, effects: [{ kind: "terminal", role: "agent", action: "created", id: terminal }] } }, 1)
     }
     save(undefined)
     if (rule.fault === "refuse") answer({ ok: false, error: { code: rule.code ?? "refused", message: rule.message ?? "refused by the bench" }, result: rule.result }, 1)

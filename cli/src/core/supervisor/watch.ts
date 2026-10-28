@@ -1,9 +1,11 @@
 import { readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { now } from "../../harness/ledger.js"
+import { withMachine } from "../../harness/machine.js"
 import { loadStallRules } from "../../harness/stall.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { runAttached } from "../../shared/exec.js"
+import { startDetached } from "../../shared/exec.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { supervisorTick } from "./driver.js"
 import type { SupervisorTick } from "./driver.js"
@@ -33,11 +35,22 @@ const buildStamp = (): number => {
 }
 
 /**
+ * Replaces this watch with one started from the new build: the same node, argv, folder and environment, detached and writing
+ * to this process's own stdout and stderr (the same log file, appended, or the same terminal); the reload is a host event, and
+ * this process exits once the new one started, so one watch process runs however many builds come.
+ */
+const reload = async (stamp: number): Promise<never> => {
+    const argv = [process.execPath, ...process.execArgv, ...process.argv.slice(1)]
+    const pid = await startDetached(argv, process.cwd(), process.env, "inherit")
+    withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), "supervisor-watch-reloaded", String(process.pid), JSON.stringify({ from: process.pid, to: pid, build: new Date(stamp).toISOString(), argv: argv.slice(1) })))
+    process.exit(0)
+}
+
+/**
  * `starci supervisor watch`: `supervisor tick` in a loop for a foreground terminal, sleeping ops/liveness.yaml stall.watchSeconds
  * between passes and printing each pass's actions as it happens; `--ticks <n>` stops after n passes (default: until killed). A
  * long-lived process keeps the modules it loaded, so a new build of its own dist is never ticked with: once the build stands
- * unchanged for one sleep, the watch runs itself again from the new build (same argv, terminal and environment) and exits
- * with that process's code.
+ * unchanged for one sleep, the watch is replaced by one started from the new build (`reload`), never nested under it.
  */
 export const supervisorWatchVerb = defineVerb({
     path: ["supervisor", "watch"],
@@ -58,8 +71,8 @@ export const supervisorWatchVerb = defineVerb({
         const pass = async (n: number): Promise<void> => {
             const stamp = buildStamp()
             if (stamp !== -1 && stamp !== loaded && stamp === seen) {
-                context.progress(`${new Date().toISOString()} a new build of ${DIST}: reloading`)
-                process.exit(await runAttached(process.execPath, [...process.execArgv, ...process.argv.slice(1)], process.cwd()))
+                context.progress(`${new Date().toISOString()} a new build of ${DIST}: reloading (process ${String(process.pid)} hands over and exits)`)
+                await reload(stamp)
             }
             if (stamp === loaded) {
                 const tick = await supervisorTick(context)

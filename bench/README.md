@@ -53,7 +53,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
-  outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
+  outcome unknown, lost reply, a worker-start whose turn start went unobserved, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not), mail a seat sent. No real Orca is ever launched.
 - **The Telegram stand-in** is `stub/telegram-stub.mjs`, served by `serve: {stub: telegram}`: a fake Bot API on 127.0.0.1
   that accepts only the token it mints for the run (`${<as>.token}`) and answers getMe, getUpdates and sendMessage. A

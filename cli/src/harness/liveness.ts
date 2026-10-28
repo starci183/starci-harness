@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { now } from "./ledger.js"
 import { inTransaction } from "./leases.js"
 import { OrcaFailure, UNKNOWN_STATES, workerShow } from "./orca/client.js"
-import type { OrcaBinary } from "./orca/client.js"
+import type { OrcaBinary, TerminalInventory, WorkerShown } from "./orca/client.js"
 import { locateOps } from "./ops.js"
 import { CLOSED_SEAT_STATUSES, SEAT_WORKER_LOST, getSeat, recordSeat } from "./seats.js"
 import type { SeatRow } from "./seats.js"
@@ -142,6 +142,45 @@ export const livenessOf = (seat: SeatRow, rules: Liveness, at: number = Date.now
     if (pong === null || (ping !== null && ping > pong)) return judged("unknown")
     if (idle !== null && idle >= rules.activeStaleMinutes * 60_000) return judged("stale")
     return judged("live")
+}
+
+/**
+ * What a dispatch whose launch Orca completed without seeing it start has become. `started`: its worker started, or its agent
+ * proved it alive (`alive`: a Kernel's attach), or its live terminal printed after the launch (a turn under way). `gone`: Orca
+ * reports the worker gone. `dead`: it never started past the start deadline and Orca no longer lists its terminal. `quiet`: it
+ * never started past the deadline but its terminal is still listed, or Orca did not answer the terminal list; a live terminal is
+ * never fenced on an unverifiable start. `waiting`: still young, or Orca did not answer worker-show.
+ */
+export interface StartJudged {
+    readonly verdict: "started" | "gone" | "dead" | "quiet" | "waiting"
+    readonly states: readonly string[]
+    readonly terminal: string | null
+    readonly printed: string | null
+}
+
+/** The start rules a judgment reads (ops/liveness.yaml `stall`): the states that say the turn never started, and its deadline. */
+export interface StartRules {
+    readonly startUnknownStates: readonly string[]
+    readonly startDeadlineMinutes: number
+}
+
+/** Judges a launched dispatch from worker-show (`shown`, null when Orca did not answer), the terminal list and the seat's launch; asks nobody. */
+export const judgeStart = (input: { readonly shown: WorkerShown | null; readonly seat: SeatRow; readonly live: TerminalInventory | null; readonly alive: boolean }, start: StartRules, at: number = Date.now()): StartJudged => {
+    const { shown, seat, live, alive } = input
+    if (shown === null) return { verdict: "waiting", states: [], terminal: seat.terminal, printed: null }
+    const states = [shown.state, shown.observed].filter((state): state is string => state !== null)
+    const terminal = shown.terminal ?? seat.terminal
+    const judged = (verdict: StartJudged["verdict"], printed: string | null = null): StartJudged => ({ verdict, states, terminal, printed })
+    if (states.some((state) => loadLiveness().goneStates.includes(state))) return judged("gone")
+    const listed = terminal !== null && (live === null || live.truncated || live.handles.has(terminal))
+    const printed = [shown.lastOutputAt, terminal === null ? null : (live?.lastOutput.get(terminal) ?? null)]
+        .filter((time): time is string => time !== null)
+        .reduce<string | null>((latest, time) => (latest === null || ms(time) > ms(latest) ? time : latest), null)
+    const turned = listed && printed !== null && ms(printed) > ms(seat.startedAt)
+    const unstarted = states.some((state) => start.startUnknownStates.includes(state))
+    if (alive || turned || (shown.state !== null && !unstarted && !UNKNOWN_STATES.includes(shown.state))) return judged("started", printed)
+    if (!unstarted || at - ms(seat.startedAt) <= start.startDeadlineMinutes * 60_000) return judged("waiting", printed)
+    return judged(listed ? "quiet" : "dead", printed)
 }
 
 /** True for a seat a ping can ask Orca about: open, with a dispatch, and not already lost. */

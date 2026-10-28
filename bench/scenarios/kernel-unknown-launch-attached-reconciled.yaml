@@ -1,0 +1,106 @@
+schema: starci/scenario@1
+id: kernel-unknown-launch-attached-reconciled
+group: orca
+title: "a Kernel relaunch whose turn start Orca never observed attaches and works: the sweep reconciles it, never fences it or launches a second"
+inject: >-
+  the Kernel exits and the Supervisor relaunches it; that worker-start exits 1 with outcome_unknown naming its dispatch and agent
+  terminal, Orca keeps the worker at start_unknown for good, and the agent attaches from that terminal; the launch then ages past
+  stall.startDeadlineMinutes
+expect: >-
+  the seat keeps the dispatch and terminal the failed receipt names (launch-unknown); the next sweep reconciles it on the Kernel's
+  own attach: ready, with that dispatch and terminal, even past the start deadline; the dispatch is never stopped and no third
+  Kernel launch is issued, on that sweep or the next
+pass:
+  - the unknown launch's seat records the dispatch and terminal the failed worker-start named
+  - after the sweep the seat is ready with that dispatch and terminal
+  - two Kernel launches in all; the reconciled dispatch is never stopped
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: ku
+        goal: bench workflow ku
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: ku
+  - name: the Kernel exits, and its relaunch's turn start goes unobserved
+    orca:
+      worker:
+        dispatch: kernel
+        state: exited
+      rules:
+        - command: worker-start
+          fault: turn-unobserved
+          match:
+            task-title: '^\[Kernel\]'
+  - name: the Kernel lease and the progress clock lapse
+    sql:
+      db: ledger
+      exec: UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel'; UPDATE events SET at = '2020-01-01T00:00:00.000Z'
+  - name: supervisor next relaunches the Kernel; Orca answers outcome_unknown
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status, handle IS NOT NULL, terminal IS NOT NULL FROM seats WHERE role = 'kernel' ORDER BY started_at DESC, rowid DESC LIMIT 1
+        equals: [[launch-unknown, 1, 1]]
+  - read:
+      db: ledger
+      query: SELECT handle FROM seats WHERE role = 'kernel' ORDER BY started_at DESC, rowid DESC LIMIT 1
+      as: kdispatch
+  - name: the relaunched Kernel attaches from its terminal
+    boot:
+      adopt: ku
+  - name: the launch ages past the start deadline
+    sql:
+      db: ledger
+      exec: UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-11 minutes') WHERE role = 'kernel' AND handle = '${kdispatch}'
+  - name: the sweep reconciles the attached launch
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status, terminal = '${kernel.ku.terminal}' FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+        equals: [[ready, 1]]
+  - name: a later sweep leaves the reconciled Kernel alone
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2
+        distinct: retry-request
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        match:
+          dispatch: "${kdispatch}"
+        count: 0
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM seats WHERE role = 'kernel' AND status NOT IN ('launch-failed', 'released')
+        equals: [1]

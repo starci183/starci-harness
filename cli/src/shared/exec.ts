@@ -167,20 +167,6 @@ export const captureTool = async (tool: string, args: readonly string[], cwd: st
     return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr, timedOut: run.timedOut }
 }
 
-/**
- * Runs a host tool attached to this process's terminal (stdin, stdout and stderr inherited, the same environment) and resolves
- * its exit code, 1 when a signal ended it. A process that never started is refused with ToolNotStarted.
- */
-export const runAttached = async (tool: string, args: readonly string[], cwd: string): Promise<number> =>
-    new Promise((settle, fail) => {
-        const child = spawn(tool, [...args], { cwd, windowsHide: true, stdio: "inherit" })
-        child.on("error", (error: Error) => {
-            const code = errorCode(error)
-            if (child.pid === undefined) fail(new ToolNotStarted(tool, typeof code === "string" ? code : "spawn failed"))
-        })
-        child.on("close", (code: number | null) => { settle(code ?? 1) })
-    })
-
 /** Runs a short host tool synchronously (for code that cannot await, such as opening the ledger), killed after `timeoutMs` when given; never throws. */
 export const captureToolSync = (tool: string, args: readonly string[], cwd: string, timeoutMs?: number): ToolRun => {
     const run = spawnSync(tool, [...args], { cwd, windowsHide: true, encoding: "utf8", maxBuffer: MAX_BUFFER, ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }) })
@@ -224,10 +210,12 @@ export const captureCommand = async (argv: readonly string[], cwd: string, optio
 }
 
 /**
- * Starts a long-lived host program (a desktop app) without a shell and without waiting for it: detached, its output ignored,
- * so this CLI exits while it runs. Refuses with ToolNotStarted when the program could not be started.
+ * Starts a long-lived host program (a desktop app, or a process that replaces this one) without a shell and without waiting for
+ * it: detached, so this CLI exits while it runs, and resolves its pid once it started. Its output is ignored, or with `output:
+ * "inherit"` written to this process's own stdout and stderr handles (the same log file, appended, or the same terminal). Refuses
+ * with ToolNotStarted when the program could not be started.
  */
-export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<void> =>
+export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.ProcessEnv = process.env, output: "ignore" | "inherit" = "ignore"): Promise<number> =>
     new Promise((settle, refuse) => {
         const [tool, ...args] = argv
         if (tool === undefined) {
@@ -236,7 +224,7 @@ export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.
         }
         let child: ChildProcess
         try {
-            child = spawn(tool, args, { cwd, env, windowsHide: true, detached: true, stdio: "ignore" })
+            child = spawn(tool, args, { cwd, env, windowsHide: true, detached: true, stdio: output === "inherit" ? ["ignore", 1, 2] : "ignore" })
         } catch (error: unknown) {
             const code = errorCode(error)
             refuse(new ToolNotStarted(tool, typeof code === "string" ? code : "spawn failed"))
@@ -248,7 +236,7 @@ export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.
         })
         child.once("spawn", () => {
             child.unref()
-            settle()
+            settle(child.pid ?? 0)
         })
     })
 
