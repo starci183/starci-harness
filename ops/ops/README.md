@@ -47,7 +47,9 @@ The resolved contract always carries the op's whole base, pinned or not. A `star
 - The read trace: `rulesApplied` lists the rule ids the work applied and `workRecords` the Work record ids a work-driven
   task (one whose context reads `.starciwork/`) worked from. The `rules-cited` preset is red when a cited id is named by none
   of the task's context files, literally as a token of a Markdown heading or a yaml `id:` value, or when fewer ids are cited
-  than `minItems`. A rule id has a letter and a digit or hyphen (`R01`, `BE-ERROR-1`); a plain word is no id.
+  than `minItems`; a rule id some contexts page owns is red naming that page, which the brief did not include. The
+  context files include the rule pages of the allowPaths (`cli/src/harness/rule-pages.ts`): every code topic whose front
+  matter `slots` names a slot of [hfs/slots.yaml](../../contexts/hfs/slots.yaml) that an allowPath lies in or holds. A rule id has a letter and a digit or hyphen (`R01`, `BE-ERROR-1`); a plain word is no id.
   `workRecords` is read against the Work records the task can read: its Work context files, the records under its own Work
   allowPaths, and each record of the checkout that one of those context files or the contract's inputs points at by Work id
   or `.starciwork/` path (an impl record's `proves`, say); never the rest of the Work tree. A cited id outside them is red as
@@ -55,7 +57,8 @@ The resolved contract always carries the op's whole base, pinned or not. A `star
   and only such an op, which `loadOps` enforces. `contract check` refuses a contract that must cite rules while its context, all harness files, names
   none.
 - The brief: the procedure below, then the op's body, the inputs, the write paths, the exact files to read (absolute,
-  base then extend), the output keys with their types, the checks and the budget.
+  base then extend), the rule pages of the paths (citable, opened on demand, outside the op's context budget), the output
+  keys with their types, the checks and the budget.
 
 ## The worker procedure
 

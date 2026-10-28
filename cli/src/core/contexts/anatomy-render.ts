@@ -11,13 +11,15 @@ const slotSchema = z.object({
     id: z.string(),
     profiles: z.array(z.enum(["app", "be", "fe"])),
     path: z.string(),
+    appKind: z.string().optional(),
     presence: presenceSchema,
     litePresence: z.union([presenceSchema, z.record(z.string(), presenceSchema)]).optional(),
     tracked: z.enum(["tracked", "ignored", "external"]),
     editions: z.array(z.enum(["lite", "full"])).optional(),
     rules: z.array(z.string()).optional(),
 })
-type Slot = z.infer<typeof slotSchema>
+/** One slot of hfs/slots.yaml, as far as the anatomy and the rule pages of a path read it. */
+export type Slot = z.infer<typeof slotSchema>
 
 const ruleSchema = z.object({
     id: z.string(),
@@ -34,9 +36,9 @@ const frontMatterSchema = z.object({
 
 /** The editions and sides the anatomy is rendered for, in this order. */
 const EDITIONS = ["lite", "full"] as const
-type AnatomyEdition = (typeof EDITIONS)[number]
+export type AnatomyEdition = (typeof EDITIONS)[number]
 const SIDES = ["app", "be", "fe"] as const
-type Side = (typeof SIDES)[number]
+export type Side = (typeof SIDES)[number]
 
 /** Enforcer kinds that judge the other side only; a tree hides them so each line names the lint of its own side. */
 const FOREIGN_KINDS: Readonly<Record<Side, readonly string[]>> = {
@@ -62,10 +64,15 @@ interface Node {
     readonly slots: Slot[]
 }
 
-interface Sources {
+/** The slots of hfs/slots.yaml with the app kinds of each side, and the pattern topics that declare them. */
+export interface SlotCatalog {
     readonly slots: readonly Slot[]
-    readonly rules: readonly Rule[]
+    readonly appKinds: Readonly<Record<string, readonly string[]>>
     readonly patterns: Topics
+}
+
+interface Sources extends SlotCatalog {
+    readonly rules: readonly Rule[]
 }
 
 /** Pattern topics per slot id: `declared` from the front matter `slots`, `files` from the slot of each `files` entry. */
@@ -122,18 +129,20 @@ const readPatterns = (knowledge: string): Topics => {
     return { declared, files }
 }
 
-const readSources = (knowledge: string): Sources => {
+/** The slot catalog of the knowledge tree at `knowledge`: hfs/slots.yaml and the front matter of contexts/code/{be,fe}/*.md. */
+export const readSlotCatalog = (knowledge: string): SlotCatalog => {
     const slotsFile = join(knowledge, "hfs", "slots.yaml")
+    const manifest = parsed(slotsFile, readYaml(slotsFile), z.object({ slots: z.array(slotSchema), appKinds: z.record(z.string(), z.array(z.string())).optional() }))
+    return { slots: manifest.slots, appKinds: manifest.appKinds ?? {}, patterns: readPatterns(knowledge) }
+}
+
+const readSources = (knowledge: string): Sources => {
     const rulesFile = join(knowledge, "hfs", "rules.yaml")
-    return {
-        slots: parsed(slotsFile, readYaml(slotsFile), z.object({ slots: z.array(slotSchema) })).slots,
-        rules: parsed(rulesFile, readYaml(rulesFile), z.object({ rules: z.array(ruleSchema) })).rules,
-        patterns: readPatterns(knowledge),
-    }
+    return { ...readSlotCatalog(knowledge), rules: parsed(rulesFile, readYaml(rulesFile), z.object({ rules: z.array(ruleSchema) })).rules }
 }
 
 /** The presence of a slot in one edition and side, or undefined when the slot does not exist there. */
-const presenceIn = (slot: Slot, edition: AnatomyEdition, side: Side): Presence | undefined => {
+export const presenceIn = (slot: Slot, edition: AnatomyEdition, side: Side): Presence | undefined => {
     if (slot.editions !== undefined && !slot.editions.includes(edition)) return undefined
     if (edition === "lite" && slot.litePresence !== undefined) {
         return typeof slot.litePresence === "string" ? slot.litePresence : (slot.litePresence[side] ?? slot.presence)
@@ -214,18 +223,23 @@ const renderRule = (rule: Rule, side: Side): string => {
 }
 
 /**
- * The topics of a slot: those declaring its id or a family prefix that is no slot itself (`be.app` for `be.app.api`); a slot
- * no topic declares falls back to the topics whose `files` land in it. A side tree keeps the topics of its own side.
+ * The topics of a slot (`be/cli.md`, relative to contexts/code/): those declaring its id or a family prefix that is no slot
+ * itself (`be.app` for `be.app.api`); a slot no topic declares falls back to the topics whose `files` land in it. On `side`
+ * (be or fe) only the topics of that side count; on the app root every one does.
  */
-const patternsOf = (slot: Slot, side: Side, sources: Sources): string[] => {
+export const topicsOfSlot = (slot: Slot, side: string, catalog: SlotCatalog): string[] => {
     const files: string[] = []
-    for (const [prefix, owners] of sources.patterns.declared) {
-        const family = !sources.slots.some((other) => other.id === prefix) && slot.id.startsWith(`${prefix}.`)
+    for (const [prefix, owners] of catalog.patterns.declared) {
+        const family = !catalog.slots.some((other) => other.id === prefix) && slot.id.startsWith(`${prefix}.`)
         if (slot.id !== prefix && !family) continue
         for (const owner of owners) if (!files.includes(owner)) files.push(owner)
     }
-    if (files.length === 0) files.push(...(sources.patterns.files.get(slot.id) ?? []))
-    const ofSide = side === "app" ? files : files.filter((file) => file.startsWith(`${side}/`))
+    if (files.length === 0) files.push(...(catalog.patterns.files.get(slot.id) ?? []))
+    return side === "app" ? files : files.filter((file) => file.startsWith(`${side}/`))
+}
+
+const patternsOf = (slot: Slot, side: Side, sources: Sources): string[] => {
+    const ofSide = topicsOfSlot(slot, side, sources)
     ofSide.sort(byCodeUnit)
     return ofSide.map((file) => `[${file.replace(/\.md$/, "")}](../code/${file})`)
 }

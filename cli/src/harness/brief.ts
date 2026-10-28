@@ -123,6 +123,8 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const resolved = resolveContract(contract, ops)
     const { op } = resolved
     const checks = resolveChecks(contract, ops)
+    const fixed = resolved.context.filter((file) => file.source !== "paths")
+    const paged = resolved.context.filter((file) => file.source === "paths")
     const prior = priorWorkSection(root, task)
     // The ids the contract hands this task, each with the text it resolves to, so a grader reads what the author decided by.
     const handed = citesBriefSection(contract.cites, ops.root, resolved.output.some((item) => item.key === GRADES_KEY))
@@ -160,9 +162,19 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         "### Read exactly these files",
         bullets(
             // A shared file is background every task of the label reads; its ids are never cited (citableContext).
-            resolved.context.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
+            fixed.map((file) => `${slashed(contextPath(file, ops, root))} (${file.source}${file.shared ? ", background: not citable" : ""})`),
             "none: the input and the files under allowPaths are the whole context",
         ),
+        ...(paged.length === 0
+            ? []
+            : [
+                  "### Rule pages of your paths",
+                  // The second layer: each page owns rules over a path you may write; it is citable, and outside the op's budget.
+                  `Each page owns rules governing a path under your allowPaths. Before you write a file, open the sections of its page that govern it; the rule ids you apply from these pages are citable.\n\n${bullets(
+                      paged.map((file) => slashed(contextPath(file, ops, root))),
+                      "none",
+                  )}`,
+              ]),
         ...cites,
         "### Output",
         resolved.output.length === 0
