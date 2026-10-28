@@ -27,6 +27,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   runs at most `projectMaxWorkers` worker seats at once, its Kernels' Ops and its Supervisor's workers together; a launch past
   it waits queued and starts once a seat is released ([ops/routing.yaml](../../ops/routing.yaml),
   `cli/src/harness/project-workers.ts`).
+- **A shared need has one owner.** A worker that finds a shared thing missing (a capability under `platform/`, an app-root
+  file, a root config, a `@starci` package) never builds it: it reports `--needs <key>`, and every report of a key, from any
+  workflow, waits on one need. Exactly one owner resolves it, the workflow's Kernel when one workflow needs it, else the one
+  workflow or `[Worker]` the Supervisor assigns (a `@starci` package always a worker's package edit, never the owner's); every
+  other workflow waits on that owner as a recorded dependency and is released, from its kept work, when the resolver lands. It
+  runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
 - **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
   every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the
   owner's answer there becomes an owner request that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's

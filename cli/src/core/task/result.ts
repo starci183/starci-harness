@@ -101,7 +101,7 @@ const filingOf = (db: DatabaseSync, taskId: string): Filing => {
 /** `starci task result <task-id>`: files the one immutable result of the task's open attempt and hands the task back to the Kernel. */
 export const taskResultVerb = defineVerb({
     path: ["task", "result"],
-    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; failed preserves and resets its dirty allowPaths",
+    summary: "file the one result of a task's open attempt (done, blocked, mismatch or failed) with its json output; blocked --needs <key> reports a missing shared thing; failed preserves and resets its dirty allowPaths",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["worker", "op", "agent", "kernel", "supervisor"],

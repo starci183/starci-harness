@@ -235,6 +235,37 @@ Kernel's amend, never automatic: the red or question decision carries its one le
 [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). `WORKFLOW_TRANSITIONS` in `harness/workflow.ts` is the one rule for workflow status
 moves.
 
+**Shared needs.** A worker that finds a shared thing missing never builds it: it files `task result --status blocked
+--needs <key> [--rule <id>] [--paths <p>...] [--note <text>]`, or a `needs` list in its output (keys, or `{key, rule, paths,
+note}`). A key is `<kind>:<target>`, kind `capability`, `package` or `config`; a capability or config target is lowercase
+dotted segments (`/` and `\` read as dots), a package target an npm name (`normalizeNeedKey`, `NEED_KEY_INVALID`). A reported
+path under a shared root of [ops/needs.yaml](../ops/needs.yaml) names the key (`platform/http/x.ts` is
+`capability:platform.http`), so two spellings of one need meet; `needs merge <into> <from>` folds the rest (`harness/needs.ts`).
+The host store keeps one row per (project, key) in `shared_needs` and one per reporting task in `shared_need_waiters`: a need
+opens once, every later report of its key attaches a waiter, and a report of a need that ended reopens it in a new round. Every
+step of a workflow (`settleWorkflow`, so `workflow step`, `kernel next`, `supervisor next` and `supervisor tick`, inline and orca
+alike) tends the needs its tasks wait on, own or resolve (`core/needs/tend.ts`): a task returned with needs is parked (`task
+cancel`: its work preserved, its slot freed; no `question` is raised for it) and the need is routed by scope. Waiters of one
+workflow with no path under a shared root reach that workflow's Kernel as one `shared-need` decision; waiters of two or more
+workflows, a shared path or a `config` key reach the Supervisor as one `shared-need`; a `package:@starci/*` key reaches the
+Supervisor as a package edit (`route: package`). Partition is the rule: exactly one owner per need, every other workflow waits
+on it, a cross-workflow dependency recorded as its waiter rows. A Kernel answers with a `workflow-change` whose `need` is
+`{key, resolver: <task key>}` (a task it adds or one its graph holds) or `{key, reject: <why>}`, or with an `escalation`, which
+hands the need to the Supervisor; the Supervisor answers with a `need-owner` command (`workflow` the owner, whose Kernel then
+gets the `shared-need`; or `need.reject`) or `supervisor dispatch --need <key>` (a `[Worker]` owns it; a package need fills
+`--input package`, and its worker's `pkg handoff` is linked to the need). A wrong answer (another key, an unknown or waiting
+resolver, a resolver from the Supervisor, a need that moved on) is refused `NEED_ANSWER_INVALID` with how to answer, and the
+decision stays open (`harness/need-answer.ts`, `core/needs/answer.ts`). A need routed past `needs.ownerDeadlineMinutes` of
+[ops/liveness.yaml](../ops/liveness.yaml), or whose decision was answered with no owner, climbs one router: Kernel, Supervisor,
+then an `escalation` of kind `owner` (`harness` for a package). The resolver is judged on every step: a task landed resolves the
+need, a package edit resolves it once its handed-off head is on harness main; a resolver failed, cancelled, removed or stopped,
+or one that closes a cycle (it waits, through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a
+new round with the reason named. A resolved or rejected need releases its waiters in each workflow's own step: the resolver's
+landed commit is carried onto that workflow's branch when it landed elsewhere (`rebaseCandidate` under the branch's land lock;
+one that does not apply is named and the waiter runs anyway, reporting again if it still misses it), and every waiter whose
+needs all ended is retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its
+brief. `needs list` and `needs show <key>` read the store.
+
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a
 `starting` seat carrying the launch record are opened; only then is Orca called, so two starts never both launch.
 Orca's `run-create` and `worker-start` run under retry-request ids derived from the attempt. The brief, the contract
@@ -297,7 +328,7 @@ launch through `request-show` with its attempt's request id (completed with a di
 adopted when its worker started, fenced and the task queued again with no try spent when it never started its turn past
 `stall.startDeadlineMinutes`; completed with none: replayed; absent past the deadline: stuck), holds the workflow `paused(orca-down)` while
 Orca does not answer, and returns only one decision — `red`, `stale`, `question`, `conflict`, `goal`, `goal-change`,
-`escalation-answer` or `done`, with its evidence and a ledger digest — or `idle` after its wait. `kernel submit <file>`
+`escalation-answer`, `shared-need` or `done`, with its evidence and a ledger digest — or `idle` after its wait. `kernel submit <file>`
 applies one command: `workflow-change` (a change file or the whole desired workflow, through `workflow amend`),
 `escalation` {budget, scope, conflict, owner, harness} or `handoff` (a Supervisor decision naming the repository, plus a
 wake-up mail); a command whose content (all but its cmdId, with its change file) was refused `poisonRefusals` times
@@ -315,14 +346,14 @@ of an idle Kernel or Op); a live terminal that stayed quiet is never
 fenced (waited on past `stall.startDeadlineMinutes`, escalated past `effectUnknownDeadlineMinutes`); only a worker Orca reports
 gone, or one never started past the deadline whose terminal Orca no longer lists, is fenced, closed `launch-failed` and
 relaunched once, and only once the fence held (`resolveKernelLaunch` in `core/supervisor/driver.ts`); a live Kernel idle at
-its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
+its prompt meets the stall ladder; it returns the project's oldest `escalation`, `handoff` or `shared-need` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
 it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
 `harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
 `owner`, which the owner rules, or `harness`, which Debug rules and answers with a `supervisor ask` (`awaitsOwner` in
-`harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
+`harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1), `stop` or `need-owner` ("Shared needs"),
 and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
-The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--label]
+The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--need <key>] [--label]
 [--repo] [--allow]... [--input name=value]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
 project's Work-root repository, or any other checkout; a `@starci` package fix stays in the app's repository with
 `--input package=<name>`, and the worker cuts its own package edit branch, `pkg branch`, and hands it off) at `<project state>/worktrees/<worker>` on branch `starci/<worker>`, queues in that repository's ledger a task
@@ -425,7 +456,7 @@ on the coordinator tier's listed order (another member only while the circuit or
 with the same decision waiting is left for the owner. Nudges and give-ups are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
-(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`; `project` for the Supervisor). It is
+(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`; `project` for the Supervisor). It is
 admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its
 outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
 `decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca
