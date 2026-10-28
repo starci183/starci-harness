@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.9 - 2026-10-29
+
+- Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.9), which re-pin the hfs 4.9.10 canon.
+
 ## 0.15.8 - 2026-10-29
 
 - Added: `Page` `chrome="bleed"` (default `"standard"`), the app surface of a chat or a split editor: no inline gutter, no block-start or block-end padding, no `overflow: clip`, and the page and its body grow to fill the region, so a `FillViewport` in the body keeps its own bottom inset, never doubled (the fixed bottom navigation's padding skips a bleed page too). Its `header` is optional; a bleed header without a `title` is the trail alone (`{ breadcrumbs }`, type `PageTrailContent`: no heading, no band, no other slot), and a header with a `title` draws the band as in standard. `PageProps` is the union `PageStandardProps | PageBleedProps`, so `header.title` is optional only in bleed. The root carries `data-grammar-page-chrome` and `data-grammar-page-trail`. New types: `PageChrome`, `PageStandardProps`, `PageBleedProps`, `PageTrailContent`.

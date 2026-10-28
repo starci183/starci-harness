@@ -31,7 +31,7 @@ pins:
     source: packages/event-stream/package.json
     why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
   '@starci/grammar':
-    version: 0.15.8
+    version: 0.15.9
     group: starci
     install: registry
     side: fe
