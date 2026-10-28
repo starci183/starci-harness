@@ -34,6 +34,7 @@ import { Refusal } from "../../shared/errors.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { hostStatus, loadHost, selectServices } from "../../harness/host.js"
 import { getTask } from "../../harness/tasks.js"
+import { packageVersion } from "../version.js"
 import { taskStatusVerb } from "../task/status.js"
 import { rulingCommand } from "./write.js"
 import type { Check, ConfigEntry, Decision, EventRow, OwnerRequestRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, WorkflowDetail, WorkflowRow } from "./contract.js"
@@ -209,7 +210,7 @@ const hostOf = async (cwd: string): Promise<Overview["host"]> => {
     const ticks = readMachine((db) => db.prepare("SELECT COUNT(*) AS n, MAX(at) AS at FROM host_events WHERE kind = 'supervisor-tick'").get(), undefined)
     const lastTickAt = textOf(ticks?.at)
     const recent = lastTickAt !== null && Date.now() - Date.parse(lastTickAt) < 2 * loadStallRules().watchSeconds * 1000
-    return { watch: recent || (await tickScheduled(cwd)), tick: Number(ticks?.n ?? 0), lastTickAt }
+    return { version: packageVersion(), watch: recent || (await tickScheduled(cwd)), tick: Number(ticks?.n ?? 0), lastTickAt }
 }
 
 /** `GET /api/overview`: every registered project with its Supervisor, the providers, every workflow, the newest events and the host driver. */

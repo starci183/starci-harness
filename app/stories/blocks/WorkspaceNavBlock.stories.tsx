@@ -11,6 +11,7 @@ const meta = {
             presentation: "rail",
             selectedKey: "overview",
             logoSrc: "starci-logo.png",
+            version: NAV.version("0.1.0"),
             projects: [
                 { key: "starci-next", name: "starci-next", supervisor: supervisorStatus("alive"), isAlive: true },
                 { key: "nivo-lite", name: "nivo-lite", supervisor: supervisorStatus("stalled"), isAlive: false },
@@ -20,7 +21,6 @@ const meta = {
             labels: {
                 landmark: NAV.landmark,
                 product: NAV.product,
-                edition: NAV.edition,
                 overview: NAV.overview,
                 workflows: NAV.workflows,
                 inbox: NAV.inbox,

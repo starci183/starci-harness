@@ -1,4 +1,4 @@
-import { Alert, AlertDialog, Breadcrumbs, Button, Dialog, Divider, RadioGroup, Region, SectionHeader, Text, Textarea } from "@starci/grammar/core"
+import { Alert, AlertDialog, Button, Dialog, PageContainer, PageHeader, RadioGroup, Textarea } from "@starci/grammar/core"
 import type { DataSlot, ResultNotice, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 import { StatusWord } from "../../leaves/StatusWord"
@@ -78,10 +78,8 @@ const HEADER_PLACEHOLDER: WorkflowHeaderView = {
     reason: null,
 }
 
-type ActionsProps = WorkflowHeaderBlockBaseProps & { readonly isSkeleton: boolean }
-
 /** Change goal, pause or resume, and stop; what each offers follows the shape. */
-const WorkflowActions = (props: ActionsProps) => {
+const WorkflowActions = (props: WorkflowHeaderBlockBaseProps) => {
     const { labels } = props.props
     const isStopped = props.shape === "stopped"
     let toggle: { readonly label: string; readonly isDisabled: boolean }
@@ -103,7 +101,7 @@ const WorkflowActions = (props: ActionsProps) => {
                 description={labels.changeGoalHint}
                 closeLabel={labels.close}
                 trigger={
-                    <Button intent="neutral" isDisabled={isStopped} isSkeleton={props.isSkeleton}>
+                    <Button intent="neutral" isDisabled={isStopped}>
                         {labels.changeGoal}
                     </Button>
                 }
@@ -128,7 +126,6 @@ const WorkflowActions = (props: ActionsProps) => {
                 intent="neutral"
                 isPending={props.props.isPending}
                 isDisabled={toggle.isDisabled}
-                isSkeleton={props.isSkeleton}
                 onPress={props.on.toggle}
             >
                 {toggle.label}
@@ -139,7 +136,7 @@ const WorkflowActions = (props: ActionsProps) => {
                 confirmLabel={labels.stopConfirm}
                 cancelLabel={labels.cancel}
                 trigger={
-                    <Button intent="destructive" step="entry" isDisabled={isStopped} isSkeleton={props.isSkeleton}>
+                    <Button intent="destructive" step="entry" isDisabled={isStopped}>
                         {labels.stop}
                     </Button>
                 }
@@ -163,58 +160,51 @@ const WorkflowActions = (props: ActionsProps) => {
 }
 
 /**
- * Pure half: the page header band (where the workflow sits, its title, status and versions, its goal and reason, and the
- * owner's verbs) closed by a full-width separator. It is the one block the Grammar's PageHeader replaces.
+ * Pure half: the page header (where the workflow sits, its title, status and versions, its goal and the owner's verbs), then
+ * the reason it is held and the last verb's outcome in the page's gutter.
  */
 export const WorkflowHeaderBlockBase = (props: WorkflowHeaderBlockBaseProps) => {
     const { labels, result } = props.props
     return (
-        <div className="app-stack">
-            <Region label={labels.trail.label}>
-                <div className="app-stack">
-                    <Breadcrumbs
-                        label={labels.trail.label}
-                        items={[
-                            { id: "project", label: labels.trail.project, href: props.props.overviewHref },
-                            { id: "workflows", label: labels.trail.workflows },
-                        ]}
-                    />
-                    <SlotView slot={props.props.header} placeholder={HEADER_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
-                        {(header, isSkeleton) => (
-                            <div className="app-pair">
-                                <SectionHeader
-                                    level={1}
-                                    title={header.title}
-                                    isSkeleton={isSkeleton}
-                                    description={
-                                        <span className="app-row">
-                                            <StatusWord status={header.status} />
-                                            <Text as="span" size="sm" tone="muted" mono>
-                                                {header.versions}
-                                            </Text>
-                                        </span>
-                                    }
-                                    action={<WorkflowActions {...props} isSkeleton={isSkeleton} />}
-                                />
-                                <Text as="p" tone="muted" isSkeleton={isSkeleton}>
-                                    {header.goal}
-                                </Text>
-                                {header.reason === null ? null : <Alert tone="cautionary" title={labels.reason} description={header.reason} />}
-                            </div>
+        <>
+            <SlotView slot={props.props.header} placeholder={HEADER_PLACEHOLDER} labels={labels.slot} isFramed onRetry={props.on.retry}>
+                {(header, isSkeleton) => (
+                    <>
+                        <PageHeader
+                            measure="full"
+                            isSkeleton={isSkeleton}
+                            breadcrumbs={{
+                                label: labels.trail.label,
+                                items: [
+                                    { id: "project", label: labels.trail.project, href: props.props.overviewHref },
+                                    { id: "workflows", label: labels.trail.workflows },
+                                ],
+                            }}
+                            title={header.title}
+                            status={<StatusWord status={header.status} />}
+                            meta={header.versions}
+                            description={header.goal}
+                            actions={<WorkflowActions {...props} />}
+                        />
+                        {header.reason === null ? null : (
+                            <PageContainer measure="full" className="app-page-notices">
+                                <Alert tone="cautionary" title={labels.reason} description={header.reason} />
+                            </PageContainer>
                         )}
-                    </SlotView>
-                </div>
-            </Region>
-            <Divider />
+                    </>
+                )}
+            </SlotView>
             {result === null ? null : (
-                <Alert
-                    key={result.n}
-                    tone={result.isOk ? "affirmative" : "negative"}
-                    title={result.title}
-                    description={result.description}
-                    dismissLabel={labels.dismiss}
-                />
+                <PageContainer measure="full" className="app-page-notices">
+                    <Alert
+                        key={result.n}
+                        tone={result.isOk ? "affirmative" : "negative"}
+                        title={result.title}
+                        description={result.description}
+                        dismissLabel={labels.dismiss}
+                    />
+                </PageContainer>
             )}
-        </div>
+        </>
     )
 }
