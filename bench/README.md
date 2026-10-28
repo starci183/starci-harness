@@ -43,7 +43,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   or a stand-in (`stub`) until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
   `token`, `body`, `stream` for an event stream, and `expect` on status, text and JSON paths), and `assert` on the
   ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`; `gitLog` reads `ref`, default HEAD, so a branch whose worktree is gone is still read), the stand-in's call log (`orcaCalls`, `match`
-  filtering by flag) or the file system. `when` and `unless` tie a step to a `--fault`.
+  filtering by flag) or the file system (`exists`, with `contains` for a substring of a present file). `when` and `unless` tie a step to a `--fault`.
 - **The Orca stand-in** is `stub/orca-stub.mjs`: the runner copies this node binary to `<state base>/bench/bin/orca` and
   points `STARCI_ORCA_BIN` at it, and the stub, preloaded into it, answers the orca CLI subset the harness calls: `agent
   launch` (a terminal handle, replayed by `--retry-launch`), run-create and run-use (a Run bound to its coordinator

@@ -82,7 +82,13 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):
    - `done`: verify is green. Work that finds nothing to change (the code already meets the task) is done too: you change
      nothing, the checks judge the files under your allowPaths as they stand, and the harness settles it without a commit.
-   - `blocked`: you cannot finish without something outside the contract; say what, in one sentence.
+   - `blocked`: you cannot finish without something outside the contract; say what, in one sentence. When that something is
+     a shared thing that is missing (a capability under `platform/`, an app-root file, a `@starci` package, a root config such
+     as the lint, tsconfig, compose or package.json), you never build it: add `--needs <key>` with its key
+     (`capability:platform.http`, `package:@starci/grammar`, `config:root-eslint`), `--rule <id>` that asks for it,
+     `--paths <path>...` it would touch and `--note <what>`. Every task that reports one key waits on one need, which one owner
+     resolves; your task is parked with its work kept and runs again, from that work, once the need is resolved or ruled
+     not shared (the brief's "Shared needs" says which).
    - `mismatch`: the contract itself is wrong or contradictory; show why.
    - `failed`: the budget ran out (attach the last red checks), or, for a label that measures the product (`audit`,
      `review`, `verify`, `uat`), what you measured is wrong: your verdict is `failed` and your findings say why. You never
@@ -91,7 +97,7 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 A defect that belongs to a package the app consumes (the grammar, a canon package, the harness) is never worked around in
 the app, even when a shim inside allowPaths would make your checks green. A task whose input names a `@starci` package to
 fix is a package edit, done as [contexts/authority/packages.md](../../contexts/authority/packages.md) says. Any other
-task files `blocked` naming the package, the component and the error.
+task files `blocked --needs package:<name>` with a note naming the component and the error.
 
 Never commit in your checkout (only a package edit's own branch takes your commits), push, merge into main, change the
 contract, edit tests or configs outside allowPaths, or ask the owner ([contexts/authority/](../../contexts/authority/README.md)).

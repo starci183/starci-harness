@@ -87,6 +87,9 @@ import { supervisorEnsureVerb } from "./core/supervisor/ensure.js"
 import { supervisorNextVerb } from "./core/supervisor/next.js"
 import { supervisorDispatchVerb } from "./core/supervisor/dispatch.js"
 import { supervisorWorkersVerb } from "./core/supervisor/worker-list.js"
+import { needsListVerb } from "./core/needs/list.js"
+import { needsShowVerb } from "./core/needs/show.js"
+import { needsMergeVerb } from "./core/needs/merge.js"
 import { supervisorAcceptVerb } from "./core/supervisor/accept.js"
 import { supervisorRejectVerb } from "./core/supervisor/reject.js"
 import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
@@ -208,6 +211,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorNextVerb,
     supervisorDispatchVerb,
     supervisorWorkersVerb,
+    needsListVerb,
+    needsShowVerb,
+    needsMergeVerb,
     supervisorAcceptVerb,
     supervisorRejectVerb,
     supervisorSubmitVerb,

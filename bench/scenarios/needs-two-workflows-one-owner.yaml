@@ -1,0 +1,209 @@
+schema: starci/scenario@1
+id: needs-two-workflows-one-owner
+group: needs
+title: two inline workflows report one missing capability; the Supervisor gets one shared-need decision, assigns one owner, and the other workflow waits on it
+inject: "an Op of workflow left and an Op of workflow right both find platform/http's HttpClient missing and file blocked with --needs"
+expect: >-
+  the first report routes the need to left's Kernel; the second, from another workflow, moves it to the Supervisor as one
+  shared-need decision (left's Kernel decision closes as superseded); the Supervisor's need-owner gives it to left, whose Kernel
+  gets it as a shared-need decision and adds one prerequisite; right's waiter stays parked on that cross-workflow dependency
+  until the prerequisite lands, then both waiters are released, each from its own workflow's step
+pass:
+  - one need, one Supervisor shared-need decision, the Kernel decision of left superseded
+  - exactly one owner (left) and one prerequisite task across both workflows
+  - right's waiter parked until the prerequisite lands, then released by right's own step
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: left.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: left
+        goal: bench workflow left
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a, which calls the shared http client
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a.md]}
+  - file:
+      path: right.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: right
+        goal: bench workflow right
+        runner: inline
+        tasks:
+          - id: b
+            label: docs
+            summary: write doc b, which calls the shared http client
+            allowPaths: [docs/b.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/b.md]}
+  - starci: [workflow, define, "${run}/left.yaml"]
+  - starci: [workflow, define, "${run}/right.yaml"]
+  - starci: [workflow, start, left]
+    save:
+      a: data.nodes.0.task.id
+  - starci: [workflow, start, right]
+    save:
+      b: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      status: blocked
+      output:
+        summary: platform/http has no HttpClient
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", rule: BE-INFRA-2}]
+  - name: left's step routes it to left's Kernel
+    starci: [workflow, step, left]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT level FROM shared_needs"
+        equals: [kernel]
+  - worker:
+      task: ${b}
+      status: blocked
+      output:
+        summary: platform/http has no HttpClient
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", rule: BE-INFRA-2}]
+  - name: right's step finds a second workflow and moves the need to the Supervisor
+    starci: [workflow, step, right]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || level || ':' || scope || ':' || (SELECT COUNT(*) FROM shared_need_waiters) FROM shared_needs"
+        equals: ["routed:supervisor:shared:2"]
+  - name: one Supervisor decision; left's Kernel decision superseded
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT scope || ':' || (COALESCE(answered_by, '') LIKE 'superseded:%') FROM decisions WHERE kind = 'shared-need' ORDER BY scope"
+        equals: ["kernel:1", "supervisor:0"]
+  - name: supervisor next hands it as a shared-need
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "shared-need"'
+    save:
+      sdecision: data.decision.id
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-need-http-left
+        kind: need-owner
+        workflow: left
+        basedOn: {}
+        answers: [${sdecision}]
+        need: {key: "capability:platform.http"}
+        note: left builds the shared client; right waits on it
+  - name: a need-owner naming a task its owner does not hold bounces back with guidance
+    file:
+      path: owner-bad.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-need-http-bad
+        kind: need-owner
+        workflow: left
+        basedOn: {}
+        answers: [${sdecision}]
+        need: {key: "capability:platform.http", resolver: nope}
+  - starci: [supervisor, submit, "${run}/owner-bad.yaml"]
+    expect:
+      exit: 1
+      code: NEED_ANSWER_INVALID
+      contains: need-owner
+  - name: the Supervisor gives it to left
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || json_extract(owner_json, '$.workflow') FROM shared_needs"
+        equals: ["owned:left"]
+  - name: left's Kernel gets it
+    starci: [kernel, next, left, --wait, "0"]
+    expect:
+      contains: '"kind": "shared-need"'
+    save:
+      kdecision: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: add-http.yaml
+      content: |
+        schema: starci/workflow-change@1
+        workflow: left
+        changes:
+          - op: add
+            task:
+              id: http
+              label: docs
+              summary: write the shared http client
+              allowPaths: [platform/http/client.md]
+              checks:
+                - preset: files-exist
+                  args: {files: [platform/http/client.md]}
+  - file:
+      path: cmd-http.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-left-need-http
+        kind: workflow-change
+        workflow: left
+        basedOn: {graph: ${graph}}
+        answers: [${kdecision}]
+        change: add-http.yaml
+        need: {key: "capability:platform.http", resolver: http}
+  - starci: [kernel, submit, "${run}/cmd-http.yaml"]
+  - starci: [workflow, step, left]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - name: right's step leaves its waiter parked while the owner works
+    starci: [workflow, step, right]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT workflow_id || ':' || (parked_at IS NOT NULL) || ':' || (released_at IS NULL) FROM shared_need_waiters ORDER BY workflow_id"
+        equals: ["left:1:1", "right:1:1"]
+  - worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient\n"
+  - name: left lands the prerequisite and releases its own waiter
+    starci: [workflow, step, left]
+    expect: {}
+  - name: right's own step releases right's waiter
+    starci: [workflow, step, right]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT workflow_id || ':' || json_extract(release_json, '$.by') FROM shared_need_waiters ORDER BY workflow_id"
+        equals: ["left:resolved", "right:resolved"]
+  - name: one prerequisite in all; each waiter runs again
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM tasks WHERE plan_key = 'http') || ':' || (SELECT COUNT(*) FROM tasks WHERE plan_key = 'a') || ':' || (SELECT COUNT(*) FROM tasks WHERE plan_key = 'b')"
+        equals: ["1:2:2"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE kind = 'shared-need' AND answered_at IS NULL"
+        equals: [0]

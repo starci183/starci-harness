@@ -3,7 +3,7 @@ import { reconcileLineage } from "../../harness/orca/lineage.js"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
-import type { Command, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
+import type { Command, Decision, KernelDecisionKind, SupervisorDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { GOAL_CHANGE_SCHEMA, recordGoalChange } from "../../harness/goal.js"
@@ -43,6 +43,7 @@ import { digestOf, RELAUNCH_LIMIT, sweepOpBudgets, sweepOpStalls } from "../kern
 import type { Digest } from "../kernel/driver.js"
 import { workflowStopVerb } from "../workflow/stop.js"
 import { nextWorkerEvent, tendWorkers } from "./workers.js"
+import { applyNeedOwner } from "../needs/answer.js"
 import type { WorkerView } from "./workers.js"
 
 /** A Supervisor decision with the project it lives in. */
@@ -50,9 +51,9 @@ export interface SupervisorDecision extends Decision {
     readonly project: string
 }
 
-/** What `supervisor next` returns: one decision (escalation or handoff) with its workflow digest, one worker's completion, one owner request, or idle. */
+/** What `supervisor next` returns: one decision (escalation, handoff or shared-need) with its workflow digest, one worker's completion, one owner request, or idle. */
 export interface SupervisorNext {
-    readonly kind: "escalation" | "handoff" | "worker" | "owner-request" | "idle"
+    readonly kind: "escalation" | "handoff" | "shared-need" | "worker" | "owner-request" | "idle"
     readonly decision: SupervisorDecision | null
     readonly digest: Digest | null
     readonly worker: WorkerView | null
@@ -421,7 +422,7 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
                 if (attached !== null && awaitsOwner(decision)) recordEvent(db, DECISION_RELAYED, decision.workflowId, { id: decision.id, supervisor: attached.id })
                 return digestOf(db, decision.workflowId)
             })
-            return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, worker: null, request: null, actions }
+            return { kind: decision.kind as SupervisorDecisionKind, decision, digest, worker: null, request: null, actions }
         }
         const ruled = decisions.find((open) => !awaitsOwner(open))
         if (ruled !== undefined) return handOver(ruled)
@@ -684,6 +685,7 @@ const endDecisions = (db: DatabaseSync, command: Command): { readonly closed: re
     })
 
 const applySupervisor = async (context: VerbContext, root: string, command: Command, sha256: string): Promise<unknown> => {
+    if (command.kind === "need-owner") return applyNeedOwner(root, command)
     if (command.kind === "stop") {
         const stopped = await workflowStopVerb.run({ ...context, cwd: root }, { workflow: command.workflow, graceful: command.mode !== "hard", hard: command.mode === "hard" })
         const ended = withLedger(root, (db) => endDecisions(db, command))

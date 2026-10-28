@@ -48,7 +48,7 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
    another session's,
    it relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
    resolves a lost Kernel launch, pauses a workflow and escalates to the owner after too many relaunches, and returns the
-   oldest `escalation` or `handoff` you rule with the workflow's digest, then, once each, a `worker` that reported, failed or
+   oldest `escalation`, `handoff` or `shared-need` you rule with the workflow's digest, then, once each, a `worker` that reported, failed or
    was lost (its result and seat; its seat is closed already), then the oldest `owner-request` (step 2), then, once
    each, an escalation of kind `owner` or `harness` (an answer you wait for, never work you rule), or `idle` (call it again).
 4. Decide, write one command file (`schema: starci/command@1`, fresh `cmdId`, `project: <repository>`, `basedOn.goal`
@@ -57,6 +57,7 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
 
 | decision | what you do |
 |---|---|
+| `shared-need` (one missing shared thing that two workflows, a shared root path or a root config need; `{runtimeRoot}/cli/README.md` "Shared needs") | exactly one owner, every other workflow waits on it: a `need-owner` command (`workflow: <owner>`, `need: {key}`, `project` its repository) gives it to that workflow's Kernel (with `resolver: [<task key>...]` when that workflow already holds or landed the tasks that build it), `starci supervisor dispatch --need <key> --brief <job>` to a `[Worker]`, or `need: {key, reject: <why>}` sends the waiters back to their Ops. A `route: package` need is always a worker's package edit (`--input package` is filled), never the owner's. The waiters are released on their own once the resolver lands and its commits are relayed onto their branches; an escalation `conflict` whose evidence names a need is a relay that did not apply: rule who reworks it, and your answer releases the waiters as they stand; `starci needs list` shows them, `starci needs merge <into> <from>` folds two spellings |
 | escalation `conflict` | rule who owns the paths: a `goal-change` to the workflow that yields (narrower scope), answering the escalation; the other's Kernel retries its conflicted task on the new head |
 | escalation `scope`, `budget` | within the owner's mandate a `goal-change` (wider scope, a task the goal no longer asks for, or raised budget with `starci budget raise`), else ask the owner here first |
 | escalation `owner` (a product decision, credentials, scope, money) | ask the owner in this terminal (the bridge has sent it to Telegram already); the ruling comes typed here or as an owner request naming the decision id; relay it as a `goal-change` or `stop` whose `answers` name the decision and that request |

@@ -13,7 +13,8 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | [routes.yaml](routes.yaml) | the bounded repair routes of a red or question decision: what may repair what, and how many times | `routes.ts` (decision evidence, `ROUTE_ILLEGAL` at `kernel submit`) |
 | [checks.yaml](checks.yaml) | the check presets an op or a contract names, each expanding into one primitive check | `contract.ts`, `run-checks.ts` |
 | [routing.yaml](routing.yaml) | tiers, pools, host probes, balance, quota, usage, the provider circuit and its probe, failure signals, blocked prompts, outcomes, qualification, scoring, pool concurrency, workflow budgets: every number of the router | `router.ts`, `circuit.ts`, `launch-failure.ts`, `usage.ts`, `outcomes.ts`, `pools.ts`, `budget.ts` |
-| [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner) | `liveness.ts` |
+| [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner), and the coordinators', budget, stall and shared-need deadlines | `liveness.ts`, `coordinator-liveness.ts`, `budget-ladder.ts`, `stall.ts`, `needs.ts` |
+| [needs.yaml](needs.yaml) | the shared roots of an app and the canonical need key each one gives a reported path | `needs.ts` (the key and scope of a shared need, cli/README.md "Shared needs") |
 | [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
 | [telegram.yaml](telegram.yaml) | the owner's Telegram channel: the token variable's name, the API, the bridge's poll and liveness, the notice budget | `telegram.ts`, `telegram-bridge.ts` |

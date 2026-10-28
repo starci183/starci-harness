@@ -34,6 +34,8 @@ import type { NodeAction } from "../../harness/reconcile.js"
 import { resumeSeat } from "../seat/start.js"
 import { workflowAmendVerb } from "../workflow/amend.js"
 import { readSnapshot, stepWorkflow } from "../workflow/engine.js"
+import { carriesNeeds } from "../../harness/needs.js"
+import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
 import type { StepAction } from "../workflow/engine.js"
 
 /** The reason a workflow carries while the harness holds it for an unreachable Orca; only this pause is lifted by the driver. */
@@ -169,7 +171,9 @@ const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): vo
         if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its worktree" })
         if (view.state === "returned") {
             const attempt = latestAttempt(db, task.id)
-            raise("question", task.id, { key: view.key, why: view.why, result: task.result, output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null) })
+            const output = attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null)
+            // A task blocked on a shared need is no question: the step parks it on the need and its router decides (core/needs/tend.ts).
+            if (!carriesNeeds(output)) raise("question", task.id, { key: view.key, why: view.why, result: task.result, output })
         }
     }
 }
@@ -591,9 +595,16 @@ export interface Submitted {
     readonly replay: boolean
 }
 
+/** True when a Kernel command answers a shared-need decision of its workflow. */
+const answersSharedNeed = (root: string, command: Command): boolean =>
+    withLedger(root, (db) => (command.answers ?? []).some((id) => db.prepare("SELECT 1 FROM decisions WHERE id = ? AND scope = 'kernel' AND kind = 'shared-need'").get(id) !== undefined))
+
 const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
+    // An escalation answering a shared-need decision hands the need to the Supervisor: the need's router raises its decision there.
+    if (command.kind === "escalation" && answersSharedNeed(root, command)) return { needEscalated: true, answered: command.answers ?? [] }
     if (command.kind === "workflow-change") {
-        if (command.change === undefined) return { amended: false, answered: command.answers ?? [] }
+        await assertKernelNeed(root, command)
+        if (command.change === undefined) return { amended: false, answered: command.answers ?? [], need: await recordKernelNeed(root, command) }
         const change = resolve(dir, command.change)
         const list = (values: readonly string[] | undefined): string | undefined => (values === undefined || values.length === 0 ? undefined : values.join(","))
         const amended = await workflowAmendVerb.run(context, {
@@ -606,7 +617,8 @@ const applyKernel = async (context: VerbContext, root: string, command: Command,
             accept: list(command.accept),
         })
         const data = amended.data as { readonly graphVersion: number; readonly classification?: readonly { readonly key: string; readonly class: string }[] }
-        return { amended: true, graphVersion: data.graphVersion, classification: (data.classification ?? []).map((row) => `${row.key}:${row.class}`) }
+        const need = await recordKernelNeed(root, command)
+        return { amended: true, graphVersion: data.graphVersion, classification: (data.classification ?? []).map((row) => `${row.key}:${row.class}`), need }
     }
     const kind = command.kind === "handoff" ? "handoff" : "escalation"
     const decision = withLedger(root, (db) =>

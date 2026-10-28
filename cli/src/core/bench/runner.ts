@@ -295,6 +295,8 @@ const check = async (run: RunState, assertion: Assertion, label: string): Promis
     if (assertion.exists !== undefined) {
         const present = existsSync(inRepo(run, assertion.exists.path))
         if (present !== assertion.exists.present) unmet(run, label, `${assertion.exists.path} exists is ${String(present)}`)
+        const text = assertion.exists.contains
+        if (present && text !== undefined && !readFileSync(inRepo(run, assertion.exists.path), "utf8").includes(expand(run, text))) unmet(run, label, `${assertion.exists.path} lacks "${text}"`)
     }
 }
 

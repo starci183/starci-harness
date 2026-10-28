@@ -111,6 +111,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | (top), `check`, `release` | the host and the tree, the local API the desktop app reads (`ui`), the scoped gates, push, tag, publish and CI status |
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
 | `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
+| `needs` | the shared needs Ops reported (`task result --needs`): list and show them with their owner and waiters, merge two spellings of one |
 | `worktree` | the harness's own worktrees: `gc` removes those whose owner ended, preserving their uncommitted work first |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
 | `project` | a project's ledger in the host registry: retire an abandoned one so no sweep, tick or pool count reads it |

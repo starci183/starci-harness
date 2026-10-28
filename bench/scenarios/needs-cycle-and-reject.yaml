@@ -1,0 +1,149 @@
+schema: starci/scenario@1
+id: needs-cycle-and-reject
+group: needs
+title: a resolver that waits on its own need through another is a cycle reported to the router; a need rejected as not shared returns its waiter to its Op
+inject: "a waits on capability:x and b on capability:y; the Kernel names b the resolver of x, then a the resolver of y; then it rejects y as not shared"
+expect: >-
+  naming a the resolver of y closes a cycle (a waits on x, whose resolver b waits on y): the need y is reopened in a new round with
+  the cycle named and routed again to the Kernel; a rejection of y ends it rejected, and the step retries b, whose new brief says the
+  need was rejected and why
+pass:
+  - y reopened in round 2 with the cycle in its reason, routed again as a new shared-need decision
+  - y rejected; b's waiter released by the rejection and b retried
+  - the retried task's brief carries the rejection
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: loop
+        goal: bench workflow loop
+        runner: inline
+        tasks:
+          - {id: a, label: docs, summary: write doc a, allowPaths: [docs/a.md], checks: [{preset: files-exist, args: {files: [docs/a.md]}}]}
+          - {id: b, label: docs, summary: write doc b, allowPaths: [docs/b.md], checks: [{preset: files-exist, args: {files: [docs/b.md]}}]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, loop]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      status: blocked
+      output: {summary: needs x, files: [], rulesApplied: [], needs: ["capability:x"]}
+  - starci: [workflow, step, loop]
+    expect: {}
+    save:
+      b: data.nodes.1.task.id
+  - worker:
+      task: ${b}
+      status: blocked
+      output: {summary: needs y, files: [], rulesApplied: [], needs: ["capability:y"]}
+  - starci: [workflow, step, loop]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE kind = 'shared-need' AND json_extract(evidence_json, '$.need') = 'capability:x'"
+      as: dx
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE kind = 'shared-need' AND json_extract(evidence_json, '$.need') = 'capability:y'"
+      as: dy
+  - read:
+      db: ledger
+      query: "SELECT graph_version FROM workflows WHERE id = 'loop'"
+      as: graph
+  - file:
+      path: cmd-x.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-loop-x-by-b
+        kind: workflow-change
+        workflow: loop
+        basedOn: {graph: ${graph}}
+        answers: [${dx}]
+        need: {key: "capability:x", resolver: b}
+  - starci: [kernel, submit, "${run}/cmd-x.yaml"]
+  - name: a resolver that is a waiter of the same need is refused at once
+    file:
+      path: cmd-y-self.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-loop-y-by-b
+        kind: workflow-change
+        workflow: loop
+        basedOn: {graph: ${graph}}
+        answers: [${dy}]
+        need: {key: "capability:y", resolver: b}
+  - starci: [kernel, submit, "${run}/cmd-y-self.yaml"]
+    expect:
+      exit: 1
+      code: NEED_ANSWER_INVALID
+      contains: a cycle
+  - file:
+      path: cmd-y.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-loop-y-by-a
+        kind: workflow-change
+        workflow: loop
+        basedOn: {graph: ${graph}}
+        answers: [${dy}]
+        need: {key: "capability:y", resolver: a}
+  - name: naming a closes the cycle through x
+    starci: [kernel, submit, "${run}/cmd-y.yaml"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || round || ':' || (reason LIKE 'cycle: loop:b -> loop:a%' OR reason LIKE 'cycle: loop:a -> loop:b%') FROM shared_needs WHERE key = 'capability:y'"
+        equals: ["open:2:1"]
+  - name: the step routes it again to the Kernel
+    starci: [workflow, step, loop]
+    expect: {}
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE kind = 'shared-need' AND answered_at IS NULL AND json_extract(evidence_json, '$.need') = 'capability:y'"
+      as: dy2
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(evidence_json, '$.round') || ':' || (json_extract(evidence_json, '$.reason') LIKE 'cycle:%') FROM decisions WHERE id = '${dy2}'"
+        equals: ["2:1"]
+  - file:
+      path: cmd-y-reject.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-loop-y-reject
+        kind: workflow-change
+        workflow: loop
+        basedOn: {graph: ${graph}}
+        answers: [${dy2}]
+        need: {key: "capability:y", reject: "y is b's own helper; write it inside docs/b.md"}
+  - name: the Kernel rejects y as not shared
+    starci: [kernel, submit, "${run}/cmd-y-reject.yaml"]
+  - name: the step returns b to its Op
+    starci: [workflow, step, loop]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT (SELECT state FROM shared_needs WHERE key = 'capability:y') || ':' || (SELECT json_extract(release_json, '$.by') FROM shared_need_waiters WHERE key = 'capability:y')"
+        equals: ["rejected:rejected"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'b' ORDER BY created_at DESC LIMIT 1"
+      as: b2
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'b'"
+        equals: [2]
+  - name: the retried task's brief says the need was rejected and why
+    assert:
+      exists:
+        path: ${project}/briefs/${b2}.md
+        present: true
+        contains: "rejected by the Kernel of loop"

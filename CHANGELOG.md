@@ -6,6 +6,24 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **Shared needs.** A worker that finds a shared thing missing files `task result --status blocked --needs <key> [--rule]
+  [--paths]... [--note]` (or a `needs` list in its output) instead of building it. Keys are `capability:`, `package:` or
+  `config:` names, normalized, and a reported path under a shared root of the new `ops/needs.yaml` names the key. One need
+  per (project, key) lives in machine.sqlite (`shared_needs`, `shared_need_waiters`); every report of the key attaches its
+  task as a parked waiter, its work kept. Every workflow step, under both runners, routes a need to its workflow's Kernel
+  (one workflow) or to the Supervisor (two workflows, a shared root, a config key, a `@starci` package as a package edit)
+  as one `shared-need` decision; exactly one owner resolves it (`workflow-change` with `need.resolver` or `need.reject`, the
+  new `need-owner` Supervisor command, `supervisor dispatch --need`), a need unowned past `needs.ownerDeadlineMinutes`
+  (`ops/liveness.yaml`) climbs one router, a failed resolver or a cycle reopens it, and once the resolver lands (or its
+  package handoff is merged) the waiters are retried from their kept work in each workflow's own step. A cross-branch relay
+  comes first: the resolving tasks' landed commits are cherry-picked onto each waiting workflow's branch under its land lock
+  (a `need-relayed` event, printed by `needs show`), and a conflict moves nothing and raises one Supervisor `conflict`
+  escalation with the waiters kept parked. A `need-owner` may name tasks its owner already landed as `need.resolver`. A wrong
+  answer bounces `NEED_ANSWER_INVALID` with guidance. New verbs `needs list`, `needs show`, `needs merge`. Bench group
+  `needs`: ten scenarios.
+
 ### Fixed
 
 - **A task is briefed with the rule pages of its paths.** The resolved context adds, for every allowPath, each

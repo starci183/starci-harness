@@ -7,7 +7,8 @@ import type { Role } from "../shared/verb.js"
 import { CITES_KEY, GRADES_KEY, citesBriefSection } from "./cite.js"
 import { contextPath, resolveChecks, resolveContract } from "./contract.js"
 import type { ResolvedOutput } from "./contract.js"
-import { projectDir } from "./ledger.js"
+import { openExistingLedger, projectDir } from "./ledger.js"
+import { waitersOfPlanKey } from "./needs.js"
 import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 import { priorWorkSection } from "./prior.js"
@@ -114,6 +115,29 @@ const describeOutput = (item: ResolvedOutput): string => {
 }
 
 /**
+ * The "Shared needs" section of a task whose earlier attempt waited on shared needs (harness/needs.ts): how each ended, so the
+ * new attempt builds on a resolved need and does a rejected one inside its own paths; undefined when it waited on none.
+ */
+const needsSection = (root: string, task: TaskRow): string | undefined => {
+    if (task.workflowId === null) return undefined
+    const db = openExistingLedger(root)
+    const planKey = db === undefined ? undefined : db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(task.id)?.plan_key
+    db?.close()
+    if (typeof planKey !== "string") return undefined
+    const released = waitersOfPlanKey(task.workflowId, planKey).filter((waiter) => waiter.releasedAt !== null)
+    if (released.length === 0) return undefined
+    const lines = released.map((waiter) => {
+        const how = (waiter.release ?? {}) as { readonly by?: string; readonly reason?: string | null; readonly carried?: string | null }
+        const carried = how.carried === null || how.carried === undefined ? "" : `; ${how.carried}`
+        return `- ${waiter.key} (task ${waiter.task}): ${how.by ?? "released"}${how.reason === null || how.reason === undefined ? "" : `, ${how.reason}`}${carried}`
+    })
+    return [
+        "An earlier attempt of this work waited on these shared needs. A resolved one is in your checkout now: build on it. A rejected one is not shared: do it inside your allowPaths, or report the need that is shared.",
+        ...lines,
+    ].join("\n")
+}
+
+/**
  * Renders the brief a worker reads: the common procedure of ops/ops/README.md, then the task's op and its resolved contract
  * (base then extend) in plain words, with a "Prior work" section when earlier tasks of the same key left work (prior.ts);
  * `role` is who works it (an Orca worker, or the inline chat agent).
@@ -126,6 +150,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const fixed = resolved.context.filter((file) => file.source !== "paths")
     const paged = resolved.context.filter((file) => file.source === "paths")
     const prior = priorWorkSection(root, task)
+    const needs = needsSection(root, task)
     // The ids the contract hands this task, each with the text it resolves to, so a grader reads what the author decided by.
     const handed = citesBriefSection(contract.cites, ops.root, resolved.output.some((item) => item.key === GRADES_KEY))
     const cites = handed === undefined ? [] : ["### Cites", handed]
@@ -153,6 +178,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
             .map((fact) => `- ${fact}`)
             .join("\n"),
         ...(prior === undefined ? [] : ["### Prior work", prior]),
+        ...(needs === undefined ? [] : ["### Shared needs", needs]),
         `### The ${contract.label} op`,
         procedure,
         "### Input",
