@@ -42,13 +42,13 @@ function askGit(root) {
 }
 
 /**
- * The product repository name: the main checkout's folder name (so a worktree and its main checkout agree), else the
- * origin remote's name, else package.json name outside Git, else the folder name. A folder inside a larger repository
- * (a nested product, an example) is named by its own folder.
+ * The product repository name: the origin remote's repository name (one name for every clone and worktree, whatever
+ * folder holds it), else the main checkout's folder name (so a worktree and its main checkout agree), else package.json
+ * name outside Git, else the folder name. A folder inside a larger repository (a nested product, an example) is named by
+ * its own folder.
  */
 export function repositoryName(root) {
   const { inWorkTree, repositoryRoot, home } = identityOf(root);
-  if (home) return path.basename(home);
   if (repositoryRoot) {
     try {
       const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'])).replace(GIT_SUFFIX, '');
@@ -56,6 +56,7 @@ export function repositoryName(root) {
       if (name) return name;
     } catch { /* No origin remote. */ }
   }
+  if (home) return path.basename(home);
   if (inWorkTree && !repositoryRoot) return path.basename(root);
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
