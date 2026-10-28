@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.3 - 2026-10-28
+
+- Added: `PageHeader`, the page header band (contract role `page-header`, ruling page-header-band). Slots: `breadcrumbs` (`label`, `items`, `onAction`), `title` (the page's one `h1`; `titleId` names it), `description`, `meta`, `status` (chips beside the heading), `mark` (an identity mark left of the heading), `actions` (at the end of the heading row, wrapping under the heading at phone width) and `tabs` (page tabs, drawn as the underline bar). The band is the surface over the page background; its content sits in a `PageContainer` of the content's `measure`, so header and content edges align, with the region step above and the page inset inline. It ends in its own full-width separator (a presentation `Divider`), drawn with or without tabs; page tabs stand on it and the selected underline lies over it; the content below starts one region step after the band. `isSkeleton` keeps every slot's box (title, description, meta, status, mark and actions as measured placeholders; the trail and the tab labels stay real). Core draws the separator as the 1px `separator` hairline, Offset Pop as the TopBar's ink rule with a heavy heading.
+- Added: stories `Compositions/Renderers` PageHeader (no tabs), PageHeader with page tabs and PageHeader at 360px, each with a play asserting the full-width separator at the band's bottom edge, the aligned content edge and the selected underline on the separator; `Primitives/Skeleton parity` Rows gains the PageHeader pairs with and without tabs.
+- Migrate: a page head composed from `Breadcrumbs` and `SectionHeader` becomes one `PageHeader`, first in the primary region and outside the content's `PageContainer`; `@starci/eslint-grammar-core` 0.15.3 refuses the hand-rolled head.
+
 ## 0.15.2 - 2026-10-28
 
 - Changed: versioned together with the Grammar lint families 0.15.2, whose bundled canon pins changed. The Grammar is unchanged.

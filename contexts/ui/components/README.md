@@ -59,6 +59,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | --- | --- |
 | run a command or follow a destination | [button](button.md) |
 | several actions together: a decision with its way out, peer commands on one object | [action-group](action-group.md) |
+| name the page: trail, heading, status, commands, page tabs | [page-header](page-header.md) |
 | switch which panel or area shows | [tabs](tabs.md) |
 | choose one value inside a form or toolbar | [segmented-control](segmented-control.md) |
 | filter or tag by peer categories; label an outcome; mark a status with a dot | [chip](chip.md) |

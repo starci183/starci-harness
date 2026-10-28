@@ -277,6 +277,20 @@ export const IdentityLoading: Story = onePhase("grammar-identity", "loading", id
 
 const rowList = (row: ReactNode) => <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>{row}</ul>
 
+/** A PageHeader with every slot; the tabs variant puts the page tabs on its separator. */
+const pageHeader = (withTabs: boolean, isSkeleton: boolean) => (
+    <G.PageHeader
+        breadcrumbs={{ label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] }}
+        title="Main account"
+        mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
+        status={<><G.StatusDot tone="success">Connected</G.StatusDot><G.Badge tone="warning">Test mode</G.Badge></>}
+        meta="Bank transfer · ****6789"
+        actions={<G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>}
+        {...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {})}
+        isSkeleton={isSkeleton}
+    />
+)
+
 const rows = (): ReadonlyArray<Pair> => [
     {
         id: "list-row-title",
@@ -303,6 +317,18 @@ const rows = (): ReadonlyArray<Pair> => [
         width: "32rem",
     },
     {
+        id: "page-header",
+        ready: pageHeader(false, false),
+        loading: pageHeader(false, true),
+        width: "48rem",
+    },
+    {
+        id: "page-header-tabs",
+        ready: pageHeader(true, false),
+        loading: pageHeader(true, true),
+        width: "48rem",
+    },
+    {
         id: "description-list",
         ready: <G.DescriptionList items={[{ id: "plan", term: "Plan", description: "Team" }, { id: "seats", term: "Seats", description: "8 of 10" }]} />,
         loading: <G.DescriptionList isLoading items={[{ id: "plan", term: "Plan", description: "Team" }, { id: "seats", term: "Seats", description: "8 of 10" }]} />,
@@ -322,7 +348,7 @@ const rows = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** ListRow, SectionHeader, DescriptionList and ChatBubble. */
+/** ListRow, SectionHeader, PageHeader, DescriptionList and ChatBubble. */
 export const Rows: Story = sideBySide(rows)
 export const RowsReady: Story = onePhase("grammar-rows", "ready", rows)
 export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)

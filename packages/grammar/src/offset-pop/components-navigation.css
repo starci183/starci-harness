@@ -87,6 +87,20 @@
         background: var(--background);
     }
 
+    /* PageHeader: a surface band closed by the same ink rule; page tabs stand on it and the selected underline is ink. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] [data-grammar-page-header-separator] > [data-component="Divider"] {
+        block-size: var(--offset-pop-outline-width);
+        background: var(--offset-pop-ink);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"][data-grammar-page-header-tabs="true"] [data-grammar-page-header-separator] {
+        margin-block-start: calc(-1 * var(--offset-pop-outline-width));
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="PageHeader"] .starci-core-page-header-title {
+        font-weight: 800;
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="TopBar"] [data-grammar-top-bar-trigger] {
         border: var(--offset-pop-outline-width) solid var(--offset-pop-ink);
         border-radius: var(--offset-pop-control-radius);

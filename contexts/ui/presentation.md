@@ -94,7 +94,7 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 
 | Region | Ranks it uses |
 | --- | --- |
-| page header | page heading, one supporting line |
+| page header | page heading, one supporting line, one lowest-rank summary line |
 | section header | section heading (level 2), optional supporting line |
 | card | title (level 3), body (ordinary or supporting), meta (lowest) |
 | list row | title (ordinary or supporting, semibold when unread), one description line (supporting, muted), meta |

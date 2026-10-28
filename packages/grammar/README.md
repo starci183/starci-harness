@@ -359,9 +359,15 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (9).** BottomNav, ChatWorkspace, Footer, NavigationFeatureNav, PageContainer,
+**Compositions (10).** BottomNav, ChatWorkspace, Footer, NavigationFeatureNav, PageContainer, PageHeader,
 PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
+
+`PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
+heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
+surface band whose content sits in a `PageContainer` of the content's `measure`, so both share their edges, and it ends
+in its own full-width separator, with or without tabs; tabs stand on it. Place it first in the primary region, outside
+the content's `PageContainer`; the content starts one region step below. `isSkeleton` keeps every slot's box.
 
 `COMMON_GRAMMAR_COMPONENTS` is the frozen registry of the published renderers.
 `COMMON_FORMS_COMPONENTS`, `COMMON_OVERLAYS_COMPONENTS` and `COMMON_NAVIGATION_COMPONENTS` are the

@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.4.3 - 2026-10-28
+
+- Changed: the bundled canon pins follow release F (Grammar family 0.15.3, hfs 4.9.4, canon-fe 9.4.3, canon-be 3.6.3, ai-router 0.3.0). No rule changed.
+
 ## 9.4.2 - 2026-10-28
 
 - Changed: the bundled canon pins follow release E (Grammar family 0.15.2, hfs 4.9.3, canon-fe 9.4.2, canon-be 3.6.2, ai-router 0.3.0) and pin no `starci-harness`: an app's CLI is the version of the CLI that runs @starci/hfs. No rule changed.

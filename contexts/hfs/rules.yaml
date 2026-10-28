@@ -2218,6 +2218,13 @@ rules:
       - FE_CHIP_LABEL_CASE
     enforcers:
       - {kind: eslint-grammar-core, id: chip-label-starts-uppercase}
+  - id: R323
+    code: FE_PAGE_HEADER_HAND_ROLLED
+    law: A page is headed by Grammar's PageHeader; a Breadcrumbs trail followed by a SectionHeader in one parent is a page head composed by hand, with no band, no top inset and no separator.
+    failureCodes:
+      - FE_PAGE_HEADER_HAND_ROLLED
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-hand-rolled-page-header}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
