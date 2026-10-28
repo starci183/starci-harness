@@ -12,6 +12,7 @@ import { inTransaction } from "./leases.js"
 import { locateOps } from "./ops.js"
 import { requestIdOf, terminalSend, terminalWaitIdle, workerShow } from "./orca/client.js"
 import type { OrcaBinary, TerminalInventory } from "./orca/client.js"
+import type { RouteMember } from "./router.js"
 import { loadRouting, poolOfAgent, providerOfAgent } from "./routing.js"
 import { recordEvent } from "./tasks.js"
 import type { FailureKind } from "./routing.js"
@@ -22,6 +23,8 @@ const stallSchema = z.strictObject({
     quietMinutes: z.number().positive(),
     nudgeMax: z.number().int().nonnegative(),
     nudgeGraceMinutes: z.number().nonnegative(),
+    coordinatorStallMax: z.number().int().positive(),
+    coordinatorStallWindowMinutes: z.number().positive(),
     watchSeconds: z.number().int().positive(),
     startUnknownStates: z.array(z.string().min(1)),
     startDeadlineMinutes: z.number().nonnegative(),
@@ -129,7 +132,7 @@ export const claimNudge = (db: DatabaseSync, subject: string, seatId: string, n:
         return true
     })
 
-/** Fills a loop prompt's {workflow}, {task} and {launch}. */
+/** Fills a loop prompt's {workflow}, {task}, {launch} and {wait}. */
 export const promptOf = (template: string, fill: Readonly<Record<string, string>>): string => template.replaceAll(/\{(\w+)\}/g, (whole, name: string) => fill[name] ?? whole)
 
 /** Types the seat's loop prompt into its terminal once (`terminal send`, replay-safe by its seat and nudge number). */
@@ -157,3 +160,25 @@ export const reportStalled = (agent: string, kind: StallKind, detail: string, at
     const routing = loadRouting()
     recordOutcome(providerOfAgent(routing, agent), { kind, pool: poolOfAgent(routing, agent), detail }, at)
 }
+
+/** How a coordinator seat the ladder gave up on is relaunched: the members its relaunch puts behind, and whether it escalates. */
+export interface CoordinatorRelaunch {
+    readonly stalled: readonly RouteMember[]
+    readonly escalate: boolean
+}
+
+/**
+ * The lineage of a coordinator's relaunch after the ladder gave its seat up. A provider failure (capacity, rate, quota, auth)
+ * puts the member behind every other, as a worker's stall does; a plain stall is the model's own idleness, so the coordinator
+ * tier's first member takes the seat again, until `stalls` (this member's plain stalls of the same seat within
+ * coordinatorStallWindowMinutes, this one included) reaches coordinatorStallMax: then it goes behind and the stall escalates.
+ */
+export const coordinatorRelaunch = (kind: StallKind, member: RouteMember, stalls: number, rules: StallRules): CoordinatorRelaunch => {
+    if (kind !== "stall") return { stalled: [member], escalate: false }
+    const repeated = stalls >= rules.coordinatorStallMax
+    return { stalled: repeated ? [member] : [], escalate: repeated }
+}
+
+/** The question a coordinator's repeated plain stalls put to Debug (an escalation of kind harness). */
+export const repeatedStallQuestion = (seat: string, member: string, stalls: number, rules: StallRules): string =>
+    `${seat} on ${member} stalled at its prompt ${String(stalls)} times within ${String(rules.coordinatorStallWindowMinutes)} min with work pending, so it was relaunched on the next member of the coordinator tier; check why ${member} ends its turns (its brief, its agent, the host).`

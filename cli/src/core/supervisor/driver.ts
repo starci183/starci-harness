@@ -22,7 +22,7 @@ import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harn
 import type { RouteMember } from "../../harness/router.js"
 import { kernelSeatOf, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
+import { askIdle, claimNudge, coordinatorRelaunch, loadStallRules, nudgesOf, promptOf, repeatedStallQuestion, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
 import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, keptProjects, liveSupervisors, projectOfRecord, renewSupervisorLease, retireHostSupervisor, startSupervisor, stopSupervisor, supervisorRecord, supervisorTitle } from "../../harness/supervisor.js"
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
@@ -91,8 +91,15 @@ export const projectFrom = async (context: VerbContext, project: string | undefi
 const isCoordinated = (workflow: WorkflowRow): boolean =>
     workflow.header.runner === "orca" && ["running", "blocked", "paused"].includes(workflow.status) && workflow.reason?.startsWith(RELAUNCH_LIMIT) !== true
 
-/** The events the drivers record about a seat rather than the work: relaunching a Kernel, or nudging or giving up a stalled seat, is not progress. */
-const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP]
+/** The event `supervisor next` records when it hands its Supervisor a decision awaiting the owner or Debug, which it hands over once. */
+const DECISION_RELAYED = "decision-relayed"
+
+/** True when the Supervisor was already handed this decision awaiting the owner or Debug. */
+const relayed = (decision: SupervisorDecision): boolean =>
+    withLedger(decision.project, (db) => db.prepare(`SELECT 1 FROM events WHERE kind = '${DECISION_RELAYED}' AND subject = ? AND json_extract(data_json, '$.id') = ?`).get(decision.workflowId, decision.id) !== undefined)
+
+/** The events the drivers record about a seat rather than the work: relaunching a Kernel, nudging or giving up a stalled seat, or handing the Supervisor a decision, is not progress. */
+const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED]
 
 /** The last time a workflow's work moved (its own events and its tasks', but none a driver records about a seat), the Kernel's progress clock. */
 const lastProgress = (db: DatabaseSync, workflowId: string): string | null => {
@@ -210,7 +217,8 @@ const lastCallOf = (leaseUntil: string | null, leaseMinutes: number, startedAt: 
  * The stall ladder of one Kernel seat that is alive by Orca's word: idle at its prompt (stall rules) with work pending and no
  * driver call for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a stall
  * after nudgeMax nudges, gives it up: its member records a `stalled` outcome (seat evidence and the provider circuit, by the
- * kind Orca's failure words name, else `stall`), and the Kernel is relaunched with that member behind every other.
+ * kind Orca's failure words name, else `stall`), and the Kernel is relaunched with the lineage `coordinatorRelaunch` gives
+ * (a provider kind or a repeated plain stall puts the member behind, the latter escalating kind harness to the Supervisor).
  */
 const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, inventory: TerminalInventory | null): Promise<string | null> => {
     const { root, binary, cwd, rules, acting } = scope
@@ -224,18 +232,24 @@ const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatR
     const step = stallStep(lastCall, nudges, stall)
     if (step.kind === "wait") return `${workflow.id}: Kernel idle at its prompt (${signals.evidence.join("; ")}); ${step.detail}`
     if (step.kind === "nudge") {
-        const text = promptOf(stall.prompts.kernel, { workflow: workflow.id, launch: seat.id })
+        const text = promptOf(stall.prompts.kernel, { workflow: workflow.id, launch: seat.id, wait: String(rules.nextWaitSeconds) })
         if (!withLedger(root, (db) => claimNudge(db, workflow.id, seat.id, step.n, { role: "kernel", lastCall, evidence: signals.evidence }))) return null
         await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, text)
         return `${workflow.id}: Kernel idle at its prompt with work pending (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
     }
     const kind = stallKindOf(signals.failureText)
     const agent = seat.agent ?? "?"
-    withLedger(root, (db) => { recordEvent(db, STALL_GAVE_UP, workflow.id, { seat: seat.id, role: "kernel", member: `${agent}/${seat.model ?? "?"}`, kind, why: step.detail, failure: signals.failureText }); })
+    const member = `${agent}/${seat.model ?? "?"}`
+    const since = new Date(Date.now() - stall.coordinatorStallWindowMinutes * 60_000).toISOString()
+    const stalls = withLedger(root, (db) => {
+        recordEvent(db, STALL_GAVE_UP, workflow.id, { seat: seat.id, role: "kernel", member, kind, why: step.detail, failure: signals.failureText })
+        return Number(db.prepare(`SELECT COUNT(*) AS n FROM events WHERE kind = '${STALL_GAVE_UP}' AND subject = ? AND at > ? AND json_extract(data_json, '$.kind') = 'stall' AND json_extract(data_json, '$.member') = ?`).get(workflow.id, since, member)?.n ?? 0)
+    })
     recordSeatOutcome({ ledger: ledgerFileOf(root), id: seat.id, agent, model: seat.model, role: "kernel", startedAt: seat.startedAt })
     reportStalled(agent, kind, `Kernel of ${workflow.id} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
-    const stalled = seat.agent === null ? [] : [{ agent: seat.agent, model: seat.model ?? "" }]
-    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting, stalled }, rules)
+    const next = coordinatorRelaunch(kind, { agent, model: seat.model ?? "" }, stalls, stall)
+    if (next.escalate) withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `coordinator-stalls:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: repeatedStallQuestion(`the Kernel of ${workflow.id}`, member, stalls, stall) } } }))
+    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting, stalled: next.stalled }, rules)
 }
 
 /** The Run a Kernel seat was launched into: Orca's receipt, else the `--run` its launch sent. */
@@ -311,7 +325,7 @@ const expiredLeaseLines = (root: string): string[] =>
 
 /**
  * The project's open Supervisor decisions in the order `supervisor next` returns them: the ones the Supervisor rules, oldest
- * first, then the ones awaiting the owner (`awaitsOwner`), so an owner's question never holds the others back.
+ * first, then the ones awaiting the owner or Debug (`awaitsOwner`), so such a question never holds the others back.
  */
 const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[] =>
     repos
@@ -323,7 +337,7 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch with no receipt is resolved through
  * request-show; too many relaunches pause and escalate), then returns the project's next open escalation or handoff it rules
- * (`openSupervisorDecisions`), else its oldest owner request (`supervisor ask`), else one awaiting the owner, else waits
+ * (`openSupervisorDecisions`), else its oldest owner request (`supervisor ask`), else one awaiting the owner or Debug its Supervisor was not handed yet, else waits
  * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
  * tick` sweeps for it.
  */
@@ -355,16 +369,21 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
         if (attached !== null && binary !== null) actions.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, attached, false))).flat())
-        const decisions = openSupervisorDecisions(repos)
+        const decisions = openSupervisorDecisions(repos).filter((open) => !awaitsOwner(open) || attached === null || !relayed(open))
         const request = openOwnerRequests(project.key)[0]
         const decision = decisions.find((open) => request === undefined || !awaitsOwner(open))
         if (decision !== undefined) {
-            const digest = withLedger(decision.project, (db) => digestOf(db, decision.workflowId))
+            const digest = withLedger(decision.project, (db) => {
+                if (attached !== null && awaitsOwner(decision)) recordEvent(db, DECISION_RELAYED, decision.workflowId, { id: decision.id, supervisor: attached.id })
+                return digestOf(db, decision.workflowId)
+            })
             return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, request: null, actions }
         }
         if (request !== undefined) return { kind: "owner-request", decision: null, digest: null, request, actions }
         const left = deadline - Date.now()
         if (left <= 0) return { kind: "idle", decision: null, digest: null, request: null, actions }
+        // The sweep may have taken a while: the wait is a driver call too, so the lease is renewed as it starts.
+        if (attached !== null) renewSupervisorLease(attached.id)
         return round(await awaitMail(delivery, Math.min(rules.nextPollSeconds * 1000, left)))
     }
     return round(undefined)
@@ -381,11 +400,12 @@ const decisionOf = (data: unknown): unknown => (typeof data === "object" && data
 
 /**
  * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while a decision of its project that it rules or an owner
- * request waits (a decision awaiting the owner is not its work: it waits for the owner's answer) and
+ * request waits (a decision awaiting the owner or Debug is not its work: it waits for their answer) and
  * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
  * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
- * new launch with that member behind every other. Once kernelRelaunchMax replacements left the same decision waiting, the tick
- * stops replacing and reports it for the owner.
+ * new launch with the lineage `coordinatorRelaunch` gives (the same first member after a plain stall; that member behind every
+ * other after a provider kind, or after its repeated plain stalls, which also escalate kind harness). Once kernelRelaunchMax
+ * replacements left the same decision waiting, the tick stops replacing and reports it for the owner.
  */
 const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSupervisor, repos: readonly string[], inventory: TerminalInventory | null, rules: CoordinatorLiveness): Promise<string | null> => {
     const stall = loadStallRules()
@@ -405,18 +425,36 @@ const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSu
             return true
         })
         if (!claimed) return null
-        await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, stall.prompts.supervisor)
+        await sendNudge(binary, cwd, { id: seat.id, terminal: seat.terminal }, step.n, promptOf(stall.prompts.supervisor, { wait: String(rules.nextWaitSeconds) }))
         return `${title} idle at its prompt with ${decision.id} waiting (${signals.evidence.join("; ")}): nudge ${String(step.n)} of ${String(stall.nudgeMax)}`
     }
-    const replaced = readMachine((db) => db.prepare("SELECT data_json FROM host_events WHERE kind = ?").all(STALL_GAVE_UP), []).filter((row) => decisionOf(JSON.parse(String(row.data_json))) === decision.id).length
+    const gaveUp = readMachine((db) => db.prepare("SELECT at, data_json FROM host_events WHERE kind = ?").all(STALL_GAVE_UP), []).map((row) => ({ at: String(row.at), data: JSON.parse(String(row.data_json)) as Readonly<Record<string, unknown>> }))
+    const replaced = gaveUp.filter((row) => decisionOf(row.data) === decision.id).length
     if (replaced >= rules.kernelRelaunchMax) return `${title} stalled again with ${decision.id} waiting after ${String(replaced)} replacements: left for the owner (starci supervisor status)`
     const kind = stallKindOf(signals.failureText)
-    recordHostEvent(STALL_GAVE_UP, seat.id, { member: `${seat.agent}/${seat.model}`, kind, why: step.detail, project: project.key, decision: decision.id, failure: signals.failureText })
+    const member = `${seat.agent}/${seat.model}`
+    const since = new Date(Date.now() - stall.coordinatorStallWindowMinutes * 60_000).toISOString()
+    const stalls = 1 + gaveUp.filter((row) => row.at > since && row.data.project === project.key && row.data.kind === "stall" && row.data.member === member).length
+    recordHostEvent(STALL_GAVE_UP, seat.id, { member, kind, why: step.detail, project: project.key, decision: decision.id, failure: signals.failureText })
     recordSeatOutcome({ ledger: "machine", id: seat.id, agent: seat.agent, model: seat.model, role: "supervisor", startedAt: seat.started_at })
     reportStalled(seat.agent, kind, `${title} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
+    const next = coordinatorRelaunch(kind, { agent: seat.agent, model: seat.model }, stalls, stall)
+    const escalated = next.escalate ? escalateSupervisorStalls(decision, repeatedStallQuestion(title, member, stalls, stall), seat.id) : null
     await stopSupervisor(binary, cwd, project, false, "stalled")
-    const started = await startSupervisor(binary, cwd, project, [{ agent: seat.agent, model: seat.model }])
-    return `${title} stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}`
+    const started = await startSupervisor(binary, cwd, project, next.stalled)
+    return `${title} stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}${escalated === null ? "" : `; escalated to Debug (harness ${escalated})`}`
+}
+
+/**
+ * Raises the harness escalation of a Supervisor's repeated plain stalls on the workflow the waiting work names (the decision's,
+ * or the one an owner request was given to), where the next Supervisor reads it after the work it rules; with no workflow to
+ * carry it, the tick's line (a `supervisor-tick` host event) is the word Debug reads.
+ */
+const escalateSupervisorStalls = (waiting: SupervisorDecision | OwnerRequest, question: string, seat: string): string | null => {
+    const place = "workflowId" in waiting ? { repo: waiting.project, workflow: waiting.workflowId } : { repo: waiting.repository ?? waiting.projectRoot, workflow: waiting.workflow }
+    if (place.workflow === null || ledgerPath(place.repo) === undefined) return null
+    const workflow = place.workflow
+    return withLedger(place.repo, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow, kind: "escalation", subject: `coordinator-stalls:${seat}`, evidence: { project: place.repo, escalation: { kind: "harness", question } } }))
 }
 
 /** The projects that own a running orca workflow: the repositories whose ledgers hold one a Supervisor coordinates, by `projectOf`. */
