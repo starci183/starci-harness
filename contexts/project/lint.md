@@ -19,7 +19,11 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   pnpm), transitively and dependencies first, whose manifest entries (`exports`, `main`, `module`, `types`) name a file not on disk is
   restored from the build cache under its content key or built with its own `build` script. A dependency that cannot be
   built is red with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and holds the steps of the packages that import it
-  (`cli/src/core/check/workspace-deps.ts`). The tail of every red step's output, secrets redacted, is kept as the task's
+  (`cli/src/core/check/workspace-deps.ts`). A module built before the task that wires it in names that task in its
+  contract's `composedBy`: its findings of the composition rules (`runtime.compositionRules` of
+  [policy/quality.yaml](../../policy/quality.yaml)) on its own allowPaths are deferred to that task, whose check judges the
+  module in full, and so does the workflow's final verify before the workflow is done; a module whose task names no
+  composer answers for them itself (`cli/src/core/check/composition.ts`). The tail of every red step's output, secrets redacted, is kept as the task's
   evidence and `starci task status <task>` prints it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
 - **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `hfs check`). The harness

@@ -7,6 +7,10 @@
 schema: starci/quality-policy@1
 runtime:
   stepTimeoutSeconds: 300
+  # Lint rules (the rule name, any plugin) that judge whether a module is composed. A task whose contract names its
+  # composer (`composedBy`) defers their findings on its own allowPaths to that task; the composer's verify and the
+  # workflow's final verify enforce them (cli/src/core/check/composition.ts).
+  compositionRules: [dead-exports, feature-not-composed]
 # Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
 # Owner ruling 2026-10-28 (fast dev): harness packages publish from this machine as soon as their own build and specs are
 # green; release.publish no longer waits for CI (CI still runs on main after the push).

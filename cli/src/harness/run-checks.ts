@@ -311,7 +311,7 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
  */
 const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], place: CheckPlace, allowPaths: readonly string[]): Promise<CheckOutcome> => {
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
-    // check run judges as the task: its own changes since its work began (core/check/scope.ts).
+    // check run judges as the task: its own changes since its work began, its deferral and its obligations (core/check/scope.ts).
     const asTask = place.taskId === undefined || args[1] !== "run" || withBase.includes("--task") ? withBase : [...withBase, "--task", place.taskId]
     const withPaths = asTask.includes("--") ? asTask : [...asTask, "--", ...allowPaths]
     const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withPaths], place.cwd, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })

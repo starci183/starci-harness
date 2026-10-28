@@ -59,7 +59,7 @@ export type Profile = z.infer<typeof profileSchema>
 
 const qualitySchema = z.object({
     schema: z.literal("starci/quality-policy@1"),
-    runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600) }),
+    runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600), compositionRules: z.array(z.string().min(1)) }),
     requireCi: z.array(z.enum(CI_GATED_ACTIONS)),
     defaults: z.object({ none: z.string().min(1), app: z.string().min(1), runtime: z.string().min(1) }),
     profiles: z.record(z.string().min(1), profileSchema),

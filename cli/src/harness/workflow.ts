@@ -326,13 +326,33 @@ export const staleLiveTasks = (nodes: readonly PlanNode[], tasks: readonly Workf
     return tasks.filter((task) => isLiveTask(task) && !carried.has(task.id))
 }
 
-/** A workflow with its current graph, the state of every node and its ledger tasks. */
+/** The ledger event of a workflow's final verify: the graph version it judged, its verdict, and why it is red. */
+export const FINAL_VERIFY_EVENT = "workflow-final-verify"
+
+/** A final verify of a workflow, as its event recorded it. */
+export interface FinalVerify {
+    readonly graphVersion: number
+    readonly verdict: "green" | "red"
+    readonly reason: string
+}
+
+/** A workflow with its current graph, the state of every node, its ledger tasks and its newest final verify. */
 export interface Snapshot {
     readonly workflow: WorkflowRow
     readonly nodes: readonly PlanNode[]
     readonly views: readonly NodeView[]
     readonly tasks: readonly WorkflowTask[]
     readonly live: number
+    readonly finalVerify: FinalVerify | null
+}
+
+/** The newest final verify of a workflow, if any. */
+const finalVerifyOf = (db: DatabaseSync, id: string): FinalVerify | null => {
+    const row = db.prepare("SELECT data_json FROM events WHERE kind = ? AND subject = ? ORDER BY id DESC LIMIT 1").get(FINAL_VERIFY_EVENT, id)
+    if (row === undefined) return null
+    const data: unknown = JSON.parse(text(row.data_json))
+    if (typeof data !== "object" || data === null || !("graphVersion" in data) || !("verdict" in data)) return null
+    return { graphVersion: Number(data.graphVersion), verdict: data.verdict === "green" ? "green" : "red", reason: "reason" in data ? text(data.reason) : "" }
 }
 
 /** Reads a workflow's current graph and the state of each node. */
@@ -340,19 +360,35 @@ export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
     const workflow = getWorkflow(db, id)
     const nodes = graphOf(db, id, workflow.graphVersion)
     const tasks = workflowTasks(db, id)
-    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length }
+    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
 }
 
 /**
+ * Whether a workflow's graph needs a final verify before it is done: a task of it deferred its composition rules to its composer
+ * (`composedBy`), so the modules it wrote are judged once more, in full, on the code every task left (core/workflow/engine.ts).
+ */
+export const needsFinalVerify = (snapshot: Snapshot): boolean => snapshot.nodes.some((node) => node.contract.context.composedBy !== undefined)
+
+/** The final verify that judges the workflow's current graph, if one ran. */
+export const currentFinalVerify = (snapshot: Snapshot): FinalVerify | null =>
+    snapshot.finalVerify?.graphVersion === snapshot.workflow.graphVersion ? snapshot.finalVerify : null
+
+/**
  * The status a workflow's nodes call for. An ended or not yet started workflow keeps its status; a stopping one is stopped once
- * none of its tasks is live; otherwise done when every node is done, blocked (with the reason) while any node is stuck, else running.
+ * none of its tasks is live; otherwise done when every node is done (and its final verify, when one is due, is green), blocked
+ * (with the reason) while any node is stuck or the final verify is red, else running.
  */
 export const derivedStatus = (snapshot: Snapshot): { readonly status: WorkflowStatus; readonly reason: string | null } => {
     const { workflow, views, live } = snapshot
     if (workflow.status === "defined" || workflow.status === "stopped" || workflow.status === "paused") return { status: workflow.status, reason: workflow.reason }
     if (workflow.status === "stopping") return live === 0 ? { status: "stopped", reason: workflow.reason } : { status: "stopping", reason: workflow.reason }
-    // Done waits for every task of the workflow, a leftover one still being cancelled or verified included.
-    if (views.every((view) => view.state === "done") && live === 0) return { status: "done", reason: null }
+    // Done waits for every task of the workflow, a leftover one still being cancelled or verified included, and for a green
+    // final verify of the current graph when a task deferred its composition rules.
+    if (views.every((view) => view.state === "done") && live === 0) {
+        const final = needsFinalVerify(snapshot) ? currentFinalVerify(snapshot) : { graphVersion: workflow.graphVersion, verdict: "green", reason: "" }
+        if (final === null) return { status: "running", reason: "every task is done; the final verify of the deferred composition rules is next" }
+        return final.verdict === "green" ? { status: "done", reason: null } : { status: "blocked", reason: `final verify: ${final.reason}` }
+    }
     const stuck = views.filter((view) => STUCK_STATES.includes(view.state) && view.state !== "blocked")
     if (stuck.length > 0) return { status: "blocked", reason: stuck.map((view) => `${view.key}: ${view.why}`).join("; ") }
     return { status: "running", reason: null }

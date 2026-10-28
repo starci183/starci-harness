@@ -45,6 +45,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   inline step hands it out) `beginWork` records the tree of its checkout as its baseline; a dirty file unchanged since
   then is not the task's: its candidate, its stray files, `check run --task` (which `task verify` and the dry replay
   pass) and its preserve and reset leave it be, and it never widens the scope. Bench: `verify-sibling-dirt-not-judged`.
+- **A staged module's composition rules wait for its composer.** A module written before the task that wires it in was
+  red on `dead-exports` and `feature-not-composed`. A task's contract (or workflow task) may name its composer in
+  `composedBy`; its check defers the findings of policy/quality.yaml `runtime.compositionRules` on its own allowPaths to
+  that task (`deferred-to:<key>` on the lint step), the composer's check judges the module in full, and the workflow is
+  done only after a green final verify (`check run --workflow`) of every deferred module; a red one blocks it. A task
+  that names no composer stays red as before. The Kernel brief declares `composedBy` when it splits a module from its
+  composition. Bench: `verify-composition-deferred-to-composer`.
+- **Prior work is stored when the temp folder and the state base sit on two drives.** The patch was written in the temp
+  folder and renamed into the store, which Windows refuses across drives (`EXDEV`, `prior-store-failed`); it is now
+  written inside the store.
 - **A red check's output is kept and shown.** Every check of a verify keeps the last 200 lines of its tools' output as
   its detail, with every value the secret scan recognises redacted (`redactSecrets`), and `task status <task>` prints the
   detail of the red checks of the newest verify (`checkRuns[].detail` in `--json`). Bench:

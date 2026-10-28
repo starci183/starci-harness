@@ -40,7 +40,8 @@ const riskTagSchema = z.string().refine((tag) => loadRouting().qualification.ris
  * The fields of one task as a file writes it: a contract file, or the contract written inline, plus its edges and what the
  * router reads of it (difficulty, risk); the router alone picks the agent and model.
  * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base; `cites` are the
- * anchor ids the task answers for (harness/cite.ts). `readPaths`
+ * anchor ids the task answers for (harness/cite.ts); `composedBy` is the key of the task that wires in the module this one
+ * writes (core/check/composition.ts). `readPaths`
  * is the earlier spelling of `context`. `uat: <flow id>` is a third form: the contract built from that Work record (uatContract).
  */
 const taskFieldsShape = {
@@ -56,6 +57,7 @@ const taskFieldsShape = {
     output: z.record(keyNameSchema, outputSpecSchema).optional(),
     cwd: z.string().min(1).optional(),
     setup: contractSchema.shape.context.shape.setup,
+    composedBy: keySchema.optional(),
     checks: z.array(checkEntrySchema).min(1).optional(),
     cites: contractSchema.shape.cites,
     budget: contractSchema.shape.budget.optional(),
@@ -189,7 +191,7 @@ const readDocument = (file: string): unknown => {
 
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
-const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "checks", "cites", "budget"] as const
+const INLINE_FIELDS = ["label", "summary", "details", "allowPaths", "context", "readPaths", "inputs", "output", "cwd", "setup", "composedBy", "checks", "cites", "budget"] as const
 
 const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...previous,
@@ -269,6 +271,7 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
             allowPaths,
             ...optional("cwd", fields.cwd ?? previous?.context.cwd),
             ...optional("setup", fields.setup ?? previous?.context.setup),
+            ...optional("composedBy", fields.composedBy ?? previous?.context.composedBy),
             ...optional("base", previous?.context.base),
             ...optional("extend", filled(read)),
         },

@@ -15,7 +15,7 @@ import { getTask, recordEvent } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
-import { createNodeTask, derivedStatus, DISPATCHING, parallelSlots, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
+import { createNodeTask, currentFinalVerify, derivedStatus, DISPATCHING, FINAL_VERIFY_EVENT, needsFinalVerify, parallelSlots, setWorkflowStatus, SETTLING, snapshotOf, staleLiveTasks } from "../../harness/workflow.js"
 import type { Snapshot, WorkflowRow, WorkflowStatus, WorkflowTask } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
@@ -24,6 +24,7 @@ import { startSeat } from "../seat/start.js"
 import { taskCancelVerb } from "../task/cancel.js"
 import { inOrder } from "../../harness/sequential.js"
 import { taskVerifyVerb } from "../task/verify.js"
+import { checkRunVerb } from "../check/run.js"
 
 /**
  * What one step did to one task: settled it, dispatched it, launched or cancelled it, closed its seats once its result was
@@ -401,10 +402,47 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
         snapshot = reconcile(root, id)
+        actions.push(...(await finalVerify(context, root, snapshot)))
+        snapshot = reconcile(root, id)
     }
     actions.push(...(await closeKernelActions(context, root, snapshot)))
     await priorWorkOfInline(root, readSnapshot(root, id))
     return reportOf(root, readSnapshot(root, id), actions)
+}
+
+/** One line per red step of a check run's json data: what it is and why. */
+const redSteps = (data: unknown): string[] => {
+    const steps = typeof data === "object" && data !== null && "steps" in data && Array.isArray(data.steps) ? (data.steps as unknown[]) : []
+    return steps.flatMap((step) => {
+        if (typeof step !== "object" || step === null) return []
+        const field = (name: string): string => (name in step ? String((step as Record<string, unknown>)[name]) : "")
+        return field("status") === "red" ? [`${field("step")} ${field("package")}: ${field("reason")}\n${field("output")}`] : []
+    })
+}
+
+/**
+ * The final verify of a workflow whose tasks deferred their composition rules (harness/workflow.ts needsFinalVerify): once every
+ * node is done and none is live, `check run --workflow` judges every deferred module in full, with no deferral, on the code
+ * the workflow's checkout holds; its verdict is recorded for the current graph version, which derivedStatus reads, so the
+ * workflow is done only when it is green and a module no task composed blocks it. It runs once per graph version.
+ */
+const finalVerify = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    const settled = snapshot.views.every((view) => view.state === "done") && snapshot.live === 0
+    if (!SETTLING.includes(snapshot.workflow.status) || !settled || !needsFinalVerify(snapshot) || currentFinalVerify(snapshot) !== null) return []
+    const checkout = withLedger(root, (db) => workflowWorktreeOf(db, snapshot.workflow.id)) ?? root
+    let verdict: "green" | "red"
+    let reason: string
+    try {
+        const run = await checkRunVerb.run({ ...context, cwd: checkout }, { base: "HEAD", all: false, task: undefined, workflow: snapshot.workflow.id, paths: [] })
+        verdict = run.exitCode === 1 ? "red" : "green"
+        reason = verdict === "green" ? "the deferred modules are composed" : `a deferred module is not composed: ${redSteps(run.data).join("\n")}`
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        verdict = "red"
+        reason = `check run --workflow refused (${refusal.code}): ${refusal.message}`
+    }
+    withLedger(root, (db) => { recordEvent(db, FINAL_VERIFY_EVENT, snapshot.workflow.id, { graphVersion: snapshot.workflow.graphVersion, verdict, reason }) })
+    return [{ key: null, task: null, action: verdict === "green" ? "verified" : "problem", detail: `final verify ${verdict}: ${reason}` }]
 }
 
 /** Begins an inline task's work before its brief is written: its baseline, then its prior work (both no-ops the second time). */

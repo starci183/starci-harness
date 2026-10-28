@@ -175,7 +175,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
-- [project/lint.md](../project/lint.md) · 8 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
+- [project/lint.md](../project/lint.md) · 9 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · Read with
 - [project/lite.md](../project/lite.md) · 5 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Read with
