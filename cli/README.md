@@ -448,7 +448,13 @@ path, and the bench points it at its run's own file), parsing dotenv lines (`KEY
 keeping no other key. It reads only the keys [policy/security.yaml](../policy/security.yaml) `secretKeys` lists and refuses any
 other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
 (`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.
-[secret.env.example](../secret.env.example) names every key the host's secret.env holds.
+[secret.env.example](../secret.env.example) names every key the host's secret.env holds. A provider key the owner sets once
+for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set <env> <member> <KEY>
+--from-host <HOST_KEY>` (`core/app/secret.ts`): the CLI reads HOST_KEY through the loader and hands the value to @starci/hfs as
+the stdin `set` reads, so no shell, argument, output, error or evidence carries it; an unlisted key is `SECRET_KEY_UNLISTED`,
+a listed one the host lacks `HOST_SECRET_MISSING`. Full and lite apps keep the same custody (`.starcistacks/<env>/secrets/<member>.enc`
+under the app's `.sops.yaml`), so the verb serves both. Another shared key is one line in `secretKeys`, its entry in
+secret.env.example and one `set --from-host` per app.
 
 **The owner's Telegram channel.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram
 ([ops/telegram.yaml](../ops/telegram.yaml), `harness/telegram.ts`, `harness/telegram-bridge.ts`). The bot token

@@ -82,15 +82,17 @@ const parsed = (text: string): unknown => {
  * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
  * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
  * never a pin bundled in @starci/hfs. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
+ * `stdin`, when given, replaces the process stdin of a verb that reads one (`app secret set`): what it returns stays in memory
+ * and reaches @starci/hfs alone.
  */
-export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean): Promise<VerbResult<HfsRunData>> => {
+export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean, stdin?: () => string): Promise<VerbResult<HfsRunData>> => {
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
     let stdout = ""
     let stderr = ""
     const harness = { version: packageVersion() }
     const io = context.json
-        ? { cwd: context.cwd, harness, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }

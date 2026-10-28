@@ -29,8 +29,11 @@ neverRead:
   - "**/keys.txt"
   - "**/credentials.toml"
 # The keys the secret loader reads; it refuses any other (SECRET_KEY_UNLISTED). Only the runtime's policy lists them.
+# A provider key the owner sets once for every app is one more line here, its entry in secret.env.example, and one
+# `starci app secret set <env> <member> <KEY> --from-host <KEY>` per app; no code changes.
 secretKeys:
   - TELEGRAM_BOT_TOKEN
+  - OPENROUTER_API_KEY
 exceptions:
   - path: packages/eslint-canon-be/runtime/scripts/hfs/rules/secrets.mjs
     rule: assigned-secret
