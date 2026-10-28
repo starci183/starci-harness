@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.1 - 2026-10-28
+
+- Changed: versioned together with Grammar 0.15.1; `@starci/eslint-canon-fe` 9.4.1 is the peer dependency, and the bundled canon pins follow release D (Grammar family 0.15.1, hfs 4.9.2, canon-fe 9.4.1, canon-be 3.6.1, starci-harness 1.1.0-alpha.2), so an app installs the released versions without pin drift. No rule changed.
+
 ## 0.15.0 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.0; `@starci/eslint-canon-fe` 9.4.0 is the peer dependency, and the bundled canon pins follow release C (Grammar family 0.15.0, hfs 4.9.1, canon-fe 9.4.0, canon-be 3.6.0, jest-preset 2.4.1, `@starci/ai-router` 0.2.1), so an app installs the released versions without pin drift.
