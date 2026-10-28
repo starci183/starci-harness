@@ -26,13 +26,15 @@ An op that writes code or tests reads, in this order, and cites the rule ids it 
 3. **The side:** [be/README.md](be/README.md) or [fe/README.md](fe/README.md); a front-end screen also reads the ui and
    grammar files of the [knowledge reading order](../README.md#reading-order-by-task).
 4. **The slot topics:** the side topics whose front matter `slots` names a slot the task touches (the anatomy prints
-   each slot's topics), and the topics those cite.
+   each slot's topics), and the topics those cite. The harness hands a worker the topics of the slots its allowPaths
+   govern as the brief's rule pages, so a topic's `slots` front matter is the one place a page is tied to the paths its
+   rules govern; a topic whose `slots` is empty holds cross-cutting rules no path pulls in.
 5. **The lint of the rules cited:** for each `R<n>` a rule names, its entry in [hfs/rules.yaml](../hfs/rules.yaml) and
    the documentation of its enforcer: the front-end canon's `packages/eslint-canon-fe/docs/<law>.md`, the back-end
    canon's rule source header in `packages/eslint-canon-be/<law>.mjs`, and the grammar lint for a grammar call.
 
-Steps 1 to 3 are each op label's `context.base`; steps 4 and 5 depend on the slots and are the task's
-`context.extend`, which the Kernel writes from the anatomy.
+Steps 1 to 3 are each op label's `context.base`; step 4 comes from the task's allowPaths, and step 5 and any topic a
+task needs beyond its paths are the task's `context.extend`, which the Kernel writes from the anatomy.
 
 ## Review obligations
 

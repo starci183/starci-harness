@@ -12,6 +12,7 @@ import { changedCoverageScope, runsJest, withCoverageArgs } from "./coverage-sco
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
+import { ruleOwnerOf } from "./rule-pages.js"
 import { WORK_DIR, judgeUatWalk, parseUatRecord, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
@@ -201,7 +202,7 @@ const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind:
     const problems: string[] = []
     const found: string[] = []
     for (const trace of check.check.trace ?? []) {
-        const traced = traceProblems(trace, record[trace.key] ?? [], place)
+        const traced = traceProblems(trace, record[trace.key] ?? [], place, check.check.harness)
         problems.push(...traced.problems)
         found.push(...traced.found)
     }
@@ -251,8 +252,18 @@ const readableWork = (trace: CitedTrace, place: CheckPlace): Map<string, Set<str
     return records
 }
 
+/**
+ * The problem of a rule id no context file names: the contexts page of `harness` that owns it when there is one, which points
+ * at a brief that left that page out, else the context files it was looked for in.
+ */
+const unnamedRule = (key: string, id: string, context: string, harness: string | undefined): string => {
+    const owner = harness === undefined ? undefined : ruleOwnerOf(harness, id)
+    if (owner === undefined) return `${key}: ${id} is named by none of the context files (${context})`
+    return `${key}: ${id} is owned by ${owner}, which the brief did not include (context files: ${context})`
+}
+
 /** What one traced key cites: the ids found in a context file (or a Work record the task may read), and the problems of the ones that are not. */
-const traceProblems = (trace: CitedTrace, value: unknown, place: CheckPlace): { readonly problems: string[]; readonly found: string[] } => {
+const traceProblems = (trace: CitedTrace, value: unknown, place: CheckPlace, harness: string | undefined): { readonly problems: string[]; readonly found: string[] } => {
     const problems: string[] = []
     const found: string[] = []
     if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return { problems: [`${trace.key} is not a list of ids`], found }
@@ -267,7 +278,7 @@ const traceProblems = (trace: CitedTrace, value: unknown, place: CheckPlace): { 
         if (owner !== undefined) found.push(`${id} in ${owner}`)
         else if (work) problems.push(`${trace.key}: "${id}" names no Work record readable by this task (${looked})`)
         else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
-        else problems.push(`${trace.key}: ${id} is named by none of the context files (${context})`)
+        else problems.push(unnamedRule(trace.key, id, context, harness))
     }
     return { problems, found }
 }

@@ -7,6 +7,7 @@ import { contractCiteProblems, fillCiteCheck } from "./cite.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
 import { loadPolicy, neverRead } from "./policy.js"
+import { rulePagesOf } from "./rule-pages.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
@@ -189,8 +190,11 @@ const canonical = (value: unknown): unknown => {
 
 const sameEntry = (left: CheckEntry, right: CheckEntry): boolean => JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
 
-/** Where a resolved item came from: the op file's base, or the contract (its pinned base or its extend). */
-export type Source = "base" | "extend"
+/**
+ * Where a resolved item came from: the op file's base, or the contract (its pinned base or its extend). A context file may
+ * also come from the task's `paths`: a page owning a rule that governs a path under its allowPaths (rule-pages.ts).
+ */
+export type Source = "base" | "extend" | "paths"
 
 /** One file the task reads, resolved: `harness` files live in the harness checkout, the others in the repository; a `shared` one is never cited. */
 export interface ContextFile {
@@ -264,8 +268,12 @@ const resolveInputs = (contract: Contract, op: Op, problems: string[]): Resolved
     return inputs
 }
 
-/** Context: the op's files, then the contract's. A pinned base must keep every file of the op's base. */
-const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<string, string>>, problems: string[]): ContextFile[] => {
+/**
+ * Context: the op's files, then the contract's, then the rule pages of the allowPaths that neither names (each contexts page
+ * owning a rule over a path the task may write, so a rule the worker applies there is citable). A pinned base must keep every
+ * file of the op's base.
+ */
+const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<string, string>>, harnessRoot: string, problems: string[]): ContextFile[] => {
     const { label } = contract
     const context: ContextFile[] = []
     const add = (entry: string, source: Source, shared = false): void => {
@@ -287,6 +295,7 @@ const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<stri
         for (const entry of contract.context.base) add(entry, "base")
     }
     for (const entry of contract.context.extend ?? []) add(entry, "extend")
+    for (const page of rulePagesOf(harnessRoot, contract.context.allowPaths, values.edition)) add(`${HARNESS_PREFIX}${page}`, "paths")
     return context
 }
 
@@ -333,7 +342,7 @@ export const resolveContract = (contract: Contract, ops: Ops): ResolvedContract 
     const problems: string[] = []
     const inputs = resolveInputs(contract, op, problems)
     const values: Record<string, string> = { label: contract.label, ...Object.fromEntries(inputs.map((input) => [input.name, input.value])) }
-    const context = resolveContext(contract, op, values, problems)
+    const context = resolveContext(contract, op, values, ops.root, problems)
     const output = resolveOutput(contract, op, problems)
     const checks = resolveCheckEntries(contract, op, problems)
     const workDriven = context.some((file) => !file.harness && underPaths(file.path, [WORK_TREE]))
@@ -464,7 +473,8 @@ export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => 
     const checks = resolved.checks.map(({ entry }, index): ResolvedCheck => {
         const check = expand(entry, index, ops, inputs)
         if (check.check.kind === "cite") return { ...check, check: { kind: "cite", ...fillCiteCheck(check.check, ops.root, contract.cites, outputKeys) } }
-        return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, contract, ops) } } : check
+        // The harness checkout rides along so a red trace names the page that owns an id the task was not handed.
+        return check.check.kind === "cited" && check.check.trace === undefined ? { ...check, check: { kind: "cited", trace: traceOf(resolved, contract, ops), harness: ops.root } } : check
     })
     if (resolved.output.length === 0) return checks
     const types: Record<string, OutputType> = Object.fromEntries(resolved.output.map((item) => [item.key, item.spec.type]))
@@ -505,11 +515,14 @@ const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
 /** The bytes per token the context budget estimates with. */
 export const BYTES_PER_TOKEN = 4
 
-/** The estimated tokens of the context files that exist now: harness files, and repository files under `root` when it is given. */
+/**
+ * The estimated tokens of the fixed context files that exist now: harness files, and repository files under `root` when it is
+ * given. A rule page of the paths is the second layer, opened at the section a written file needs, so it is not counted.
+ */
 export const contextTokens = (resolved: ResolvedContract, ops: Ops, root?: string): { readonly tokens: number; readonly bytes: number; readonly unmeasured: readonly string[] } => {
     let bytes = 0
     const unmeasured: string[] = []
-    for (const file of resolved.context) {
+    for (const file of resolved.context.filter((item) => item.source !== "paths")) {
         const inRepository = root === undefined ? undefined : join(root, file.path)
         const path = file.harness ? join(ops.root, file.path) : inRepository
         if (path === undefined || !existsSync(path)) unmeasured.push(file.entry)

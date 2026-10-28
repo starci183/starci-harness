@@ -58,6 +58,8 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
                 }),
             )
             .optional(),
+        // The harness checkout whose contexts pages own the rule ids, so a red trace names the page the task was not handed.
+        harness: z.string().min(1).optional(),
     }),
     // The anchor cites (harness/cite.ts): every id resolves, a UI change cites a Choose anchor per Grammar family, grades hold.
     // resolveChecks fills the rest from the contract; the preset names the kind alone.

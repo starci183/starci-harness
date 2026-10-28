@@ -8,6 +8,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A task is briefed with the rule pages of its paths.** The resolved context adds, for every allowPath, each
+  `contexts/code/{be,fe}/*.md` topic whose front matter `slots` names a slot of `contexts/hfs/slots.yaml` the path lies in
+  (its most specific slot, an app-kind slot matched by the app folder) or holds (`harness/rule-pages.ts`), so a worker on the
+  CLI aggregate may cite `BE-CLI-*` and one on an integration `BE-INFRA-*`. The brief lists them as "Rule pages of your
+  paths", citable and opened on demand, outside the op's context budget. `rules-cited` names the page that owns an id the
+  task was not handed ("BE-WEBHOOK-1 is owned by contexts/code/be/webhooks.md, which the brief did not include"). Bench:
+  `cited-rules-by-paths`.
 - **A task in its Op worktree is judged on its own diff.** `starci check run --task` and the worker's `task verify --contract`
   replay diff from the Op worktree's fork (the workflow head it was cut from), never from `origin/main`, so lint, typecheck
   and the changed-file coverage no longer judge what earlier tasks left on the workflow branch (`LINT_CONFIG_MISSING` and
