@@ -24,6 +24,8 @@ export default defineConfig(
             "@typescript-eslint/consistent-type-imports": "error",
             "@typescript-eslint/switch-exhaustiveness-check": "error",
             "no-console": "error",
+            // Sonar's reliability gate (S2871) refuses a sort without a compare function; catch it here, before CI.
+            "@typescript-eslint/require-array-sort-compare": ["error", { ignoreStringArrays: false }],
         },
     },
 )

@@ -74,7 +74,7 @@ const buildOrder = (start: string, needs: ReadonlyMap<string, ReadonlySet<string
     const order: string[] = []
     const visit = (dir: string, path: readonly string[]): void => {
         if (order.includes(dir) || path.includes(dir)) return
-        for (const need of [...(needs.get(dir) ?? [])].sort()) visit(need, [...path, dir])
+        for (const need of [...(needs.get(dir) ?? [])].toSorted((a, b) => a.localeCompare(b))) visit(need, [...path, dir])
         order.push(dir)
     }
     visit(start, [])

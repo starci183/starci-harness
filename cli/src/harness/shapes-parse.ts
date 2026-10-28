@@ -90,9 +90,9 @@ const localType = (parsed: Parsed, name: string): ts.TypeNode | ts.InterfaceDecl
 const localConstant = (parsed: Parsed, name: string): ts.Expression | undefined => {
     const { ts } = parsed
     for (const statement of parsed.source.statements) {
-        if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0) continue
+        if (!ts.isVariableStatement(statement)) continue
         const declaration = statement.declarationList.declarations.find((entry) => ts.isIdentifier(entry.name) && entry.name.text === name)
-        if (declaration !== undefined) return declaration.initializer
+        if (declaration !== undefined && statement.declarationList.getFirstToken(parsed.source)?.kind === ts.SyntaxKind.ConstKeyword) return declaration.initializer
     }
     return undefined
 }
