@@ -61,8 +61,9 @@ graph version's nodes with contract hash, node hash, routing hints and retry rou
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
-`pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events` and `project_supervisors`, one live
-Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`).
+`pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, `project_supervisors`, one live
+Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), and the Telegram channel's
+`telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`).
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
 and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's one worktree. Seats and leases stay
 in the project ledger.
@@ -190,9 +191,9 @@ escalates to the Supervisor (kind harness), and every later submit of it is refu
 `supervisor next` sweeps the workflows the Supervisor owns in its project's registered repositories: a Kernel whose lease lapsed with no
 progress past its TTL (a relaunch is not progress) is relaunched on Orca's word (gone, or idle), and once the relaunch
 limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a live Kernel idle at
-its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` records
-it in the project's mailbox, machine.sqlite `owner_requests`, and mails the Supervisor's Run as `kernel submit` does, `wakeSupervisor` in
-`harness/supervisor.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
+its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
+it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
+`harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
 `owner`, which the owner rules, or `harness`, which Debug rules and answers with a `supervisor ask` (`awaitsOwner` in
 `harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
 and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
@@ -229,7 +230,7 @@ terminal renders, read from Orca once per request (`terminalRead`), never polled
 client listens and sends each change as a `data:` line, with a heartbeat comment every 15 seconds (`core/ui/live.ts`).
 
 **The host.** [ops/host.yaml](../ops/host.yaml) lists what a host runs for the harness (Orca, Docker, the Supervisors, the
-scheduled tick), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
+scheduled tick, the Telegram bridge), each with its check, its start and how it is installed; `harness/host.ts` reads it and runs every argv
 without a shell. The owner runs `host install` once: on Windows each schedule is a `StarCi <name>` scheduled task whose
 action is `wscript //B <state base>/host/<service>.vbs`, which runs the `.cmd` beside it with its window hidden (changing
 to the runtime root, setting the service's environment, appending its output to its log, every token quoted), so the
@@ -237,6 +238,24 @@ scheduler's command line carries one quoted path; `--dry` prints that argv and b
 platforms are refused (`supervisor watch` in a terminal serves there). `host status` reports each service up, down or not
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
+
+**The owner's Telegram channel.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram
+([ops/telegram.yaml](../ops/telegram.yaml), `harness/telegram.ts`, `harness/telegram-bridge.ts`). The bot token is read by
+name from the process environment (`tokenVariable`, set by the owner in the user environment) and never from a file, since
+the harness opens no secret file ([policy/security.yaml](../policy/security.yaml) `neverRead`); a verb that would call the
+bot without it refuses `TELEGRAM_NOT_CONFIGURED`, naming the variable and where it is set, and every error text has the
+token replaced. `connect telegram discover-chat` reads the bot's updates once and stores the one private chat that wrote to
+it (`--chat` picks among several) in machine.sqlite `telegram_channel`, never in a repository; no fact older than that moment
+is sent. A notice sweep (`connect telegram notify`, and every bridge cycle) sends, oldest first and at most `sendPerMinute`,
+each fact not sent yet across every registered ledger: an `owner` escalation (never a `harness` one, which is Debug's; project, workflow,
+decision id, the question, how to answer), an owner request a Supervisor command took up, and a workflow that is done,
+blocked or stopped (keyed by its status and versions). Each fact is claimed in `telegram_notices` by its key before it is
+sent, so it is sent once; a failed send is tried `sendTries` times. `supervisor telegram-bridge run` holds the host's one
+bridge seat (pid and beat; a second bridge exits while the first is alive) and loops a sweep and a `getUpdates` long poll;
+each update is claimed once in `telegram_inbound`. A message of any chat but the owner's is ignored and logged by its chat
+id, never its text; the owner's reply to a notice, `/answer <decision-id> <text>` or `/ask <project> <text>` is recorded as an
+owner request of that project by the owner (`askSupervisor`, as `supervisor ask` does), which wakes its Supervisor, and the
+owner gets a receipt. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
 Supervisor decision it rules, never an `owner` or `harness` escalation it waits on; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for

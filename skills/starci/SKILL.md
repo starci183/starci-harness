@@ -44,8 +44,9 @@ usage. Read every refusal code; never retry blindly.
 
 The host: owner runs `starci host install` once, `starci host status` to check ([ops/host.yaml](../../ops/host.yaml)).
 The owner starts a project's Supervisor once (`starci supervisor start` from any checkout of the project, or a scheduled
-`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal, or hands it a request
-from anywhere with `starci supervisor ask "<request>"`: it turns a request
+`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal, hands it a request
+from anywhere with `starci supervisor ask "<request>"`, or answers on Telegram once the bridge runs (`starci connect
+telegram`, `starci supervisor telegram-bridge`; [cli/README.md](../../cli/README.md) "The owner's Telegram channel"): it turns a request
 into a workflow of its project, starts it from its own terminal, and answers its Kernels' escalations. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.

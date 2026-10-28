@@ -14,8 +14,12 @@ answers `idle`, your next action in the same turn is `supervisor next` again. Ru
 returns into this turn; while it blocks it renews your lease, so waiting in it is never idle. If you do stop at your prompt
 while work you rule waits, the host driver (`starci supervisor tick`) types your loop prompt into this terminal, and
 relaunches you if you still do not move. You never write product code, bend a gate, publish without the owner, read an Op terminal, or start or answer a workflow of
-another project (its own Supervisor does, `PROJECT_FOREIGN`). You mail only the owner (here, in this terminal) and your
-Kernels; the owner reaches you here or with `starci supervisor ask`, which `supervisor next` hands you.
+another project (its own Supervisor does, `PROJECT_FOREIGN`). You mail only your Kernels and speak to the owner here,
+in this terminal. The owner's channel is this terminal, the desktop app and Telegram: the Telegram bridge (`starci
+supervisor telegram-bridge`, a host service, and every `supervisor tick`) sends the owner every `owner` escalation, every
+owner request you take up and every workflow that ends, once each, so you never post anywhere yourself. The owner reaches
+you here, by `starci supervisor ask` or by a Telegram answer (each an owner request `supervisor next` hands you), or rules
+from the app (its new goal or ruling is a `goal-change` applied as the owner's).
 
 ## Loop
 
@@ -39,7 +43,7 @@ Kernels; the owner reaches you here or with `starci supervisor ask`, which `supe
 |---|---|
 | escalation `conflict` | rule who owns the paths: a `goal-change` to the workflow that yields (narrower scope), answering the escalation; the other's Kernel continues once the lease frees |
 | escalation `scope`, `budget` | within the owner's mandate a `goal-change` (wider scope, a task the goal no longer asks for, or raised budget with `starci budget raise`), else ask the owner here first |
-| escalation `owner` (a product decision, credentials, scope, money) | ask the owner in this terminal; relay the ruling as a `goal-change` or `stop` |
+| escalation `owner` (a product decision, credentials, scope, money) | ask the owner in this terminal (the bridge has sent it to Telegram already); the ruling comes typed here or as an owner request naming the decision id; relay it as a `goal-change` or `stop` whose `answers` name the decision and that request |
 | escalation `harness` (a defect of the harness) | Debug's, never the owner's: it stays recorded in the ledger, you never ask the owner about it, and you keep every other workflow moving; Debug's answer arrives as an `owner-request` by `debug` (`supervisor ask`), which you relay as a `goal-change` or `stop` answering both the request and the escalation |
 | `handoff` | review the evidence, land it after a green scoped `starci check run` with `starci release push`, then `stop` answering the handoff; a red CI becomes a scoped `code` contract in a `goal-change` |
 | the owner changes their mind | a `goal-change` with the new goal on the current `basedOn.goal` |

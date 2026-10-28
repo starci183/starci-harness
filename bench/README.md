@@ -40,7 +40,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   (`file`, `write`; `write.from` copies a file or folder in, `${ops}` naming the ops/ folder the CLI reads), act as a worker (`worker` writes its files in the task's checkout, the workflow's worktree, and files
   its result there), read a ledger value into a variable (`read`), run git, script the Orca stand-in (`orca`), inject a
   fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), serve a long-lived verb
-  until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
+  or a stand-in (`stub`) until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
   `token`, `body`, `stream` for an event stream, and `expect` on status, text and JSON paths), and `assert` on the
   ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`), the stand-in's call log (`orcaCalls`, `match`
   filtering by flag) or the file system. `when` and `unless` tie a step to a `--fault`.
@@ -55,6 +55,11 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
   outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not), mail a seat sent. No real Orca is ever launched.
+- **The Telegram stand-in** is `stub/telegram-stub.mjs`, served by `serve: {stub: telegram}`: a fake Bot API on 127.0.0.1
+  that accepts only the token it mints for the run (`${<as>.token}`) and answers getMe, getUpdates and sendMessage. A
+  scenario points the CLI at it per step (`TELEGRAM_BOT_TOKEN` and `STARCI_TELEGRAM_API` in `env`), plays whoever writes to
+  the bot with `POST <url>/__update {chat, text, replyTo?, type?}`, and reads what the bot sent with `GET <url>/__sent`.
+  Each Telegram scenario empties both variables at its top, so a host token never reaches the real Telegram.
 - **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression) are
   built by the runner at run time (`write.generated`); the run's key is `${generatedKey}` in a step's text, so a scenario can pin its line.
 
@@ -249,4 +254,8 @@ design asks for.
 | [cost-reset-date-reroute](scenarios/cost-reset-date-reroute.yaml) | cost | a pool exhausted until a date: forecast and reroute | automated | pending |  |
 | [cost-runaway-token-loop](scenarios/cost-runaway-token-loop.yaml) | cost | a worker loops spending tokens without progress | semi | pending |  |
 | [cost-task-burns-pool-quota](scenarios/cost-task-burns-pool-quota.yaml) | cost | one task burns the pool's quota | automated | pending |  |
+| [telegram-bridge-reply-records-owner-request](scenarios/telegram-bridge-reply-records-owner-request.yaml) | messaging | the owner answers a Telegram notice: the bridge records it as an owner request, as supervisor ask does, and wakes the Supervisor | automated | pass | 2026-10-28 |
+| [telegram-notify-once-per-decision](scenarios/telegram-notify-once-per-decision.yaml) | messaging | an escalation awaiting the owner reaches the owner's Telegram chat once, however many sweeps and bridge cycles run | automated | pass | 2026-10-28 |
+| [telegram-bridge-foreign-chat-ignored](scenarios/telegram-bridge-foreign-chat-ignored.yaml) | security | only the owner's chat reaches a Supervisor: a stranger writing to the bot is ignored and logged by chat id | automated | pass | 2026-10-28 |
+| [telegram-not-configured-refused](scenarios/telegram-not-configured-refused.yaml) | environment | with no bot token on the host, every Telegram verb that would call the bot refuses TELEGRAM_NOT_CONFIGURED, naming the variable and where to set it | automated | pass | 2026-10-28 |
 <!-- scoreboard:end -->
