@@ -109,11 +109,19 @@ Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wa
 
 ## CI
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to main: the CLI's typecheck,
-lint and build, the anatomy, anchor and search-index checks of `contexts/`, the loosening, secret and shape gates, every
-package's specs, the desktop app's build, and the Sonar new-code gate. A `v*` tag also publishes every package under
-`packages/` and then the CLI (`starci-harness`) whose version is not yet on npm, after `starci release publish --tag`
-accepts the plan ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag or
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to main and checks only what the
+change affects. Its `plan` job measures a pull request from its base and a push to main from the last main commit whose run
+succeeded (else its parent), and `starci release affected` names the packages to test, each with the siblings it needs
+(the ones it requires, its `file:` dependencies, the ones its files read by relative path), and whether the harness and app
+jobs run. Then, in parallel: one `gates` job per light gate over the whole tree (anatomy, anchor and search-index checks of
+`contexts/`, the loosening, secret and shape gates), one `package` job per affected package (install and build its siblings
+and itself, its declarations name `.js`, its specs), the `harness` job when `cli/`, `contexts/`, `ops/`, `policy/`, `bench/`
+or a package the CLI requires changed (the CLI's typecheck, lint and build, and the bench), the `app` job when the desktop
+app is affected, and the Sonar new-code gate; a change under `.github/`, a manual run or an unreadable base checks
+everything. The `ci` job is the one required check, green when every job the plan needed passed. A `v*` tag on a commit
+whose run on main succeeded reuses that run, Sonar included, and checks nothing again; any other tag checks everything. The
+tag then publishes every package under `packages/` and then the CLI (`starci-harness`) whose version is not yet on npm,
+after `starci release publish --tag` accepts the plan ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag or
 a manual run.
 
 ## License

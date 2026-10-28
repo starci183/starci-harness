@@ -1,0 +1,129 @@
+schema: starci/scenario@1
+id: supervisor-owner-request-to-workflow
+group: lifecycle
+title: "the owner asks the project's Supervisor without typing in its terminal: supervisor next returns the owner-request, the Supervisor's workflow start and goal close it"
+inject: "nothing: the owner runs supervisor ask from outside Orca while the project's Supervisor is attached and idle"
+expect: >-
+  supervisor ask records the request in the project's mailbox (who, text, at) and mails the Supervisor's Run awake;
+  supervisor next returns it as kind owner-request with its text; the Supervisor defines and starts a workflow for it and
+  submits the goal naming the request in answers, which closes the request with that goal's cmdId, workflow and repository and
+  carries it to the Kernel's goal decision; supervisor next is idle after; a later command naming the closed request is STALE
+pass:
+  - one owner request, recorded with the owner as its author, closed by the goal's cmdId
+  - one wake-up mail to the Supervisor's Run for the request
+  - the Kernel's goal decision names the request it answers
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the owner's request
+automation: automated
+steps:
+  - name: boot the project's Supervisor
+    boot: {}
+  - name: the owner asks from outside Orca
+    env:
+      STARCI_ROLE: owner
+    starci: [supervisor, ask, "write doc a for the bench"]
+    expect:
+      contains: mailed the Supervisor's Run
+    save:
+      request: data.request.id
+  - assert:
+      sql:
+        db: machine
+        query: SELECT by || ':' || text || ':' || (at IS NOT NULL) || ':' || (closed_at IS NULL) FROM owner_requests
+        equals: ["owner:write doc a for the bench:1:1"]
+  - assert:
+      orcaCalls:
+        command: send
+        match:
+          to: "^run:${supervisor.run}$"
+          type: "^status$"
+        count: 1
+  - name: supervisor next returns the owner request
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "owner-request"'
+    save:
+      returned: data.request.id
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM owner_requests WHERE id = '${returned}' AND id = '${request}'
+        equals: [1]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: asked
+        goal: write doc a for the bench
+        runner: orca
+        maxParallel: 1
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - name: the Supervisor defines and starts a workflow for the request
+    boot:
+      file: ${run}/wf.yaml
+      workflow: asked
+  - file:
+      path: goal.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-ask-goal-1
+        kind: goal
+        workflow: asked
+        project: ${repo}
+        basedOn: {goal: 1}
+        answers: [${request}]
+        goal: write doc a for the bench
+  - name: the Supervisor gives the goal, answering the owner request
+    seat: supervisor
+    starci: [supervisor, submit, "${run}/goal.yaml"]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT closed_by || ':' || workflow_id || ':' || (closed_at IS NOT NULL) FROM owner_requests
+        equals: ["sup-ask-goal-1:asked:1"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'kernel' AND kind = 'goal' AND evidence_json LIKE '%${request}%'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT kind || ':' || status FROM commands
+        equals: ["goal:applied"]
+  - name: supervisor next is idle once the request is closed
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "idle"'
+  - file:
+      path: change.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-ask-change-1
+        kind: goal-change
+        workflow: asked
+        project: ${repo}
+        basedOn: {goal: 1}
+        answers: [${request}]
+        goal: write doc a and doc b for the bench
+  - name: a later command cannot close the request again
+    seat: supervisor
+    starci: [supervisor, submit, "${run}/change.yaml"]
+    expect:
+      code: STALE
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM commands WHERE cmd_id = 'sup-ask-change-1'
+        equals: [0]

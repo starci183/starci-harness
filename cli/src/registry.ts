@@ -11,6 +11,7 @@ import { checkTypecheckVerb } from "./core/check/typecheck.js"
 import { doctorVerb } from "./core/doctor.js"
 import { explainVerb } from "./core/explain.js"
 import { ciStatusVerb } from "./core/release/ci-status.js"
+import { releaseAffectedVerb } from "./core/release/affected.js"
 import { releaseCutVerb } from "./core/release/cut.js"
 import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
@@ -72,6 +73,7 @@ import { benchRunVerb } from "./core/bench/run.js"
 import { supervisorStartVerb } from "./core/supervisor/start.js"
 import { supervisorStatusVerb } from "./core/supervisor/status.js"
 import { supervisorStopVerb } from "./core/supervisor/stop.js"
+import { supervisorAskVerb } from "./core/supervisor/ask.js"
 import { supervisorAttachVerb } from "./core/supervisor/attach.js"
 import { kernelStartVerb } from "./core/kernel/start.js"
 import { kernelAttachVerb } from "./core/kernel/attach.js"
@@ -111,6 +113,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     releasePushVerb,
     releaseCutVerb,
     releasePublishVerb,
+    releaseAffectedVerb,
     ciStatusVerb,
     contractNewVerb,
     contractCheckVerb,
@@ -176,6 +179,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorStartVerb,
     supervisorStatusVerb,
     supervisorStopVerb,
+    supervisorAskVerb,
     supervisorAttachVerb,
     kernelStartVerb,
     kernelAttachVerb,

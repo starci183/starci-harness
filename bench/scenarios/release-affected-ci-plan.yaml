@@ -1,0 +1,89 @@
+schema: starci/scenario@1
+id: release-affected-ci-plan
+group: release
+title: "CI's plan names only the packages a diff affects: a leaf package alone, a canon package with every sibling that needs it, the harness for the trees the CLI reads, everything for .github or no base"
+inject: >-
+  a scratch repository shaped like this one: packages/ with sibling requires (eslint-grammar-core requires eslint-canon-fe,
+  offset-pop requires grammar-core), file: dev dependencies on tsconfig and on the canon a lint family extends, specs that
+  read a sibling by relative path, a bundled canon pin naming packages/ai-router/package.json, cli/ requiring @starci/hfs and
+  app/ installing grammar as a file: copy and reading cli/; then one commit at a time changes ai-router's source, eslint-canon-fe,
+  ai-router's version, a contexts file and the CI workflow
+expect: >-
+  `release affected --base HEAD~1` (the plan job of .github/workflows/ci.yml) names ai-router alone for its source; for
+  eslint-canon-fe every package that needs it (grammar-core, offset-pop, hfs, and stylelint-canon through grammar-core) with
+  the harness (cli requires hfs) and the app, offset-pop built after tsconfig, eslint-canon-be, eslint-canon-fe, grammar and
+  grammar-core; for ai-router's package.json also hfs, whose pin names it; for contexts/ the harness and no package; for
+  .github/ and for an empty base every node
+pass:
+  - each affected set is exactly the one named, in folder order
+  - a package's build order lists every sibling it needs before it
+  - no package outside the set runs
+automation: automated
+steps:
+  - write: { path: packages/tsconfig/package.json, content: '{"name": "@starci/tsconfig", "version": "1.0.0"}' }
+  - write: { path: packages/ai-router/package.json, content: '{"name": "@starci/ai-router", "version": "1.0.0", "devDependencies": {"@starci/tsconfig": "file:../tsconfig"}}' }
+  - write: { path: packages/ai-router/src/index.ts, content: "export const route = 1\n" }
+  - write: { path: packages/eslint-canon-be/package.json, content: '{"name": "@starci/eslint-canon-be", "version": "1.0.0", "devDependencies": {"@starci/tsconfig": "file:../tsconfig"}}' }
+  - write: { path: packages/eslint-canon-fe/package.json, content: '{"name": "@starci/eslint-canon-fe", "version": "1.0.0", "devDependencies": {"@starci/tsconfig": "file:../tsconfig"}}' }
+  - write: { path: packages/eslint-canon-fe/src/index.ts, content: "export const canon = 1\n" }
+  - write: { path: packages/eslint-canon-fe/src/index.spec.ts, content: "const fixture = '../eslint-canon-be/fixtures/be.ts'\n" }
+  - write: { path: packages/grammar/package.json, content: '{"name": "@starci/grammar", "version": "1.0.0"}' }
+  - write: { path: packages/eslint-grammar-core/package.json, content: '{"name": "@starci/eslint-grammar-core", "version": "1.0.0", "peerDependencies": {"@starci/eslint-canon-fe": "1.0.0"}, "devDependencies": {"@starci/eslint-canon-fe": "file:../eslint-canon-fe", "@starci/tsconfig": "file:../tsconfig"}}' }
+  - write: { path: packages/eslint-grammar-core/src/tokens.spec.ts, content: "const source = join(HERE, \"..\", \"..\", \"grammar\", \"src\")\n" }
+  - write: { path: packages/eslint-grammar-offset-pop/package.json, content: '{"name": "@starci/eslint-grammar-offset-pop", "version": "1.0.0", "peerDependencies": {"@starci/eslint-grammar-core": "1.0.0"}, "devDependencies": {"@starci/eslint-canon-fe": "file:../eslint-canon-fe", "@starci/eslint-grammar-core": "file:../eslint-grammar-core", "@starci/tsconfig": "file:../tsconfig"}}' }
+  - write: { path: packages/stylelint-canon/package.json, content: '{"name": "@starci/stylelint-canon", "version": "1.0.0"}' }
+  - write: { path: packages/stylelint-canon/src/tokens.spec.ts, content: "const catalog = '../eslint-grammar-core/runtime/catalog.json'\n" }
+  - write: { path: packages/hfs/package.json, content: '{"name": "@starci/hfs", "version": "1.0.0"}' }
+  - write: { path: packages/hfs/src/lint.spec.ts, content: "const fe = '../eslint-canon-fe/src/index.ts'\n" }
+  - write: { path: packages/hfs/runtime/canon-pins.yaml, content: "ai-router: {source: packages/ai-router/package.json}\nheroicons: {source: ../heroicons/package.json}\n" }
+  - write: { path: packages/heroicons/package.json, content: '{"name": "@starci/heroicons", "version": "1.0.0"}' }
+  - write: { path: cli/package.json, content: '{"name": "starci-harness", "version": "1.0.0", "dependencies": {"@starci/hfs": "1.0.0"}}' }
+  - write: { path: app/package.json, content: '{"name": "starci-app", "version": "1.0.0", "private": true, "dependencies": {"@starci/grammar": "file:../packages/grammar"}}' }
+  - write: { path: app/src/contract.ts, content: "export * from '../../cli/src/core/ui/contract.ts'\n" }
+  - write: { path: contexts/README.md, content: "# contexts\n" }
+  - write: { path: .github/workflows/ci.yml, content: "name: ci\n" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: a workspace shaped like the harness"]
+  - name: ai-router's source changes
+    write: { path: packages/ai-router/src/index.ts, content: "export const route = 2\n" }
+  - git: [commit, -q, -a, -m, "change ai-router"]
+  - name: only ai-router runs
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"packages: packages/ai-router; harness: no; app: no"'
+  - name: eslint-canon-fe changes
+    write: { path: packages/eslint-canon-fe/src/index.ts, content: "export const canon = 2\n" }
+  - git: [commit, -q, -a, -m, "change eslint-canon-fe"]
+  - name: every package that needs eslint-canon-fe runs, with the harness and the app
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"packages: packages/eslint-canon-fe, packages/eslint-grammar-core, packages/eslint-grammar-offset-pop, packages/hfs, packages/stylelint-canon; harness: yes; app: yes"'
+  - name: offset-pop builds every sibling it needs first
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"build": "packages/tsconfig packages/eslint-canon-be packages/eslint-canon-fe packages/grammar packages/eslint-grammar-core packages/eslint-grammar-offset-pop"'
+  - name: ai-router's version changes
+    write: { path: packages/ai-router/package.json, content: '{"name": "@starci/ai-router", "version": "1.0.1", "devDependencies": {"@starci/tsconfig": "file:../tsconfig"}}' }
+  - git: [commit, -q, -a, -m, "raise ai-router"]
+  - name: the package whose canon pin names it runs too
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"packages: packages/ai-router, packages/hfs; harness: yes; app: yes"'
+  - name: a tree the CLI reads changes
+    write: { path: contexts/README.md, content: "# contexts, changed\n" }
+  - git: [commit, -q, -a, -m, "change contexts"]
+  - name: the harness runs and no package does
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"packages: -; harness: yes; app: yes"'
+  - name: the CI workflow changes
+    write: { path: .github/workflows/ci.yml, content: "name: ci changed\n" }
+  - git: [commit, -q, -a, -m, "change ci"]
+  - name: every node runs
+    starci: [release, affected, --base, HEAD~1]
+    expect:
+      contains: '"packages: packages/ai-router, packages/eslint-canon-be, packages/eslint-canon-fe, packages/eslint-grammar-core, packages/eslint-grammar-offset-pop, packages/grammar, packages/heroicons, packages/hfs, packages/stylelint-canon, packages/tsconfig; harness: yes; app: yes"'
+  - name: no base is every node
+    starci: [release, affected, --base, ""]
+    expect:
+      contains: '(full): 0 file(s) changed'

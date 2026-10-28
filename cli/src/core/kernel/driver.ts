@@ -12,12 +12,12 @@ import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
 import { inLaunchGrace, livenessOf, loadLiveness } from "../../harness/liveness.js"
-import { closeWorker, locateOrca, mailCheck, mailSend, OrcaFailure, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
+import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
 import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
 import { isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { supervisorRecord, supervisorTerminals } from "../../harness/supervisor.js"
+import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -558,20 +558,6 @@ export interface Submitted {
     readonly replay: boolean
 }
 
-/** Mails the Run of the Supervisor of the workflow's project to wake it; the ledger row is the content, a failed mail changes nothing. */
-const wakeSupervisor = async (root: string, cwd: string, command: Command, decision: string): Promise<string> => {
-    const supervisor = supervisorRecord((await projectOf(root)).key)
-    if (supervisor?.run_id == null) return "no Supervisor attached: the decision waits in the ledger for supervisor next"
-    try {
-        const binary = await locateOrca(cwd)
-        const body = command.escalation?.question ?? command.handoff?.summary ?? command.note ?? command.kind
-        await mailSend(binary, { to: `run:${supervisor.run_id}`, from: process.env.ORCA_TERMINAL_HANDLE, type: command.kind === "handoff" ? "handoff" : "escalation", subject: `${kernelTitle(command.workflow)}: ${command.kind}`, body, payload: { cmdId: command.cmdId, decision }, retryRequest: requestIdOf("kernel-mail", command.cmdId) }, cwd)
-        return "mailed the Supervisor's Run"
-    } catch (error: unknown) {
-        return `mail not sent (${asRefusal(error).code}); the decision waits in the ledger`
-    }
-}
-
 const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
     if (command.kind === "workflow-change") {
         if (command.change === undefined) return { amended: false, answered: command.answers ?? [] }
@@ -599,7 +585,9 @@ const applyKernel = async (context: VerbContext, root: string, command: Command,
             evidence: { project: repositoryOf(root), cmdId: command.cmdId, escalation: command.escalation ?? null, handoff: command.handoff ?? null, note: command.note ?? null, digest: digestOf(db, command.workflow) },
         }),
     )
-    return { decision, mail: await wakeSupervisor(root, context.cwd, command, decision) }
+    const body = command.escalation?.question ?? command.handoff?.summary ?? command.note ?? command.kind
+    const mail = { type: kind, subject: `${kernelTitle(command.workflow)}: ${command.kind}`, body, payload: { cmdId: command.cmdId, decision }, retryRequest: requestIdOf("kernel-mail", command.cmdId) } as const
+    return { decision, mail: await wakeSupervisor((await projectOf(root)).key, context.cwd, mail) }
 }
 
 /**

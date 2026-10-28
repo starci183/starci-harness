@@ -15,6 +15,8 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  * - member_outcomes: every ended attempt of every registered ledger, per member and label, for qualification and scoring.
  * - budgets / budget_raises: a workflow's raised ceilings (keyed by ledger and workflow) and who raised them and why.
  * - host_events: what the host driver (`supervisor tick`) did to the Supervisor seats (nudges, give-ups), append-only.
+ * - owner_requests: each project's mailbox of owner requests (`supervisor ask`), closed by the Supervisor command answering one
+ *   (harness/owner-requests.ts).
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -40,6 +42,10 @@ CREATE TABLE IF NOT EXISTS budgets (
   PRIMARY KEY (ledger_id, workflow_id));
 CREATE TABLE IF NOT EXISTS host_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, subject TEXT NOT NULL, data_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS owner_requests (
+  id TEXT PRIMARY KEY, project TEXT NOT NULL, project_root TEXT NOT NULL, by TEXT NOT NULL, text TEXT NOT NULL, at TEXT NOT NULL,
+  closed_by TEXT, closed_at TEXT, workflow_id TEXT, repository TEXT);
+CREATE INDEX IF NOT EXISTS open_owner_requests ON owner_requests (project, closed_at, at);
 CREATE TABLE IF NOT EXISTS budget_raises (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ledger_id TEXT NOT NULL, workflow_id TEXT NOT NULL, by TEXT NOT NULL, reason TEXT NOT NULL,
   minutes_by INTEGER NOT NULL, tries_by INTEGER NOT NULL, at TEXT NOT NULL);
