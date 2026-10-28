@@ -1,6 +1,7 @@
 // hfs-check.mjs - the HFS app check, behind `starci app check | explain` (packages/hfs) and reusable by any
 // runtime check. It reads three things and nothing else: the app's hfs.json, the slot manifest
-// (knowledge/hfs/slots.yaml through scripts/hfs/slots.mjs) and the pins (knowledge/hfs/canon-pins.yaml). It never
+// (knowledge/hfs/slots.yaml through scripts/hfs/slots.mjs) and the pins (canon-pins.mjs: the bundled knowledge/hfs/canon-pins.yaml
+// and the version of the starci-harness that runs the check). It never
 // writes to the repository it inspects.
 //
 // checkRepo() answers, for the tracked paths of one app (git ls-files), per scope (the app root and each side folder):
@@ -64,7 +65,7 @@ import { appWiring, BOOT_PROOF_CODE } from './app-wiring.mjs';
 import { coverageFrom as coverageFromReport } from './coverage-from.mjs';
 import { skillRoot } from '../../engine/runtime-root.mjs';
 import { ARCHITECTURE_RULE_IDS, checkArchitecture } from './architecture/index.mjs';
-import { parseYaml } from '../../engine/yaml.mjs';
+import { canonPins } from './canon-pins.mjs';
 import { readCatalogOnce } from './catalog-once.mjs';
 import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, SIDES, createSlotResolver, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration } from './slots.mjs';
 import { judgedFindings, summarize, withWhy } from './check-results.mjs';
@@ -101,7 +102,6 @@ export { REFUSAL_CODES } from './refusal-codes.mjs';
 // The database rules (R213-R216) read SQL through a WASM parser, so they are async: `starci app check` calls them beside the other emitters and passes the findings in as `extraFindings`.
 export { checkDatabase } from './rules/database.mjs';
 
-const CANON_PINS_FILE = 'knowledge/hfs/canon-pins.yaml';
 export const FAILURE_CODES_FILE = 'modules/kernel/failure-codes.yaml';
 /** The codes this module emits that are not the slot loader's own: the why bundle of packages/hfs ships exactly these plus the loader's. */
 export const CHECK_CODES = Object.freeze([
@@ -150,9 +150,6 @@ export function trackedFiles(repoRoot) {
 }
 
 const fill = (text, bindings) => String(text).replace(VAR, (whole, name) => bindings[name] ?? whole);
-
-/** The pin map of knowledge/hfs/canon-pins.yaml under `root`. */
-const readPins = (root) => parseYaml(fs.readFileSync(path.join(root, CANON_PINS_FILE), 'utf8'))?.pins ?? {};
 
 /** Instances (slot, root, bindings) present in the tracked tree, for every slot that names required files or a minimum. */
 function instancesOf(resolver, files) {
@@ -252,7 +249,7 @@ function sizeSoftFindings({ repoRoot, resolver, files, inScope }) {
  * relative to it, exactly as the standalone repository root was). `files` are the scope's tracked paths; `all` (root only) every
  * tracked path of the app, for the rules that read across it (dependency skew, proof commands).
  */
-function scopeFindings({ repoRoot, root, repo, resolver, files, all = files, scoped, manifest, appSide = false, editionDeclaration = true, phase }) {
+function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = files, scoped, manifest, appSide = false, editionDeclaration = true, phase }) {
   const inScope = (file) => !scoped || scoped.has(file);
   // A required directory of the root (be/, fe/) is present through the files below it, which are the sides' own.
   const trackedSet = new Set(all);
@@ -265,14 +262,15 @@ function scopeFindings({ repoRoot, root, repo, resolver, files, all = files, sco
   // The runtime repository (kind runtime) is judged here by its tree law only; its own rules run in scripts/hfs/runtime-check.mjs.
   if (repo.kind === RUNTIME_KIND) return findings;
 
-  const pins = readPins(root);
+  const pins = canonPins({ root, harness });
   findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, inScope, isRoot, appSide, editionDeclaration, manifest, phase }));
   if (!isRoot) findings.push(...sizeSoftFindings({ repoRoot, resolver, files, inScope }));
   return findings;
 }
 
 /**
- * The check of one app. `repoRoot` is the app root (a side folder is checked as that side alone). `declaration` overrides hfs.json
+ * The check of one app. `repoRoot` is the app root (a side folder is checked as that side alone). `harness` ({ version }) is the CLI
+ * that runs the check, whose version is the app's starci-harness pin (canon-pins.mjs). `declaration` overrides hfs.json
  * (a dry run over an app that has none); `files` overrides git ls-files (specs), app-relative. `only` (a list of app-relative paths)
  * limits the per-path checks (slot, pin, size) to those paths; the checks of the tree as a whole (required files, minimum instances,
  * empty directories, untracked entries) are not per-path. `tree: false` skips the file-system checks (empty directories, ghosts,
@@ -284,7 +282,7 @@ function scopeFindings({ repoRoot, root, repo, resolver, files, all = files, sco
  * `phase: 'source'` is the runtime's no-install example-render pass: tracked obligations still run, while ignored generated
  * artifact presence/freshness belongs to the default `workspace` phase after codegen. Ordinary app check/lint always use it.
  */
-export function checkRepo({ repoRoot, root = skillRoot, declaration, files, only, extraFindings = [], tree = files === undefined, manifest = loadSlotManifest({ root }), surface = 'all', phase = 'workspace' }) {
+export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, files, only, extraFindings = [], tree = files === undefined, manifest = loadSlotManifest({ root }), surface = 'all', phase = 'workspace' }) {
   if (!['source', 'workspace'].includes(phase)) throw new Error(`unknown HFS inspection phase ${phase}`);
   const why = readWhy(root);
   let repo;
@@ -303,18 +301,18 @@ export function checkRepo({ repoRoot, root = skillRoot, declaration, files, only
   const keep = (list, scopeRoot) => (surface === 'check' ? list.filter((finding) => !(finding.origin === 'repo' && onLintSurface(scopeRoot, finding))) : list);
   if (repo.profile === APP_SCOPE) {
     const own = tracked.filter((file) => resolver.sideOf(file) === null);
-    findings.push(...keep(scopeFindings({ repoRoot, root, repo, resolver, files: own, all: tracked, scoped, manifest, phase }), repoRoot));
+    findings.push(...keep(scopeFindings({ repoRoot, root, harness, repo, resolver, files: own, all: tracked, scoped, manifest, phase }), repoRoot));
     for (const side of SIDES) {
       const prefix = `${side}/`;
       const sideRoot = path.join(repoRoot, side);
       const sideFiles = tracked.filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length));
       const sideScoped = scoped ? new Set([...scoped].filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length))) : null;
-      const sideFindings = scopeFindings({ repoRoot: sideRoot, root, repo: repo.sides[side], resolver: resolver.sides[side], files: sideFiles, scoped: sideScoped, manifest, appSide: true, editionDeclaration: false, phase });
+      const sideFindings = scopeFindings({ repoRoot: sideRoot, root, harness, repo: repo.sides[side], resolver: resolver.sides[side], files: sideFiles, scoped: sideScoped, manifest, appSide: true, editionDeclaration: false, phase });
       const message = appRelativeMessages(side, sideRoot);
       findings.push(...keep(sideFindings, sideRoot).map((finding) => ({ ...finding, side, path: onSide(side, finding.path), message: message(finding.message) })));
     }
   } else {
-    findings.push(...keep(scopeFindings({ repoRoot, root, repo, resolver, files: tracked, scoped, manifest, phase }), repoRoot));
+    findings.push(...keep(scopeFindings({ repoRoot, root, harness, repo, resolver, files: tracked, scoped, manifest, phase }), repoRoot));
   }
   findings.push(...extraFindings);
   const untrackedSecrets = untrackedSecretFindings({ repoRoot, files: tracked, repo });
@@ -367,9 +365,9 @@ function machineFindings(report) {
  * templates or run the formatter (packages/hfs/sync), judged with checkRepo's own. `machine` is injectable for specs. A missing
  * merge-base under `fast` is an Error, never a silent full pass. `repoRoot` may also be a side folder: that side alone is checked.
  */
-export function checkRepository({ repoRoot, root = skillRoot, fast = false, base, extraFindings = [], manifest = loadSlotManifest({ root }), machine = checkArchitecture, wiring = false, coverageFrom }) {
+export function checkRepository({ repoRoot, root = skillRoot, harness, fast = false, base, extraFindings = [], manifest = loadSlotManifest({ root }), machine = checkArchitecture, wiring = false, coverageFrom }) {
   const changed = fast ? changedSince(repoRoot, base) : null;
-  const slotResult = checkRepo({ repoRoot, root, manifest, extraFindings, surface: 'check', ...(changed ? { only: changed.files, tree: false } : {}) });
+  const slotResult = checkRepo({ repoRoot, root, harness, manifest, extraFindings, surface: 'check', ...(changed ? { only: changed.files, tree: false } : {}) });
   if (slotResult.profile === null) return { ...slotResult, machine: { status: 'skipped', reason: 'hfs.json is not valid' } };
   const repo = readRepoDeclaration(manifest, repoRoot);
   const scopes = repo.profile === APP_SCOPE

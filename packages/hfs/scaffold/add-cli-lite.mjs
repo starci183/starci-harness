@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveRepoDeclaration } from "../runtime/scripts/hfs/slots.mjs";
-import { parseYaml } from "../runtime/engine/yaml.mjs";
+import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
 import { appScripts, appSource, imageFiles, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError } from "./service.mjs";
 import { jsonText, packageJsonText } from "./app.mjs";
@@ -12,7 +12,6 @@ const read = (relative) =>
   fs
     .readFileSync(path.join(TEMPLATES_DIR, ...relative.split("/")), "utf8")
     .replace(/\r\n/g, "\n");
-const PINS_FILE = path.join(import.meta.dirname, "..", "runtime", "knowledge", "hfs", "canon-pins.yaml");
 
 
 const managedScripts = (repo, source) => {
@@ -274,7 +273,7 @@ export function ensureLiteCli({ root, manifest, repo }) {
   if (!fs.existsSync(packageFile))
     throw new ScaffoldError("HFS_ADD_NOT_AN_APP", "add cli needs the app root package.json");
   const packageManifest = JSON.parse(fs.readFileSync(packageFile, "utf8"));
-  const pin = parseYaml(fs.readFileSync(PINS_FILE, "utf8")).pins?.["nest-commander"]?.version;
+  const pin = bundledPins()["nest-commander"]?.version;
   if (typeof pin !== "string" || pin === "")
     throw new ScaffoldError("HFS_ADD_CANON_PIN_MISSING", "add cli needs the nest-commander canon pin");
   packageManifest.dependencies = { ...packageManifest.dependencies, "nest-commander": pin };

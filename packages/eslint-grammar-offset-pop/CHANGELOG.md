@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2 - 2026-10-28
+
+- Changed: versioned together with Grammar 0.15.2; `@starci/eslint-grammar-core` 0.15.2 is the peer dependency, and the bundled canon pins follow release E (Grammar family 0.15.2, hfs 4.9.3, canon-fe 9.4.2, canon-be 3.6.2, ai-router 0.3.0) and pin no `starci-harness`. Offset Pop is unchanged.
+
 ## 0.15.1 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.1; `@starci/eslint-grammar-core` 0.15.1 is the peer dependency, and the bundled canon pins follow release D (Grammar family 0.15.1, hfs 4.9.2, canon-fe 9.4.1, canon-be 3.6.1, starci-harness 1.1.0-alpha.2), so an app installs the released versions without pin drift. Offset Pop is unchanged.

@@ -17,6 +17,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
+import { HARNESS_PACKAGE, canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { dbTypesPath, generateDbTypes } from '../emit/db-types.mjs';
 import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTargets } from '../sync/index.mjs';
 import { ScaffoldError } from './service.mjs';
@@ -40,7 +41,6 @@ const APP_DIR = '__app__';
 /** The path variable of the project name: `packages/__project__-ui` is written as `packages/<project>-ui`. */
 const PROJECT_DIR = '__project__';
 const TIMESTAMP = '__timestamp__';
-const PINS_FILE = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'canon-pins.yaml');
 /**
  * The front-end stack catalog (knowledge/hfs/fe-stack.yaml): the bundled runtime copy, else the runtime checkout's own file (the
  * package inside the StarCi repository before the runtime copy carries it).
@@ -53,8 +53,6 @@ const SONAR_GATE_FILE = path.join(import.meta.dirname, '..', 'runtime', 'knowled
 /** The runtime-peer catalog (knowledge/hfs/peer-integrations.yaml, R111) the package carries. */
 const PEERS_FILE = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'peer-integrations.yaml');
 const pascal = name => name.split('-').map(part => part[0].toUpperCase() + part.slice(1)).join('');
-/** The canon pins (knowledge/hfs/canon-pins.yaml) the package carries. */
-export const bundledPins = () => parseYaml(fs.readFileSync(PINS_FILE, 'utf8')).pins;
 
 /** The parsed front-end stack catalog; a package without it cannot know what every front end installs. */
 function bundledFeStack() {
@@ -637,7 +635,8 @@ function emitScaffoldDatabaseTypes(root, name, writes, emitTypes) {
  * `starci app scaffold <name>`: writes the new app under `into`, resolves its lockfile with npm (`lock`, npmLock), and returns
  * `{ root, files }` (app-relative paths, sorted). A new path is first made an empty repository with unborn main (`initGit`), so the
  * app always lives in its own Git repository. `presets` are the jest preset's Sonar exclusions; the CLI passes the copy @starci/hfs
- * ships (bundledPresets). Failure removes only scaffold-owned entries, retaining the .git.
+ * ships (bundledPresets). `harness` ({ version }) is the CLI that runs the scaffold: the root devDependencies name starci-harness at
+ * its version (canon-pins.mjs). Failure removes only scaffold-owned entries, retaining the .git.
  */
 /** Seal declared starter members to a fresh app recipient through the scaffold rollback owner. */
 function initializeScaffoldSecrets(root, writes) {
@@ -659,13 +658,14 @@ function bornRepository(root, initGit) {
   return fs.lstatSync(root);
 }
 
-export function scaffoldApp({ name, into, presets, edition = 'full', authCallback = false, registryVisibility = 'public', manifest = loadSlotManifest(), pins = bundledPins(), lock = npmLock, emitTypes = generateDbTypes, initGit = gitInit, now = () => new Date() }) {
+export function scaffoldApp({ name, into, presets, harness, edition = 'full', authCallback = false, registryVisibility = 'public', manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, emitTypes = generateDbTypes, initGit = gitInit, now = () => new Date() }) {
   if (!NAME.test(String(name))) throw new ScaffoldError('HFS_SCAFFOLD_NAME_INVALID', `the app name ${name} must be kebab-case (a project name: ${NAME})`);
   const root = path.resolve(into, name);
   const existing = fs.lstatSync(root, { throwIfNoEntry: false });
   if (existing && !emptyUnbornGit(root, existing)) throw new ScaffoldError('HFS_SCAFFOLD_EXISTS', `${root} already exists; only a plain directory containing solely .git with unborn main and an empty index can be scaffolded`);
   if (!['public', 'private'].includes(registryVisibility)) throw new ScaffoldError('HFS_SCAFFOLD_REGISTRY_VISIBILITY', `--registry-visibility accepts public or private (got ${registryVisibility})`);
   if (typeof authCallback !== 'boolean') throw new ScaffoldError('HFS_SCAFFOLD_NAME_INVALID', 'authCallback must be a boolean');
+  if (!pins[HARNESS_PACKAGE]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${HARNESS_PACKAGE} has no pin: an app pins the CLI that scaffolds it, so run the scaffold through it (starci app scaffold)`);
   const original = existing ?? bornRepository(root, initGit);
   const declaration = starterDeclaration(name, manifest, edition);
   if (authCallback) enableAuthCallback(declaration);

@@ -7,7 +7,8 @@ import {
 } from "../runtime/scripts/hfs/slots.mjs";
 import { imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
-import { PARTIAL_VARIABLES, bundledPins, callbackSourceFiles, coreFeApps, hasAuthCallback, jsonText, packageJsonText } from "./app.mjs";
+import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
+import { PARTIAL_VARIABLES, callbackSourceFiles, coreFeApps, hasAuthCallback, jsonText, packageJsonText } from "./app.mjs";
 
 /** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks): the base tree, then the edition overlay. */
 const CORE_DIRS = Object.freeze({

@@ -25,7 +25,8 @@ import { addLiteWebhookInbox } from './add-inbox-lite.mjs';
 import { planLiteQueue } from './add-queue-lite.mjs';
 import { addBuiltinLiteCli, fillKnownForms, formsOf, planKind, readAddContext } from './add-plan.mjs';
 export { liteApiTemplates } from './add-plan.mjs';
-import { bundledPins, jsonText, packageJsonText, peerDependencies } from './app.mjs';
+import { jsonText, packageJsonText, peerDependencies } from './app.mjs';
+import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { registerLiteDomainService, registerLiteExports } from './lite-exports.mjs';
 

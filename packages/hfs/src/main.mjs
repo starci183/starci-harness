@@ -242,7 +242,7 @@ function printExplain(e, out) {
  * The app pass: slots, managed files, formatter, contract snapshots and the architecture machine's check surface, root and sides.
  * `only` limits the formatter to those (app-relative) files.
  */
-async function runCheck({ repoRoot, fast = false, base, only, presets, prettier, dbTypes = false }) {
+async function runCheck({ repoRoot, harness, fast = false, base, only, presets, prettier, dbTypes = false }) {
   const tracked = trackedFiles(repoRoot);
   // Managed files of the root and both sides, the .gitignore block and sonar against their render (R04, R05, R11, ...), and prettier
   // through the app's own install (R19, never under --fast).
@@ -260,7 +260,7 @@ async function runCheck({ repoRoot, fast = false, base, only, presets, prettier,
       contracts = { status: 'checked', apps: emitted.apps };
     }
   }
-  const result = checkRepository({ repoRoot, fast, base, extraFindings });
+  const result = checkRepository({ repoRoot, harness, fast, base, extraFindings });
   if (contracts) result.contracts = contracts;
   return result;
 }
@@ -274,7 +274,7 @@ export function appRootAbove(dir) {
 }
 
 /** `starci app lint`: ESLint per side, the app checks and stylelint over the fe side as one report; see lint/run.mjs. */
-async function lintMain(argv, { cwd, stdout, presets, prettier, runLinter, checkApp = runCheck }) {
+async function lintMain(argv, { cwd, harness, stdout, presets, prettier, runLinter, checkApp = runCheck }) {
   const opts = parseLintArgs(argv);
   // --workspace names a folder from the working directory (`starci app lint --workspace .` is an fe workspace script); the app
   // root is then the nearest folder above it that holds hfs.json, and the workspace is passed on app-relative.
@@ -283,7 +283,7 @@ async function lintMain(argv, { cwd, stdout, presets, prettier, runLinter, check
   if (workspaceDir) opts.workspace = path.relative(repoRoot, workspaceDir).split(path.sep).join('/');
   const { report, sonar, exit } = await lintRepository({
     repoRoot, opts, trackedFiles, runLinter,
-    hfsCheck: (root) => checkApp({ repoRoot: root, only: opts.changed ?? undefined, presets, prettier }),
+    hfsCheck: (root) => checkApp({ repoRoot: root, harness, only: opts.changed ?? undefined, presets, prettier }),
   });
   if (opts.sonar !== undefined) writeReport(path.resolve(cwd, opts.sonar), sonar);
   if (opts.format === 'json') stdout(`${JSON.stringify(report, null, 2)}
@@ -346,10 +346,10 @@ function printCheckProofs(result, out) {
   if (result.coverage) out(formatCoverageReport(result.coverage));
 }
 
-async function checkMain(opts, { cwd: repoRoot, edition, stdout: out, presets, prettier, checkApp = runCheck, runLinter }) {
+async function checkMain(opts, { cwd: repoRoot, harness, edition, stdout: out, presets, prettier, checkApp = runCheck, runLinter }) {
   if (opts.positional.length) throw new Error('starci app check takes no path');
   if (opts.base !== undefined && opts.fast !== true) throw new Error('--base names the ref --fast compares with; it needs --fast');
-  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, fast: opts.fast === true, base: opts.base, presets, prettier, dbTypes: opts['db-types'] === true }), presets, prettier });
+  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, fast: opts.fast === true, base: opts.base, presets, prettier, dbTypes: opts['db-types'] === true }), presets, prettier });
   const proof = withCheckProofs(checked, { repoRoot, edition, wiring: opts.wiring === true, coverageFrom: opts['coverage-from'] });
   const changed = opts.fast === true ? changedSince(repoRoot, proof.fast?.base ?? opts.base).files : null;
   const existing = changed ? changed.filter(file => fs.existsSync(path.join(repoRoot, file))) : [];
@@ -397,10 +397,10 @@ function addMain(opts, { cwd: repoRoot, stdout: out }) {
   return 0;
 }
 
-async function scaffoldMain(opts, { cwd, edition = 'full', presets, lock, stdout: out }) {
+async function scaffoldMain(opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }) {
   const [name, ...extra] = opts.positional;
   if (!name || extra.length) throw new Error('starci app scaffold takes `<name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private]`');
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, opts.into ?? '.'), edition, presets: presets ?? scaffoldPresets(), ...(opts['registry-visibility'] === undefined ? {} : { registryVisibility: opts['registry-visibility'] }), ...(lock ? { lock } : {}) });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd, opts.into ?? '.'), harness, edition, presets: presets ?? scaffoldPresets(), ...(opts['registry-visibility'] === undefined ? {} : { registryVisibility: opts['registry-visibility'] }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files); next: starci npm ci (the lockfile, then the git hooks through npm run prepare; after a raw npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
   return 0;
 }
@@ -449,9 +449,13 @@ function errorMessage(error) {
   return `starci app: ${error.message}\n${USAGE}`;
 }
 
-/** `run` injects the Supabase runner, `runLinter` the linter transport, `checkApp` the HFS check and `stackIo` Swarm tools; production defaults execute every check. */
+/**
+ * `harness` ({ version }) is the CLI that runs this package in-process: its version is the starci-harness an app is judged and
+ * scaffolded at (runtime/scripts/hfs/canon-pins.mjs). `run` injects the Supabase runner, `runLinter` the linter transport, `checkApp`
+ * the HFS check and `stackIo` Swarm tools; production defaults execute every check.
+ */
 export async function main(argv, {
-  cwd: baseCwd = process.cwd(), stdout = (s) => process.stdout.write(s), stderr = (s) => process.stderr.write(s), presets, prettier, lock, run, stackMain,
+  cwd: baseCwd = process.cwd(), harness, stdout = (s) => process.stdout.write(s), stderr = (s) => process.stderr.write(s), presets, prettier, lock, run, stackMain,
   env = process.env, stdin, sops, tools, platform, stackIo, runLinter, checkApp,
 } = {}) {
   try {
@@ -460,7 +464,7 @@ export async function main(argv, {
     const out = global.quiet ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb)) { stderr(USAGE); return 2; }
-    return await dispatchMain(verb, rest, { cwd: global.cwd, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, sops, tools, platform, stackIo, runLinter, checkApp });
+    return await dispatchMain(verb, rest, { cwd: global.cwd, harness, edition: global.edition, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, sops, tools, platform, stackIo, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
     return 2;

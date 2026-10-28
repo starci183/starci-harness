@@ -1,8 +1,8 @@
 // pipeline.mjs - HFS_CI_MISSING_CANON (R13): CI runs the pinned `starci app lint`.
 //   .github/workflows/ci.yml   a `run:` step that runs the one lint entry: `starci app lint`,
 //                              `npx starci-harness[@<version>] app lint`, or `npm run <script>` whose command runs `starci app lint`
-//                              (`npm run lint`, arguments after `--` allowed); a version named in the step is the starci-harness pin of
-//                              canon-pins.yaml (an installed one is pinned by the pin check, R15)
+//                              (`npm run lint`, arguments after `--` allowed); a version named in the step is the starci-harness pin,
+//                              the version of the CLI that runs the check (canon-pins.mjs; an installed one is pinned by the pin check, R15)
 //   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mjs keeps its shape)
 // A missing file is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING); a file that is present and lacks the step is this rule's.
 // The redirect of `core.hooksPath` away from husky is the architecture machine's (HFS_HOOKS_PATH_REDIRECTED).
@@ -77,7 +77,7 @@ function expanded(command, scripts) {
 /** Only the bundled example runner with its fixed current-app arguments delegates to the following argv. */
 const exampleCommandOf = (command) => command.startsWith(EXAMPLE_RUN_PREFIX) ? command.slice(EXAMPLE_RUN_PREFIX.length) : command;
 
-/** The findings of R13 over the repository at `repoRoot`; `pins` is the parsed canon-pins.yaml pin map. */
+/** The findings of R13 over the repository at `repoRoot`; `pins` is the canon pin map (canon-pins.mjs). */
 export function pipelineFindings({ repoRoot, files, pins }) {
   const findings = [];
   const pinned = pins?.[hfsPackage]?.version;

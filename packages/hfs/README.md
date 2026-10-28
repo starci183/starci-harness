@@ -1,6 +1,6 @@
 # @starci/hfs
 
-The HFS command line of a StarCi app: the one repository of a product, `<app>/` with its root (the `app.*` slots: the one `package.json`, lockfile and `node_modules`, the `hfs.json` declaration of kind `app`, CI, hooks, the `app.starciwork` work area) and its two sides `be/` and `fe/` (slot `app.sides`). It is installed from the npm registry at the exact version in `knowledge/hfs/canon-pins.yaml` (see [`packages/README.md`](../README.md)),
+The HFS command line of a StarCi app: the one repository of a product, `<app>/` with its root (the `app.*` slots: the one `package.json`, lockfile and `node_modules`, the `hfs.json` declaration of kind `app`, CI, hooks, the `app.starciwork` work area) and its two sides `be/` and `fe/` (slot `app.sides`). It is installed from the npm registry as the exact dependency of the CLI that runs it in-process, `starci-harness` (see [`packages/README.md`](../README.md)), which passes `main` its own version as `harness`,
 and it is self-contained: `runtime/` carries the slot manifest, the canon pins, the Vietnamese why
 catalog slice, the loader and the architecture machine with every file it imports, so it runs where there is no runtime
 checkout. The machine loads `typescript` from the app it checks (never its own copy), so run `npm ci` first.
@@ -98,7 +98,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_STARCIWORK_LITE_FORBIDDEN` | error | content outside the lite `app.starciwork` boundary: "lite .starciwork holds only workspace.yaml and brand/ (plus .gitignore)" (R212) |
 | `HFS_SLOT_REQUIRED_MISSING` | error | a file or directory a required slot, app or instance must contain |
 | `HFS_MIN_INSTANCES` | error | fewer instances of a slot than `minInstances` |
-| `HFS_CANON_PIN_DRIFT` | error | a dependency not at the exact version of `knowledge/hfs/canon-pins.yaml` |
+| `HFS_CANON_PIN_DRIFT` | error | a dependency not at the exact version of `knowledge/hfs/canon-pins.yaml`, or `starci-harness` not at the version of the CLI that runs the check (`runtime/scripts/hfs/canon-pins.mjs`) |
 | `HFS_SIZE_SOFT_BACKLOG` | info | a source file over `ruleParams.fileLines.soft`; report only, never fails |
 | `HFS_MANAGED_FILE_DRIFT` | error | a managed file that exists but differs from its render (the `managedBy` slots: hooks, workflows, sonar, the back-end `be.tool-config` files, `app.format-config`, the `scripts` block of `app.package-manifest`, compared as parsed JSON) |
 | `HFS_RULE_OFF_WITHOUT_REPLACEMENT` | error | `eslint.config.mjs`, or a front end's `stylelint.config.mjs`, differs from its managed factory render, so a rule could be off, warned or redefined in it |

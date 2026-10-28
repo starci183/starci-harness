@@ -186,8 +186,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 10 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, auth-supabase, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons and 17 more
-- [stack/pins.yaml](../stack/pins.yaml) · 13 KB — The exact version of every shared dependency: one version per dependency for every app and package.
-  - ids: R111, R190
+- [stack/pins.yaml](../stack/pins.yaml) · 13 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
+  - ids: R111, R190, starci-harness
 - [ui/README.md](../ui/README.md) · 5 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
 - [ui/components/README.md](../ui/components/README.md) · 4 KB — One page per component role: **when and how** to use it.
