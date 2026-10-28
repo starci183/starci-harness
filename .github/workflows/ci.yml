@@ -97,6 +97,8 @@ jobs:
             run: check secrets --all
           - gate: harness shape (contexts/hfs/harness.yaml)
             run: check shape
+          - gate: heavy spawn sites (every heavy command through the governor of cli/src/harness/heavy.ts)
+            run: check heavy-sites
           - gate: contexts anchors (one place per anchor, no dangling link)
             run: contexts anchor --check
           - gate: contexts search index (cli/dist/contexts-search.json matches the tree)

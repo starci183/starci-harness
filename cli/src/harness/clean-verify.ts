@@ -12,7 +12,9 @@ import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
 import { excludedSpec, notOwn } from "./baseline.js"
 import { rebaseCandidate } from "./land.js"
-import { reapplyLocal } from "../core/deps/packages.js"
+import { readRecord, reapplyLocal } from "../core/deps/packages.js"
+import { withHeavySlot } from "./heavy.js"
+import { cachedInstall, isInstalled, unlinkInstallLinks } from "./install-cache.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -61,6 +63,8 @@ export interface CleanVerifyInput {
     readonly onto?: string
     /** The commit the Op worktree was cut at: only commits after it are the task's to judge. */
     readonly fork?: string
+    /** False when none of the checks runs a tool from node_modules (a task whose heavy checks wait for the wave): no install, no setup. */
+    readonly install?: boolean
 }
 
 interface Built {
@@ -190,27 +194,46 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
 
 
 /**
- * `npm ci` where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none.
- * When the repository is in local package mode (`starci deps source --local`), the same local copies are applied after it,
- * so the candidate runs against the package the work tree runs against (`reapplyLocal`).
+ * The install where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none. It
+ * comes from the shared install cache keyed by the lockfile, Node and npm (harness/install-cache.ts): a hit links the cached
+ * node_modules into the checkout, a miss runs `npm ci` and caches it. When the repository is in local package mode (`starci deps
+ * source --local`) the cached tree is copied, not linked, and the same local copies are applied after it, so the candidate runs
+ * against the package the work tree runs against (`reapplyLocal`).
  */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")))
-    if (dir === undefined) return undefined
-    const run = await captureNpm(["ci", "--no-audit", "--no-fund"], dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
-    const installed: CheckOutcome = { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: evidenceTail(run.stdout, run.stderr) }
-    if (installed.status === "red") return installed
-    const local = await reapplyLocal(place.source ?? place.root, dir)
-    if (local === undefined) return installed
-    return { ...installed, status: local.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${local.detail}` }
+    // An install an earlier prepare of the same checkout made (a wave's other cwd) is not made twice.
+    if (dir === undefined || isInstalled(dir)) return undefined
+    const source = place.source ?? place.root
+    const local = (readRecord(source)?.packages.length ?? 0) > 0
+    const cached = await cachedInstall(dir, join(dir, "package-lock.json"), place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }, local)
+    const exitCode = cached.run?.exitCode ?? 0
+    const tail = cached.run === null ? "" : `\n${evidenceTail(cached.run.stdout, cached.run.stderr)}`
+    const installed: CheckOutcome = { name: "install", kind: "install", status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
+    if (installed.status === "red" || !local) return installed
+    const reapplied = await reapplyLocal(source, dir)
+    if (reapplied === undefined) return installed
+    return { ...installed, status: reapplied.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${reapplied.detail}` }
 }
 
-/** Runs the contract's setup commands in cwd (npm through the running Node), one outcome for all; undefined when none. */
+/**
+ * Readies a clean checkout for the checks that run tools: the install, then every contract's setup commands in order; an outcome
+ * per step that ran, and nothing after a red one.
+ */
+export const prepareCheckout = async (place: CheckPlace, setups: readonly (readonly (readonly string[])[])[]): Promise<CheckOutcome[]> => {
+    const installed = await install(place)
+    if (installed?.status === "red") return [installed]
+    const prepared = await setUp(setups.flat(), place)
+    return [...(installed === undefined ? [] : [installed]), ...(prepared === undefined ? [] : [prepared])]
+}
+
+/** Runs the contract's setup commands in cwd (npm through the running Node, each under a heavy-command slot), one outcome for all; undefined when none. */
 const setUp = async (commands: readonly (readonly string[])[], place: CheckPlace): Promise<CheckOutcome | undefined> => {
     if (commands.length === 0) return undefined
     const options = place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }
     for (const [tool = "", ...args] of commands) {
-        const run = tool === "npm" ? await captureNpm(args, place.cwd, options) : await captureTool(tool, args, place.cwd, options)
+        const label = [tool, ...args].slice(0, 3).join(" ")
+        const run = await withHeavySlot("build", label, place.cwd, options, (held) => (tool === "npm" ? captureNpm(args, place.cwd, held.options) : captureTool(tool, args, place.cwd, held.options)))
         if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${evidenceTail(run.stdout, run.stderr)}` }
     }
     return { name: "setup", kind: "setup", status: "green", exitCode: 0, detail: commands.map((command) => command.join(" ")).join("\n") }
@@ -245,6 +268,8 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
 }
 
 const removeWorktree = async (root: string, dir: string): Promise<void> => {
+    // The links an install made are unlinked first, so nothing below removes through one into the cache or a folder it names.
+    unlinkInstallLinks(dir)
     await captureGit(["worktree", "remove", "--force", dir], root)
     rmSync(dir, { recursive: true, force: true })
 }
@@ -314,9 +339,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
     await assertWorktreeHooks(root)
     const base = await resolveSha(root, contract.context.revision)
     const built = await rebased(root, await buildCandidate(input), input.onto)
-    const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${input.name}-p${String(process.pid)}-`))
-    try {
-        await git(root, ["worktree", "add", "--detach", dir, built.facts.candidate])
+    return inCleanCheckout(root, built.facts.candidate, input.name, async (dir) => {
         const resolved: Contract = { ...contract, context: { ...contract.context, revision: base } }
         // Scoped starci checks diff the candidate against its parent: in the detached checkout HEAD is the candidate itself.
         const place: CheckPlace = {
@@ -329,15 +352,25 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
             ...(input.result === undefined ? {} : { result: input.result }),
         }
         const checks: CheckOutcome[] = [built.lands, ...(await policyGates(root, dir, built.facts.changed))]
-        const installed = await install(place)
-        if (installed !== undefined) checks.push(installed)
-        const prepared = installed?.status === "red" ? undefined : await setUp(contract.context.setup ?? [], place)
-        if (prepared !== undefined) checks.push(prepared)
-        if (installed?.status !== "red" && prepared?.status !== "red") {
+        const prepared = input.install === false ? [] : await prepareCheckout(place, [contract.context.setup ?? []])
+        checks.push(...prepared)
+        if (prepared.every((outcome) => outcome.status === "green")) {
             checks.push(...(await inOrder(input.checks, (check) => checkCandidate(check, { ...input, contract: resolved }, place, built))))
         }
         const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
         return { ...built.facts, base, checks, verdict }
+    })
+}
+
+/**
+ * Runs `work` in a detached clean checkout of `commit` under the temp folder (named for the verifier's pid, so a leftover is
+ * pruned once it is gone), and removes the checkout afterwards, its install links unlinked first.
+ */
+export const inCleanCheckout = async <T>(root: string, commit: string, name: string, work: (dir: string) => Promise<T>): Promise<T> => {
+    const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${name}-p${String(process.pid)}-`))
+    try {
+        await git(root, ["worktree", "add", "--detach", dir, commit])
+        return await work(dir)
     } finally {
         // A cleanup that fails (a file Windows still holds: EBUSY) must not replace the verdict; the next verify's
         // pruneVerifyWorktrees removes the folder once this pid is gone.

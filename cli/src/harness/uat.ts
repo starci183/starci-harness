@@ -7,6 +7,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureTool, headline } from "../shared/exec.js"
+import { loadHeavyRules, withHeavySlot } from "./heavy.js"
 import type { ToolRun } from "../shared/exec.js"
 import { stateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
@@ -94,7 +95,7 @@ export const prepareImage = async (config: UatConfig, image: string, cwd: string
         writeFileSync(join(context, "Dockerfile"), dockerfile)
         copyFileSync(preambleFile(), join(context, "preamble.mjs"))
         const labels = ["--label", "starci.uat=1", "--label", `starci.uat.base=${image}`, "--label", `starci.uat.playwright=${version}`]
-        const build = await captureTool("docker", ["build", "--tag", runImage, ...labels, context], cwd, { timeoutMs: config.prepareTimeoutMs })
+        const build = await withHeavySlot("uat", "docker build (uat image)", cwd, { timeoutMs: config.prepareTimeoutMs }, (held) => captureTool("docker", ["build", "--tag", runImage, ...labels, context], cwd, held.options))
         if (build.exitCode !== 0) {
             const failure = headline(build.stderr) || "exit " + String(build.exitCode)
             const why = build.timedOut ? "timed out after " + String(config.prepareTimeoutMs) + " ms" : failure
@@ -193,6 +194,9 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
         "starci.uat=1",
         "--shm-size",
         spec.shmSize,
+        // The container's memory cap is the uat kind's of the heavy-command rules (ops/liveness.yaml heavy.memoryMb).
+        "--memory",
+        `${String(loadHeavyRules().memoryMb.uat)}m`,
         ...host,
         ...user,
         "--mount",
@@ -212,7 +216,7 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
     const started = Date.now()
     let run: ToolRun
     try {
-        run = await captureTool("docker", args, cwd, { timeoutMs: spec.timeoutMs })
+        run = await withHeavySlot("uat", "playwright (uat run)", cwd, { timeoutMs: spec.timeoutMs }, (held) => captureTool("docker", args, cwd, held.options))
     } finally {
         // Killing the client leaves the container running; a finished --rm container is already gone and this answers "no such container".
         await captureTool("docker", ["rm", "--force", container], cwd, { timeoutMs: 60_000 })

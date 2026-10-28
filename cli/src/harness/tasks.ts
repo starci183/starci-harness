@@ -22,14 +22,15 @@ export const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = 
     // verifying -> reported: the verify reached no verdict (HEAD moved, the verifier died or broke); no try is spent.
     verifying: ["done", "failed", "awaiting_owner", "reported"],
     effect_unknown: ["running", "failed", "queued", "cancelled"],
-    done: [],
+    // done -> failed: the workflow's wave verify found the task's files red (harness/wave.ts); its lease was freed when it settled.
+    done: ["failed"],
     failed: [],
     awaiting_owner: [],
     cancelled: [],
 }
 
-/** Statuses with no way out of TRANSITIONS: a task in one of them holds nothing. */
-export const TERMINAL_STATUSES: readonly TaskStatus[] = (Object.keys(TRANSITIONS) as TaskStatus[]).filter((status) => TRANSITIONS[status].length === 0)
+/** Statuses whose task holds nothing (no lease, no worker): every status with no way out of TRANSITIONS, and done, whose only way out is a red wave. */
+export const TERMINAL_STATUSES: readonly TaskStatus[] = (Object.keys(TRANSITIONS) as TaskStatus[]).filter((status) => TRANSITIONS[status].every((next) => status === "done" && next === "failed"))
 
 /** True for a status no transition leaves: the task has ended. */
 export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)

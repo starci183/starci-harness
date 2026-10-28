@@ -25,6 +25,7 @@ import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha } from "../../shared/git.js"
 import { inOrder } from "../../harness/sequential.js"
+import { needsInstall, splitChecks } from "../../harness/wave.js"
 import { formatTable } from "../../shared/output.js"
 import { redactSecrets } from "../../shared/secrets.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
@@ -302,11 +303,15 @@ const failTask = (db: DatabaseSync, taskId: string, attemptId: string, repair: s
     })
 }
 
-/** The green ending: verdict, settle record, the commit (recordSettleCommit) and done in one transaction. */
-const finishTask = (db: DatabaseSync, taskId: string, attemptId: string, settlement: { readonly commit: string; readonly committed: boolean }, event: string, data: unknown): void => {
+/**
+ * The green ending: verdict, settle record, the commit (recordSettleCommit) and done in one transaction; the heavy checks the
+ * task left to its workflow's wave are recorded as due (`wave-due`, read by harness/wave.ts waveDue).
+ */
+const finishTask = (db: DatabaseSync, taskId: string, attemptId: string, settlement: { readonly commit: string; readonly committed: boolean }, event: string, data: unknown, deferred: readonly string[]): void => {
     inTransaction(db, () => {
         setVerdict(db, attemptId, "green")
         recordEvent(db, event, taskId, data)
+        if (deferred.length > 0) recordEvent(db, "wave-due", taskId, { checks: deferred })
         recordSettleCommit(db, taskId, settlement.committed ? settlement.commit : null)
         setStatus(db, taskId, "done", "verifying")
     })
@@ -347,6 +352,8 @@ interface Settling {
     readonly target: LandTarget
     readonly me: Verifier
     readonly unsettled: Ending
+    /** The checks this task left to its workflow's wave (recorded `wave-due` when it lands). */
+    readonly deferred: readonly string[]
 }
 
 /**
@@ -356,7 +363,7 @@ interface Settling {
  * moved since the rebase makes an unlocked pass return `moved`, so the caller verifies again under the lock.
  */
 const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
-    const { db, root, task, attempt, input, target, me, unsettled } = at
+    const { db, root, task, attempt, input, target, me, unsettled, deferred } = at
     const underLand = <T>(work: () => Promise<T>): Promise<T> => (locked ? work() : withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, landLockKey(target), work))
     const made = opWorktreeOf(db, task.id)
     const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)
@@ -387,7 +394,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         throw noVerdict(db, task.id, attempt.id, "settle-refused", error)
     }
     // The branch moved: from here the task is done whatever else happens (a crash here is reconciled by --recover from git).
-    finishTask(db, task.id, attempt.id, settlement, "task-settled", settlement)
+    finishTask(db, task.id, attempt.id, settlement, "task-settled", settlement, deferred)
     return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work } }
 }
 
@@ -411,10 +418,14 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
         unfit(task.contract, ops)
         const target = await landTargetOf(db, task, root)
         const made = opWorktreeOf(db, taskId)
+        // The wave tier leaves a workflow task's heavy checks (typecheck, lint, tests) to its workflow's wave verify (harness/wave.ts).
+        const split = splitChecks(root, task, resolveChecks(task.contract, ops))
+        const deferred = split.wave.map((check) => check.name)
         const input: CleanVerifyInput = {
             root,
             contract: task.contract,
-            checks: resolveChecks(task.contract, ops),
+            checks: split.own,
+            install: needsInstall(split.own),
             name: taskId,
             message: settleMessage(task.contract, taskId),
             taskId,
@@ -423,12 +434,13 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             timeoutMs: task.contract.budget.minutes * MINUTE_MS,
         }
         const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, conflict: null, seats: [] }
+        const noted = (built: CleanVerify | null): CleanVerify | null => (built === null || deferred.length === 0 ? built : { ...built, notes: [...built.notes, `left to the workflow's wave verify: ${deferred.join(", ")}`] })
         if (!commit) {
             const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)
             const built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
             recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
             recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: false })
-            return reply(taskId, attempt, task, built, { ...unsettled, status: getTask(db, taskId).status }, false, pruned, null)
+            return reply(taskId, attempt, task, noted(built), { ...unsettled, status: getTask(db, taskId).status }, false, pruned, null)
         }
         const frozen = await freezeWorker(root, taskId)
         const me = thisVerifier(taskId)
@@ -438,7 +450,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             // The claim, by compare-and-swap, before any git side effect; the parent lets --recover find a landing.
             setStatus(db, taskId, "verifying", "reported")
             recordEvent(db, "verify-started", taskId, { ...me, parent: await resolveSha(target.checkout, `refs/heads/${target.branch}`), checkout: root, target: target.checkout, branch: target.branch })
-            const at: Settling = { db, root, task: fresh, attempt, input, target, me, unsettled }
+            const at: Settling = { db, root, task: fresh, attempt, input, target, me, unsettled, deferred }
             const first = await settlePass(at, false)
             if (first !== "moved") return first
             recordEvent(db, "verify-head-moved", taskId, { branch: target.branch })
@@ -453,7 +465,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
         )
         const seats = closing.seats.length > 0 ? closing.seats : frozen
         const worktree = getTask(db, taskId).intent === null ? ((await removeOpWorktree(callerRoot, taskId).catch(() => undefined)) ?? null) : null
-        return reply(taskId, attempt, task, settled.built, { ...settled.ending, ...closing, seats }, true, pruned, worktree)
+        return reply(taskId, attempt, task, noted(settled.built), { ...settled.ending, ...closing, seats }, true, pruned, worktree)
     } finally {
         db.close()
     }
@@ -504,7 +516,8 @@ const recoverTask = async (cwd: string, taskId: string): Promise<VerbResult<Veri
         const pruned = await pruneVerifyWorktrees(root)
         const attempt = latestAttempt(db, taskId)
         if (landed !== null && attempt !== undefined) {
-            finishTask(db, taskId, attempt.id, { commit: landed, committed: true }, "verify-reconciled", { verifier, commit: landed })
+            const deferred = splitChecks(root, task, resolveChecks(task.contract, loadOps())).wave.map((check) => check.name)
+            finishTask(db, taskId, attempt.id, { commit: landed, committed: true }, "verify-reconciled", { verifier, commit: landed }, deferred)
             const data: RecoverData = { mode: "recover", task: taskId, status: "done", verifier, landed, repaired: null, pruned }
             return { data, message: `task ${taskId}: verifying -> done (its settle commit ${landed.slice(0, 12)} is on ${target.branch}; the verifier died after landing it)` }
         }

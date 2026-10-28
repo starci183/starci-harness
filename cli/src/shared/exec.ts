@@ -1,7 +1,8 @@
 import { spawn, spawnSync } from "node:child_process"
 import type { ChildProcess, ChildProcessByStdio } from "node:child_process"
 import type { Readable } from "node:stream"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { setPriority } from "node:os"
 import { dirname, join } from "node:path"
 import { Refusal } from "./errors.js"
 
@@ -28,6 +29,10 @@ export interface RunOptions {
     readonly env?: Readonly<Record<string, string>>
     /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
     readonly baseEnv?: NodeJS.ProcessEnv
+    /** The OS priority the child runs at once started (os.constants.priority; harness/heavy.ts lowers its heavy commands). */
+    readonly priority?: number
+    /** Told the child's pid once it started (the heavy-command semaphore records it). */
+    readonly onSpawn?: (pid: number) => void
 }
 
 interface Finished extends ToolRun {
@@ -83,6 +88,15 @@ const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: (
     }
 }
 
+/** Sets a started child's OS priority; a child that already exited, or a host that refuses it, keeps the priority it has. */
+const lowerPriority = (pid: number, priority: number): void => {
+    try {
+        setPriority(pid, priority)
+    } catch {
+        // A refused priority leaves the run as it is; it never fails it.
+    }
+}
+
 const execute = (tool: string, args: readonly string[], cwd: string, options: RunOptions): Promise<Finished> =>
     new Promise((settle) => {
         let timedOut = false
@@ -101,6 +115,10 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             const code = errorCode(error)
             settle({ exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : String(error), notStarted: typeof code === "string" ? code : "spawn failed", timedOut: false })
             return
+        }
+        if (child.pid !== undefined) {
+            if (options.priority !== undefined) lowerPriority(child.pid, options.priority)
+            options.onSpawn?.(child.pid)
         }
         child.stdout.on("data", stdout.push)
         child.stderr.on("data", stderr.push)
@@ -179,6 +197,14 @@ const npmEntry = (): string | undefined => {
     const nodeDir = dirname(process.execPath)
     const candidates = [join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"), join(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js")]
     return candidates.find((candidate) => existsSync(candidate))
+}
+
+/** The version of the npm bundled with this Node, read from its own package.json; undefined when Node ships without npm. */
+export const npmVersion = (): string | undefined => {
+    const entry = npmEntry()
+    if (entry === undefined) return undefined
+    const manifest: unknown = JSON.parse(readFileSync(join(dirname(entry), "..", "package.json"), "utf8"))
+    return typeof manifest === "object" && manifest !== null && "version" in manifest && typeof manifest.version === "string" ? manifest.version : undefined
 }
 
 /** Runs npm through the current Node, so no shell is involved on any platform. */

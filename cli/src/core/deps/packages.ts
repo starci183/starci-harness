@@ -5,6 +5,7 @@ import { depsLocalPath, existingDepsLocalPath, runtimeRoot } from "../../harness
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { git, nulPaths } from "../../shared/git.js"
 
 /**
@@ -181,10 +182,11 @@ const installStale = (folder: string): boolean => {
 export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (!pkg.builds) return
     if (installStale(pkg.folder)) {
-        const install = await captureNpm(existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"], pkg.folder)
+        const args = existsSync(join(pkg.folder, "package-lock.json")) ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]
+        const install = await withHeavySlot("install", `npm ${args[0] ?? "install"} ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(args, pkg.folder, held.options))
         if (install.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm install in ${pkg.folder} failed:\n${tail(install.stdout, install.stderr)}`)
     }
-    const build = await captureNpm(["run", "build"], pkg.folder)
+    const build = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.folder, {}, (held) => captureNpm(["run", "build"], pkg.folder, held.options))
     if (build.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm run build in ${pkg.folder} failed:\n${tail(build.stdout, build.stderr)}`)
 }
 
@@ -232,7 +234,7 @@ export const installMissing = async (root: string, packages: readonly LocalPacka
     }
     const wanted = [...specs.values()].sort((left, right) => left.localeCompare(right))
     if (wanted.length === 0) return []
-    const run = await captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root)
+    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, held.options))
     if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm install --no-save ${wanted.join(" ")} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
     return wanted
 }
@@ -325,7 +327,7 @@ export const reapplyLocal = async (source: string, checkout: string): Promise<Re
     if (record === undefined || record.packages.length === 0) return undefined
     try {
         if (!existsSync(join(checkout, "node_modules"))) {
-            const run = await captureNpm(["ci", "--no-audit", "--no-fund"], checkout)
+            const run = await withHeavySlot("install", "npm ci", checkout, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], checkout, held.options))
             if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${checkout} failed:\n${tail(run.stdout, run.stderr)}`)
         }
         const packages = record.packages.map((entry) => {

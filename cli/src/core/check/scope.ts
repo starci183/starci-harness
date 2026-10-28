@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { parse } from "yaml"
 import { runtimeRoot } from "../../harness/ledger.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
@@ -150,7 +151,7 @@ const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, 
     const label = `tsconfig ${toSlash(relative(scope.root, join(dir, "tsconfig.json")))}`
     const tsc = [dir, pkg.dir, scope.root].map((each) => join(each, "node_modules", "typescript", "bin", "tsc")).find((candidate) => existsSync(candidate))
     if (tsc === undefined) return { label, run: undefined }
-    return { label, run: await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], dir, options) }
+    return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], dir, held.options)) }
 }
 
 /**
@@ -266,7 +267,7 @@ const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, 
     const deferring = deferral !== null && group.paths.some((path) => underPaths(toSlash(relative(scope.root, join(group.dir, path))), deferral.paths)) ? deferral : null
     let deferred = 0
     for (const paths of chunked(group.paths)) {
-        const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...(deferring === null ? [] : ["--format", "json"]), ...paths], group.dir, options)
+        const run = await withHeavySlot("eslint", `eslint ${label}`, group.dir, options, (held) => captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...(deferring === null ? [] : ["--format", "json"]), ...paths], group.dir, held.options))
         const judged = deferring === null ? undefined : judgeDeferred(run, scope.root, deferring)
         if (judged === undefined) {
             if (run.exitCode !== 0) return { label, ran: true, red: true, output: tail(run) }

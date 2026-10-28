@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
 import {
@@ -71,7 +72,7 @@ const describeState = (state: PackageState): string => {
 }
 
 const npmCi = async (root: string): Promise<void> => {
-    const run = await captureNpm(["ci", "--no-audit", "--no-fund"], root)
+    const run = await withHeavySlot("install", "npm ci", root, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], root, held.options))
     if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${root} failed:\n${[run.stdout, run.stderr].join("\n").trim().split("\n").slice(-15).join("\n")}`)
 }
 

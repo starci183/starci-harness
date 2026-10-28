@@ -1,7 +1,7 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; the budget ladder; owner feedback; and the
-# stall ladder. Read by `seat ping`, `workflow step`, `task verify`, the coordinator drivers, `feedback check`
-# and `supervisor tick`; nothing here is restated in code.
+# explicit word that a worker is gone; settle liveness; the host's heavy-command slots; the coordinators' mechanics; the budget
+# ladder; owner feedback; and the stall ladder. Read by `seat ping`, `workflow step`, `task verify`, `check run`, the
+# coordinator drivers, `feedback check` and `supervisor tick`; nothing here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -22,6 +22,31 @@ goneErrors: [dispatch_not_found]
 # Settle liveness (both runners): a verify that reaches no verdict returns its task to reported for free, but once one result
 # has reached no verdict this many times the failure is persistent and the task ends awaiting_owner with the last reason.
 settleNoVerdictMax: 3
+
+# Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build, npm ci or
+# install, a uat container. Each takes one slot of a machine-wide semaphore in machine.sqlite (cli/src/harness/heavy.ts) for as
+# long as it runs: `slots` at once, one while free memory is under lowFreeMb, none while it is under criticalFreeMb or while the
+# host's CPU average over cpuWindowSeconds is above maxCpuPercent. A command with no slot waits in the queue, polling every
+# pollSeconds; the wait is logged (stderr and a `heavy-wait` host event) and never fails its check. Each runs below normal OS
+# priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
+# (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure. A worker seat launches only while free memory is at
+# least seatFreeMb; otherwise its task stays queued for a later step. `starci host load` shows all of it.
+heavy:
+  slots: 2
+  lowFreeMb: 4096
+  criticalFreeMb: 1536
+  maxCpuPercent: 90
+  cpuWindowSeconds: 60
+  pollSeconds: 2
+  memoryMb:
+    tsc: 2048
+    eslint: 2048
+    test: 4096
+    build: 4096
+    install: 2048
+    uat: 4096
+  testWorkers: "50%"
+  seatFreeMb: 6144
 
 # Coordinators (`kernel next`, `supervisor next`): the mechanics the deterministic driver applies, never an LLM's choice.
 coordinators:

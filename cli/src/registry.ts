@@ -42,6 +42,7 @@ import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
 import { checkShapeVerb } from "./core/check/shape.js"
+import { checkHeavySitesVerb } from "./core/check/heavy-sites.js"
 import { checkCiVerb } from "./core/check/ci.js"
 import { checkStoriesVerb } from "./core/check/stories.js"
 import { workflowDefineVerb } from "./core/workflow/define.js"
@@ -49,6 +50,7 @@ import { workflowStartVerb } from "./core/workflow/start.js"
 import { workflowStatusVerb } from "./core/workflow/status.js"
 import { workflowListVerb } from "./core/workflow/list.js"
 import { workflowStepVerb } from "./core/workflow/step.js"
+import { workflowWaveVerb } from "./core/workflow/wave.js"
 import { workflowAmendVerb } from "./core/workflow/amend.js"
 import { workflowRegoalVerb } from "./core/workflow/regoal.js"
 import { workflowStopVerb } from "./core/workflow/stop.js"
@@ -93,6 +95,7 @@ import { supervisorWatchVerb } from "./core/supervisor/watch.js"
 import { supervisorTelegramBridgeVerb } from "./core/supervisor/telegram-bridge.js"
 import { connectTelegramVerb } from "./core/connect/telegram.js"
 import { hostStatusVerb } from "./core/host/status.js"
+import { hostLoadVerb } from "./core/host/load.js"
 import { hostUpVerb } from "./core/host/up.js"
 import { hostInstallVerb } from "./core/host/install.js"
 import { hostUninstallVerb } from "./core/host/uninstall.js"
@@ -160,6 +163,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     checkLooseningVerb,
     checkSecretsVerb,
     checkShapeVerb,
+    checkHeavySitesVerb,
     checkCiVerb,
     checkStoriesVerb,
     workflowDefineVerb,
@@ -167,6 +171,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     workflowStatusVerb,
     workflowListVerb,
     workflowStepVerb,
+    workflowWaveVerb,
     workflowAmendVerb,
     workflowRegoalVerb,
     workflowStopVerb,
@@ -211,6 +216,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorTelegramBridgeVerb,
     connectTelegramVerb,
     hostStatusVerb,
+    hostLoadVerb,
     hostUpVerb,
     hostInstallVerb,
     hostUninstallVerb,

@@ -342,6 +342,8 @@ export interface Snapshot {
     readonly tasks: readonly WorkflowTask[]
     readonly live: number
     readonly finalVerify: FinalVerify | null
+    /** The done tasks whose heavy checks wait for the workflow's wave verify (harness/wave.ts). */
+    readonly waveDue: readonly string[]
 }
 
 /** The newest final verify of a workflow, if any. */
@@ -353,12 +355,24 @@ const finalVerifyOf = (db: DatabaseSync, id: string): FinalVerify | null => {
     return { graphVersion: Number(data.graphVersion), verdict: data.verdict === "green" ? "green" : "red", reason: "reason" in data ? text(data.reason) : "" }
 }
 
+/**
+ * The tasks of a workflow whose wave verify is due (harness/wave.ts): done, settled with heavy checks left to the wave
+ * (`wave-due`), and not yet judged by a wave (`wave-judged`).
+ */
+export const waveDue = (db: DatabaseSync, workflowId: string): string[] =>
+    db
+        .prepare(
+            "SELECT id FROM tasks WHERE workflow_id = ? AND status = 'done' AND EXISTS (SELECT 1 FROM events WHERE kind = 'wave-due' AND subject = tasks.id) AND NOT EXISTS (SELECT 1 FROM events WHERE kind = 'wave-judged' AND subject = tasks.id) ORDER BY created_at, rowid",
+        )
+        .all(workflowId)
+        .map((row) => String(row.id))
+
 /** Reads a workflow's current graph and the state of each node. */
 export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
     const workflow = getWorkflow(db, id)
     const nodes = graphOf(db, id, workflow.graphVersion)
     const tasks = workflowTasks(db, id)
-    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
+    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id), waveDue: waveDue(db, id) }
 }
 
 /**
@@ -380,9 +394,10 @@ export const derivedStatus = (snapshot: Snapshot): { readonly status: WorkflowSt
     const { workflow, views, live } = snapshot
     if (workflow.status === "defined" || workflow.status === "stopped" || workflow.status === "paused") return { status: workflow.status, reason: workflow.reason }
     if (workflow.status === "stopping") return live === 0 ? { status: "stopped", reason: workflow.reason } : { status: "stopping", reason: workflow.reason }
-    // Done waits for every task of the workflow, a leftover one still being cancelled or verified included, and for a green
-    // final verify of the current graph when a task deferred its composition rules.
+    // Done waits for every task of the workflow, a leftover one still being cancelled or verified included, for its due wave,
+    // and for a green final verify of the current graph when a task deferred its composition rules.
     if (views.every((view) => view.state === "done") && live === 0) {
+        if (snapshot.waveDue.length > 0) return { status: "running", reason: `every task is done; the wave verify of ${snapshot.waveDue.join(", ")} is due` }
         const final = needsFinalVerify(snapshot) ? currentFinalVerify(snapshot) : { graphVersion: workflow.graphVersion, verdict: "green", reason: "" }
         if (final === null) return { status: "running", reason: "every task is done; the final verify of the deferred composition rules is next" }
         return final.verdict === "green" ? { status: "done", reason: null } : { status: "blocked", reason: `final verify: ${final.reason}` }

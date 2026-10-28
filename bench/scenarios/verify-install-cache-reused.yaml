@@ -1,0 +1,105 @@
+schema: starci/scenario@1
+id: verify-install-cache-reused
+group: verify
+title: a clean checkout's install comes from the shared cache keyed by the lockfile; the second verify runs no npm ci
+inject: "two dependent tasks of an inline workflow whose heavy check needs the repository's install (a workspace link)"
+expect: >-
+  the first wave's clean checkout finds no cached install for the lockfile, runs npm ci and caches its node_modules under the
+  key of the lockfile, Node and npm; the second wave links the cached node_modules into its checkout without npm, re-making the
+  workspace link to that checkout, and the check that resolves the workspace package is green both times; no task verify
+  installs at all, since their heavy checks wait for the wave
+pass:
+  - the first wave's install ran npm ci and cached it; the second linked it from the cache
+  - the check resolving the workspace package through node_modules is green in both waves
+  - the cache entry exists under the state base, and the clean checkouts are gone
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z"
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z"
+repo:
+  files:
+    .gitignore: "node_modules/\n"
+    package.json: '{"name": "bench-cache", "version": "1.0.0", "private": true, "workspaces": ["packages/*"]}'
+    packages/util/package.json: '{"name": "@bench/util", "version": "1.0.0", "main": "index.js"}'
+    packages/util/index.js: "module.exports = 'util'\n"
+    check.js: |
+      const util = require("@bench/util")
+      if (util !== "util") process.exit(1)
+      console.log("resolved @bench/util through node_modules")
+    package-lock.json: |
+      {
+        "name": "bench-cache",
+        "version": "1.0.0",
+        "lockfileVersion": 3,
+        "requires": true,
+        "packages": {
+          "": { "name": "bench-cache", "version": "1.0.0", "workspaces": ["packages/*"] },
+          "node_modules/@bench/util": { "resolved": "packages/util", "link": true },
+          "packages/util": { "name": "@bench/util", "version": "1.0.0" }
+        }
+      }
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: cache
+        goal: two dependent docs whose check needs the install
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: tests-pass
+                args: { command: "node check.js" }
+          - id: b
+            label: docs
+            summary: write doc b
+            allowPaths: [docs/b.md]
+            dependsOn: [a]
+            checks:
+              - preset: tests-pass
+                args: { command: "node check.js" }
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, cache]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# a\n"
+  - name: step verifies a, then b waits for a's wave, which runs npm ci and caches it
+    starci: [workflow, step, cache]
+    save:
+      b: data.nodes.1.task.id
+  - worker:
+      task: ${b}
+      files:
+        docs/b.md: "# b\n"
+  - name: step verifies b and runs its wave from the cache
+    starci: [workflow, step, cache]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM workflows WHERE id = 'cache'"
+        equals: [done]
+  - name: the first wave ran npm ci and cached it, the second linked the cache
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (instr(data_json, 'npm ci ran; its node_modules is cached as') > 0) || ':' || (instr(data_json, 'linked from the install cache') > 0) FROM events WHERE kind = 'wave-verified' ORDER BY id"
+        equals: ["1:0", "0:1"]
+  - name: the check resolving the workspace package was green in both waves
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM check_runs WHERE name = 'tests-pass' ORDER BY id"
+        equals: [green, green]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'wave-verified' AND instr(data_json, '\"verdict\":\"green\"') > 0"
+        equals: [2]
