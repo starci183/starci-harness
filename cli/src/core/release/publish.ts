@@ -52,7 +52,9 @@ const settledOnRegistry = async (pkg: WorkspacePackage, root: string, deadline: 
 const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], root: string): Promise<string | undefined> => {
     const pkg = packages.find((candidate) => candidate.name === row.package)
     if (pkg === undefined) return undefined
-    const run = await captureNpm(["publish", "--tag", row.distTag], pkg.dir)
+    // Provenance needs a CI identity (GitHub Actions OIDC); a publish from this machine (owner ruling 2026-10-28) goes without it.
+    const provenance = process.env.GITHUB_ACTIONS === "true" ? [] : ["--provenance=false"]
+    const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance], pkg.dir)
     if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
     if (!(await settledOnRegistry(pkg, root, Date.now() + REGISTRY_SETTLE_MS))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry ${String(REGISTRY_SETTLE_MS / 1000)} s after publishing`)
     return `${row.package}@${row.version}`
