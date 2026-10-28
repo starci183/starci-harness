@@ -456,6 +456,10 @@ const execute = async (run: RunState, step: Step, index: number): Promise<void> 
         const done = await git(run, step.git.map((arg) => expand(run, arg)))
         const want = step.expect?.exit ?? 0
         if (done.exitCode !== want) unmet(run, label, `git ${step.git.join(" ")} exited ${String(done.exitCode)}: ${done.stderr.slice(0, 300)}`)
+        for (const [name, path] of Object.entries(step.save ?? {})) {
+            if (path !== "stdout") unmet(run, label, `a git step saves only its stdout, not ${path}`)
+            run.vars.set(name, done.stdout.trim())
+        }
     }
     if (step.boot !== undefined) await boot(run, step.boot, label)
     if (step.read !== undefined) readVar(run, step.read, label)

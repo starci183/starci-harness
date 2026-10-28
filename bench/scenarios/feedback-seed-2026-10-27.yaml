@@ -3,7 +3,8 @@ id: feedback-seed-2026-10-27
 group: owner
 title: "the owner feedback of 2026-10-27 closes on the changes that absorbed it: chip case on R322, StatusDot and card label on Grammar commits, chip wording on an app commit"
 inject: >-
-  the four owner feedback items of 2026-10-27 recorded in a scratch host ledger and closed on their real targets. The same
+  the four owner feedback items of 2026-10-27 recorded in a scratch host ledger and closed on their real targets, commits of
+  the harness checkout's own history (CI's harness job checks it out whole for this). The same
   steps are the one-time seed of the live ledger: run them without STARCI_LOCAL_ROOT, giving the owner's verbatim words in
   place of the summaries below (the summaries are the lane brief's, not the owner's words)
 expect: >-
