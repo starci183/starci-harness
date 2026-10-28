@@ -60,17 +60,28 @@ const VALUE_RULES: readonly ValueRule[] = [
     },
 ]
 
+/**
+ * The base64 payload of a `data:` URI whose mime is a font, image, audio or video: content a page embeds, never a credential, so it
+ * is set aside (the `data:<mime>;base64,` prefix stays) before any rule reads the text. Everything around it is read as written.
+ */
+const CONTENT_PAYLOAD = /(\bdata:(?:font|image|audio|video)\/[\w.+-]+(?:;[\w.+-]+=[\w.+-]+)*;base64,)[A-Za-z0-9+/]+=*/gi
+
+/** The text the secret rules judge: `text` with every embedded font, image and media payload set aside. */
+export const judgedText = (text: string): string => text.replace(CONTENT_PAYLOAD, "$1")
+
 /** A sops-encrypted file: it carries sops metadata and only ENC[...] values. */
 const isSopsEnvelope = (text: string): boolean => /(^|\n)sops:/.test(text) && text.includes('ENC[AES256_GCM,')
 
-/** The secret rules one line of one file breaks, by name. */
-export const lineFindings = (file: string, text: string): string[] =>
-    VALUE_RULES.filter((rule) => {
+/** The secret rules one line of one file breaks, by name, judged on its text with embedded content payloads set aside. */
+export const lineFindings = (file: string, text: string): string[] => {
+    const judged = judgedText(text)
+    return VALUE_RULES.filter((rule) => {
         if (rule.skipFile?.test(file) === true) return false
-        const hit = rule.pattern.exec(text)
+        const hit = rule.pattern.exec(judged)
         if (hit === null) return false
         return !rule.placeholder?.test(hit[1] ?? "")
     }).map((rule) => rule.name)
+}
 
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 

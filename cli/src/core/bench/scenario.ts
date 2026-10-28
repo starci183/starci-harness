@@ -68,7 +68,7 @@ const assertSchema = z.strictObject({
 })
 
 /** Fixtures a step may write that must never sit in this public repository as text: they are built at run time. */
-export const GENERATED = ["secret", "loosening"] as const
+export const GENERATED = ["secret", "loosening", "font-page", "font-page-secret"] as const
 
 const stepSchema = z.strictObject({
     name: z.string().optional(),
