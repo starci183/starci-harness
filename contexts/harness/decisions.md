@@ -31,7 +31,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   file, a root config, a `@starci` package) never builds it: it reports `--needs <key>`, and every report of a key, from any
   workflow, waits on one need. Exactly one owner resolves it, the workflow's Kernel when one workflow needs it, else the one
   workflow or `[Worker]` the Supervisor assigns (a `@starci` package always a worker's package edit, never the owner's); every
-  other workflow waits on that owner as a recorded dependency and is released, from its kept work, when the resolver lands. It
+  other workflow waits on that owner as a recorded dependency and is released, from its kept work, once the resolving commits
+  are relayed onto its own branch (a relay that conflicts goes to the Supervisor as a `conflict`). It
   runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
 - **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
   every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the

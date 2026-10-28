@@ -12,16 +12,19 @@ interface NeedAnswerCommand {
     readonly workflow: string
     readonly answers?: readonly string[] | undefined
     readonly change?: string | undefined
-    readonly need?: { readonly key: string; readonly resolver?: string | undefined; readonly reject?: string | undefined } | undefined
+    readonly need?: { readonly key: string; readonly resolver?: string | readonly string[] | undefined; readonly reject?: string | undefined } | undefined
 }
+
+/** The resolver keys of an answer, a single key or a list, in order. */
+export const resolverKeys = (resolver: string | readonly string[] | undefined): readonly string[] => (resolver === undefined ? [] : typeof resolver === "string" ? [resolver] : resolver)
 
 /** How a Kernel answers a shared-need decision, said in every refusal so a wrong answer bounces back with the right one. */
 export const KERNEL_NEED_GUIDANCE =
-    "answer a shared-need decision with one kernel submit: a workflow-change whose `need` is {key: <the decision's need>, resolver: <the task key that builds it>} (add that task in the change, or name one the graph holds; never a task waiting on the need), or {key, reject: <why it is not shared>} to send its waiters back to their Ops; or an escalation to give it to the Supervisor"
+    "answer a shared-need decision with one kernel submit: a workflow-change whose `need` is {key: <the decision's need>, resolver: <the task key, or keys, that build it>} (add that task in the change, or name ones the graph holds; never a task waiting on the need), or {key, reject: <why it is not shared>} to send its waiters back to their Ops; or an escalation to give it to the Supervisor"
 
 /** How the Supervisor answers a shared-need decision. */
 export const SUPERVISOR_NEED_GUIDANCE =
-    "answer a shared-need decision with supervisor submit of a need-owner command (workflow: the owning workflow, need: {key}) to give it to that workflow's Kernel, or need: {key, reject: <why>} to send its waiters back to their Ops; or starci supervisor dispatch --need <key> --brief <job> to give it to a [Worker] (a package need fills --input package itself)"
+    "answer a shared-need decision with supervisor submit of a need-owner command (workflow: the owning workflow, need: {key}) to give it to that workflow's Kernel, need: {key, resolver: <keys>} when tasks that workflow holds (landed or not) already build it, or need: {key, reject: <why>} to send its waiters back to their Ops; or starci supervisor dispatch --need <key> --brief <job> to give it to a [Worker] (a package need fills --input package itself)"
 
 const refuse = (why: string, guidance: string): Refusal => new Refusal("NEED_ANSWER_INVALID", `${why}; ${guidance}`)
 
@@ -60,8 +63,8 @@ const keysAfter = (db: DatabaseSync, workflow: string, change: string | undefine
  * Refuses NEED_ANSWER_INVALID, with the guidance of how to answer, a command whose word on a shared need does not fit, before it is
  * applied, so a wrong answer leaves the decision open and never wedges it: a `need` that answers no shared-need decision, one
  * command for two needs, a key other than the decision's, a Kernel answer naming neither or both of a resolver and a rejection, a
- * resolver the graph will not hold or that waits on the need itself (a cycle), or a Supervisor naming a resolver (its owner is a
- * workflow or a worker). A Kernel may also answer with an escalation, which hands the need to the Supervisor.
+ * resolver key the workflow's graph will not hold, named twice, or that waits on the need itself in that workflow (a cycle). A
+ * Kernel may also answer with an escalation, which hands the need to the Supervisor.
  */
 export const assertNeedAnswer = (db: DatabaseSync, scope: "kernel" | "supervisor", command: NeedAnswerCommand, dir: string): void => {
     const guidance = scope === "kernel" ? KERNEL_NEED_GUIDANCE : SUPERVISOR_NEED_GUIDANCE
@@ -85,12 +88,14 @@ export const assertNeedAnswer = (db: DatabaseSync, scope: "kernel" | "supervisor
     if (scope === "kernel" && decision === undefined) throw refuse(`need ${key} answers no shared-need decision of this workflow; name the decision in answers`, guidance)
     if (decision !== undefined && decision.need !== key) throw refuse(`decision ${decision.id} routes ${decision.need}, not ${key}`, guidance)
     if (need.resolver !== undefined && need.reject !== undefined) throw refuse(`need ${key} names a resolver and a rejection; it is one or the other`, guidance)
-    if (scope === "supervisor") {
-        if (need.resolver !== undefined) throw refuse(`the Supervisor names an owner (this command's workflow) or a [Worker], never a resolver task`, guidance)
-        return
+    if (scope === "kernel" && need.resolver === undefined && need.reject === undefined) throw refuse(`need ${key} names neither a resolver nor a rejection`, guidance)
+    const keys = resolverKeys(need.resolver)
+    if (new Set(keys).size !== keys.length) throw refuse(`resolver names a task twice`, guidance)
+    // A waiter of the need in this same workflow cannot resolve it; a key of the decision's waiters in another workflow is another task.
+    const ownWaiters = scope === "kernel" ? (decision?.waiters ?? []) : []
+    const graph = keys.length === 0 ? new Set<string>() : keysAfter(db, command.workflow, command.change, dir)
+    for (const one of keys) {
+        if (ownWaiters.includes(one)) throw refuse(`${one} waits on ${key} itself: a cycle; name the task that builds it`, guidance)
+        if (!graph.has(one)) throw refuse(`resolver ${one} is no task of workflow ${command.workflow}${scope === "kernel" ? " after this change" : ""}`, guidance)
     }
-    if (need.resolver === undefined && need.reject === undefined) throw refuse(`need ${key} names neither a resolver nor a rejection`, guidance)
-    if (need.resolver === undefined) return
-    if (decision?.waiters.includes(need.resolver) === true) throw refuse(`${need.resolver} waits on ${key} itself: a cycle; name the task that builds it`, guidance)
-    if (!keysAfter(db, command.workflow, command.change, dir).has(need.resolver)) throw refuse(`resolver ${need.resolver} is no task of workflow ${command.workflow} after this change`, guidance)
 }

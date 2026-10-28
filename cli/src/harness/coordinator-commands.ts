@@ -55,9 +55,10 @@ const commandSchema = z.strictObject({
     handoff: z.strictObject({ summary: z.string().min(1) }).optional(),
     mode: z.enum(["graceful", "hard"]).optional(),
     project: z.string().min(1).optional(),
-    // The answer to a shared-need decision (harness/needs.ts): the task that resolves it (a Kernel's workflow-change), or why it
-    // is not shared (either coordinator); a need-owner without either gives the need to its workflow's Kernel.
-    need: z.strictObject({ key: z.string().min(1), resolver: z.string().min(1).optional(), reject: z.string().min(1).optional() }).optional(),
+    // The answer to a shared-need decision (harness/needs.ts): the task key, or keys, that resolve it in the command's workflow
+    // (a Kernel's workflow-change, or a need-owner naming tasks its owner workflow holds), or why it is not shared; a need-owner
+    // with neither gives the need to its workflow's Kernel.
+    need: z.strictObject({ key: z.string().min(1), resolver: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(), reject: z.string().min(1).optional() }).optional(),
 })
 
 /** A command file as parsed: what it asks, plus the sha256 of its bytes (stored with it). */

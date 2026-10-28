@@ -1,0 +1,181 @@
+schema: starci/scenario@1
+id: needs-relay-across-branches
+group: needs
+title: "orca: the owner workflow lands the shared capability on its own branch; the harness relays exactly those commits onto the waiting workflow's branch, then its waiter proceeds"
+inject: "workflow auth owns platform/http and lands it on starci/auth; workflow sub's Op, on starci/sub, cannot see it and files blocked --needs"
+expect: >-
+  the Supervisor names auth's already landed task as the resolver (need-owner with need.resolver); the next step of sub relays
+  that task's landed commits onto sub's branch under its land lock, records the relay (need-relayed, needs show lists each commit
+  and the commit it became), and only then releases the waiter, which is launched again on a branch that now holds the client
+pass:
+  - the resolving commit is on sub's branch, carrying its Starci-Task trailer, and not on main
+  - one need-relayed event naming the commit relayed and its new hash; needs show prints it
+  - the waiter released by resolved and launched again
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: auth.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: auth
+        goal: sign in, with the shared http client
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: http
+            label: docs
+            summary: write the shared http client
+            allowPaths: [platform/http/client.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+          - id: login
+            label: docs
+            summary: write the login doc
+            allowPaths: [docs/login.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/login.md]}
+  - file:
+      path: sub.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sub
+        goal: premium subscription payments
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: pay
+            label: docs
+            summary: write the payment rails doc, which calls the shared http client
+            allowPaths: [docs/pay.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/pay.md, platform/http/client.md]}
+  - boot:
+      file: ${run}/auth.yaml
+      workflow: auth
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - boot:
+      file: ${run}/sub.yaml
+      workflow: sub
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay'"
+      as: pay
+  - name: auth lands the client on its own branch
+    worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 1
+        in: ${worktree.auth}
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 0
+        in: ${worktree.sub}
+  - name: sub's Op cannot see it on its branch
+    worker:
+      task: ${pay}
+      status: blocked
+      output:
+        summary: platform/http has no HttpClient on this branch
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", paths: [platform/http/client.md], rule: BE-INFRA-2}]
+  - name: sub's Kernel step parks it and routes the need to the Supervisor
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || level FROM shared_needs"
+        equals: ["routed:supervisor"]
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-http-by-auth
+        kind: need-owner
+        workflow: auth
+        basedOn: {}
+        need: {key: "capability:platform.http", resolver: [http]}
+        note: auth landed the client already
+  - name: the Supervisor names auth's landed task as the resolver
+    seat: supervisor
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - name: auth's step resolves it
+    seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || json_array_length(resolver_json, '$.commits') FROM shared_needs"
+        equals: ["resolved:1"]
+  - name: sub's step relays the commits, then releases the waiter
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - name: the resolving commit is on sub's branch now
+    assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 1
+        in: ${worktree.sub}
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 0
+        ref: main
+  - name: the relay is recorded with each commit and the commit it became
+    assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(data_json, '$.workflow') || ':' || json_extract(data_json, '$.relay.status') || ':' || json_array_length(data_json, '$.relay.relayed') FROM host_events WHERE kind = 'need-relayed'"
+        equals: ["sub:relayed:1"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(release_json, '$.by') || ':' || json_extract(release_json, '$.relay.status') FROM shared_need_waiters"
+        equals: ["resolved:relayed"]
+  - name: needs show prints the relay
+    starci: [needs, show, "capability:platform.http"]
+    expect:
+      contains: '"status": "relayed"'
+  - name: the waiter runs again, launched as an Op
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'pay' AND status IN ('queued', 'running')"
+        equals: [1]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay' AND status IN ('queued', 'running')"
+      as: pay2
+  - name: and lands on a branch that holds the client
+    worker:
+      task: ${pay2}
+      files:
+        docs/pay.md: "# Payment rails\n"
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${pay2}'"
+        equals: [done]

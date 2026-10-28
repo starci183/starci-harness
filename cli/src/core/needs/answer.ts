@@ -3,7 +3,7 @@ import { raiseDecision, SHARED_NEED, decisionId } from "../../harness/coordinato
 import type { Command } from "../../harness/coordinator-commands.js"
 import { openLedger } from "../../harness/ledger.js"
 import { withMachine } from "../../harness/machine.js"
-import { KERNEL_NEED_GUIDANCE, SUPERVISOR_NEED_GUIDANCE } from "../../harness/need-answer.js"
+import { KERNEL_NEED_GUIDANCE, resolverKeys, SUPERVISOR_NEED_GUIDANCE } from "../../harness/need-answer.js"
 import { isPackageNeed, needOf, needRepo, normalizeNeedKey, patchNeed, waitersOf } from "../../harness/needs.js"
 import type { NeedRow } from "../../harness/needs.js"
 import { projectOf } from "../../harness/work.js"
@@ -69,33 +69,45 @@ export const recordKernelNeed = async (root: string, command: Command): Promise<
     return withMachine((db) => {
         const need = answerable(db, place, "kernel")
         if (answer.reject !== undefined) return patchNeed(db, place.project, place.key, { state: "rejected", reason: `rejected by the Kernel of ${command.workflow} (${command.cmdId}): ${answer.reject}`, resolvedAt: null }, "rejected")
-        const resolving = patchNeed(
-            db,
-            place.project,
-            place.key,
-            { state: "resolving", owner: { kind: "workflow", repo: place.repo, workflow: command.workflow }, resolver: { kind: "task", repo: place.repo, workflow: command.workflow, key: answer.resolver ?? null, task: null }, reason: `resolver ${command.workflow}:${answer.resolver ?? "?"} named by ${command.cmdId}` },
-            "owned",
-        )
-        return need.state === "resolving" ? resolving : breakCycle(db, resolving)
+        return resolveBy(db, place, command, need)
     })
 }
 
 /**
- * Applies the Supervisor's need-owner: a rejection ends the need `rejected`; an owner workflow (the command's, which must still
- * dispatch) gets the need (`owned`) as a Kernel shared-need decision in its own ledger, the Supervisor's decision closes, and every
- * other workflow's waiters stay parked on it: the recorded cross-workflow dependency.
+ * Makes a workflow a need's owner and the task keys an answer names its resolver (`resolving`), and reopens it at once with the
+ * cycle named when that resolver closes a cycle (tend.ts breakCycle).
+ */
+const resolveBy = (db: DatabaseSync, place: NeedPlace, command: Command, need: NeedRow): NeedRow => {
+    const keys = resolverKeys(command.need?.resolver)
+    const resolving = patchNeed(
+        db,
+        place.project,
+        place.key,
+        { state: "resolving", owner: { kind: "workflow", repo: place.repo, workflow: command.workflow }, resolver: { kind: "task", repo: place.repo, workflow: command.workflow, key: keys[0] ?? null, keys, task: null }, reason: `resolver ${keys.map((key) => `${command.workflow}:${key}`).join(", ")} named by ${command.cmdId}` },
+        "owned",
+    )
+    return need.state === "resolving" ? resolving : breakCycle(db, resolving)
+}
+
+/**
+ * Applies the Supervisor's need-owner: a rejection ends the need `rejected`; with `need.resolver`, the tasks the owner workflow
+ * holds (landed or not) resolve it at once (`resolving`); else the owner workflow (which must still dispatch) gets the need
+ * (`owned`) as a Kernel shared-need decision in its own ledger. The Supervisor's decision closes, and every other workflow's
+ * waiters stay parked on the owner: the recorded cross-workflow dependency, released through the cross-branch relay.
  */
 export const applyNeedOwner = async (root: string, command: Command): Promise<unknown> => {
     const answer = command.need
     if (answer === undefined) throw new Refusal("NEED_ANSWER_INVALID", `a need-owner names its need; ${SUPERVISOR_NEED_GUIDANCE}`)
     const place = await placeOf(root, answer.key)
-    if (answer.reject === undefined) {
+    // An owner that must still build the resolver is a running workflow; one whose named tasks may have landed already need not be.
+    if (answer.reject === undefined && answer.resolver === undefined) {
         const status = withLedger(root, (db) => getWorkflow(db, command.workflow).status)
-        if (!["running", "blocked", "paused"].includes(status)) throw new Refusal("NEED_ANSWER_INVALID", `workflow ${command.workflow} is ${status}; an owner is a workflow still running; ${SUPERVISOR_NEED_GUIDANCE}`)
+        if (!["running", "blocked", "paused"].includes(status)) throw new Refusal("NEED_ANSWER_INVALID", `workflow ${command.workflow} is ${status}; an owner that builds the resolver is a workflow still running, else name the tasks it landed as need.resolver; ${SUPERVISOR_NEED_GUIDANCE}`)
     }
     const { before, after } = withMachine((db) => {
         const need = answerable(db, place, "supervisor")
         if (answer.reject !== undefined) return { before: need, after: patchNeed(db, place.project, place.key, { state: "rejected", reason: `rejected by the Supervisor (${command.cmdId}): ${answer.reject}` }, "rejected") }
+        if (answer.resolver !== undefined) return { before: need, after: resolveBy(db, place, command, need) }
         const subject = `need:${place.key}#${String(need.round)}@owner:${command.cmdId}`
         const ref = { repo: place.repo, workflow: command.workflow, id: decisionId("kernel", command.workflow, SHARED_NEED, subject), scope: "kernel" as const }
         return { before: need, after: patchNeed(db, place.project, place.key, { state: "owned", level: "supervisor", owner: { kind: "workflow", repo: place.repo, workflow: command.workflow }, decision: ref, routedAt: null, reason: `owned by ${command.workflow} (${command.cmdId})` }, "owned") }

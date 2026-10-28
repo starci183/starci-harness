@@ -17,9 +17,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   as one `shared-need` decision; exactly one owner resolves it (`workflow-change` with `need.resolver` or `need.reject`, the
   new `need-owner` Supervisor command, `supervisor dispatch --need`), a need unowned past `needs.ownerDeadlineMinutes`
   (`ops/liveness.yaml`) climbs one router, a failed resolver or a cycle reopens it, and once the resolver lands (or its
-  package handoff is merged) the waiters are retried from their kept work in each workflow's own step, the resolver's
-  commit carried onto a branch that lacks it. A wrong answer bounces `NEED_ANSWER_INVALID` with guidance. New verbs
-  `needs list`, `needs show`, `needs merge`. Bench group `needs`: eight scenarios.
+  package handoff is merged) the waiters are retried from their kept work in each workflow's own step. A cross-branch relay
+  comes first: the resolving tasks' landed commits are cherry-picked onto each waiting workflow's branch under its land lock
+  (a `need-relayed` event, printed by `needs show`), and a conflict moves nothing and raises one Supervisor `conflict`
+  escalation with the waiters kept parked. A `need-owner` may name tasks its owner already landed as `need.resolver`. A wrong
+  answer bounces `NEED_ANSWER_INVALID` with guidance. New verbs `needs list`, `needs show`, `needs merge`. Bench group
+  `needs`: ten scenarios.
 
 ### Fixed
 

@@ -110,7 +110,7 @@ steps:
         answers: [${sdecision}]
         need: {key: "capability:platform.http"}
         note: left builds the shared client; right waits on it
-  - name: a need-owner naming a resolver bounces back with guidance
+  - name: a need-owner naming a task its owner does not hold bounces back with guidance
     file:
       path: owner-bad.yaml
       content: |
@@ -120,7 +120,7 @@ steps:
         workflow: left
         basedOn: {}
         answers: [${sdecision}]
-        need: {key: "capability:platform.http", resolver: a}
+        need: {key: "capability:platform.http", resolver: nope}
   - starci: [supervisor, submit, "${run}/owner-bad.yaml"]
     expect:
       exit: 1

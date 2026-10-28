@@ -255,7 +255,7 @@ export type NeedOwner = { readonly kind: "workflow"; readonly repo: string; read
 
 /** What resolves a need: a task (a node of a workflow by key, or a worker's task by id), or a package edit and its handoff. */
 export type NeedResolver =
-    | { readonly kind: "task"; readonly repo: string; readonly workflow: string | null; readonly key: string | null; readonly task: string | null; readonly commit?: string | null }
+    | { readonly kind: "task"; readonly repo: string; readonly workflow: string | null; readonly key: string | null; readonly task: string | null; readonly keys?: readonly string[]; readonly commits?: readonly string[] }
     | { readonly kind: "package"; readonly package: string; readonly worker: string | null; readonly repo: string | null; readonly task: string | null; readonly handoff: { readonly branch: string; readonly head: string; readonly harness: string } | null }
 
 /** One shared need of a project. */
@@ -499,6 +499,24 @@ export const mergeNeeds = (db: DatabaseSync, project: string, into: string, from
     const joined = target.state === "resolved" || target.state === "rejected" ? reopenNeed(db, target, `${from} was merged into it after it was ${target.state}`) : (needOf(db, project, into) ?? target)
     return { into: joined, from: merged, moved: Number(moved) }
 }
+
+/** One cross-branch relay of a need's resolving commits onto a waiting workflow's branch, as its host event recorded it. */
+export interface RelayRecord {
+    readonly at: string
+    readonly workflow: string
+    readonly round: number
+    readonly branch: string
+    readonly status: string
+    readonly relayed: readonly { readonly from: string; readonly to: string }[]
+    readonly files: readonly string[]
+}
+
+/** The relays of a need, oldest first (core/needs/tend.ts records them as `need-relayed` and `need-relay-conflict`). */
+export const relaysOf = (project: string, key: string): RelayRecord[] =>
+    readMachine((db) => db.prepare("SELECT at, data_json FROM host_events WHERE kind IN ('need-relayed', 'need-relay-conflict') AND subject = ? ORDER BY id").all(`${project}|${key}`), []).map((row) => {
+        const data = JSON.parse(String(row.data_json)) as { readonly workflow: string; readonly round: number; readonly branch: string; readonly relay: { readonly status: string; readonly relayed: RelayRecord["relayed"]; readonly files: readonly string[] } }
+        return { at: String(row.at), workflow: data.workflow, round: data.round, branch: data.branch, status: data.relay.status, relayed: data.relay.relayed, files: data.relay.files }
+    })
 
 /** A repository path as the needs store keeps and compares it: absolute, with forward slashes. */
 export const needRepo = (path: string): string => resolve(path).replaceAll("\\", "/")

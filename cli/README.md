@@ -251,20 +251,25 @@ workflows, a shared path or a `config` key reach the Supervisor as one `shared-n
 Supervisor as a package edit (`route: package`). Partition is the rule: exactly one owner per need, every other workflow waits
 on it, a cross-workflow dependency recorded as its waiter rows. A Kernel answers with a `workflow-change` whose `need` is
 `{key, resolver: <task key>}` (a task it adds or one its graph holds) or `{key, reject: <why>}`, or with an `escalation`, which
-hands the need to the Supervisor; the Supervisor answers with a `need-owner` command (`workflow` the owner, whose Kernel then
-gets the `shared-need`; or `need.reject`) or `supervisor dispatch --need <key>` (a `[Worker]` owns it; a package need fills
+hands the need to the Supervisor (a `resolver` may list several task keys); the Supervisor answers with a `need-owner` command
+(`workflow` the owner, whose Kernel then gets the `shared-need`; with `need.resolver`, the task keys that workflow holds, landed or
+not, resolve it at once; or `need.reject`) or `supervisor dispatch --need <key>` (a `[Worker]` owns it; a package need fills
 `--input package`, and its worker's `pkg handoff` is linked to the need). A wrong answer (another key, an unknown or waiting
 resolver, a resolver from the Supervisor, a need that moved on) is refused `NEED_ANSWER_INVALID` with how to answer, and the
 decision stays open (`harness/need-answer.ts`, `core/needs/answer.ts`). A need routed past `needs.ownerDeadlineMinutes` of
 [ops/liveness.yaml](../ops/liveness.yaml), or whose decision was answered with no owner, climbs one router: Kernel, Supervisor,
-then an `escalation` of kind `owner` (`harness` for a package). The resolver is judged on every step: a task landed resolves the
-need, a package edit resolves it once its handed-off head is on harness main; a resolver failed, cancelled, removed or stopped,
-or one that closes a cycle (it waits, through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a
-new round with the reason named. A resolved or rejected need releases its waiters in each workflow's own step: the resolver's
-landed commit is carried onto that workflow's branch when it landed elsewhere (`rebaseCandidate` under the branch's land lock;
-one that does not apply is named and the waiter runs anyway, reporting again if it still misses it), and every waiter whose
-needs all ended is retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its
-brief. `needs list` and `needs show <key>` read the store.
+then an `escalation` of kind `owner` (`harness` for a package). The resolver is judged on every step: its tasks landed resolve the
+need, recording the commits they landed (each carries its `Starci-Task` trailer); a package edit resolves it once its
+handed-off head is on harness main; a resolver failed, cancelled, removed or stopped, or one that closes a cycle (it waits,
+through other needs, on a waiter of this one: `findCycle`), reopens it at its router in a new round with the reason named. A
+need is resolved for a waiter only when its resolving commits are on the waiter's branch, so each waiting workflow's own step
+first relays them (`relay`): under that branch's land lock, every resolving commit the branch lacks is replayed onto its head in
+order (`rebaseCandidate`, a cherry-pick with no work tree) and the workflow's checkout fast-forwarded, once per need round and
+workflow, recorded as a `need-relayed` host event that `needs show` prints commit by commit. A textual conflict moves nothing:
+it is a `need-relay-conflict` event and one Supervisor `escalation` of kind `conflict` in the waiting workflow, its waiters stay
+parked with their work kept, and the Supervisor's answer releases them as they stand. Then every waiter whose needs all ended is
+retried in one amend, its new attempt starting from the preserved work with a "Shared needs" section in its brief. `needs list`
+and `needs show <key>` read the store.
 
 **Seat launch.** The claim comes first, in one transaction: the queued task goes to running and an attempt and a
 `starting` seat carrying the launch record are opened; only then is Orca called, so two starts never both launch.

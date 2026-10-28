@@ -1,0 +1,150 @@
+schema: starci/scenario@1
+id: needs-relay-conflict
+group: needs
+title: "orca: the resolving commits do not apply to the waiting branch; the relay moves nothing and the Supervisor gets one conflict, the waiter stays parked"
+inject: "workflow sub landed its own platform/http/client.md before auth's client was relayed, so the relay of auth's commit conflicts"
+expect: >-
+  the relay replays nothing onto sub's branch (its head is unchanged), records a need-relay-conflict naming the file, raises one
+  Supervisor escalation of kind conflict in workflow sub with the commits and paths, and keeps the waiter parked with its work
+  preserved; a later step raises no second conflict
+pass:
+  - sub's branch head unchanged, no resolving commit on it
+  - one need-relay-conflict event and one Supervisor escalation of kind conflict naming platform/http/client.md
+  - the waiter parked and not released
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: auth.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: auth
+        goal: sign in, with the shared http client
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: http
+            label: docs
+            summary: write the shared http client
+            allowPaths: [platform/http/client.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+  - file:
+      path: sub.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sub
+        goal: premium subscription payments
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: pay
+            label: docs
+            summary: write the payment rails doc
+            allowPaths: [docs/pay.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/pay.md]}
+          - id: own
+            label: docs
+            summary: write sub's own client
+            allowPaths: [platform/http/client.md]
+            checks:
+              - preset: files-exist
+                args: {files: [platform/http/client.md]}
+  - boot:
+      file: ${run}/auth.yaml
+      workflow: auth
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - boot:
+      file: ${run}/sub.yaml
+      workflow: sub
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'http'"
+      as: http
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'pay'"
+      as: pay
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'own'"
+      as: own
+  - worker:
+      task: ${http}
+      files:
+        platform/http/client.md: "# HttpClient by auth\n"
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - worker:
+      task: ${own}
+      files:
+        platform/http/client.md: "# sub's own client, written otherwise\n"
+  - worker:
+      task: ${pay}
+      status: blocked
+      output:
+        summary: needs the shared http client
+        files: []
+        rulesApplied: []
+        needs: [{key: "capability:platform.http", paths: [platform/http/client.md]}]
+  - seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - git: [-C, "${worktree.sub}", rev-parse, HEAD]
+    save:
+      head: stdout
+  - file:
+      path: owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-http-by-auth
+        kind: need-owner
+        workflow: auth
+        basedOn: {}
+        need: {key: "capability:platform.http", resolver: http}
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/owner.yaml"]
+  - seat: kernel:auth
+    starci: [kernel, next, auth, --wait, "0"]
+  - name: sub's step tries the relay
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - name: sub's head did not move
+    git: [-C, "${worktree.sub}", rev-parse, HEAD]
+    expect:
+      contains: ${head}
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${http}"
+        count: 0
+        in: ${worktree.sub}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT json_extract(data_json, '$.relay.status') || ':' || json_extract(data_json, '$.relay.files[0]') FROM host_events WHERE kind = 'need-relay-conflict'"
+        equals: ["conflict:platform/http/client.md"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT workflow_id || ':' || json_extract(evidence_json, '$.escalation.kind') || ':' || json_extract(evidence_json, '$.escalation.paths[0]') FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+        equals: ["sub:conflict:platform/http/client.md"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT (parked_at IS NOT NULL) || ':' || (released_at IS NULL) FROM shared_need_waiters"
+        equals: ["1:1"]
+  - name: a later step raises no second conflict
+    seat: kernel:sub
+    starci: [kernel, next, sub, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+        equals: [1]
