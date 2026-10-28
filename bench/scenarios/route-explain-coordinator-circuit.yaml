@@ -18,10 +18,10 @@ automation: automated
 steps:
   - name: a healthy claude (creates the host store)
     starci: [provider, report, claude, --outcome, success]
-  - name: an explore pick already holds the tier's share, so the explains exploit and are deterministic
+  - name: an earlier Codex explore pick changes nothing; a coordinator is taken in the coordinator tier's listed order
     sql:
       db: machine
-      exec: "INSERT INTO route_picks (at, tier, member, pool, label, chosen_by) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'high', 'codex/gpt-6.1-sol', 'codex', 'kernel', 'explore')"
+      exec: "INSERT INTO route_picks (at, tier, member, pool, label, chosen_by) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'coordinator', 'codex/gpt-6.1-sol', 'codex', 'kernel', 'explore')"
   - name: the circuit closed picks claude
     starci: [route, explain, --label, kernel]
     expect:
@@ -32,7 +32,7 @@ steps:
       contains: "\"tierFrom\": \"coordinators.kernel\""
   - starci: [route, explain, --label, kernel]
     expect:
-      contains: "\"by\": \"score\""
+      contains: "\"by\": \"order\""
   - name: claude's auth fails and its circuit opens
     starci: [provider, report, claude, --outcome, auth, --detail, organization disabled]
   - name: the circuit open drops claude and picks codex

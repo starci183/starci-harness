@@ -112,7 +112,10 @@ const problemsOf = (routing: Routing): string[] => {
     for (const tier of [...routing.tierOrder, ...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers), ...Object.values(routing.coordinators)]) {
         if (!tiers.has(tier)) problems.push(`tier ${tier} is named but not defined under tiers`)
     }
-    for (const tier of tiers) if (!routing.tierOrder.includes(tier)) problems.push(`tier ${tier} is missing from tierOrder`)
+    // A tier only coordinators use (no difficulty or label names it) is not on the workers' escalation ladder.
+    const workerTiers = new Set([...Object.values(routing.difficultyTier), ...Object.values(routing.labelTiers)])
+    const coordinatorOnly = (tier: string): boolean => Object.values(routing.coordinators).includes(tier) && !workerTiers.has(tier)
+    for (const tier of tiers) if (!routing.tierOrder.includes(tier) && !coordinatorOnly(tier)) problems.push(`tier ${tier} is missing from tierOrder`)
     problems.push(...poolProblems(routing))
     if (routing.quota.reservePercent > routing.quota.exhaustedPercent) problems.push("quota needs reservePercent <= exhaustedPercent")
     for (const tier of routing.qualification.startStandard) if (!tiers.has(tier)) problems.push(`qualification.startStandard names tier ${tier}, which is not defined`)
