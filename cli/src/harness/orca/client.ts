@@ -493,7 +493,10 @@ export const worktreeRemove = async (binary: OrcaBinary, worktree: string, cwd: 
 }
 
 /** True for an OrcaFailure saying a worktree selector resolved to nothing: Orca does not know the repository yet (`repo add` fixes it). */
-export const isSelectorNotFound = (error: unknown): boolean => error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found"
+/** True for Orca's consumer_fenced: the caller is attested as another terminal than the `--from` it named, and nothing was done. */
+export const isConsumerFenced = (error: unknown): boolean => error instanceof OrcaFailure && error.orcaCode === "consumer_fenced"
+
+export const isSelectorNotFound =(error: unknown): boolean => error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found"
 
 /** What task-create needs: the task's spec and title, the Run it belongs to, the Run's coordinator terminal and the replay id. */
 export interface TaskCreateInput {

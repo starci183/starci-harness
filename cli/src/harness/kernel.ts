@@ -69,6 +69,23 @@ export interface KernelLaunch {
     readonly taskId: string
 }
 
+/** The Orca terminal this process runs in and Orca attests it as (ORCA_TERMINAL_HANDLE), or null outside Orca (a host shell, the tick's launcher). */
+export const callerTerminal = (): string | null => {
+    const own = process.env.ORCA_TERMINAL_HANDLE
+    return own === undefined || own === "" ? null : own
+}
+
+/**
+ * True when this process may name `terminal` as the consumer (`--from`) of an Orca mutation. Orca attests a caller that runs in
+ * one of its terminals as that terminal and fences (consumer_fenced) a `--from` naming another; a caller outside Orca carries no
+ * attestation. So an Op launches into its Kernel's Run only from the Kernel's own terminal or from outside Orca, never from the
+ * Supervisor's terminal, whose `supervisor next` and `supervisor tick` settle a workflow but leave its launches to the Kernel.
+ */
+export const mayActAs = (terminal: string): boolean => {
+    const own = callerTerminal()
+    return own === null || own === terminal
+}
+
 /** The attached child Run and task, or null while no Kernel is attached. */
 export const launchableKernel = (workflow: WorkflowRow): KernelLaunch | null => {
     const { terminal, runId, taskId, closedAt } = workflow.kernel

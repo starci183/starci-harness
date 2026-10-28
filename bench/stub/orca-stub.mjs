@@ -54,6 +54,14 @@ const coordinatorRefusal = (state, run, from) => {
     return undefined
 }
 
+// Orca attests a caller that runs in one of its terminals (ORCA_TERMINAL_HANDLE) as that terminal and fences a --from naming
+// another (consumer_fenced), doing nothing; a caller outside Orca carries no attestation.
+const attestationRefusal = (from) => {
+    const own = process.env.ORCA_TERMINAL_HANDLE
+    if (own === undefined || own === "" || from === undefined || from === own) return undefined
+    return refuse("consumer_fenced", `This terminal is attested as ${own} and cannot act as ${String(from)}.`)
+}
+
 const mailbox = (state, to) => {
     state.mail[to] = state.mail[to] ?? []
     return state.mail[to]
@@ -96,6 +104,8 @@ const defaults = (command, flags, state) => {
             const key = flags["retry-request"] ?? String(state.calls)
             const known = state.dispatches[key]
             if (known === undefined) {
+                const fenced = attestationRefusal(flags.from)
+                if (fenced !== undefined) return fenced
                 const denied = coordinatorRefusal(state, flags.run, flags.from)
                 if (denied !== undefined) return denied
                 if (flags.parent !== undefined && state.tasks[flags.parent]?.run !== flags.run) return refuse("parent_not_in_run", `task ${String(flags.parent)} is not of run ${String(flags.run)}`)

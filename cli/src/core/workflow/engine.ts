@@ -4,7 +4,7 @@ import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
-import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
+import { callerTerminal, closeKernel, launchableKernel, mayActAs, workflowWorktreeOf } from "../../harness/kernel.js"
 import { beginWork } from "../../harness/baseline.js"
 import { ensureOpWorktree, sweepOpWorktrees } from "../../harness/land.js"
 import { worktreeGc } from "../../harness/worktree-gc.js"
@@ -22,7 +22,7 @@ import type { Snapshot, WorkflowRow, WorkflowStatus, WorkflowTask } from "../../
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
 import type { VerbContext } from "../../shared/verb.js"
-import { startSeat } from "../seat/start.js"
+import { CONSUMER_FENCED, CONSUMER_NOT_CALLER, startSeat } from "../seat/start.js"
 import { taskCancelVerb } from "../task/cancel.js"
 import { inOrder } from "../../harness/sequential.js"
 import { taskVerifyVerb } from "../task/verify.js"
@@ -289,6 +289,10 @@ const applyRevert = async (root: string, checkout: string, workflowId: string, n
     return detail
 }
 
+// A launch refused for one of these reasons spent nothing and is the harness's to retry, never the Kernel's to act on: low memory,
+// or a caller that may not act as the Kernel's terminal (refused before Orca, or fenced by Orca).
+const LAUNCH_WAIT_CODES: ReadonlySet<string> = new Set(["SEAT_RAM_LOW", CONSUMER_NOT_CALLER, CONSUMER_FENCED])
+
 /**
  * Launches one queued node task: first the project's worker cap (routing.yaml projectMaxWorkers, counted with the Supervisor's
  * workers), then the router's pick. A full project or a refused route is a wait: the task stays queued for a later step.
@@ -307,8 +311,20 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} routed (tier ${chosen.tier}, pool ${chosen.pool}, by ${chosen.record.chosen?.by ?? "?"}): ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
-        return { key: node.key, task, action: refusal.code === "SEAT_RAM_LOW" ? "wait" : "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
+        return { key: node.key, task, action: LAUNCH_WAIT_CODES.has(refusal.code) ? "wait" : "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
     }
+}
+
+/**
+ * The wait of every queued Op when this process may not launch into the Kernel's Run: only the Kernel's own terminal (its
+ * `kernel next`) or a caller outside Orca may name that terminal as the consumer of worker-start (harness/kernel.ts mayActAs).
+ * The Supervisor's `supervisor next` and `supervisor tick`, and an amend they run, settle and queue, and leave the launch to it.
+ */
+const launchWaits = (workflow: WorkflowRow, launches: readonly { readonly node: PlanNode; readonly task: string }[]): StepAction[] | null => {
+    const kernel = launchableKernel(workflow)
+    if (kernel === null || mayActAs(kernel.terminal)) return null
+    const detail = `stays queued: this process runs in Orca terminal ${String(callerTerminal())}, not the Kernel's ${kernel.terminal}; the Kernel's own step (kernel next) launches it`
+    return launches.map(({ node, task }) => ({ key: node.key, task, action: "wait", detail }))
 }
 
 // A node that cannot be dispatched now for one of these reasons waits for a later step; anything else is a problem to report.
@@ -449,6 +465,8 @@ const dispatchReady = async (context: VerbContext, root: string, snapshot: Snaps
         const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
         return view.state === "queued" && view.task !== null && node !== undefined ? [{ node, task: view.task.id }] : []
     })
+    const waits = launchWaits(workflow, launches)
+    if (waits !== null) return [...actions, ...waits]
     actions.push(...(await inOrder(launches, ({ node, task }) => launchTask(context, root, workflow, node, task))))
     return actions
 }
@@ -492,6 +510,8 @@ export interface SettleOptions {
  * worktrees of ended tasks, tend the shared needs its tasks wait on, own or resolve (core/needs/tend.ts: park, route, judge the
  * resolver, release), and run a due wave, then move the workflow's status. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
  * whose Supervisor it acts for, so a filed result is verified and its worker's seat closed whether or not its Kernel takes a turn.
+ * It launches nothing itself; the amend a released need runs steps the workflow, whose launches only a caller that may act as the
+ * Kernel's terminal makes (launchWaits).
  */
 export const settleWorkflow = async (context: VerbContext, root: string, id: string, options: SettleOptions = {}): Promise<StepAction[]> => {
     if (!SETTLING.includes(readSnapshot(root, id).workflow.status)) return []
@@ -509,7 +529,8 @@ export const settleWorkflow = async (context: VerbContext, root: string, id: str
 
 /**
  * One dispatch tick, idempotent: cancel live tasks no node carries any more, check seat liveness, run the settling half
- * (settleWorkflow), dispatch the nodes that became ready (orca: launch their seats under the Kernel), then move
+ * (settleWorkflow, which never launches), dispatch the nodes that became ready (orca: launch their seats under the Kernel, from
+ * the Kernel's own terminal or from outside Orca only; any other caller queues them for the Kernel, launchWaits), then move
  * the workflow to the status its nodes call for; a stopped workflow's Kernel terminal is closed.
  * This is what a loop, the daemon or an inline chat agent calls.
  */

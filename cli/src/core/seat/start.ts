@@ -19,6 +19,7 @@ import {
     dispatchOfFailure,
     effectiveLaunch,
     awaitWorktree,
+    isConsumerFenced,
     isSelectorNotFound,
     locateOrca,
     orcaArgv,
@@ -36,7 +37,8 @@ import {
     worktreeSetParent,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
-import { ensureKernel, launchableKernel, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
+import { callerTerminal, ensureKernel, launchableKernel, mayActAs, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
+import { CONSUMER_FENCED_OUTCOME } from "../../harness/budget.js"
 import { beginWork } from "../../harness/baseline.js"
 import { ensureOpWorktree, opWorktreeOf, opWorktreePlace } from "../../harness/land.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
@@ -92,6 +94,21 @@ export interface SeatStartOptions {
 }
 
 const TITLE_CHARS = 80
+
+/** The refusal of a launch this process may not issue: it runs in an Orca terminal other than the consumer the launch names. */
+export const CONSUMER_NOT_CALLER = "CONSUMER_NOT_CALLER"
+
+/** The refusal of a launch Orca fenced (consumer_fenced): a harness error that spends no try. */
+export const CONSUMER_FENCED = "CONSUMER_FENCED"
+
+/**
+ * Refuses, before any claim, a launch whose consumer (`--from`) this process cannot act as (harness/kernel.ts mayActAs): Orca
+ * would fence it. The task stays as it is, so the caller that may act as that consumer launches it.
+ */
+const assertConsumer = (taskId: string, consumer: string | undefined): void => {
+    if (consumer === undefined || mayActAs(consumer)) return
+    throw new Refusal(CONSUMER_NOT_CALLER, `task ${taskId} launches as ${consumer}, but this process runs in Orca terminal ${String(callerTerminal())}, which Orca would fence; it stays as it is for its Kernel's own step (kernel next)`)
+}
 
 /** Stands in for the Run id in a dry run that would create its Run first. */
 const RUN_PLACEHOLDER = "<result.run.id of run-create>"
@@ -424,10 +441,30 @@ const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omi
     return { data, message: `seat ${seat.id} (${requested.agent} ${model}) runs task ${task.id} as dispatch ${started.dispatchId} in run ${runId}${under}; brief ${at.files.brief}` }
 }
 
+/**
+ * A launch Orca fenced (consumer_fenced: the caller is attested as another terminal than the consumer it named) is the harness's
+ * error, not the task's or the provider's: Orca took no effect, so nothing is closed or reported to the provider circuit, the
+ * attempt ends `consumer-fenced` (no try, no minutes, no stall on its member, not counted in the lineage) and the task is queued
+ * again for a caller that may act as its Kernel.
+ */
+const settleFenced = (at: Launching, launched: LaunchOf<"failed"> | LaunchOf<"unknown">): never => {
+    const { db, task, seat } = at
+    const attemptId = launched.record.attempt
+    const ours = inTransaction(db, () => {
+        endAttempt(db, attemptId, CONSUMER_FENCED_OUTCOME)
+        recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, facts: { error: launched.error.message, fenced: true, caller: callerTerminal(), consumer: launched.record.start.from ?? null } })
+        recordEvent(db, "seat-consumer-fenced", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, caller: callerTerminal(), consumer: launched.record.start.from ?? null })
+        return stillOurs(db, task.id, attemptId)
+    })
+    const after = ours ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
+    throw new Refusal(CONSUMER_FENCED, `${launched.error.message}\nOrca fenced the launch: this process may not act as ${launched.record.start.from ?? "the consumer"}; a harness error, no try spent. Attempt ${attemptId} closed as ${CONSUMER_FENCED_OUTCOME}; ${after}`)
+}
+
 /** Records how a launch ended and moves the task: ready runs, a certain failure goes back to the queue, unknown waits for a resume. */
 const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
     const { db, binary } = at
     const { record } = launched
+    if (launched.kind !== "ready" && isConsumerFenced(launched.error)) return settleFenced(at, launched)
     if (launched.kind === "failed") {
         // The screen is read before settleFailed releases the worker, whose terminal goes with it.
         const failure = await explainLaunchFailure(binary, launched.error, at.cwd, loadRouting())
@@ -493,6 +530,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
             ]
             return { data, message: lines.join("\n") }
         }
+        assertConsumer(task.id, kernel?.terminal)
 
         const claim = inTransaction(db, () => {
             const current = getTask(db, options.task)
@@ -542,6 +580,7 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             if (!resumable || attempt === undefined) throw new Refusal("SEAT_NOT_RESUMABLE", `task ${task.id} is ${task.status} with ${seat === undefined ? "no open seat" : "seat " + seat.id + " " + seat.status}; only a launch whose outcome is unknown resumes`)
             const parsed = launchRecordSchema.safeParse(seat.launch)
             if (!parsed.success || parsed.data.attempt !== attempt.id) throw new Refusal("SEAT_NOT_RESUMABLE", `seat ${seat.id} carries no launch record of attempt ${attempt.id}; it cannot be replayed`)
+            if (parsed.data.start.parent !== undefined) assertConsumer(task.id, parsed.data.start.from)
             recordEvent(db, "seat-resume", task.id, { seat: seat.id, attempt: attempt.id, request: parsed.data.start.retryRequest })
             const runId = seat.runId ?? parsed.data.run
             return { task, seat, record: parsed.data, runId }

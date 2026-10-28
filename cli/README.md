@@ -320,7 +320,15 @@ driven from a Kernel terminal another session adopted that no Kernel seat ever h
 adopts its terminal as coordinator of the workflow's child Run (taken back with `run-use` after a relaunch) and its
 `[Kernel] <workflow>` task; every Op launches into that Run (`--run/--parent/--from` of the Kernel) inside its own Op
 worktree ("Op worktrees" above), and verify lands it on the workflow's branch, so a relaunched Kernel or a retried attempt
-continues from the code already there.
+continues from the code already there. Orca attests a caller that runs in one of its terminals as that terminal and fences a
+`--from` naming another (`consumer_fenced`), and only a Run's coordinator may start a worker in it, so the Supervisor cannot
+launch an Op as itself either: an Op launches only from the Kernel's own terminal (its `kernel next`) or from a process
+outside Orca (`mayActAs` in `harness/kernel.ts`). A step run anywhere else, `supervisor next`, `supervisor tick` and the
+amend a released need runs among them, settles and queues, and leaves each queued Op a `wait` for the Kernel (`launchWaits`
+in `core/workflow/engine.ts`); `seat start` refuses such a launch before claiming the task (`CONSUMER_NOT_CALLER`). A launch
+Orca fences anyway is a harness error: its attempt ends `consumer-fenced`, which spends no try or minutes, marks no stall,
+reports nothing to the provider circuit and is no step of the lineage, and the task is queued again (`CONSUMER_FENCED`, a
+`wait`, never a problem the Kernel acts on).
 
 Coordinators decide; deterministic drivers do the rest, and a coordinator never ends its turn while its driver is its own
 (it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
