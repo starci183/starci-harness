@@ -21,10 +21,9 @@ import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerReq
 import type { OwnerRequest } from "../../harness/owner-requests.js"
 import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harness/orca/client.js"
-import type { RouteMember } from "../../harness/router.js"
 import { holdTerminal, kernelSeatOf, launchUnreconciled, noteTab, recordSeat, SEAT_LAUNCH_FAILED } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { askIdle, claimNudge, coordinatorRelaunch, loadStallRules, nudgesOf, promptOf, repeatedStallQuestion, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
+import { askIdle, claimNudge, coordinatorStallEscalates, loadStallRules, nudgesOf, promptOf, repeatedStallQuestion, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
 import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, keptProjects, liveSupervisors, projectOfRecord, renewSupervisorLease, retireHostSupervisor, startSupervisor, stopSupervisor, supervisorRecord, supervisorTitle } from "../../harness/supervisor.js"
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
@@ -225,7 +224,7 @@ const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, sea
  * Relaunches a Kernel, or, once kernelRelaunchMax relaunches came with no progress since the first of them, pauses its workflow
  * and escalates to the owner instead: a Kernel that dies at every launch stops being relaunched however far apart they fall.
  */
-const relaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, why: string, options: { readonly replace: boolean; readonly acting: AttachedSupervisor; readonly stalled?: readonly RouteMember[] }, rules: CoordinatorLiveness): Promise<string> => {
+const relaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow: WorkflowRow, why: string, options: { readonly replace: boolean; readonly acting: AttachedSupervisor }, rules: CoordinatorLiveness): Promise<string> => {
     const limited = withLedger(root, (db) =>
         inTransaction(db, () => {
             const since = lastProgress(db, workflow.id) ?? ""
@@ -236,9 +235,9 @@ const relaunch = async (root: string, binary: OrcaBinary, cwd: string, workflow:
         }),
     )
     if (limited !== null) return `${workflow.id}: relaunch limit reached, paused and escalated (${limited})`
-    const started = await startKernel(root, cwd, workflow.id, binary, { replace: options.replace, acting: options.acting, stalled: options.stalled ?? [] })
+    const started = await startKernel(root, cwd, workflow.id, binary, { replace: options.replace, acting: options.acting })
     const member = started.seat === null ? "-" : `${started.seat.agent ?? "?"}/${started.seat.model ?? "?"}`
-    withLedger(root, (db) => { recordEvent(db, "kernel-relaunched", workflow.id, { why, seat: started.seat?.id ?? null, member, avoided: options.stalled ?? [] }); })
+    withLedger(root, (db) => { recordEvent(db, "kernel-relaunched", workflow.id, { why, seat: started.seat?.id ?? null, member }); })
     return `${workflow.id}: relaunched its Kernel as ${member} (${why}) in ${started.worktree ?? "-"}`
 }
 
@@ -258,8 +257,9 @@ const lastCallOf = (leaseUntil: string | null, leaseMinutes: number, startedAt: 
  * The stall ladder of one Kernel seat that is alive by Orca's word: idle at its prompt (stall rules) with work pending and no
  * driver call for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a stall
  * after nudgeMax nudges, gives it up: its member records a `stalled` outcome (seat evidence and the provider circuit, by the
- * kind Orca's failure words name, else `stall`), and the Kernel is relaunched with the lineage `coordinatorRelaunch` gives
- * (a provider kind or a repeated plain stall puts the member behind, the latter escalating kind harness to the Supervisor).
+ * kind Orca's failure words name, else `stall`), and the Kernel is relaunched on the coordinator tier's listed order (another
+ * member only while the circuit or quota takes the first out); repeated plain stalls also escalate kind harness to the
+ * Supervisor (`coordinatorStallEscalates`).
  */
 const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, inventory: TerminalInventory | null): Promise<string | null> => {
     const { root, binary, cwd, rules, acting } = scope
@@ -288,9 +288,8 @@ const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatR
     })
     recordSeatOutcome({ ledger: ledgerFileOf(root), id: seat.id, agent, model: seat.model, role: "kernel", startedAt: seat.startedAt })
     reportStalled(agent, kind, `Kernel of ${workflow.id} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
-    const next = coordinatorRelaunch(kind, { agent, model: seat.model ?? "" }, stalls, stall)
-    if (next.escalate) withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `coordinator-stalls:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: repeatedStallQuestion(`the Kernel of ${workflow.id}`, member, stalls, stall) } } }))
-    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting, stalled: next.stalled }, rules)
+    if (coordinatorStallEscalates(kind, stalls, stall)) withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `coordinator-stalls:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: repeatedStallQuestion(`the Kernel of ${workflow.id}`, member, stalls, stall) } } }))
+    return relaunch(root, binary, cwd, workflow, `stalled (${kind}): ${step.detail}`, { replace: true, acting }, rules)
 }
 
 /** The Run a Kernel seat was launched into: Orca's receipt, else the `--run` its launch sent. */
@@ -444,8 +443,8 @@ const decisionOf = (data: unknown): unknown => (typeof data === "object" && data
  * request waits (a decision awaiting the owner or Debug is not its work: it waits for their answer) and
  * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
  * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
- * new launch with the lineage `coordinatorRelaunch` gives (the same first member after a plain stall; that member behind every
- * other after a provider kind, or after its repeated plain stalls, which also escalate kind harness). Once kernelRelaunchMax
+ * new launch on the coordinator tier's listed order (another member only while the circuit or quota takes the first out);
+ * repeated plain stalls also escalate kind harness (`coordinatorStallEscalates`). Once kernelRelaunchMax
  * replacements left the same decision waiting, the tick stops replacing and reports it for the owner.
  */
 const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSupervisor, repos: readonly string[], inventory: TerminalInventory | null, rules: CoordinatorLiveness): Promise<string | null> => {
@@ -479,10 +478,9 @@ const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSu
     recordHostEvent(STALL_GAVE_UP, seat.id, { member, kind, why: step.detail, project: project.key, decision: decision.id, failure: signals.failureText })
     recordSeatOutcome({ ledger: "machine", id: seat.id, agent: seat.agent, model: seat.model, role: "supervisor", startedAt: seat.started_at })
     reportStalled(seat.agent, kind, `${title} ${step.detail}${signals.failureText === null ? "" : ": " + signals.failureText}`)
-    const next = coordinatorRelaunch(kind, { agent: seat.agent, model: seat.model }, stalls, stall)
-    const escalated = next.escalate ? escalateSupervisorStalls(decision, repeatedStallQuestion(title, member, stalls, stall), seat.id) : null
+    const escalated = coordinatorStallEscalates(kind, stalls, stall) ? escalateSupervisorStalls(decision, repeatedStallQuestion(title, member, stalls, stall), seat.id) : null
     await stopSupervisor(binary, cwd, project, false, "stalled")
-    const started = await startSupervisor(binary, cwd, project, next.stalled)
+    const started = await startSupervisor(binary, cwd, project)
     return `${title} stalled (${kind}, ${step.detail}): replaced by ${started.agent}/${started.model}${escalated === null ? "" : `; escalated to Debug (harness ${escalated})`}`
 }
 

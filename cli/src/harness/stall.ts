@@ -12,7 +12,6 @@ import { inTransaction } from "./leases.js"
 import { locateOps } from "./ops.js"
 import { requestIdOf, terminalSend, terminalWaitIdle, workerShow } from "./orca/client.js"
 import type { OrcaBinary, TerminalInventory } from "./orca/client.js"
-import type { RouteMember } from "./router.js"
 import { loadRouting, poolOfAgent, providerOfAgent } from "./routing.js"
 import { recordEvent } from "./tasks.js"
 import type { FailureKind } from "./routing.js"
@@ -56,7 +55,7 @@ export const loadStallRules = (dir: string = locateOps()): StallRules => {
 /** The event a nudge records (subject: the seat's workflow or task; data.seat names the seat); never progress of the work. */
 export const STALL_NUDGED = "stall-nudged"
 
-/** The event the ladder records when it gives a seat up (relaunch or fence on another member); never progress of the work. */
+/** The event the ladder records when it gives a seat up (a coordinator relaunched, an Op fenced); never progress of the work. */
 export const STALL_GAVE_UP = "stall-gave-up"
 
 /** What Orca says of an agent's terminal: idle at its prompt (true), working (false) or unknown (null, never idle). */
@@ -102,7 +101,7 @@ export type StallStep =
 
 /**
  * The stall ladder, cheapest first, for a seat stalled now (idle at its prompt with its work pending): a nudge not yet answered
- * by a driver call waits nudgeGraceMinutes, then gives up (relaunch or fence on another member); a seat already nudged
+ * by a driver call waits nudgeGraceMinutes, then gives up (a coordinator relaunched, an Op fenced); a seat already nudged
  * nudgeMax times gives up at its next stall; otherwise it is nudged once more.
  */
 export const stallStep = (lastCall: string | null, nudges: readonly string[], rules: StallRules, at: number = Date.now()): StallStep => {
@@ -161,24 +160,15 @@ export const reportStalled = (agent: string, kind: StallKind, detail: string, at
     recordOutcome(providerOfAgent(routing, agent), { kind, pool: poolOfAgent(routing, agent), detail }, at)
 }
 
-/** How a coordinator seat the ladder gave up on is relaunched: the members its relaunch puts behind, and whether it escalates. */
-export interface CoordinatorRelaunch {
-    readonly stalled: readonly RouteMember[]
-    readonly escalate: boolean
-}
-
 /**
- * The lineage of a coordinator's relaunch after the ladder gave its seat up. A provider failure (capacity, rate, quota, auth)
- * puts the member behind every other, as a worker's stall does; a plain stall is the model's own idleness, so the coordinator
- * tier's first member takes the seat again, until `stalls` (this member's plain stalls of the same seat within
- * coordinatorStallWindowMinutes, this one included) reaches coordinatorStallMax: then it goes behind and the stall escalates.
+ * Whether a coordinator seat the ladder gave up on escalates (kind harness) as it is relaunched. Its relaunch always takes the
+ * coordinator tier in its listed order (harness/router.ts `decide`), so another member takes the seat only while the circuit or
+ * quota takes the first one out: a provider kind reaches that circuit through `reportStalled`. A plain stall is the model's own
+ * idleness and changes no route; once `stalls` (this member's plain stalls of the same seat within coordinatorStallWindowMinutes,
+ * this one included) reaches coordinatorStallMax, the relaunch on the same member escalates.
  */
-export const coordinatorRelaunch = (kind: StallKind, member: RouteMember, stalls: number, rules: StallRules): CoordinatorRelaunch => {
-    if (kind !== "stall") return { stalled: [member], escalate: false }
-    const repeated = stalls >= rules.coordinatorStallMax
-    return { stalled: repeated ? [member] : [], escalate: repeated }
-}
+export const coordinatorStallEscalates = (kind: StallKind, stalls: number, rules: StallRules): boolean => kind === "stall" && stalls >= rules.coordinatorStallMax
 
 /** The question a coordinator's repeated plain stalls put to Debug (an escalation of kind harness). */
 export const repeatedStallQuestion = (seat: string, member: string, stalls: number, rules: StallRules): string =>
-    `${seat} on ${member} stalled at its prompt ${String(stalls)} times within ${String(rules.coordinatorStallWindowMinutes)} min with work pending, so it was relaunched on the next member of the coordinator tier; check why ${member} ends its turns (its brief, its agent, the host).`
+    `${seat} on ${member} stalled at its prompt ${String(stalls)} times within ${String(rules.coordinatorStallWindowMinutes)} min with work pending; coordinators stay on the coordinator tier's first member while its circuit and quota hold, so it was relaunched on ${member} again. Check why ${member} ends its turns (its brief, its agent, the host).`

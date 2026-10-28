@@ -70,10 +70,10 @@ stall:
   # Remedy 1: one nudge per stall (the role's loop prompt, `terminal send`), at most nudgeMax per seat. Remedy 2: a nudge that
   # brought no driver call within nudgeGraceMinutes, or a seat that stalls again after nudgeMax nudges, is given up: its member
   # records a `stalled` outcome (the provider circuit takes the kind its Orca failure text names, else `stall`), an Op is fenced
-  # (its task fails `stalled`) and retried on another member, and a coordinator is relaunched: behind every other member for a
-  # provider kind, on its tier's first member again for a plain `stall`, until that member gave up coordinatorStallMax plain
-  # stalls of the same seat (the project's Supervisor, a workflow's Kernel) within coordinatorStallWindowMinutes; that one
-  # puts it behind and escalates (kind harness). Remedy 3: the Kernel relaunch limit escalates.
+  # (its task fails `stalled`) and retried on another member, and a coordinator is relaunched on its tier's listed order (the
+  # first member again, another only while the circuit or quota takes the first out); once that member gave up
+  # coordinatorStallMax plain stalls of the same seat (the project's Supervisor, a workflow's Kernel) within
+  # coordinatorStallWindowMinutes, the relaunch on it escalates (kind harness). Remedy 3: the Kernel relaunch limit escalates.
   nudgeMax: 2
   nudgeGraceMinutes: 3
   coordinatorStallMax: 2

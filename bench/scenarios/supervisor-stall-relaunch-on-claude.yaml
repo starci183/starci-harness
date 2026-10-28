@@ -1,17 +1,18 @@
 schema: starci/scenario@1
 id: supervisor-stall-relaunch-on-claude
 group: orca
-title: "a Supervisor that stalls for its own idleness is relaunched on the coordinator tier's first member; repeated stalls fall to the next member and escalate to Debug"
+title: "a Supervisor that stalls for its own idleness is relaunched on the coordinator tier's first member, every time; repeated stalls escalate to Debug"
 inject: >-
   the Kernel escalates a scope question; the Supervisor ends its turn at its prompt (tui-idle, no driver call for ten minutes)
   with no provider failure named, and does not answer its nudge; the Supervisor that replaces it attaches, then does the same
 expect: >-
   the first give-up records a stalled outcome and relaunches the Supervisor on the same member (a plain stall puts nothing
-  behind) with no escalation; the second plain stall of that member within the window relaunches it on the next member of the
-  coordinator tier and raises one supervisor escalation of kind harness naming the repeated stalls
+  behind) with no escalation; the second plain stall of that member within the window relaunches it on the same member again
+  (coordinators stay on the tier's first member while its circuit and quota hold) and raises one supervisor escalation of kind
+  harness naming the repeated stalls
 pass:
   - the first replacement runs on the first member again
-  - the second replacement runs on another member
+  - the second replacement runs on the first member again
   - one open harness escalation for the repeated stalls, raised only at the second give-up
   - two stalled outcomes for the supervisor label
   - "no step without evidence: every state change in the ledger has its event"
@@ -111,7 +112,7 @@ steps:
     expect:
       contains: nudge 1 of
   - *unanswered
-  - name: the second plain stall of the same member falls to the next member and escalates
+  - name: the second plain stall of the same member stays on it and escalates
     starci: [supervisor, tick]
     expect:
       contains: escalated to Debug (harness
@@ -119,11 +120,11 @@ steps:
       sql:
         db: machine
         query: SELECT COUNT(DISTINCT agent || '/' || model) FROM project_supervisors
-        equals: [2]
+        equals: [1]
   - assert:
       sql:
         db: machine
-        query: "SELECT COUNT(*) FROM project_supervisors WHERE ended_at IS NULL AND agent || '/' || model != '${first.member}'"
+        query: "SELECT COUNT(*) FROM project_supervisors WHERE ended_at IS NULL AND agent || '/' || model = '${first.member}'"
         equals: [1]
   - assert:
       sql:
