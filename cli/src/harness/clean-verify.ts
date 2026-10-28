@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto"
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, join } from "node:path"
+import { basename, join, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, EXIT_TIMEOUT, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
@@ -299,13 +299,28 @@ const verifierPid = (dir: string): number | undefined => {
 export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
     const listing = await captureGit(["worktree", "list", "--porcelain"], root)
     const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => basename(dir).startsWith(VERIFY_PREFIX))
-    const pruned = dirs.filter((dir) => {
+    const gone = (dir: string): boolean => {
         const pid = verifierPid(dir)
         return pid === undefined || (pid !== process.pid && !pidAlive(pid))
-    })
+    }
+    const pruned = dirs.filter(gone)
     await inOrder(pruned, (dir) => removeWorktree(root, dir))
     await captureGit(["worktree", "prune"], root)
-    return pruned
+    // A folder git no longer lists (its removal failed half-way, EBUSY) is left behind in the checkouts folder, or in the system
+    // temp folder where earlier builds made checkouts; once its verifier is gone it is removed too, every link in it unlinked first.
+    const listed = new Set(dirs.map((dir) => resolve(dir).toLowerCase()))
+    const strays = [cleanCheckoutsPath(), tmpdir()].flatMap((folder) =>
+        existsSync(folder) ? readdirSync(folder).filter((name) => name.startsWith(VERIFY_PREFIX)).map((name) => join(folder, name)) : [],
+    ).filter((dir) => !listed.has(resolve(dir).toLowerCase()) && gone(dir))
+    for (const dir of strays) {
+        try {
+            unlinkCheckoutLinks(dir)
+            rmSync(dir, { recursive: true, force: true })
+        } catch {
+            // A file Windows still holds: the next prune tries again.
+        }
+    }
+    return [...pruned, ...strays.filter((dir) => !existsSync(dir))]
 }
 
 /**
