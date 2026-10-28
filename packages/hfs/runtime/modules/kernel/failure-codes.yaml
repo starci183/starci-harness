@@ -2734,6 +2734,16 @@ FE_PAGE_METADATA_MISSING:
   owner: op-retry
   kind: check-finding
 
+FE_PAGE_TABS_OUTSIDE_HEADER:
+  title: "Page tabs are drawn outside the page header band"
+  title_vi: "Tab của trang nằm ngoài dải đầu trang"
+  meaning_vi: "Tại <file>, một Tabs đứng đầu thân Page hoặc ngay sau PageHeader: thanh tab của trang không đứng trên đường phân cách của dải đầu trang mà lấy khoảng đệm và khoảng cách của thân trang."
+  causes_vi:
+    - "Đặt Tabs làm phần tử đầu tiên trong Page hoặc ngay sau PageHeader."
+  nextStep_vi: "Truyền tab qua header.tabs của Page (hoặc tabs của PageHeader): { label, items, selectedKey, onSelect } (quy định page-frame)."
+  owner: op-retry
+  kind: check-finding
+
 FE_PROPS_MUTABLE:
   title: "Component props can be written"
   title_vi: "Props của component có thể bị ghi"
@@ -2872,6 +2882,17 @@ FE_ROUTE_ONE_PAGE:
     - "Vừa có JSX vừa redirect"
   nextStep_vi: "Op interface.implement sửa route để chỉ mount một thành phần trang."
   owner: other-op:interface.implement
+  kind: check-finding
+
+FE_ROUTE_PAGE_OUTSIDE_PAGE:
+  title: "A page owner draws something outside its Page"
+  title_vi: "Trang vẽ nội dung nằm ngoài Page"
+  meaning_vi: "Tại <file>, page owner vẽ một phần tử bên cạnh Page, hoặc tự dùng PageHeader hay PageContainer: khoảng đệm và nhịp dọc của trang bị quyết định lại ngoài Page."
+  causes_vi:
+    - "Đặt banner, footer hay khối khác cạnh Page trong page owner."
+    - "Ghép PageHeader và PageContainer bằng tay thay vì dùng Page."
+  nextStep_vi: "Vẽ đúng một Page: dải đầu trang là header, mọi thứ khác trong thân, measure là measure của Page (quy định page-frame)."
+  owner: op-retry
   kind: check-finding
 
 FE_SERVER_ACTION_FORBIDDEN:

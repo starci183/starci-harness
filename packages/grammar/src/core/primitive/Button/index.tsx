@@ -42,8 +42,8 @@ type ButtonBase = {
      * How the action takes its inline space: to its own content, or filling its parent.
      *
      * `fill` forwards the vendor's own full-width variant and adds the part the vendor does not
-     * own - a label that WRAPS onto a second line instead of overflowing, with the control height
-     * released to follow it - from `.starci-core-button[data-width="fill"]` in the packaged
+     * own - a label that WRAPS onto a second line instead of overflowing, the box holding its size
+     * step (md 40px) on one line and growing only with the wrapped label - from `.starci-core-button[data-width="fill"]` in the packaged
      * stylesheet. An app never has to reach through the boundary with a descendant width utility.
      */
     readonly width?: ButtonWidth

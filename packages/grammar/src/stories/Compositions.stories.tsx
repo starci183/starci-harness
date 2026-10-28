@@ -174,6 +174,77 @@ export const PageHeaderPhone: Story = {
   },
 };
 
+const PageDemo = ({ withHeader, isSkeleton = false }: { readonly withHeader: boolean; readonly isSkeleton?: boolean }) => {
+  const [tab, setTab] = useState('overview');
+  return (
+    <G.Page
+      isSkeleton={isSkeleton}
+      {...(withHeader ? {
+        header: {
+          breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] },
+          title: 'Main account',
+          description: 'Payments arrive by webhook and are matched to invoices.',
+          actions: <G.Button intent="neutral" onPress={noop}>Switch to live</G.Button>,
+          tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }] },
+        },
+      } : {})}
+    >
+      <Placeholder label="Webhook details" headingLevel={2} />
+      {/* A child that tries to bleed past the gutter: the body clips it at the gutter's outer edge. */}
+      <div data-story-page-escape="true" style={{ marginInline: '-6rem', blockSize: '2rem', background: 'var(--accent-soft)' }} />
+    </G.Page>
+  );
+};
+
+/** The body sits in the measure and gutter one region step below the band, and nothing in it paints past the gutter. */
+const assertPage = async (canvasElement: HTMLElement, withHeader: boolean) => {
+  await waitFor(() => {
+    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"]');
+    const body = page?.querySelector<HTMLElement>('[data-grammar-page-body]');
+    const escape = page?.querySelector<HTMLElement>('[data-story-page-escape]');
+    if (!page || !body || !escape) throw new Error('Page, its body and the escaping child must render');
+    const bodyBox = body.getBoundingClientRect();
+    expect(body.parentElement).toBe(page);
+    expect(getComputedStyle(body).overflowX).toBe('clip');
+    expect(getComputedStyle(body).getPropertyValue('overflow-clip-margin')).toContain('content-box');
+    // The escaping child is wider than the body; the body clips it one gutter step past its content box.
+    expect(escape.getBoundingClientRect().width).toBeGreaterThan(bodyBox.width);
+    const gap = Number.parseFloat(getComputedStyle(page).rowGap);
+    expect(gap).toBeGreaterThan(0);
+    if (withHeader) {
+      const header = page.querySelector<HTMLElement>(':scope > [data-component="PageHeader"]');
+      if (!header) throw new Error('The header band must be the page\'s first child');
+      expect(Math.abs(bodyBox.top - header.getBoundingClientRect().bottom - gap)).toBeLessThanOrEqual(0.5);
+      const headerBody = header.querySelector<HTMLElement>('.starci-core-page-header-body')!;
+      expect(Math.abs(headerBody.getBoundingClientRect().left - bodyBox.left)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(headerBody.getBoundingClientRect().width - bodyBox.width)).toBeLessThanOrEqual(0.5);
+    } else {
+      expect(Math.abs(bodyBox.top - page.getBoundingClientRect().top - gap)).toBeLessThanOrEqual(0.5);
+    }
+  }, { timeout: 4000 });
+};
+
+export const Page: Story = {
+  name: 'Page (header band, body in the gutter)',
+  render: () => <PageDemo withHeader />,
+  play: async ({ canvasElement }) => assertPage(canvasElement, true),
+};
+
+export const PageWithoutHeader: Story = {
+  name: 'Page (no header: the body starts one region step down)',
+  render: () => <PageDemo withHeader={false} />,
+  play: async ({ canvasElement }) => assertPage(canvasElement, false),
+};
+
+export const PageSkeleton: Story = {
+  name: 'Page (skeleton passes to the header)',
+  render: () => <PageDemo withHeader isSkeleton />,
+  play: async ({ canvasElement }) => {
+    await assertPage(canvasElement, true);
+    await expect(canvasElement.querySelector('[data-component="PageHeader"]')?.getAttribute('aria-busy')).toBe('true');
+  },
+};
+
 export const PrimaryRailLayout: Story = {
   render: () => (
     <G.PageContainer>

@@ -31,6 +31,17 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `supervisor ask`; `supervisor next` hands an `owner` or `harness` escalation over once (`decision-relayed`), so a looping
   Supervisor waits in `next` instead of receiving it again, and neither kind makes it stalled. Bench:
   `supervisor-awaits-owner-not-stalled`, `supervisor-stall-relaunch-on-claude`.
+## [1.1.0-alpha.5] - 2026-10-28
+
+Runs `@starci/hfs` 4.9.5 (an exact dependency).
+
+### Changed
+
+- **Release G.** @starci/hfs 4.9.5 bundles the canon pins of release G (Grammar family 0.15.4, which ships the fill
+  Button floor, `Page`, `MermaidDiagram` and FlowGraph shapes and edge labels, with the lints `page-tabs-in-header` and
+  `route-page-is-one-page`; hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4) and the rules R324 and R325, so `starci app`
+  judges and scaffolds an app at those versions. `cli/package-lock.json` is refreshed once @starci/hfs 4.9.5 is on npm
+  (CONTRIB-20: the packages publish first, the CLI on a second tag).
 
 ## [1.1.0-alpha.4] - 2026-10-28
 

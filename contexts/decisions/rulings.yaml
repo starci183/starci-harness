@@ -215,6 +215,16 @@ rulings:
     status: live
     ruling: "A page is headed by Grammar's PageHeader: a surface band across the primary region whose content shares the page content's edges, ending in its own full-width separator with or without tabs, page tabs standing on it; an app never composes Breadcrumbs and SectionHeader into a page head."
     owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page-header; contexts/hfs/rules.yaml R323"
+  - id: page-frame
+    date: '2026-10-28'
+    status: live
+    ruling: "A route page is one Grammar Page: the header band full width, the body always inside the page measure and gutter one region step below it, nothing in the body escaping the gutter; Page is the single owner of the page inset and the page rhythm, layout frames are pure layout and never wrap a page in PageContainer; page tabs are the header's tabs."
+    owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page; contexts/hfs/rules.yaml R324, R325"
+  - id: mermaid-diagram
+    date: '2026-10-28'
+    status: live
+    ruling: "An article's Mermaid diagrams render through Grammar's MermaidDiagram in the grammar's theme, with Mermaid loaded lazily, the loading box kept and a refused source shown as code in the same region; FlowGraph draws flowchart node shapes and edge labels."
+    owner: "contexts/ui/components/diagram.md; contexts/grammars/contract.yaml diagram"
   - id: page-header-breadcrumbs
     date: '2026-10-11'
     status: live

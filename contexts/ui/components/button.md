@@ -50,7 +50,7 @@ context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
 
 ## Size
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
-changes width only.
+changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`).
 
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never

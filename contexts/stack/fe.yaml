@@ -199,7 +199,7 @@ concerns:
     packages: [mermaid]
     home: [fe.components]
     forbids: []
-    why: text diagrams render through mermaid in a client block, initialised once with the theme.
+    why: the grammar's MermaidDiagram renders mermaid text, loaded lazily and themed from the grammar root; apps never import it.
   - id: upload
     tier: opt
     packages: [react-dropzone]

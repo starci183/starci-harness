@@ -27,7 +27,7 @@ first row that applies wins.
 | field-row | the row holds a field (fields have one step) | `md` | `DNA-COMMON-FIELD-MD` |
 | hero | the one conversion call to action of a landing hero | `lg`, once per view | `DNA-COMMON-CONTROL-LG`; candidate: at most one `lg` control per view |
 | nested | the control is nested in a collection item, or sits in a dense toolbar whose every control is `sm` | `sm` | `DNA-COMMON-CONTROL-SM`; candidate: every `sm` control sits in an item or an all-`sm` toolbar |
-| standalone | every other control: buttons, icon buttons, selects, segmented controls, tab bars, switches, composer send | `md`: omit `size` | `DNA-COMMON-CONTROL-MD` |
+| standalone | every other control: buttons, icon buttons, selects, segmented controls, tab bars, switches, composer send | `md`: omit `size` | `DNA-COMMON-CONTROL-MD`; a full-width button `DNA-COMMON-CONTROL-FILL` |
 
 Rules, each with one place to harden:
 

@@ -427,7 +427,7 @@
         }
     }
 
-    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]):not(:has(.starci-core-footer)) :is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page-container):not(:is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page-container, .starci-core-navigation-feature-nav, .starci-core-top-bar, .starci-core-bottom-nav) *) {
+    .grammar-common-root:has(.starci-core-bottom-nav[data-grammar-bottom-nav-position="fixed"]):not(:has(.starci-core-footer)) :is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page, .starci-core-page-container):not(:is(.starci-core-workspace-shell, .starci-core-primary-rail-layout, .starci-core-page, .starci-core-page-header, .starci-core-page-container, .starci-core-navigation-feature-nav, .starci-core-top-bar, .starci-core-bottom-nav) *) {
         padding-block-end: var(--starci-core-bottom-nav-offset);
     }
 
@@ -1734,6 +1734,57 @@
     .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted, GrayText); }
     .starci-core-flow-graph-node[data-placeholder="true"] { border-style: dashed; }
 
+    /*
+     * Node shapes (the flowchart outlines). `stadium` is the default pill above. A diamond cannot carry a CSS border, so
+     * its outline and fill are two clipped layers behind the copy: the outer layer in the separator colour, the inner one
+     * inset by the border width in the node's surface and tint.
+     */
+    .starci-core-flow-graph-node[data-shape="rect"] { border-radius: 0.25rem; }
+    .starci-core-flow-graph-node[data-shape="round"] { border-radius: 0.75rem; }
+
+    .starci-core-flow-graph-node[data-shape="circle"] {
+        justify-content: center;
+        min-inline-size: 4.5rem;
+        aspect-ratio: 1;
+        padding: 0.5rem;
+        border-radius: 50%;
+        text-align: center;
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"] {
+        isolation: isolate;
+        justify-content: center;
+        min-block-size: 4rem;
+        padding: 1rem 2rem;
+        border-color: transparent;
+        background: none;
+        text-align: center;
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::before,
+    .starci-core-flow-graph-node[data-shape="diamond"]::after {
+        position: absolute;
+        z-index: -1;
+        content: "";
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::before {
+        inset: -1px;
+        background: var(--separator, CanvasText);
+    }
+
+    .starci-core-flow-graph-node[data-shape="diamond"]::after {
+        inset: 0.5px;
+        background-color: var(--surface, Canvas);
+        background-image: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint));
+    }
+
+    /* Edge labels: a small chip at the edge midpoint, the surface under foreground ink so the label reads over any edge. */
+    .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
+    .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface, Canvas); stroke: var(--separator, CanvasText); stroke-width: 1px; }
+    .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground, CanvasText); font-size: 0.75rem; }
+
     .starci-core-flow-graph-copy {
         display: flex;
         min-width: 0;
@@ -1806,6 +1857,58 @@
 
     @media (forced-colors: active) {
         .starci-core-flow-graph-node[data-grammar-selected="true"] { outline-color: Highlight; forced-color-adjust: none; }
+        .starci-core-flow-graph-node[data-shape="diamond"]::before { background: CanvasText; forced-color-adjust: none; }
+        .starci-core-flow-graph-node[data-shape="diamond"]::after { background: Canvas; forced-color-adjust: none; }
+    }
+
+    /* ---------- MermaidDiagram ----------
+     * The FlowGraph frame (separator edge, surface radius, surface fill). Every state reserves the canvas height, so the
+     * drawing, its skeleton and the error take the same least box; a wider drawing scrolls inline in the canvas. */
+    .starci-core-mermaid-diagram {
+        --starci-mermaid-height: 16rem;
+        display: block;
+        min-width: 0;
+        margin: 0;
+        border: 1px solid var(--separator, CanvasText);
+        border-radius: var(--starci-core-surface-radius, 1rem);
+        background: var(--surface, Canvas);
+        color: var(--foreground, CanvasText);
+    }
+
+    .starci-core-mermaid-diagram[data-grammar-mermaid-height="md"] { --starci-mermaid-height: 24rem; }
+    .starci-core-mermaid-diagram[data-grammar-mermaid-height="lg"] { --starci-mermaid-height: 32rem; }
+
+    .starci-core-mermaid-diagram-canvas {
+        display: grid;
+        min-block-size: var(--starci-mermaid-height);
+        place-items: center;
+        padding: var(--grammar-section-gap, 1rem);
+        overflow-x: auto;
+        border-radius: inherit;
+        outline: none;
+    }
+
+    .starci-core-mermaid-diagram-canvas:focus-visible {
+        outline: 2px solid var(--focus, var(--starci-core-focus, Highlight));
+        outline-offset: -2px;
+    }
+
+    .starci-core-mermaid-diagram-canvas > .starci-core-skeleton {
+        inline-size: 100%;
+        block-size: calc(var(--starci-mermaid-height) - 2 * var(--grammar-section-gap, 1rem));
+        aspect-ratio: auto;
+    }
+
+    /* Mermaid sizes the svg to the canvas width up to its natural width (its own max-width); it sits centred. */
+    .starci-core-mermaid-diagram-drawing { min-width: 0; inline-size: 100%; }
+    .starci-core-mermaid-diagram-drawing > svg { display: block; block-size: auto; margin-inline: auto; }
+
+    .starci-core-mermaid-diagram-error {
+        display: flex;
+        min-block-size: var(--starci-mermaid-height);
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding: var(--grammar-section-gap, 1rem);
     }
 
     /*

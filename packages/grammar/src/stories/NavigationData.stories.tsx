@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
-import { userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, MenuGlyph, State, noop, pageLabel, placeholderImage, showRowStates } from './fixtures.js';
 
@@ -429,6 +429,102 @@ export const FlowGraphWaves: Story = {
     link(graphs[1], 'jobs').focus();
     await userEvent.keyboard('{Enter}');
     await waitFor(() => { if (path() !== '#/tasks/jobs') throw new Error(`Enter must navigate through the router, got ${path()}`); });
+  },
+};
+
+const chartNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'start', label: 'Start', shape: 'circle' },
+  { id: 'request', label: 'Request arrives', shape: 'rect' },
+  { id: 'cached', label: 'In cache?', shape: 'diamond', tone: 'accent' },
+  { id: 'serve', label: 'Serve cached', shape: 'round', tone: 'success' },
+  { id: 'fetch', label: 'Fetch origin', shape: 'round' },
+  { id: 'done', label: 'Done', shape: 'stadium' },
+];
+const chartEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'c1', source: 'start', target: 'request' },
+  { id: 'c2', source: 'request', target: 'cached' },
+  { id: 'c3', source: 'cached', target: 'serve', label: 'yes' },
+  { id: 'c4', source: 'cached', target: 'fetch', label: 'no' },
+  { id: 'c5', source: 'serve', target: 'done' },
+  { id: 'c6', source: 'fetch', target: 'done' },
+];
+
+/** A flowchart: every node shape (circle, rect, diamond, round, stadium) and labelled decision edges, which the screen-reader list repeats. */
+export const FlowGraphFlowchart: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Top to bottom: shapes and edge labels" direction="column">
+        <G.FlowGraph label="Cache lookup" nodes={chartNodes} edges={chartEdges} direction="TB" height="lg" />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = canvasElement.querySelector<HTMLElement>('[data-component="FlowGraph"]');
+      if (graph === null) throw new Error('The graph must render');
+      for (const shape of ['circle', 'rect', 'diamond', 'round', 'stadium']) {
+        if (graph.querySelector(`.starci-core-flow-graph-node[data-shape="${shape}"]`) === null) throw new Error(`A ${shape} node must draw`);
+      }
+      const labels = [...graph.querySelectorAll('.react-flow__edge-text')].map((text) => text.textContent);
+      expect(labels.sort()).toEqual(['no', 'yes']);
+      const round = graph.querySelector<HTMLElement>('[data-shape="round"]');
+      const rect = graph.querySelector<HTMLElement>('[data-shape="rect"]');
+      expect(Number.parseFloat(getComputedStyle(rect!).borderTopLeftRadius)).toBeLessThan(Number.parseFloat(getComputedStyle(round!).borderTopLeftRadius));
+      const circle = graph.querySelector<HTMLElement>('[data-shape="circle"]')!.getBoundingClientRect();
+      expect(Math.abs(circle.width - circle.height)).toBeLessThanOrEqual(1);
+      const spoken = [...graph.querySelectorAll('[data-grammar-flow-edge-fallback] li')].map((item) => item.textContent);
+      expect(spoken).toEqual(['In cache? → Serve cached: yes', 'In cache? → Fetch origin: no']);
+    });
+  },
+};
+
+const mermaidSource = `flowchart LR
+  A[Request] --> B{In cache?}
+  B -- yes --> C[Serve cached]
+  B -- no --> D(Fetch origin)
+  D --> C`;
+
+const mermaidSequence = `sequenceDiagram
+  participant Browser
+  participant API
+  Browser->>API: POST /sign-in
+  API-->>Browser: 200 session`;
+
+/** A Mermaid diagram in the root's theme, a sequence diagram, the loading box and a refused source shown as code. */
+export const MermaidDiagram: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Flowchart" direction="column">
+        <G.MermaidDiagram label="Cache lookup" source={mermaidSource} />
+      </State>
+      <State label="Sequence" direction="column">
+        <G.MermaidDiagram label="Sign-in request" source={mermaidSequence} />
+      </State>
+      <State label="Skeleton (the same box)" direction="column">
+        <G.MermaidDiagram label="Cache lookup (loading)" source={mermaidSource} isSkeleton />
+      </State>
+      <State label="Error: the source as code" direction="column">
+        <G.MermaidDiagram label="Broken diagram" source={'flowchart LR\n  A --> {'} errorTitle="This diagram could not be drawn." />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const diagrams = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MermaidDiagram"]')];
+      expect(diagrams.map((diagram) => diagram.dataset.grammarMermaidState)).toEqual(['ready', 'ready', 'loading', 'error']);
+      const [flowchart, , skeleton, broken] = diagrams;
+      const svg = flowchart!.querySelector('[role="img"] > svg');
+      if (svg === null) throw new Error('The flowchart must draw its svg');
+      expect(flowchart!.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Cache lookup');
+      expect(svg.textContent).toContain('In cache?');
+      // The skeleton keeps the ready frame's least box: both canvases reserve the sm height.
+      const box = (diagram: HTMLElement) => diagram.querySelector<HTMLElement>('[data-grammar-mermaid-canvas]')!.getBoundingClientRect().height;
+      expect(Math.round(box(skeleton!))).toBe(256);
+      expect(box(flowchart!)).toBeGreaterThanOrEqual(256);
+      expect(skeleton!.getAttribute('aria-busy')).toBe('true');
+      expect(broken!.querySelector('[data-grammar-mermaid-error] code')?.textContent).toContain('A --> {');
+      expect(broken!.querySelector('[data-component="Alert"]')).not.toBeNull();
+    }, { timeout: 15000 });
   },
 };
 

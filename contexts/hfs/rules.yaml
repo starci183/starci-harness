@@ -2225,6 +2225,20 @@ rules:
       - FE_PAGE_HEADER_HAND_ROLLED
     enforcers:
       - {kind: eslint-grammar-core, id: no-hand-rolled-page-header}
+  - id: R324
+    code: FE_PAGE_TABS_OUTSIDE_HEADER
+    law: Page tabs are the header's tabs; a Tabs that is the first element of a Page body or the next element after a PageHeader is a page tab bar drawn outside the band.
+    failureCodes:
+      - FE_PAGE_TABS_OUTSIDE_HEADER
+    enforcers:
+      - {kind: eslint-grammar-core, id: page-tabs-in-header}
+  - id: R325
+    code: FE_ROUTE_PAGE_OUTSIDE_PAGE
+    law: A page owner draws one Grammar Page with nothing beside it; a sibling of the Page, or a bare PageHeader or PageContainer in the page owner, re-decides the inset and rhythm Page owns.
+    failureCodes:
+      - FE_ROUTE_PAGE_OUTSIDE_PAGE
+    enforcers:
+      - {kind: eslint-grammar-core, id: route-page-is-one-page}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

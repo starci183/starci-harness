@@ -437,6 +437,37 @@
     }
 
     /*
+     * Page: the single owner of the page inset and rhythm. The header band runs full width; the body is the page's
+     * PageContainer, one region step below the band (or below the top without one) and one above the bottom, its
+     * sections a region step apart. The body clips one gutter step (1rem, the least gutter) beyond its content box, so
+     * nothing in it (a negative margin, a full-bleed width) reaches across the gutter, while focus rings and card shadows
+     * still draw. Overlays portal to the Grammar root, so the clip never cuts one.
+     */
+    .starci-core-page {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-region-gap, 1.5rem);
+        padding-block-end: var(--grammar-region-gap, 1.5rem);
+    }
+
+    .starci-core-page > .starci-core-page-header {
+        margin-block-end: 0;
+    }
+
+    .starci-core-page[data-grammar-page-header="false"] {
+        padding-block-start: var(--grammar-region-gap, 1.5rem);
+    }
+
+    .starci-core-page-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-region-gap, 1.5rem);
+        overflow: clip;
+        overflow-clip-margin: content-box 1rem;
+    }
+
+    /*
      * Keyboard-reachable scroll owners (VerticalScrollRegion / HorizontalScrollRegion when focusable,
      * the Rail body, fenced code and Markdown table frames) draw the same inset focus ring the chat
      * scroll owners use, so a Tab stop that scrolls is never invisible.
@@ -3101,6 +3132,29 @@
         min-block-size: 3rem !important;
     }
 
+    /*
+     * A full-width action holds the same step as a content-width one (control-height-40): its box is the step on one
+     * line, and only a label that wraps grows it. The vendor drops md to 36px from its md breakpoint (`md:h-9`), so a
+     * fill Button left to the vendor was 36px on a desktop form; the floor is the step, the height follows the label.
+     */
+    .starci-core-button[data-width="fill"]:is([data-size="md"], [data-size="control"]) {
+        block-size: auto !important;
+        min-block-size: var(--starci-core-control-min-size, 2.5rem) !important;
+        padding-block: 0.5rem;
+    }
+
+    .starci-core-button[data-width="fill"][data-size="sm"] {
+        block-size: auto !important;
+        min-block-size: 2rem !important;
+        padding-block: 0.25rem;
+    }
+
+    .starci-core-button[data-width="fill"][data-size="lg"] {
+        block-size: auto !important;
+        min-block-size: 3rem !important;
+        padding-block: 0.5rem;
+    }
+
     /* The chrome avatar (`control`) is drawn here over the vendor `lg` box: the shared control height. */
     [data-component="Avatar"][data-grammar-avatar-size="control"] {
         --avatar-size: var(--starci-core-control-min-size, 2.5rem);
@@ -3620,7 +3674,8 @@
      * --- Button: full width ---
      *
      * A full-width action stretches to its parent and lets its label wrap onto a second line rather
-     * than overflow, so the vendor's fixed control height is released to the content.
+     * than overflow: its height is the size step on one line and grows only with a wrapped label (the
+     * size rules above hold the floor).
      */
     .starci-core-button[data-width="fill"] {
         width: 100% !important;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.9.5 - 2026-10-28
+
+- Added: the bundled rule catalog carries R324 (`FE_PAGE_TABS_OUTSIDE_HEADER`, `page-tabs-in-header`) and R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`, `route-page-is-one-page`), both enforced by `@starci/eslint-grammar-core`, and their failure-code guidance.
+- Changed: the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0); the mermaid pin names Grammar's MermaidDiagram as its owner.
+
 ## 4.9.4 - 2026-10-28
 
 - Added: the bundled rule catalog carries R323 (`FE_PAGE_HEADER_HAND_ROLLED`, enforced by `@starci/eslint-grammar-core` `no-hand-rolled-page-header`) and its failure-code guidance.

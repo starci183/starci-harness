@@ -58,10 +58,14 @@ const SettingsFormPage = () => {
       navigationLabel="Settings"
       primaryLabel="Profile settings"
       primary={
-        <G.PageContainer measure="reading">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 0 3rem' }}>
-            <G.Breadcrumbs label="Breadcrumb" items={[{ id: 'settings', label: 'Settings', href: '#settings' }, { id: 'profile', label: 'Profile' }]} />
-            <G.SectionHeader level={1} title="Profile" description="How you appear to other people in this workspace." />
+        <G.Page
+          measure="reading"
+          header={{
+            breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'settings', label: 'Settings', href: '#settings' }, { id: 'profile', label: 'Profile' }] },
+            title: 'Profile',
+            description: 'How you appear to other people in this workspace.',
+          }}
+        >
             {saved ? <G.Alert tone="affirmative" title="Profile saved" dismissLabel="Dismiss" onDismiss={() => setSaved(false)} /> : null}
             <G.Form label="Profile settings" onSubmit={() => setSaved(true)}>
               <G.SurfaceCard label="Public profile" headingLevel={2}>
@@ -100,8 +104,7 @@ const SettingsFormPage = () => {
                 />
               </div>
             </G.SurfaceCard>
-          </div>
-        </G.PageContainer>
+        </G.Page>
       }
     />
   );
@@ -155,9 +158,7 @@ const DataListPage = () => {
       header={<G.TopBar position="static" brand={<G.Link href="#home">Studio</G.Link>} actions={<G.Avatar name="Alex Morgan" size="sm" />} />}
       primaryLabel="Members"
       primary={
-        <G.PageContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem 0 3rem' }}>
-            <G.SectionHeader level={1} title="Members" description={`${filtered.length} people in this workspace.`} action={<G.Button variant="primary">Invite</G.Button>} />
+        <G.Page header={{ title: 'Members', description: `${filtered.length} people in this workspace.`, actions: <G.Button variant="primary">Invite</G.Button> }}>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 16rem' }}>
                 <G.SearchField label="Search members" isLabelHidden placeholder="Search by name" value={query} onValueChange={(value) => { setQuery(value); setPage(1); }} clearLabel="Clear search" />
@@ -213,8 +214,7 @@ const DataListPage = () => {
               pageLabel={pageLabel}
               summary={`Showing ${rows.length} of ${filtered.length}`}
             />
-          </div>
-        </G.PageContainer>
+        </G.Page>
       }
     />
   );

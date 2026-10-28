@@ -8,6 +8,7 @@ import { rules as drawingRules } from "./drawing.ts"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.ts"
 import { rules as iconRules } from "./icon.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
+import { rules as pageRules } from "./page.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as tokensRules } from "./tokens.ts"
@@ -34,6 +35,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "grammar-boundary", rules: grammarBoundaryRules },
   { law: "icon", rules: iconRules },
   { law: "menu-entries", rules: menuEntriesRules },
+  { law: "page", rules: pageRules },
   { law: "page-header", rules: pageHeaderRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "tokens", rules: tokensRules },

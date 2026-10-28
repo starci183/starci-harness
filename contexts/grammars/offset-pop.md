@@ -57,6 +57,8 @@ this file says why.
 | Avatar | Common initials and agent badge, inherited unchanged |
 | Shell | The contract shell: bar, sidebar and left drawer as stickers; no bottom dock (O-4) |
 | PageHeader | A surface band closed by the TopBar's ink rule at the outline width, a heavy heading; page tabs stand on the rule with the pink underline over it |
+| Page | Common's frame around the offset-pop band; the body's rhythm and gutter are Common's |
+| Diagram | Common's frame; Mermaid takes the family's tokens, so nodes are the secondary surface with the ink border |
 
 ## Departures
 
