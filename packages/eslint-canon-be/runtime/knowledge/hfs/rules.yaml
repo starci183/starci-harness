@@ -1820,7 +1820,7 @@ rules:
       - {path: packages/eslint/be/be-r89-source-form-coverage.spec.mjs, edition: full, codes: [BE_SOURCE_FORM, BE_PUBLIC_CONTRACT_FORM]}
   - id: R90
     code: "BE_INFRA_OWNER"
-    law: "Each raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, events) is imported or referenced only by its one owning platform or integration capability, and the `HttpClient` port of `platform/http` is called only by an `integrations` capability."
+    law: "Each raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, events, model SDKs) is imported or referenced only by its one owning platform or integration capability, and the `HttpClient` port of `platform/http` is called only by an `integrations` capability."
     kinds: [lint, codemod]
     failureCodes: ["BE_INFRA_OWNER"]
     enforcers:
@@ -5756,3 +5756,49 @@ rules:
         source: owner
         quote: "ok trò"
         ruling: "A route page is one Grammar Page (owner ruling page-frame): the single owner of the page inset and rhythm; the lint refuses a sibling beside the Page and a bare PageHeader or PageContainer in a page owner."
+  - id: R326
+    code: "BE_AI_KEY_CUSTODY"
+    law: "An upstream model provider key variable (OPENROUTER_API_KEY, OPENAI_API_KEY and the rest of the canon's one list) is named only inside the ai-router gateway's custody owner integrations/ai-gateway, in a literal, a member or a destructured property; every other file reaches a model through the gateway with a virtual key."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AI_KEY_CUSTODY"]
+    enforcers:
+      - {kind: eslint-be, id: provider-key-custody}
+    editions: [lite, full]
+    docs: [contexts/code/be/ai.md]
+    templateNa: "The skeleton scaffolds no model call; an app adds the ai and ai-gateway integrations when it calls a model."
+    proves:
+      - packages/eslint-canon-be/src/ai-gateway.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_KEY_CUSTODY]}
+    witness:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_KEY_CUSTODY]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
+        ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): only the gateway's custody owner reads a provider key."
+  - id: R327
+    code: "BE_AI_GATEWAY_CLIENT"
+    law: "Code builds only the ChatOpenAI and OpenAIEmbeddings clients of @langchain/openai, each from an inline options object with no spread, its configuration.baseURL read from a <c>.options.ts type and its apiKey the reveal() of a platform/config Secret, so every model call goes through the ai-router gateway with a virtual key."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_AI_GATEWAY_CLIENT"]
+    enforcers:
+      - {kind: eslint-be, id: ai-client-through-gateway}
+    editions: [lite, full]
+    docs: [contexts/code/be/ai.md]
+    templateNa: "The skeleton scaffolds no model call; an app adds the ai and ai-gateway integrations when it calls a model."
+    proves:
+      - packages/eslint-canon-be/src/ai-gateway.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_GATEWAY_CLIENT]}
+    witness:
+      - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_GATEWAY_CLIENT]}
+    cases:
+      - id: case-1
+        date: "2026-10-29"
+        source: owner
+        quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
+        ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."

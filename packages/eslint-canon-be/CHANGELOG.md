@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.8 - 2026-10-29
+
+- Added: the `ai-gateway` law (contexts/code/be/ai.md). `provider-key-custody` (R326 `BE_AI_KEY_CUSTODY`) refuses an upstream provider key variable (`PROVIDER_KEY_VARIABLES` of `src/ai-gateway.ts`, the one list: `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and the rest, with their `_FILE` twins) named in a literal, a member or a property anywhere but the gateway's custody owner `integrations/ai-gateway`, specs and the test world included. `ai-client-through-gateway` (R327 `BE_AI_GATEWAY_CLIENT`) lets code build only `ChatOpenAI` and `OpenAIEmbeddings` of `@langchain/openai` (found by import), each from an inline options object with no spread, `configuration.baseURL` a member of a `<c>.options.ts` type and `apiKey` the `reveal()` of a `platform/config` `Secret`.
+- Changed: the bundled slot manifest gives the model libraries their owners in `ruleParams.be.infraOwners` (`@starci/ai-router` to `integrations/ai-gateway`, `@langchain/*` to `integrations/ai`; `openai`, `langchain`, `@langchain/langgraph`, `@langchain/community` and the provider SDKs nowhere) and lists R326 and R327 on `be.integrations`, so `infra-import-owner` (R90) holds LangChain in one integration and refuses provider SDKs and agent frameworks; its `nowhere` message names the model and agent owners. The bundled rule catalog carries R326 and R327; the bundled canon pins name hfs 4.9.11, eslint-canon-be 3.6.8, eslint-canon-fe 9.4.9, the Grammar family 0.15.10 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), and pin `@langchain/core` 1.3.1 and `@langchain/openai` 1.8.0.
+
 ## 3.6.7 - 2026-10-29
 
 - Changed: the bundled canon pins name hfs 4.9.10, eslint-canon-be 3.6.7, eslint-canon-fe 9.4.8, eslint-grammar-core 0.15.9 and eslint-grammar-offset-pop 0.15.9. No rule changed.

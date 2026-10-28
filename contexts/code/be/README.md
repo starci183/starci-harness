@@ -38,6 +38,7 @@ kind (api, webhooks, realtime, jobs, cli) → domain, persistence → error, typ
 | [injection](injection.md) | Injectors, tokens, fixed names, no locator | BE-INJECTION-1 … 4 |
 | [infra](infra.md) | One owner per raw library, HTTP timeout, integrations, cache keys | BE-INFRA-1 … 4 |
 | [config](config.md) | Env reader, per-capability parsers, no default secrets, sealed custody | BE-CONFIG-1 … 4 |
+| [ai](ai.md) | Gateway and key custody, code chain or agent runtime, the LangChain integration, chains, scoped retrieval, the MCP boundary | BE-AI-1 … 6 |
 | [logging](logging.md) | Logger port, enum identities, correlation when declared | BE-LOGGING-1, 2, 4 |
 | [messages](messages.md) | Message bundles, locale resolution | BE-MESSAGES-1, 2 |
 | [temporal](temporal.md) | The injected clock and ids | BE-TEMPORAL-1 |

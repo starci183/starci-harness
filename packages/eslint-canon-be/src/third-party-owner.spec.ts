@@ -13,7 +13,7 @@ const DOMAIN = "src/modules/domain/order/order.service.ts"
 const MAILER = "src/modules/integrations/mailer/mailer.client.ts"
 const OTHER = "src/modules/integrations/other/other.client.ts"
 const DEPENDENCIES = {
-    nodemailer: "1.0.0", openai: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
+    nodemailer: "1.0.0", stripe: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
     "class-validator": "1.0.0", rxjs: "1.0.0", "@nestjs/common": "1.0.0", "@nestjs/core": "1.0.0", typeorm: "1.0.0",
     axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@supabase/supabase-js": "1.0.0", jose: "1.0.0",
 }
@@ -54,16 +54,16 @@ for (const edition of ["lite", "full"] as const) {
                 ],
                 invalid: [
                     { filename: fixture.at(DOMAIN), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at(DOMAIN), code: 'import OpenAI from "openai"; export { OpenAI }', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at(DOMAIN), code: 'import Stripe from "stripe"; export { Stripe }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import { google } from "googleapis"; export { google }', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at(DOMAIN), code: 'export const load = () => import("openai/resources/chat")', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at(DOMAIN), code: 'export const load = () => import("stripe/lib/resources")', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'const sdk = require("@new-vendor/io-sdk/client"); export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import sdk = require("googleapis"); export { sdk }', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at(DOMAIN), code: 'export * from "openai"', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at(DOMAIN), code: 'export * from "stripe"', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import type { Client } from "@new-vendor/io-sdk"; export type { Client }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("src/features/api/order/application/send.handler.ts"), code: 'export { default as mail } from "nodemailer"', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at("src/modules/platform/http/http.client.ts"), code: 'import sdk from "openai"; export { sdk }', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import sdk from "openai"; export { sdk }', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at("src/modules/platform/http/http.client.ts"), code: 'import sdk from "stripe"; export { sdk }', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import sdk from "stripe"; export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("apps/core/src/main.ts"), code: 'import sdk from "@new-vendor/io-sdk"; export { sdk }', errors: [{ messageId: "foreign" }] },
                 ],
             }) })
@@ -88,16 +88,16 @@ for (const edition of ["lite", "full"] as const) {
     })
 
     test(`R279 ${edition}: dynamic imports, require, re-exports and npm aliases share one SDK identity`, () => {
-        const fixture = fixtureFor({ edition, manifest: { optionalDependencies: { "openai-alias": "npm:openai@1.0.0" } }, files: {
-            [MAILER]: 'export const open = () => import(`openai/resources/chat`)',
+        const fixture = fixtureFor({ edition, manifest: { optionalDependencies: { "stripe-alias": "npm:stripe@1.0.0" } }, files: {
+            [MAILER]: 'export const open = () => import(`stripe/lib/resources`)',
             "src/modules/integrations/google/google.client.ts": 'const sdk = require("googleapis"); export { sdk }',
             "src/modules/integrations/new/new.client.ts": 'export * from "@new-vendor/io-sdk"',
         } })
         try {
             assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
-                valid: [{ filename: fixture.at(MAILER), code: 'import sdk from "openai-alias"; export { sdk }' }],
+                valid: [{ filename: fixture.at(MAILER), code: 'import sdk from "stripe-alias"; export { sdk }' }],
                 invalid: [
-                    { filename: fixture.at(OTHER), code: 'import sdk from "openai-alias"; export { sdk }', errors: [{ messageId: "multiple" }] },
+                    { filename: fixture.at(OTHER), code: 'import sdk from "stripe-alias"; export { sdk }', errors: [{ messageId: "multiple" }] },
                     { filename: fixture.at(OTHER), code: 'import sdk from "googleapis"; export { sdk }', errors: [{ messageId: "multiple" }] },
                     { filename: fixture.at(OTHER), code: 'import sdk from "@new-vendor/io-sdk/client"; export { sdk }', errors: [{ messageId: "multiple" }] },
                 ],
@@ -137,9 +137,9 @@ for (const edition of ["lite", "full"] as const) {
             const config: TSESLint.FlatConfig.ConfigArray = [{ files: ["**/*.ts"], languageOptions: { parser: tsParser }, ...(settings === undefined ? {} : { settings }), plugins: { be: { rules: { sdk: thirdPartyImportOwner, infra: infraImportOwner } } }, rules: { "be/sdk": "error", "be/infra": "error" } }]
             const verify = (code: string, filename: string) => linter.verify(code, config, { filename: fixture.at(filename) })
             assert.deepEqual(verify('import axios from "axios"; export { axios }', "src/modules/platform/http/http.client.ts"), [])
-            assert.deepEqual(verify('import sdk from "openai"; export { sdk }', MAILER), [])
+            assert.deepEqual(verify('import sdk from "stripe"; export { sdk }', MAILER), [])
             assert.deepEqual(verify('import axios from "axios"; export { axios }', DOMAIN).map((message) => message.ruleId), ["be/infra"])
-            assert.deepEqual(verify('import sdk from "openai"; export { sdk }', DOMAIN).map((message) => message.ruleId), ["be/sdk"])
+            assert.deepEqual(verify('import sdk from "stripe"; export { sdk }', DOMAIN).map((message) => message.ruleId), ["be/sdk"])
         } finally { fixture.cleanup() }
     })
 }
