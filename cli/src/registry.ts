@@ -84,6 +84,8 @@ import { supervisorNextVerb } from "./core/supervisor/next.js"
 import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
 import { supervisorTickVerb } from "./core/supervisor/tick.js"
 import { supervisorWatchVerb } from "./core/supervisor/watch.js"
+import { supervisorTelegramBridgeVerb } from "./core/supervisor/telegram-bridge.js"
+import { connectTelegramVerb } from "./core/connect/telegram.js"
 import { hostStatusVerb } from "./core/host/status.js"
 import { hostUpVerb } from "./core/host/up.js"
 import { hostInstallVerb } from "./core/host/install.js"
@@ -190,6 +192,8 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorSubmitVerb,
     supervisorTickVerb,
     supervisorWatchVerb,
+    supervisorTelegramBridgeVerb,
+    connectTelegramVerb,
     hostStatusVerb,
     hostUpVerb,
     hostInstallVerb,

@@ -359,14 +359,14 @@ const writeFiles = (run: RunState, step: Step): void => {
     }
 }
 
-/** The ready line of a served verb: `starci ui: <url> token <token>`. */
-const SERVED = /starci ui: (http:\/\/\S+) token (\S+)/
+/** The ready line of a served verb or stand-in: `starci ui: <url> token <token>`, `stub telegram: <url> token <token>`. */
+const SERVED = /(?:starci ui|stub \w+): (http:\/\/\S+) token (\S+)/
 
-/** Starts a long-lived verb in the scratch repository and saves the URL and token its ready line prints. */
+/** Starts a long-lived verb or bench stand-in in the scratch repository and saves the URL and token its ready line prints. */
 const serve = async (run: RunState, step: NonNullable<Step["serve"]>, label: string): Promise<void> => {
-    const args = step.starci.map((arg) => expand(run, arg))
-    const served = await startServing(process.execPath, [cliPath(), ...args, "--cwd", run.repo], run.repo, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
-        unmet(run, label, `starci ${args.join(" ")} did not serve: ${error instanceof Error ? error.message : String(error)}`),
+    const args = step.stub === undefined ? [cliPath(), ...(step.starci ?? []).map((arg) => expand(run, arg)), "--cwd", run.repo] : [join(benchRoot(), "stub", `${step.stub}-stub.mjs`)]
+    const served = await startServing(process.execPath, args, run.repo, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
+        unmet(run, label, `${args.join(" ")} did not serve: ${error instanceof Error ? error.message : String(error)}`),
     )
     run.served.push(served)
     run.vars.set(`${step.as}.url`, served.ready[1] ?? "")

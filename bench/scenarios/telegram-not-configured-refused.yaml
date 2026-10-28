@@ -1,0 +1,40 @@
+schema: starci/scenario@1
+id: telegram-not-configured-refused
+group: environment
+title: "with no bot token on the host, every Telegram verb that would call the bot refuses TELEGRAM_NOT_CONFIGURED, naming the variable and where to set it"
+inject: the token variable of ops/telegram.yaml is empty in the environment
+expect: >-
+  discover-chat, notify and the bridge refuse TELEGRAM_NOT_CONFIGURED naming TELEGRAM_BOT_TOKEN and the user environment it is
+  set in, store nothing and call nothing; both status verbs answer, saying the token is not set and the bridge absent
+pass:
+  - three refusals TELEGRAM_NOT_CONFIGURED, each naming TELEGRAM_BOT_TOKEN
+  - status reports configured false and the bridge absent
+  - no owner chat stored
+  - no actor overstepping its role
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - starci: [connect, telegram, discover-chat]
+    expect:
+      code: TELEGRAM_NOT_CONFIGURED
+      contains: TELEGRAM_BOT_TOKEN is not set
+  - starci: [connect, telegram, notify]
+    expect:
+      code: TELEGRAM_NOT_CONFIGURED
+      contains: user environment variable TELEGRAM_BOT_TOKEN
+  - starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      code: TELEGRAM_NOT_CONFIGURED
+  - starci: [connect, telegram, status]
+    expect:
+      contains: "\"configured\": false"
+  - starci: [supervisor, telegram-bridge, status]
+    expect:
+      contains: "\"liveness\": \"absent\""
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM telegram_channel WHERE chat_id IS NOT NULL
+        equals: [0]

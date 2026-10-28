@@ -1,6 +1,5 @@
-import { recordOwnerRequest } from "../../harness/owner-requests.js"
-import { requestIdOf } from "../../harness/orca/client.js"
-import { supervisorTitle, wakeSupervisor } from "../../harness/supervisor.js"
+import { askSupervisor } from "../../harness/owner-ask.js"
+import { supervisorTitle } from "../../harness/supervisor.js"
 import { Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -10,7 +9,7 @@ import { projectFrom } from "./driver.js"
  * `starci supervisor ask "<request>"`: the owner (or Debug relaying the owner's words) hands a request to a project's Supervisor
  * without typing in its terminal. The request lands in the project's mailbox (machine.sqlite `owner_requests`), the Supervisor's
  * Run is mailed to wake it, `supervisor next` returns it as an `owner-request`, and the Supervisor command whose `answers` name it
- * closes it.
+ * closes it (`askSupervisor` in harness/owner-ask.ts, which the Telegram bridge calls too).
  */
 export const supervisorAskVerb = defineVerb({
     path: ["supervisor", "ask"],
@@ -27,8 +26,7 @@ export const supervisorAskVerb = defineVerb({
         const text = flags.request.trim()
         if (text === "") throw new Refusal("OWNER_REQUEST_EMPTY", "supervisor ask needs the request's text")
         const project = await projectFrom(context, flags.project)
-        const request = recordOwnerRequest(project, callerRole() ?? "owner", text)
-        const mail = await wakeSupervisor(project.key, context.cwd, { type: "status", subject: `[Owner] request ${request.id}`, body: text, payload: { request: request.id }, retryRequest: requestIdOf("owner-request", request.id) })
+        const { request, mail } = await askSupervisor(project, callerRole() ?? "owner", text, context.cwd)
         return { data: { request, mail }, message: `owner request ${request.id} for ${supervisorTitle(project.name)}: ${mail}` }
     },
 })
