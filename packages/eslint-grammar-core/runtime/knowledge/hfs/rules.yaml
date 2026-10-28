@@ -5710,3 +5710,49 @@ rules:
         source: owner
         quote: "Publish Grammar 0.15.3 with PageHeader now, then move all 18 pages to it before deploying. (translated from Vietnamese)"
         ruling: "A page is headed by Grammar's PageHeader (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a page head composed by hand from Breadcrumbs and SectionHeader."
+  - id: R324
+    code: "FE_PAGE_TABS_OUTSIDE_HEADER"
+    law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body or the next element after a PageHeader is a page tab bar drawn outside the band."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PAGE_TABS_OUTSIDE_HEADER"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: page-tabs-in-header}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
+    templateNa: "A template states no page; the pages are the app's."
+    proves:
+      - packages/eslint-grammar-core/src/page.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_PAGE_TABS_OUTSIDE_HEADER]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_PAGE_TABS_OUTSIDE_HEADER]}
+    cases:
+      - id: case-1
+        date: "2026-10-28"
+        source: owner
+        quote: "ok trò"
+        ruling: "A route page is one Grammar Page (owner ruling page-frame); page tabs are its header's tabs, and the lint refuses a Tabs at the top of the Page body or right after a PageHeader."
+  - id: R325
+    code: "FE_ROUTE_PAGE_OUTSIDE_PAGE"
+    law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page, or a bare PageHeader or PageContainer in the page owner, re-decides the inset and rhythm Page owns."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_ROUTE_PAGE_OUTSIDE_PAGE"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: route-page-is-one-page}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
+    templateNa: "A template states no page; the pages are the app's."
+    proves:
+      - packages/eslint-grammar-core/src/page.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_ROUTE_PAGE_OUTSIDE_PAGE]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_ROUTE_PAGE_OUTSIDE_PAGE]}
+    cases:
+      - id: case-1
+        date: "2026-10-28"
+        source: owner
+        quote: "ok trò"
+        ruling: "A route page is one Grammar Page (owner ruling page-frame): the single owner of the page inset and rhythm; the lint refuses a sibling beside the Page and a bare PageHeader or PageContainer in a page owner."
