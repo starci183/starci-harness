@@ -328,6 +328,115 @@
     }
 
     /*
+     * PageHeader: a surface band across the primary region. Its body is a PageContainer of the page's measure, so the
+     * band's content edges are the page content's edges; the top inset is the region step, the inline inset the page
+     * inset. The band ends in its own full-width separator; page tabs sit on it with no inset below, and without tabs
+     * the body keeps the region step above the separator. The content below starts one region step after the band.
+     */
+    .starci-core-page-header {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        margin-block-end: var(--grammar-region-gap, 1.5rem);
+        background: var(--surface, Canvas);
+        color: var(--surface-foreground, var(--foreground, CanvasText));
+    }
+
+    .starci-core-page-header-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-row-gap, 0.75rem);
+        padding-block: var(--grammar-region-gap, 1.5rem);
+    }
+
+    .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-body {
+        padding-block-end: 0;
+    }
+
+    /* The copy keeps a readable basis, so at phone width the actions wrap under the heading instead of crushing it. */
+    .starci-core-page-header-row {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-row-gap, 0.75rem) var(--grammar-region-gap, 1.5rem);
+    }
+
+    .starci-core-page-header-lead {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 min(100%, 20rem);
+        align-items: center;
+        gap: var(--grammar-row-gap, 0.75rem);
+    }
+
+    .starci-core-page-header-mark {
+        display: flex;
+        flex: none;
+    }
+
+    .starci-core-page-header-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .starci-core-page-header-title-line,
+    .starci-core-page-header-status,
+    .starci-core-page-header-actions {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap, 0.5rem);
+    }
+
+    .starci-core-page-header-actions {
+        flex: 0 1 auto;
+    }
+
+    .starci-core-page-header-meta {
+        min-width: 0;
+        color: var(--muted, GrayText);
+        font-size: 0.75rem;
+        line-height: 1rem;
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-page-header-description {
+        min-width: 0;
+        color: var(--muted, GrayText);
+        font-size: 0.875rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    /* Page tabs lie on the separator: the separator rises under the strip's last pixel and the selected underline covers it. */
+    .starci-core-page-header-tabs {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+    }
+
+    .starci-core-page-header-separator {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-separator {
+        margin-block-start: -1px;
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-page-header-actions {
+            flex-basis: 100%;
+        }
+    }
+
+    /*
      * Keyboard-reachable scroll owners (VerticalScrollRegion / HorizontalScrollRegion when focusable,
      * the Rail body, fenced code and Markdown table frames) draw the same inset focus ring the chat
      * scroll owners use, so a Tab stop that scrolls is never invisible.

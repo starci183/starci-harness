@@ -33,6 +33,7 @@ export { PinnedActionBar, type PinnedActionBarProps, type PinnedActionBarVisibil
 export { IncludedMark, type IncludedMarkProps } from "../core/primitive/IncludedMark/index.js"
 export { RankArtwork, type RankArtworkKind, type RankArtworkProps } from "../core/primitive/RankArtwork/index.js"
 export { SurfaceCopyGroup, type SurfaceCopyGroupProps } from "../core/primitive/SurfaceCopyGroup/index.js"
+export { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps, type PageHeaderTabs } from "../core/composition/PageHeader/index.js"
 export { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../core/composition/PrimaryRailLayout/index.js"
 export { NavigationFeatureNav, type NavigationFeatureNavProps } from "../core/composition/NavigationFeatureNav/index.js"
 export { Sidebar, type SidebarGroup, type SidebarItem, type SidebarProps } from "../core/composition/Sidebar/index.js"

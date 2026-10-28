@@ -101,6 +101,79 @@ export const PageContainer: Story = {
   ),
 };
 
+const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
+  const [tab, setTab] = useState('test');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <G.PageHeader
+        breadcrumbs={{ label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] }}
+        title="Main account"
+        titleId="page-header-story-title"
+        mark={<G.Avatar name="Sepay" shape="rounded" isDecorative />}
+        status={<><G.StatusDot tone="success">Connected</G.StatusDot><G.Badge tone="warning">Test mode · not posted</G.Badge></>}
+        meta="Bank transfer · ****6789"
+        description="Payments arrive by webhook and are matched to invoices."
+        actions={<><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>}
+        {...(withTabs ? { tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }, { id: 'test', label: 'Test' }, { id: 'agents', label: 'Agents' }] } } : {})}
+      />
+      <G.PageContainer data-story-page-content="true">
+        <Placeholder label="Webhook details" headingLevel={2} />
+      </G.PageContainer>
+    </div>
+  );
+};
+
+/** The band, its separator and the page content: content edges align, the separator runs the band's full width. */
+const assertPageHeaderBand = async (canvasElement: HTMLElement, withTabs: boolean) => {
+  await waitFor(() => {
+    const band = canvasElement.querySelector<HTMLElement>('[data-component="PageHeader"]');
+    const body = band?.querySelector<HTMLElement>('.starci-core-page-header-body');
+    const separator = band?.querySelector<HTMLElement>('[data-grammar-page-header-separator] [data-component="Divider"]');
+    const content = canvasElement.querySelector<HTMLElement>('[data-story-page-content="true"]');
+    if (!band || !body || !separator || !content) throw new Error('PageHeader band, body, separator and content must render');
+    const bandBox = band.getBoundingClientRect();
+    const separatorBox = separator.getBoundingClientRect();
+    expect(Math.abs(separatorBox.left - bandBox.left)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(separatorBox.right - bandBox.right)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(separatorBox.bottom - bandBox.bottom)).toBeLessThanOrEqual(0.5);
+    const bodyStyle = getComputedStyle(body);
+    const contentStyle = getComputedStyle(content);
+    expect(Math.abs(body.getBoundingClientRect().left + Number.parseFloat(bodyStyle.paddingLeft) - (content.getBoundingClientRect().left + Number.parseFloat(contentStyle.paddingLeft)))).toBeLessThanOrEqual(0.5);
+    if (withTabs) {
+      const indicator = band.querySelector<HTMLElement>('[role="tab"][aria-selected="true"] .tabs__indicator');
+      if (!indicator) throw new Error('The selected tab must draw its indicator');
+      expect(Math.abs(indicator.getBoundingClientRect().bottom - separatorBox.bottom)).toBeLessThanOrEqual(0.5);
+    }
+  }, { timeout: 4000 });
+};
+
+export const PageHeader: Story = {
+  name: 'PageHeader (separator, no tabs)',
+  render: () => <PageHeaderDemo withTabs={false} />,
+  play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, false),
+};
+
+export const PageHeaderTabs: Story = {
+  name: 'PageHeader (page tabs on the separator)',
+  render: () => <PageHeaderDemo withTabs />,
+  play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, true),
+};
+
+export const PageHeaderPhone: Story = {
+  name: 'PageHeader (360px: actions wrap under the heading)',
+  parameters: {
+    viewport: { options: { phone360: { name: 'Phone 360 x 740', styles: { width: '360px', height: '740px' }, type: 'mobile' } } },
+  },
+  globals: { viewport: { value: 'phone360', isRotated: false } },
+  render: () => <PageHeaderDemo withTabs />,
+  play: async ({ canvasElement }) => {
+    await assertPageHeaderBand(canvasElement, true);
+    const title = canvasElement.querySelector<HTMLElement>('.starci-core-page-header-title');
+    const actions = canvasElement.querySelector<HTMLElement>('.starci-core-page-header-actions');
+    await expect(actions!.getBoundingClientRect().top).toBeGreaterThanOrEqual(title!.getBoundingClientRect().bottom);
+  },
+};
+
 export const PrimaryRailLayout: Story = {
   render: () => (
     <G.PageContainer>
