@@ -1,10 +1,16 @@
 import type { Overview, WorkflowRow } from "@contract"
 import { useOverviewQuery } from "../../../hooks/query"
 import { mapSlot, slotOfQuery, useSlotLabels } from "../../../hooks/slot"
+import type { ToneLabel } from "../../../modules/types"
 import { progressPercent } from "../../../modules/format"
 import { AWAITING_DECISION, COMMON, OVERVIEW, WORKFLOW_STATUS } from "../../../modules/i18n"
 import { workflowPath } from "../../../modules/routes"
 import { WorkflowsTableBlockBase, type WorkflowRowView } from "./component"
+
+const chipOf = (row: WorkflowRow): ToneLabel => {
+    const base = WORKFLOW_STATUS[row.status]
+    return row.reason === null ? base : { label: `${base.label} · ${row.reason}`, tone: base.tone }
+}
 
 const toView = (row: WorkflowRow): WorkflowRowView => ({
     id: `${row.project}/${row.id}`,
@@ -12,9 +18,9 @@ const toView = (row: WorkflowRow): WorkflowRowView => ({
     workflow: row.id,
     goalSummary: row.goalSummary,
     project: row.project,
-    status: WORKFLOW_STATUS[row.status],
+    // The reason (a blocked workflow's cause) rides in the chip: `Bị chặn · Kernel sửa be-payment-rails`.
+    status: chipOf(row),
     awaiting: row.awaitingOwner ? AWAITING_DECISION : null,
-    reason: row.reason,
     progressLabel: OVERVIEW.progressLabel(row.id),
     progress: progressPercent(row),
     progressText: OVERVIEW.progressValue(row.done, row.total),

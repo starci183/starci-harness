@@ -25,8 +25,24 @@ body,
     min-height: 100%;
 }
 
-/* The routed page: the Grammar page inset on every side. */
+/* The routed page: a full-width column; a header band sits flush at its top, the body below it in the Grammar inset. */
 .app-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+/* The body under a header band: the Grammar page inset above and below. */
+.app-page-body {
+    padding-block: var(--grammar-page-inset);
+}
+
+/* The page header band: the surface over the canvas, with the same horizontal gutter as the body; the Divider under it runs full width. */
+.app-page-band {
+    background: var(--starci-core-surface);
+}
+
+.app-page-band-inner {
     padding-block: var(--grammar-page-inset);
 }
 
