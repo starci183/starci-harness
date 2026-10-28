@@ -90,3 +90,26 @@ describe("the spec pools", () => {
         validateConfig({ providers: standardProviders() })
     })
 })
+
+describe("the catalog", () => {
+    test("lists the defaults, every profile with its resolved model and fallbacks, and each model id once", () => {
+        const { router } = setup(standardProviders(), {
+            defaults: { model: "m1", fallbacks: ["m2"] },
+            profiles: { quick: { model: "fast" }, pinned: { model: "m2", allowFallback: false } },
+        })
+        const catalog = router.catalog()
+        assert.deepEqual(catalog.defaults, { model: "m1", fallbacks: ["m2"] })
+        assert.deepEqual(catalog.profiles, [
+            { name: "quick", model: "fast", fallbacks: ["m2"] },
+            { name: "pinned", model: "m2", fallbacks: [] },
+        ])
+        assert.deepEqual(
+            catalog.models.map((model) => [model.id, model.aliases, model.providers]),
+            [
+                ["m1", ["fast"], ["a", "b"]],
+                ["m2", [], ["a"]],
+            ],
+        )
+        assert.deepEqual(setup(standardProviders()).router.catalog().defaults, { fallbacks: [] })
+    })
+})

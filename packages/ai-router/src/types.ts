@@ -460,4 +460,32 @@ export interface AiRouter<Profiles extends string = string> {
     on<E extends keyof RouterEvents>(event: E, handler: (payload: RouterEvents[E]) => void): () => void
     /** Closes breakers, re-enables keys and clears headroom for the target (everything by default). */
     reset(target?: ResetTarget): Promise<void>
+    /** Lists the pool's profiles and models by name, with no key: what a caller may ask for. */
+    catalog(): RouterCatalog
+}
+
+/** One model of the pool as the catalog lists it: one entry per configured id, merged across the providers serving it. */
+export interface CatalogModel {
+    readonly id: string
+    readonly aliases: readonly string[]
+    readonly providers: readonly string[]
+    readonly capabilities: readonly Capability[]
+    readonly contextWindow?: number
+    readonly cost?: ModelCost
+}
+
+/** One named profile as the catalog lists it. */
+export interface CatalogProfile {
+    readonly name: string
+    /** The profile's preferred model, else the defaults'; absent when neither names one. */
+    readonly model?: string
+    /** The fallbacks the profile tries (its own, else the defaults'); empty when fallback is off. */
+    readonly fallbacks: readonly string[]
+}
+
+/** The names a caller may route by: the defaults' fallbacks, every profile and every model. */
+export interface RouterCatalog {
+    readonly defaults: { readonly model?: string; readonly fallbacks: readonly string[] }
+    readonly profiles: readonly CatalogProfile[]
+    readonly models: readonly CatalogModel[]
 }
