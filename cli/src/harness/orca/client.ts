@@ -38,6 +38,8 @@ export class OrcaFailure extends Refusal {
 }
 
 const TAIL_LINES = 10
+/** How much of an unnamed refusal's result a failure message carries. */
+const RESULT_SHOWN = 1500
 
 /** The process deadline of an orca read or quick mutation. */
 export const ORCA_TIMEOUT_MS = 30_000
@@ -215,7 +217,9 @@ const callOrcaArgv = async <T>(binary: OrcaBinary, argv: readonly string[], labe
     }
     if (!reply.ok || run.exitCode !== 0) {
         const { code, text } = errorParts(reply.error)
-        throw new OrcaFailure(`${label} failed (exit ${String(run.exitCode)}): ${text}${stderrNote(run)}`, code, reply.result, effectOfRefusal(reply))
+        // An unnamed refusal is read from what Orca did answer: its result (receipt state, stage, worker) is the only evidence.
+        const answered = reply.error === undefined && reply.result !== undefined ? `\nresult: ${JSON.stringify(reply.result).slice(0, RESULT_SHOWN)}` : ""
+        throw new OrcaFailure(`${label} failed (exit ${String(run.exitCode)}): ${text}${answered}${stderrNote(run)}`, code, reply.result, effectOfRefusal(reply))
     }
     const parsed = schema.safeParse(reply.result)
     if (!parsed.success) throw new OrcaFailure(`${label} answered a result this CLI does not understand: ${z.prettifyError(parsed.error)}`, undefined, reply.result, "unknown")
