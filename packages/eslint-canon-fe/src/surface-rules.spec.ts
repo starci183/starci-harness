@@ -64,7 +64,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField", "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput"]) {
+for (const Field of ["Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField", "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput", "CopyField"]) {
   test(`ANATOMY-2: ${Field} cannot force a static variant on either layer`, () => {
     assert.doesNotThrow(() => tester().run("nested-control-variant", nestedControlVariant, {
       valid: [`import { ${Field} } from "@starci/grammar/core"; const Page = () => <${Field} />`],

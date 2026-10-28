@@ -225,6 +225,16 @@ rulings:
     status: live
     ruling: "An article's Mermaid diagrams render through Grammar's MermaidDiagram in the grammar's theme, with Mermaid loaded lazily, the loading box kept and a refused source shown as code in the same region; FlowGraph draws flowchart node shapes and edge labels."
     owner: "contexts/ui/components/diagram.md; contexts/grammars/contract.yaml diagram"
+  - id: field-anatomy-order
+    date: '2026-10-28'
+    status: live
+    ruling: "Every field draws HeroUI's order, label, control, description, error, with the description under the control; a group keeps HeroUI's group order. Fields that pair sit in Grammar's FormGrid, whose rows align on the control line whatever a neighbour carries, its columns from its own width."
+    owner: "contexts/grammars/contract.md input; contexts/grammars/contract.yaml DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE; contexts/ui/components/text-field.md"
+  - id: copy-field
+    date: '2026-10-28'
+    status: live
+    ruling: "A value the reader copies and never edits is Grammar's CopyField: a read-only field at the field height with its copy action inside at the end, named in the app's words, a long value truncated in the middle and whole in a tooltip and for a screen reader, a secret masked to bullets and its last four with the clear value only in the app's onCopy, a copied state of about two seconds announced politely and a failed copy as the field's error."
+    owner: "contexts/grammars/contract.md copy-field; contexts/grammars/contract.yaml copy-field; contexts/ui/components/text-field.md"
   - id: page-header-breadcrumbs
     date: '2026-10-11'
     status: live

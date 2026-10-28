@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.4.5 - 2026-10-28
+
+- Changed: `starci-fe/nested-control-variant` (FE_NESTED_VARIANT) covers Grammar's `CopyField`: its layer variant follows the surface context, so a static `variant` is refused like every other field's.
+
 ## 9.4.4 - 2026-10-28
 
 - Changed: the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0); the mermaid pin names Grammar's MermaidDiagram as its owner. No rule changed.

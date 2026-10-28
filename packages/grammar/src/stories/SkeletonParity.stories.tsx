@@ -441,6 +441,16 @@ const forms = (): ReadonlyArray<Pair> => [
         loading: <G.Input id="parity-input-h-loading" name="q" label="Query" isLabelHidden isSkeleton />,
     },
     {
+        id: "copy-field",
+        ready: <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" />,
+        loading: <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" description="Paste it into the provider." copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isSkeleton />,
+    },
+    {
+        id: "copy-field-masked",
+        ready: <G.CopyField masked label="API key" lastFour="4387" onCopy={() => ""} copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" />,
+        loading: <G.CopyField masked label="API key" lastFour="4387" onCopy={() => ""} copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" isSkeleton />,
+    },
+    {
         id: "textarea",
         ready: <G.Textarea label="Bio" description="A sentence or two." rows={3} />,
         loading: <G.Textarea label="Bio" description="A sentence or two." rows={3} isSkeleton />,

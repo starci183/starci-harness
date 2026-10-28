@@ -49,6 +49,7 @@ this file says why.
 | Chip | Badge as palette tint with ink text, the `muted` Badge with a dashed edge; StatusDot with text a heavy-weight pill and every dot ringed in ink so it reads on cream; a selected `TagGroup` tag turns pink and lifts |
 | Input | Ink-outlined box on the surface at the control radius; focus is the hard offset shadow (critical when invalid) over a transparent outline that forced colours turn into a Highlight ring |
 | Select | As Input; options as List rows |
+| CopyField | As a read-only field: the ink-outlined box dashed on the secondary surface; focus on the value is the hard offset shadow; the in-field action as Input's |
 | Dialog | Every overlay is a sticker; a drawer throws its shadow away from the edge it came from; the modal backdrop is a blush tint (O-11) |
 | Menu | Outlined popover at the control radius; item states as List rows |
 | List | Hover is a yellow wash, keyboard focus a pink ring on the row edge, selected a soft pink pocket with a pink leading edge and `accentText` label (O-9); static rows have no hover and a 2px ink seam |

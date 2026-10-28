@@ -1,10 +1,9 @@
 "use client"
 
 import { useFieldVariant } from "../../surfaceContext.js"
-import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { FieldDescription, FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
 import {
-    Description as HeroDescription,
     ErrorMessage as HeroErrorMessage,
     Input as HeroInput,
     InputGroup as HeroInputGroup,
@@ -31,7 +30,7 @@ export type InputProps = {
     readonly placeholder?: string
     readonly defaultValue?: string
     readonly value?: string
-    /** Helper text under the label, like `description` on every other field. It joins the input's accessible description. */
+    /** Standing guidance under the control, like `description` on every other field. It joins the input's accessible description. */
     readonly description?: ReactNode
     readonly errorMessage?: ReactNode
     readonly isError?: boolean
@@ -77,12 +76,12 @@ const KINDS = {
 /**
  * Core ownership boundary for label, guidance, control state, and validation copy.
  *
- * Layout: the field is a grid of label, description, control box and error. The error message is the LAST row and reserves no
- * space until it exists, so showing or clearing it moves nothing above it: the control box keeps its position and height.
- * A row that puts a trailing action beside the field (an input and a Delete button) aligns that action to the control
- * box, not to the whole field: `[data-grammar-input-control="true"]` is the control box (the input and its in-field
- * actions). Give the row `align-items: start` and align the action to that box (offset by the label and description above it),
- * so an error appearing under the field never shifts the action.
+ * Layout: the field is HeroUI's TextField anatomy, a grid of label, control box, description and error in that order. The
+ * description and the error sit under the control and reserve no space until they exist, so showing or clearing either
+ * moves nothing above it: the control box keeps its position and height. A row that puts a trailing action beside the
+ * field (an input and a Delete button) aligns that action to the control box, not to the whole field:
+ * `[data-grammar-input-control="true"]` is the control box (the input and its in-field actions). Give the row
+ * `align-items: start` and offset the action by the label above the box, so a description or an error never shifts it.
  */
 /**
  * Skeleton parity (knowledge STATE-8): `isSkeleton` renders the ready anatomy at the same props inside `FieldSkeletonScope`
@@ -178,8 +177,12 @@ const InputControl = ({
             data-contract="GAP-2"
             className="starci-core-input"
         >
-            <HeroLabel {...(isLabelHidden ? { className: "starci-core-form-label--screen-reader" } : {})}>{label}</HeroLabel>
-            {description == null ? null : <HeroDescription>{description}</HeroDescription>}
+            <HeroLabel
+                className={isLabelHidden ? "starci-core-field-label starci-core-form-label--screen-reader" : "starci-core-field-label"}
+                data-grammar-field-label="true"
+            >
+                {label}
+            </HeroLabel>
             <div
                 className="starci-core-input-control"
                 data-grammar-input-control="true"
@@ -247,6 +250,7 @@ const InputControl = ({
                     />
                 )}
             </div>
+            <FieldDescription>{description}</FieldDescription>
             {errorMessage == null ? null : <HeroErrorMessage>{errorMessage}</HeroErrorMessage>}
         </HeroTextField>
     )

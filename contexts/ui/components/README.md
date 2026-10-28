@@ -63,7 +63,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | switch which panel or area shows | [tabs](tabs.md) |
 | choose one value inside a form or toolbar | [segmented-control](segmented-control.md) |
 | filter or tag by peer categories; label an outcome; mark a status with a dot | [chip](chip.md) |
-| type a value | [text-field](text-field.md) |
+| type a value, or copy one the product holds | [text-field](text-field.md) |
 | pick from a list too long for segments | [select](select.md) |
 | present one subject | [card](card.md) |
 | a task that interrupts, or a secondary task beside the page | [dialog-drawer](dialog-drawer.md) |

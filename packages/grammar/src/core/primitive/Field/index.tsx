@@ -202,8 +202,8 @@ export type FieldProps = FieldControlProps & {
 }
 
 /**
- * Label + description + error for ANY control: a native element, a third-party widget, or an app's
- * own input. Grammar's own form controls already render this anatomy; `Field` is the same anatomy
+ * Label, control, description and error, in HeroUI's field order, for ANY control: a native element, a third-party
+ * widget, or an app's own input. Grammar's own form controls already render this anatomy; `Field` is the same anatomy
  * for everything else, with the id and `aria-describedby` / `aria-invalid` wiring handed to the
  * control so a custom control is announced exactly like a Grammar one.
  */
@@ -248,11 +248,6 @@ const FieldControl = ({
                 {label}
                 {isRequired === true ? <span aria-hidden="true" className="starci-core-field-required">*</span> : null}
             </label>
-            {description == null ? null : (
-                <span id={descriptionId} className="starci-core-field-description" data-grammar-field-description="true">
-                    {description}
-                </span>
-            )}
             <div className="starci-core-field-control" data-grammar-field-control="true">
                 {children({
                     id,
@@ -264,6 +259,11 @@ const FieldControl = ({
                     ...(isReadOnly === true ? { readOnly: true } : {}),
                 })}
             </div>
+            {description == null ? null : (
+                <span id={descriptionId} className="starci-core-field-description" data-grammar-field-description="true">
+                    {description}
+                </span>
+            )}
             {errorId === undefined ? null : (
                 <StaticFieldError id={errorId}>{errorMessage}</StaticFieldError>
             )}
