@@ -132,7 +132,8 @@ export const runsJest = (argv: readonly string[], cwd: string): boolean => {
     if (runner === "jest") return true
     if (runner === "npx") return argv.slice(1).find((arg) => !arg.startsWith("-")) === "jest"
     if (!PACKAGE_MANAGERS.has(runner)) return false
-    return /(?:^|[\s/&;|])jest(?:\s|$)/.test(scriptOf(argv, cwd) ?? "")
+    // jest as a word of the script: `jest`, `npx jest`, or its entry `node_modules/jest/bin/jest.js`; never `ts-jest`.
+    return /(?:^|[^\w-])jest(?:[^\w-]|$)/.test(scriptOf(argv, cwd) ?? "")
 }
 
 /** The command's argv with the coverage arguments appended where its runner forwards them to jest (after a `--` for npm). */
