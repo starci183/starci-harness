@@ -123,4 +123,23 @@ const main = async (): Promise<void> => {
     }
 }
 
+/**
+ * The last resort of a failure no verb caught (an error event nobody listens to, a promise nobody awaits): the caller still gets
+ * the refusal, as the json envelope under --json, and exit 1, never a silent exit. Printed once; stdout is flushed before exit.
+ */
+let failed = false
+const lastResort = (error: unknown): void => {
+    if (failed) return
+    failed = true
+    const refusal = asRefusal(error)
+    const json = process.argv.includes("--json")
+    const text = json ? `${JSON.stringify({ schema: "starci/refusal@1", ok: false, code: refusal.code, message: refusal.message }, null, 2)}
+` : `${refusal.code}: ${refusal.message}
+`
+    const stream = json ? process.stdout : process.stderr
+    stream.write(text, () => process.exit(1))
+}
+process.on("uncaughtException", lastResort)
+process.on("unhandledRejection", lastResort)
+
 await main()
