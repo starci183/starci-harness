@@ -4,7 +4,8 @@
 // a coordinator terminal, tasks, workers nested under a parent, request-show, the mailboxes of check and send), records every
 // call, and replays the faults the scenario scripted in its state file (STARCI_BENCH_ORCA). Its idle signals are scripted too:
 // `tuiIdle` (terminal wait --for tui-idle), `lastOutput` (terminal list), `idleSince`, `heartbeat` and `agentWait` (worker-show),
-// and `terminal send` keeps every prompt typed by its retry-request in `typed`. It never launches anything.
+// and `terminal send` keeps every prompt typed by its retry-request in `typed`. `terminal list` shows each terminal's `titles`
+// entry (its last rename, or a scripted one) and its `orphaned` flag. It never launches anything.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename } from "node:path"
 import { createHash } from "node:crypto"
@@ -177,7 +178,15 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: { terminal: { handle } } }
         }
         case "terminal list":
-            return { ok: true, result: { terminals: Object.keys(state.terminals).filter((handle) => state.terminals[handle]).map((handle) => ({ handle, lastOutputAt: state.lastOutput?.[handle] ?? null })) } }
+            // Each terminal's title (the last rename, or what the scenario scripted) and whether it is orphaned, as Orca lists them.
+            return {
+                ok: true,
+                result: {
+                    terminals: Object.keys(state.terminals)
+                        .filter((handle) => state.terminals[handle])
+                        .map((handle) => ({ handle, lastOutputAt: state.lastOutput?.[handle] ?? null, title: state.titles?.[handle] ?? null, orphaned: state.orphaned?.[handle] === true })),
+                },
+            }
         case "terminal show":
             if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
             return { ok: true, result: { terminal: { handle: flags.terminal, lastOutputAt: state.lastOutput?.[flags.terminal] ?? null, agentWait: null } } }
@@ -204,6 +213,8 @@ const defaults = (command, flags, state) => {
             state.terminals[flags.terminal] = false
             return { ok: true, result: { closed: true } }
         case "terminal rename":
+            if (typeof flags.terminal === "string" && typeof flags.title === "string") state.titles = { ...(state.titles ?? {}), [flags.terminal]: flags.title }
+            return { ok: true, result: {} }
         case "repo add":
             return { ok: true, result: {} }
         default:

@@ -12,11 +12,11 @@ import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { now, openLedger, projectDir } from "./ledger.js"
 import { inTransaction } from "./leases.js"
 import { awaitWorktree, closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
-import type { OrcaBinary, WorkerStarted, WorkerStartInput } from "./orca/client.js"
+import type { OrcaBinary, WorkerClosed, WorkerStarted, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
-import { getSeat, kernelSeatOf, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
+import { getSeat, kernelSeatOf, kernelSeatsOf, noteTab, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
 import type { SeatRow } from "./seats.js"
 import { requireSupervisor } from "./supervisor.js"
 import type { AttachedSupervisor } from "./supervisor.js"
@@ -168,7 +168,16 @@ export interface KernelStartOptions {
     readonly stalled?: readonly RouteMember[]
 }
 
-/** What a start does with a Kernel seat that is still open: refuse while Orca shows it alive, else fence it first. */
+const retiredStatus = (closed: WorkerClosed, current: string): string => {
+    if (closed.settled) return SEAT_RELEASED
+    return closed.stopped ? SEAT_STOPPED : current
+}
+
+/**
+ * Retires a Kernel seat that is still open before a start launches another: refused while Orca shows it alive (unless `replace`),
+ * else stopped, released and its tab closed. A seat Orca does not settle refuses the start, so a workflow never holds two open
+ * Kernel seats; a repeated start finishes the release.
+ */
 const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: OrcaBinary, replace: boolean): Promise<string> => {
     if (seat.handle === null) throw new Refusal("KERNEL_STARTING", `Kernel seat ${seat.id} has a launch whose outcome is not known yet (request ${seat.requestId ?? "-"}); supervisor next resolves it through Orca`)
     if (!replace) {
@@ -177,9 +186,12 @@ const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: 
         if (!gone) throw new Refusal("KERNEL_RUNNING", `Kernel seat ${seat.id} (dispatch ${seat.handle}) is not reported gone by Orca; unknown is not dead`)
     }
     const closed = await closeWorker(binary, seat.handle, cwd, seat.terminal)
-    if (!closed.stopped) throw new Refusal("KERNEL_RELEASE_PENDING", `the previous Kernel dispatch ${seat.handle} is not fenced: ${closed.stop}; ${closed.release}`)
-    withRecord(root, (db) => recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_STOPPED, facts: { closed } }))
-    return `fenced the previous Kernel dispatch ${seat.handle}`
+    withRecord(root, (db) => {
+        noteTab(db, seat.id, closed)
+        recordSeat(db, seat.id, { status: retiredStatus(closed, seat.status), facts: { closed } })
+    })
+    if (!closed.settled) throw new Refusal("KERNEL_RELEASE_PENDING", `the previous Kernel dispatch ${seat.handle} is not released: ${closed.stop}; ${closed.release}; the next start finishes it`)
+    return `retired the previous Kernel seat ${seat.id} (dispatch ${seat.handle}, tab ${closed.tab})`
 }
 
 /**
@@ -201,9 +213,10 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
             throw new Refusal("KERNEL_FOREIGN", `workflow ${workflowId} is driven from terminal ${foreign}, which another session adopted as its Kernel and Orca does not report gone; let that session finish or close its terminal first`)
         }
     }
-    const open = withRecord(root, (db) => kernelSeatOf(db, workflowId))
-    if (open !== undefined) notes.push(await retireOpenSeat(root, cwd, open, binary, options.replace === true))
-    if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open === undefined) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
+    // The newest open seat is judged by `replace`; an older one still open beside it is a second Kernel and is retired outright.
+    const open = withRecord(root, (db) => kernelSeatsOf(db, workflowId))
+    for (const [index, seat] of open.entries()) notes.push(await retireOpenSeat(root, cwd, seat, binary, options.replace === true || index > 0))
+    if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open.length === 0) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
     const pick = pickCoordinator("kernel", { stalled: options.stalled ?? [] })
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
@@ -222,9 +235,8 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
         retryRequest: requestIdOf("kernel-worker-start", launchId),
     }
     withRecord(root, (db) => { inTransaction(db, () => {
-            // The seat this start just fenced may still read open (stopped, its tab not released); any other open seat is a race.
-            const current = kernelSeatOf(db, workflowId)
-            if (current !== undefined && current.id !== open?.id) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
+            // Every seat this start found is retired by now, so any open seat is another start's reservation.
+            if (kernelSeatOf(db, workflowId) !== undefined) throw new Refusal("KERNEL_MOVED", "another Kernel start reserved this workflow meanwhile; inspect starci seat list")
             openKernelSeat(db, { id: launchId, workflowId, agent: pick.agent, model: pick.model, requestId: input.retryRequest, launch: input })
             recordKernel(db, workflowId, { terminal: null, owned: true, closedAt: null })
             if (coordinatorOf(db, workflowId) !== SUPERVISOR_COORDINATOR) recordEvent(db, "workflow-coordinator", workflowId, { coordinator: SUPERVISOR_COORDINATOR, seat: launchId })

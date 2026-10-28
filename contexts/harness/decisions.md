@@ -47,6 +47,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   before the worker is released, and the seat keeps its last lines; an agent waiting at a host or config prompt is the
   host's to fix, never a provider strike, and goes to the Supervisor as a `harness` escalation (`blockedPrompts` of
   [ops/routing.yaml](../../ops/routing.yaml), `cli/src/harness/launch-failure.ts`).
+- **A terminal lives as long as its seat.** Nothing finished stays open in Orca: an Op's or Kernel's tab is closed once Orca
+  fences its worker, retained dispatches included (`closeWorker` in `cli/src/harness/orca/client.ts`); a Kernel start retires
+  every previous Kernel seat of its workflow first, so one workflow never holds two (`startKernel` in
+  `cli/src/harness/kernel.ts`); `supervisor stop` and a Supervisor relaunch close the old Supervisor's tab
+  (`cli/src/harness/supervisor.ts`); and every `supervisor tick` closes the harness terminals no open seat or live Supervisor
+  holds and the orphaned ones, never a terminal the harness did not make (`cli/src/harness/terminal-sweep.ts`).
 - **One door to the settings.** Each harness setting stays in the ops/ yaml that owns it, with no config file of its own;
   `starci config list|get|set` reads and changes them, and `set` writes only a value the file's own loaders accept
   (`cli/src/harness/settings.ts`).

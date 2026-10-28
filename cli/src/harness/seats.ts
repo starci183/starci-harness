@@ -45,7 +45,7 @@ export const CLOSED_SEAT_STATUSES: readonly string[] = [SEAT_LAUNCH_FAILED, SEAT
 
 /**
  * A seat as the ledger stores it; `handle` is Orca's dispatch id, the key every worker verb takes, and `terminal` the handle of
- * its agent terminal (the tab closed once the worker is released). `launch` is everything its launch sent to Orca (replayed as
+ * its agent terminal (its tab closed once Orca fenced the worker: it lives exactly as long as the seat). `launch` is everything its launch sent to Orca (replayed as
  * it was by a resume), `requestId` the worker-start request id, `runId` the Orca Run.
  */
 export interface SeatRow {
@@ -163,9 +163,12 @@ export const openKernelSeat = (db: DatabaseSync, seat: KernelSeatOpening): SeatR
     return getSeat(db, seat.id)
 }
 
-/** The open Kernel seat of a workflow (newest first), if any. */
-export const kernelSeatOf = (db: DatabaseSync, workflowId: string): SeatRow | undefined =>
-    db.prepare("SELECT * FROM seats WHERE role = 'kernel' AND workflow_id = ? ORDER BY started_at DESC, id").all(workflowId).map(toSeat).find(isSeatOpen)
+/** Every open Kernel seat of a workflow, newest first: one at most once a start has retired the others (`startKernel`). */
+export const kernelSeatsOf = (db: DatabaseSync, workflowId: string): SeatRow[] =>
+    db.prepare("SELECT * FROM seats WHERE role = 'kernel' AND workflow_id = ? ORDER BY started_at DESC, id").all(workflowId).map(toSeat).filter(isSeatOpen)
+
+/** The open Kernel seat of a workflow (the newest), if any. */
+export const kernelSeatOf = (db: DatabaseSync, workflowId: string): SeatRow | undefined => kernelSeatsOf(db, workflowId)[0]
 
 /** Renews a seat's TTL lease; every harness call a seat makes (attach, next, submit, ping) renews its own. */
 export const renewSeatLease = (db: DatabaseSync, seatId: string, minutes: number): void => {
@@ -220,8 +223,8 @@ export const terminalOfSeat = async (binary: OrcaBinary, seat: SeatRow, cwd: str
 }
 
 /**
- * Records that a released seat's tab may still be open (closing it failed, or no handle was known). The tab is presentation:
- * this event is the whole consequence, never a failure of whoever closed the seat.
+ * Records that a fenced seat's tab may still be open (closing it failed, or no handle was known). It never fails whoever closed
+ * the seat: the next `supervisor tick` sweep closes a tab whose seat is closed (harness/terminal-sweep.ts).
  */
 export const noteTab = (db: DatabaseSync, seatId: string, closed: WorkerClosed): void => {
     if (tabLeftOpen(closed)) recordEvent(db, "seat-tab-left-open", seatId, { dispatch: closed.dispatchId, terminal: closed.terminal, tab: closed.tab })

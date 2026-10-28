@@ -25,6 +25,8 @@ import type { SeatRow } from "../../harness/seats.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, STALL_NUDGED, stallKindOf, stallStep } from "../../harness/stall.js"
 import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, keptProjects, liveSupervisors, projectOfRecord, renewSupervisorLease, retireHostSupervisor, startSupervisor, stopSupervisor, supervisorRecord, supervisorTitle } from "../../harness/supervisor.js"
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
+import { sweepTerminals } from "../../harness/terminal-sweep.js"
+import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { recordEvent } from "../../harness/tasks.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
@@ -458,10 +460,11 @@ export const ensureSupervisors = async (binary: OrcaBinary, cwd: string): Promis
     return { ensured, problems }
 }
 
-/** What one `supervisor tick` did: every project's ensure, the projects whose Supervisor it acted for, and every action. */
+/** What one `supervisor tick` did: every project's ensure, the projects whose Supervisor it acted for, the terminals it closed, and every action. */
 export interface SupervisorTick {
     readonly supervisors: readonly SupervisorEnsured[]
     readonly swept: readonly string[]
+    readonly terminals: readonly SweptTerminal[]
     readonly actions: readonly string[]
 }
 
@@ -482,12 +485,19 @@ const blockedPromptLines = (root: string): string[] =>
  * Kernel sweep (adoption from a host Supervisor, relaunch on Orca's word, the relaunch limit, a Kernel launch with no receipt) and
  * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every open blocked-prompt escalation
  * is named on each tick until answered. Every action is an event (project ledger, or host_events for a Supervisor and the tick).
+ * Before all of it, the terminal sweep (`sweepTerminals`) closes every harness terminal no open seat or live Supervisor holds and
+ * every orphaned one, so an orphaned Supervisor is relaunched in the same pass. `dryRun` reports what that sweep would close and
+ * does nothing else.
  */
-export const supervisorTick = async (context: VerbContext): Promise<SupervisorTick> => {
+export const supervisorTick = async (context: VerbContext, dryRun = false): Promise<SupervisorTick> => {
     const rules = loadCoordinatorLiveness()
     const binary = await locateOrca(context.cwd)
+    const terminals = await sweepTerminals(binary, context.cwd, registeredRepositories(), dryRun)
+    const closures = terminals.map((one) => `${dryRun ? "would close" : `closed (${one.outcome})`} terminal ${one.handle} "${one.title ?? ""}": ${one.why}`)
+    if (dryRun) return { supervisors: [], swept: [], terminals, actions: closures }
+    for (const one of terminals) recordHostEvent("terminal-swept", one.handle, one)
     const { ensured, problems } = await ensureSupervisors(binary, context.cwd)
-    const actions: string[] = [...problems]
+    const actions: string[] = [...closures, ...problems]
     for (const one of ensured) if (one.action !== "none") actions.push(`${supervisorTitle(one.project.name)} ${one.liveness}: ${one.action}, ${one.detail}`)
     const retired = await retireHostSupervisor(binary, context.cwd).catch((error: unknown) => `host Supervisor not retired (${asRefusal(error).code})`)
     if (retired !== null) actions.push(retired)
@@ -513,7 +523,7 @@ export const supervisorTick = async (context: VerbContext): Promise<SupervisorTi
         if (lines.length > 0) recordHostEvent("supervisor-tick", seat.id, { project: one.project.key, actions: lines })
         actions.push(...lines.map((line) => `${title}: ${line}`))
     })
-    return { supervisors: ensured, swept, actions }
+    return { supervisors: ensured, swept, terminals, actions }
 }
 
 /** Wakes a workflow's Kernel by mail (`dispatch:<its dispatch>`); the decision in the ledger is the content. */

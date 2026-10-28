@@ -169,7 +169,11 @@ export const startSupervisor = async (binary: OrcaBinary, cwd: string, project: 
     const status = await supervisorStatus(binary, cwd, project)
     const previous = status.supervisor
     if (previous !== null && status.liveness !== "gone") throw new Refusal("SUPERVISOR_RUNNING", `the Supervisor of project ${project.name} is ${status.liveness}; starci supervisor status, or stop it first`)
-    if (previous !== null) retire(previous.id, "gone")
+    if (previous !== null) {
+        // Orca no longer lists it; the close is a no-op unless its tab lingers, and a refusal there must not block the relaunch.
+        if (previous.terminal !== null) await terminalClose(binary, previous.terminal, cwd).catch(() => "gone")
+        retire(previous.id, "gone")
+    }
     const pick = pickCoordinator("supervisor", { stalled })
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const id = randomUUID()
@@ -256,14 +260,18 @@ export const attachSupervisor = async (binary: OrcaBinary, cwd: string, project:
     return { ...seat, terminal, run_id: run, task_id: task }
 }
 
-/** Stops a project's Supervisor terminal and retires its record once Orca confirms the close; `abandon` retires a launch with no receipt. */
-export const stopSupervisor = async (binary: OrcaBinary, cwd: string, project: Project, abandon: boolean, by: SupervisorEnd = "owner"): Promise<{ readonly stopped: string | null }> => {
+/**
+ * Stops a project's Supervisor: closes its terminal's whole tab (the agent in it goes with it) and retires its record once Orca
+ * confirms the close; `abandon` retires a launch with no receipt. `tab` is what became of the tab (`closed`, `gone`, or `none`
+ * when no terminal was ever recorded). A tab Orca still lists afterwards is closed by the next `supervisor tick` sweep.
+ */
+export const stopSupervisor = async (binary: OrcaBinary, cwd: string, project: Project, abandon: boolean, by: SupervisorEnd = "owner"): Promise<{ readonly stopped: string | null; readonly tab: string }> => {
     const seat = supervisorRecord(project.key)
-    if (seat === null) return { stopped: null }
+    if (seat === null) return { stopped: null, tab: "none" }
     if (seat.terminal === null && !abandon) throw new Refusal("SUPERVISOR_LAUNCH_UNKNOWN", `the reserved launch has no terminal receipt; supervisor ensure replays it, or stop --abandon after checking Orca`)
-    if (seat.terminal !== null) await terminalClose(binary, seat.terminal, cwd)
+    const tab = seat.terminal === null ? "none" : await terminalClose(binary, seat.terminal, cwd)
     retire(seat.id, by)
-    return { stopped: seat.id }
+    return { stopped: seat.id, tab }
 }
 
 /** The host Supervisor a version-2 host store recorded (its `supervisors` table), read only to adopt the workflows it launched. */

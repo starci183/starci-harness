@@ -157,13 +157,16 @@ launches the router's coordinator member (`orca agent launch --worktree path:<ma
 project's main checkout with a prompt naming its brief in the project's state folder (rendered from `ops/coordinators/`).
 Its first command, `supervisor attach`, binds its terminal as coordinator of a new Run with a `[Supervisor] <project>`
 task. `supervisor status` reads a project's liveness from Orca (with no `--project`, every live Supervisor's),
-`supervisor stop` closes it, and `supervisor ensure` starts one only when Orca says it is gone (or replays a launch whose
-answer was lost); the host driver below does the same for every project on every tick.
+`supervisor stop` closes its tab (the agent in it goes with it) and retires its row, and `supervisor ensure` starts one only
+when Orca says it is gone (or replays a launch whose answer was lost), closing the old tab first; the host driver below does
+the same for every project on every tick.
 `workflow start` of an orca workflow runs only in the terminal of the Supervisor of the workflow's project
 (`SUPERVISOR_REQUIRED` elsewhere): it makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default
 `<project state>/worktrees/<workflow>` on branch `starci/<workflow>`) and launches the Kernel by `worker-start
 --run/--parent/--from` into that Supervisor's Run, titled `[Kernel] <workflow>`; `kernel start` relaunches one Orca reports
-gone, or adopts a running workflow, under the same rule. Either records the workflow's coordinator (`workflow-coordinator`
+gone (any Kernel with `--replace`), or adopts a running workflow, under the same rule. A start first retires every Kernel seat
+of the workflow still open (stopped, released, its tab closed) and refuses while Orca does not settle one, so a workflow never
+holds two open Kernel seats (`startKernel` in `harness/kernel.ts`). Either records the workflow's coordinator (`workflow-coordinator`
 event, `coordinator: supervisor`, `coordinatorOf` in `harness/kernel.ts`): a Supervisor sweeps only the workflows it owns in
 its own project's repositories, and submits only for them (`PROJECT_FOREIGN`), and neither it nor `kernel start` (`KERNEL_FOREIGN`) touches one still
 driven from a Kernel terminal another session adopted that no Kernel seat ever held, until Orca reports that terminal gone. The Kernel's first command, `kernel attach`,
@@ -196,7 +199,12 @@ every open decision of its workflow.
 
 **The host driver** keeps the tree alive with no LLM awake. `supervisor tick` is one idempotent pass for a scheduler to run
 every minute (`supervisor watch` loops it in a foreground terminal, every `stall.watchSeconds`, and runs itself again once a
-new build of the CLI's dist stands, so it never ticks with modules a build replaced): `ensureSupervisors` keeps
+new build of the CLI's dist stands, so it never ticks with modules a build replaced): first the terminal sweep
+(`harness/terminal-sweep.ts`) closes the tab of every Orca terminal the harness made — its handle recorded by a seat of a
+registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] ` (or Orca's `worker-task_` inside a
+workflow worktree) — that Orca lists orphaned or that no open seat, open Kernel record or live Supervisor holds (an unrecorded
+one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (`--dry-run` reports what it
+would close and does nothing else); then `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
 owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
@@ -247,7 +255,8 @@ outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. D
 orchestration send|check`) only wakes: an Op mails only its Kernel, a Kernel only its project's Supervisor and its Ops, a
 Supervisor only the owner, and a Kernel takes a question only from a sender of its Run tree (its own Ops' terminals or its
 project's Supervisor's); any other sender's mail is a `mail-impostor` event and is dropped. A repository Orca does not know is registered by its main checkout (`orca repo add`), so a workflow worktree is listed under its repository, and the call retried once. A
-seat's tab is closed after Orca reports its worker released. Inline workflows touch nothing in Orca: the chat agent is
+seat's terminal lives exactly as long as the seat: its tab is closed right after Orca fenced its worker (released, or ended and
+retained), and the tick's sweep closes one that outlived it (`closeWorker` in `harness/orca/client.ts`). Inline workflows touch nothing in Orca: the chat agent is
 their Kernel, and `kernel next` returns `idle` naming its next task.
 
 **Routing and liveness** are data: [ops/routing.yaml](../ops/routing.yaml) (tiers, pools, balance, quota, Orca usage,
