@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: the bundled rule catalog states R225 with the app pre-push hook's dependency push gate (`starci deps check`). No rule changed.
+
 ## 3.6.4 - 2026-10-28
 
 - Changed: the bundled rule catalog carries R324 and R325 (the Grammar page frame laws), and the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0). No rule changed.

@@ -4,9 +4,11 @@
 
 - **Harness state** lives under the runtime root (this checkout, or the folder of an installed `starci-harness`
   package) in `.runtime/`, git-ignored: `machine.sqlite` for the
-  host (the ledger registry, provider health and every project's Supervisor) and `projects/<ledger_id>/` for each
-  repository's `runtime.sqlite`, coordinator briefs, contracts, outputs, preserved work and the prior-work store
-  (`prior/<sha256>.patch`).
+  host (the ledger registry, provider health, every project's Supervisor and the package edits handed to Debug) and
+  `projects/<ledger_id>/` for each repository's `runtime.sqlite`, coordinator briefs, contracts, outputs, preserved work,
+  the prior-work store (`prior/<sha256>.patch`) and, while the repository takes `@starci` packages from a local folder,
+  `deps-local.json` (`starci deps source --local`). Package edit branches live in worktrees under the harness checkout's
+  `.claude/worktrees/` (`starci pkg branch`), never in its main checkout.
   `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`; under `npx`, whose
   package folder is a cache, `STARCI_LOCAL_ROOT` is what keeps the ledgers.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the

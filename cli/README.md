@@ -148,6 +148,16 @@ its receipt names is read once, a screen at one of `blockedPrompts` ([ops/routin
 shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
 `seat start <task> --resume` replays the same requests.
 
+**Package sources.** An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
+takes them from a package folder on this machine instead, the mechanism and its reasons in the doc comment of
+`core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
+before its launch (`seat start`), a clean verify's after its `npm ci`, a work tree's after its own (`deps source
+--sync`). The push gate is `judgePush` (`core/deps/push-gate.ts`), run by `deps check` (the app pre-push hook of
+`@starci/hfs`), `release push`, `release cut` and an executed `app release`. A package is fixed on a package edit branch
+(`core/pkg/edit.ts`): `pkg branch` cuts it into a worktree of the harness with a push guard, `pkg handoff` records it in
+the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
+debug and owner (`PKG_EDIT_PUSH_REFUSED`).
+
 **Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
 found") > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <label> (<task id>) - <summary>` (one per attempt),
 each a real Orca agent, so Orca lists a project's main checkout with its Supervisor and each workflow worktree with its
