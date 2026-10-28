@@ -518,6 +518,8 @@
      */
     .starci-core-alert[data-grammar-appearance="soft"] {
         --starci-core-alert-soft: var(--default-soft, var(--default, transparent));
+        background: color-mix(in oklab, var(--starci-core-alert-soft) 50%, transparent);
+        box-shadow: none;
     }
 
     .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="informative"] {
