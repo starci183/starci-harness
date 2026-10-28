@@ -8,10 +8,10 @@ fixes that package, never a shim in the app. The edit is a tier 1 branch ([branc
    package that requires it moves only when it needs the new API.
 3. Build the changed package, the one build a branch takes, so the app can link it: `starci deps source --local --from
    <worktree>/packages` as `pkg branch` prints it.
-4. `starci pkg handoff` (`--urgent` when a deploy waits on it).
+4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 
 Debug alone merges a package edit branch and pushes harness main; CI publishes the bumped version as soon as main is
-green ([ci.md](ci.md)). Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
+green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all, and an app that deploys waits until npm serves the version it pins (`starci deps check` says so), working locally meanwhile. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
 and no other package or app moves.
 
 ## Grammar edits are content only
