@@ -110,6 +110,8 @@ export const projectOf = async (cwd: string, mint = true): Promise<Project> => {
 
 const SEGMENT = "[a-z0-9][a-z0-9-]*"
 
+const WORK_SEGMENT = new RegExp(String.raw`^${SEGMENT}$`)
+
 const UAT_ID = new RegExp(String.raw`^uat\.(${SEGMENT})\.(${SEGMENT}(?:\.${SEGMENT})*)$`)
 
 /** Where a uat flow's files live, repository-relative with forward slashes: its folder, record, runs folder and evidence file. */
@@ -129,6 +131,21 @@ export const uatPlace = (id: string): UatPlace => {
     if (feature === undefined || flow === undefined) throw new Refusal("WORK_ID_INVALID", `${id} is no uat flow id; write it as uat.<feature>.<flow> (lower-case, digits and dashes)`)
     const dir = posix.join(WORK_DIR, "features", feature, "uat", ...flow.split("."))
     return { id, dir, record: posix.join(dir, "index.yaml"), runs: posix.join(dir, "runs"), evidence: posix.join(dir, "evidence.yaml") }
+}
+
+/**
+ * The file that holds the Work record `id`, repository-relative, or undefined for no Work id: `brand` is
+ * `.starciwork/brand/index.yaml`, `environment.<name>` its resource.yaml, and `<family>.<feature>.<name...>` is
+ * `.starciwork/features/<feature>/<family>/<name...>/index.yaml` (the inverse of lanes.ts recordOfPath).
+ */
+export const recordFileOfId = (id: string): string | undefined => {
+    if (id === "brand") return posix.join(WORK_DIR, "brand", "index.yaml")
+    const parts = id.split(".")
+    if (!parts.every((part) => WORK_SEGMENT.test(part))) return undefined
+    const [family, feature, ...name] = parts
+    if (family === "environment" && feature !== undefined && name.length === 0) return posix.join(WORK_DIR, "_resources", "environments", feature, "resource.yaml")
+    if (family === undefined || feature === undefined || name.length < (family === "impl" ? 2 : 1)) return undefined
+    return posix.join(WORK_DIR, "features", feature, family, ...name, "index.yaml")
 }
 
 /** The place of the flow whose record file is `record` (as a uat-flow check names it). */

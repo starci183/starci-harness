@@ -80,7 +80,9 @@ const describeCheck = (check: PrimitiveCheck): string => {
             return `your result walks every step of ${check.record}, each check at its expected value, with report.md and a screenshot per step in ${check.run}`
         case "cited": {
             const keys = (check.trace ?? []).map((trace) => trace.key)
-            return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})`
+            const work = (check.trace ?? []).filter((trace) => trace.cites === "work").map((trace) => trace.key)
+            const records = work.length === 0 ? "" : `; under ${work.join(", ")} also a Work record your context files or inputs point at by id or path`
+            return `every id under ${keys.length === 0 ? "a traced key" : keys.join(", ")} is named by a file you read (a heading token or a yaml ${code("id:")})${records}`
         }
         case "cite":
             return describeCiteCheck(check)

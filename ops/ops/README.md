@@ -46,10 +46,13 @@ The resolved contract always carries the op's whole base, pinned or not. A `star
   hand-written `result-json` is needed for them. It is a T2 claim: it can make a task red, never prove it green.
 - The read trace: `rulesApplied` lists the rule ids the work applied and `workRecords` the Work record ids a work-driven
   task (one whose context reads `.starciwork/`) worked from. The `rules-cited` preset is red when a cited id is named by none
-  of the task's context files, literally as a token of a Markdown heading or a yaml `id:` value (`workRecords` against the
-  Work files only), or when fewer ids are cited than `minItems`. An id has a letter and a digit or hyphen (`R01`,
-  `BE-ERROR-1`); a plain word is no id. An op whose output cites carries `rules-cited`, and only such an op, which
-  `loadOps` enforces. `contract check` refuses a contract that must cite rules while its context, all harness files, names
+  of the task's context files, literally as a token of a Markdown heading or a yaml `id:` value, or when fewer ids are cited
+  than `minItems`. A rule id has a letter and a digit or hyphen (`R01`, `BE-ERROR-1`); a plain word is no id.
+  `workRecords` is read against the Work records the task can read: its Work context files, the records under its own Work
+  allowPaths, and each record of the checkout that one of those context files or the contract's inputs points at by Work id
+  or `.starciwork/` path (an impl record's `proves`, say); never the rest of the Work tree. A cited id outside them is red as
+  naming no Work record readable by the task, with where the check looked. An op whose output cites carries `rules-cited`,
+  and only such an op, which `loadOps` enforces. `contract check` refuses a contract that must cite rules while its context, all harness files, names
   none.
 - The brief: the procedure below, then the op's body, the inputs, the write paths, the exact files to read (absolute,
   base then extend), the output keys with their types, the checks and the budget.

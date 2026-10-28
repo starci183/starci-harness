@@ -89,10 +89,10 @@ presets:
       record: "{record}"
       run: "{run}"
   # The trace of what the worker read: the ids its result cites (rulesApplied, workRecords) come from its context files other
-  # than the shared ones every task of the label reads; a Work record id may also come from the records it wrote under its own
-  # Work allowPaths. A cheap read trace, never evidence of behaviour.
+  # than the shared ones every task of the label reads; a Work record id may also come from the records under its own Work
+  # allowPaths, or from a record a Work context file or an input points at by id or path. A cheap read trace, never evidence of behaviour.
   rules-cited:
-    summary: every rule or Work record id the result cites is named by one of the task's non-shared context files (or, for a Work record, by one it wrote in its Work allowPaths), and as many are cited as the op requires
+    summary: every rule or Work record id the result cites is named by one of the task's non-shared context files (or, for a Work record, by a record in its Work allowPaths or one its Work context or inputs point at), and as many are cited as the op requires
     behavioural: false
     check:
       kind: cited
