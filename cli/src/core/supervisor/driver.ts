@@ -2,7 +2,7 @@ import { worktreeGc } from "../../harness/worktree-gc.js"
 import { reconcileLineage } from "../../harness/orca/lineage.js"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { admitCommand, answerDecision, awaitsOwner, defaultRuling, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
+import { admitCommand, answerDecision, awaitsOwner, decisionId, defaultRuling, finishCommand, getDecision, goalVersionOf, isRuling, KERNEL_UNDECIDED, ledgerAnswers, openDecisions, raiseDecision, readCommand, rulingAsKernel, undecidedAnswered } from "../../harness/coordinator-commands.js"
 import type { Command, Decision, KernelDecisionKind, SupervisorDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
@@ -29,7 +29,7 @@ import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/superv
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
-import { recordEvent } from "../../harness/tasks.js"
+import { getTask, latestAttempt, recordEvent, resultOf } from "../../harness/tasks.js"
 import { ticketEscalations } from "../../harness/tickets.js"
 import { tickNotices } from "../../harness/telegram-bridge.js"
 import { projectOf } from "../../harness/work.js"
@@ -41,7 +41,7 @@ import { repositoryRoot } from "../../shared/git.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { settleWorkflow } from "../workflow/engine.js"
 import { inOrder } from "../../harness/sequential.js"
-import { digestOf, RELAUNCH_LIMIT, sweepOpBudgets, sweepOpStalls } from "../kernel/driver.js"
+import { applyKernel, digestOf, RELAUNCH_LIMIT, RULED_BY_SUPERVISOR, RULING_TOLD, sweepOpBudgets, sweepOpStalls } from "../kernel/driver.js"
 import type { Digest } from "../kernel/driver.js"
 import { workflowStopVerb } from "../workflow/stop.js"
 import { nextWorkerEvent, tendWorkers } from "./workers.js"
@@ -53,9 +53,9 @@ export interface SupervisorDecision extends Decision {
     readonly project: string
 }
 
-/** What `supervisor next` returns: one decision (escalation, handoff or shared-need) with its workflow digest, one worker's completion, one owner request, or idle. */
+/** What `supervisor next` returns: one decision (escalation, handoff, shared-need or kernel-undecided) with its workflow digest, one worker's completion, one owner request, or idle. */
 export interface SupervisorNext {
-    readonly kind: "escalation" | "handoff" | "shared-need" | "worker" | "owner-request" | "idle"
+    readonly kind: SupervisorDecisionKind | "worker" | "owner-request" | "idle"
     readonly decision: SupervisorDecision | null
     readonly digest: Digest | null
     readonly worker: WorkerView | null
@@ -94,7 +94,7 @@ const READY_IDLE_WOKEN = "ready-idle-woken"
 const DECISION_IDLE = "decision-idle"
 
 /** The events the drivers record about a seat rather than the work: relaunching a Kernel, nudging, waking or giving up a stalled seat, or handing the Supervisor a decision, is not progress. */
-const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED, READY_IDLE_WOKEN, DECISION_IDLE]
+const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED, READY_IDLE_WOKEN, DECISION_IDLE, RULING_TOLD]
 
 /** The last time a workflow's work moved (its own events and its tasks', but none a driver records about a seat), the Kernel's progress clock. */
 const lastProgress = (db: DatabaseSync, workflowId: string): string | null => {
@@ -345,6 +345,10 @@ interface Undecided {
     readonly item: string
     readonly clock: string
     readonly what: string
+    /** The open Kernel decision, or for a stuck task the last one, answered. */
+    readonly decision: Decision | null
+    /** The task it is about, when it is about one. */
+    readonly task: string | null
 }
 
 /** A non-empty ledger text, else null. */
@@ -353,11 +357,18 @@ const textOrNull = (value: unknown): string | null => (typeof value === "string"
 /** The later of two ledger times. */
 const later = (a: string, b: string): string => (a > b ? a : b)
 
+/** The escalations a Supervisor ruling raised for an item (`RULED_BY_SUPERVISOR` events naming it), by their decision ids. */
+const rulingEscalations = (db: DatabaseSync, workflowId: string, item: string): string[] =>
+    db
+        .prepare(`SELECT json_extract(data_json, '$.escalation') AS escalation FROM events WHERE kind = ? AND subject = ? AND EXISTS (SELECT 1 FROM json_each(json_extract(data_json, '$.items')) WHERE value = ?)`)
+        .all(RULED_BY_SUPERVISOR, workflowId, item)
+        .flatMap((row) => (typeof row.escalation === "string" ? [row.escalation] : []))
+
 /**
  * What a workflow waits on its Kernel for: each open Kernel decision (since it was raised), and each failed or returned task with
  * no open decision whose last Kernel decision was answered without moving it (since that answer, or the task's last change), unless
- * the escalation that answer filed is still open with the Supervisor (that wait is the owner's or Debug's, ticketed already) or
- * it never had a Kernel decision (parked on a shared need).
+ * an escalation that answer or a Supervisor ruling on the task filed is still open with the Supervisor (that wait is the owner's
+ * or Debug's, ticketed already) or it never had a Kernel decision (parked on a shared need).
  */
 const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
     const open = openDecisions(db, "kernel", workflowId)
@@ -365,25 +376,114 @@ const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
     const stuck = snapshotOf(db, workflowId).views.flatMap((view): Undecided[] => {
         const task = view.task
         if (task === null || (view.state !== "failed" && view.state !== "returned") || subjects.has(task.id)) return []
-        const last = db.prepare("SELECT id, kind, raised_at, answered_at, answered_by FROM decisions WHERE scope = 'kernel' AND workflow_id = ? AND subject = ? ORDER BY raised_at DESC, id DESC LIMIT 1").get(workflowId, task.id)
+        const row = db.prepare("SELECT * FROM decisions WHERE scope = 'kernel' AND workflow_id = ? AND subject = ? ORDER BY raised_at DESC, id DESC LIMIT 1").get(workflowId, task.id)
         // A task with no Kernel decision at all is parked (on a shared need, whose router decides): not the Kernel's to wake on.
+        const last = row === undefined ? undefined : getDecision(db, String(row.id))
         if (last === undefined) return []
-        const answeredBy = textOrNull(last.answered_by)
-        if (answeredBy !== null && db.prepare("SELECT 1 FROM decisions WHERE scope = 'supervisor' AND workflow_id = ? AND subject = ? AND answered_at IS NULL").get(workflowId, answeredBy) !== undefined) return []
+        const item = `${view.key}:${task.id}`
+        const waitingOn = [...(last.answeredBy === null ? [] : [last.answeredBy]), ...rulingEscalations(db, workflowId, item)]
+        if (waitingOn.some((subject) => db.prepare("SELECT 1 FROM decisions WHERE scope = 'supervisor' AND workflow_id = ? AND (subject = ? OR id = ?) AND answered_at IS NULL").get(workflowId, subject, subject) !== undefined)) return []
         const changed = String(db.prepare("SELECT updated_at FROM tasks WHERE id = ?").get(task.id)?.updated_at ?? "")
-        const decided = textOrNull(last.answered_at) ?? String(last.raised_at)
-        const held = `${String(last.id)} (${String(last.kind)}) answered by ${answeredBy ?? "-"}`
-        return [{ item: `${view.key}:${task.id}`, clock: later(changed, decided), what: `${view.key} (task ${task.id} ${view.state}, ${held})` }]
+        const decided = textOrNull(row?.answered_at) ?? last.raisedAt
+        const held = `${last.id} (${last.kind}) answered by ${last.answeredBy ?? "-"}`
+        return [{ item, clock: later(changed, decided), what: `${view.key} (task ${task.id} ${view.state}, ${held})`, decision: last, task: task.id }]
     })
-    return [...open.map((decision) => ({ item: decision.id, clock: decision.raisedAt, what: `${decision.id} (${decision.kind} on ${decision.subject})` })), ...stuck]
+    const decisions = open.map((decision): Undecided => ({ item: decision.id, clock: decision.raisedAt, what: `${decision.id} (${decision.kind} on ${decision.subject})`, decision, task: decision.subject.startsWith("t-") ? decision.subject : null }))
+    return [...decisions, ...stuck]
 }
 
+/** Every task key a node's work holds up: the nodes that depend on it, directly or through another. */
+const dependentsOf = (db: DatabaseSync, workflowId: string, key: string): string[] => {
+    const nodes = snapshotOf(db, workflowId).nodes
+    const found = new Set<string>()
+    const walk = (of: string): void => {
+        for (const node of nodes) {
+            if (node.dependsOn.includes(of) && !found.has(node.key)) {
+                found.add(node.key)
+                walk(node.key)
+            }
+        }
+    }
+    walk(key)
+    return [...found]
+}
+
+/**
+ * The evidence a `kernel-undecided` decision carries for the Supervisor to rule on: the Kernel decision in full (the open one, or a
+ * stuck task's last one with its answer), and the task's evidence: its key, label, state, try, result and output, its red checks,
+ * the routes and gate its decision allows, and the tasks it holds up.
+ */
+const undecidedEvidence = (db: DatabaseSync, root: string, workflowId: string, entry: Undecided, seat: SeatRow, minutes: number): unknown => {
+    const decision = entry.decision
+    const taskId = entry.task
+    const view = taskId === null ? undefined : snapshotOf(db, workflowId).views.find((candidate) => candidate.task?.id === taskId)
+    const attempt = taskId === null ? undefined : latestAttempt(db, taskId)
+    const task =
+        taskId === null || view === undefined
+            ? null
+            : {
+                  id: taskId,
+                  key: view.key,
+                  label: getTask(db, taskId).label,
+                  state: view.state,
+                  why: view.why,
+                  tryNo: view.task?.tryNo ?? null,
+                  result: view.task?.result ?? null,
+                  outcome: attempt?.outcome ?? null,
+                  output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null),
+                  redChecks: db.prepare("SELECT name, detail FROM check_runs WHERE task_id = ? AND status = 'red' ORDER BY id DESC LIMIT 5").all(taskId).map((row) => ({ name: String(row.name), detail: String(row.detail).slice(0, 500) })),
+                  dependents: dependentsOf(db, workflowId, view.key),
+              }
+    return {
+        project: root,
+        item: entry.item,
+        since: entry.clock,
+        what: entry.what,
+        seat: seat.id,
+        minutes,
+        decision: decision === null ? null : { id: decision.id, kind: decision.kind, subject: decision.subject, evidence: decision.evidence, raisedAt: decision.raisedAt, answeredBy: decision.answeredBy, open: decision.answeredBy === null },
+        task,
+    }
+}
+
+
+/** The item an open `kernel-undecided` decision is about (its subject is `<item>@<clock>`). */
+const itemOfUndecided = (decision: Decision): string => decision.subject.slice(0, decision.subject.lastIndexOf("@"))
+
+/**
+ * Hands the Supervisor every item of `undecided` past stall.decisionStallMinutes to rule in its Kernel's place: one
+ * `kernel-undecided` decision per item and clock, carrying the decision's full payload and the task's evidence
+ * (`undecidedEvidence`), while none is open for that item; and supersedes every open one whose item the Kernel decided meanwhile.
+ * It is no escalation and files no ticket: the Supervisor rules it (ops/coordinators/supervisor.md), and only what it cannot
+ * rule within its authority leaves as a ticket, by the escalation it rules with.
+ */
+const handUndecided = (root: string, workflowId: string, seat: SeatRow, items: readonly Undecided[], minutes: number): string[] =>
+    withLedger(root, (db) =>
+        inTransaction(db, () => {
+            const current = new Set(items.map((entry) => entry.item))
+            const open = openDecisions(db, "supervisor", workflowId).filter((decision) => decision.kind === KERNEL_UNDECIDED)
+            const lines = open.flatMap((decision) => {
+                const item = itemOfUndecided(decision)
+                if (current.has(item)) return []
+                answerDecision(db, decision.id, `superseded: the Kernel decided ${item}`, "supervisor")
+                return [`${workflowId}: ${decision.id} superseded, the Kernel decided ${item}`]
+            })
+            for (const entry of items.filter((one) => olderThan(one.clock, minutes))) {
+                const subject = `${entry.item}@${entry.clock}`
+                if (open.some((decision) => itemOfUndecided(decision) === entry.item) || getDecision(db, decisionId("supervisor", workflowId, KERNEL_UNDECIDED, subject)) !== undefined) continue
+                recordEvent(db, DECISION_IDLE, workflowId, { seat: seat.id, item: entry.item, clock: entry.clock, step: "handed" })
+                const id = raiseDecision(db, { scope: "supervisor", workflowId, kind: KERNEL_UNDECIDED, subject, evidence: undecidedEvidence(db, root, workflowId, entry, seat, minutes) })
+                lines.push(`${workflowId}: ${entry.what} undecided past ${String(minutes)} min: handed to the Supervisor to rule (${id})`)
+            }
+            return lines
+        }),
+    )
 
 /**
  * Work nobody decides: a dispatching workflow whose Kernel, alive, leaves an item of `undecided` past stall.decisionIdleMinutes
  * (counted from the later of the item's clock and the Kernel seat's launch) is woken once per seat and item with
- * stall.prompts.decisionIdle naming each such item; an item past stall.decisionStallMinutes escalates once to the Supervisor
- * (kind harness, so its ticket reaches Debug's queue and the owner's chat). Neither relaunches the Kernel.
+ * stall.prompts.decisionIdle naming each such item; an item past stall.decisionStallMinutes is handed to the Supervisor to rule
+ * (`handUndecided`). Neither relaunches the Kernel.
  */
 const decisionIdle = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow | undefined): Promise<string[]> => {
     const { root, binary, cwd, rules } = scope
@@ -397,17 +497,7 @@ const decisionIdle = async (scope: SweepScope, workflow: WorkflowRow, seat: Seat
             .all(workflow.id)
             .map((row) => ({ seat: String(row.seat), key: `${String(row.item)}@${String(row.clock)}`, step: String(row.step) })),
     }))
-    const lines: string[] = []
-    const stalled = items.filter((entry) => olderThan(entry.clock, stall.decisionStallMinutes) && !done.some((event) => event.step === "escalated" && event.key === `${entry.item}@${entry.clock}`))
-    for (const entry of stalled) {
-        const id = withLedger(root, (db) =>
-            inTransaction(db, () => {
-                recordEvent(db, DECISION_IDLE, workflow.id, { seat: seat.id, item: entry.item, clock: entry.clock, step: "escalated" })
-                return raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `kernel-undecided:${entry.item}@${entry.clock}`, evidence: { project: root, escalation: { kind: "harness", question: `the Kernel of ${workflow.id} (seat ${seat.id}) left ${entry.what} undecided since ${entry.clock}, past ${String(stall.decisionStallMinutes)} min, though it was woken; decide it for the Kernel (a goal-change or stop), relaunch the Kernel, or take it to the owner` } } })
-            }),
-        )
-        lines.push(`${workflow.id}: ${entry.what} undecided past ${String(stall.decisionStallMinutes)} min: escalated to the Supervisor (${id})`)
-    }
+    const lines = handUndecided(root, workflow.id, seat, items, stall.decisionStallMinutes)
     const due = items.filter((entry) => olderThan(entry.clock, stall.decisionIdleMinutes) && !done.some((event) => event.seat === seat.id && event.step === "woken" && event.key === `${entry.item}@${entry.clock}`))
     if (due.length === 0) return lines
     withLedger(root, (db) => {
@@ -563,7 +653,8 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch Orca never confirmed is reconciled through
  * Orca (`resolveKernelLaunch`); too many relaunches pause and escalate) and tends its `[Worker]` seats (`tendWorkers`), then
- * returns the project's next open escalation or handoff it rules (`openSupervisorDecisions`), else a worker's completion not
+ * returns the project's next open decision it rules (`openSupervisorDecisions`: an escalation, handoff, shared-need, or a
+ * kernel-undecided decision `handUndecided` raised), else a worker's completion not
  * handed yet (`nextWorkerEvent`), else its oldest owner request (`supervisor ask`), else one awaiting the owner or Debug its Supervisor was not handed yet, else waits
  * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
  * tick` sweeps for it.
@@ -883,7 +974,43 @@ const endDecisions = (db: DatabaseSync, command: Command): { readonly closed: re
         return { closed: open.map((decision) => decision.id), answered: answerOtherWorkflows(db, command) }
     })
 
-const applySupervisor = async (context: VerbContext, root: string, command: Command, sha256: string): Promise<unknown> => {
+/** What a Supervisor's ruling did: the Kernel decisions it answered in the Kernel's place, and the Kernel command's own outcome. */
+interface RulingOutcome {
+    readonly ruledBySupervisor: true
+    readonly kernelDecisions: readonly string[]
+    readonly applied: unknown
+}
+
+/**
+ * Records a Supervisor's ruling, in the transaction that finishes its command: the open Kernel decisions it rules are answered by
+ * its cmdId, and one `ruled-by-supervisor` event names what it ruled (the `kernel-undecided` decisions and their items), the
+ * route and change it took, and the escalation it raised, which `kernel next` tells the Kernel on its next turn (`tellRulings`).
+ */
+const recordRuling = (db: DatabaseSync, command: Command, outcome: RulingOutcome, supervisor: string | null): void => {
+    for (const id of outcome.kernelDecisions) answerDecision(db, id, command.cmdId, "kernel")
+    const ruled = undecidedAnswered(db, command)
+    const applied = outcome.applied
+    const escalation = command.kind === "escalation" && typeof applied === "object" && applied !== null && "decision" in applied && typeof applied.decision === "string" ? applied.decision : null
+    recordEvent(db, RULED_BY_SUPERVISOR, command.workflow, {
+        cmdId: command.cmdId,
+        kind: command.kind,
+        ruled: ruled.map((decision) => decision.id),
+        items: ruled.map(itemOfUndecided),
+        kernelDecisions: outcome.kernelDecisions,
+        route: command.route ?? null,
+        change: command.change ?? null,
+        note: command.note ?? command.escalation?.question ?? null,
+        escalation,
+        supervisor,
+    })
+}
+
+const applySupervisor = async (context: VerbContext, root: string, command: Command, sha256: string, dir: string): Promise<unknown> => {
+    if (isRuling(command)) {
+        const kernelCommand = withLedger(root, (db) => rulingAsKernel(db, command))
+        const applied = await applyKernel({ ...context, cwd: root }, root, kernelCommand, dir)
+        return { ruledBySupervisor: true, kernelDecisions: kernelCommand.answers ?? [], applied } satisfies RulingOutcome
+    }
     if (command.kind === "need-owner") return applyNeedOwner(root, command)
     if (command.kind === "stop") {
         const stopped = await workflowStopVerb.run({ ...context, cwd: root }, { workflow: command.workflow, graceful: command.mode !== "hard", hard: command.mode === "hard" })
@@ -907,9 +1034,11 @@ const applySupervisor = async (context: VerbContext, root: string, command: Comm
 }
 
 /**
- * `supervisor submit <file>`: one Supervisor command to a workflow's Kernel (goal, goal-change, stop), possibly answering
- * escalations. It is admitted under cmdId dedupe and basedOn (goal version), applied (a Kernel decision is raised, stop runs
- * `workflow stop`), and the escalations and owner requests (`supervisor ask`) it answers close with it, each recording its cmdId.
+ * `supervisor submit <file>`: one Supervisor command to a workflow's Kernel (goal, goal-change, stop, need-owner), possibly
+ * answering escalations, or a ruling in the Kernel's place (a workflow-change or escalation answering a `kernel-undecided`
+ * decision, applied as the Kernel's own command would be, `applyKernel`, and recorded `ruled-by-supervisor`, `recordRuling`). It
+ * is admitted under cmdId dedupe and basedOn, applied (a Kernel decision is raised, stop runs `workflow stop`), and the decisions
+ * and owner requests (`supervisor ask`) it answers close with it, each recording its cmdId.
  */
 export const supervisorSubmit = async (context: VerbContext, file: string, projectFlag?: string): Promise<{ readonly command: unknown; readonly replay: boolean; readonly project: string }> => {
     const parsed = readCommand(file, "supervisor")
@@ -936,13 +1065,20 @@ export const supervisorSubmit = async (context: VerbContext, file: string, proje
     }
     let outcome: unknown
     try {
-        outcome = await applySupervisor(context, root, command, parsed.sha256)
+        outcome = await applySupervisor(context, root, command, parsed.sha256, parsed.dir)
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         withLedger(root, (db) => finishCommand(db, "supervisor", command, "failed", { code: refusal.code, message: refusal.message }))
         throw error
     }
-    const row = withLedger(root, (db) => finishCommand(db, "supervisor", command, "applied", outcome))
+    const row = withLedger(root, (db) =>
+        inTransaction(db, () => {
+            const finished = finishCommand(db, "supervisor", command, "applied", outcome)
+            if (isRuling(command)) recordRuling(db, command, outcome as RulingOutcome, caller?.id ?? null)
+            return finished
+        }),
+    )
+    if (isRuling(command) && command.kind === "workflow-change") await wakeKernel(root, context.cwd, command, command.answers?.[0] ?? command.cmdId)
     closeOwnerRequests(requests, closing)
     if (caller !== undefined) renewSupervisorLease(caller.id)
     return { command: row, replay: false, project: root }

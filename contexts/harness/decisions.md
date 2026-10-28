@@ -122,8 +122,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   custody, legal matters and a product choice with no default reach the owner (`OWNER_TOPICS` and `defaultRuling` in
   `cli/src/harness/coordinator-commands.ts`, `ruleDefaults` in `cli/src/core/supervisor/driver.ts`). The tick wakes a Kernel
   whose ready work idles with no live Op and gives it up to the stall ladder past a second threshold (`readyIdle` in
-  `cli/src/core/supervisor/driver.ts`), and wakes a Kernel that leaves a decision or a dead task undecided, escalating it to
-  the Supervisor past a second threshold (`decisionIdle`; both in `stall` of [ops/liveness.yaml](../../ops/liveness.yaml)). A
+  `cli/src/core/supervisor/driver.ts`), and wakes a Kernel that leaves a decision or a dead task undecided, which answers it in
+  that turn; past a second threshold the Supervisor rules it in the Kernel's place with the Kernel's own commands, recorded
+  `ruled-by-supervisor` and told to the Kernel on its next turn, and it becomes a ticket only by the escalation the Supervisor
+  rules with, an owner topic to the owner and a real harness defect to Debug, never as a harness defect by itself (`decisionIdle`
+  and `handUndecided`; both thresholds in `stall` of [ops/liveness.yaml](../../ops/liveness.yaml); `assertRuling` in
+  `cli/src/harness/coordinator-commands.ts`). Owner, 2026-10-29: Debug cannot rule a workflow's product decision, and the
+  coordinators are self-sufficient. A
   task the harness ended with no red of its own returns to ready at the same try, its last included (`harnessCause` in
   `cli/src/harness/revive.ts`). Landing is atomic: a green task is on its workflow's branch or returned with its work
   preserved, never done with its work beside the branch (`lands` in `cli/src/harness/clean-verify.ts`, `preserveEscaped` in

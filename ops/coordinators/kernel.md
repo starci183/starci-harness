@@ -31,6 +31,14 @@ round when a batch of tasks lands and before your handoff; a contract never asks
    `answers: [<decision id>]`), and run `starci kernel submit <file>`. Then back to 2, at once: an `idle` answer is a
    reason to call it again, never to end your turn.
 
+Never leave a decision open across a wake. A decision, or a failed or returned task your last answer held without moving
+it, that the host driver wakes you about (`decisionIdle` of ops/liveness.yaml, a prompt naming each) is answered in that
+turn, by its route or by an escalation naming what it waits for; a hold that moves nothing is no answer. One still undecided
+past `decisionStallMinutes` is handed to the Supervisor, who rules it in your place with the commands you would have used
+(a `workflow-change` that retries, edits, removes or adds a task or amends its checks, after `budget raise` when its tries are
+spent, or an escalation to the owner or Debug). `kernel next` tells you each such ruling once, on your next turn (its
+`rulings`, a line "ruled by the Supervisor in your place"): plan on from the graph it left, never undo it.
+
 | decision | what you submit |
 |---|---|
 | `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`), every task built from what your workflow's branch holds, never copying another workflow's landed code (a task whose input names another workflow's branch or a commit it landed is refused `NEEDS_REQUIRED`: the Op reports the missing shared thing with `--needs` and its one owner builds it), walking each Work record's lane: the digest's `lanes` show every step satisfied, carried or missing, and you plan only the missing ones (`FLOW_INCOMPLETE` otherwise), cut one task per record so independent records run in parallel (at most `workflowParallel` of ops/routing.yaml at once; the harness queues the rest; `TASK_NOT_SPLIT` otherwise); a task that writes a module another task wires in names that task in `composedBy` (its key, the composer depending on it), so the module's composition rules are judged on the composer and on the workflow's final verify instead of turning the module's task red |

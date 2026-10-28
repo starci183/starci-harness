@@ -16,12 +16,14 @@ const linesOf = (data: SupervisorNext): string[] => {
  * `starci supervisor next`: a Supervisor's only wait, for its project. It keeps one live Kernel per running orca workflow the
  * Supervisor owns in the project's repositories (relaunching on Orca's word, pausing and escalating past the relaunch limit), tends
  * its `[Worker]` seats (pings them, closes the seats of finished ones, launches queued ones into free slots), and returns the
- * project's next open escalation or handoff it rules with its workflow digest, else a worker's report or end, else its oldest owner
- * request (`supervisor ask`), else an escalation awaiting the owner or Debug, handed over once; idle when none came.
+ * project's next open decision it rules (an escalation, handoff, shared-need, or a kernel-undecided decision its Kernel left past
+ * stall.decisionStallMinutes, with the decision's payload and the task's evidence) with its workflow digest, else a worker's report
+ * or end, else its oldest owner request (`supervisor ask`), else an escalation awaiting the owner or Debug, handed over once; idle
+ * when none came.
  */
 export const supervisorNextVerb = defineVerb({
     path: ["supervisor", "next"],
-    summary: "sweep the project's Kernels and [Worker] seats, then return its next escalation or handoff with a digest, else a worker's report or end (once), else its oldest owner-request, else one awaiting the owner or Debug (once); idle after --wait",
+    summary: "sweep the project's Kernels and [Worker] seats, then return its next escalation, handoff, shared-need or kernel-undecided decision with a digest, else a worker's report or end (once), else its oldest owner-request, else one awaiting the owner or Debug (once); idle after --wait",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],

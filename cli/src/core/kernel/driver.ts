@@ -62,7 +62,27 @@ export interface Digest {
     readonly lanes: readonly string[]
 }
 
-/** What `kernel next` returns: one decision (or idle when none came within the wait, or an inline task waits), with the digest. */
+/** The event `supervisor submit` records when the Supervisor rules a decision the Kernel left undecided, in the Kernel's place. */
+export const RULED_BY_SUPERVISOR = "ruled-by-supervisor"
+
+/** The event `kernel next` records when it has told the Kernel seat a Supervisor ruling. */
+export const RULING_TOLD = "supervisor-ruling-told"
+
+/** One ruling the Supervisor took in the Kernel's place: the command, what it ruled, and the escalation it raised when it escalated. */
+export interface SupervisorRuling {
+    readonly cmdId: string
+    readonly kind: string
+    readonly at: string
+    readonly ruled: readonly string[]
+    readonly kernelDecisions: readonly string[]
+    readonly items: readonly string[]
+    readonly route: string | null
+    readonly change: string | null
+    readonly note: string | null
+    readonly escalation: string | null
+}
+
+/** What `kernel next` returns: one decision (or idle when none came within the wait, or an inline task waits), with the digest and the Supervisor's rulings not told yet. */
 export interface KernelNext {
     readonly workflow: string
     readonly kind: KernelDecisionKind | "idle"
@@ -70,6 +90,7 @@ export interface KernelNext {
     readonly digest: Digest
     readonly actions: readonly StepAction[]
     readonly inlineNext: string | null
+    readonly rulings: readonly SupervisorRuling[]
 }
 
 const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
@@ -112,6 +133,42 @@ export const digestOf = (db: DatabaseSync, workflowId: string): Digest => {
         lanes: workflowLanes(db, workflowId),
     }
 }
+
+const textsOf = (value: unknown): string[] => (Array.isArray(value) ? value.filter((one): one is string => typeof one === "string") : [])
+const textOrNull = (value: unknown): string | null => (typeof value === "string" ? value : null)
+
+/**
+ * The Supervisor's rulings in the workflow's place (`RULED_BY_SUPERVISOR`) the Kernel seat was not told yet. When the caller is
+ * that seat (its own terminal) they are marked told (`RULING_TOLD`), so the Kernel reads each once, on its next turn; any other
+ * reader sees them and marks nothing.
+ */
+const tellRulings = (root: string, workflowId: string): SupervisorRuling[] =>
+    withLedger(root, (db) =>
+        inTransaction(db, () => {
+            const rulings = db
+                .prepare(`SELECT at, data_json FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.cmdId') NOT IN (SELECT json_extract(data_json, '$.cmdId') FROM events WHERE kind = ? AND subject = ?) ORDER BY id`)
+                .all(RULED_BY_SUPERVISOR, workflowId, RULING_TOLD, workflowId)
+                .map((row): SupervisorRuling => {
+                    const data = JSON.parse(String(row.data_json)) as Readonly<Record<string, unknown>>
+                    return {
+                        cmdId: String(data.cmdId),
+                        kind: String(data.kind),
+                        at: String(row.at),
+                        ruled: textsOf(data.ruled),
+                        kernelDecisions: textsOf(data.kernelDecisions),
+                        items: textsOf(data.items),
+                        route: textOrNull(data.route),
+                        change: textOrNull(data.change),
+                        note: textOrNull(data.note),
+                        escalation: textOrNull(data.escalation),
+                    }
+                })
+            const terminal = process.env.ORCA_TERMINAL_HANDLE
+            const isSeat = terminal !== undefined && terminal !== "" && kernelSeatOf(db, workflowId)?.terminal === terminal
+            if (isSeat) for (const ruling of rulings) recordEvent(db, RULING_TOLD, workflowId, { cmdId: ruling.cmdId, terminal })
+            return rulings
+        }),
+    )
 
 /** Renews the Kernel seat's lease when the caller is that seat (its own terminal); a Debug reading `next` renews nothing. */
 const renewKernel = (root: string, workflowId: string, rules: CoordinatorLiveness): void => {
@@ -560,9 +617,10 @@ const inlineTask = (root: string, workflowId: string): string | null => {
  * a decision left open about one task (returned and held, red, a conflict) never stops the other ready tasks from dispatching,
  * then returns the oldest open decision, else waits on the Kernel Run's mailbox (re-reading the ledger
  * every nextPollSeconds) until nextWaitSeconds pass and returns idle. An inline workflow never waits: with no decision it
- * returns idle naming the task the chat agent works next.
+ * returns idle naming the task the chat agent works next. Every answer carries the rulings the Supervisor took in the Kernel's
+ * place and the Kernel was not told yet (`tellRulings`).
  */
-export const kernelNext = async (context: VerbContext, root: string, workflowId: string, waitSeconds?: number): Promise<KernelNext> => {
+export const kernelNext =async (context: VerbContext, root: string, workflowId: string, waitSeconds?: number): Promise<KernelNext> => {
     const rules = loadCoordinatorLiveness()
     const deadline = Date.now() + (waitSeconds ?? rules.nextWaitSeconds) * 1000
     const status = readSnapshot(root, workflowId).workflow.status
@@ -575,6 +633,7 @@ export const kernelNext = async (context: VerbContext, root: string, workflowId:
         digest: withLedger(root, (db) => digestOf(db, workflowId)),
         actions: actions.slice(-30),
         inlineNext: inline,
+        rulings: tellRulings(root, workflowId),
     })
     // One round: tick, then answer, or wait for mail and go round again until the deadline.
     const round = async (): Promise<KernelNext> => {
@@ -606,7 +665,11 @@ export interface Submitted {
 const answersSharedNeed = (root: string, command: Command): boolean =>
     withLedger(root, (db) => (command.answers ?? []).some((id) => db.prepare("SELECT 1 FROM decisions WHERE id = ? AND scope = 'kernel' AND kind = 'shared-need'").get(id) !== undefined))
 
-const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
+/**
+ * Applies a Kernel command, the Kernel's own or a Supervisor's ruling in its place (`rulingAsKernel`): a workflow-change through
+ * `workflow amend` (and the shared need it answers), an escalation or handoff as a Supervisor decision with a wake-up mail.
+ */
+export const applyKernel = async (context: VerbContext, root: string, command: Command, dir: string): Promise<unknown> => {
     // An escalation answering a shared-need decision hands the need to the Supervisor: the need's router raises its decision there.
     if (command.kind === "escalation" && answersSharedNeed(root, command)) return { needEscalated: true, answered: command.answers ?? [] }
     if (command.kind === "workflow-change") {

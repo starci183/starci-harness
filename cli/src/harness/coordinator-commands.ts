@@ -15,12 +15,23 @@ import { getWorkflow } from "./workflow.js"
 import type { WorkflowRow } from "./workflow.js"
 
 /**
- * The eight commands of the seat tree. Down: goal, goal-change, stop (Supervisor -> Kernel), and need-owner (the Supervisor gives a
+ * The seven commands of the seat tree. Down: goal, goal-change, stop (Supervisor -> Kernel), and need-owner (the Supervisor gives a
  * shared need to one workflow, or rejects it); the Kernel's own graph: workflow-change (which also names the resolver of a shared
- * need, or rejects it); up: escalation and handoff (Kernel -> Supervisor). An Op's `result` is `task result`, not a command file.
+ * need, or rejects it); up: escalation and handoff (Kernel -> Supervisor). The Supervisor also submits a workflow-change or an
+ * escalation in its Kernel's place to rule a `kernel-undecided` decision (`RULING_COMMANDS`). An Op's `result` is `task result`,
+ * not a command file.
  */
 export const KERNEL_COMMANDS = ["workflow-change", "escalation", "handoff"] as const
 export const SUPERVISOR_COMMANDS = ["goal", "goal-change", "stop", "need-owner"] as const
+
+/**
+ * The Kernel commands a Supervisor submits to rule a Kernel decision its Kernel left undecided (`KERNEL_UNDECIDED`): the same
+ * vocabulary the Kernel answers with, applied to that workflow under the Supervisor's authority.
+ */
+export const RULING_COMMANDS = ["workflow-change", "escalation"] as const
+
+/** The Supervisor decision the host driver raises for a Kernel decision left undecided past stall.decisionStallMinutes. */
+export const KERNEL_UNDECIDED = "kernel-undecided"
 
 /** Who submits a command: the Kernel of a workflow, or the Supervisor of its project. */
 export type CommandScope = "kernel" | "supervisor"
@@ -117,7 +128,7 @@ const needs: Readonly<Record<Command["kind"], readonly (keyof Command)[]>> = {
     "need-owner": ["need"],
 }
 
-/** Reads and validates a command file (json or yaml) for a scope: a Kernel submits only its three, the Supervisor only its three. */
+/** Reads and validates a command file (json or yaml) for a scope: a Kernel submits its three, the Supervisor its four and its rulings. */
 export const readCommand = (file: string, scope: CommandScope): CommandFile => {
     let bytes: Buffer
     try {
@@ -134,7 +145,7 @@ export const readCommand = (file: string, scope: CommandScope): CommandFile => {
     const parsed = commandSchema.safeParse(raw)
     if (!parsed.success) throw new Refusal("COMMAND_INVALID", `${file}: ${z.prettifyError(parsed.error)}`)
     const command = parsed.data
-    const allowed: readonly string[] = scope === "kernel" ? KERNEL_COMMANDS : SUPERVISOR_COMMANDS
+    const allowed: readonly string[] = scope === "kernel" ? KERNEL_COMMANDS : [...SUPERVISOR_COMMANDS, ...RULING_COMMANDS]
     if (!allowed.includes(command.kind)) throw new Refusal("COMMAND_NOT_YOURS", `a ${scope} submits ${allowed.join(", ")}, not ${command.kind}`)
     const missing = needs[command.kind].filter((field) => command[field] === undefined)
     if (missing.length > 0) throw new Refusal("COMMAND_INVALID", `${command.kind} needs ${missing.join(", ")}`)
@@ -202,7 +213,8 @@ const assertBasedOn = (db: DatabaseSync, command: Command, workflow: WorkflowRow
  * Admits a command under compare-and-swap, before any side effect: a known cmdId with the same bytes replays its recorded
  * outcome (a failed one is applied again), with other bytes refuses CMD_CONFLICT; a basedOn that is not the current graph or
  * goal version refuses STALE (re-read and resubmit); a workflow-change answering a red or question decision off its legal route
- * refuses ROUTE_ILLEGAL (harness/routes.ts). The intent row `applying` lets recovery reconcile instead of guess.
+ * refuses ROUTE_ILLEGAL (harness/routes.ts). A Supervisor's ruling (`assertRuling`) is held to the same route and need checks as
+ * the Kernel's own command on the Kernel decisions it rules. The intent row `applying` lets recovery reconcile instead of guess.
  */
 export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: CommandFile): Admission =>
     inTransaction(db, () => {
@@ -218,8 +230,15 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
             if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
         }
-        if (scope === "kernel") assertRoute(db, command, file.dir)
-        assertNeedAnswer(db, scope, command, file.dir)
+        if (scope === "kernel") {
+            assertRoute(db, command, file.dir)
+            assertNeedAnswer(db, scope, command, file.dir)
+        } else if (isRuling(command)) {
+            assertRuling(db, command)
+            const ruled = rulingAsKernel(db, command)
+            assertRoute(db, ruled, file.dir)
+            assertNeedAnswer(db, "kernel", ruled, file.dir)
+        } else assertNeedAnswer(db, scope, command, file.dir)
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,
@@ -250,7 +269,7 @@ export const finishCommand = (db: DatabaseSync, scope: CommandScope, command: Co
 export type KernelDecisionKind = "red" | "check-premise" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
 
 /** The decision kinds `supervisor next` returns. */
-export type SupervisorDecisionKind = "escalation" | "handoff" | "shared-need"
+export type SupervisorDecisionKind = "escalation" | "handoff" | "shared-need" | typeof KERNEL_UNDECIDED
 
 /** The decision kind a shared need is routed as, to a Kernel or to the Supervisor (core/needs/tend.ts). */
 export const SHARED_NEED = "shared-need"
@@ -345,4 +364,50 @@ export const answerDecision = (db: DatabaseSync, id: string, by: string, scope: 
     if (decision === undefined) throw new Refusal("DECISION_UNKNOWN", `no decision ${id} in this ledger`)
     if (decision.scope !== scope) throw new Refusal("DECISION_NOT_YOURS", `decision ${id} is the ${decision.scope}'s to answer`)
     db.prepare("UPDATE decisions SET answered_by = ?, answered_at = ? WHERE id = ? AND answered_at IS NULL").run(by, now(), id)
+}
+
+/** True for a Supervisor command that rules in its Kernel's place: a workflow-change or an escalation (`RULING_COMMANDS`). */
+export const isRuling = (command: Command): boolean => (RULING_COMMANDS as readonly string[]).includes(command.kind)
+
+/** The `kernel-undecided` decisions of a command's workflow its answers name. */
+export const undecidedAnswered = (db: DatabaseSync, command: Command): Decision[] =>
+    ledgerAnswers(command, "supervisor")
+        .map((id) => getDecision(db, id))
+        .filter((decision): decision is Decision => decision?.kind === KERNEL_UNDECIDED && decision.workflowId === command.workflow)
+
+/** The open Kernel decision a `kernel-undecided` decision names (its evidence's `decision.id`), while it is still open. */
+const openKernelDecisionOf = (db: DatabaseSync, decision: Decision): string | null => {
+    const evidence = decision.evidence
+    const named = typeof evidence === "object" && evidence !== null && "decision" in evidence ? evidence.decision : null
+    const id = typeof named === "object" && named !== null && "id" in named && typeof named.id === "string" ? named.id : null
+    if (id === null) return null
+    const open = getDecision(db, id)
+    return open?.scope === "kernel" && open.answeredBy === null ? id : null
+}
+
+/**
+ * A Supervisor's ruling as the Kernel's own command: its answers are the open Kernel decisions the `kernel-undecided` decisions it
+ * answers name, so the route, the need and the decision it closes are the Kernel's (a stuck task whose decision was answered
+ * already names none, as a Kernel's own amend of it would).
+ */
+export const rulingAsKernel = (db: DatabaseSync, command: Command): Command => ({
+    ...command,
+    answers: undecidedAnswered(db, command).flatMap((decision) => {
+        const id = openKernelDecisionOf(db, decision)
+        return id === null ? [] : [id]
+    }),
+})
+
+/**
+ * Refuses a ruling outside the Supervisor's authority: a workflow-change or escalation that answers no open `kernel-undecided`
+ * decision of its workflow is the Kernel's to submit (COMMAND_NOT_YOURS); a ruling escalation goes only where the Supervisor
+ * cannot rule, to the owner (kind owner, on an owner topic) or to Debug (kind harness), so one of kind budget, scope or conflict,
+ * or a product choice carrying a default, is the Supervisor's own to rule (RULING_WITHIN_AUTHORITY).
+ */
+const assertRuling = (db: DatabaseSync, command: Command): void => {
+    if (undecidedAnswered(db, command).length === 0) throw new Refusal("COMMAND_NOT_YOURS", `a Supervisor submits a ${command.kind} only to rule a ${KERNEL_UNDECIDED} decision of workflow ${command.workflow}, named in answers; otherwise it is the Kernel's`)
+    const escalation = command.escalation
+    if (command.kind !== "escalation" || escalation === undefined) return
+    if (!OWNER_RULED.includes(escalation.kind)) throw new Refusal("RULING_WITHIN_AUTHORITY", `a ${escalation.kind} escalation is the Supervisor's own to rule: rule it with a workflow-change (or a goal-change, or budget raise); a ruling escalates only to the owner (kind owner) or to Debug (kind harness)`)
+    if (escalation.topic === "product" && escalation.default !== undefined) throw new Refusal("RULING_WITHIN_AUTHORITY", "a product choice that carries a default is the Supervisor's to rule on that default: rule it with a workflow-change")
 }

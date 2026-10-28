@@ -1,17 +1,18 @@
 schema: starci/scenario@1
 id: supervisor-tick-wakes-kernel-on-undecided
 group: orca
-title: "work the Kernel leaves undecided wakes it from the tick, naming the decision, then escalates to the Supervisor as a ticket"
+title: "work the Kernel leaves undecided wakes it from the tick, naming the decision, then is handed to the Supervisor to rule, never ticketed"
 inject: >-
   the workflow's task fails and its Kernel, alive, never answers the red decision: fifteen minutes pass, then forty-five; later
   a decision on the dead task is answered by a hold that moves nothing, and fifteen minutes pass again
 expect: >-
   past decisionIdleMinutes the tick types the Kernel one prompt naming the open decision (once per seat and item); past
-  decisionStallMinutes it raises one Supervisor escalation (kind harness) naming it, which the tick files as a ticket; a failed task
-  whose decision was answered without moving it wakes the Kernel again, naming the task; nothing relaunches the Kernel
+  decisionStallMinutes it hands it to the Supervisor as one kernel-undecided decision carrying the decision and the task's evidence,
+  and no ticket is opened; once the decision is answered, that kernel-undecided is superseded; a failed task whose decision was
+  answered without moving it wakes the Kernel again, naming the task; nothing relaunches the Kernel
 pass:
   - one decision-idle wake naming the open red decision, and no second one in the same spell
-  - one Supervisor escalation kernel-undecided and its ticket
+  - one kernel-undecided Supervisor decision carrying the red decision and its task, no ticket, superseded once the decision is answered
   - a held dead task wakes the Kernel once more, naming the task
   - no Kernel relaunch
   - no human intervention beyond the injected fault
@@ -94,20 +95,20 @@ steps:
         count: 1
   - *idle
   - *idle
-  - name: past the second threshold the tick escalates to the Supervisor, which files a ticket
+  - name: past the second threshold the tick hands the decision to the Supervisor to rule, and files no ticket
     starci: [supervisor, tick]
     expect:
-      contains: "escalated to the Supervisor"
+      contains: "handed to the Supervisor to rule"
   - assert:
       sql:
         db: ledger
-        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND subject LIKE 'kernel-undecided:${red}@%' AND json_extract(evidence_json, '$.escalation.kind') = 'harness'"
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'supervisor' AND kind = 'kernel-undecided' AND subject LIKE '${red}@%' AND json_extract(evidence_json, '$.decision.id') = '${red}' AND json_extract(evidence_json, '$.task.key') = 'a'"
         equals: [1]
   - assert:
       sql:
         db: machine
-        query: "SELECT COUNT(*) FROM tickets WHERE kind = 'harness-defect' AND title LIKE '%${red}%'"
-        equals: [1]
+        query: "SELECT COUNT(*) FROM tickets"
+        equals: [0]
   - name: the red decision is answered by a hold that moves nothing
     sql:
       db: ledger
@@ -124,6 +125,12 @@ steps:
           terminal: ${kernel.idle.terminal}
           text: '${a} failed, ${red} .red. answered by k-idle-hold-1'
         count: 1
+  - name: the kernel-undecided of the answered decision is superseded, the held task not handed yet
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE kind = 'kernel-undecided' AND answered_by LIKE 'superseded:%'"
+        equals: [1]
   - assert:
       sql:
         db: ledger
