@@ -192,6 +192,15 @@ An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a 
 beside it. Without an image it draws generated initials coloured by a stable seed; an agent carries a badge and an
 accessible name that says so; a group is one composite at one size.
 
+### PageHeader
+
+The page header is the top of one page: the trail, the page heading (the document's one h1) with the subject's mark,
+status chips and summary, the page's commands, and the page tabs. It is a band, not a card: a surface across the
+primary region, whose content sits in a `PageContainer` of the page's measure so header and content share their edges,
+and which ends in its own full-width separator, drawn with or without tabs. Page tabs stand on that separator and the
+selected underline lies over it, so the tabs read as the switch of everything below. A grammar decides the band's
+paint and the separator's weight; the slots, the inset, the separator and where tabs stand are the same everywhere.
+
 ### Shell
 
 The shell is the frame of an app: one shell owns the bar, the navigation and the mobile drawer, and one owner

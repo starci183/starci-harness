@@ -56,6 +56,7 @@ this file says why.
 | EmptyState | Common's notice on the sticker |
 | Avatar | Common initials and agent badge, inherited unchanged |
 | Shell | The contract shell: bar, sidebar and left drawer as stickers; no bottom dock (O-4) |
+| PageHeader | A surface band closed by the TopBar's ink rule at the outline width, a heavy heading; page tabs stand on the rule with the pink underline over it |
 
 ## Departures
 

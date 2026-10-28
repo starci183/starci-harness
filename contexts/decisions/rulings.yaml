@@ -210,6 +210,11 @@ rulings:
     status: live
     ruling: "Each source sits with its own kind: a cloud picker as a secondary button under the drop zone, links as a list of inputs with an \"add\" ghost command; no separate staging step."
     owner: "contexts/ui/composition.md LAYOUT-1"
+  - id: page-header-band
+    date: '2026-10-28'
+    status: live
+    ruling: "A page is headed by Grammar's PageHeader: a surface band across the primary region whose content shares the page content's edges, ending in its own full-width separator with or without tabs, page tabs standing on it; an app never composes Breadcrumbs and SectionHeader into a page head."
+    owner: "contexts/ui/components/page-header.md; contexts/grammars/contract.yaml page-header; contexts/hfs/rules.yaml R323"
   - id: page-header-breadcrumbs
     date: '2026-10-11'
     status: live

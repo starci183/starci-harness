@@ -47,6 +47,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 | EmptyState | Common's notice on the region's surface |
 | Avatar | Common initials coloured by seed; members ringed in the surface colour; the agent badge hidden below the `sm` step |
 | Shell | Common shell painted by `surface` and `separator`; the bar is a solid surface band with a full-width separator |
+| PageHeader | The same band as the bar: `surface` fill and a full-width 1px `separator` hairline at its bottom edge; page tabs stand on the hairline with the accent underline over it |
 
 ## Departures
 

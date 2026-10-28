@@ -22,7 +22,7 @@ two sets of the same level never nest.
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | region | the tabs switch a panel inside a drawer, dialog, card or rail; never reflected in the URL | region tabs, placed inside that surface | `DNA-COMMON-TABS-BY-LAYER` |
-| page | the tabs switch the page's main area under the page header and may reflect the URL; one set per page | page tabs, placed on the page outside any surface | `DNA-COMMON-TABS-BY-LAYER`; candidate: at most one page set per page |
+| page | the tabs switch the page's main area under the page header and may reflect the URL; one set per page | page tabs, the `tabs` slot of the `PageHeader` (they stand on its separator) | `DNA-COMMON-TABS-BY-LAYER`, `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR`; candidate: at most one page set per page |
 
 ## Variants
 None for the app: placing the tabs is the choice, and the grammar draws page tabs as the underline and region
