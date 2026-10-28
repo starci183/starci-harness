@@ -172,7 +172,10 @@ jobs:
     if: needs.plan.outputs.harness == 'true'
     runs-on: ubuntu-latest
     steps:
+      # Full history: feedback-seed-2026-10-27 closes the owner's feedback on the harness's own commits.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24

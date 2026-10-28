@@ -1,9 +1,9 @@
 schema: starci/scenario@1
 id: conflict-lease-case-insensitive
 group: conflict
-title: "Docs/A.md and docs/a.md are one file on Windows and macOS: one lease"
+title: "Docs/A.md and docs/a.md are one lease on every host, since a checkout on Windows or macOS holds them as one file"
 inject: two tasks lease the same file spelled in two cases
-expect: the second send refuses LEASE_CONFLICT on a case-insensitive filesystem
+expect: the second send refuses LEASE_CONFLICT, whatever the host's filesystem
 pass:
   - second send exits 1 with LEASE_CONFLICT
   - one task

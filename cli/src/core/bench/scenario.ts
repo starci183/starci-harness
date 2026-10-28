@@ -101,7 +101,7 @@ const stepSchema = z.strictObject({
     cwd: z.string().optional(),
     env: z.record(z.string(), z.string()).optional(),
     expect: envelopeExpect.optional(),
-    /** Saves `data.<path>` of the json envelope under a variable name. */
+    /** Saves `data.<path>` of a verb's json envelope, or `stdout` of a git step (trimmed), under a variable name. */
     save: z.record(z.string(), z.string()).optional(),
     /** Writes `content` (or a `generated` fixture) to a path of the scratch repository, or copies the file or folder `from` there (`${ops}` is the ops/ folder the CLI reads). */
     write: z.strictObject({ path: z.string(), content: z.string().optional(), generated: z.enum(GENERATED).optional(), crlf: z.boolean().optional(), from: z.string().optional() }).optional(),

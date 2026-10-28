@@ -2,13 +2,13 @@ schema: starci/scenario@1
 id: worktree-hooks-generated-hooks-path
 group: conflict
 title: "a product's generated, gitignored core.hooksPath reaches the workflow worktree, and a worktree without it is never verified"
-inject: the product sets core.hooksPath=.husky/_ (gitignored, written by its prepare script); the harness creates the workflow worktree; later the hooks folder is deleted there
+inject: the product sets core.hooksPath=.husky/_ (gitignored, written by its prepare script with no file mode, so git on Linux and macOS would skip the hook); the harness creates the workflow worktree; later the hooks folder is deleted there
 expect: >-
   the new worktree has the hooks folder from the product's prepare script and its pre-commit hook fires on a commit
   (a marker file proves it); with the folder deleted, task verify is refused WORKTREE_HOOKS_MISSING and the task does not settle
 pass:
   - the hooks folder exists in the worktree the harness created
-  - a commit in the worktree fires the product hook (marker file)
+  - a commit in the worktree fires the product hook (marker file) on every host, the harness having made it executable
   - with the hooks folder removed, verify is refused with WORKTREE_HOOKS_MISSING and the task is not done
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role

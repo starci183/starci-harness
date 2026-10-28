@@ -82,8 +82,8 @@ verify or result arriving later is refused `TASK_INTENT_HELD`; a cancel refused 
 again), `repair` when a preserve saved the work but could not put every path back (a held file on Windows); a task
 with an intent keeps its leases, and `task verify --recover` finishes the reset from the preserve's `manifest.json`.
 Each task records its checkout (its workflow's worktree, else the one it was sent from; a retry keeps its previous
-task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases fold case when
-the repository's `core.ignorecase` is true; the fence is the lease row read beside the status swap, and a grant's
+task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases compare paths
+without case on every host, since a product is also checked out where `Docs/A.md` and `docs/a.md` are one file; the fence is the lease row read beside the status swap, and a grant's
 token only names the grant.
 
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
