@@ -84,6 +84,7 @@ design asks for.
 | [worktree-gc-every-kind](scenarios/worktree-gc-every-kind.yaml) | lifecycle | worktree gc removes every harness worktree whose owner ended, and an orphan's dirty work is preserved first | automated | pass | 2026-10-28 |
 | [lifecycle-kernel-episodic](scenarios/lifecycle-kernel-episodic.yaml) | lifecycle | the Kernel is woken only for decisions and exits after one command | automated | pending |  |
 | [lifecycle-orca-single-op](scenarios/lifecycle-orca-single-op.yaml) | lifecycle | fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed | automated | pass | 2026-10-27 |
+| [lifecycle-orca-supervisor-never-launches-op](scenarios/lifecycle-orca-supervisor-never-launches-op.yaml) | lifecycle | a step from the Supervisor's terminal queues a Kernel's Op and never launches it; a fenced launch spends nothing | automated | pass | 2026-10-29 |
 | [lifecycle-resume-after-restart](scenarios/lifecycle-resume-after-restart.yaml) | lifecycle | a workflow resumes from the ledger alone after every harness process restarted | automated | pending |  |
 | [lifecycle-supervisor-handoff](scenarios/lifecycle-supervisor-handoff.yaml) | lifecycle | a finished workflow hands off to the Supervisor, who lands it | automated | pending |  |
 | [project-fe-workflow-under-be-supervisor](scenarios/project-fe-workflow-under-be-supervisor.yaml) | lifecycle | a side (FE) repository's workflow runs under the Supervisor of the project whose Work its hfs.json names | automated | pass | 2026-10-27 |

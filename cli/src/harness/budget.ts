@@ -6,10 +6,12 @@ import { loadRouting } from "./routing.js"
 
 /**
  * Attempt outcomes that spent no try and no minutes: the launch certainly failed (a dispatch that never started its turn among
- * them, and an agent blocked at a prompt), launched the wrong model, or lost its task mid-launch. Only attempts burn minutes, from launch to their result or
+ * them, and an agent blocked at a prompt), Orca fenced its caller (consumer-fenced, a harness error), launched the wrong model, or lost its task mid-launch. Only attempts burn minutes, from launch to their result or
  * fence: a workflow waiting on an escalation or a coordinator burns none, and the stall ladder bounds an Op idle at its prompt.
  */
-const FREE_OUTCOMES: readonly string[] = ["launch-failed", "blocked-prompt", "model-mismatch", "orphaned"]
+export const CONSUMER_FENCED_OUTCOME = "consumer-fenced"
+
+const FREE_OUTCOMES: readonly string[] = ["launch-failed", "blocked-prompt", CONSUMER_FENCED_OUTCOME, "model-mismatch", "orphaned"]
 
 /** A workflow's minutes and tries: its ceiling (the ops default, or as raised) against what its attempts used. */
 export interface WorkflowBudget {

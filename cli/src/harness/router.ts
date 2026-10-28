@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { captureToolSync } from "../shared/exec.js"
+import { CONSUMER_FENCED_OUTCOME } from "./budget.js"
 import { readCircuit, readQuota, recordProbe } from "./circuit.js"
 import type { CircuitState, QuotaReading } from "./circuit.js"
 import { now, openExistingLedger } from "./ledger.js"
@@ -671,7 +672,7 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
 /** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, fenced over its budget, or a worker that never started (blocked at a prompt among them). */
 const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "blocked-prompt", "over-budget"])
 
-/** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
+/** Walks a task's retry chain in its ledger; every attempt but a consumer-fenced one counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
     const task = getTask(db, taskId)
     const reds: RouteMember[] = []
@@ -682,6 +683,8 @@ export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
     while (current !== null && !seen.has(current)) {
         seen.add(current)
         for (const row of db.prepare("SELECT agent, model, verdict, outcome FROM attempts WHERE task_id = ? ORDER BY seq").all(current)) {
+            // A launch Orca fenced was the harness's error: its attempt never ran and is no step of the lineage.
+            if (textOf(row.outcome) === CONSUMER_FENCED_OUTCOME) continue
             attempts += 1
             const agent = textOf(row.agent)
             const model = textOf(row.model)
