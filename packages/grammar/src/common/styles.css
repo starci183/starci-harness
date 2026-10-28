@@ -3702,9 +3702,9 @@
 
     /*
      * StatusDot: three variants (text chip, echo, static) share ONE dot-size token and one tone set. The text
-     * chip is HeroUI's soft Chip, so its padding, height and type are the vendor's per size (sm 4px/20px,
-     * md 8px+2px/24px, lg 12px+4px/28px). The dot-to-text gap is gap-1 (0.25rem): the Chip's own gap-0.5
-     * (0.125rem) plus the 0.125rem the dot adds after itself; no vendor property is overridden.
+     * chip is HeroUI's soft Chip, so its height and type are the vendor's per size (20px/24px/28px); its inline
+     * padding follows the chip padding rule below. The dot-to-text gap is gap-1 (0.25rem): the Chip's own gap-0.5
+     * (0.125rem) plus the 0.125rem the dot adds after itself.
      */
     .grammar-common-root {
         --starci-core-status-dot-size: 6px;
@@ -3769,6 +3769,15 @@
             display: none;
             animation: none;
         }
+    }
+
+    /*
+     * Chip inline padding: HeroUI's sm Chip pads 4px each side, so a status word ("đang hoạt động") sits on the pill
+     * edge. Badge and the StatusDot text chip keep the vendor height and type and pad 8px (0.5rem) inline at sm.
+     */
+    [data-component="Badge"][data-loading],
+    .starci-core-status-dot-chip[data-size="sm"] {
+        padding-inline: 0.5rem;
     }
 
     /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
