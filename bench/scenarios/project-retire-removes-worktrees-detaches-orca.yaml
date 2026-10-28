@@ -6,7 +6,8 @@ inject: "an abandoned project still holds an Op worktree with uncommitted work, 
 expect: >-
   project retire marks the ledger retired, preserves the Op worktree's uncommitted work in the project's preserved/ folder,
   removes the worktree (through Orca, then git; its branch stays), and once Orca lists no worktree of the repository but its
-  main checkout, detaches it from Orca's project list (orca project setup-delete); the repository and the ledger file stay
+  main checkout, closes that checkout's terminals with their saved workspace details (orca terminal close --all) and detaches
+  it from Orca's project list (orca project setup-delete); the repository and the ledger file stay
 pass:
   - the ledger is retired and the Op worktree is gone, its untracked file preserved
   - one orca project setup-delete of the repository's setup
@@ -76,4 +77,11 @@ steps:
         command: project setup-delete
         match:
           setup: "^setup-bench$"
+        count: 1
+  - name: the main checkout's terminals and saved workspace details went first, so Orca keeps no Unknown project
+    assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          worktree: "^path:.*/repo$"
         count: 1

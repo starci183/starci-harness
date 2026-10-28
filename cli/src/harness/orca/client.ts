@@ -6,6 +6,7 @@ import { Refusal } from "../../shared/errors.js"
 import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
 import { mainCheckout } from "../../shared/git.js"
+import { inOrder } from "../sequential.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -405,6 +406,40 @@ export const terminalClose = async (binary: OrcaBinary, handle: string, cwd: str
         if (error instanceof OrcaFailure && error.orcaCode !== undefined && TERMINAL_GONE_CODES.has(error.orcaCode)) return "gone"
         throw error
     }
+}
+
+/** A folder spelled one way for comparison: forward slashes, no trailing slash, lower case on Windows. */
+const folderKey = (path: string): string => {
+    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+/**
+ * Closes the whole tab of every Orca terminal whose worktree is `worktree` or a folder inside it, whoever opened it (a seat, a
+ * Kernel, a plain shell the owner opened): a terminal's process holds its folder as its working directory, and Windows refuses to
+ * remove a folder a process works in (EBUSY), while a removed worktree's terminals mean nothing. The caller's own terminal
+ * (ORCA_TERMINAL_HANDLE) is left, since closing it would end this process. Returns the handles closed or already gone.
+ */
+export const closeWorktreeTerminals = async (binary: OrcaBinary, worktree: string, cwd: string): Promise<string[]> => {
+    const inventory = await terminalList(binary, cwd)
+    const key = folderKey(worktree)
+    const own = process.env.ORCA_TERMINAL_HANDLE
+    const doomed = inventory.terminals.filter((terminal) => {
+        if (terminal.worktree === null || terminal.handle === own) return false
+        const folder = folderKey(terminal.worktree)
+        return folder === key || folder.startsWith(`${key}/`)
+    })
+    const closed = await inOrder(doomed, async (terminal) => terminalClose(binary, terminal.handle, cwd).then(() => terminal.handle, () => undefined))
+    return closed.filter((handle): handle is string => handle !== undefined)
+}
+
+/**
+ * `orca terminal close --worktree path:<folder> --all`: stops every terminal of one workspace and durably drops its tabs, layouts
+ * and resume records, the saved workspace details that make `project setup-delete` refuse (and that a forced delete leaves behind
+ * as an "Unknown" project in Orca's sidebar).
+ */
+export const closeWorkspaceTerminals = async (binary: OrcaBinary, folder: string, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("terminal", "close", { worktree: `path:${folder.replaceAll("\\", "/")}`, all: true }), "orca terminal close --all", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
 }
 
 /** `orca repo add --path <path>`: registers a repository with Orca, so a `path:` worktree selector inside it resolves. */

@@ -37,9 +37,11 @@ verb standard") are how the CLI holds this table where it holds it.
 
 Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
 removes one by hand or keeps one alive past its owner. Before removal its uncommitted work is preserved as a red verify
-preserves it (a patch and its untracked files, in the project's `preserved/`), its install links are unlinked as links
-(never a recursive delete through one, never `robocopy /MIR`), and git prunes; a branch with commits that never landed
-is kept.
+preserves it (a patch and its untracked files, in the project's `preserved/`), every Orca terminal whose worktree it is
+is closed, its install links are unlinked as links (never a recursive delete through one, never `robocopy /MIR`), and git
+prunes; a branch with commits that never landed is kept. A folder the host still holds (EBUSY, EPERM) is left busy and
+never fails or blocks the settle that asked for it: the collector retries it with backoff and tickets it for Debug at the
+cap (`cli/src/harness/worktree-busy.ts`).
 
 | worktree | made by | removed when |
 |---|---|---|
@@ -51,8 +53,8 @@ is kept.
 | any of the above of a retired project | its maker | `project retire`, which then detaches the repository from Orca |
 
 The collector `starci worktree gc` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
-of an ended workflow) finds every harness worktree whose owner ended and every orphan no ledger row owns, and removes it as
-above; `--dry-run` lists them (`cli/src/harness/worktree-gc.ts`).
+of an ended workflow) finds every harness worktree whose owner ended, every orphan no ledger row owns, every busy one due again
+and every one a retired project still holds, and removes it as above; `--dry-run` lists them (`cli/src/harness/worktree-gc.ts`).
 
 ## Not enforced yet
 

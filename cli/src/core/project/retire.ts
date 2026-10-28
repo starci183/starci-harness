@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
 import { now } from "../../harness/ledger.js"
 import { readMachine, textOf, withMachine } from "../../harness/machine.js"
-import { locateOrca, projectSetupDelete, projectSetups, terminalList, worktreeList } from "../../harness/orca/client.js"
+import { closeWorkspaceTerminals, locateOrca, projectSetupDelete, projectSetups, terminalList, worktreeList } from "../../harness/orca/client.js"
 import type { OrcaBinary } from "../../harness/orca/client.js"
 import { CLOSED_SEAT_STATUSES } from "../../harness/seats.js"
 import { retireWorktrees } from "../../harness/worktree-gc.js"
@@ -37,8 +37,8 @@ const openSeatsOf = (file: string): { readonly id: string; readonly terminal: st
 
 /**
  * Detaches a retired repository from Orca's project list (`orca project setup-delete`, metadata only: the folder and its git
- * stay), once Orca lists no worktree of it but its main checkout; a worktree Orca still lists, an unknown repository or Orca's
- * own refusal (open terminals, saved workspace details) leaves it attached and says why.
+ * stay), once Orca lists no worktree of it but its main checkout, after closing the main checkout's terminals with their saved
+ * workspace details; a worktree Orca still lists, an unknown repository or Orca's own refusal leaves it attached and says why.
  */
 const detachFromOrca = async (binary: OrcaBinary, repo: string, cwd: string): Promise<string> => {
     const setup = (await projectSetups(binary, cwd)).find((one) => samePath(one.path, repo))
@@ -46,6 +46,9 @@ const detachFromOrca = async (binary: OrcaBinary, repo: string, cwd: string): Pr
     const others = (await worktreeList(binary, repo, cwd)).filter((one) => !samePath(one.path, repo))
     if (others.length > 0) return `left in Orca: it still lists ${others.map((one) => one.path).join(", ")}`
     try {
+        // The main checkout's terminals, tabs and resume records go first: they are the saved workspace details that make Orca
+        // refuse the delete, and that a forced delete leaves behind as an "Unknown" project in its sidebar.
+        await closeWorkspaceTerminals(binary, repo, cwd).catch(() => undefined)
         await projectSetupDelete(binary, setup.id, cwd)
         return `detached from Orca (setup ${setup.id})`
     } catch (error: unknown) {

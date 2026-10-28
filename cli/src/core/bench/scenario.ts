@@ -131,18 +131,31 @@ const stepSchema = z.strictObject({
             set: z.record(z.string(), z.unknown()).optional(),
             worker: z.strictObject({ dispatch: z.string(), state: z.string() }).optional(),
             mail: z.array(z.strictObject({ to: z.string(), type: z.string(), from: z.string().optional(), subject: z.string().optional(), body: z.string().optional(), payload: z.unknown().optional(), count: z.number().int().min(1).max(500).optional() })).optional(),
-            /** A terminal's presence, and optionally the title and orphaned flag `terminal list` shows for it. */
-            terminal: z.strictObject({ handle: z.string(), live: z.boolean(), title: z.string().optional(), orphaned: z.boolean().optional() }).optional(),
+            /**
+             * A terminal's presence, and optionally the title, orphaned flag and worktree folder `terminal list` shows for it; `holder`
+             * names a served `hold` stand-in (its url and pid) as the terminal's process, which `terminal close` ends.
+             */
+            terminal: z
+                .strictObject({
+                    handle: z.string(),
+                    live: z.boolean(),
+                    title: z.string().optional(),
+                    orphaned: z.boolean().optional(),
+                    worktree: z.string().optional(),
+                    holder: z.strictObject({ url: z.string(), pid: z.string() }).optional(),
+                })
+                .optional(),
         })
         .optional(),
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),
     /**
-     * Starts a long-lived verb (`starci ui --port 0`) or a bench stand-in (`stub: telegram`, bench/stub/telegram-stub.mjs) in the
-     * scratch repository until the scenario ends, and saves the URL and token its ready line prints (`starci ui: <url> token
-     * <token>`, `stub telegram: <url> token <token>`) as `<as>.url` and `<as>.token`.
+     * Starts a long-lived verb (`starci ui --port 0`) or a bench stand-in (`stub: telegram`, bench/stub/telegram-stub.mjs; `stub:
+     * hold`, a process that holds its working folder) in the scratch repository, or in `cwd`, until the scenario ends, and saves
+     * the URL and token its ready line prints (`starci ui: <url> token <token>`, `stub telegram: <url> token <token>`) as
+     * `<as>.url` and `<as>.token`.
      */
     serve: z
-        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram"]).optional(), as: z.string().regex(/^[\w-]+$/) })
+        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram", "hold"]).optional(), cwd: z.string().optional(), as: z.string().regex(/^[\w-]+$/) })
         .refine((serve) => (serve.starci === undefined) !== (serve.stub === undefined), "serve names exactly one of starci and stub")
         .optional(),
     /**

@@ -5,7 +5,8 @@
 // call, and replays the faults the scenario scripted in its state file (STARCI_BENCH_ORCA). Its idle signals are scripted too:
 // `tuiIdle` (terminal wait --for tui-idle), `lastOutput` (terminal list), `idleSince`, `heartbeat` and `agentWait` (worker-show),
 // and `terminal send` keeps every prompt typed by its retry-request in `typed`. `terminal list` shows each terminal's `titles`
-// entry (its last rename, or a scripted one) and its `orphaned` flag. It never launches anything.
+// entry (its last rename, or a scripted one), its `orphaned` flag and its worktree folder (`terminalWorktrees`). It never launches
+// anything; closing a terminal a scenario gave a served holder as its process (`holders`) ends that holder.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename } from "node:path"
 import { createHash } from "node:crypto"
@@ -38,6 +39,34 @@ const answer = (reply, exitCode) => {
 }
 
 const refuse = (code, message) => ({ ok: false, error: { code, message } })
+
+const folderKey = (path) => {
+    const slashed = String(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+const sameFolder = (left, right) => left !== undefined && left !== null && folderKey(left) === folderKey(right)
+
+const alive = (pid) => {
+    try {
+        process.kill(pid, 0)
+        return true
+    } catch {
+        return false
+    }
+}
+
+// Ends a served holder (bench/stub/hold-stub.mjs) the way closing its terminal ends a shell: a SIGTERM (it gives back what it
+// held), then a wait of up to ten seconds until its process is gone, so the folder it held is free when this call answers.
+const endHolder = (holder) => {
+    if (holder === undefined || !alive(holder.pid)) return
+    try {
+        process.kill(holder.pid, "SIGTERM")
+    } catch {
+        // Gone between the check and the signal.
+    }
+    for (let waited = 0; waited < 10_000 && alive(holder.pid); waited += 100) sleep(100)
+}
 
 // Every mutation Orca took under a retry-request id: request-show reads it back, a replay answers the first outcome.
 const remember = (state, flags) => {
@@ -186,6 +215,7 @@ const defaults = (command, flags, state) => {
         case "terminal create": {
             const handle = idOf("term", `${flags.title}\0${String(state.calls)}`)
             state.terminals[handle] = true
+            if (typeof flags.worktree === "string" && flags.worktree.startsWith("path:")) state.terminalWorktrees = { ...(state.terminalWorktrees ?? {}), [handle]: flags.worktree.slice("path:".length) }
             return { ok: true, result: { terminal: { handle } } }
         }
         case "terminal list":
@@ -195,7 +225,7 @@ const defaults = (command, flags, state) => {
                 result: {
                     terminals: Object.keys(state.terminals)
                         .filter((handle) => state.terminals[handle])
-                        .map((handle) => ({ handle, lastOutputAt: state.lastOutput?.[handle] ?? null, title: state.titles?.[handle] ?? null, orphaned: state.orphaned?.[handle] === true })),
+                        .map((handle) => ({ handle, lastOutputAt: state.lastOutput?.[handle] ?? null, title: state.titles?.[handle] ?? null, orphaned: state.orphaned?.[handle] === true, worktreePath: state.terminalWorktrees?.[handle] ?? null })),
                 },
             }
         case "terminal show":
@@ -225,10 +255,18 @@ const defaults = (command, flags, state) => {
             }
             return { ok: true, result: { accepted: true, retryRequest: key } }
         }
-        case "terminal close":
-            if (state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
-            state.terminals[flags.terminal] = false
-            return { ok: true, result: { closed: true } }
+        case "terminal close": {
+            // `--worktree path:<folder> --all` closes every terminal of that workspace; `--terminal <handle>` one. A terminal whose
+            // process is a served holder ends that process, as closing a shell's tab ends the shell.
+            const folder = typeof flags.worktree === "string" ? flags.worktree.replace(/^path:/, "") : undefined
+            if (folder === undefined && state.terminals[flags.terminal] !== true) return refuse("terminal_not_found", "gone")
+            const handles = folder === undefined ? [flags.terminal] : Object.keys(state.terminals).filter((handle) => state.terminals[handle] && sameFolder(state.terminalWorktrees?.[handle], folder))
+            for (const handle of handles) {
+                state.terminals[handle] = false
+                endHolder(state.holders?.[handle])
+            }
+            return { ok: true, result: { closed: true, terminals: handles } }
+        }
         case "terminal rename":
             if (typeof flags.terminal === "string" && typeof flags.title === "string") state.titles = { ...(state.titles ?? {}), [flags.terminal]: flags.title }
             return { ok: true, result: {} }

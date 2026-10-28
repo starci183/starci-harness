@@ -312,11 +312,15 @@ const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
     const terminals = { ...(current.terminals as Record<string, boolean> | undefined) }
     const titles = { ...(current.titles as Record<string, string> | undefined) }
     const orphaned = { ...(current.orphaned as Record<string, boolean> | undefined) }
+    const terminalWorktrees = { ...(current.terminalWorktrees as Record<string, string> | undefined) }
+    const holders = { ...(current.holders as Record<string, { readonly url: string; readonly pid: number }> | undefined) }
     if (step.terminal !== undefined) {
         const handle = expand(run, step.terminal.handle)
         terminals[handle] = step.terminal.live
         if (step.terminal.title !== undefined) titles[handle] = expand(run, step.terminal.title)
         if (step.terminal.orphaned !== undefined) orphaned[handle] = step.terminal.orphaned
+        if (step.terminal.worktree !== undefined) terminalWorktrees[handle] = inRepo(run, step.terminal.worktree).replaceAll("\\", "/")
+        if (step.terminal.holder !== undefined) holders[handle] = { url: expand(run, step.terminal.holder.url), pid: Number(expand(run, step.terminal.holder.pid)) }
     }
     const mail = { ...(current.mail as Record<string, unknown[]> | undefined) }
     let sent = Number(current.benchMail ?? 0)
@@ -327,7 +331,7 @@ const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
             mail[to] = [...(mail[to] ?? []), { id: `bench-msg-${String(sent)}`, type: letter.type, subject: expand(run, letter.subject ?? ""), body: expand(run, letter.body ?? ""), payload: deepExpand(run, letter.payload ?? null), from: letter.from === undefined ? null : expand(run, letter.from) }]
         }
     }
-    writeFileSync(run.orcaState, JSON.stringify({ ...current, ...(deepExpand(run, step.set ?? {}) as Record<string, unknown>), rules, workers, terminals, titles, orphaned, mail, benchMail: sent }, null, 2))
+    writeFileSync(run.orcaState, JSON.stringify({ ...current, ...(deepExpand(run, step.set ?? {}) as Record<string, unknown>), rules, workers, terminals, titles, orphaned, terminalWorktrees, holders, mail, benchMail: sent }, null, 2))
 }
 
 /** Attaches the workflow's current Kernel seat (in the ledger of repository `repo`) from the terminal Orca gave it (`kernel attach`), saving its identity. */
@@ -384,7 +388,8 @@ const SERVED = /(?:starci ui|stub \w+): (http:\/\/\S+) token (\S+)/
 /** Starts a long-lived verb or bench stand-in in the scratch repository and saves the URL and token its ready line prints. */
 const serve = async (run: RunState, step: NonNullable<Step["serve"]>, label: string): Promise<void> => {
     const args = step.stub === undefined ? [cliPath(), ...(step.starci ?? []).map((arg) => expand(run, arg)), "--cwd", run.repo] : [join(benchRoot(), "stub", `${step.stub}-stub.mjs`)]
-    const served = await startServing(process.execPath, args, run.repo, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
+    const cwd = step.cwd === undefined ? run.repo : inRepo(run, step.cwd)
+    const served = await startServing(process.execPath, args, cwd, { env: run.env, ready: SERVED, timeoutMs: 60_000 }).catch((error: unknown) =>
         unmet(run, label, `${args.join(" ")} did not serve: ${error instanceof Error ? error.message : String(error)}`),
     )
     run.served.push(served)
