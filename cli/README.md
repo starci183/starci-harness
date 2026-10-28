@@ -382,12 +382,13 @@ relaunched once, and only once the fence held (`resolveKernelLaunch` in `core/su
 its prompt meets the stall ladder; every open `owner` escalation that is a `product` choice carrying a default is decided on that
 default (`ruleDefaults`, by `defaultRuling` of `harness/coordinator-commands.ts`: the escalation answered by `default:<Supervisor>`,
 its Kernel given an `escalation-answer` whose ruling is the default, an `escalation-defaulted` event keeping the reasoning), so the
-owner never sees it; it returns the project's oldest `escalation`, `handoff` or `shared-need` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
+owner never sees it; it returns the project's oldest `escalation`, `handoff`, `shared-need` or `kernel-undecided` (a decision its Kernel left undecided, below) the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
 it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
 `harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
 `owner` with no default it may rule, which the owner rules, or `harness`, which Debug rules (`awaitsOwner` in
 `harness/coordinator-commands.ts`); each is filed as its ticket first ("Tickets"). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1), `stop` or `need-owner` ("Shared needs"),
-and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
+or a ruling in a Kernel's place, the Kernel's own `workflow-change` or `escalation` answering a `kernel-undecided` decision,
+and its `answers` close decisions and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
 The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--need <key>] [--label]
 [--repo] [--allow]... [--input name=value]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
@@ -541,13 +542,30 @@ slot, meets the same ladder from the tick (`readyIdle` in `core/supervisor/drive
 `prompts.readyIdle` naming the ready tasks, once per seat and idle spell; past `readyStallMinutes` it is given up and relaunched
 as remedy 2 does, once per seat (`ready-idle-woken` events). Work the Kernel leaves undecided meets the tick the same way
 (`decisionIdle` in `core/supervisor/driver.ts`): an open Kernel decision, or a failed or returned task whose last decision
-was answered without moving it while no escalation of that answer is open, past `decisionIdleMinutes` (from the later of
-that decision, the task's last change and the seat's launch) types the Kernel `prompts.decisionIdle` naming each, once per
-seat and item; past `decisionStallMinutes` the item escalates once to the Supervisor (kind `harness`, so it is ticketed);
-neither relaunches the Kernel (`decision-idle` events). Nudges, wakes and give-ups are never progress.
+was answered without moving it while no escalation of that answer or of a Supervisor ruling on it is open, past
+`decisionIdleMinutes` (from the later of that decision, the task's last change and the seat's launch) types the Kernel
+`prompts.decisionIdle` naming each, once per seat and item; past `decisionStallMinutes` the item is handed to the Supervisor
+as one `kernel-undecided` decision per item and clock (`handUndecided`), carrying the Kernel decision in full and the task's
+evidence (label, state, try, result, output, red checks, routes and gate, the tasks it holds up), and none is ticketed; one
+whose item the Kernel decides meanwhile is superseded. Neither relaunches the Kernel (`decision-idle` events). The Supervisor
+rules it in the Kernel's place with the Kernel's own `workflow-change` or `escalation` answering the `kernel-undecided`
+decision (`RULING_COMMANDS` in `harness/coordinator-commands.ts`): admitted under the Kernel's route and need checks on the open
+Kernel decision it rules (`rulingAsKernel`), applied as the Kernel's command (`applyKernel` in `core/kernel/driver.ts`), the
+Kernel decision answered by its cmdId and a `ruled-by-supervisor` event recorded (`recordRuling`), which `kernel next` returns
+in its `rulings` once to the Kernel seat (`supervisor-ruling-told`). A ruling escalation is only of kind `owner` or `harness`
+(`RULING_WITHIN_AUTHORITY` otherwise, and for a product choice that carries a default), so it alone becomes a ticket: a
+question to the owner or a defect for Debug. A route a ruling takes counts toward its limit as the Kernel's does. Nudges,
+wakes, give-ups and a ruling told are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`
-(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`; `project` for the Supervisor). It is
+(decision ids), and its kind's field (`change`, `goal`, `escalation`, `handoff`, `mode`, `need`, `hold`; `project` for the Supervisor).
+A `workflow-change` that answers a red, question, check-premise or conflict decision on a task with no change and no need holds
+the task where it stands, and names the one condition that releases it (`hold`: `ticket`, `commit` on harness main, `need` or
+`time`; `tasks` names, by plan key, the tasks a hold answering an `escalation-answer` or `goal-change` keeps), refused
+`HOLD_UNCONDITIONED` without one (`assertHold` in `harness/holds.ts`) and admitted off the decision's route; the hold is a `task-held` event, the
+task leaves `decisionIdle` while it holds, and `releaseHolds` (every `settleWorkflow`, so every tick and step, and
+`wakeOnClose` for a ticket's close or answer) releases it once the condition is met (`hold-released`): a task the harness ended
+comes back to ready at the same try (`hold-revived`, past `reviveMax` too), any other has its Kernel decision reopened. It is
 admitted before any side effect into `commands` with its sha256 (an `applying` intent row): a known cmdId replays its
 outcome, other bytes refuse `CMD_CONFLICT`, a stale `basedOn` refuses `STALE`. Decisions are raised once per fact into
 `decisions` and closed by the command that answers them, or superseded when the ledger moves past them. Mail (`orca

@@ -79,12 +79,12 @@ const causeOf = (db: DatabaseSync, taskId: string, kind: RoutedKind): string => 
     return result.status === "failed" ? "failed" : "rejected"
 }
 
-/** How many applied Kernel commands of a workflow took a route for decisions on one task key. */
+/** How many applied commands of a workflow, the Kernel's and the Supervisor's rulings in its place, took a route for decisions on one task key. */
 const takenOf = (db: DatabaseSync, workflowId: string, route: string, key: string): number =>
     Number(
         db
             .prepare(
-                "SELECT COUNT(DISTINCT c.cmd_id) AS n FROM commands c JOIN decisions d ON d.answered_by = c.cmd_id WHERE c.workflow_id = ? AND c.scope = 'kernel' AND c.status = 'applied' " +
+                "SELECT COUNT(DISTINCT c.cmd_id) AS n FROM commands c JOIN decisions d ON d.answered_by = c.cmd_id AND d.scope = 'kernel' WHERE c.workflow_id = ? AND c.status = 'applied' " +
                     "AND json_extract(c.body_json, '$.route') = ? AND json_extract(d.evidence_json, '$.key') = ?",
             )
             .get(workflowId, route, key)?.n ?? 0,

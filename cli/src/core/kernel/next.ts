@@ -14,7 +14,8 @@ export const parseWait = (value: string | undefined): number | undefined => {
 /**
  * `starci kernel next <workflow>`: the Kernel's only wait. The deterministic driver drains the Kernel Run's mail, steps the
  * workflow (dispatch, verify, close seats), fences idle workers, resolves unknown launches, and returns one decision
- * (red, stale, question, conflict, goal, goal-change, escalation-answer, done) with a ledger digest; idle when none came.
+ * (red, stale, question, conflict, goal, goal-change, escalation-answer, done) with a ledger digest; idle when none came. Each
+ * answer also names the rulings the Supervisor took in the Kernel's place since its last turn.
  */
 export const kernelNextVerb = defineVerb({
     path: ["kernel", "next"],
@@ -37,6 +38,7 @@ export const kernelNextVerb = defineVerb({
             `${data.workflow}: ${head}`,
             `digest: ${data.digest.status}${reason}, graph v${String(data.digest.graphVersion)}, goal v${String(data.digest.goalVersion)}, nodes ${JSON.stringify(data.digest.nodes)}, ${String(data.digest.openDecisions)} open decision(s)`,
             ...(data.decision === null ? [] : [`evidence: ${JSON.stringify(data.decision.evidence)}`]),
+            ...data.rulings.map((ruling) => `ruled by the Supervisor in your place: ${ruling.kind} ${ruling.cmdId} on ${ruling.items.join(", ")}${ruling.route === null ? "" : ` (route ${ruling.route})`}${ruling.escalation === null ? "" : `, escalated as ${ruling.escalation}`}${ruling.note === null ? "" : `: ${ruling.note}`}`),
             ...data.actions.map((action) => `${action.action}: ${action.key ?? "-"} ${action.detail}`),
         ]
         return { data, message: lines.join("\n") }

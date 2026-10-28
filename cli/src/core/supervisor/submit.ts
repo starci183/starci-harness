@@ -3,13 +3,14 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { supervisorSubmit } from "./driver.js"
 
 /**
- * `starci supervisor submit <file>`: applies one Supervisor command (starci/command@1: goal, goal-change or stop) to a
- * workflow's Kernel, under cmdId dedupe and basedOn; the escalations it `answers` close with it. The workflow's repository is the
+ * `starci supervisor submit <file>`: applies one Supervisor command (starci/command@1: goal, goal-change, stop or need-owner) to a
+ * workflow's Kernel, or rules a `kernel-undecided` decision in the Kernel's place with the Kernel's own workflow-change or
+ * escalation, under cmdId dedupe and basedOn; the decisions it `answers` close with it. The workflow's repository is the
  * command's `project`, else `--project`, else the working directory, and a Supervisor submits only for its own project.
  */
 export const supervisorSubmitVerb = defineVerb({
     path: ["supervisor", "submit"],
-    summary: "apply one Supervisor command file (goal, goal-change, stop) to a workflow of the Supervisor's project; answers close escalations",
+    summary: "apply one Supervisor command file (goal, goal-change, stop, need-owner; or a workflow-change or escalation ruling a kernel-undecided decision) to a workflow of the Supervisor's project; answers close decisions",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],

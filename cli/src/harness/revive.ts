@@ -62,9 +62,13 @@ export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | n
     return last === "verify-infra" || last === "verify-deadline" ? last : null
 }
 
+/** The event a hold's release records on a task the harness ended: it comes back to ready at the same try, past `reviveMax` too (holds.ts). */
+export const HOLD_REVIVED = "hold-revived"
+
 /**
  * The harness-killed tasks of each node (plan key and hash) that come back to ready: each one whose cause `harnessCause` names,
- * up to `reviveMax` of ops/liveness.yaml per node; one past it stays ended, its node red for the Kernel with the cause in evidence.
+ * up to `reviveMax` of ops/liveness.yaml per node, and any such one a released hold revived (`hold-revived`); one past it stays
+ * ended, its node red for the Kernel with the cause in evidence.
  */
 export const revivableTasks = (db: DatabaseSync, tasks: readonly { readonly id: string; readonly key: string | null; readonly hash: string | null; readonly status: string }[]): Map<string, HarnessCause> => {
     const max = loadLiveness().reviveMax
@@ -77,7 +81,7 @@ export const revivableTasks = (db: DatabaseSync, tasks: readonly { readonly id: 
         const node = `${task.key}\0${task.hash ?? ""}`
         const count = (seen.get(node) ?? 0) + 1
         seen.set(node, count)
-        if (count <= max) revivable.set(task.id, cause)
+        if (count <= max || db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(HOLD_REVIVED, task.id) !== undefined) revivable.set(task.id, cause)
     }
     return revivable
 }

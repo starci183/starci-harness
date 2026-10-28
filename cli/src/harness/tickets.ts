@@ -7,6 +7,7 @@ import type { Decision } from "./coordinator-commands.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf, withMachine } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
+import { releaseTicketHolds } from "./holds.js"
 import { registeredRepositories } from "./project-workers.js"
 import { inOrder } from "./sequential.js"
 import { projectOf } from "./work.js"
@@ -418,7 +419,8 @@ export interface Woken {
 }
 
 /**
- * Wakes the Supervisor of every project an end released a waiter of, and of the ticket's own project when the Supervisor opened
+ * Releases every hold that waits on the ticket (holds.ts `releaseTicketHolds`: its task back at the same try when the harness ended
+ * it, else to its Kernel decision), then wakes the Supervisor of every project an end released a waiter of, and of the ticket's own project when the Supervisor opened
  * it: an owner request by the closer (`askSupervisor`) naming the ticket, how it ended (the fix, or the answer with who gave it
  * and why), and each released decision and task, which the Supervisor relays as a goal-change or stop answering the request and
  * each released escalation. A project with no registered key (no Supervisor) is skipped; a duplicate whose waiters moved wakes none.
@@ -426,6 +428,7 @@ export interface Woken {
 export const wakeOnClose = async (closed: Closed, by: string, cwd: string): Promise<Woken[]> => {
     const { ticket } = closed
     if (closed.movedTo !== null) return []
+    await releaseTicketHolds(ticket.id)
     const projects = new Map<string, { readonly project: Project; readonly waiters: TicketWaiter[] }>()
     for (const waiter of closed.released) {
         const entry = projects.get(waiter.project.key) ?? { project: waiter.project, waiters: [] }
