@@ -2714,6 +2714,16 @@ FE_PACKAGE_SHAPE:
   owner: op-retry
   kind: check-finding
 
+FE_PAGE_HEADER_HAND_ROLLED:
+  title: "A page head is composed by hand instead of PageHeader"
+  title_vi: "Phần đầu trang được ghép tay thay vì dùng PageHeader"
+  meaning_vi: "Tại <file>, một Breadcrumbs theo sau là một SectionHeader trong cùng một phần tử cha: phần đầu trang ghép tay không có dải nền, không có khoảng đệm trên và không có đường phân cách, nên mỗi trang tự quyết khoảng cách riêng."
+  causes_vi:
+    - "Đặt Breadcrumbs rồi SectionHeader level={1} ở đầu trang hoặc layout."
+  nextStep_vi: "Dùng PageHeader của Grammar với breadcrumbs, title và các khe cần thiết (description, meta, status, mark, actions, tabs) (quy định page-header-band)."
+  owner: op-retry
+  kind: check-finding
+
 FE_PAGE_METADATA_MISSING:
   title: "Every page exports metadata"
   title_vi: "Trang không khai báo metadata"

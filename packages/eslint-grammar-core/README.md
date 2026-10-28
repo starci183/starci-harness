@@ -19,7 +19,7 @@ Family helpers and the generated runtime closure belong to this package.
 
 The rule IDs remain stable when their namespace moves. Laws cover the fixed app shell and navbar,
 Grammar-owned structural elements, glyphs and icon sizes, destructive menu entries, status inks,
-chip labels that start uppercase, heading and token scales, vendor ownership and slot-status composition. Each rule's metadata cites
+chip labels that start uppercase, the page head composed by `PageHeader`, heading and token scales, vendor ownership and slot-status composition. Each rule's metadata cites
 its behavioral knowledge source and the governing ownership test. The R318 surface composition
 rules (nested control variants, panel-list alignment, layout-only CSS) stay in the universal canon.
 

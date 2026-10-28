@@ -5687,3 +5687,26 @@ rules:
         source: owner
         quote: "A chip label starts uppercase."
         ruling: "The label of a status chip starts with an uppercase letter (owner ruling chip-label-uppercase); StatusDot capitalises a text label it renders, and the lint refuses a lowercase literal label at its source."
+  - id: R323
+    code: "FE_PAGE_HEADER_HAND_ROLLED"
+    law: "A page is headed by Grammar's PageHeader; a Breadcrumbs trail followed by a SectionHeader in one parent is a page head composed by hand, with no band, no top inset and no separator."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_PAGE_HEADER_HAND_ROLLED"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-hand-rolled-page-header}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
+    templateNa: "A template states no page head; the pages are the app's."
+    proves:
+      - packages/eslint-grammar-core/src/page-header.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/page-header.spec.ts, editions: [lite, full], codes: [FE_PAGE_HEADER_HAND_ROLLED]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/page-header.spec.ts, editions: [lite, full], codes: [FE_PAGE_HEADER_HAND_ROLLED]}
+    cases:
+      - id: case-1
+        date: "2026-10-28"
+        source: owner
+        quote: "Publish Grammar 0.15.3 with PageHeader now, then move all 18 pages to it before deploying. (translated from Vietnamese)"
+        ruling: "A page is headed by Grammar's PageHeader (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a page head composed by hand from Breadcrumbs and SectionHeader."

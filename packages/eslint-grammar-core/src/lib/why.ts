@@ -37,6 +37,11 @@ export const why: Record<string, WhyEntry> = {
     en: "Raw `<tag>` in `<file>`. Page structure and text are composed from grammar components, not hand-written HTML.",
     fix: "Replace it with the matching grammar component (`Heading`, `Text`, `SurfaceCard`, ...); if grammar lacks it, add it to grammar or the ui package instead of drawing it in place.",
   },
+  "no-hand-rolled-page-header": {
+    code: "FE_PAGE_HEADER_HAND_ROLLED",
+    en: "A page head in `<file>` is a Breadcrumbs trail and a SectionHeader composed by hand.",
+    fix: "Compose Grammar PageHeader with breadcrumbs, title and the slots the head needs (description, meta, status, mark, actions, tabs).",
+  },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
     en: "Bottom tab navigation replaces the required mobile sidebar drawer.",
