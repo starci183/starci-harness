@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: the bundled rule catalog states R225 with the app pre-push hook's dependency push gate (`starci deps check`). No lint rule changed.
+
 ## 0.15.4 - 2026-10-28
 
 - Added: `starci-grammar/page-tabs-in-header` (R324, `FE_PAGE_TABS_OUTSIDE_HEADER`): a `Tabs` that is the first element child of a `Page`, or the next element sibling of a `PageHeader`, is a page tab bar outside the band; pass it as `header.tabs`.

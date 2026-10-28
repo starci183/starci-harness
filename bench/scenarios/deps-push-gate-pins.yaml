@@ -1,0 +1,44 @@
+schema: starci/scenario@1
+id: deps-push-gate-pins
+group: release
+title: the push gate passes local mode whose pins and copies are published, and refuses a committed pin npm cannot install
+inject: >-
+  a one-app tree pinning @starci/tsconfig 2.1.0 in local mode from a folder identical to the published 2.1.0
+  (bench/fixtures/deps-source/published); then a commit raising the pin to a version npm has never seen
+expect: >-
+  deps check passes while every committed pin is on npm and the local copy equals its published tarball, and refuses
+  DEPS_PIN_UNPUBLISHED once a committed package.json pins an unpublished version (reads the public registry)
+pass:
+  - local mode with published pins and an unchanged copy passes the push gate
+  - an unpublished committed pin is refused DEPS_PIN_UNPUBLISHED
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench deps app\n"
+    .npmrc: "legacy-peer-deps=true\n"
+    hfs.json: '{"hfs": 3, "kind": "app", "edition": "lite", "policy": "lib"}'
+    package.json: '{"name": "bench-deps-app", "version": "1.0.0", "private": true, "devDependencies": {"@starci/tsconfig": "2.1.0"}}'
+    package-lock.json: '{"name": "bench-deps-app", "version": "1.0.0", "lockfileVersion": 3, "requires": true, "packages": {"": {"name": "bench-deps-app", "version": "1.0.0", "devDependencies": {"@starci/tsconfig": "2.1.0"}}, "node_modules/@starci/tsconfig": {"version": "2.1.0", "resolved": "https://registry.npmjs.org/@starci/tsconfig/-/tsconfig-2.1.0.tgz", "integrity": "sha512-8nAgp5BdEWrQVFVWhvLh3ucU9Jfu7JhY5V9m1daLkRehQSmNsHVlAQ+2BuvtQHfomfbtybFT4/IwZCnsxp4Wiw==", "dev": true, "license": "MIT", "peerDependencies": {"typescript": ">=5.0.0"}}}}'
+    .gitignore: "node_modules/\n"
+steps:
+  - name: local mode from a folder equal to the published version
+    starci: [deps, source, --local, --from, "${ops}/../bench/fixtures/deps-source/published", --prebuilt]
+    expect:
+      exit: 0
+      contains: "\"targets\": ["
+  - name: the push gate passes local mode whose pins and copy are published
+    starci: [deps, check]
+    expect:
+      exit: 0
+      ok: true
+      contains: "\"folder\": "
+  - write:
+      path: package.json
+      content: '{"name": "bench-deps-app", "version": "1.0.0", "private": true, "devDependencies": {"@starci/tsconfig": "99.0.0-bench"}}'
+  - git: [commit, -q, -am, pin an unpublished tsconfig]
+  - name: a committed pin npm cannot install is refused
+    starci: [deps, check]
+    expect:
+      exit: 1
+      code: DEPS_PIN_UNPUBLISHED

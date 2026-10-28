@@ -157,9 +157,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/decisions.md](../harness/decisions.md) · 8 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 2 KB
-- [harness/roles.md](../harness/roles.md) · 3 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
+- [harness/roles.md](../harness/roles.md) · 4 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 2 KB — These hold for every role and every task.
-- [harness/state.md](../harness/state.md) · 3 KB
+- [harness/state.md](../harness/state.md) · 4 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 6 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing

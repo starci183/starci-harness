@@ -14,6 +14,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `telegram-bridge` service and `supervisor tick` read `TELEGRAM_BOT_TOKEN` through it, and `connect telegram status`
   reports its source. The committed `secret.env.example` names every key the host's secret.env holds and where to get it.
   Bench: `telegram-token-from-secret-env`, every run's `STARCI_SECRET_ENV` is its own file, and `expect.lacks`.
+- **Local package sources.** `deps source --local [--from <folder>] [--package <name>]` builds each `@starci` package an
+  app uses (default every one it pins or has installed, from this harness's `packages/`) and copies its publishable files
+  over the app's installed copies, marked `.starci-local.json`; dependencies a local package adds are installed with
+  `npm install --no-save`. package.json and package-lock.json never change. `deps source` prints each package's mode,
+  `--sync` re-applies the recorded copies after an `npm ci`, `--npm` runs `npm ci`. `seat start` and clean verify apply
+  the same copies to the worker's and the verify's checkout. Bench: `deps-local-verify-green`.
+- **The dependency push gate.** `deps check` refuses `DEPS_PIN_UNPUBLISHED` (a committed `@starci` pin npm cannot
+  install) and `DEPS_LOCAL_AHEAD` (a local copy no published version holds, compared file by file with the published
+  tarball); `release push`, `release cut` and an executed `app release` run it, and the `@starci/hfs` app pre-push hook
+  calls it. Bench: `deps-push-gate-pins`.
+- **Package edit branches.** `pkg branch <topic>` cuts `pkg/<app>-<topic>` from harness main into a worktree under the
+  harness's `.claude/worktrees/` and installs a pre-push guard; `pkg handoff [--urgent]` records the branch and head for
+  Debug (`--list` is the queue); `release push`, `release publish` and the guard refuse a `pkg/` branch to every role but
+  debug and owner (`PKG_EDIT_PUSH_REFUSED`). Bench: `pkg-edit-branch-handoff`.
 
 ## [1.1.0-alpha.5] - 2026-10-28
 

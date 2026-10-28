@@ -1,7 +1,8 @@
 // hook-shape.mjs - RT_HOOK_SHAPE (knowledge/hfs/rules.yaml, gate runtime): the app hook templates keep the gate model.
 //   pre-commit  L0 only: no typecheck and no test run (`test:` scripts, npm test, jest, vitest, a spec). Types and the targeted specs
 //               belong to the op gate.
-//   pre-push    the bundled push gate owns fast-forward main, annotated tags and the secret scan; no build, test or lint run.
+//   pre-push    the bundled push gate owns fast-forward main, annotated tags and the secret scan, then `starci deps check` the
+//               app's @starci pins; no build, test or lint run.
 // Guard hooks keep their host timeout above the runtime's own input, verdict, cleanup and output budgets.
 // Comments are not judged (the templates explain what they do not run). Pure apart from ctx.read.
 import { shellCommandSource } from '../../lib/shell-source.mjs';
@@ -23,7 +24,7 @@ const PRE_PUSH_FORBIDDEN = [
   [/\btypecheck\b/, 'a typecheck'],
   [/\blint\b/, 'a lint run'],
 ];
-const PRE_PUSH_MARKERS = ["node --input-type=module -e", "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'", 'process.exit(await main())'];
+const PRE_PUSH_MARKERS = ["node --input-type=module -e", "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'", 'process.exit(await main())', 'node node_modules/starci-harness/dist/main.js deps check'];
 
 const finding = (file, message) => ({ code: CODE, level: 'error', path: file, message: `${CODE} ${file}: ${message}` });
 
@@ -39,7 +40,7 @@ function fileHookShapeFindings({ path: file, name, text }) {
     const missing = PRE_PUSH_MARKERS.filter((marker) => !body.includes(marker));
     if (missing.length) {
       const markers = missing.map((m) => `\`${m}\``).join(', ');
-      found.push(finding(file, `the push gate lacks the bundled gate marker${missing.length === 1 ? '' : 's'} ${markers}; it must invoke the shared fast-forward, annotation and secret-scan policy`));
+      found.push(finding(file, `the push gate lacks the bundled gate marker${missing.length === 1 ? '' : 's'} ${markers}; it must invoke the shared fast-forward, annotation and secret-scan policy and the dependency push gate`));
     }
   }
   return found;
