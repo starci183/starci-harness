@@ -307,15 +307,27 @@ const isoOf = (value: number | string | null | undefined): string | null => {
     return Number.isNaN(time.getTime()) ? null : time.toISOString()
 }
 
-const terminalListSchema = z.looseObject({ terminals: z.array(z.looseObject({ handle: z.string(), lastOutputAt: z.union([z.number(), z.string()]).nullish() })), truncated: z.boolean().optional() })
+const terminalListSchema = z.looseObject({
+    terminals: z.array(z.looseObject({ handle: z.string(), lastOutputAt: z.union([z.number(), z.string()]).nullish(), title: z.string().nullish(), orphaned: z.boolean().nullish(), worktreePath: z.string().nullish() })),
+    truncated: z.boolean().optional(),
+})
 
 /** How many terminals one `terminal list` reads; a list Orca truncated proves no absence. */
 const TERMINAL_LIST_LIMIT = "1000"
 
-/** The live Orca terminals: their handles, when each last printed (ISO, null when Orca does not say), and whether Orca truncated the list. */
+/** One listed Orca terminal: its title, whether Orca reports it orphaned (its pane outlived an Orca restart), its worktree folder. */
+export interface ListedTerminal {
+    readonly handle: string
+    readonly title: string | null
+    readonly orphaned: boolean
+    readonly worktree: string | null
+}
+
+/** The live Orca terminals: their handles, when each last printed (ISO, null when Orca does not say), each listing, and whether Orca truncated the list. */
 export interface TerminalInventory {
     readonly handles: ReadonlySet<string>
     readonly lastOutput: ReadonlyMap<string, string | null>
+    readonly terminals: readonly ListedTerminal[]
     readonly truncated: boolean
 }
 
@@ -325,6 +337,7 @@ export const terminalList = async (binary: OrcaBinary, cwd: string): Promise<Ter
     return {
         handles: new Set(result.terminals.map((terminal) => terminal.handle)),
         lastOutput: new Map(result.terminals.map((terminal) => [terminal.handle, isoOf(terminal.lastOutputAt)])),
+        terminals: result.terminals.map((terminal) => ({ handle: terminal.handle, title: terminal.title ?? null, orphaned: terminal.orphaned === true, worktree: terminal.worktreePath ?? null })),
         truncated: result.truncated === true,
     }
 }
@@ -672,14 +685,14 @@ const stateSchema = z.looseObject({ state: z.string().min(1) })
 export const workerStop = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<string> =>
     (await callOrca(binary, "worker-stop", { dispatch: dispatchId }, stateSchema, cwd, SETTLE_TIMEOUT_MS)).state
 
-/** `orca orchestration worker-release`: closes a settled worker's terminal (released, already_released, retained or release_pending). */
+/** `orca orchestration worker-release`: settles a stopped worker's dispatch (released, already_released, retained or release_pending); its tab is `closeWorker`'s to close. */
 export const workerRelease = async (binary: OrcaBinary, dispatchId: string, cwd: string): Promise<string> =>
     (await callOrca(binary, "worker-release", { dispatch: dispatchId }, stateSchema, cwd, SETTLE_TIMEOUT_MS)).state
 
 /**
  * What closing a worker did: each step's state word, or `error: <why>`. `stopped` when Orca fenced the worker (it can write no
  * more), `settled` when it also released it. `tab` is what became of the worker's terminal tab: `closed`, `gone` (Orca had
- * closed it already), `kept: <why>` (the worker is not released, or no terminal handle is known) or `error: <why>`.
+ * closed it already), `kept: <why>` (the worker is not fenced, or no terminal handle is known) or `error: <why>`.
  */
 export interface WorkerClosed {
     readonly dispatchId: string
@@ -693,41 +706,37 @@ export interface WorkerClosed {
 
 const RELEASED_STATES: ReadonlySet<string> = new Set(["released", "already_released"])
 
-/** The worker-stop answers of a dispatch that has ended for good: Orca will not release it, only retain it. */
-const ENDED_DISPATCH_STATES: ReadonlySet<string> = new Set(["failed", "abandoned"])
-
 const errorText = (error: unknown): string => `error: ${error instanceof Error ? error.message : String(error)}`
 
 const stateOrError = async (step: Promise<string>): Promise<string> => step.catch(errorText)
 
-const tabOutcome = async (binary: OrcaBinary, settled: boolean, release: string, terminal: string | null, cwd: string): Promise<string> => {
-    if (!settled) return `kept: the worker is not released (${release})`
+const tabOutcome = async (binary: OrcaBinary, stopped: boolean, stop: string, terminal: string | null, cwd: string): Promise<string> => {
+    if (!stopped) return `kept: the worker is not fenced (${stop})`
     if (terminal === null) return "kept: no terminal handle is known"
     return terminalClose(binary, terminal, cwd).catch(errorText)
 }
 
 /**
  * Stops then releases one worker; both steps always run (release is idempotent), so a half-closed worker is finished on a repeat.
- * Once Orca released the worker, its terminal tab is closed as well, since worker-release settles the dispatch and may leave
- * the tab open. That close is best effort and never fails the caller. A worker Orca did not release keeps its tab: Orca's
- * guide forbids `terminal close` in place of an uncertain release, and a retained terminal is not the harness's to close.
+ * A seat's terminal lives exactly as long as the seat: once Orca fenced the worker (stopped, released, or ended and retained),
+ * its terminal tab is closed too, since neither worker-release nor a retained dispatch closes it. The close comes after the
+ * release, never in its place, is best effort and never fails the caller. Only a worker Orca did not fence keeps its tab.
  */
 export const closeWorker = async (binary: OrcaBinary, dispatchId: string, cwd: string, terminal: string | null = null): Promise<WorkerClosed> => {
     const asked = await stateOrError(workerStop(binary, dispatchId, cwd))
     // A stop Orca cannot answer (unknown, or an error) is fenced with worker-abandon, the fence Orca offers for an uncertain worker.
     const stop = asked.startsWith("error: ") || UNKNOWN_STATES.includes(asked) ? await stateOrError(workerAbandon(binary, dispatchId, cwd, requestIdOf("close-abandon", dispatchId))) : asked
     const release = await stateOrError(workerRelease(binary, dispatchId, cwd))
-    const released = RELEASED_STATES.has(release)
-    // A dispatch that ended failed or abandoned is settled even when Orca retains its resources: it can never be released, and
-    // its retained terminal stays Orca's (the tab is left as it is).
-    const settled = released || (release === "retained" && ENDED_DISPATCH_STATES.has(stop))
-    const stopped = settled || (!stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop))
-    const tab = await tabOutcome(binary, released, release, terminal, cwd)
+    const fenced = !stop.startsWith("error: ") && !UNKNOWN_STATES.includes(stop)
+    // A fenced dispatch Orca retains (it ended failed, blocked or abandoned) is settled: it can never be released, only kept for reading.
+    const settled = RELEASED_STATES.has(release) || (release === "retained" && fenced)
+    const stopped = settled || fenced
+    const tab = await tabOutcome(binary, stopped, stop, terminal, cwd)
     return { dispatchId, stop, release, stopped, settled, terminal, tab }
 }
 
-/** True when a released worker's tab may still be open: closing it failed, or its handle was unknown (an event records it). */
-export const tabLeftOpen = (closed: WorkerClosed): boolean => closed.settled && closed.tab !== "closed" && closed.tab !== "gone"
+/** True when a fenced worker's tab may still be open: closing it failed, or its handle was unknown (an event records it). */
+export const tabLeftOpen = (closed: WorkerClosed): boolean => closed.stopped && closed.tab !== "closed" && closed.tab !== "gone"
 
 /** `orca orchestration worker-abandon`: fences a worker without claiming its process stopped (the fence when worker-stop cannot answer). */
 export const workerAbandon = async (binary: OrcaBinary, dispatchId: string, cwd: string, retryRequest: string): Promise<string> =>
