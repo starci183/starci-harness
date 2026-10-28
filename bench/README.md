@@ -132,6 +132,8 @@ design asks for.
 | [conflict-split-brain-supervisor](scenarios/conflict-split-brain-supervisor.yaml) | conflict | two Supervisors of one project | automated | pending |  |
 | [conflict-two-kernels-one-workflow](scenarios/conflict-two-kernels-one-workflow.yaml) | conflict | two Kernel seats claim the same workflow | automated | pending |  |
 | [conflict-two-workflows-same-path](scenarios/conflict-two-workflows-same-path.yaml) | conflict | two workflows in one repository want the same path: the second waits, then runs | automated | pass | 2026-10-27 |
+| [lease-live-overdue-kept](scenarios/lease-live-overdue-kept.yaml) | conflict | an in-progress task's overdue lease is not released by a step | automated | pass | 2026-10-28 |
+| [lease-returned-overdue-released](scenarios/lease-returned-overdue-released.yaml) | conflict | a returned task's overdue lease is released by the next step and another workflow's task on the path launches | automated | pass | 2026-10-28 |
 | [worker-claims-done-without-output](scenarios/worker-claims-done-without-output.yaml) | worker | done with no output file is refused | automated | pass | 2026-10-27 |
 | [worker-commits-itself](scenarios/worker-commits-itself.yaml) | worker | a worker that commits its own work is caught, not silently credited | automated | pass | 2026-10-27 |
 | [worker-deletes-tests](scenarios/worker-deletes-tests.yaml) | worker | a worker deleting a tracked test outside its paths cannot land the deletion | automated | pass | 2026-10-27 |
