@@ -113,6 +113,8 @@ export const recordProviderEvent = (db: DatabaseSync, provider: string, kind: st
 export interface RunningWorkers {
     readonly byMember: ReadonlyMap<string, number>
     readonly byAgent: ReadonlyMap<string, number>
+    /** The coordinator seats (Supervisors and Kernels) among them, per agent. */
+    readonly coordinatorsByAgent: ReadonlyMap<string, number>
 }
 
 // A seat that is stopped, lost or closed runs no worker; anything else (starting, ready, launch-unknown, ...) may hold a slot.
@@ -138,10 +140,12 @@ export const holdsSlot = (row: Record<string, unknown>, listed: ListedTerminals 
 export const runningWorkers = (): RunningWorkers => {
     const byMember = new Map<string, number>()
     const byAgent = new Map<string, number>()
-    const count = (agent: string, model: string | null): void => {
+    const coordinatorsByAgent = new Map<string, number>()
+    const count = (agent: string, model: string | null, coordinator: boolean): void => {
         const member = `${agent}/${model ?? "?"}`
         byMember.set(member, (byMember.get(member) ?? 0) + 1)
         byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)
+        if (coordinator) coordinatorsByAgent.set(agent, (coordinatorsByAgent.get(agent) ?? 0) + 1)
     }
     // Every project's live Supervisor, and the host Supervisor a version-2 store may still run until it is retired.
     const supervisors = readMachine((db) => {
@@ -150,7 +154,7 @@ export const runningWorkers = (): RunningWorkers => {
     }, [])
     for (const seat of supervisors) {
         const agent = textOf(seat.agent)
-        if (agent !== null) count(agent, textOf(seat.model))
+        if (agent !== null) count(agent, textOf(seat.model), true)
     }
     const files = readMachine((db) => db.prepare("SELECT file FROM ledgers WHERE state != 'retired'").all().map((row) => textOf(row.file) ?? ""), [])
     const listed = listedTerminals()
@@ -161,7 +165,7 @@ export const runningWorkers = (): RunningWorkers => {
             ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
             for (const row of ledger.prepare("SELECT * FROM seats WHERE role IN ('worker', 'kernel')").all()) {
                 const agent = textOf(row.agent)
-                if (agent !== null && holdsSlot(row, listed)) count(agent, textOf(row.model))
+                if (agent !== null && holdsSlot(row, listed)) count(agent, textOf(row.model), textOf(row.role) === "kernel")
             }
         } catch {
             // A ledger that cannot be opened or read now (locked, damaged) is not counted; the next pick reads it again.
@@ -169,5 +173,5 @@ export const runningWorkers = (): RunningWorkers => {
             ledger?.close()
         }
     }
-    return { byMember, byAgent }
+    return { byMember, byAgent, coordinatorsByAgent }
 }

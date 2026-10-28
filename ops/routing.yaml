@@ -45,9 +45,13 @@ tiers:
 # One pool per agent: one provider quota window with real parallel slots. `labels` are the work it may take, `tools` what
 # its agent can use. A label's host tool that has a probe below must also answer on this host.
 pools:
+  # coordinatorReserve: the slots of maxParallel held for coordinator seats (Supervisors and Kernels). A worker pick sees
+  # maxParallel minus it; a coordinator pick takes a reserved slot whatever the workers hold, so a pool full of workers never
+  # pushes a coordinator onto another provider. Claude holds a project's Supervisor and its Kernels (`coordinators` above).
   claude:
     provider: claude
     maxParallel: 6
+    coordinatorReserve: 4
     labels: [code, test, draw, audit, review, verify, uat, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
   # Only Codex takes image work: image generation runs on GPT-6.1 Sol alone (labelTiers keeps image on the high tier).

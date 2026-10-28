@@ -49,6 +49,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - **A held decision no longer stops a workflow's dispatch.** `kernel next` steps the workflow before it returns an open
   decision, so a task returned and held never keeps the other ready tasks from launching; a ready task waiting on another
   task's lease names the path and its holder in `workflow status`. Bench: `workflow-blocked-keeps-dispatching`.
+- **Coordinator slots are reserved.** A pool's `coordinatorReserve` (ops/routing.yaml; claude 4 of its 6) is held for
+  Supervisors and Kernels: a worker pick counts it as taken, a coordinator pick takes a reserved slot whatever the workers
+  hold, so a claude pool full of workers no longer pushes a Kernel relaunch onto codex. Bench:
+  `coordinator-reserve-claude-full-of-workers`.
 - **`supervisor next` always answers.** Its wait stops early by its longest sweep, so it returns inside the caller's shell
   timeout, and a failure no verb catches still prints its refusal (the json envelope under `--json`) with exit 1. Bench:
   `supervisor-next-always-answers`.

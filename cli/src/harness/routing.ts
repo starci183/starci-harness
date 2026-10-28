@@ -21,6 +21,9 @@ export type MemberSpec = z.infer<typeof memberSchema>
 const poolSchema = z.object({
     provider: z.string().min(1),
     maxParallel: z.number().int().positive(),
+    // The slots of maxParallel held for coordinator seats: a worker pick sees maxParallel minus this, a coordinator pick may
+    // take them whatever the workers hold (router.ts hardReason).
+    coordinatorReserve: z.number().int().nonnegative().default(0),
     labels: z.array(z.string().min(1)),
     tools: z.array(z.string().min(1)),
     // false for an agent Orca launches with the model of its own config: worker-start then names no --model or --effort.
