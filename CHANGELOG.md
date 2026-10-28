@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.5] - 2026-10-28
+
 - **A returned task no longer holds its lease past its due time.** A task that came back to the Kernel (blocked, mismatch,
   awaiting the owner) has no worker left to write, so once its lease is due `workflow step`, `supervisor tick` and every
   lease request drop it and record `leases-expired`; a task that may still write keeps its lease however overdue. Bench:
@@ -31,7 +33,6 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `supervisor ask`; `supervisor next` hands an `owner` or `harness` escalation over once (`decision-relayed`), so a looping
   Supervisor waits in `next` instead of receiving it again, and neither kind makes it stalled. Bench:
   `supervisor-awaits-owner-not-stalled`, `supervisor-stall-relaunch-on-claude`.
-## [1.1.0-alpha.5] - 2026-10-28
 
 Runs `@starci/hfs` 4.9.5 (an exact dependency).
 
