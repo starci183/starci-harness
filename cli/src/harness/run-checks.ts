@@ -1,5 +1,5 @@
 import { existsSync, globSync, readFileSync, statSync } from "node:fs"
-import { isAbsolute, join } from "node:path"
+import { isAbsolute, join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
@@ -8,10 +8,10 @@ import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
-import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
+import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
-import { judgeUatWalk, parseUatRecord } from "./work.js"
+import { WORK_DIR, judgeUatWalk, parseUatRecord, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
 export interface CheckOutcome {
@@ -181,7 +181,9 @@ const idsOfFiles = (files: readonly string[], place: CheckPlace): Map<string, Se
 
 /**
  * The read trace: every id the filed result cites under a traced key (rulesApplied, workRecords) is named by one of the task's
- * context files (for a Work key, also a record under the task's own Work allowPaths), literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires.
+ * context files, literally as a heading token or a yaml `id:`, and the key cites at least as many ids as its op requires. A Work
+ * key reads its Work context files and the records under its own Work allowPaths, and also a record of the checkout that one
+ * of those context files or the contract's inputs points at (readableWork).
  */
 const runCitedCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "cited" } }, place: CheckPlace): CheckOutcome => {
     const document = readJsonDocument(RESULT_FILE, place)
@@ -201,19 +203,60 @@ interface CitedTrace {
     readonly key: string
     readonly minItems: number
     readonly files: readonly string[]
+    readonly cites?: "context" | "work" | undefined
+    readonly named?: readonly string[] | undefined
 }
 
-/** What one traced key cites: the ids found in a context file, and the problems of the ones that are not. */
+/** The record files a Work name may point at: a Work id's record, a named record file, or a named folder's record. */
+const recordFilesOf = (name: string): string[] => {
+    if (!name.startsWith(`${WORK_DIR}/`)) {
+        const file = recordFileOfId(name)
+        return file === undefined ? [] : [file]
+    }
+    return /\.ya?ml$/.test(name) ? [name] : [posix.join(name, "index.yaml"), posix.join(name, "resource.yaml")]
+}
+
+/**
+ * The Work records a Work key may cite beyond its traced files: each record of the checkout that a traced Work file (a context
+ * file, never a whole allowPath folder) or the contract's inputs (`named`) points at by id or path, keyed by the ids its file
+ * names. Only a named record counts, so a task never cites the whole Work tree.
+ */
+const readableWork = (trace: CitedTrace, place: CheckPlace): Map<string, Set<string>> => {
+    const names = new Map<string, string>()
+    for (const file of trace.files) {
+        const path = isAbsolute(file) ? file : join(place.root, file)
+        if (!existsSync(path) || statSync(path).isDirectory()) continue
+        for (const name of workNamesIn(readFileSync(path, "utf8"))) if (!names.has(name)) names.set(name, file)
+    }
+    for (const name of trace.named ?? []) if (!names.has(name)) names.set(name, "the inputs")
+    const records = new Map<string, Set<string>>()
+    for (const [name, by] of names) {
+        const file = recordFilesOf(name).find((candidate) => {
+            const path = join(place.root, candidate)
+            return existsSync(path) && !statSync(path).isDirectory()
+        })
+        if (file === undefined || trace.files.includes(file)) continue
+        const key = `${file} (named by ${by})`
+        if (!records.has(key)) records.set(key, idsAt(join(place.root, file)))
+    }
+    return records
+}
+
+/** What one traced key cites: the ids found in a context file (or a Work record the task may read), and the problems of the ones that are not. */
 const traceProblems = (trace: CitedTrace, value: unknown, place: CheckPlace): { readonly problems: string[]; readonly found: string[] } => {
     const problems: string[] = []
     const found: string[] = []
     if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return { problems: [`${trace.key} is not a list of ids`], found }
     if (value.length < trace.minItems) problems.push(`${trace.key} cites ${String(value.length)} id(s); the op requires at least ${String(trace.minItems)}`)
+    const work = trace.cites === "work"
     const files = idsOfFiles(trace.files, place)
+    const pointed = work ? readableWork(trace, place) : new Map<string, Set<string>>()
     const context = trace.files.length === 0 ? "none" : listed(trace.files)
+    const looked = `looked in ${trace.files.length === 0 ? "no Work file" : listed(trace.files)}; records they or the inputs name: ${pointed.size === 0 ? "none" : listed([...pointed.keys()])}`
     for (const id of value) {
-        const owner = [...files].find(([, ids]) => ids.has(id))?.[0]
+        const owner = [...files, ...pointed].find(([, ids]) => ids.has(id))?.[0]
         if (owner !== undefined) found.push(`${id} in ${owner}`)
+        else if (work) problems.push(`${trace.key}: "${id}" names no Work record readable by this task (${looked})`)
         else if (!isRuleId(id)) problems.push(`${trace.key}: "${id}" is not a rule id`)
         else problems.push(`${trace.key}: ${id} is named by none of the context files (${context})`)
     }

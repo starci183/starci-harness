@@ -43,10 +43,21 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
     // A uat walk: the receipted observations of `starci uat run` in the run folder judged against a Work record (harness/work.ts).
     z.object({ kind: z.literal("uat-flow"), record: z.string().min(1), run: z.string().min(1) }),
-    // The read trace: each id the result cites under `key` must be named by one of `files` (resolved by resolveChecks).
+    // The read trace: each id the result cites under `key` must be named by one of `files` (resolved by resolveChecks); a
+    // `work` key may also cite a Work record that one of its files or `named` (the Work ids and paths the inputs name) points at.
     z.object({
         kind: z.literal("cited"),
-        trace: z.array(z.strictObject({ key: z.string().min(1), minItems: z.number().int().min(0), files: z.array(z.string().min(1)) })).optional(),
+        trace: z
+            .array(
+                z.strictObject({
+                    key: z.string().min(1),
+                    minItems: z.number().int().min(0),
+                    files: z.array(z.string().min(1)),
+                    cites: z.enum(["context", "work"]).optional(),
+                    named: z.array(z.string().min(1)).optional(),
+                }),
+            )
+            .optional(),
     }),
     // The anchor cites (harness/cite.ts): every id resolves, a UI change cites a Choose anchor per Grammar family, grades hold.
     // resolveChecks fills the rest from the contract; the preset names the kind alone.

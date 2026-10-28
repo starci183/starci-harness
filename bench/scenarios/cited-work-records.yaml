@@ -1,0 +1,138 @@
+schema: starci/scenario@1
+id: cited-work-records
+group: verify
+title: workRecords resolve against the Work records the task can read, never the whole Work tree
+inject: >-
+  a review task reads an impl record that proves an integration record; one worker cites that record and one its inputs
+  name, another cites a record that exists but nothing hands it and one that does not exist
+expect: >-
+  rules-cited is green for the task citing its context record, the record that record proves and the record its inputs name;
+  for the task citing an unhanded and a missing record it is red, naming each as no Work record readable by the task with
+  where it looked, never as "not a rule id", and the task fails
+pass:
+  - rules-cited green on the first task, which settles done
+  - rules-cited red on the second task naming both ids with the Work message, the task failed
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench scratch repository\n"
+    .starciwork/workspace.yaml: |
+      schema: work/workspace@1
+      id: shop
+      repositories:
+        - {role: fe, name: web}
+    .starciwork/features/shop/impl/web/cart/index.yaml: |
+      schema: work/implementation@1
+      id: impl.shop.web.cart
+      title: the cart screen's code
+      state: done
+      activity: idle
+      repository: web
+      owners:
+        - {role: fe, path: web/src/cart}
+      proves:
+        - integration.shop.stripe
+    .starciwork/features/shop/integration/stripe/index.yaml: |
+      schema: work/integration@1
+      id: integration.shop.stripe
+      title: the stripe rail
+    .starciwork/features/shop/integration/paypal/index.yaml: |
+      schema: work/integration@1
+      id: integration.shop.paypal
+      title: the paypal rail
+steps:
+  - file:
+      path: wf-green.yaml
+      content: |
+        schema: starci/workflow@1
+        id: named
+        goal: review the cart against its records
+        runner: inline
+        tasks:
+          - id: review
+            label: review
+            summary: review the cart diff against its records and integration.shop.paypal
+            allowPaths: [web/reviews/cart]
+            context: [.starciwork/features/shop/impl/web/cart/index.yaml]
+            inputs: {since: HEAD}
+  - starci: [workflow, define, "${run}/wf-green.yaml"]
+  - name: start the task whose records are named
+    starci: [workflow, start, named]
+    save:
+      green: data.nodes.0.task.id
+  - name: the worker cites its context record, the record it proves and the record its inputs name
+    worker:
+      task: ${green}
+      status: done
+      output:
+        summary: read the cart diff against its records
+        files: []
+        verdict: passed
+        findings: []
+        rulesApplied: []
+        workRecords: [impl.shop.web.cart, integration.shop.stripe, integration.shop.paypal]
+        citeGrades: []
+  - name: step settles the task green
+    starci: [workflow, step, named]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${green}'"
+        equals:
+          - done
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || (detail LIKE '%integration.shop.stripe in .starciwork/features/shop/integration/stripe/index.yaml%') || ':' || (detail LIKE '%integration.shop.paypal in %named by the inputs%') FROM check_runs WHERE name = 'rules-cited' AND task_id = '${green}' AND runner = 'harness' AND attempt_id IS NOT NULL"
+        equals:
+          - "green:1:1"
+  - file:
+      path: wf-red.yaml
+      content: |
+        schema: starci/workflow@1
+        id: unnamed
+        goal: review the cart against its records
+        runner: inline
+        tasks:
+          - id: review
+            label: review
+            summary: review the cart diff against its records
+            allowPaths: [web/reviews/cart]
+            context: [.starciwork/features/shop/impl/web/cart/index.yaml]
+            inputs: {since: HEAD}
+  - starci: [workflow, define, "${run}/wf-red.yaml"]
+  - name: start the task that cites records nothing hands it
+    starci: [workflow, start, unnamed]
+    save:
+      red: data.nodes.0.task.id
+  - name: the worker cites a record nothing hands it and one that does not exist
+    worker:
+      task: ${red}
+      status: done
+      output:
+        summary: read the cart diff against its records
+        files: []
+        verdict: passed
+        findings: []
+        rulesApplied: []
+        workRecords: [impl.shop.web.cart, integration.shop.paypal, integration.shop.nosuch]
+        citeGrades: []
+  - name: step fails the task
+    starci: [workflow, step, unnamed]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${red}'"
+        equals:
+          - failed
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || (detail LIKE '%\"integration.shop.paypal\" names no Work record readable by this task (looked in .starciwork/features/shop/impl/web/cart/index.yaml; records they or the inputs name: %stripe%') || ':' || (detail LIKE '%\"integration.shop.nosuch\" names no Work record readable by this task%') || ':' || (detail LIKE '%not a rule id%') FROM check_runs WHERE name = 'rules-cited' AND task_id = '${red}' AND runner = 'harness' AND attempt_id IS NOT NULL"
+        equals:
+          - "red:1:1:0"
