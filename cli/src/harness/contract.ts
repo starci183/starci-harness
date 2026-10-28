@@ -80,6 +80,8 @@ export const contractSchema = z.strictObject({
         allowPaths: z.array(repoPathSchema).min(1),
         cwd: repoPathSchema.optional(),
         setup: setupSchema.optional(),
+        /** The task that composes the module this task writes (its plan key in the workflow): the composition rules of policy/quality.yaml are deferred to it. */
+        composedBy: z.string().min(1).optional(),
         base: z.array(contextEntrySchema).optional(),
         extend: z.array(contextEntrySchema).optional(),
     }),

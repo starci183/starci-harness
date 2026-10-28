@@ -57,6 +57,13 @@ const text = (value: unknown): string => (typeof value === "string" ? value : JS
 
 const scratchFile = (suffix: string): string => join(tmpdir(), `starci-prior-${randomBytes(6).toString("hex")}${suffix}`)
 
+/** A patch file being written for the store, inside the store's folder, so filing it is a rename on one device (never EXDEV). */
+const storeScratch = (root: string): string => {
+    const dir = priorDir(root)
+    mkdirSync(dir, { recursive: true })
+    return join(dir, `.writing-${randomBytes(6).toString("hex")}.patch`)
+}
+
 /** The key of a task's work: the plan key it was dispatched for, else the first task of its retry chain. */
 export const priorKey = (db: DatabaseSync, task: TaskRow): PriorKey => {
     const plan = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(task.id)?.plan_key
@@ -188,7 +195,7 @@ export const storePreserved = async (root: string, db: DatabaseSync, task: TaskR
     const changes = join(dir, "changes.patch")
     const files = manifest.untracked.map((path) => ({ path, file: join(dir, "untracked", path) })).filter((item) => existsSync(item.file))
     const tree = await treeOf(root, manifest.head, existsSync(changes) ? changes : null, files)
-    const out = scratchFile(".patch")
+    const out = storeScratch(root)
     try {
         await diffInto(root, manifest.head, tree, specsOf(task), out)
         return fileStored(root, db, task, out, { attemptId: attemptAt(db, task.id, at), kind: "preserved", base: manifest.head, source: dir })
@@ -207,7 +214,7 @@ export const storeCommitted = async (root: string, db: DatabaseSync, task: TaskR
     if (known !== undefined) return known
     const base = (await git(root, ["rev-parse", `${sha}^1`])).trim()
     const green = db.prepare("SELECT id FROM attempts WHERE task_id = ? AND verdict = 'green' ORDER BY seq DESC LIMIT 1").get(task.id)
-    const out = scratchFile(".patch")
+    const out = storeScratch(root)
     try {
         await diffInto(root, base, sha, specsOf(task), out)
         return fileStored(root, db, task, out, { attemptId: green === undefined ? attemptAt(db, task.id) : text(green.id), kind: "committed", base, source: sha })

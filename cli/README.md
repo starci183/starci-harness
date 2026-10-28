@@ -121,7 +121,10 @@ the file's; `workflow regoal` (owner, Supervisor) records goal n+1 from a `starc
 enter through early cutoff instead (`harness/reconcile.ts`): each dispatched task records the dependency tasks it ran
 on, and a done task's settled result hash is the git tree of its allowPaths at its settle commit plus its output hash,
 so a retry or edit upstream that lands the same result invalidates nothing below it. A node is ready when every
-dependency is done; its ledger task is created only then, so a waiting node holds no lease. A replan is
+dependency is done; its ledger task is created only then, so a waiting node holds no lease. A workflow is done when every
+node is done and, when a task names its composer (`composedBy`), its final verify is green: once per graph version
+`workflow step` runs `check run --workflow`, which judges every deferred module in full, records the verdict
+(`workflow-final-verify`) and blocks the workflow on a red one (`derivedStatus` in `harness/workflow.ts`). A replan is
 `workflow amend --desired <workflow file> --based-on <graph version>` (the Kernel's whole desired graph, reconciled by
 task key) or `--change <starci/workflow-change@1 file>` (add, edit, remove, retry, accept); it records graph n+1
 atomically (`STALE` on a moved graph, idempotent by `--cmd-id`) and is refused `SCOPE_EXCEEDED` past the goal's

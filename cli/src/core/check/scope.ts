@@ -6,11 +6,14 @@ import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { ownChanges } from "../../harness/baseline.js"
+import { underPaths } from "../../harness/contract.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { CONFIG_FILES } from "./canon.js"
+import { NO_COMPOSITION, judgeDeferred, taskComposition, workflowComposition } from "./composition.js"
+import type { Composition } from "./composition.js"
 import { braceVariants } from "./sonar-scope.js"
 
 /** One package the check touches and the changed files it owns. */
@@ -34,11 +37,14 @@ export interface Scope {
     readonly skipped: readonly string[]
     /** The task the check judges as (`--task`): only what it changed since its work began counts as changed (harness/baseline.ts). */
     readonly task: string | null
+    /** The composition rules it defers and the modules it judges in full (composition.ts). */
+    readonly composition: Composition
 }
 
-/** Whom a check judges as: a task, whose own changes since its work began are what changed. */
+/** Whom a check judges as: a task (its own changes, its deferral and obligations), or a workflow's final verify (its obligations). */
 export interface Judging {
     readonly task?: string
+    readonly workflow?: string
 }
 
 /** The result of one check step on one package. */
@@ -96,7 +102,8 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
  * Decides what to check: every package with --all, else the packages that own a judged file, the changed ones or, when the
  * diff changes nothing, the tracked files under `paths`; an app-wide configuration file widens to all. A diff and paths both empty leave
  * no package, so nothing runs. Judging as a task, a changed file counts only when the task changed it since its work began, so
- * another task's dirt in a shared checkout neither is judged nor widens the scope.
+ * another task's dirt in a shared checkout neither is judged nor widens the scope, and the tracked files of the modules whose
+ * composition the task answers for are judged too; judging a workflow's final verify, the judged files are those modules alone.
  */
 export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}): Promise<Scope> => {
     const root = await repositoryRoot(cwd)
@@ -107,7 +114,10 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     const diff = await changedFiles(root, base)
     const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
     const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
-    const files = changed.length === 0 ? await trackedUnder(root, paths) : changed
+    const composition = judging.workflow !== undefined ? workflowComposition(root, judging.workflow) : judging.task === undefined ? NO_COMPOSITION : taskComposition(root, judging.task)
+    const obligated = await trackedUnder(root, composition.obligations.flatMap((each) => each.paths))
+    const judged = judging.workflow !== undefined ? [] : changed.length === 0 ? await trackedUnder(root, paths) : changed
+    const files = [...new Set([...judged, ...obligated])]
     const appWide = appWideFiles()
     const widen = all || files.some((file) => appWide.test(file))
     const owned = new Map<WorkspacePackage, string[]>()
@@ -118,7 +128,7 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
         else owned.set(owner, [...(owned.get(owner) ?? []), file])
     }
     const targets = widen ? packages.map((pkg) => ({ pkg, files: owned.get(pkg) ?? [] })) : [...owned.entries()].map(([pkg, files]) => ({ pkg, files }))
-    return { root, base, all: widen, changed, paths, files, targets, skipped, task: judging.task ?? null }
+    return { root, base, all: widen, changed, paths, files, targets, skipped, task: judging.task ?? null, composition }
 }
 
 const tail = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
@@ -234,7 +244,7 @@ interface LintGroup {
     readonly paths: readonly string[]
 }
 
-/** What ESLint said over one group: whether it ran, whether it is red, and the output of a red run. */
+/** What ESLint said over one group: whether it ran, whether it is red, the output of a red run, and what it deferred. */
 interface LintRun {
     readonly label: string
     readonly ran: boolean
@@ -244,18 +254,29 @@ interface LintRun {
 
 /**
  * ESLint over one group from its config's folder, so the config's file globs and ignores match; a file the config ignores is not
- * linted and is no warning.
+ * linted and is no warning. A group holding a file under the scope's deferral runs with `--format json`, and the findings of a
+ * deferred rule on the deferring task's own paths do not count (composition.ts judgeDeferred); the label says how many.
  */
 const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, options: RunOptions): Promise<LintRun> => {
     const counted = scope.all ? `whole package linted (${String(group.paths.length)} file(s))` : `${String(group.paths.length)} file(s) linted`
     const label = `config ${toSlash(relative(scope.root, join(group.dir, group.file)))}, ${counted}`
     const eslint = [pkg.dir, group.dir, scope.root].map((dir) => join(dir, "node_modules", "eslint", "bin", "eslint.js")).find((candidate) => existsSync(candidate))
     if (eslint === undefined) return { label, ran: false, red: false, output: "" }
+    const { deferral } = scope.composition
+    const deferring = deferral !== null && group.paths.some((path) => underPaths(toSlash(relative(scope.root, join(group.dir, path))), deferral.paths)) ? deferral : null
+    let deferred = 0
     for (const paths of chunked(group.paths)) {
-        const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...paths], group.dir, options)
-        if (run.exitCode !== 0) return { label, ran: true, red: true, output: tail(run) }
+        const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...(deferring === null ? [] : ["--format", "json"]), ...paths], group.dir, options)
+        const judged = deferring === null ? undefined : judgeDeferred(run, scope.root, deferring)
+        if (judged === undefined) {
+            if (run.exitCode !== 0) return { label, ran: true, red: true, output: tail(run) }
+            continue
+        }
+        deferred += judged.deferred
+        if (judged.remaining.length > 0) return { label, ran: true, red: true, output: evidenceTail(judged.remaining.join("\n"), run.stderr) }
     }
-    return { label, ran: true, red: false, output: "" }
+    const note = deferring === null || deferred === 0 ? "" : `, deferred-to:${deferring.to}: ${String(deferred)} ${deferring.rules.join("/")} finding(s) on its own allowPaths`
+    return { label: label + note, ran: true, red: false, output: "" }
 }
 
 /**
@@ -314,5 +335,12 @@ export const describeScope = (scope: Scope): string => {
     const packages = scope.all ? "all packages" : String(scope.targets.length) + " package(s)"
     const outside = scope.skipped.length === 0 ? "" : ", " + String(scope.skipped.length) + " outside any package"
     const proved = scope.changed.length === 0 && scope.paths.length > 0 ? `, so ${String(scope.files.length)} tracked file(s) under ${scope.paths.join(", ")}` : ""
-    return `scope: ${packages} vs ${scope.base}; ${String(scope.changed.length)} changed file(s)${proved}${outside}`
+    return `scope: ${packages} vs ${scope.base}; ${String(scope.changed.length)} changed file(s)${proved}${outside}${describeComposition(scope.composition)}`
+}
+
+/** The composition part of the scope line: the modules judged in full for their producers, and the rules deferred to a composer. */
+export const describeComposition = (composition: Composition): string => {
+    const judged = composition.obligations.length === 0 ? "" : `; judged in full for their deferred composition: ${composition.obligations.map((each) => `${each.producer} (${each.paths.join(", ")})`).join(", ")}`
+    const deferred = composition.deferral === null ? "" : `; ${composition.deferral.rules.join(", ")} on its own allowPaths deferred to ${composition.deferral.to}`
+    return judged + deferred
 }
