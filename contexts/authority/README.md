@@ -29,9 +29,29 @@ merged tree there is: a check a later tier runs anyway is not run earlier, and r
 | app session (a chat session working in a product repository outside a workflow) | the product, on its branch or worktree; a `@starci` package only on a package edit branch | yes, on its own branch | the product's main, for its own branch | the product's main (`release push`) | no: the package edit goes to Debug | 1 while editing; 2 before it pushes |
 
 `inline` and `orca` follow the same tiers: the inline agent holds the worker's tier 1 and the Kernel's tier 2, and a
-Kernel seat holds tier 2 for the Ops it coordinates. Mail, leases and the harness commit are
+Kernel seat holds tier 2 for the Ops it coordinates. Mail, Op worktrees and the harness commit are
 [harness/roles.md](../harness/roles.md)'s; a verb's own `roles` and `effect` ([cli/README.md](../../cli/README.md) "The
 verb standard") are how the CLI holds this table where it holds it.
+
+## Worktrees
+
+Every worktree the harness creates is removed by the harness when its work ends, under `inline` and `orca` alike; no role
+removes one by hand or keeps one alive past its owner. Before removal its uncommitted work is preserved as a red verify
+preserves it (a patch and its untracked files, in the project's `preserved/`), its install links are unlinked as links
+(never a recursive delete through one, never `robocopy /MIR`), and git prunes; a branch with commits that never landed
+is kept.
+
+| worktree | made by | removed when |
+|---|---|---|
+| an Op's (`<workflow>.ops/<task>`) | its seat start or inline step | its task settles: landed green, failed, cancelled, fenced or stalled |
+| a workflow's (the Kernel's) | `kernel start` | the workflow is done or stopped and its Kernel closed; its branch stays for landing |
+| a Supervisor's `[Worker]` | `supervisor dispatch` | the Supervisor accepts or rejects the worker; its branch stays for landing |
+| a package edit (`pkg branch`) | `pkg branch` | Debug landed its handed-off head on main |
+| a clean-verify checkout | `task verify` | its verdict is reached |
+
+The collector `starci worktree gc` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
+of an ended workflow) finds every harness worktree whose owner ended and every orphan no ledger row owns, and removes it as
+above; `--dry-run` lists them (`cli/src/harness/worktree-gc.ts`).
 
 ## Not enforced yet
 

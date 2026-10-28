@@ -9,6 +9,7 @@ import { headline, pidAlive } from "../shared/exec.js"
 import { captureGit, currentBranch, git, gitSucceeds, resolveSha } from "../shared/git.js"
 import type { CleanVerify } from "./clean-verify.js"
 import type { Contract } from "./contract.js"
+import type { LandTarget } from "./land.js"
 import { now } from "./ledger.js"
 import { loadOps } from "./ops.js"
 import type { ResultSource } from "./run-checks.js"
@@ -53,7 +54,7 @@ export interface Verifier {
 /** The message of a task's harness commit: `<label>: <summary>` and the task trailer. */
 export const settleMessage = (contract: Contract, taskId: string): string => `${contract.label}: ${contract.input.summary}\n\nStarci-Task: ${taskId}`
 
-/** The branch a settle will move; a detached HEAD has none, so nothing can be settled. */
+/** The branch a checkout has checked out, which a settle there moves; a detached HEAD has none, so nothing can be settled. */
 export const settleBranch = async (root: string): Promise<string> => {
     const branch = await currentBranch(root)
     if (branch === undefined) throw new Refusal("HEAD_DETACHED", `${root} is on a detached HEAD; check out the branch the task lands on, then verify again`)
@@ -74,7 +75,8 @@ export const asVerifier = (value: unknown): Verifier | undefined => {
     return typeof task === "string" && typeof pid === "number" && typeof host === "string" && typeof at === "string" ? { task, pid, host, at } : undefined
 }
 
-const LOCK_KEY = "settle-lock"
+/** The verifier lock of a task: held from a settling verify's claim to its end, so --recover tells a live verify from a dead one. */
+export const verifyLockKey = (taskId: string): string => `verify-lock:${taskId}`
 
 const LOCK_POLL_MS = 500
 
@@ -88,8 +90,8 @@ interface LockRow extends Verifier {
     readonly beat: string
 }
 
-const readLock = (db: DatabaseSync): LockRow | undefined => {
-    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(LOCK_KEY)
+const readLock = (db: DatabaseSync, key: string): LockRow | undefined => {
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key)
     if (row === undefined) return undefined
     const value: unknown = JSON.parse(String(row.value))
     const verifier = asVerifier(value)
@@ -104,24 +106,24 @@ const readLock = (db: DatabaseSync): LockRow | undefined => {
  */
 const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && verifierAlive(holder)
 
-/** The live holder of the project's settle lock, if any: a verifying task with no live holder has no verifier left. */
-export const settleLockHolder = (db: DatabaseSync): Verifier | undefined => {
-    const holder = readLock(db)
+/** The live holder of a lock (`verifyLockKey` of a task, or a land lock), if any: a verifying task with no live holder has no verifier left. */
+export const settleLockHolder = (db: DatabaseSync, key: string): Verifier | undefined => {
+    const holder = readLock(db, key)
     return holder !== undefined && holderAlive(holder) ? holder : undefined
 }
 
 const mine = "key = ? AND json_extract(value, '$.task') = ? AND json_extract(value, '$.pid') = ? AND json_extract(value, '$.host') = ?"
 
 /** Takes the lock row if it is free or its holder died; one statement pair under BEGIN IMMEDIATE, so two verifiers never both win. */
-const tryLock = (db: DatabaseSync, me: Verifier): Verifier | undefined => {
+const tryLock = (db: DatabaseSync, me: Verifier, key: string): Verifier | undefined => {
     db.exec("BEGIN IMMEDIATE")
     try {
-        const holder = readLock(db)
+        const holder = readLock(db, key)
         if (holder !== undefined && holderAlive(holder)) {
             db.exec("COMMIT")
             return holder
         }
-        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(LOCK_KEY, JSON.stringify({ ...me, beat: now() }))
+        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, JSON.stringify({ ...me, beat: now() }))
         db.exec("COMMIT")
         return undefined
     } catch (error: unknown) {
@@ -131,25 +133,26 @@ const tryLock = (db: DatabaseSync, me: Verifier): Verifier | undefined => {
 }
 
 /** Takes the settle lock, polling until `deadline`; refuses with SETTLE_BUSY when its holder outlasts it. */
-const acquireLock = async (db: DatabaseSync, me: Verifier, deadline: number): Promise<void> => {
-    const holder = tryLock(db, me)
+const acquireLock = async (db: DatabaseSync, me: Verifier, key: string, deadline: number): Promise<void> => {
+    const holder = tryLock(db, me, key)
     if (holder === undefined) return
     if (Date.now() >= deadline) {
         throw new Refusal("SETTLE_BUSY", `task ${holder.task} has been verifying since ${holder.at} (pid ${String(holder.pid)} on ${holder.host}); nothing changed, verify again when it ends`)
     }
     await sleep(LOCK_POLL_MS)
-    await acquireLock(db, me, deadline)
+    await acquireLock(db, me, key, deadline)
 }
 
 /**
- * Runs `work` while this process holds the project's settle lock (a ledger row), so verifies that settle run one at a time
- * (side serialisation): each builds its candidate on the HEAD the previous one left. A holder whose process died is taken
- * over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing. The holder stamps a heartbeat while it
- * works, so a lock whose holder stopped beating is taken over even when its pid was reused.
+ * Runs `work` while this process holds the lock `key` (a ledger row): a task's verifier lock (`verifyLockKey`) for its whole
+ * settling verify, or a land lock (harness/land.ts `landLockKey`), one per target branch, only while a verified commit is
+ * integrated, so landings onto one branch run one at a time and each lands on the head the previous one left. A holder whose
+ * process died is taken over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing. The holder stamps a
+ * heartbeat while it works, so a lock whose holder stopped beating is taken over even when its pid was reused.
  */
-export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, work: () => Promise<T>): Promise<T> => {
-    await acquireLock(db, me, Date.now() + waitMs)
-    const keys = [LOCK_KEY, me.task, me.pid, me.host] as const
+export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, key: string, work: () => Promise<T>): Promise<T> => {
+    await acquireLock(db, me, key, Date.now() + waitMs)
+    const keys = [key, me.task, me.pid, me.host] as const
     const beat = setInterval(() => {
         try {
             db.prepare(`UPDATE meta SET value = json_set(value, '$.beat', ?) WHERE ${mine}`).run(now(), ...keys)
@@ -302,14 +305,19 @@ export const workLine = (work: WorkWrite): string => {
 }
 
 /**
- * Lands exactly the candidate the checks saw: the branch moves to that commit only while it still points at the candidate's
- * parent. A uat task's Work rides in the same harness commit: the candidate's tree plus the record's `state: done` and
- * `activity: idle` and its run cited in the flow's evidence.yaml; a Work file the user is editing is left alone, with a
- * warning. Once the ref moved the settle stands: refreshing the index and the Work files is best effort and only warns.
- * The work tree is never written but for those Work files, and nothing is pushed.
+ * Lands exactly the candidate the checks saw on the target's branch, only while it still points at the candidate's parent
+ * (call it under the target's land lock). A task working in the target checkout itself moves the ref and refreshes the index of
+ * the settled paths, whose files its work tree already holds; a task of an Op worktree fast-forwards the target checkout
+ * (`git merge --ff-only`), which moves its branch, index and work tree together and refuses rather than overwrite a local edit
+ * there. A uat task's Work rides in the same harness commit: the candidate's tree plus the record's `state: done` and
+ * `activity: idle` and its run cited in the flow's evidence.yaml, read in the target checkout; a Work file the user is editing is
+ * left alone, with a warning. Once the ref moved the settle stands: refreshing the index and the Work files is best effort and
+ * only warns. Nothing is pushed.
  */
-export const settle = async (root: string, built: CleanVerify, task?: TaskRow): Promise<Settlement> => {
+export const settle = async (target: LandTarget, built: CleanVerify, task?: TaskRow): Promise<Settlement> => {
+    const root = target.checkout
     const branch = await settleBranch(root)
+    if (branch !== target.branch) throw new Refusal("SETTLE_BRANCH_MOVED", `${root} has ${branch} checked out, not ${target.branch}, the branch the task lands on; nothing was landed, verify again`)
     const moved = (head: string): Refusal =>
         new Refusal("HEAD_MOVED", `${branch} moved from ${built.parent.slice(0, 12)} to ${head.slice(0, 12)} after the candidate was built; the work tree is untouched and no try is spent, verify again`)
     const head = await resolveSha(root, "HEAD")
@@ -331,13 +339,15 @@ export const settle = async (root: string, built: CleanVerify, task?: TaskRow): 
         }
     }
     if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work }
-    const update = await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
+    const update = target.own
+        ? await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
+        : await captureGit(["merge", "--ff-only", "--quiet", candidate], root)
     if (update.exitCode !== 0) {
         const after = await resolveSha(root, "HEAD")
         if (after !== built.parent) throw moved(after)
-        throw new Refusal("SETTLE_REF_FAILED", `git update-ref of ${branch} failed: ${headline(update.stderr)}; the work tree is untouched and no try is spent, verify again`)
+        throw new Refusal("SETTLE_REF_FAILED", `git ${target.own ? "update-ref" : "merge --ff-only"} of ${branch} failed: ${headline(update.stderr)}; the work tree is untouched and no try is spent, verify again`)
     }
-    const refreshed = [...(await refreshIndex(root, built.paths)), ...(workPaths.length === 0 ? [] : await checkoutWork(root, candidate, workPaths))]
+    const refreshed = target.own ? [...(await refreshIndex(root, built.paths)), ...(workPaths.length === 0 ? [] : await checkoutWork(root, candidate, workPaths))] : []
     return { branch, commit: candidate, committed: true, warnings: refreshed, work }
 }
 

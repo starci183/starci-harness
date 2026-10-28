@@ -7,15 +7,17 @@
   host (the ledger registry, provider health, every project's Supervisor and the package edits handed to Debug) and
   `projects/<ledger_id>/` for each repository's `runtime.sqlite`, coordinator briefs, contracts, outputs, preserved work,
   the prior-work store (`prior/<sha256>.patch`) and, while the repository takes `@starci` packages from a local folder,
-  `deps-local.json` (`starci deps source --local`). Package edit branches live in worktrees under the harness checkout's
-  `.claude/worktrees/` (`starci pkg branch`), never in its main checkout.
+  `deps-local.json` (`starci deps source --local`), and the worktrees the harness makes for the project's workflows, Ops
+  and workers (`worktrees/`). Package edit branches live in worktrees under the harness checkout's `.claude/worktrees/`
+  (`starci pkg branch`), never in its main checkout. Every one of them is removed when its owner's work ends
+  ([contexts/authority/README.md](../authority/README.md) "Worktrees").
   `STARCI_LOCAL_ROOT` replaces the whole state base and `STARCI_PROJECTS_ROOT` only `projects/`; under `npx`, whose
   package folder is a cache, `STARCI_LOCAL_ROOT` is what keeps the ledgers.
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
 - **Product Work** lives in the app repository's `.starciwork/` (Business/SRS, Architecture/SDS, `features/`,
   `workspace.yaml`), committed with the app. The harness never writes its state there, never ignores it and never
-  strips it from a candidate: a docs task leases a scope inside it (`.starciwork/features/<f>`), and only the whole
+  strips it from a candidate: a docs task names a scope inside it as its allowPaths (`.starciwork/features/<f>`), and only the whole
   tree as an `allowPaths` entry is refused, as `.` is.
 
 ## How a project is found

@@ -57,6 +57,3 @@ export const budgetStep = (startedAt: string, budgetMinutes: number, nudgedAt: s
     if (!olderThan(nudgedAt, rules.graceMinutes, at)) return { kind: "grace", detail: `asked to wrap up at ${nudgedAt}; fenced after ${String(rules.graceMinutes)} min` }
     return { kind: "fence", detail: `past its budget of ${String(budgetMinutes)} min and ${String(rules.graceMinutes)} min of grace since it was asked at ${nudgedAt}` }
 }
-
-/** The ISO time a task's leases fall due when its attempt starts now: its budget, then the ladder's grace. */
-export const budgetDue = (budgetMinutes: number, at: number = Date.now()): string => new Date(at + (budgetMinutes + loadBudgetLadder().graceMinutes) * 60_000).toISOString()

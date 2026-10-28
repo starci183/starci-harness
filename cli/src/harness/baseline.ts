@@ -7,6 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureGit, changedFiles, git, nulPaths } from "../shared/git.js"
 import { underPaths } from "./contract.js"
 import { openExistingLedger, openLedger } from "./ledger.js"
+import { opWorktreeOf } from "./land.js"
 import { applyPriorWork } from "./prior.js"
 import type { PriorApplied } from "./prior.js"
 import { lastEvent, recordEvent } from "./tasks.js"
@@ -45,14 +46,15 @@ const recordBaseline = async (db: DatabaseSync, worktree: string, task: TaskRow)
 }
 
 /**
- * The moment a task's work begins in its checkout: the checkout's tree is recorded as the task's baseline, so what was dirty
- * or untracked before (another task's leftovers, the owner's edits) is never judged as this task's, and then the work an
- * earlier attempt of its key left is brought back, which is the task's own.
+ * The moment a task's work begins in its checkout: in a checkout it shares (a task outside a workflow, sent from the owner's
+ * checkout) the checkout's tree is recorded as the task's baseline, so what was dirty or untracked before (the owner's edits)
+ * is never judged as this task's; an Op worktree holds nothing but its task's work and needs none. Then the work an earlier
+ * attempt of its key left is brought back, which is the task's own.
  */
 export const beginWork = async (root: string, worktree: string, task: TaskRow): Promise<PriorApplied> => {
     const db = openLedger(root)
     try {
-        await recordBaseline(db, worktree, task)
+        if (opWorktreeOf(db, task.id) === undefined) await recordBaseline(db, worktree, task)
     } finally {
         db.close()
     }
@@ -80,8 +82,8 @@ export const ownChanges = async (root: string, taskId: string): Promise<Readonly
 }
 
 /**
- * The dirty files under a task's allowPaths that are not its own: there, unchanged, since its work began, such as another
- * task's leftovers in a shared worktree. None for a task without a baseline. A candidate, a preserve and a reset leave them be.
+ * The dirty files under a task's allowPaths that are not its own: there, unchanged, since its work began, such as the owner's
+ * edits in the checkout it shares. None for a task without a baseline (an Op worktree's). A candidate, a preserve and a reset leave them be.
  */
 export const notOwn = async (root: string, taskId: string, allowPaths: readonly string[]): Promise<string[]> => {
     const own = await ownChanges(root, taskId)

@@ -3,11 +3,11 @@ id: scale-orca-maxparallel
 group: scale
 title: eight ready orca tasks launch no more than maxParallel seats
 inject: 8 independent tasks, maxParallel 3, a healthy Orca stand-in
-expect: one Kernel seat with its child Run and task; three worker-starts, each under the Kernel's Run; five tasks wait for a slot without a lease
+expect: one Kernel seat with its child Run and task; three worker-starts, each under the Kernel's Run; five tasks wait for a slot without a ledger task
 pass:
   - exactly 3 worker-start calls, 3 distinct retry-request ids
   - exactly 1 run-create
-  - 3 running tasks, 3 leases
+  - 3 running tasks, 3 Op worktrees
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -131,7 +131,7 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree')
         equals:
           - 3
   - name: kernel next

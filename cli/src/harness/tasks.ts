@@ -31,6 +31,9 @@ export const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = 
 /** Statuses with no way out of TRANSITIONS: a task in one of them holds nothing. */
 export const TERMINAL_STATUSES: readonly TaskStatus[] = (Object.keys(TRANSITIONS) as TaskStatus[]).filter((status) => TRANSITIONS[status].length === 0)
 
+/** True for a status no transition leaves: the task has ended. */
+export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)
+
 /**
  * An intent a command claims on a task before its first git or Orca side effect, so a concurrent command refuses instead of
  * racing it and a crash leaves a trace recovery reads: `cancelling` while a cancel stops seats and preserves work, `fencing`

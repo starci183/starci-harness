@@ -56,8 +56,7 @@ src/
 every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`, `edges` and `graph_versions` (each
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
-`check_runs` (every check of every verify with its status, exit code and detail: the tail of its output, at most `EVIDENCE_LINES` of `shared/output.ts` per tool run, with every value `redactSecrets` of `shared/secrets.ts` recognises redacted, which `task status` prints for the red checks of the newest verify); `leases` (path prefixes held until the task ends, with a fencing token; a due time (the task's budget plus the budget ladder's grace) never frees the path of a task that may still write, since the budget ladder fences a running attempt by then, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
-`seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
+`check_runs` (every check of every verify with its status, exit code and detail: the tail of its output, at most `EVIDENCE_LINES` of `shared/output.ts` per tool run, with every value `redactSecrets` of `shared/secrets.ts` recognises redacted, which `task status` prints for the red checks of the newest verify); `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
@@ -66,8 +65,8 @@ Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), 
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
 `telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`).
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
-and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's one worktree. Seats and leases stay
-in the project ledger.
+and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's worktree and `tasks.worktree` a task's
+own checkout. Seats stay in the project ledger.
 Additive migrations bump the corresponding machine schema version or `LEDGER_VERSION`; migrations never drop. Every
 store is opened through one function (`connect` in `harness/ledger.ts`), which reads its header first: a file that is
 no SQLite database or a damaged one is refused `LEDGER_CORRUPT`, naming the file and its recovery, and is never written.
@@ -82,19 +81,41 @@ persistent and the task ends `awaiting_owner` with the last reason (`noVerdict` 
 with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
 verify or result arriving later is refused `TASK_INTENT_HELD`; a cancel refused half-way keeps it and resumes when run
 again), `repair` when a preserve saved the work but could not put every path back (a held file on Windows); a task
-with an intent keeps its leases, and `task verify --recover` finishes the reset from the preserve's `manifest.json`.
-Each task records its checkout (its workflow's worktree, else the one it was sent from; a retry keeps its previous
-task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases compare paths
-without case on every host, since a product is also checked out where `Docs/A.md` and `docs/a.md` are one file; the fence is the lease row read beside the status swap, and a grant's
-token only names the grant.
+with an intent keeps its worktree, and `task verify --recover` finishes the reset from the preserve's `manifest.json`.
+Each task records its checkout (its Op worktree, else the one it was sent from), and verify, cancel and a failed result
+act there whatever checkout the caller is in.
+
+**Op worktrees.** Every task of a workflow, under either runner, works in a git worktree of its own,
+`<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut when its seat starts (or
+its inline step hands it out) from the head of the branch its workflow's worktree has checked out (an inline workflow
+without one: the checkout it runs in), beside that worktree rather than inside it, since git keeps no branch below another
+branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and links each
+node_modules folder of that checkout (a junction on Windows), never a fresh install (`ensureOpWorktree` in
+`harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
+runner the worktree is listed in Orca under the workflow's worktree as `[Op] <workflow>: <task>`, and the workflow's
+worktree under the project's main checkout as `[Kernel] <workflow>` (`orca worktree set --parent-worktree`), so
+Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. Every worktree the
+harness made is removed once its owner's work ends ([contexts/authority/README.md](../contexts/authority/README.md)
+"Worktrees"): an Op's by verify, cancel and a failed result at once, and by every `workflow step` for a task a fence,
+a stall or a crash ended (`sweepOpWorktrees`); every other kind, and any orphan, by the collector `worktree gc`, which
+`supervisor tick`, `supervisor accept` and `reject`, and a workflow step of a done or stopped workflow run
+(`harness/worktree-gc.ts`). Removal preserves uncommitted work first, unlinks the install links with a plain unlink,
+never a recursive delete through a link, then removes the worktree through `orca worktree rm` for an orca run (git
+when Orca is not used or left the folder) and prunes; an Op's branch is deleted once its tip is on the branch it
+landed on, every other branch is kept.
 
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
-Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's own work under its
-`allowPaths` and replays every check there, never in the worker's environment; what the candidate misses is read against
-the same staged snapshot. A task's own work is what changed since its work began: `beginWork` (`harness/baseline.ts`)
-records the tree of its checkout as its baseline when its seat starts or its inline step hands it out, and a dirty file
-unchanged since then (another task's leftovers in a shared worktree) is left out of its candidate, its `paths-only` stray
-files, the lint and typecheck of its `check run --task`, and its preserve and reset. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
+Orca cannot confirm the stop), then builds a candidate from HEAD of the task's checkout plus its work under its
+`allowPaths`, rebases it onto the head of the branch it lands on without a work tree (`git merge-tree --write-tree` with
+the candidate's parent as the base, `rebaseCandidate` in `harness/land.ts`), and replays every check on a clean checkout
+of that rebased commit, never in the worker's environment, so what is verified is what lands; what the candidate misses
+is read against the same staged snapshot. A textual conflict is never resolved by the harness: no check runs, the work
+is preserved, the attempt ends `conflict` and the task fails without a verdict, and the Kernel gets a `conflict`
+decision to amend the node on the new head, whose retry starts from the preserved work. A task working in a checkout it
+shares (one sent from the owner's checkout) records its checkout's tree as its baseline when its work begins
+(`beginWork` in `harness/baseline.ts`), and a dirty file unchanged since then is left out of its candidate, its
+`paths-only` stray files, the lint and typecheck of its `check run --task`, and its preserve and reset; an Op worktree
+holds only its task's work and records none. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
 through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
 them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
 project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract
@@ -103,15 +124,19 @@ nothing, over the tracked files under the `allowPaths` (`runScopedCheck` in `har
 ran; `check run` first builds the workspace dependencies whose entries the clean checkout lacks, or restores them from
 the build cache (`core/check/workspace-deps.ts`, cache path in `harness/ledger.ts`), as
 [contexts/project/lint.md](../contexts/project/lint.md) states. Green commits only those paths (never pushed; a candidate that changes nothing commits nothing and its result hash
-reads the tree of its `allowPaths` at the HEAD it settled on) and makes the task done, records its settle commit
-(`tasks.settle_commit`) and releases its leases in one transaction; red preserves and resets them and releases the
-leases. Settles of one project run one at a time under the settle lock (`harness/settle.ts`), so each candidate builds
-on the HEAD the previous one left and a half-done edit of one task never reaches another's checks; its holder stamps
-a heartbeat, so a dead holder whose pid Windows reused is taken over once the beat goes stale. Git is the authority for
-landed: a task left verifying by a verifier that no longer holds the settle lock (dead, or its beat stale) is reconciled
-by `task verify --recover`, which every `workflow step` (and so `kernel next`) runs on such a task before it settles: done
-when its branch carries the settle commit (its message and `Starci-Task:` trailer after the HEAD the verify started
-from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
+reads the tree of its `allowPaths` at the head it settled on) and makes the task done and records its settle commit
+(`tasks.settle_commit`) in one transaction; red preserves and resets its paths and fails it; either way the task's Op
+worktree is removed. A verify holds its task's verifier lock throughout, and the land lock of the branch it lands on
+(one per branch, `landLockKey` in `harness/land.ts`) only while its verified commit is integrated: an Op's lands by
+`git merge --ff-only` in the target checkout, which moves branch, index and work tree together and refuses rather than
+overwrite a local edit, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
+when another task landed between a verify's rebase and its landing, it verifies again on the new head under the land
+lock, so each lands on the head the previous one left. A lock's holder stamps a heartbeat, so a dead holder whose pid
+Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`). Git is the authority
+for landed: a task left verifying by a verifier that no longer holds its verifier lock (dead, or its beat stale) is
+reconciled by `task verify --recover`, which every `workflow step` (and so `kernel next`) runs on such a task before it
+settles: done when the branch it lands on carries the settle commit (its message and `Starci-Task:` trailer after the head
+the verify started from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
 `shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
 NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
 
@@ -122,7 +147,7 @@ the file's; `workflow regoal` (owner, Supervisor) records goal n+1 from a `starc
 enter through early cutoff instead (`harness/reconcile.ts`): each dispatched task records the dependency tasks it ran
 on, and a done task's settled result hash is the git tree of its allowPaths at its settle commit plus its output hash,
 so a retry or edit upstream that lands the same result invalidates nothing below it. A node is ready when every
-dependency is done; its ledger task is created only then, so a waiting node holds no lease. A workflow is done when every
+dependency is done; its ledger task is created only then, whatever paths other live tasks write. A workflow is done when every
 node is done and, when a task names its composer (`composedBy`), its final verify is green: once per graph version
 `workflow step` runs `check run --workflow`, which judges every deferred module in full, records the verdict
 (`workflow-final-verify`) and blocks the workflow on a red one (`derivedStatus` in `harness/workflow.ts`). A replan is
@@ -154,7 +179,7 @@ requeues the task. A certain failure is explained before the worker is released 
 `harness/launch-failure.ts`, for an Op's and a Kernel's launch alike): at Orca's `agent_readiness` stage the agent terminal
 its receipt names is read once, a screen at one of `blockedPrompts` ([ops/routing.yaml](../ops/routing.yaml)) is a
 `blocked-prompt`, anything else takes its `failureSignals` kind; the seat keeps the explanation (`seats.failure_json`,
-shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
+shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its worktree and seat open, and
 `seat start <task> --resume` replays the same requests.
 
 **Package sources.** An app pins npm versions of its `@starci` packages in committed files; `deps source --local`
@@ -170,7 +195,7 @@ debug and owner (`PKG_EDIT_PUSH_REFUSED`).
 **Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
 found") > `[Kernel] <workflow>` (one per running orca workflow) > `[Op] <label> (<task id>) - <summary>` (one per attempt),
 and `[Supervisor] <project>` > `[Worker] <project>: <topic>` (one per job the Supervisor hands out), each a real Orca agent, so
-Orca lists a project's main checkout with its Supervisor, each workflow worktree with its Kernel and Ops, and each worker's
+Orca lists a project's main checkout with its Supervisor, each workflow worktree under it with its Kernel, each Op worktree under that ("Op worktrees" above) with its Op, and each worker's
 worktree with its worker. Every `supervisor` verb takes its project from the working directory (any checkout or worktree of the
 project's repositories) or `--project <path>`. The owner runs `supervisor start` once per project: it reserves the
 project's one Supervisor in machine.sqlite (`project_supervisors`, keyed by the Work-root repository's ledger id) and
@@ -192,8 +217,9 @@ event, `coordinator: supervisor`, `coordinatorOf` in `harness/kernel.ts`): a Sup
 its own project's repositories, and submits only for them (`PROJECT_FOREIGN`), and neither it nor `kernel start` (`KERNEL_FOREIGN`) touches one still
 driven from a Kernel terminal another session adopted that no Kernel seat ever held, until Orca reports that terminal gone. The Kernel's first command, `kernel attach`,
 adopts its terminal as coordinator of the workflow's child Run (taken back with `run-use` after a relaunch) and its
-`[Kernel] <workflow>` task; every Op launches into that Run (`--run/--parent/--from` of the Kernel) inside the workflow's
-worktree, where verify settles it, so a relaunched Kernel or a retried attempt continues from the code already there.
+`[Kernel] <workflow>` task; every Op launches into that Run (`--run/--parent/--from` of the Kernel) inside its own Op
+worktree ("Op worktrees" above), and verify lands it on the workflow's branch, so a relaunched Kernel or a retried attempt
+continues from the code already there.
 
 Coordinators decide; deterministic drivers do the rest, and a coordinator never ends its turn while its driver is its own
 (it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
@@ -233,7 +259,7 @@ The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor
 [--repo] [--allow]... [--input name=value]...`, from its terminal, makes the worker's own worktree of `--repo` (default the
 project's Work-root repository, or any other checkout; a `@starci` package fix stays in the app's repository with
 `--input package=<name>`, and the worker cuts its own package edit branch, `pkg branch`, and hands it off) at `<project state>/worktrees/<worker>` on branch `starci/<worker>`, queues in that repository's ledger a task
-whose contract is the brief on the label's op (default `code`; with no `--allow`, its one report file), leases its paths,
+whose contract is the brief on the label's op (default `code`; with no `--allow`, its one report file),
 records the worker in `supervisor_workers`, and launches it as `seat start` does (`startSeat` with the Supervisor as
 coordinator: `--run/--parent/--from` of the Supervisor, title `[Worker] <project>: <topic>`), routed by the label's worker
 tier. Every `supervisor next` round from the Supervisor's terminal tends the project's workers (`tendWorkers`): it pings each

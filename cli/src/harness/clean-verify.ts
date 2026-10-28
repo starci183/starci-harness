@@ -11,6 +11,7 @@ import { locateTree } from "../shared/tree.js"
 import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
 import { excludedSpec, notOwn } from "./baseline.js"
+import { rebaseCandidate } from "./land.js"
 import { reapplyLocal } from "../core/deps/packages.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
@@ -56,6 +57,10 @@ export interface CleanVerifyInput {
     readonly since?: string
     readonly result?: ResultSource
     readonly timeoutMs?: number
+    /** The head the candidate lands on, when the task works in an Op worktree: the candidate is rebased onto it before any check, so what is verified is what lands. */
+    readonly onto?: string
+    /** The commit the Op worktree was cut at: only commits after it are the task's to judge. */
+    readonly fork?: string
 }
 
 interface Built {
@@ -120,10 +125,10 @@ const stagePlan = async (root: string, index: string, allowPaths: readonly strin
  * The commits on `parent` since the task was created (`since`, to the second: git dates carry no more) that change its
  * `allowPaths` and carry no `Starci-Task:` trailer: work the harness did not land. None without a task to date it.
  */
-const foreignCommits = async (root: string, since: string | undefined, parent: string, allowPaths: readonly string[]): Promise<string[]> => {
+const foreignCommits = async (root: string, since: string | undefined, parent: string, allowPaths: readonly string[], fork: string | undefined): Promise<string[]> => {
     if (since === undefined) return []
     const second = new Date(Math.floor(Date.parse(since) / 1000) * 1000).toISOString()
-    const log = await git(root, ["log", `--since=${second}`, "--format=%H%x1f%B%x1e", parent, "--", ...allowPaths.map(literal)])
+    const log = await git(root, ["log", `--since=${second}`, "--format=%H%x1f%B%x1e", fork === undefined ? parent : `${fork}..${parent}`, "--", ...allowPaths.map(literal)])
     return log
         .split("\x1e")
         .map((entry) => entry.split("\x1f"))
@@ -164,7 +169,7 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
         const candidate = await git(root, ["commit-tree", tree, "-p", parent, "-m", message])
         const changed = nulPaths(await git(root, ["diff", "--name-only", "-z", parent, candidate]))
         const missing = [...new Set([...unstaged, ...unknown])].filter((file) => underPaths(file, contract.context.allowPaths)).sort((left, right) => left.localeCompare(right))
-        const foreign = await foreignCommits(root, input.since, parent, contract.context.allowPaths)
+        const foreign = await foreignCommits(root, input.since, parent, contract.context.allowPaths, input.fork)
         const lands: CheckOutcome = {
             name: "lands",
             kind: "files",
@@ -224,7 +229,7 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
     const landing = built.facts.changed.filter((file) => !underPaths(file, allowPaths))
     if (landing.length > 0) problems.push(`the candidate changes outside allowPaths: ${listed(landing)}`)
     const stray = await strayFiles(input.root, allowPaths, { ...(input.taskId === undefined ? {} : { taskId: input.taskId }), ...(input.since === undefined ? {} : { since: input.since }) })
-    if (stray.written.length > 0) problems.push(`written outside allowPaths in the work tree (dirty or untracked, not leased by another live task): ${listed(stray.written)}`)
+    if (stray.written.length > 0) problems.push(`written outside allowPaths in the work tree (dirty or untracked): ${listed(stray.written)}`)
     if (primitive.mustExist !== undefined) {
         const rest = await runCheck({ ...check, check: { kind: "files", mustExist: primitive.mustExist } }, input.contract, place)
         if (rest.status === "red") problems.push(rest.detail)
@@ -288,13 +293,27 @@ const policyGates = async (root: string, dir: string, changed: readonly string[]
     return gates
 }
 
-/** Verifies a task on a clean checkout of HEAD plus its allowPaths, so a dirty or lucky work tree can never turn a check green. */
+/**
+ * The candidate rebased onto `onto` (harness/land.ts rebaseCandidate): its parent becomes that head and what it changes is
+ * read against it. A textual conflict throws LandConflict before any check runs.
+ */
+const rebased = async (root: string, built: Built, onto: string | undefined): Promise<Built> => {
+    if (onto === undefined || onto === built.facts.parent) return built
+    const { commit, tree } = await rebaseCandidate(root, built.facts.candidate, built.facts.parent, onto)
+    const changed = nulPaths(await git(root, ["diff", "--name-only", "-z", onto, commit]))
+    return { ...built, facts: { ...built.facts, candidate: commit, tree, parent: onto, changed } }
+}
+
+/**
+ * Verifies a task on a clean checkout of HEAD plus its allowPaths, so a dirty or lucky work tree can never turn a check green;
+ * a task in an Op worktree is verified on that candidate rebased onto the head it lands on (`onto`).
+ */
 export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify> => {
     const { root, contract } = input
     // A declared hooks folder the task's checkout lacks means its commits skip the product's own gate: nothing verifies.
     await assertWorktreeHooks(root)
     const base = await resolveSha(root, contract.context.revision)
-    const built = await buildCandidate(input)
+    const built = await rebased(root, await buildCandidate(input), input.onto)
     const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${input.name}-p${String(process.pid)}-`))
     try {
         await git(root, ["worktree", "add", "--detach", dir, built.facts.candidate])

@@ -7,7 +7,7 @@
   worker seat through Orca, so tasks run in parallel. `inline` means the Claude or Codex session that is open does the
   task itself, one at a time.
 
-Both editions get both runners, with the same contracts, leases, clean verify and harness commit. Inline, the agent is
+Both editions get both runners, with the same contracts, Op worktrees, clean verify and harness commit. Inline, the agent is
 both Kernel and worker, so its contract is sent (and its hash fixed) before it edits code, and the harness verify on a
 clean checkout decides green; liveness applies only to the `orca` runner. `starci doctor` reports the tree the working
 directory belongs to (`runtime`, `lite`, `full` or `none`).

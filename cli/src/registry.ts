@@ -62,6 +62,7 @@ import { providerSyncVerb } from "./core/provider/sync.js"
 import { budgetShowVerb } from "./core/budget/show.js"
 import { budgetRaiseVerb } from "./core/budget/raise.js"
 import { workflowPauseVerb } from "./core/workflow/pause.js"
+import { worktreeGcVerb } from "./core/worktree/gc.js"
 import { workflowResumeVerb } from "./core/workflow/resume.js"
 import { workflowRunVerb } from "./core/workflow/run.js"
 import { seatPingVerb } from "./core/seat/ping.js"
@@ -179,6 +180,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     budgetShowVerb,
     budgetRaiseVerb,
     workflowPauseVerb,
+    worktreeGcVerb,
     workflowResumeVerb,
     workflowRunVerb,
     seatPingVerb,

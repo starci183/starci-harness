@@ -3,7 +3,7 @@ id: lifecycle-cycle-refused
 group: lifecycle
 title: a workflow whose tasks depend in a cycle is refused at define
 inject: a -> b -> c -> a in dependsOn
-expect: define refuses WORKFLOW_INVALID naming the cycle; no workflow row, no task, no lease
+expect: define refuses WORKFLOW_INVALID naming the cycle; no workflow row, no task
 pass:
   - define exits 1 with WORKFLOW_INVALID
   - the ledger holds no workflow and no task

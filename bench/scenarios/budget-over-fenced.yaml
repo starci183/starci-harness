@@ -1,17 +1,17 @@
 schema: starci/scenario@1
 id: budget-over-fenced
 group: budget
-title: "an Op past its budget that never files is fenced after the grace: work preserved, leases released, try spent"
+title: "an Op past its budget that never files is fenced after the grace: work preserved, try spent"
 inject: >-
   the Op's attempt started two hours ago against a 60 minute budget, has written docs/a.md and keeps running with no result;
   a supervisor tick asks it to wrap up, the grace then passes with no result, and the next tick runs
 expect: >-
   the first tick asks once (budget-nudged); the second fences the attempt: its worker stopped and released through the seat
   lifecycle, docs/a.md preserved in the project's preserved folder and reset in the worktree, the task failed with attempt
-  outcome over-budget (a spent try), and its leases released
+  outcome over-budget (a spent try), holding no intent
 pass:
   - one budget ask, then worker-stop of the Op's dispatch
-  - the task is failed, its attempt over-budget, and it holds no lease
+  - the task is failed, its attempt over-budget, and it holds no intent
   - the dirty file is preserved outside the worktree and gone from it
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -47,7 +47,7 @@ steps:
       as: task
   - name: the Op writes without filing
     file:
-      path: ${worktree.fence}/docs/a.md
+      path: ${project}/worktrees/fence.ops/${task}/docs/a.md
       content: "# half done\n"
   - name: the attempt has run two hours against its 60 minute budget
     sql:
@@ -79,7 +79,7 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases WHERE task_id = '${task}'
+        query: SELECT COUNT(*) FROM tasks WHERE id = '${task}' AND intent IS NOT NULL
         equals: [0]
   - assert:
       sql:
@@ -96,5 +96,5 @@ steps:
         present: true
   - assert:
       exists:
-        path: ${worktree.fence}/docs/a.md
+        path: ${project}/worktrees/fence.ops/${task}/docs/a.md
         present: false

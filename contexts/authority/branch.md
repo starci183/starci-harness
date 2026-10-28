@@ -18,8 +18,8 @@ The harness's cheap state checks, `check secrets` and `check loosening`, belong 
 
 No tests, no coverage, no build, no bench, no Storybook plays or DNA measurement, no full lint and no full typecheck. The
 one build a branch takes is the one a local package link needs to exist ([packages.md](packages.md)). A branch never runs
-its own `npm ci` or `npm install` where a shared install exists (the main checkout's, or the one the harness gave the
-workflow worktree); it reuses that install, and after any install it runs `starci deps source --sync`.
+its own `npm ci` or `npm install` where a shared install exists (the main checkout's, or the workflow worktree's, which
+the harness links into each Op worktree); it reuses that install, and after any install it runs `starci deps source --sync`.
 
 Running everything by default is a defect, not diligence: it blocks the host's CPU and memory for every other lane and
 proves nothing the wave or CI does not prove again. A test the change needs is written on the branch and run by CI.

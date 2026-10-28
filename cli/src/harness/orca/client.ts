@@ -433,6 +433,23 @@ export const awaitWorktree = async (binary: OrcaBinary, selector: string, cwd: s
     await awaitWorktree(binary, selector, cwd, deadline)
 }
 
+/**
+ * `orca worktree set --parent-worktree --display-name`: lists a worktree under a parent in Orca's worktree lineage, so an Op's
+ * worktree shows under its Kernel's (the workflow's) worktree and that one under the project's main checkout, whichever
+ * worktree each terminal runs in. Waits for Orca to discover a fresh worktree first. Orca owns only this metadata; the git
+ * worktrees stay the harness's.
+ */
+export const worktreeSetParent = async (binary: OrcaBinary, input: { readonly worktree: string; readonly parent: string; readonly displayName: string }, cwd: string): Promise<void> => {
+    const selector = `path:${input.worktree.replaceAll("\\", "/")}`
+    await awaitWorktree(binary, selector, cwd)
+    await callOrcaArgv(binary, orcaToolArgv("worktree", "set", { worktree: selector, "parent-worktree": `path:${input.parent.replaceAll("\\", "/")}`, "display-name": input.displayName }), "orca worktree set", z.unknown(), cwd, ORCA_TIMEOUT_MS)
+}
+
+/** `orca worktree rm --force`: removes a worktree from Orca's metadata and git together (archive hooks skipped). */
+export const worktreeRemove = async (binary: OrcaBinary, worktree: string, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("worktree", "rm", { worktree: `path:${worktree.replaceAll("\\", "/")}`, force: true }), "orca worktree rm", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
+}
+
 /** True for an OrcaFailure saying a worktree selector resolved to nothing: Orca does not know the repository yet (`repo add` fixes it). */
 export const isSelectorNotFound = (error: unknown): boolean => error instanceof OrcaFailure && error.effect === "none" && error.orcaCode === "selector_not_found"
 

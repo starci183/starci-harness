@@ -3,10 +3,10 @@ id: scale-ten-workflows
 group: scale
 title: ten workflows in one repository with disjoint paths all start
 inject: 10 inline workflows defined and started back to back
-expect: 10 workflow rows, 10 queued tasks, 10 leases; no LEDGER lock error
+expect: 10 workflow rows, 10 queued tasks, 10 Op worktrees; no LEDGER lock error
 pass:
   - 10 running workflows
-  - 10 leases
+  - 10 Op worktrees
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -311,6 +311,6 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree')
         equals:
           - 10

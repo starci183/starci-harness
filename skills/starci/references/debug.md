@@ -15,18 +15,18 @@ starci budget show <id>
 ```
 
 `workflow status` gives the reason and each task's state and wait. `task status <task>` gives attempts,
-the filed result, leases, check runs and preserved work. `seat list --live` asks Orca for each open seat.
+the filed result, its Op worktree, check runs and preserved work. `seat list --live` asks Orca for each open seat.
 
 ## What each state means
 
 | Seen | Cause | Do |
 | --- | --- | --- |
-| `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its leases and seat | `starci seat start <task> --resume` replays the same request; never send a second task |
+| `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its worktree and seat | `starci seat start <task> --resume` replays the same request; never send a second task |
 | `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, or died | the next `workflow step` recovers it once no verifier holds the settle lock; `starci task verify <task> --recover` does the same by hand |
 | `HEAD_MOVED`, `SETTLE_BUSY` | the branch moved or another settle runs | no try spent: step or verify again |
-| `LEASE_CONFLICT` | a live task holds an overlapping path | wait for it; never widen or steal the lease |
+| `LAND_CONFLICT`, attempt outcome `conflict` | the task's verified work does not rebase onto the branch's new head; its work is preserved | the Kernel retries the node by an amend, which starts from the preserved work on the new head; never resolve it by hand in the harness |
 | `running` with no result | the worker is working or lost | `starci seat ping <seat>`; `seat list` shows live, stale, quiet, unknown or lost. Unknown is never dead |
-| seat `worker-lost`, node `lost` | Orca reported the worker gone; the task is `effect_unknown` and keeps its leases | `starci task cancel <task> --reason "<why>"`, then retry by an amend |
+| seat `worker-lost`, node `lost` | Orca reported the worker gone; the task is `effect_unknown` and keeps its worktree | `starci task cancel <task> --reason "<why>"`, then retry by an amend |
 | a dispatch refused (`ROUTE_NO_MEMBER`, `POOLS_FULL`, `PROVIDERS_UNAVAILABLE`, `TOKENS_OUT`) | no member can take it now | the task stays queued and the next step routes it again; read `route explain` and `provider status` |
 | a circuit open | a provider failed (rate, quota, capacity, auth) | wait for the cooldown; recover only after a passing probe and the owner's OK |
 | seat failure `blocked-prompt`, `BLOCKED PROMPT` in `supervisor tick` | the agent waits at a dialog in its worktree (trust, external import, login, a confirmation); the provider is not at fault | read the screen `seat list` prints, answer or remove the prompt in that worktree's agent config, then answer the harness escalation |

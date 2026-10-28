@@ -7,11 +7,11 @@ import { asRefusal, Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
 import { captureGit, git, gitSucceeds } from "../shared/git.js"
 import type { Contract } from "./contract.js"
-import { leasePaths } from "./leases.js"
 import { now, openExistingLedger, openLedger, priorDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
 import { getTask, lastEvent, latestAttempt, recordEvent, resultOf } from "./tasks.js"
+import { taskPaths } from "./contract.js"
 
 /** How an attempt's work was kept: the dirty work of a cancelled or red attempt (preserved), or the diff of a settled one (committed). */
 export type PriorKind = "preserved" | "committed"
@@ -51,7 +51,7 @@ const APPLIED_EVENT = "prior-applied"
 
 const literal = (path: string): string => `:(top,literal)${path}`
 
-const specsOf = (task: TaskRow): string[] => leasePaths(task).map(literal)
+const specsOf = (task: TaskRow): string[] => taskPaths(task).map(literal)
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 

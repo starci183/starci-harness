@@ -41,7 +41,9 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
    own worktree of `--repo` (default the project's repository), a task whose
    contract is the brief on the label's op (default `code`), and a seat launched into your Run and routed by the label's
    worker tier. Past the project's worker cap (`projectMaxWorkers` of ops/routing.yaml, your workers and your Kernels' Ops
-   together) it waits queued and `next` starts it once a seat is released. `starci supervisor workers` lists them.
+   together) it waits queued and `next` starts it once a seat is released. `starci supervisor workers` lists them. Your
+   accept or reject removes the worker's worktree (its branch stays for Debug to land), and the tick removes every other
+   worktree whose owner ended (`{runtimeRoot}/contexts/authority/README.md` "Worktrees"); never remove or keep one by hand.
 3. `starci supervisor next --json --wait {nextWaitSeconds}`. For the workflows of your project you started or adopted (`kernel start`), never
    another session's,
    it relaunches a Kernel Orca reports gone (or idle past its TTL with no progress),
@@ -55,7 +57,7 @@ from the app (its new goal or ruling is a `goal-change` applied as the owner's).
 
 | decision | what you do |
 |---|---|
-| escalation `conflict` | rule who owns the paths: a `goal-change` to the workflow that yields (narrower scope), answering the escalation; the other's Kernel continues once the lease frees |
+| escalation `conflict` | rule who owns the paths: a `goal-change` to the workflow that yields (narrower scope), answering the escalation; the other's Kernel retries its conflicted task on the new head |
 | escalation `scope`, `budget` | within the owner's mandate a `goal-change` (wider scope, a task the goal no longer asks for, or raised budget with `starci budget raise`), else ask the owner here first |
 | escalation `owner` (a product decision, credentials, scope, money) | ask the owner in this terminal (the bridge has sent it to Telegram already); the ruling comes typed here or as an owner request naming the decision id; relay it as a `goal-change` or `stop` whose `answers` name the decision and that request |
 | escalation `harness` (a defect of the harness) | Debug's, never the owner's: it stays recorded in the ledger, you never ask the owner about it, and you keep every other workflow moving; Debug's answer arrives as an `owner-request` by `debug` (`supervisor ask`), which you relay as a `goal-change` or `stop` answering both the request and the escalation |

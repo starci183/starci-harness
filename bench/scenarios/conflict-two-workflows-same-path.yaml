@@ -1,12 +1,16 @@
 schema: starci/scenario@1
 id: conflict-two-workflows-same-path
 group: conflict
-title: "two workflows in one repository want the same path: the second waits, then runs"
-inject: workflows w1 and w2 each have a task on docs/a.md
-expect: w2's node waits on the lease (no failure, no task holding nothing); after w1's task is done, w2's step dispatches it
+title: "two inline workflows on one checkout write the same file: both run at once; the second to land returns conflict"
+inject: workflows w1 and w2 each have a task writing docs/a.md, each different, on the same checkout
+expect: >-
+  both workflows queue their task at once, each in an Op worktree of its own; w1 lands on the checkout's branch under its
+  land lock; w2's work no longer rebases onto that head, so w2's task returns conflict with its work preserved, nothing is
+  resolved by the harness, and both Op worktrees are removed
 pass:
-  - w2 has no live task while w1 holds the lease
-  - w2's task queued after w1 is done
+  - w2 has a live task while w1's task is live
+  - w1 done; w2 failed with attempt outcome conflict and its work preserved
+  - both Op worktrees removed
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -70,14 +74,21 @@ steps:
       - workflow
       - start
       - w2
-    save: {}
-    expect: {}
+    save:
+      b: data.nodes.0.task.id
   - assert:
       sql:
         db: ledger
         query: SELECT COUNT(*) FROM tasks WHERE workflow_id = 'w2'
         equals:
-          - 0
+          - 1
+  - name: w2's worker writes its own version
+    worker:
+      task: ${b}
+      status: done
+      files:
+        docs/a.md: |
+          # a by w2
   - name: worker files done
     worker:
       task: ${a}
@@ -97,10 +108,22 @@ steps:
       - step
       - w2
     save: {}
-    expect: {}
+    expect:
+      exit: 1
   - assert:
       sql:
         db: ledger
-        query: SELECT status FROM tasks WHERE workflow_id = 'w2'
+        query: SELECT tasks.workflow_id || ':' || tasks.status || ':' || COALESCE(attempts.outcome, '-') FROM tasks JOIN attempts ON attempts.task_id = tasks.id ORDER BY tasks.workflow_id
         equals:
-          - queued
+          - "w1:done:done"
+          - "w2:failed:conflict"
+  - assert:
+      exists:
+        path: ${project}/preserved/${b}
+        present: true
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed'
+        equals:
+          - 2

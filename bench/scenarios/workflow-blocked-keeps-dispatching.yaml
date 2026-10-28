@@ -1,17 +1,17 @@
 schema: starci/scenario@1
 id: workflow-blocked-keeps-dispatching
 group: conflict
-title: "a workflow blocked on one returned task still dispatches its other ready tasks; one waiting on another task's lease says so"
+title: "a workflow blocked on one returned task still dispatches its other ready tasks, whatever paths another live task writes"
 inject: >-
   a task outside the workflow holds docs/shared.md; the workflow's task x comes back blocked while its independent task y needs
   docs/shared.md
 expect: >-
-  the workflow is blocked by x, and the status of y names the lease it waits for and the task holding it instead of reading as
-  dispatchable; once the holder is cancelled, the next kernel next launches y although the workflow is still blocked
+  no path is held while a task works, so y launches at once beside x, in a worktree of its own, although a live task outside
+  the workflow writes docs/shared.md; x comes back blocked and the workflow is blocked by it, while y keeps running
 pass:
-  - y ready with a why naming docs/shared.md and the holding task while the lease is held
-  - an [Op] worker-start for y after the holder is cancelled, the workflow still blocked by x
-  - no human intervention beyond the injected lease
+  - an [Op] worker-start for y while the holder is still live
+  - the workflow blocked by x, y still running
+  - no human intervention beyond the injected fault
 automation: automated
 steps:
   - file:
@@ -51,7 +51,7 @@ steps:
     boot:
       file: ${run}/wf.yaml
       workflow: pair
-  - name: kernel next launches x; y waits on the lease
+  - name: kernel next launches x and y, the holder still live
     seat: kernel:pair
     starci: [kernel, next, pair, --wait, "0"]
   - read:
@@ -66,15 +66,6 @@ steps:
   - name: kernel next steps the workflow, now blocked by x
     seat: kernel:pair
     starci: [kernel, next, pair, --wait, "0"]
-  - name: the status names the lease y waits for
-    starci: [workflow, status, pair]
-    expect:
-      contains: "waits for the lease on docs/shared.md: task ${holder}"
-  - name: the holder ends
-    starci: [task, cancel, "${holder}"]
-  - name: kernel next dispatches y although the workflow is blocked
-    seat: kernel:pair
-    starci: [kernel, next, pair, --wait, "0"]
   - assert:
       orcaCalls:
         command: worker-start
@@ -86,3 +77,13 @@ steps:
         db: ledger
         query: "SELECT status FROM workflows WHERE id = 'pair'"
         equals: [blocked]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT plan_key || ':' || status FROM tasks WHERE workflow_id = 'pair' AND plan_key = 'y'"
+        equals: ["y:running"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${holder}'"
+        equals: [queued]

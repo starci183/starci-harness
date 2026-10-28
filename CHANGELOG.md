@@ -8,6 +8,27 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- **Each Op runs in a worktree of its own; path leases are gone.** Every task of a workflow, under `orca` and `inline`, works
+  in `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut from the workflow
+  branch's head when its seat starts, with the hooks and the workflow checkout's install linked in, never a fresh install
+  (`harness/land.ts`). No path is held while a task works, so a ready task dispatches whatever paths others write
+  (`LEASE_CONFLICT`, `LEASE_LOST`, the `leases` table, `conflictMinutes` and lease expiry are gone). `task verify` rebases
+  the candidate onto the head it lands on (`git merge-tree`) and checks that, so what is verified is what lands; it lands
+  under a land lock per branch held only while integrating, verifying again under it when another task landed meanwhile.
+  A textual conflict is never resolved by the harness: the work is preserved, the attempt ends `conflict`, and the Kernel
+  gets a `conflict` decision to amend on the new head. In Orca each Op worktree is listed under its workflow's worktree
+  (`[Op] <workflow>: <task>`) and that under the main checkout (`orca worktree set --parent-worktree`), and removed through
+  `orca worktree rm`. `task status` shows a task's Op worktree instead of leases; `task send`, `cancel`, `result` and
+  `verify` drop their lease fields. Bench: `plan-self-overlap-both-land`, `plan-self-overlap-conflict-returns`,
+  `lifecycle-inline-chain`.
+- **The harness removes every worktree it made.** An Op's worktree goes when its task settles; a workflow's when it is done
+  or stopped and its Kernel closed; a Supervisor worker's when accepted or rejected; a package edit's once its head is on
+  main; a clean-verify checkout after its verdict. The new verb `starci worktree gc [--dry-run]`, run by `supervisor tick`,
+  `supervisor accept` and `reject` and the step of an ended workflow, finds every harness worktree whose owner ended and
+  every orphan, preserves its uncommitted work, unlinks its install links (link only) and removes it; branches with work
+  that never landed stay ([contexts/authority/README.md](contexts/authority/README.md) "Worktrees"). Bench:
+  `worktree-gc-every-kind`.
+
 - **CI publishes on every push to main.** Apps consume the harness packages locally (`deps source --local`); publishing is
   CI's alone. Once `ci` is green on a push to main that affects a package or the CLI, the `publish` job runs
   `release publish --publish --base <the plan's base>`: every version under `packages/` and the CLI not on npm yet, a

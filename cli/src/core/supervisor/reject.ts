@@ -5,7 +5,7 @@ import { rejectWorker } from "./workers.js"
 /** `starci supervisor reject <worker>`: the Supervisor ends a worker it will not accept; a live task is cancelled and its seat released. */
 export const supervisorRejectVerb = defineVerb({
     path: ["supervisor", "reject"],
-    summary: "reject a [Worker]: a live task is cancelled (seat stopped and released, tab closed, dirty paths preserved, leases freed); the worker ends rejected",
+    summary: "reject a [Worker]: a live task is cancelled (seat stopped and released, tab closed, dirty paths preserved); the worker ends rejected and its worktree is removed",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],

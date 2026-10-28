@@ -10,7 +10,7 @@ import { loadPolicy, neverRead } from "./policy.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
- * The one normaliser of contract paths; a lease, a candidate and a files check all see the same spelling.
+ * The one normaliser of contract paths; a candidate, a preserve and a files check all see the same spelling.
  */
 export const normaliseRepoPath = (path: string): string => {
     const slashed = posix.normalize(path.trim().replaceAll("\\", "/"))
@@ -19,6 +19,24 @@ export const normaliseRepoPath = (path: string): string => {
     while (end > 0 && slashed[end - 1] === "/") end -= 1
     return slashed.slice(0, end)
 }
+
+/**
+ * Two repository paths overlap when one equals the other or is a directory prefix of it, compared segment by segment and
+ * without case; `.` is the whole repository. `Src/A` and `src/a` are one path on every host: a product is checked out on
+ * Windows and macOS too, where they are one file.
+ */
+export const pathsOverlap = (left: string, right: string): boolean => {
+    const spell = (path: string): string[] => normaliseRepoPath(path).toLowerCase().split("/")
+    const a = spell(left)
+    const b = spell(right)
+    if (a[0] === "." || b[0] === ".") return true
+    const shorter = a.length <= b.length ? a : b
+    const longer = shorter === a ? b : a
+    return shorter.every((segment, index) => segment === longer[index])
+}
+
+/** The paths a task may write: its contract's allowPaths, normalised and without duplicates. */
+export const taskPaths = (task: { readonly contract: { readonly context: { readonly allowPaths: readonly string[] } } }): string[] => [...new Set(task.contract.context.allowPaths.map(normaliseRepoPath))]
 
 /** True when `file` is one of `prefixes` or lies below one of them, compared on whole segments. */
 export const underPaths = (file: string, prefixes: readonly string[]): boolean => {
@@ -424,7 +442,7 @@ export const resolveChecks = (contract: Contract, ops: Ops): ResolvedCheck[] => 
 /** The contract's identity: sha256 of its canonical json, so a replan can tell an unchanged task from a changed one. */
 export const contractHash = (contract: Contract): string => createHash("sha256").update(JSON.stringify(canonical(contract))).digest("hex")
 
-// allowPaths are literal paths, matched as `:(literal)` pathspecs and lease prefixes; a glob there would match nothing.
+// allowPaths are literal paths, matched as `:(literal)` pathspecs and path prefixes; a glob there would match nothing.
 // Brackets stay allowed: a framework names folders with them (`[locale]`), and a literal pathspec reads them as written.
 const GLOB = /[*?{}!]/
 
@@ -517,7 +535,7 @@ const allowPathProblems = (allowPaths: readonly string[]): string[] => {
         // The schema already normalised the entry, so `./src/` and `src` are the same path here.
         if (path === ".") problems.push(`allowPaths entry "${path}" is the whole repository; name concrete folders or files`)
         if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/features/<feature>)`)
-        if (neverRead(policy, path)) problems.push(`allowPaths entry "${path}" names a file policy/security.yaml neverRead lists; the harness never opens it, so no task may write or lease it`)
+        if (neverRead(policy, path)) problems.push(`allowPaths entry "${path}" names a file policy/security.yaml neverRead lists; the harness never opens it, so no task may write it`)
         problems.push(...placeProblems("allowPaths entry", path))
         if (seen.has(path)) problems.push(`allowPaths entry "${path}" is named twice`)
         seen.add(path)

@@ -56,7 +56,7 @@ export const seatPingVerb = defineVerb({
             const lines = [
                 `seat ${seat.id} (dispatch ${handle}): ${answerLine(answer)}`,
                 `liveness: ${liveness.verdict}, quiet ${String(liveness.quietSeconds)} s${idleNote(liveness.idleSeconds)}`,
-                ...(recorded.lostTask === null ? [] : [`task ${recorded.lostTask} is effect_unknown and keeps its leases; cancel it (starci task cancel ${recorded.lostTask}) and retry it`]),
+                ...(recorded.lostTask === null ? [] : [`task ${recorded.lostTask} is effect_unknown and keeps its worktree; cancel it (starci task cancel ${recorded.lostTask}) and retry it`]),
             ]
             return { data, message: lines.join("\n"), ...(answer.kind === "gone" ? { exitCode: 1 } : {}) }
         } finally {

@@ -3,11 +3,11 @@ id: scale-50-ops
 group: scale
 title: "fifty Ops under one Kernel: the cap holds, nothing launches twice"
 inject: 50 independent orca tasks in a workflow file asking maxParallel 16, past the workflowParallel cap of 10 (ops/routing.yaml)
-expect: one Kernel child Run, 10 worker-starts with 10 distinct request ids, 10 leases; 40 tasks wait without a ledger task
+expect: one Kernel child Run, 10 worker-starts with 10 distinct request ids, 10 Op worktrees; 40 tasks wait without a ledger task
 pass:
   - 10 distinct worker-start requests
   - one run-create
-  - 10 running tasks, 10 leases
+  - 10 running tasks, 10 Op worktrees
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -551,6 +551,6 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree')
         equals:
           - 10

@@ -1,9 +1,9 @@
 schema: starci/scenario@1
 id: security-allowpaths-escape
 group: security
-title: allowPaths that escape the repository are refused before any lease
+title: allowPaths that escape the repository are refused before any task is queued
 inject: contracts with ../outside, an absolute path, '.', and the whole .starciwork
-expect: contract new / task send refuse each one; no task, no lease
+expect: contract new / task send refuse each one; no task
 pass:
   - each send exits 1
   - the ledger holds no task

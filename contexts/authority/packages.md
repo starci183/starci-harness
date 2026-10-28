@@ -10,7 +10,8 @@ fixes that package, never a shim in the app. The edit is a tier 1 branch ([branc
    <worktree>/packages` as `pkg branch` prints it.
 4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 
-Debug alone merges a package edit branch and pushes harness main; CI publishes the bumped version as soon as main is
+Debug alone merges a package edit branch and pushes harness main; once its handed-off head is on main, the worktree goes
+(the collector of [README.md](README.md) "Worktrees"); CI publishes the bumped version as soon as main is
 green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all, and an app that deploys waits until npm serves the version it pins (`starci deps check` says so), working locally meanwhile. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
 and no other package or app moves.
 

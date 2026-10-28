@@ -6,10 +6,8 @@ import { LIVE_STATES, storedHeader, STUCK_STATES, viewNodes } from "./graph.js"
 import type { Classified, Difficulty, NodeTask, NodeView, PlanNode, TaskRoute, WorkflowHeader } from "./graph.js"
 import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
-import { now } from "./ledger.js"
+import { inTransaction, now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
-import { acquireLeases, inTransaction, listLeases, pathsOverlap } from "./leases.js"
-import type { LeaseGrant } from "./leases.js"
 import { createTask, getTask, recordEvent } from "./tasks.js"
 import type { ResultStatus, TaskRow, TaskStatus } from "./tasks.js"
 
@@ -355,32 +353,12 @@ const finalVerifyOf = (db: DatabaseSync, id: string): FinalVerify | null => {
     return { graphVersion: Number(data.graphVersion), verdict: data.verdict === "green" ? "green" : "red", reason: "reason" in data ? text(data.reason) : "" }
 }
 
-/**
- * The why of a ready node whose paths another live task holds: dispatch takes it once that lease frees (a lease conflict is a
- * wait), so the view names the path, the holder and the holder's workflow instead of reading as dispatchable.
- */
-const leaseWaits = (db: DatabaseSync, nodes: readonly PlanNode[], views: readonly NodeView[]): NodeView[] => {
-    const held = listLeases(db).filter((lease) => lease.live)
-    return views.map((view) => {
-        const node = view.state === "ready" ? nodes.find((candidate) => candidate.key === view.key) : undefined
-        if (node === undefined || held.length === 0) return view
-        for (const path of node.contract.context.allowPaths) {
-            const holder = held.find((lease) => pathsOverlap(lease.path, path))
-            if (holder === undefined) continue
-            const owner = db.prepare("SELECT workflow_id, plan_key FROM tasks WHERE id = ?").get(holder.taskId)
-            const of = owner?.workflow_id === null || owner?.workflow_id === undefined ? "" : ` of ${text(owner.workflow_id)}/${text(owner.plan_key)}`
-            return { ...view, why: `every dependency is done; waits for the lease on ${path}: task ${holder.taskId}${of} (${holder.taskStatus}) holds ${holder.path}` }
-        }
-        return view
-    })
-}
-
 /** Reads a workflow's current graph and the state of each node. */
 export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
     const workflow = getWorkflow(db, id)
     const nodes = graphOf(db, id, workflow.graphVersion)
     const tasks = workflowTasks(db, id)
-    return { workflow, nodes, views: leaseWaits(db, nodes, viewNodes(nodes, nodeTasks(nodes, tasks))), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
+    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
 }
 
 /**
@@ -437,9 +415,10 @@ export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode
 
 /**
  * Dispatches one node: in one transaction it re-reads the graph (an amend may have moved it), refuses a node that already has
- * its task, creates the queued task with its plan key and node hash, and leases its allowPaths (LEASE_CONFLICT rolls all back).
+ * its task, and creates the queued task with its plan key and node hash. A node whose paths another live task also writes
+ * dispatches all the same: each works in its own Op worktree, and the second to land rebases onto the first.
  */
-export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanNode): { readonly task: TaskRow; readonly leases: LeaseGrant } =>
+export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanNode): { readonly task: TaskRow } =>
     inTransaction(db, () => {
         const workflow = getWorkflow(db, workflowId)
         // A pause or stop that landed while this step was running holds dispatch at once.
@@ -456,5 +435,5 @@ export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanN
         const inputs = Object.fromEntries(node.dependsOn.map((dep) => [dep, carrying.get(dep)?.id ?? null]))
         db.prepare("UPDATE tasks SET plan_key = ?, plan_hash = ?, plan_inputs_json = ? WHERE id = ?").run(node.key, node.hash, JSON.stringify(inputs), created.id)
         recordEvent(db, "workflow-dispatched", workflowId, { key: node.key, task: created.id, graphVersion: workflow.graphVersion })
-        return { task: created, leases: acquireLeases(db, created) }
+        return { task: created }
     })

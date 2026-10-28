@@ -1,12 +1,13 @@
 import type { DatabaseSync } from "node:sqlite"
 import { writeBrief } from "../../harness/brief.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
-import { openLedger } from "../../harness/ledger.js"
-import { expireLeases, inTransaction } from "../../harness/leases.js"
+import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
 import { beginWork } from "../../harness/baseline.js"
+import { ensureOpWorktree, sweepOpWorktrees } from "../../harness/land.js"
+import { worktreeGc } from "../../harness/worktree-gc.js"
 import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
@@ -38,10 +39,11 @@ export interface StepAction {
     readonly detail: string
 }
 
-/** The task an inline run hands the chat agent next, with its brief and the commands that return it. */
+/** The task an inline run hands the chat agent next, with its own checkout (its Op worktree), its brief and the commands that return it. */
 export interface InlineNext {
     readonly key: string
     readonly task: string
+    readonly checkout: string
     readonly summary: string
     readonly brief: string
     readonly output: string
@@ -84,7 +86,7 @@ export const reconcile = (root: string, id: string): Snapshot =>
     )
 
 /**
- * Cancels tasks through `task cancel` (seats stopped and released, dirty paths preserved and reset, leases freed). A refusal
+ * Cancels tasks through `task cancel` (seats stopped and released, dirty paths preserved and reset, its worktree removed). A refusal
  * (a verify in flight, a worker Orca did not stop) is reported and the task stays live; the next step tries again.
  */
 export const cancelTasks = async (context: VerbContext, tasks: readonly { readonly key: string | null; readonly task: string }[], reason: string): Promise<StepAction[]> => {
@@ -129,7 +131,7 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
         const recorded = withLedger(root, (db) => recordPing(db, target.seat, answer))
         const verdict = livenessOf(recorded.seat, rules).verdict
         if (answer.kind === "gone") {
-            const marked = recorded.lostTask === null ? "" : `; task ${recorded.lostTask} is effect_unknown and keeps its leases: cancel it (starci task cancel ${recorded.lostTask}) and amend with retry`
+            const marked = recorded.lostTask === null ? "" : `; task ${recorded.lostTask} is effect_unknown and keeps its worktree: cancel it (starci task cancel ${recorded.lostTask}) and amend with retry`
             return { key: target.key, task: target.task, action: "lost", detail: `seat ${target.seat} worker-lost: ${answer.evidence}${marked}` }
         }
         if (answer.kind === "unknown") {
@@ -212,16 +214,23 @@ const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<Step
 }
 
 /**
- * Frees the overdue leases of tasks returned to the Kernel, in every workflow of the project (a lease blocks other workflows
- * too), and says so: the amend re-leases the paths when it retries the node. A live task's lease is never freed by time.
+ * Removes the Op worktree of every task of the workflow that settled and still has one (harness/land.ts sweepOpWorktrees): the
+ * net behind the removal a verify, a cancel and a failed result do at once, for a task a fence, a stall or a crash ended.
  */
-const expiredLeaseActions = (root: string): StepAction[] =>
-    withLedger(root, (db) => expireLeases(db)).map((lease) => ({
-        key: null,
-        task: lease.taskId,
-        action: "released",
-        detail: `lease on ${lease.paths.join(", ")} released: task ${lease.taskId} came back to the Kernel and its lease was due ${lease.expiresAt}; the amend leases the paths again when it retries the node`,
-    }))
+const worktreeSweepActions = async (root: string, workflowId: string): Promise<StepAction[]> =>
+    (await sweepOpWorktrees(root, workflowId)).map((removal) => ({ key: null, task: removal.task, action: removal.removed ? "released" : "problem", detail: `worktree ${removal.path} ${removal.removed ? "removed" : "left"}: ${removal.detail}` }))
+
+/**
+ * Once a workflow is done or stopped (and its Kernel closed), the worktree collector removes its worktree and any Op worktree
+ * left, after preserving their uncommitted work; the workflow's branch keeps its commits for landing (harness/worktree-gc.ts).
+ */
+const endedWorktreeActions = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    if (!["done", "stopped"].includes(snapshot.workflow.status)) return []
+    const entries = await worktreeGc(root, false).catch((error: unknown) => [{ path: "-", removed: false, due: true, kind: "workflow", reason: asRefusal(error).message, preserved: null }])
+    return entries
+        .filter((entry) => entry.due && entry.kind !== "package")
+        .map((entry) => ({ key: null, task: null, action: entry.removed ? "released" : "problem", detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`}` }))
+}
 
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
 export const closeKernelActions = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
@@ -276,8 +285,11 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
     const chosen = launchOf(root, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {
-        await applyRevert(root, withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root, workflow.id, node, task)
-        const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen, worktree: workflow.header.worktree })
+        // The Op's own worktree comes first, so a revert lands in the checkout its worker runs in; startSeat reuses it.
+        const target = withLedger(root, (db) => workflowWorktreeOf(db, workflow.id)) ?? root
+        const made = await ensureOpWorktree(root, task, target)
+        await applyRevert(root, made.path, workflow.id, node, task)
+        const started = await startSeat({ root, cwd: context.cwd, task, agent: chosen.agent, model: chosen.model, effort: chosen.effort, pick: chosen, worktree: target })
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} routed (tier ${chosen.tier}, pool ${chosen.pool}, by ${chosen.record.chosen?.by ?? "?"}): ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
@@ -286,7 +298,7 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
 }
 
 // A node that cannot be dispatched now for one of these reasons waits for a later step; anything else is a problem to report.
-const WAIT_CODES: ReadonlySet<string> = new Set(["LEASE_CONFLICT", "NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"])
+const WAIT_CODES: ReadonlySet<string> = new Set(["NODE_TAKEN", "WORKFLOW_NOT_DISPATCHING"])
 
 /** Queues one ready node as a task: the action it made, whether a task was queued, and whether the workflow stopped dispatching. */
 const queueNode = (root: string, workflow: WorkflowRow, node: PlanNode): { readonly action: StepAction; readonly queued: boolean; readonly halted: boolean } => {
@@ -346,7 +358,7 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
 
 /**
  * Dispatches ready nodes in dependency order while the workflow has free slots (parallelSlots of harness/workflow.ts) and
- * budget: each becomes a queued task holding its leases (a lease overlap is a wait). Then every queued orca task of the graph
+ * budget: each becomes a queued task, whatever paths other live tasks write. Then every queued orca task of the graph
  * gets its seat: the new ones, and any left queued by a launch that certainly failed or a refused route.
  */
 const dispatchReady = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
@@ -373,6 +385,7 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
     return {
         key: view.key,
         task: id,
+        checkout: task.worktree ?? root,
         summary: task.contract.input.summary,
         brief: files.brief,
         output: files.output,
@@ -404,7 +417,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
             ...(await recoverOrphans(context, readSnapshot(root, id))),
             ...(await settleReported(context, readSnapshot(root, id))),
             ...(await closeSettledSeats(root, readSnapshot(root, id))),
-            ...expiredLeaseActions(root),
+            ...(await worktreeSweepActions(root, id)),
         )
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
@@ -413,6 +426,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         snapshot = reconcile(root, id)
     }
     actions.push(...(await closeKernelActions(context, root, snapshot)))
+    actions.push(...(await endedWorktreeActions(root, readSnapshot(root, id))))
     await priorWorkOfInline(root, readSnapshot(root, id))
     return reportOf(root, readSnapshot(root, id), actions)
 }
@@ -452,15 +466,19 @@ const finalVerify = async (context: VerbContext, root: string, snapshot: Snapsho
     return [{ key: null, task: null, action: verdict === "green" ? "verified" : "problem", detail: `final verify ${verdict}: ${reason}` }]
 }
 
-/** Begins an inline task's work before its brief is written: its baseline, then its prior work (both no-ops the second time). */
+/**
+ * Begins an inline task's work before its brief is written: its own Op worktree, cut from the branch the workflow runs on (its
+ * worktree, else this checkout), then a revert node's reverts and its prior work there (each a no-op the second time).
+ */
 const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void> => {
     if (snapshot.workflow.header.runner !== "inline" || !DISPATCHING.includes(snapshot.workflow.status)) return
     const view = snapshot.views.find((candidate) => (candidate.state === "queued" || candidate.state === "running") && candidate.task !== null)
     if (view?.task == null) return
     const id = view.task.id
     const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
-    if (node !== undefined) await applyRevert(root, root, snapshot.workflow.id, node, id)
-    await beginWork(root, root, withLedger(root, (db) => getTask(db, id)))
+    const made = await ensureOpWorktree(root, id, withLedger(root, (db) => workflowWorktreeOf(db, snapshot.workflow.id)) ?? root)
+    if (node !== undefined) await applyRevert(root, made.path, snapshot.workflow.id, node, id)
+    await beginWork(root, made.path, withLedger(root, (db) => getTask(db, id)))
 }
 
 /** The report of a workflow as it stands, with what was done to it. */
@@ -488,7 +506,7 @@ export const reportMessage = (report: WorkflowReport): string => {
         ...report.actions.map((action) => `${action.action}: ${action.key ?? "-"} ${action.task ?? ""} ${action.detail}`.replace(/\s+/g, " ").trim()),
     ]
     if (report.next !== null) {
-        lines.push(`next (inline): ${report.next.task} [${report.next.key}] ${report.next.summary}`, `brief: ${report.next.brief}`, ...report.next.commands.map((command) => `  ${command}`))
+        lines.push(`next (inline): ${report.next.task} [${report.next.key}] ${report.next.summary}`, `checkout: ${report.next.checkout} (edit and run the commands there)`, `brief: ${report.next.brief}`, ...report.next.commands.map((command) => `  ${command}`))
     }
     return lines.join("\n")
 }

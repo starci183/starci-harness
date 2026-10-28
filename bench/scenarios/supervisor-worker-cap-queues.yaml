@@ -4,7 +4,7 @@ group: scale
 title: "an 11th [Worker] of one project waits queued past projectMaxWorkers and starts once a worker seat is released"
 inject: eleven supervisor dispatches in one project, past the projectMaxWorkers cap of 10 (ops/routing.yaml)
 expect: >-
-  the first ten dispatches launch a [Worker] each; the eleventh records its worker, task, worktree and leases but launches nothing
+  the first ten dispatches launch a [Worker] each; the eleventh records its worker, task and worktree but launches nothing
   and says it is queued, never refused and never routed elsewhere; once the first worker reports done, supervisor next releases
   its seat, launches the eleventh into the freed slot and returns the first worker's report
 pass:

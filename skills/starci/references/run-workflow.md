@@ -50,7 +50,7 @@ starci budget show <id>
 ```
 
 `workflow status` names each task's state, its ledger task and why it waits. `task status <task>` shows the
-contract, attempts, the filed result, leases, check runs and preserved work. Never read a worker's terminal;
+contract, attempts, the filed result, its Op worktree, check runs and preserved work. Never read a worker's terminal;
 the result and the verify are the only truth.
 
 ## Read a block

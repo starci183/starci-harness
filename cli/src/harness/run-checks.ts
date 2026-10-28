@@ -10,9 +10,7 @@ import { judgeCites } from "./cite.js"
 import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
-import { now, openExistingLedger } from "./ledger.js"
 import type { OutputType } from "./ops.js"
-import { TERMINAL_STATUSES } from "./tasks.js"
 import { judgeUatWalk, parseUatRecord } from "./work.js"
 
 /** The verdict of one check. */
@@ -77,21 +75,6 @@ const listed = (files: readonly string[]): string => {
     return `${files.slice(0, LIST_SHOWN).join(", ")}${more}`
 }
 
-/** The paths leased by other live tasks (read straight from the ledger, which this never creates); their writers are someone else. */
-const otherLeasedPaths = (root: string, taskId: string | undefined): string[] => {
-    const db = openExistingLedger(root)
-    if (db === undefined) return []
-    try {
-        const terminal = TERMINAL_STATUSES.map(() => "?").join(", ")
-        return db
-            .prepare(`SELECT leases.path FROM leases JOIN tasks ON tasks.id = leases.task_id WHERE leases.expires_at > ? AND leases.task_id <> ? AND tasks.status NOT IN (${terminal})`)
-            .all(now(), taskId ?? "", ...TERMINAL_STATUSES)
-            .map((row) => String(row.path))
-    } finally {
-        db.close()
-    }
-}
-
 /** Work-tree files outside a task's allowPaths: `written` are the task's (changed since its work began, or undatable), `older` were there before it. */
 export interface StrayFiles {
     readonly written: readonly string[]
@@ -102,13 +85,12 @@ export interface StrayFiles {
 export const olderNote = (older: readonly string[]): string => `outside allowPaths but there before the task's work began, not judged: ${listed(older)}`
 
 /**
- * Dirty and untracked files of the work tree at `root` (against HEAD) that lie outside `allowPaths` and outside the paths
- * other live tasks lease, split by whose they are: a task with a baseline (harness/baseline.ts) owns only the files changed
+ * Dirty and untracked files of the work tree at `root` (against HEAD) that lie outside `allowPaths`, split by whose they are
+ * (an Op worktree holds only its own task's work): a task with a baseline (harness/baseline.ts) owns only the files changed
  * since its work began; one without owns the files written since `since`, and every file without a date.
  */
 export const strayFiles = async (root: string, allowPaths: readonly string[], scope: { readonly taskId?: string; readonly since?: string }): Promise<StrayFiles> => {
-    const leased = otherLeasedPaths(root, scope.taskId)
-    const outside = (await changedFiles(root, "HEAD")).filter((file) => !underPaths(file, allowPaths) && !underPaths(file, leased))
+    const outside = (await changedFiles(root, "HEAD")).filter((file) => !underPaths(file, allowPaths))
     const own = scope.taskId === undefined ? undefined : await ownChanges(root, scope.taskId)
     if (own !== undefined) return { written: outside.filter((file) => own.has(file)), older: outside.filter((file) => !own.has(file)) }
     const sinceMs = scope.since === undefined ? undefined : Date.parse(scope.since)

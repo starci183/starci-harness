@@ -1,3 +1,4 @@
+import { worktreeGc } from "../../harness/worktree-gc.js"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
@@ -10,8 +11,7 @@ import { coordinatorOf, foreignKernelTerminal, launchKernelSeat, startKernel, SU
 import type { NodeState } from "../../harness/graph.js"
 import { deadOnArrivalFailure, openBlockedPrompts, resubmitPendingComposer } from "../../harness/launch-failure.js"
 import { loadRouting } from "../../harness/routing.js"
-import { ledgerPath, now, openLedger } from "../../harness/ledger.js"
-import { expireLeases, inTransaction } from "../../harness/leases.js"
+import { inTransaction, ledgerPath, now, openLedger } from "../../harness/ledger.js"
 import { judgeStart, loadLiveness } from "../../harness/liveness.js"
 import { readMachine, recordTerminalList, withMachine } from "../../harness/machine.js"
 import { reconcileStaleLaunches } from "../../harness/stale-launch.js"
@@ -345,10 +345,6 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     return done.flat()
 }
 
-/** The overdue leases of tasks returned to the Kernel that this tick freed in one repository, as lines (a lease held past its due time blocks other workflows). */
-const expiredLeaseLines = (root: string): string[] =>
-    ledgerPath(root) === undefined ? [] : withLedger(root, (db) => expireLeases(db)).map((lease) => `${lease.taskId}: lease on ${lease.paths.join(", ")} released (task returned to the Kernel, due ${lease.expiresAt})`)
-
 /**
  * The project's open Supervisor decisions in the order `supervisor next` returns them: the ones the Supervisor rules, oldest
  * first, then the ones awaiting the owner or Debug (`awaitsOwner`), so such a question never holds the others back.
@@ -552,6 +548,15 @@ const questionOf = (decision: Decision): string => {
 }
 
 /** Every open blocked-prompt escalation of a repository's ledger, named loudly on each tick until the Supervisor answers it. */
+/** The tick's worktree collector of one repository (harness/worktree-gc.ts), as lines: each worktree it removed or could not. */
+const gcLines = async (root: string): Promise<string[]> => {
+    try {
+        return (await worktreeGc(root, false)).filter((entry) => entry.due).map((entry) => `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`}`)
+    } catch (error: unknown) {
+        return [`worktree gc of ${root} not run (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`]
+    }
+}
+
 const blockedPromptLines = (root: string): string[] =>
     ledgerPath(root) === undefined ? [] : withLedger(root, (db) => openBlockedPrompts(db).map((decision) => `BLOCKED PROMPT (${decision.id}, ${decision.workflowId}): ${questionOf(decision)}`))
 
@@ -598,7 +603,7 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
         lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
-        lines.push(...repos.flatMap(blockedPromptLines), ...repos.flatMap(expiredLeaseLines))
+        lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat())
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)
