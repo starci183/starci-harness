@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4 - 2026-10-28
+
+- Changed: versioned together with Grammar 0.15.4; `@starci/eslint-grammar-core` 0.15.4 is the peer dependency, so Offset Pop apps inherit `page-tabs-in-header` and `route-page-is-one-page`, and the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0).
+
 ## 0.15.3 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.3; `@starci/eslint-grammar-core` 0.15.3 is the peer dependency, so Offset Pop apps inherit `no-hand-rolled-page-header`, and the bundled canon pins follow release F (Grammar family 0.15.3, hfs 4.9.4, canon-fe 9.4.3, canon-be 3.6.3, ai-router 0.3.0).

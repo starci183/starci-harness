@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.4 - 2026-10-28
+
+- Added: `starci-grammar/page-tabs-in-header` (R324, `FE_PAGE_TABS_OUTSIDE_HEADER`): a `Tabs` that is the first element child of a `Page`, or the next element sibling of a `PageHeader`, is a page tab bar outside the band; pass it as `header.tabs`.
+- Added: `starci-grammar/route-page-is-one-page` (R325, `FE_ROUTE_PAGE_OUTSIDE_PAGE`): a page owner (`fe.feature`, kind `pages`) draws one `Page` with no element sibling and no `PageHeader` or `PageContainer` of its own. Spec: `src/page.spec.ts`; docs: `docs/page.md`.
+- Changed: versioned together with Grammar 0.15.4; `@starci/eslint-canon-fe` 9.4.4 is the peer dependency; the bundled rule catalog carries R324 and R325, and the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0).
+
 ## 0.15.3 - 2026-10-28
 
 - Added: `starci-grammar/no-hand-rolled-page-header` (R323, `FE_PAGE_HEADER_HAND_ROLLED`): a `Breadcrumbs` followed by a `SectionHeader` among one parent's element children is a page head composed by hand; compose Grammar 0.15.3's `PageHeader`. Spec: `src/page-header.spec.ts`; docs: `docs/page-header.md`.
