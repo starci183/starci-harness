@@ -82,7 +82,13 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
 4. Return exactly one result with `starci task result {taskId} --status <s> --output @{outputFile}` (the `@` reads the file):
    - `done`: verify is green. Work that finds nothing to change (the code already meets the task) is done too: you change
      nothing, the checks judge the files under your allowPaths as they stand, and the harness settles it without a commit.
-   - `blocked`: you cannot finish without something outside the contract; say what, in one sentence. When that something is
+   - `blocked`: you cannot finish without something outside the contract; say what, in one sentence. When the business,
+     the code or the spec is unclear, or a check is red for a cause that is clearly the harness's (a wrong scope, a missing
+     context page, an install or infrastructure fault, a tool error) and not your code, you never guess silently and never bend
+     your work around it: your output carries `question` (the question, or the red and why it is the harness's) and, when you
+     have one, `default` (the answer you propose), which your Kernel may simply accept. It answers from the goal, the specs and
+     the canon, or climbs the question to the Supervisor, who answers it or files one ticket; the answer reaches your next
+     attempt's brief under "Answers". When that something is
      a shared thing that is missing (a capability under `platform/`, an app-root file, a `@starci` package, a root config such
      as the lint, tsconfig, compose or package.json), you never build it: add `--needs <key>` with its key
      (`capability:platform.http`, `package:@starci/grammar`, `config:root-eslint`), `--rule <id>` that asks for it,

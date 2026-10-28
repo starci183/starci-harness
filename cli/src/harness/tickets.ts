@@ -2,11 +2,14 @@ import { createHash, randomBytes } from "node:crypto"
 import { basename } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
+import { awaitsOwner, escalationOf, openDecisions } from "./coordinator-commands.js"
 import type { Decision } from "./coordinator-commands.js"
-import { now } from "./ledger.js"
+import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf, withMachine } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
+import { registeredRepositories } from "./project-workers.js"
 import { inOrder } from "./sequential.js"
+import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
 
 /**
@@ -50,6 +53,8 @@ export interface TicketEvidence {
     readonly attempt?: string
     readonly decision?: string
     readonly question?: string
+    /** An owner escalation's topic (OWNER_TOPICS of harness/coordinator-commands.ts). */
+    readonly topic?: string
     readonly tail?: string
 }
 
@@ -289,18 +294,12 @@ export const waitersOf = (id: string): TicketWaiter[] =>
 export const decisionTicketed = (repo: string, decisionId: string): boolean =>
     readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `decision:${decisionId}`) !== undefined, false)
 
-/** The ended tickets that released any of these tasks, oldest first: what a new attempt of their work is told (harness/brief.ts). */
-export const releasedTicketsOf = (taskIds: readonly string[]): Ticket[] => {
-    if (taskIds.length === 0) return []
-    const subjects = taskIds.map((id) => `task:${id}`)
-    return readMachine(
-        (db) =>
-            db
-                .prepare(`SELECT DISTINCT t.* FROM ticket_waiters w JOIN tickets t ON t.id = w.ticket_id WHERE w.released_at IS NOT NULL AND w.subject IN (${subjects.map(() => "?").join(", ")}) ORDER BY t.closed_at, t.id`)
-                .all(...subjects),
-        [],
-    ).map(toTicket)
-}
+/**
+ * The ended tickets that released a task or escalation of a workflow, oldest first: the answers and fixes every later attempt of
+ * the workflow's tasks is told in its brief (harness/brief.ts), so no worker guesses again what was answered.
+ */
+export const releasedTicketsOfWorkflow = (workflowId: string): Ticket[] =>
+    readMachine((db) => db.prepare("SELECT DISTINCT t.* FROM ticket_waiters w JOIN tickets t ON t.id = w.ticket_id WHERE w.released_at IS NOT NULL AND w.workflow_id = ? ORDER BY t.closed_at, t.id").all(workflowId), []).map(toTicket)
 
 /** Debug's queue order: blocking first, then the most occurrences, then the oldest. */
 const QUEUE_ORDER = "CASE severity WHEN 'blocking' THEN 0 ELSE 1 END, occurrences DESC, opened_at, id"
@@ -428,32 +427,62 @@ export const wakeOnClose = async (closed: Closed, by: string, cwd: string): Prom
     })
 }
 
-const fieldOf = (value: unknown, name: string): unknown => (typeof value === "object" && value !== null && name in value ? (value as Record<string, unknown>)[name] : undefined)
-
 /**
- * Files the open `harness` escalation of a ledger as a blocking `harness-defect` ticket (or links it to the live ticket of the same
- * defect), once: the escalation's question is its title and evidence, the workflow its workflow, the Kernel's note what it tried.
- * `supervisor next` calls it for the Supervisor, which opens the ticket. Returns the ticket and how it was filed, or null when the
- * decision waits on a ticket already.
+ * Files an open escalation the Supervisor cannot rule as its ticket (or links it to the live ticket of the same defect or
+ * question), once, the escalation waiting on it: a `harness` one as a blocking `harness-defect` for Debug; an `owner` one
+ * `awaitsOwner` holds (no default the Supervisor may take) as a blocking `question:business` the owner answers on Telegram, its
+ * topic kept in the evidence and its `default` as the proposed default. The question is the title, the workflow the workflow.
+ * Returns the ticket and how it was filed, or null for any other decision and for one that waits on a ticket already.
  */
 export const ticketEscalation = (repo: string, project: Project, decision: Decision): { readonly ticket: Ticket; readonly outcome: TicketOutcome } | null => {
-    if (decisionTicketed(repo, decision.id)) return null
-    const escalation = fieldOf(decision.evidence, "escalation")
-    const question = fieldOf(escalation, "question")
-    const note = fieldOf(decision.evidence, "note")
-    const text = typeof question === "string" ? question : decision.subject
+    const escalation = escalationOf(decision)
+    if (escalation === null || !awaitsOwner(decision) || decisionTicketed(repo, decision.id)) return null
+    const harness = escalation.kind === "harness"
+    const text = escalation.question ?? decision.subject
     const flat = text.replaceAll(/\s+/g, " ").trim()
     return openTicket({
-        kind: "harness-defect",
+        kind: harness ? "harness-defect" : "question:business",
         severity: "blocking",
         title: flat.length <= 200 ? flat : `${flat.slice(0, 199)}…`,
-        evidence: { workflow: decision.workflowId, decision: decision.id, question: text },
-        tried: typeof note === "string" ? note : null,
-        proposedDefault: null,
+        evidence: { workflow: decision.workflowId, decision: decision.id, question: text, ...(escalation.topic === undefined ? {} : { topic: escalation.topic }) },
+        tried: escalation.reason ?? null,
+        proposedDefault: harness ? null : (escalation.default ?? null),
         project,
         workflow: decision.workflowId,
         by: "supervisor",
         seat: process.env.ORCA_TERMINAL_HANDLE ?? null,
         waiters: [{ repo, subject: `decision:${decision.id}`, project, workflow: decision.workflowId }],
     })
+}
+
+/** Files every open escalation of one repository's ledger the Supervisor cannot rule (`ticketEscalation`), as one line each. */
+export const ticketEscalations = (repo: string, project: Project): string[] => {
+    const db = openExistingLedger(repo)
+    if (db === undefined) return []
+    let decisions: Decision[]
+    try {
+        decisions = openDecisions(db, "supervisor")
+    } finally {
+        db.close()
+    }
+    const key = repo.replaceAll("\\", "/")
+    return decisions.flatMap((decision) => {
+        const filed = ticketEscalation(key, project, decision)
+        return filed === null ? [] : [`escalation ${decision.id} filed as ticket ${filed.ticket.id} (${filed.ticket.kind}, ${filed.outcome}, seen ${String(filed.ticket.occurrences)} times)`]
+    })
+}
+
+/**
+ * The tick's ticket round: every registered repository's open escalations the Supervisor cannot rule are filed as tickets
+ * (`ticketEscalations`), so a defect reaches Debug's queue and a question the owner's chat even while no Supervisor runs `next`.
+ */
+export const ticketHostEscalations = async (): Promise<string[]> => {
+    const lines = await inOrder(registeredRepositories(), async (repo) => {
+        try {
+            return ticketEscalations(repo, await projectOf(repo, false))
+        } catch {
+            return []
+        }
+    })
+    return lines.flat()
 }

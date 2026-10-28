@@ -13,8 +13,8 @@ export const ticketTakeVerb = defineVerb({
     flags: {
         id: { kind: "string", required: true, positional: true, summary: "the ticket id (tk-...)" },
     },
-    run: async (_context, flags) => {
+    run: (_context, flags) => {
         const ticket = takeTicket(flags.id, callerRole() ?? "debug")
-        return { data: { ticket, outcome: "taken" }, message: `ticket ${ticket.id} in-progress, taken by ${ticket.takenBy ?? "-"}: ${ticket.title}` }
+        return Promise.resolve({ data: { ticket, outcome: "taken" }, message: `ticket ${ticket.id} in-progress, taken by ${ticket.takenBy ?? "-"}: ${ticket.title}` })
     },
 })

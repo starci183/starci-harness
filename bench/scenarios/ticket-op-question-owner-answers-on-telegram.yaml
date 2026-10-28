@@ -1,0 +1,224 @@
+schema: starci/scenario@1
+id: ticket-op-question-owner-answers-on-telegram
+group: owner
+title: "an Op question the Kernel cannot answer climbs to the Supervisor, becomes one question ticket on the owner's Telegram, and the owner's reply releases the task with the answer in its next brief"
+inject: >-
+  an Op cannot tell whether doc a may name the product and proposes no default; the goal does not say, so the Kernel escalates
+  kind owner (topic product, no default); the Supervisor has no default either; the owner replies to the Telegram notice
+expect: >-
+  supervisor next files the escalation as one blocking question:business ticket opened by the supervisor, the escalation waiting
+  on it, and hands the escalation over once; the tick sends the owner one notice with the question, the ticket id and how to
+  answer; the owner's reply answers the ticket, recorded as the owner's with why, releases the escalation and wakes the
+  Supervisor with an owner request naming the ticket, the answer and the decision; the Supervisor relays it as a goal-change
+  answering both; the Kernel retries the task, whose new brief carries the answer
+pass:
+  - one question ticket, opened by the supervisor, its escalation waiting, then answered by the owner and released
+  - one question notice in the owner's chat and a receipt for the reply
+  - supervisor next returns the owner request naming the ticket and the decision
+  - the Kernel gets the escalation-answer and the retried task's brief carries the answer
+  - no actor overstepping its role
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - seat: kernel:ask
+    starci: [kernel, next, ask, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - name: the Op asks instead of guessing, with no default to propose
+    worker:
+      task: ${a}
+      status: blocked
+      output:
+        summary: "question:business: may doc a name the product? The goal does not say and I have no default."
+        question: may doc a name the product?
+        files: []
+        rulesApplied: []
+  - seat: kernel:ask
+    starci: [kernel, next, ask, --wait, "0"]
+    expect:
+      contains: may doc a name the product?
+    save:
+      question: data.decision.id
+      graph: data.digest.graphVersion
+  - name: the goal does not answer it, so the Kernel escalates to the Supervisor
+    file:
+      path: esc.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-owner-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: ${graph}}
+        answers: [${question}]
+        escalation:
+          kind: owner
+          topic: product
+          question: may doc a name the product?
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc.yaml"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+      as: decision
+  - name: the Supervisor has no default, so its driver opens one question ticket for the owner
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: filed as ticket tk-
+  - read:
+      db: machine
+      query: SELECT id FROM tickets
+      as: ticket
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT kind || ':' || severity || ':' || state || ':' || opened_by || ':' || (SELECT subject FROM ticket_waiters w WHERE w.ticket_id = tickets.id) FROM tickets"
+        equals: ["question:business:blocking:open:supervisor:decision:${decision}"]
+  - name: the tick puts the question to the owner once
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "ticket:${ticket}:ask"
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: /answer ${ticket}
+  - read:
+      db: machine
+      query: "SELECT message_id FROM telegram_notices WHERE key = 'ticket:${ticket}:ask' AND status = 'sent'"
+      as: notice
+  - name: the owner replies to the notice
+    http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: "no, keep the product unnamed", replyTo: "${notice}"}
+  - env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: answered ${ticket}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || answer || ':' || closed_by FROM tickets"
+        equals: ["answered:no, keep the product unnamed:owner"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT (released_at IS NOT NULL) || ':' || (request_id IS NOT NULL) FROM ticket_waiters"
+        equals: ["1:1"]
+  - name: the woken Supervisor reads the owner's answer with what it releases
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: "Released: decision:${decision}"
+    save:
+      request: data.request.id
+  - name: the Supervisor relays the answer to the Kernel
+    file:
+      path: relay.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: sup-ask-relay-1
+        kind: goal-change
+        workflow: ask
+        project: ${repo}
+        basedOn: {goal: 1}
+        answers: [${decision}, ${request}]
+        goal: write doc a; it never names the product
+        note: "the owner, via ticket ${ticket}: no, keep the product unnamed"
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/relay.yaml"]
+  - seat: kernel:ask
+    starci: [kernel, next, ask, --wait, "0"]
+    expect:
+      contains: '"kind": "goal-change"'
+    save:
+      answer: data.decision.id
+      graph2: data.digest.graphVersion
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: ask
+        reason: the owner answered; doc a never names the product
+        changes:
+          - op: retry
+            id: a
+  - file:
+      path: cmd-retry.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-retry-1
+        kind: workflow-change
+        workflow: ask
+        basedOn: {graph: ${graph2}}
+        answers: [${answer}]
+        change: retry.yaml
+  - name: the Kernel releases the task with a retry
+    seat: kernel:ask
+    starci: [kernel, submit, "${run}/cmd-retry.yaml"]
+  - seat: kernel:ask
+    starci: [kernel, next, ask, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE plan_key = 'a' ORDER BY created_at, rowid"
+        equals: [cancelled, running]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE status = 'running'"
+      as: a2
+  - read:
+      db: machine
+      query: "SELECT replace(file, 'runtime.sqlite', 'briefs') FROM ledgers WHERE state != 'retired' LIMIT 1"
+      as: briefs
+  - name: the new attempt's brief carries the owner's answer
+    assert:
+      exists:
+        path: ${briefs}/${a2}.md
+        present: true
+        contains: "answered by owner: no, keep the product unnamed"
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: Answered ${ticket}
+  - name: the question went to the owner once
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM telegram_notices WHERE kind = 'ticket'"
+        equals: [1]

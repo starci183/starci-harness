@@ -13,6 +13,7 @@ import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
 import { priorWorkSection } from "./prior.js"
 import type { TaskRow } from "./tasks.js"
+import { closeLine, releasedTicketsOfWorkflow } from "./tickets.js"
 
 /** The files one worker brief is made of, all in the project's state folder outside the repository (see briefsDir). */
 export interface BriefFiles {
@@ -138,6 +139,21 @@ const needsSection = (root: string, task: TaskRow): string | undefined => {
 }
 
 /**
+ * The "Answers" section of a task whose workflow had a question answered or a harness defect fixed through a ticket
+ * (harness/tickets.ts): each ticket, how it ended, who answered and why, so the attempt builds on the answer and never guesses
+ * again; undefined when none ended.
+ */
+const answersSection = (task: TaskRow): string | undefined => {
+    if (task.workflowId === null) return undefined
+    const tickets = releasedTicketsOfWorkflow(task.workflowId)
+    if (tickets.length === 0) return undefined
+    return [
+        "Questions and harness defects of this workflow were settled through tickets. Hold to each answer; a fixed defect is fixed in the harness you run.",
+        ...tickets.map((ticket) => `- ${ticket.id} (${ticket.kind}) ${ticket.title}: ${closeLine(ticket)}`),
+    ].join("\n")
+}
+
+/**
  * Renders the brief a worker reads: the common procedure of ops/ops/README.md, then the task's op and its resolved contract
  * (base then extend) in plain words, with a "Prior work" section when earlier tasks of the same key left work (prior.ts);
  * `role` is who works it (an Orca worker, or the inline chat agent).
@@ -151,6 +167,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
     const paged = resolved.context.filter((file) => file.source === "paths")
     const prior = priorWorkSection(root, task)
     const needs = needsSection(root, task)
+    const answers = answersSection(task)
     // The ids the contract hands this task, each with the text it resolves to, so a grader reads what the author decided by.
     const handed = citesBriefSection(contract.cites, ops.root, resolved.output.some((item) => item.key === GRADES_KEY))
     const cites = handed === undefined ? [] : ["### Cites", handed]
@@ -179,6 +196,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
             .join("\n"),
         ...(prior === undefined ? [] : ["### Prior work", prior]),
         ...(needs === undefined ? [] : ["### Shared needs", needs]),
+        ...(answers === undefined ? [] : ["### Answers", answers]),
         `### The ${contract.label} op`,
         procedure,
         "### Input",

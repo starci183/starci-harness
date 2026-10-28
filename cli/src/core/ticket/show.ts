@@ -12,7 +12,7 @@ export const ticketShowVerb = defineVerb({
     flags: {
         id: { kind: "string", required: true, positional: true, summary: "the ticket id (tk-...)" },
     },
-    run: async (_context, flags) => {
+    run: (_context, flags) => {
         const ticket = getTicket(flags.id)
         const waiters = waitersOf(ticket.id)
         const evidence = ticket.evidence
@@ -28,6 +28,6 @@ export const ticketShowVerb = defineVerb({
             ...waiters.map((waiter) => `waiter ${waiter.subject} (${waiter.repo}): ${waiter.releasedAt === null ? "waiting" : `released ${waiter.releasedAt}${waiter.requestId === null ? "" : ` by ${waiter.requestId}`}`}`),
             ...(evidence.tail === undefined ? [] : ["evidence:", evidence.tail]),
         ]
-        return { data: { ticket, waiters }, message: lines.join("\n") }
+        return Promise.resolve({ data: { ticket, waiters }, message: lines.join("\n") })
     },
 })

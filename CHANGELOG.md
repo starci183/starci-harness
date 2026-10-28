@@ -10,6 +10,25 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Tickets.** What the Supervisor cannot resolve within its authority becomes one ticket in machine.sqlite (`tickets`,
+  `ticket_waiters`): a defect (`harness-defect`, `package`, `launch`, `verify`, `routing`, `other`) for Debug's queue, or a
+  question (`question:business`, `question:code`, `question:spec`) for the owner, with severity, evidence (task, attempt, seat,
+  decision, redacted red tail), what was tried, a proposed default, and who opened and reported it. A repeat of the same defect
+  (kind, error code, module) or question bumps `occurrences` instead of opening a second, and reopens a fixed defect. New verbs:
+  `ticket open` (supervisor, owner, debug), `ticket list [--state] [--project]` (blocking first, then by occurrences),
+  `ticket show`, `ticket take` and `ticket close --fixed-by | --wontfix --reason | --duplicate` (debug, owner), `ticket answer
+  --answer | --accept-default` (owner). `supervisor next`, `supervisor tick` and every notice sweep file each open `owner`
+  escalation the owner rules as a question ticket (its topic and `default` kept) and each `harness` escalation as a blocking
+  defect ticket, the escalation waiting on it. Telegram puts each question to the owner once, whose reply (or `/answer <ticket>`,
+  `default` accepting the proposed default) answers it, and notices a defect's opening and close once each, below blocking
+  only past `ticketOccurrences` (`ops/telegram.yaml`); the notice of an `owner` escalation is now its ticket's. An answer or
+  close is recorded with who gave it and why, releases every task and escalation waiting on it, wakes the Supervisor with an
+  owner request naming them, and reaches every later brief of the workflow under "Answers". The Op, Kernel and Supervisor
+  briefs carry the rule: an Op stuck on an unclear rule or a harness red files `blocked` with its question and proposed
+  default, the Kernel answers or escalates, the Supervisor answers or opens one ticket; nobody guesses silently. Bench:
+  `ticket-op-question-kernel-answers`, `ticket-op-question-owner-answers-on-telegram`, `ticket-harness-defect-debug-closes`;
+  `telegram-notify-once-per-decision` and `telegram-bridge-reply-records-owner-request` now prove the ticket notices.
+
 - **Coordinators run on their own.** An `owner` escalation names its `topic` (`scope`, `money`, `credentials`, `legal`,
   `product`) and may propose a `default` with its `reason` (`COMMAND_INVALID` otherwise); the Supervisor's driver (`supervisor
   next` and `supervisor tick`) decides a `product` choice that carries a default on that default, answers its Kernel with an

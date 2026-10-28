@@ -65,7 +65,8 @@ check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `
 governor's `heavy_slots` and `cpu_samples` (`harness/heavy.ts`), `project_supervisors`, one live
 Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
-`telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`).
+`telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`), and `tickets` and `ticket_waiters`
+("Tickets" below, `harness/tickets.ts`).
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
 and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's worktree and `tasks.worktree` a task's
 own checkout. Seats stay in the project ledger.
@@ -372,8 +373,8 @@ its Kernel given an `escalation-answer` whose ruling is the default, an `escalat
 owner never sees it; it returns the project's oldest `escalation`, `handoff` or `shared-need` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
 it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
 `harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
-`owner` with no default it may rule, which the owner rules, or `harness`, which Debug rules and answers with a `supervisor ask` (`awaitsOwner` in
-`harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1), `stop` or `need-owner` ("Shared needs"),
+`owner` with no default it may rule, which the owner rules, or `harness`, which Debug rules (`awaitsOwner` in
+`harness/coordinator-commands.ts`); each is filed as its ticket first ("Tickets"). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1), `stop` or `need-owner` ("Shared needs"),
 and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
 The Supervisor works through workers (`core/supervisor/workers.ts`). `supervisor dispatch --brief <file|text> [--need <key>] [--label]
@@ -456,15 +457,35 @@ and every error text has the token replaced. `connect telegram discover-chat` re
 it (`--chat` picks among several) in machine.sqlite `telegram_channel`, never in a repository; no fact older than that moment
 is sent. A notice sweep (`connect telegram notify`, every bridge cycle, and every `supervisor tick` once the token is set and the
 chat stored, its failure reported and never failing the tick) sends, oldest first and at most `sendPerMinute`,
-each fact not sent yet across every registered ledger: an `owner` escalation the owner rules (`awaitsOwner`: never a defaulted product choice, which the Supervisor decides, nor a `harness` one, which is Debug's; project, workflow,
-decision id, the question, how to answer), an owner request a Supervisor command took up, and a workflow that is done,
-blocked or stopped (keyed by its status and versions). Each fact is claimed in `telegram_notices` by its key before it is
+each fact not sent yet across every registered ledger, after filing every escalation the Supervisor cannot rule as its
+ticket: a question ticket put to the owner (`ticket:<id>:ask`: project, workflow, topic, the question, the proposed default,
+how to answer); a defect ticket's opening and its close, once per state and round, only when it is blocking or seen more than
+`ticketOccurrences` times; an owner request a Supervisor command took up; and a workflow that is done, blocked or stopped
+(keyed by its status and versions). Each fact is claimed in `telegram_notices` by its key before it is
 sent, so it is sent once; a failed send is tried `sendTries` times. `supervisor telegram-bridge run` holds the host's one
 bridge seat (pid and beat; a second bridge exits while the first is alive) and loops a sweep and a `getUpdates` long poll;
 each update is claimed once in `telegram_inbound`. A message of any chat but the owner's is ignored and logged by its chat
-id, never its text; the owner's reply to a notice, `/answer <decision-id> <text>` or `/ask <project> <text>` is recorded as an
-owner request of that project by the owner (`askSupervisor`, as `supervisor ask` does), which wakes its Supervisor, and the
-owner gets a receipt. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
+id, never its text; the owner's reply to a live question ticket's notice, or `/answer <ticket> <text>` (`default` accepts the
+proposed default), answers that ticket as the owner's; any other reply to a notice, `/answer <id> <text>` or `/ask <project>
+<text>` is recorded as an owner request of that project by the owner (`askSupervisor`, as `supervisor ask` does), which wakes
+its Supervisor; the owner gets a receipt either way. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
+**Tickets.** What the Supervisor cannot resolve within its authority is one ticket in machine.sqlite `tickets`
+(`harness/tickets.ts`): a defect (`harness-defect`, `package`, `launch`, `verify`, `routing`, `other`) for Debug, or a question
+(`question:business`, `question:code`, `question:spec`) for the owner, with its severity, evidence (task, attempt, seat,
+decision, the red tail, redacted), what was tried, its proposed default, who opened it (role and Orca terminal) and every role
+that reported it. A ticket is deduped by its fingerprint (a defect's kind, error code and module, else its normalized title;
+a question's kind and normalized title): a repeat bumps `occurrences`, reopens a `fixed` defect for another round, and finds an
+answered question answered. `supervisor next` from the Supervisor's terminal, every `supervisor tick` and every notice sweep
+file each open `owner` escalation `awaitsOwner` holds as a `question:business` ticket (its topic, its `default` as the
+proposed default) and each `harness` escalation as a blocking `harness-defect` ticket, the escalation waiting on it in
+`ticket_waiters` (`ticketEscalation`); the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
+the monitor), whose `--task` and `--decision` wait on it. `ticket list [--state] [--project]` is Debug's queue, blocking first,
+then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by
+<sha> | --wontfix --reason | --duplicate <id>` (debug, owner) ends it, a duplicate of a live ticket handing over its waiters;
+`ticket answer --answer | --accept-default [--why]` (owner, and the bridge for a Telegram reply) answers a question. An end is
+recorded with who gave it and why, releases every waiter and wakes the Supervisor of each waiter's project (and of the
+ticket's, when the Supervisor opened it) with an owner request by the closer naming the ticket, the fix or answer and what it
+released (`wakeOnClose`); every later brief of the workflow lists it under "Answers" (`harness/brief.ts`).
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
 Supervisor decision it rules, never an `owner` or `harness` escalation it waits on; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for

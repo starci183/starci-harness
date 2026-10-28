@@ -2,8 +2,6 @@ import { basename } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { registeredRepositories } from "./project-workers.js"
 import { asRefusal } from "../shared/errors.js"
-import { awaitsOwner, escalationOf, openDecisions } from "./coordinator-commands.js"
-import type { Decision } from "./coordinator-commands.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
@@ -11,19 +9,19 @@ import { inOrder } from "./sequential.js"
 import { liveSupervisors, projectOfRecord, supervisorTitle } from "./supervisor.js"
 import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenSource, withChannelStore } from "./telegram.js"
 import type { Channel, TelegramBot, TelegramConfig, TelegramMessage, TelegramUpdate } from "./telegram.js"
-import { closeLine, closeTicket, findTicket, isLive, isQuestion, listTickets, wakeOnClose } from "./tickets.js"
+import { closeLine, closeTicket, findTicket, isLive, isQuestion, listTickets, ticketHostEscalations, wakeOnClose } from "./tickets.js"
 import type { Ticket } from "./tickets.js"
 import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
 import { listWorkflows } from "./workflow.js"
 
 /**
- * One fact the owner hears about once: an `owner` escalation (a `harness` one is Debug's, filed as a ticket), an owner request
- * taken up, a workflow that ended, and a ticket opened, reopened by a repeat or closed.
+ * One fact the owner hears about once: a ticket (an escalation the Supervisor cannot rule: an owner question put to the owner, or
+ * a harness defect for Debug, opened, reopened by a repeat or closed), an owner request taken up, and a workflow that ended.
  */
 interface Notice {
     readonly key: string
-    readonly kind: "decision" | "request" | "workflow" | "ticket"
+    readonly kind: "request" | "workflow" | "ticket"
     readonly project: Project
     readonly workflow: string | null
     readonly subject: string
@@ -36,28 +34,13 @@ const clip = (text: string, chars: number): string => {
     return flat.length <= chars ? flat : `${flat.slice(0, chars - 1)}…`
 }
 
-const decisionNotice = (project: Project, decision: Decision, chars: number): Notice => {
-    const escalation = escalationOf(decision)
-    const topic = escalation?.topic === undefined ? "" : `, ${escalation.topic}`
-    const text = [
-        `[StarCi] ${project.name} · workflow ${decision.workflowId}`,
-        `Question ${decision.id} (${escalation?.kind ?? ""}${topic}): ${clip(escalation?.question ?? decision.subject, chars)}`,
-        ...(escalation?.default === undefined ? [] : [`Proposed: ${clip(escalation.default, chars)}`]),
-        `Answer: reply to this message, or send /answer ${decision.id} <your answer>.`,
-    ].join("\n")
-    return { key: `decision:${decision.id}`, kind: "decision", project, workflow: decision.workflowId, subject: decision.id, text, at: decision.raisedAt }
-}
-
 const ENDED: Readonly<Record<string, string>> = { done: "is done", blocked: "is blocked", stopped: "stopped" }
 
-/** The facts of one registered repository's ledger: open `owner` escalations and workflows that ended, since `since`. */
+/** The facts of one registered repository's ledger: workflows that ended, since `since`. */
 const ledgerNotices = (repo: string, project: Project, since: string, chars: number): Notice[] => {
     const db = openExistingLedger(repo)
     if (db === undefined) return []
     try {
-        const decisions = openDecisions(db, "supervisor")
-            .filter((decision) => awaitsOwner(decision) && escalationOf(decision)?.kind === "owner" && decision.raisedAt > since)
-            .map((decision) => decisionNotice(project, decision, chars))
         const workflows = listWorkflows(db).flatMap((workflow): Notice[] => {
             const ended = ENDED[workflow.status]
             const at = workflow.updatedAt ?? workflow.createdAt
@@ -67,7 +50,7 @@ const ledgerNotices = (repo: string, project: Project, since: string, chars: num
             const key = `workflow:${project.key}:${workflow.id}:${workflow.status}:g${String(workflow.goalVersion)}v${String(workflow.graphVersion)}`
             return [{ key, kind: "workflow", project, workflow: workflow.id, subject: workflow.id, text, at }]
         })
-        return [...decisions, ...workflows]
+        return workflows
     } finally {
         db.close()
     }
@@ -101,7 +84,7 @@ const repositoryProjects = async (): Promise<{ readonly repo: string; readonly p
  * to answer (a reply to the notice, or `/answer <ticket> <answer>`; `default` accepts the proposed default).
  */
 const questionNotice = (ticket: Ticket, chars: number): Notice => {
-    const where = `[StarCi] ${ticket.project.name || "harness"} · question ${ticket.id} (${ticket.kind.slice("question:".length)})`
+    const where = `[StarCi] ${ticket.project.name || "harness"} · question ${ticket.id} (${ticket.kind.slice("question:".length)}${ticket.evidence.topic === undefined ? "" : `, ${ticket.evidence.topic}`})${ticket.workflow === null ? "" : ` · workflow ${ticket.workflow}`}`
     const proposed = ticket.proposedDefault === null ? "No default is proposed." : `Proposed default: ${clip(ticket.proposedDefault, chars)} (reply "default" to accept it).`
     const text = [`${where}: ${clip(ticket.title, chars)}`, proposed, `Answer: reply to this message, or send /answer ${ticket.id} <your answer>.`].join("\n")
     return { key: `ticket:${ticket.id}:ask`, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text, at: ticket.openedAt }
@@ -180,10 +163,12 @@ export interface Sweep {
 
 /**
  * Sends the owner every fact not sent yet, oldest first, within the minute's budget: each fact is claimed once by its key before
- * it is sent (so no fact is sent twice), the rest wait for the next sweep. A send that fails is tried again up to sendTries.
+ * it is sent (so no fact is sent twice), the rest wait for the next sweep. A send that fails is tried again up to sendTries. Every
+ * escalation the Supervisor cannot rule is filed as its ticket first (`ticketHostEscalations`), so its question or defect is due.
  */
 export const sweepNotices = async (bot: TelegramBot, channel: Channel & { readonly chatId: string; readonly connectedAt: string }): Promise<Sweep> => {
     const { config } = bot
+    await ticketHostEscalations()
     const notices = await pendingNotices(channel.connectedAt, config)
     const sent: string[] = []
     const failed: string[] = []
@@ -319,8 +304,9 @@ const ACCEPT_DEFAULT = /^(?:default|accept|ok|yes)\.?$/i
 const answerQuestion = async (id: string, body: string, cwd: string): Promise<{ readonly answer: string; readonly request: string | null } | undefined> => {
     const ticket = findTicket(id)
     if (ticket === undefined || !isQuestion(ticket.kind) || !isLive(ticket.state)) return undefined
-    const accepted = ACCEPT_DEFAULT.test(body.trim()) && ticket.proposedDefault !== null
-    const answer = accepted ? (ticket.proposedDefault ?? body) : body
+    const proposed = ticket.proposedDefault
+    const accepted = ACCEPT_DEFAULT.test(body.trim()) && proposed !== null
+    const answer = accepted ? proposed : body
     const closed = closeTicket(id, { state: "answered", answer, why: accepted ? "the owner accepted the proposed default, via Telegram" : "the owner's call, via Telegram" }, "owner")
     const woken = await wakeOnClose(closed, "owner", cwd)
     return { answer, request: woken[0]?.request ?? null }
