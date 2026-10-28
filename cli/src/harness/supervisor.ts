@@ -228,7 +228,10 @@ export const wakeSupervisor = async (project: string, cwd: string, mail: Omit<Ma
     const supervisor = supervisorRecord(project)
     if (supervisor?.run_id == null) return "no Supervisor attached: it waits for supervisor next"
     try {
-        await mailSend(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from: process.env.ORCA_TERMINAL_HANDLE }, cwd)
+        // Orca needs a sender terminal: the caller's when it runs inside one (a Kernel), else the Supervisor's own terminal,
+        // so the owner's `supervisor ask` from a shell or the desktop app still wakes it.
+        const from = process.env.ORCA_TERMINAL_HANDLE ?? supervisor.terminal ?? undefined
+        await mailSend(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from }, cwd)
         return "mailed the Supervisor's Run"
     } catch (error: unknown) {
         return `mail not sent (${asRefusal(error).code}); it waits for supervisor next`
