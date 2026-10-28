@@ -21,6 +21,9 @@ const configSchema = z.strictObject({
     sendTries: z.number().int().positive(),
     questionChars: z.number().int().min(80).max(3500),
     ticketOccurrences: z.number().int().positive(),
+    banner: z.string().regex(/\.png$/),
+    commitUrl: z.string().includes("{sha}"),
+    muteMinutes: z.number().int().positive(),
 })
 
 /** ops/telegram.yaml, validated: the owner's Telegram channel. */
@@ -50,7 +53,8 @@ export const tokenSource = (config: TelegramConfig): SecretSource | null => look
 export interface TelegramBot {
     readonly config: TelegramConfig
     readonly api: string
-    readonly call: <T>(method: string, body: Readonly<Record<string, unknown>>, schema: z.ZodType<T>, waitSeconds?: number) => Promise<T>
+    /** Calls one Bot API method with a json body, or a multipart form (an upload). */
+    readonly call: <T>(method: string, body: Readonly<Record<string, unknown>> | FormData, schema: z.ZodType<T>, waitSeconds?: number) => Promise<T>
 }
 
 const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optional(), description: z.string().optional(), error_code: z.number().optional() })
@@ -66,13 +70,13 @@ export const telegramBot = (config: TelegramConfig = loadTelegram()): TelegramBo
     const override = process.env[TELEGRAM_API_ENV]
     const api = (override === undefined || override === "" ? config.apiBase : override).replace(/\/+$/, "")
     const redact = (text: string): string => text.replaceAll(token, "<token>")
-    const call = async <T>(method: string, body: Readonly<Record<string, unknown>>, schema: z.ZodType<T>, waitSeconds = 0): Promise<T> => {
+    const call = async <T>(method: string, body: Readonly<Record<string, unknown>> | FormData, schema: z.ZodType<T>, waitSeconds = 0): Promise<T> => {
+        const form = body instanceof FormData
         let response: Response
         try {
             response = await fetch(`${api}/bot${token}/${method}`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
+                ...(form ? { body } : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
                 signal: AbortSignal.timeout((config.requestTimeoutSeconds + waitSeconds) * 1000),
             })
         } catch (error: unknown) {
@@ -101,26 +105,87 @@ export const messageSchema = z.looseObject({
     from: z.looseObject({ id: z.number(), is_bot: z.boolean().optional() }).optional(),
     text: z.string().optional(),
     reply_to_message: z.looseObject({ message_id: z.number() }).optional(),
+    photo: z.array(z.looseObject({ file_id: z.string() })).optional(),
 })
 
 /** A Telegram message. */
 export type TelegramMessage = z.infer<typeof messageSchema>
 
-/** One getUpdates entry: only messages are asked for. */
-export const updateSchema = z.looseObject({ update_id: z.number(), message: messageSchema.optional() })
+/** A press of an inline keyboard button: who pressed it, on which message, and its callback data. */
+export const callbackSchema = z.looseObject({
+    id: z.string(),
+    from: z.looseObject({ id: z.number() }),
+    message: z.looseObject({ message_id: z.number(), chat: chatSchema }).optional(),
+    data: z.string().optional(),
+})
+
+/** A button press. */
+export type TelegramCallback = z.infer<typeof callbackSchema>
+
+/** One getUpdates entry: messages and button presses are asked for. */
+export const updateSchema = z.looseObject({ update_id: z.number(), message: messageSchema.optional(), callback_query: callbackSchema.optional() })
 
 /** A getUpdates entry. */
 export type TelegramUpdate = z.infer<typeof updateSchema>
 
 /** Reads the updates from `offset` on, waiting up to `waitSeconds` for one (a long poll). */
 export const getUpdates = async (bot: TelegramBot, offset: number, waitSeconds: number): Promise<TelegramUpdate[]> =>
-    bot.call("getUpdates", { offset, timeout: waitSeconds, allowed_updates: ["message"] }, z.array(updateSchema), waitSeconds)
+    bot.call("getUpdates", { offset, timeout: waitSeconds, allowed_updates: ["message", "callback_query"] }, z.array(updateSchema), waitSeconds)
 
-/** Sends one plain-text message (a reply when `replyTo` names a message) and returns its message id. */
-export const sendMessage = async (bot: TelegramBot, chatId: string, text: string, replyTo?: number): Promise<number> => {
-    const reply = replyTo === undefined ? {} : { reply_parameters: { message_id: replyTo, allow_sending_without_reply: true } }
-    const sent = await bot.call("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true }, ...reply }, messageSchema)
+/** One inline keyboard button: a callback (its data at most 64 bytes) or a link. */
+export type Button = { readonly text: string; readonly callback_data: string } | { readonly text: string; readonly url: string }
+
+/** An inline keyboard: rows of buttons. */
+export type Keyboard = readonly (readonly Button[])[]
+
+/** How a message is sent: a reply to a message, HTML formatting, an inline keyboard. */
+export interface SendOptions {
+    readonly replyTo?: number
+    readonly html?: boolean
+    readonly keyboard?: Keyboard
+}
+
+const sendFields = (options: SendOptions): Record<string, unknown> => ({
+    ...(options.replyTo === undefined ? {} : { reply_parameters: { message_id: options.replyTo, allow_sending_without_reply: true } }),
+    ...(options.html === true ? { parse_mode: "HTML" } : {}),
+    ...(options.keyboard === undefined ? {} : { reply_markup: { inline_keyboard: options.keyboard } }),
+})
+
+/** Sends one message (plain text unless `html`; a reply when `replyTo` names a message) and returns its message id. */
+export const sendMessage = async (bot: TelegramBot, chatId: string, text: string, replyTo?: number, options: Omit<SendOptions, "replyTo"> = {}): Promise<number> => {
+    const sent = await bot.call("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true }, ...sendFields({ ...options, ...(replyTo === undefined ? {} : { replyTo }) }) }, messageSchema)
     return sent.message_id
+}
+
+/** Escapes text for an HTML message. */
+export const escapeHtml = (text: string): string => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+
+/**
+ * Sends a picture, uploading a PNG file or naming a file id Telegram already holds, with an HTML caption; returns its message
+ * id and the file id Telegram keeps it under, which a later send reuses.
+ */
+export const sendPhoto = async (bot: TelegramBot, chatId: string, photo: { readonly file: string } | { readonly fileId: string }, caption: string, options: SendOptions = {}): Promise<{ readonly messageId: number; readonly fileId: string | null }> => {
+    const fields: Record<string, unknown> = { chat_id: chatId, caption, ...sendFields({ ...options, html: true }) }
+    let body: Readonly<Record<string, unknown>> | FormData
+    if ("fileId" in photo) body = { ...fields, photo: photo.fileId }
+    else {
+        const form = new FormData()
+        for (const [key, value] of Object.entries(fields)) form.append(key, typeof value === "string" ? value : JSON.stringify(value))
+        form.append("photo", new Blob([readFileSync(photo.file)], { type: "image/png" }), "ticket.png")
+        body = form
+    }
+    const sent = await bot.call("sendPhoto", body, messageSchema)
+    return { messageId: sent.message_id, fileId: sent.photo?.at(-1)?.file_id ?? null }
+}
+
+/** Answers a button press (the small toast the owner sees). */
+export const answerCallback = async (bot: TelegramBot, callbackId: string, text: string): Promise<void> => {
+    await bot.call("answerCallbackQuery", { callback_query_id: callbackId, text: text.slice(0, 190) }, z.unknown())
+}
+
+/** Replaces the inline keyboard of a message the bot sent, to show what a press changed. */
+export const editKeyboard = async (bot: TelegramBot, chatId: string, messageId: number, keyboard: Keyboard): Promise<void> => {
+    await bot.call("editMessageReplyMarkup", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: keyboard } }, z.unknown())
 }
 
 /** The display name of a chat: its title, @username or first name. */

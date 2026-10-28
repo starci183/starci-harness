@@ -150,7 +150,7 @@ steps:
   - http:
       url: ${tg.url}/__sent
       expect:
-        contains: fixed by abc1234
+        contains: Đã sửa bởi commit abc1234
   - assert:
       sql:
         db: machine

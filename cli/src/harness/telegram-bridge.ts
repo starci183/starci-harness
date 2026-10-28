@@ -8,8 +8,10 @@ import { askSupervisor } from "./owner-ask.js"
 import { inOrder } from "./sequential.js"
 import { liveSupervisors, projectOfRecord, supervisorTitle } from "./supervisor.js"
 import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenSource, withChannelStore } from "./telegram.js"
-import type { Channel, TelegramBot, TelegramConfig, TelegramMessage, TelegramUpdate } from "./telegram.js"
-import { closeLine, closeTicket, findTicket, isLive, isQuestion, listTickets, ticketHostEscalations, wakeOnClose } from "./tickets.js"
+import type { Channel, Keyboard, TelegramBot, TelegramConfig, TelegramMessage, TelegramUpdate } from "./telegram.js"
+import { handleTicketCallback, mutedUntil, openTicketsMessage, sendTicketCard, takePending, ticketCaption, ticketDetails, ticketKeyboard } from "./telegram-tickets.js"
+import type { CardStage } from "./telegram-tickets.js"
+import { closeTicket, findTicket, isLive, isQuestion, listTickets, ticketHostEscalations, wakeOnClose } from "./tickets.js"
 import type { Ticket } from "./tickets.js"
 import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
@@ -27,6 +29,8 @@ interface Notice {
     readonly subject: string
     readonly text: string
     readonly at: string
+    /** A ticket's notice is sent as its card: the ticket and which notice of it this is. */
+    readonly card?: { readonly ticket: Ticket; readonly stage: CardStage }
 }
 
 const clip = (text: string, chars: number): string => {
@@ -80,45 +84,24 @@ const repositoryProjects = async (): Promise<{ readonly repo: string; readonly p
 }
 
 /**
- * A question ticket's fact: the question the Supervisor could not answer, put to the owner once, with its proposed default and how
- * to answer (a reply to the notice, or `/answer <ticket> <answer>`; `default` accepts the proposed default).
+ * The tickets' facts since `since`, each sent as a ticket card (harness/telegram-tickets.ts: the banner, the facts as its caption,
+ * the buttons). A question is put to the owner once. A defect is noticed once per state and round: its opening (and its
+ * reopening by a repeat after a fix) and its end; one below blocking severity is harness-internal noise, noticed only once seen
+ * more than `occurrences` times (ops/telegram.yaml ticketOccurrences), and every defect notice waits while the owner muted them.
  */
-const questionNotice = (ticket: Ticket, chars: number): Notice => {
-    const where = `[StarCi] ${ticket.project.name || "harness"} · question ${ticket.id} (${ticket.kind.slice("question:".length)}${ticket.evidence.topic === undefined ? "" : `, ${ticket.evidence.topic}`})${ticket.workflow === null ? "" : ` · workflow ${ticket.workflow}`}`
-    const proposed = ticket.proposedDefault === null ? "No default is proposed." : `Proposed default: ${clip(ticket.proposedDefault, chars)} (reply "default" to accept it).`
-    const text = [`${where}: ${clip(ticket.title, chars)}`, proposed, `Answer: reply to this message, or send /answer ${ticket.id} <your answer>.`].join("\n")
-    return { key: `ticket:${ticket.id}:ask`, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text, at: ticket.openedAt }
-}
-
-/**
- * The tickets' facts since `since`. A question is put to the owner once (`questionNotice`). A defect is noticed once per state and
- * round: its opening (and its reopening by a repeat after a fix) and its close, with the id, title, severity and project, and for
- * a close the fixing commit; one below blocking severity is harness-internal noise, noticed only once seen more than
- * `occurrences` times (ops/telegram.yaml ticketOccurrences).
- */
-const ticketNotices = (since: string, chars: number, occurrences: number): Notice[] =>
-    listTickets({}).flatMap((ticket): Notice[] => {
-        if (isQuestion(ticket.kind)) return [questionNotice(ticket, chars)].filter((notice) => notice.at > since)
-        if (ticket.severity !== "blocking" && ticket.occurrences <= occurrences) return []
-        const where = `[StarCi] ${ticket.project.name || "harness"} · ticket ${ticket.id}`
-        const opened = ticket.severity === "blocking" ? ticket.openedAt : ticket.lastSeenAt
-        const again = ticket.round > 1 ? ` reopened: fix ${ticket.fixedBy ?? "-"} did not hold` : ""
-        const open: Notice = {
-            key: `ticket:${ticket.id}:open:r${String(ticket.round)}`,
-            kind: "ticket",
-            project: ticket.project,
-            workflow: ticket.workflow,
-            subject: ticket.id,
-            text: [`${where} (${ticket.severity}, ${ticket.kind})${again}: ${clip(ticket.title, chars)}`, `Seen ${String(ticket.occurrences)} times. Claude Debug works it; nothing waits on you.`].join("\n"),
-            at: opened,
-        }
+const ticketNotices = (since: string, chars: number, occurrences: number): Notice[] => {
+    const muted = mutedUntil() !== null
+    return listTickets({}).flatMap((ticket): Notice[] => {
+        const card = (stage: CardStage, key: string, at: string): Notice => ({ key, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text: ticketCaption(ticket, stage, chars), at, card: { ticket, stage } })
+        if (isQuestion(ticket.kind)) return [card("ask", `ticket:${ticket.id}:ask`, ticket.openedAt)].filter((notice) => notice.at > since)
+        if (muted || (ticket.severity !== "blocking" && ticket.occurrences <= occurrences)) return []
+        const round = `r${String(ticket.round)}`
+        const open = card("open", `ticket:${ticket.id}:open:${round}`, ticket.severity === "blocking" ? ticket.openedAt : ticket.lastSeenAt)
         const closedAt = ticket.closedAt
-        const closed: Notice[] =
-            closedAt === null || isLive(ticket.state)
-                ? []
-                : [{ key: `ticket:${ticket.id}:${ticket.state}:r${String(ticket.round)}`, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text: `${where} (${ticket.severity}) ${clip(closeLine(ticket), chars)}: ${clip(ticket.title, chars)}`, at: closedAt }]
+        const closed = closedAt === null || isLive(ticket.state) ? [] : [card("closed", `ticket:${ticket.id}:${ticket.state}:${round}`, closedAt)]
         return [open, ...closed].filter((notice) => notice.at > since)
     })
+}
 
 /** Every fact noticed since the channel was connected, oldest first. */
 const pendingNotices = async (since: string, config: TelegramConfig): Promise<Notice[]> => {
@@ -182,7 +165,7 @@ export const sweepNotices = async (bot: TelegramBot, channel: Channel & { readon
         if (!claim(notice, channel.chatId, config.sendTries)) return
         budget -= 1
         try {
-            const messageId = await sendMessage(bot, channel.chatId, notice.text)
+            const messageId = notice.card === undefined ? await sendMessage(bot, channel.chatId, notice.text) : await sendTicketCard(bot, channel.chatId, notice.text, ticketKeyboard(notice.card.ticket, notice.card.stage, config))
             withChannelStore((db) => db.prepare("UPDATE telegram_notices SET status = 'sent', message_id = ?, sent_at = ?, error = NULL WHERE key = ?").run(messageId, now(), notice.key))
             sent.push(notice.key)
         } catch (error: unknown) {
@@ -253,7 +236,7 @@ const projectNamed = async (name: string): Promise<{ readonly project: Project |
 const HELP = "Reply to a StarCi notice to answer it, or send /answer <decision or ticket id> <answer>, or /ask <project> <request>."
 
 /** What the owner's message asks: a request for a project, or a reply explaining why nothing was recorded. */
-type Target = { readonly project: Project; readonly text: string; readonly ticket?: string; readonly body?: string } | { readonly reply: string; readonly outcome: string }
+type Target = { readonly project: Project; readonly text: string; readonly ticket?: string; readonly body?: string } | { readonly reply: string; readonly outcome: string; readonly html?: boolean; readonly keyboard?: Keyboard }
 
 const answerText = (notice: NoticeRow, body: string): string => {
     if (notice.kind === "decision") return `Owner answer to ${notice.subject}${notice.workflow === null ? "" : ` (workflow ${notice.workflow})`}, via Telegram: ${body}`
@@ -285,10 +268,22 @@ const targetOf = async (message: TelegramMessage, chatId: string): Promise<Targe
             if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
             return { project, text: body }
         }
+        if (verb === "tickets") {
+            const list = openTicketsMessage()
+            return { reply: list.text, outcome: "tickets", html: true, keyboard: list.keyboard }
+        }
+        if (verb === "ticket") {
+            const ticket = findTicket(first)
+            if (ticket === undefined) return { reply: `No ticket ${first || "(no id)"}; /tickets lists the open ones.`, outcome: "unknown ticket" }
+            return { reply: ticketDetails(ticket), outcome: `ticket ${ticket.id}`, html: true }
+        }
         return { reply: HELP, outcome: `help (/${verb})` }
     }
     const replied = message.reply_to_message?.message_id
     const notice = replied === undefined ? undefined : noticeByMessage(chatId, replied)
+    const pending = notice === undefined && replied === undefined && text !== "" ? takePending() : null
+    const asked = pending === null ? undefined : findTicket(pending)
+    if (asked !== undefined && isLive(asked.state)) return { project: asked.project, text: `Owner, via Telegram, about ticket ${asked.id}: ${text}`, ticket: asked.id, body: text }
     if (notice === undefined) return { reply: HELP, outcome: "no target" }
     if (text === "") return { reply: "Only text replies are read.", outcome: "empty" }
     return answerTarget(notice, text)
@@ -312,11 +307,17 @@ const answerQuestion = async (id: string, body: string, cwd: string): Promise<{ 
     return { answer, request: woken[0]?.request ?? null }
 }
 
+/** The chat an update came from: its message's, or the chat of the message whose button was pressed. */
+const chatOfUpdate = (update: TelegramUpdate): string | null => {
+    const chat = update.message?.chat.id ?? update.callback_query?.message?.chat.id
+    return chat === undefined ? null : String(chat)
+}
+
 /** Claims an update once: false when an earlier run handled it already. */
 const claimUpdate = (update: TelegramUpdate, owner: boolean): boolean =>
     withChannelStore(
         (db) =>
-            db.prepare("INSERT INTO telegram_inbound (update_id, chat_id, owner, outcome, at) VALUES (?, ?, ?, 'reading', ?) ON CONFLICT DO NOTHING").run(update.update_id, update.message === undefined ? null : String(update.message.chat.id), owner ? 1 : 0, now()).changes > 0,
+            db.prepare("INSERT INTO telegram_inbound (update_id, chat_id, owner, outcome, at) VALUES (?, ?, ?, 'reading', ?) ON CONFLICT DO NOTHING").run(update.update_id, chatOfUpdate(update), owner ? 1 : 0, now()).changes > 0,
     )
 
 const settleUpdate = (updateId: number, outcome: string, request: string | null, project: string | null): void => {
@@ -337,8 +338,14 @@ export interface Handled {
  */
 export const handleUpdate = async (bot: TelegramBot, chatId: string, update: TelegramUpdate, cwd: string): Promise<Handled | undefined> => {
     const message = update.message
-    const owner = message !== undefined && String(message.chat.id) === chatId
+    const callback = update.callback_query
+    const owner = chatOfUpdate(update) === chatId
     if (!claimUpdate(update, owner)) return undefined
+    if (callback !== undefined) {
+        const pressed = owner ? await handleTicketCallback(bot, chatId, callback, cwd) : { outcome: `ignored: foreign callback from chat ${chatOfUpdate(update) ?? "-"}`, request: null }
+        settleUpdate(update.update_id, pressed.outcome, pressed.request, null)
+        return { update: update.update_id, outcome: pressed.outcome, request: pressed.request }
+    }
     if (message === undefined || !owner) {
         const outcome = message === undefined ? "ignored: no message" : `ignored: foreign chat ${String(message.chat.id)} (${message.chat.type})`
         settleUpdate(update.update_id, outcome, null, null)
@@ -347,7 +354,7 @@ export const handleUpdate = async (bot: TelegramBot, chatId: string, update: Tel
     const target = await targetOf(message, chatId)
     if ("reply" in target) {
         settleUpdate(update.update_id, target.outcome, null, null)
-        await sendMessage(bot, chatId, target.reply, message.message_id).catch(() => undefined)
+        await sendMessage(bot, chatId, target.reply, message.message_id, { ...(target.html === true ? { html: true } : {}), ...(target.keyboard === undefined ? {} : { keyboard: target.keyboard }) }).catch(() => undefined)
         return { update: update.update_id, outcome: target.outcome, request: null }
     }
     const answered = target.ticket === undefined ? undefined : await answerQuestion(target.ticket, target.body ?? "", cwd)

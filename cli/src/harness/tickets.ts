@@ -69,8 +69,9 @@ export interface Ticket {
     readonly title: string
     readonly evidence: TicketEvidence
     readonly tried: string | null
-    /** A question's proposed default, which the owner may simply accept. */
+    /** A question's proposed default, which the owner may simply accept, and the other answers its asker listed. */
     readonly proposedDefault: string | null
+    readonly options: readonly string[]
     readonly state: TicketState
     /** The role that opened it, and its seat (the caller's Orca terminal), when it has one. */
     readonly openedBy: string
@@ -125,6 +126,7 @@ const toTicket = (row: Record<string, unknown>): Ticket => ({
     evidence: JSON.parse(String(row.evidence_json)) as TicketEvidence,
     tried: textOf(row.tried),
     proposedDefault: textOf(row.proposed_default),
+    options: JSON.parse(String(row.options_json)) as string[],
     state: String(row.state) as TicketState,
     openedBy: String(row.opened_by),
     openedSeat: textOf(row.opened_seat),
@@ -192,6 +194,7 @@ export interface TicketInput {
     readonly evidence: TicketEvidence
     readonly tried: string | null
     readonly proposedDefault: string | null
+    readonly options: readonly string[]
     readonly project: Project
     readonly workflow: string | null
     /** The reporting role, and its seat when it has one. */
@@ -255,8 +258,8 @@ export const openTicket = (input: TicketInput): { readonly ticket: Ticket; reado
         if (target === undefined) {
             id = `${TICKET_PREFIX}${randomBytes(6).toString("hex")}`
             db.prepare(
-                "INSERT INTO tickets (id, fingerprint, project, project_root, workflow_id, kind, severity, title, evidence_json, tried, proposed_default, state, opened_by, opened_seat, reporters_json, occurrences, round, opened_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, 1, 1, ?, ?)",
-            ).run(id, fingerprint, input.project.key, input.project.root, input.workflow, input.kind, input.severity, input.title, JSON.stringify(input.evidence), input.tried, input.proposedDefault, input.by, input.seat ?? null, JSON.stringify([input.by]), at, at)
+                "INSERT INTO tickets (id, fingerprint, project, project_root, workflow_id, kind, severity, title, evidence_json, tried, proposed_default, options_json, state, opened_by, opened_seat, reporters_json, occurrences, round, opened_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, 1, 1, ?, ?)",
+            ).run(id, fingerprint, input.project.key, input.project.root, input.workflow, input.kind, input.severity, input.title, JSON.stringify(input.evidence), input.tried, input.proposedDefault, JSON.stringify(input.options), input.by, input.seat ?? null, JSON.stringify([input.by]), at, at)
             outcome = "opened"
         } else if (target.state === "fixed") {
             id = target.id
@@ -300,6 +303,24 @@ export const decisionTicketed = (repo: string, decisionId: string): boolean =>
  */
 export const releasedTicketsOfWorkflow = (workflowId: string): Ticket[] =>
     readMachine((db) => db.prepare("SELECT DISTINCT t.* FROM ticket_waiters w JOIN tickets t ON t.id = w.ticket_id WHERE w.released_at IS NOT NULL AND w.workflow_id = ? ORDER BY t.closed_at, t.id").all(workflowId), []).map(toTicket)
+
+/** The tickets that ended since `since`, newest first (the bridge's "Đã đóng hôm nay"). */
+export const ticketsClosedSince = (since: string): Ticket[] =>
+    readMachine((db) => db.prepare("SELECT * FROM tickets WHERE closed_at IS NOT NULL AND closed_at >= ? ORDER BY closed_at DESC, id").all(since), []).map(toTicket)
+
+/**
+ * Reopens an ended defect for another round (the owner's "Mở lại" when a fix did not hold), its fix kept in `fixedBy`; refused
+ * TICKET_NOT_CLOSED for a live ticket and TICKET_IS_QUESTION for an answered question.
+ */
+export const reopenTicket = (id: string): Ticket =>
+    withMachine((db) => {
+        const ticket = ticketRow(db, id)
+        if (ticket === undefined) throw new Refusal("TICKET_UNKNOWN", `no ticket ${id} on this host (starci ticket list)`)
+        if (isLive(ticket.state)) throw new Refusal("TICKET_NOT_CLOSED", `ticket ${id} is ${ticket.state} already`)
+        if (isQuestion(ticket.kind)) throw new Refusal("TICKET_IS_QUESTION", `ticket ${id} is an answered question; ask it again with ticket open`)
+        db.prepare("UPDATE tickets SET state = 'open', round = round + 1, taken_by = NULL, taken_at = NULL, closed_by = NULL, closed_at = NULL, opened_at = ?, last_seen_at = ? WHERE id = ?").run(now(), now(), id)
+        return ticketRow(db, id) ?? ticket
+    })
 
 /** Debug's queue order: blocking first, then the most occurrences, then the oldest. */
 const QUEUE_ORDER = "CASE severity WHEN 'blocking' THEN 0 ELSE 1 END, occurrences DESC, opened_at, id"
@@ -447,6 +468,7 @@ export const ticketEscalation = (repo: string, project: Project, decision: Decis
         evidence: { workflow: decision.workflowId, decision: decision.id, question: text, ...(escalation.topic === undefined ? {} : { topic: escalation.topic }) },
         tried: escalation.reason ?? null,
         proposedDefault: harness ? null : (escalation.default ?? null),
+        options: [],
         project,
         workflow: decision.workflowId,
         by: "supervisor",

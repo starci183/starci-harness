@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS shared_need_waiters (
 CREATE INDEX IF NOT EXISTS shared_need_waiters_by_workflow ON shared_need_waiters (workflow_id, task_key);
 CREATE TABLE IF NOT EXISTS tickets (
   id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, project TEXT NOT NULL, project_root TEXT NOT NULL, workflow_id TEXT, kind TEXT NOT NULL,
-  severity TEXT NOT NULL, title TEXT NOT NULL, evidence_json TEXT NOT NULL, tried TEXT, proposed_default TEXT, state TEXT NOT NULL, opened_by TEXT NOT NULL, opened_seat TEXT,
+  severity TEXT NOT NULL, title TEXT NOT NULL, evidence_json TEXT NOT NULL, tried TEXT, proposed_default TEXT, options_json TEXT NOT NULL, state TEXT NOT NULL, opened_by TEXT NOT NULL, opened_seat TEXT,
   reporters_json TEXT NOT NULL,
   taken_by TEXT, fixed_by TEXT, answer TEXT, reason TEXT, duplicate_of TEXT, closed_by TEXT, occurrences INTEGER NOT NULL, round INTEGER NOT NULL,
   opened_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, taken_at TEXT, closed_at TEXT);

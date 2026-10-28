@@ -118,7 +118,7 @@ steps:
   - http:
       url: ${tg.url}/__sent
       expect:
-        contains: Claude Debug works it
+        contains: Claude Debug xử lý
   - assert:
       sql:
         db: machine

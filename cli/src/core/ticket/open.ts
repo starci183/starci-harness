@@ -67,6 +67,7 @@ export const ticketOpenVerb = defineVerb({
         title: { kind: "string", required: true, summary: "one line: the defect with its error code and module, or the question itself" },
         severity: { kind: "string", summary: `${TICKET_SEVERITIES.join(" or ")} (default: blocking for a question, normal for a defect)` },
         default: { kind: "string", summary: "a question's proposed default, which the owner may simply accept" },
+        option: { kind: "list", summary: "another answer the question allows, offered to the owner as a button (repeatable)" },
         task: { kind: "string", summary: "the task it stops, in this checkout's ledger: its workflow, attempt and seat become evidence and it waits on the ticket" },
         decision: { kind: "string", summary: "the escalation it answers, in this checkout's ledger: it waits on the ticket" },
         "evidence-file": { kind: "string", summary: "a file holding the red output; its tail is kept, secrets redacted" },
@@ -81,7 +82,8 @@ export const ticketOpenVerb = defineVerb({
         const title = flags.title.replaceAll(/\s+/g, " ").trim()
         if (title === "") throw new Refusal("TICKET_TITLE_EMPTY", "ticket open needs a --title naming the defect or asking the question")
         const proposedDefault = flags.default?.trim() ?? ""
-        if (proposedDefault !== "" && !isQuestion(kind)) throw new Refusal("CLI_USAGE", "--default is a question's proposed answer; a defect carries none", EXIT_USAGE)
+        const options = flags.option.map((option) => option.trim()).filter((option) => option !== "")
+        if ((proposedDefault !== "" || options.length > 0) && !isQuestion(kind)) throw new Refusal("CLI_USAGE", "--default and --option are a question's answers; a defect carries none", EXIT_USAGE)
         const where = flags.project === undefined ? context.cwd : resolve(context.cwd, flags.project)
         const project = await projectFrom(context, flags.project, false)
         const repo = (await mainCheckout(where)).replaceAll("\\", "/")
@@ -108,6 +110,7 @@ export const ticketOpenVerb = defineVerb({
             evidence,
             tried: flags.tried ?? null,
             proposedDefault: proposedDefault === "" ? null : proposedDefault,
+            options,
             project,
             workflow,
             by: callerRole() ?? "owner",

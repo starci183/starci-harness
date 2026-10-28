@@ -65,7 +65,8 @@ check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `
 governor's `heavy_slots` and `cpu_samples` (`harness/heavy.ts`), `project_supervisors`, one live
 Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
-`telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`), and `tickets` and `ticket_waiters`
+`telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`) with the ticket cards' `telegram_files`,
+`telegram_mutes` and `telegram_pending` (`harness/telegram-tickets.ts`), and `tickets` and `ticket_waiters`
 ("Tickets" below, `harness/tickets.ts`).
 A Kernel is a `seats` row of its workflow (role `kernel`); every seat holds a TTL lease (`lease_until`); `commands`
 and `decisions` hold the coordinator protocol; `workflows.worktree` names a workflow's worktree and `tasks.worktree` a task's
@@ -460,15 +461,26 @@ chat stored, its failure reported and never failing the tick) sends, oldest firs
 each fact not sent yet across every registered ledger, after filing every escalation the Supervisor cannot rule as its
 ticket: a question ticket put to the owner (`ticket:<id>:ask`: project, workflow, topic, the question, the proposed default,
 how to answer); a defect ticket's opening and its close, once per state and round, only when it is blocking or seen more than
-`ticketOccurrences` times; an owner request a Supervisor command took up; and a workflow that is done, blocked or stopped
-(keyed by its status and versions). Each fact is claimed in `telegram_notices` by its key before it is
+`ticketOccurrences` times and while the owner has not muted them; an owner request a Supervisor command took up; and a
+workflow that is done, blocked or stopped (keyed by its status and versions). A ticket's notice is its card
+(`harness/telegram-tickets.ts`): the one banner of ops/telegram.yaml `banner`, uploaded once and then sent by the file id
+Telegram keeps it under (machine.sqlite `telegram_files`, uploaded again when its content changes), its Vietnamese HTML
+caption the ticket's facts (id, kind, severity, title, project, workflow, occurrences, what was tried; a question's proposed
+default; an end's commit, reason or answer), and an inline keyboard whose callback data is `tk:<action>[:<ticket>[:<choice>]]`:
+a defect's "Xem chi tiết", "Giao Debug" (`ticket take` for Debug), "Danh sách ticket" and "Tắt tiếng 1h" (defect notices wait
+`muteMinutes`, `telegram_mutes`); a question's "Đồng ý mặc định", one button per `--option` its asker listed, and "Trả lời
+khác…" (the owner's next text answers it, `telegram_pending`); a fix's "Xem commit" (`commitUrl`) and "Mở lại". Each fact is claimed in `telegram_notices` by its key before it is
 sent, so it is sent once; a failed send is tried `sendTries` times. `supervisor telegram-bridge run` holds the host's one
 bridge seat (pid and beat; a second bridge exits while the first is alive) and loops a sweep and a `getUpdates` long poll;
 each update is claimed once in `telegram_inbound`. A message of any chat but the owner's is ignored and logged by its chat
 id, never its text; the owner's reply to a live question ticket's notice, or `/answer <ticket> <text>` (`default` accepts the
 proposed default), answers that ticket as the owner's; any other reply to a notice, `/answer <id> <text>` or `/ask <project>
 <text>` is recorded as an owner request of that project by the owner (`askSupervisor`, as `supervisor ask` does), which wakes
-its Supervisor; the owner gets a receipt either way. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
+its Supervisor; the owner gets a receipt either way. `/tickets` lists the open tickets, blocking first, with a button per
+ticket and "Đã đóng hôm nay"; `/ticket <id>` shows one in full, its evidence, waiters and red tail redacted. A button press
+(`callback_query`) is acted on only from the owner's chat, through the ticket functions the verbs use, then answered
+(`answerCallbackQuery`) and its card's keyboard edited to the new state (`editMessageReplyMarkup`); a press from any other
+chat is ignored and logged by its chat id. `supervisor telegram-bridge status` (alive, stale or absent) is the host service's check.
 **Tickets.** What the Supervisor cannot resolve within its authority is one ticket in machine.sqlite `tickets`
 (`harness/tickets.ts`): a defect (`harness-defect`, `package`, `launch`, `verify`, `routing`, `other`) for Debug, or a question
 (`question:business`, `question:code`, `question:spec`) for the owner, with its severity, evidence (task, attempt, seat,
@@ -479,7 +491,7 @@ answered question answered. `supervisor next` from the Supervisor's terminal, ev
 file each open `owner` escalation `awaitsOwner` holds as a `question:business` ticket (its topic, its `default` as the
 proposed default) and each `harness` escalation as a blocking `harness-defect` ticket, the escalation waiting on it in
 `ticket_waiters` (`ticketEscalation`); the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
-the monitor), whose `--task` and `--decision` wait on it. `ticket list [--state] [--project]` is Debug's queue, blocking first,
+the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--state] [--project]` is Debug's queue, blocking first,
 then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by
 <sha> | --wontfix --reason | --duplicate <id>` (debug, owner) ends it, a duplicate of a live ticket handing over its waiters;
 `ticket answer --answer | --accept-default [--why]` (owner, and the bridge for a Telegram reply) answers a question. An end is

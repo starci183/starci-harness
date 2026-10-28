@@ -10,6 +10,16 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Ticket cards on Telegram.** Every ticket notice is the one banner `ops/telegram/ticket-banner.png` (generated once with
+  Codex's image generation; `banner` of `ops/telegram.yaml`), uploaded once and then reused by its Telegram file id, captioned
+  in Vietnamese with the ticket's facts and carrying inline buttons: a defect's details, hand to Debug, the ticket list and a
+  one-hour mute (`muteMinutes`); a question's accept the default, its listed options (`ticket open --option`) and another
+  answer; a fix's commit link (`commitUrl`) and reopen. The bridge reads button presses (`callback_query`) from the owner's chat
+  only, acts through the ticket functions, answers the press and edits the card's keyboard; `/tickets` lists the open tickets
+  with a button each and "Đã đóng hôm nay", `/ticket <id>` shows one in full, redacted. Bench: `ticket-telegram-card-buttons`;
+  the Telegram stand-in answers `sendPhoto` (json or multipart), `answerCallbackQuery` and `editMessageReplyMarkup` and takes
+  presses at `/__callback`.
+
 - **Tickets.** What the Supervisor cannot resolve within its authority becomes one ticket in machine.sqlite (`tickets`,
   `ticket_waiters`): a defect (`harness-defect`, `package`, `launch`, `verify`, `routing`, `other`) for Debug's queue, or a
   question (`question:business`, `question:code`, `question:spec`) for the owner, with severity, evidence (task, attempt, seat,
