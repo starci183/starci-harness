@@ -1,6 +1,11 @@
 export type FlowGraphTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
 export type FlowGraphNodeSize = "sm" | "md" | "lg"
 export type FlowGraphHeight = "sm" | "md" | "lg"
+/**
+ * The outline of a node, the flowchart shapes: `stadium` (the default pill), `rect` (a step), `round` (a rounded step),
+ * `diamond` (a decision) and `circle` (a start or end point).
+ */
+export type FlowGraphNodeShape = "stadium" | "rect" | "round" | "diamond" | "circle"
 export type FlowGraphLayout = "radial" | "manual" | "layered"
 /** The way edges run: top to bottom or left to right. */
 export type FlowGraphDirection = "TB" | "LR"
@@ -11,6 +16,8 @@ export type FlowGraphNode = {
     readonly description?: string
     readonly tone?: FlowGraphTone
     readonly size?: FlowGraphNodeSize
+    /** The node outline. Defaults to `stadium`. */
+    readonly shape?: FlowGraphNodeShape
     readonly count?: number | string
     /** The centre of a radial layout. Defaults to the first node. */
     readonly isRoot?: boolean
@@ -26,6 +33,8 @@ export type FlowGraphEdge = {
     readonly id: string
     readonly source: string
     readonly target: string
+    /** A short label drawn on the edge, at its midpoint, e.g. "yes" on a decision branch. Screen readers get it in the edge list. */
+    readonly label?: string
     readonly isPlaceholder?: boolean
 }
 

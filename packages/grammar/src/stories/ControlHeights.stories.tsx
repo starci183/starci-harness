@@ -88,3 +88,58 @@ export const NestedAndHeroSteps: Story = {
         </Matrix>
     ),
 }
+
+/** The measured height of each fill Button in the story, keyed by its `data-story-fill` group and label. */
+const fillHeights = (canvasElement: HTMLElement) => {
+    const heights = new Map<string, number>()
+    for (const control of canvasElement.querySelectorAll<HTMLElement>("[data-story-fill] [data-component=Button]")) {
+        const group = control.closest<HTMLElement>("[data-story-fill]")?.dataset.storyFill ?? ""
+        heights.set(`${group}:${control.textContent ?? ""}`, control.getBoundingClientRect().height)
+    }
+    return heights
+}
+
+/**
+ * `width="fill"` holds the same steps (control-height-40): the submit of a sign-in card at desktop width is 40px, never the
+ * vendor's 36px desktop md; sm and lg keep 32px and 48px; only a label that wraps grows the box.
+ */
+export const FillWidthAtForty: Story = {
+    render: (_, { globals }) => (
+        <G.GrammarRoot {...familyScope(globals)}>
+            <Matrix maxWidth={420}>
+                <State label="md fill: the submit of a sign-in card" direction="column">
+                    <div data-story-fill="form" style={{ inlineSize: "100%" }}>
+                        <G.SurfaceCard label="Sign in" measure="form">
+                            <G.Form label="Sign in" onSubmit={noop}>
+                                <G.Input id="fill-heights-email" name="email" label="Email" placeholder="you@example.com" />
+                                <G.Button intent="commit" type="submit" width="fill">Sign in</G.Button>
+                                <G.Button intent="dismiss" width="fill" onPress={noop}>Continue another way</G.Button>
+                            </G.Form>
+                        </G.SurfaceCard>
+                    </div>
+                </State>
+                <State label="sm and lg fill keep their steps" direction="column">
+                    <div data-story-fill="steps" style={{ display: "grid", gap: "0.75rem", inlineSize: "100%" }}>
+                        <G.Button intent="neutral" size="sm" width="fill" onPress={noop}>Details</G.Button>
+                        <G.Button intent="commit" size="lg" width="fill" onPress={noop}>Start free</G.Button>
+                    </div>
+                </State>
+                <State label="a label that wraps grows the box" direction="column">
+                    <div data-story-fill="wrap" style={{ inlineSize: "8rem" }}>
+                        <G.Button intent="neutral" width="fill" onPress={noop}>Continue with a very long provider name</G.Button>
+                    </div>
+                </State>
+            </Matrix>
+        </G.GrammarRoot>
+    ),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => {
+            const heights = fillHeights(canvasElement)
+            expect(Math.round(heights.get("form:Sign in") ?? 0)).toBe(40)
+            expect(Math.round(heights.get("form:Continue another way") ?? 0)).toBe(40)
+            expect(Math.round(heights.get("steps:Details") ?? 0)).toBe(32)
+            expect(Math.round(heights.get("steps:Start free") ?? 0)).toBe(48)
+            expect(heights.get("wrap:Continue with a very long provider name") ?? 0).toBeGreaterThan(40)
+        })
+    },
+}

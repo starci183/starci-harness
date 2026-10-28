@@ -7,6 +7,7 @@ import { DragItem } from "../core/branch/DragItem/index.js"
 import { Disclosure } from "../core/branch/Disclosure/index.js"
 import { FlowGraph } from "../core/branch/FlowGraph/index.js"
 import { ListBox } from "../core/branch/ListBox/index.js"
+import { MermaidDiagram } from "../core/branch/MermaidDiagram/index.js"
 import { AvatarButton } from "../core/composite/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
@@ -31,7 +32,8 @@ export { Calendar, type CalendarProps } from "../core/branch/Calendar/index.js"
 export { DataTable, type DataTableCellInteraction, type DataTableColumn, type DataTableProps, type DataTableRow, type DataTableSort } from "../core/branch/DataTable/index.js"
 export { DragItem, type DragItemProps } from "../core/branch/DragItem/index.js"
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
-export { FlowGraph, layeredPositions, radialPositions, type FlowGraphDirection, type FlowGraphEdge, type FlowGraphHeight, type FlowGraphLayerHeader, type FlowGraphLayout, type FlowGraphNode, type FlowGraphNodeSize, type FlowGraphProps, type FlowGraphTone } from "../core/branch/FlowGraph/index.js"
+export { FlowGraph, layeredPositions, radialPositions, type FlowGraphDirection, type FlowGraphEdge, type FlowGraphHeight, type FlowGraphLayerHeader, type FlowGraphLayout, type FlowGraphNode, type FlowGraphNodeShape, type FlowGraphNodeSize, type FlowGraphProps, type FlowGraphTone } from "../core/branch/FlowGraph/index.js"
+export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/branch/MermaidDiagram/index.js"
 export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type ListBoxSize } from "../core/branch/ListBox/index.js"
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps } from "../core/composite/AvatarButton/index.js"
@@ -56,5 +58,5 @@ export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/primiti
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, BottomNav, Breadcrumbs, Calendar, DataTable, DescriptionList,
-    Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, Pagination, PlainPressable, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, PlainPressable, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

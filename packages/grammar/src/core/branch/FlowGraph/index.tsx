@@ -20,7 +20,7 @@ import { FLOW_GRAPH_NODE_MAX_WIDTH, flowGraphRoot, layerCoordinate, layeredPosit
 import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode } from "./types.js"
 
 export { layeredPositions, radialPositions } from "./layout.js"
-export type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeSize, FlowGraphTone } from "./types.js"
+export type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeShape, FlowGraphNodeSize, FlowGraphTone } from "./types.js"
 
 export type FlowGraphProps = {
     /** Names the graph for assistive technology, e.g. "Second brain". */
@@ -107,6 +107,7 @@ const FlowGraphNodeView = memo(({ data }: NodeProps<Node<NodeData>>) => {
             data-grammar-selected={isSelected ? "true" : "false"}
             data-placeholder={graphNode.isPlaceholder === true ? "true" : undefined}
             data-root={graphNode.isRoot === true ? "true" : undefined}
+            data-shape={graphNode.shape ?? "stadium"}
             data-size={graphNode.size ?? "md"}
             data-tone={graphNode.isPlaceholder === true ? "muted" : graphNode.tone ?? "neutral"}
         >
@@ -125,6 +126,7 @@ const FlowGraphHeaderView = memo(({ data }: NodeProps<Node<HeaderData>>) => (
 ))
 FlowGraphHeaderView.displayName = "FlowGraphHeaderView"
 
+const EDGE_LABEL_PADDING: [number, number] = [6, 2]
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView }
 const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = 24
@@ -181,6 +183,12 @@ const Refit = ({ signature, readableZoom, onGrow }: {
 }
 
 const labelFor = (node: FlowGraphNode) => node.count === undefined || node.count === "" ? node.label : `${node.label} (${node.count})`
+
+/** The labelled edges as "source → target: label", for the screen-reader list; an unlabelled edge adds nothing to read. */
+const labelledEdges = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>) => {
+    const names = new Map(nodes.map((node) => [node.id, node.label]))
+    return edges.flatMap((edge) => edge.label === undefined || edge.label === "" ? [] : [{ id: edge.id, text: `${names.get(edge.source) ?? edge.source} → ${names.get(edge.target) ?? edge.target}: ${edge.label}` }])
+}
 
 /**
  * A node-and-edge map drawn with React Flow (`@xyflow/react`, a peer dependency) in grammar tokens. The radial layout
@@ -269,11 +277,14 @@ export const FlowGraph = ({
         type: layout === "radial" ? "straight" : "smoothstep",
         ...(stepPosition === undefined ? {} : { pathOptions: { stepPosition } }),
         className: edge.isPlaceholder === true ? "starci-core-flow-graph-edge starci-core-flow-graph-edge-placeholder" : "starci-core-flow-graph-edge",
+        // The label sits on its own chip at the midpoint; its paint is the grammar's (`.react-flow__edge-text*` in the sheet).
+        ...(edge.label === undefined || edge.label === "" ? {} : { label: edge.label, labelShowBg: true, labelBgPadding: EDGE_LABEL_PADDING, labelBgBorderRadius: 4 }),
         focusable: false,
         selectable: false,
         animated: false,
         }
     }), [edges, layout, layered, flowDirection])
+    const edgeLabels = useMemo(() => labelledEdges(nodes, edges), [nodes, edges])
     const signature = `${layout}:${flowDirection ?? ""}:${headerNodes.length}:${nodes.map((node) => node.id).join("|")}`
 
     const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -360,6 +371,11 @@ export const FlowGraph = ({
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">
                         {nodes.map((node) => <li key={node.id} {...(node.id === currentId ? { "aria-current": "true" as const } : {})}>{labelFor(node)}</li>)}
                     </ul>
+                    {edgeLabels.length === 0 ? null : (
+                        <ul className="starci-core-visually-hidden" data-grammar-flow-edge-fallback="true">
+                            {edgeLabels.map((edge) => <li key={edge.id}>{edge.text}</li>)}
+                        </ul>
+                    )}
                 </>
             )}
         </figure>

@@ -16,7 +16,7 @@ npm install @starci/grammar @heroui/react react react-dom
 ```
 
 The package needs Node.js 22 or newer. Its peer dependencies are React 18+, `@xyflow/react` 12 (for `FlowGraph`) and `@heroui/react`
-3.2+. Load the HeroUI stylesheet once in the app, as HeroUI's own setup describes. Then import
+3.2+. Mermaid (for `MermaidDiagram`) is a pinned dependency, imported lazily on the first diagram. Load the HeroUI stylesheet once in the app, as HeroUI's own setup describes. Then import
 exactly one Grammar family stylesheet. Each family sheet already imports Common anatomy first.
 
 | Entry point | Root component | Stylesheet |
@@ -170,6 +170,23 @@ layout, and selects `layered` when no layout is given. `headers={[{ label, at }]
 a lane header beside it for `TB` (`at` is the layer index in `layered`, graph units in `manual`). `height` takes `sm | md | lg`, a number
 (pixels) or any CSS length. A node with `href` is a link through the root's router and one keyboard stop.
 
+A node's `shape` is its flowchart outline: `stadium` (the default pill), `rect`, `round`, `diamond` (a decision) or
+`circle` (a start or end). An edge's `label` is drawn on a chip at its midpoint and repeated, as "source → target:
+label", in the graph's visually hidden edge list.
+
+### MermaidDiagram
+
+`MermaidDiagram` renders Mermaid text (an article's `mermaid` fence) to SVG in the browser. Mermaid is imported on the
+first diagram that mounts, initialised with `theme: "base"`, `securityLevel: "strict"` and colours resolved from the
+root's semantic tokens (so family, theme and token overrides apply), and re-rendered when the root's theme changes.
+`height` (`sm` 16rem, `md` 24rem, `lg` 32rem) is the least canvas box every state keeps; `isSkeleton` draws that box
+with a skeleton and loads nothing. A source Mermaid refuses becomes an error inside the same frame: an `Alert` with
+`errorTitle`, then the source as a `FencedCodeBlock`.
+
+```tsx
+<MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
+```
+
 ## Family scope and the overlay portal rule
 
 A family paints only inside its root. Each family stylesheet is scoped to
@@ -275,8 +292,8 @@ an item with a submenu).
 requires, restyles what the vendor decides, or replaces a vendor default, unless an owner-pinned override declares it. `ListBox`
 and `Select` are HeroUI's own list-box items (a `Label`, a `Description`, the item indicator at the end of the row).
 
-**Navigation & Data (14).** Accordion, AvatarGroup, Breadcrumbs, Calendar, DataTable,
-DescriptionList, Disclosure, ListBox, Pagination, Stepper, Subnav, Tabs, TagGroup, Timeline.
+**Navigation & Data (16).** Accordion, AvatarGroup, Breadcrumbs, Calendar, DataTable,
+DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, Pagination, Stepper, Subnav, Tabs, TagGroup, Timeline.
 
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
@@ -359,15 +376,27 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, SectionHeader, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceCopyGroup, SurfaceListCard, VerticalScrollRegion.
 
-**Compositions (10).** BottomNav, ChatWorkspace, Footer, NavigationFeatureNav, PageContainer, PageHeader,
+**Compositions (11).** BottomNav, ChatWorkspace, Footer, NavigationFeatureNav, Page, PageContainer, PageHeader,
 PrimaryRailLayout, Sidebar, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
 `PageHeader` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
 surface band whose content sits in a `PageContainer` of the content's `measure`, so both share their edges, and it ends
-in its own full-width separator, with or without tabs; tabs stand on it. Place it first in the primary region, outside
-the content's `PageContainer`; the content starts one region step below. `isSkeleton` keeps every slot's box.
+in its own full-width separator, with or without tabs; tabs stand on it. `isSkeleton` keeps every slot's box.
+
+`Page` is a route page and the one way an app draws one: `header` takes PageHeader's props as data (no element), the
+children are the body, and `measure` (`reading`, `product`, `full`) is the one measure of the header content and the
+body. The band runs full width; the body sits in the measure and gutter one region step below it (one region step
+from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
+reaches across the gutter. `isSkeleton` passes to the header. Page is the single owner of the page inset: the layout
+frames (`WorkspaceShell`, `PrimaryRailLayout`, `ChatWorkspace`) never wrap a page in a `PageContainer`.
+
+```tsx
+<Page measure="reading" header={{ breadcrumbs, title: "Profile", tabs: { label: "Profile", items, selectedKey, onSelect } }}>
+  <ProfileForm />
+</Page>
+```
 
 `COMMON_GRAMMAR_COMPONENTS` is the frozen registry of the published renderers.
 `COMMON_FORMS_COMPONENTS`, `COMMON_OVERLAYS_COMPONENTS` and `COMMON_NAVIGATION_COMPONENTS` are the

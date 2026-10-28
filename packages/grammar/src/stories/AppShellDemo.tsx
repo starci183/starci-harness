@@ -78,7 +78,7 @@ export const AppShellDemo = ({ initialCollapsed, initialDrawerOpen = false, init
       navigationVisibility="wide"
       {...mobileNavigation}
       primaryLabel="Workspace content"
-      primary={<G.PageContainer><div className="app-shell-story-content"><G.SectionHeader title="Conversations" level={1} description="The sidebar and the page scroll independently. Collapse the sidebar, hover or focus an icon, and inspect its unread count." action={<G.Button variant="primary">Create conversation</G.Button>} /><G.SurfaceCard label="Latest activity"><G.Text>Page actions stay with the page heading.</G.Text></G.SurfaceCard></div></G.PageContainer>}
+      primary={<G.Page header={{ title: 'Conversations', description: 'The sidebar and the page scroll independently. Collapse the sidebar, hover or focus an icon, and inspect its unread count.', actions: <G.Button variant="primary">Create conversation</G.Button> }}><div className="app-shell-story-content"><G.SurfaceCard label="Latest activity"><G.Text>Page actions stay with the page heading.</G.Text></G.SurfaceCard></div></G.Page>}
     />
     <G.Dialog title="Search workspace" closeLabel="Close search" isOpen={searchOpen} onOpenChange={setSearchOpen}><G.SearchField label="Search" isLabelHidden placeholder="Search conversations" size="control" autoFocus /></G.Dialog>
   </G.GrammarRoot>;

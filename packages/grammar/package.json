@@ -65,7 +65,8 @@
   "dependencies": {
     "@dicebear/core": "10.4.0",
     "@dicebear/styles": "10.4.0",
-    "@heroicons/react": "2.2.0"
+    "@heroicons/react": "2.2.0",
+    "mermaid": "11.16.0"
   },
   "peerDependencies": {
     "react": ">=18",
