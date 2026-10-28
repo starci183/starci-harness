@@ -9,7 +9,7 @@ import { readMachine, textOf } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
 import { inOrder } from "./sequential.js"
 import { liveSupervisors, projectOfRecord, supervisorTitle } from "./supervisor.js"
-import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenPresent, withChannelStore } from "./telegram.js"
+import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenSource, withChannelStore } from "./telegram.js"
 import type { Channel, TelegramBot, TelegramMessage, TelegramUpdate } from "./telegram.js"
 import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
@@ -170,15 +170,16 @@ export const sweepNotices = async (bot: TelegramBot, channel: Channel & { readon
 }
 
 /**
- * The notice round of `supervisor tick`, so notices go out with no bridge running: nothing (and no call) until the token is set
- * and the owner's chat stored; a failure of Telegram is reported, never thrown, so it never fails the tick. The claims make it
+ * The notice round of `supervisor tick`, so notices go out with no bridge running: nothing (and no call) until the owner's chat
+ * is stored and the token set; a failure of Telegram or of the secret loader is reported, never thrown, so it never fails the tick. The claims make it
  * safe beside a running bridge.
  */
 export const tickNotices = async (): Promise<{ readonly sweep: Sweep | null; readonly line: string | null }> => {
     const config = loadTelegram()
     const channel = withChannelStore(readChannel)
-    if (!tokenPresent(config) || channel.chatId === null || channel.connectedAt === null) return { sweep: null, line: null }
+    if (channel.chatId === null || channel.connectedAt === null) return { sweep: null, line: null }
     try {
+        if (tokenSource(config) === null) return { sweep: null, line: null }
         const sweep = await sweepNotices(telegramBot(config), { ...channel, chatId: channel.chatId, connectedAt: channel.connectedAt })
         const sent = sweep.sent.length + sweep.failed.length === 0 ? null : `telegram: sent ${String(sweep.sent.length)}, failed ${String(sweep.failed.length)}, deferred ${String(sweep.deferred)}`
         return { sweep, line: sent }

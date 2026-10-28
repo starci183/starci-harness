@@ -184,6 +184,7 @@ const starci = async (run: RunState, step: Step, label: string): Promise<void> =
     if (expect.ok !== undefined && envelope?.ok !== expect.ok) unmet(run, label, `expected ok ${String(expect.ok)}, got ${said}`)
     if (expect.code !== undefined && envelope?.code !== expect.code) unmet(run, label, `expected refusal ${expect.code}, got ${said}`)
     if (expect.contains !== undefined && !done.stdout.includes(expand(run, expect.contains))) unmet(run, label, `output lacks "${expect.contains}": ${said}`)
+    if (expect.lacks !== undefined && (done.stdout + done.stderr).includes(expand(run, expect.lacks))) unmet(run, label, `output carries "${expect.lacks}", which it must not`)
     for (const [name, path] of Object.entries(step.save ?? {})) {
         const value = pathOf(envelope, path)
         if (value === undefined) unmet(run, label, `no ${path} to save as ${name}: ${said}`)
@@ -498,6 +499,8 @@ const setUp = async (scenario: Scenario, fault: string | null): Promise<RunState
         STARCI_BENCH_ORCA_LOG: orcaLog,
         // The host's own Codex usage never reaches a scenario: its Codex home is the run's empty folder.
         CODEX_HOME: join(dir, "codex"),
+        // The host's secret.env never reaches a scenario: the secret loader reads the run's own file, absent until a step writes it.
+        STARCI_SECRET_ENV: join(dir, "secret.env"),
         NODE_OPTIONS: `--import=${stub}`,
     }
     const run: RunState = { scenario, dir, repo, state, orcaState, orcaLog, env: {}, vars: new Map(), failures: [], served: [], key: `${["AK", "IA"].join("")}${randomBytes(8).toString("hex").toUpperCase()}` }

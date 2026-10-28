@@ -1,5 +1,5 @@
 import { bridgeCycle, releaseBridge, runBridge, takeBridge } from "../../harness/telegram-bridge.js"
-import { bridgeLiveness, channelCounts, connectedChannel, loadTelegram, readChannel, telegramBot, tokenPresent, withChannelStore } from "../../harness/telegram.js"
+import { bridgeLiveness, channelCounts, connectedChannel, loadTelegram, readChannel, telegramBot, tokenSource, withChannelStore } from "../../harness/telegram.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -33,7 +33,7 @@ export const supervisorTelegramBridgeVerb = defineVerb({
         if (action === "status") {
             const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))
             const liveness = bridgeLiveness(channel, config)
-            const data = { liveness, pid: channel.bridgePid, beat: channel.bridgeBeat, configured: tokenPresent(config), chat: channel.chatId !== null, ...counts }
+            const data = { liveness, pid: channel.bridgePid, beat: channel.bridgeBeat, configured: tokenSource(config) !== null, chat: channel.chatId !== null, ...counts }
             return { data, message: `telegram bridge: ${liveness}${channel.bridgeBeat === null ? "" : ` (pid ${String(channel.bridgePid ?? "-")}, beat ${channel.bridgeBeat})`}` }
         }
         if (callerRole() === "debug") throw new Refusal("ROLE_REFUSED", "supervisor telegram-bridge run is the owner's host service; Debug reads its status")

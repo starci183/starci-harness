@@ -42,6 +42,8 @@ const envelopeExpect = z.strictObject({
     code: z.string().optional(),
     /** Substring the human or json output must contain. */
     contains: z.string().optional(),
+    /** Substring neither stdout nor stderr may contain (a secret's value); the failure never prints the output. */
+    lacks: z.string().optional(),
 })
 
 /** `repo` names the repository of the run (one of `repos`) whose ledger a `ledger` query reads; default the scratch repository. */

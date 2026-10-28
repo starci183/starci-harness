@@ -6,6 +6,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **Host secrets come from the harness's secret.env.** One secret loader (`cli/src/harness/secret-env.ts`) reads a named key
+  from the process environment, else from `secret.env` at the harness root, and only the keys policy/security.yaml
+  `secretKeys` lists (`SECRET_KEY_UNLISTED` otherwise); no output carries a value. The Telegram verbs, the
+  `telegram-bridge` service and `supervisor tick` read `TELEGRAM_BOT_TOKEN` through it, and `connect telegram status`
+  reports its source. The committed `secret.env.example` names every key the host's secret.env holds and where to get it.
+  Bench: `telegram-token-from-secret-env`, every run's `STARCI_SECRET_ENV` is its own file, and `expect.lacks`.
+
 ## [1.1.0-alpha.5] - 2026-10-28
 
 - **A returned task no longer holds its lease past its due time.** A task that came back to the Kernel (blocked, mismatch,

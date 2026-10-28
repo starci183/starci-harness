@@ -24,7 +24,7 @@ slots:
     except:
       - "**/{.env,*.env}.example"
     presence: forbidden
-    holds: an env or secret file; secrets stay on the machine and the CLI never reads them
+    holds: an env or secret file; secrets stay on the machine, read only by the CLI's secret loader for the keys secretKeys lists
     rule: policy/security.yaml neverRead; .gitignore
   - id: never.examples
     path: "**/examples/"
@@ -159,6 +159,11 @@ slots:
       - .gitattributes
     holds: what git ignores (env files, build output, state) and the LF line endings
     rule: CONTRIB-14
+  - id: root.secret-example
+    path: secret.env.example
+    presence: required
+    holds: the keys of the host's untracked secret.env, each empty with what it is and where to get it
+    rule: policy/security.yaml secretKeys; contexts/harness/decisions.md
   - id: root.sonar
     path: sonar-project.properties
     presence: optional

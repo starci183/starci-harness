@@ -3,8 +3,9 @@
 These hold for every role and every task. A rule with a gate names it; the others are held by review.
 
 1. **No secret is read, printed or committed.** Never open a file that `policy/security.yaml` `neverRead` lists
-   (`.env`, keys, credentials); judge it by name, and a contract whose `allowPaths` names one is unfit
-   (`contractProblems`). Never echo a token. `starci check secrets`, `task verify` (on the files a candidate changes) and
+   (`.env`, `secret.env`, keys, credentials); judge it by name, and a contract whose `allowPaths` names one is unfit
+   (`contractProblems`). A verb that needs a credential gets it from the CLI's secret loader, which alone reads the keys
+   `secretKeys` lists (`cli/src/harness/secret-env.ts`). Never echo a token. `starci check secrets`, `task verify` (on the files a candidate changes) and
    `release push` scan for leaks; this repository is public and tracks no secret envelope.
 2. **No loosening.** No inline disable, `ts-ignore`, `NOSONAR`, skipped or focused test, `|| true`, `--no-verify` or
    widened allowlist. Change the code, not the gate. `starci check loosening` reads the tree as it stands and

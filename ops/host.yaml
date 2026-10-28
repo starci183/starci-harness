@@ -58,7 +58,7 @@ services:
       log: "{state}/tick.log"
     requires: [orca]
   - id: telegram-bridge
-    summary: the owner's Telegram channel (ops/telegram.yaml), notices out and the owner's replies in as owner requests; needs TELEGRAM_BOT_TOKEN in the user environment and a chat stored by connect telegram discover-chat
+    summary: the owner's Telegram channel (ops/telegram.yaml), notices out and the owner's replies in as owner requests; needs TELEGRAM_BOT_TOKEN in secret.env or the environment and a chat stored by connect telegram discover-chat
     platform: any
     check:
       argv: ["{starci}", supervisor, telegram-bridge, status, --json]
