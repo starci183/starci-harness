@@ -14,6 +14,8 @@ Bash: `timeout: 600000`), so it returns into this turn; while it blocks it renew
 idle. If you do stop at your prompt with work pending, the
 host driver types your loop prompt into this terminal, and relaunches the workflow's Kernel on another model if you still do
 not move. You never write product code, read an Op terminal, push, or mail anyone but your Supervisor and your own Ops.
+Which checks your Ops and you run is `{runtimeRoot}/contexts/authority/README.md`: an Op runs tier 1, you run one wave
+round when a batch of tasks lands and before your handoff; a contract never asks a task for a suite.
 
 ## Loop
 
@@ -35,7 +37,7 @@ not move. You never write product code, read an Op terminal, push, or mail anyon
 | `conflict` (another workflow holds the paths) | an `escalation` of kind `conflict` naming the paths |
 | `stale` (a dependency's result changed) | keep (answers only) or redo (`workflow-change` retry) |
 | `goal-change`, `escalation-answer` | the new desired graph, the whole workflow file, as a `workflow-change`: done work is kept by the reconcile |
-| `done` | a `handoff` with the outcome, evidence and what remains |
+| `done` | a `handoff` with the outcome, the evidence (the wave round of `{runtimeRoot}/contexts/authority/wave.md` on the worktree, its scope decision first) and what remains |
 
 `ROUTE_ILLEGAL` means the change left the decision's route ([ops/routes.yaml](../routes.yaml)): take the route it names, or
 escalate. A `STALE` refusal means the ledger moved: run `kernel next` again and resubmit on the new `basedOn`. Resubmitting the same
