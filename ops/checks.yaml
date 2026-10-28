@@ -7,8 +7,8 @@
 # allowed only on a T0 or T1 check, which loadOps enforces: a claim may make a task red, never prove it green.
 # Where a check runs: a heavy one (a scoped `starci check` verb, or any command: typecheck, lint, tests, a suite) of a workflow
 # task runs in its workflow's wave verify, on a clean checkout of the merged batch, when policy/quality.yaml `verify.tier` is
-# wave (cli/src/harness/wave.ts isWaveCheck); every other check, and every check of a task outside a workflow, runs in the
-# task's own clean verify. "The clean checkout" below is whichever of the two runs it.
+# wave (cli/src/harness/wave.ts splitChecks; a Supervisor's [Worker] leaves it to Debug's round); every other check, and every
+# check of a task sent alone, runs in the task's own clean verify. "The clean checkout" below is whichever runs it.
 schema: starci/check-presets@1
 presets:
   check-run-green:

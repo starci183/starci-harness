@@ -6,6 +6,7 @@ import { inCleanCheckout, prepareCheckout } from "./clean-verify.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { inTransaction, now } from "./ledger.js"
+import { readMachine } from "./machine.js"
 import { loadOps } from "./ops.js"
 import { loadPolicy } from "./policy.js"
 import { runCheck } from "./run-checks.js"
@@ -28,12 +29,17 @@ export const isWaveCheck = (check: ResolvedCheck): boolean =>
 /** Whether any of these checks runs a tool the checkout's install provides (a command, or a starci verb run on the checkout). */
 export const needsInstall = (checks: readonly ResolvedCheck[]): boolean => checks.some((check) => check.check.kind === "command" || check.check.kind === "starci")
 
+/** Whether a task is a Supervisor's `[Worker]` (machine.sqlite supervisor_workers): its branch is landed by Debug, whose round is its wave. */
+const isSupervisorWorker = (taskId: string): boolean => readMachine((db) => db.prepare("SELECT 1 FROM supervisor_workers WHERE task_id = ?").get(taskId) !== undefined, false)
+
 /**
- * Splits a task's checks into those its own verify runs and those it leaves to the wave: in the wave tier (policy/quality.yaml
- * `verify.tier`) a task of a workflow leaves its heavy checks; a task sent outside a workflow, or the task tier, runs them all.
+ * Splits a task's checks into those its own verify runs (tier 1, contexts/authority/branch.md) and those it leaves to a wave
+ * (tier 2): in the wave tier (policy/quality.yaml `verify.tier`) a task of a workflow leaves its heavy checks to the workflow's
+ * wave (`wave-due`), and a Supervisor's `[Worker]` to Debug's round after it lands the worker's branch; a task sent alone
+ * (`task send`, nothing to run a wave for it), or the task tier, runs them all.
  */
 export const splitChecks = (root: string, task: TaskRow, checks: readonly ResolvedCheck[]): { readonly own: readonly ResolvedCheck[]; readonly wave: readonly ResolvedCheck[] } => {
-    if (task.workflowId === null || loadPolicy(root).quality.verify.tier !== "wave") return { own: checks, wave: [] }
+    if (loadPolicy(root).quality.verify.tier !== "wave" || (task.workflowId === null && !isSupervisorWorker(task.id))) return { own: checks, wave: [] }
     return { own: checks.filter((check) => !isWaveCheck(check)), wave: checks.filter(isWaveCheck) }
 }
 

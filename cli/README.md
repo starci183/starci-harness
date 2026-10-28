@@ -148,8 +148,9 @@ NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
 picks where a workflow task's heavy checks run. In `wave` (the default) `task verify` splits the contract's checks
 (`splitChecks` in `harness/wave.ts`): the heavy ones, a scoped `starci check` verb or any command check (typecheck, lint,
 tests, a suite), are left to the wave and recorded `wave-due` when the task settles; the rest run in its own verify, and
-a task left with no tool-running check gets no install or setup at all. A task sent outside a workflow, or the `task`
-tier, runs every check itself. `workflow step` (so `kernel next`, inline and orca alike) runs the wave (`runWave`) once the
+a task left with no tool-running check gets no install or setup at all. A Supervisor's `[Worker]` leaves them the same way,
+to Debug's round after it lands the worker's branch; a task sent alone (`task send`), or the `task` tier, runs every check
+itself. `workflow step` (so `kernel next`, inline and orca alike) runs the wave (`runWave`) once the
 batch in flight has landed (no task of the workflow live) and nothing more can be dispatched without it (no ready node,
 or every ready node depends on a task of the wave); a ready node depending on a due task waits for it, and a workflow is
 never done while a wave is due (`derivedStatus` of `harness/workflow.ts`). The wave writes its scope decision first

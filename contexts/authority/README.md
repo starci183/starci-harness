@@ -57,9 +57,9 @@ above; `--dry-run` lists them (`cli/src/harness/worktree-gc.ts`).
 
 The CLI holds part of this folder. Until the code below lands, the rest is held by review:
 
-- `task verify` and the clean verify run the contract's checks as they stand: `check-run-green` runs the profile's whole
-  runtime tier with one `tsc` per tsconfig rather than the touched files, `tests-pass` runs tests with changed-file
-  coverage, and the clean checkout runs its own `npm ci` (`cli/src/harness/run-checks.ts`, `cli/src/harness/clean-verify.ts`,
-  [ops/checks.yaml](../../ops/checks.yaml)).
-- No verb records the wave's scope decision or reuses a green row by input digest; `workflow step` neither runs nor
-  requires a wave round before a workflow finishes (`cli/src/core/workflow/engine.ts`).
+- A wave's typecheck runs one `tsc` per tsconfig the changed files reach and its lint the changed files, not their reverse
+  imports; its scope decision names the diff, the changed files and the commands, not the reach
+  (`cli/src/harness/wave.ts`, `cli/src/core/check/scope.ts`).
+- Debug's round after landing a `[Worker]` branch, an app session's round before it pushes, and `release push` itself run
+  no wave verb: they run `starci check run`, which reuses every green row whose inputs did not change
+  (`cli/src/harness/check-reuse.ts`).
