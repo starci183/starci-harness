@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.6] - 2026-10-29
+
 - **Desktop app 0.2.0, released as latest.** The app-v* release is no longer a pre-release, so the repository sidebar shows it; README gains a Packages section with every published package, its npm link and a live version badge.
 
 ### Added
