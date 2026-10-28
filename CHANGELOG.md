@@ -6,6 +6,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- **`check run` judges a package against its workspace dependencies built.** A package that imports a sibling exporting
+  only its git-ignored build output (`exports` or `main` at `dist/`) failed its typecheck with TS2307 and its lint with
+  cascaded `no-unsafe-*` errors on every clean checkout, so every `task verify` of such an app was red. Before typecheck
+  and lint, `check run` now finds each target's workspace dependencies (npm, yarn or pnpm), transitively and in
+  topological order, and for each whose manifest entries are missing restores its output from the build cache under its
+  content key (`<state base>/cache/workspace-builds/<key>`) or runs its own `build` script and caches the output. A
+  dependency that cannot be built is a red `dep-build` step with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and the
+  steps of the packages that need it are held. `check run` is now `local-write`. Bench: `check-run-workspace-dep-built`,
+  `check-run-workspace-dep-build-failed`.
+- **A red check's output is kept and shown.** Every check of a verify keeps the last 200 lines of its tools' output as
+  its detail, with every value the secret scan recognises redacted (`redactSecrets`), and `task status <task>` prints the
+  detail of the red checks of the newest verify (`checkRuns[].detail` in `--json`). Bench:
+  `verify-check-run-output-in-task-status`.
+
 ## [1.1.0-alpha.5] - 2026-10-28
 
 - **A returned task no longer holds its lease past its due time.** A task that came back to the Kernel (blocked, mismatch,

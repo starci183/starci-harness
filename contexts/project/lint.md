@@ -13,13 +13,19 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   configuration file every side reads (the root paths of the app-root declaration, manifest, lockfile and tool-config
   slots of [hfs/slots.yaml](../hfs/slots.yaml) and any canon tool's config file, `cli/src/core/check/scope.ts`), so each
   side's lint config loads and lints its whole package; a task that changes nothing is judged on the tracked files
-  under its allowPaths and their packages. A task waits for it.
+  under its allowPaths and their packages. A task waits for it. Each package is judged against its workspace
+  dependencies as a consumer sees them: before its typecheck and lint, every dependency in its workspace (npm, yarn or
+  pnpm), transitively and dependencies first, whose manifest entries (`exports`, `main`, `module`, `types`) name a file not on disk is
+  restored from the build cache under its content key or built with its own `build` script. A dependency that cannot be
+  built is red with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and holds the steps of the packages that import it
+  (`cli/src/core/check/workspace-deps.ts`). The tail of every red step's output, secrets redacted, is kept as the task's
+  evidence and `starci task status <task>` prints it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
 - **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `hfs check`). The harness
   does not call them; they run in the app's CI.
 
 A profile picks the tiers' gates and its canon stacks. `be` and `fe` are a side repository's, `app` a one-repository
-app's (both sides), `lib` and `runtime` carry no canon. An npm workspace root is never typechecked as one project: the
+app's (both sides), `lib` and `runtime` carry no canon. A workspace root is never typechecked as one project: the
 `typecheck` gate skips it and checks each member against its own `tsconfig.json`.
 
 ## Packages and gates

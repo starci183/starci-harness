@@ -6,6 +6,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
+import { evidenceTail } from "../../shared/output.js"
 import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { CONFIG_FILES } from "./canon.js"
@@ -35,7 +36,7 @@ export interface Scope {
 /** The result of one check step on one package. */
 export interface StepResult {
     readonly package: string
-    readonly step: "typecheck" | "lint" | "canon" | "secrets" | "loosening" | "unit"
+    readonly step: "dep-build" | "typecheck" | "lint" | "canon" | "secrets" | "loosening" | "unit"
     readonly command: string
     readonly status: "green" | "red" | "skipped"
     readonly reason: string
@@ -77,8 +78,6 @@ const LINTABLE = /\.(?:[cm]?[jt]sx?)$/
 /** The folders ESLint ignores by default (`**\/node_modules/`, `.git/`), so a file under one is never judged. */
 const ESLINT_DEFAULT_IGNORED = /(?:^|\/)(?:node_modules|\.git)\//
 
-const OUTPUT_LINES = 60
-
 const toSlash = (path: string): string => path.split(sep).join("/")
 
 /** The tracked files under the given repository paths, NUL-separated so no path is quoted or cut. */
@@ -111,7 +110,7 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     return { root, base, all: widen, changed, paths, files, targets, skipped }
 }
 
-const tail = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) => text !== "").join("\n").split("\n").slice(-OUTPUT_LINES).join("\n")
+const tail = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
 
 const skipped = (pkg: WorkspacePackage, step: StepResult["step"], reason: string): StepResult => ({ package: pkg.name, step, command: "-", status: "skipped", reason, output: "" })
 

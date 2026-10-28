@@ -25,6 +25,7 @@ import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha } from "../../shared/git.js"
 import { inOrder } from "../../harness/sequential.js"
 import { formatTable } from "../../shared/output.js"
+import { redactSecrets } from "../../shared/secrets.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
@@ -89,10 +90,11 @@ const report = (checks: readonly CheckOutcome[], verdict: "green" | "red", extra
     return [table, `verdict: ${verdict}`, ...extra, ...reds].join("\n")
 }
 
+/** Keeps every check of one verify as the task's evidence: its status, exit code and detail (an output tail), secrets redacted. */
 const recordRuns = (db: DatabaseSync, taskId: string | null, attemptId: string | null, hash: string, checks: readonly CheckOutcome[]): void => {
     const insert = db.prepare("INSERT INTO check_runs (task_id, attempt_id, contract_hash, name, runner, status, exit_code, detail, ran_at) VALUES (?, ?, ?, ?, 'harness', ?, ?, ?, ?)")
     const at = now()
-    for (const check of checks) insert.run(taskId, attemptId, hash, check.name, check.status, check.exitCode, check.detail, at)
+    for (const check of checks) insert.run(taskId, attemptId, hash, check.name, check.status, check.exitCode, redactSecrets(check.detail), at)
 }
 
 /** What `@result` json checks read for a task: its filed result, else (before filing, in the worker's dry replay) its output file. */

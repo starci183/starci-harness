@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
+import { evidenceTail } from "../shared/output.js"
 import { judgeCites } from "./cite.js"
 import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
@@ -42,14 +43,12 @@ export interface CheckPlace {
     readonly source?: string
 }
 
-const DETAIL_LINES = 30
-
 const PROBE_TIMEOUT_MS = 10_000
 
 /** The `starci check` verbs that take `--base` and answer with scope steps. */
 const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typecheck"])
 
-const tailOf = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
+const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
 const selfEntry = (): string => fileURLToPath(new URL("../main.js", import.meta.url))

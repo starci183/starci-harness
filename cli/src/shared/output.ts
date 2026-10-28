@@ -1,5 +1,13 @@
 import type { Refusal } from "./errors.js"
+import { redactSecrets } from "./secrets.js"
 import type { VerbResult } from "./verb.js"
+
+/** How many trailing lines of a tool's output a check shows and the ledger keeps as its evidence. */
+export const EVIDENCE_LINES = 200
+
+/** The last EVIDENCE_LINES lines of a tool's output streams, secrets redacted: what a check shows of a run and keeps as evidence. */
+export const evidenceTail = (...streams: readonly string[]): string =>
+    redactSecrets(streams.filter((text) => text !== "").join("\n").split("\n").slice(-EVIDENCE_LINES).join("\n"))
 
 /** How a run reports: one json envelope for agents, one human line otherwise. */
 export type OutputMode = "json" | "human"

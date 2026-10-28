@@ -22,6 +22,8 @@ interface CheckRunRow {
     readonly attemptId: string | null
     readonly contractHash: string
     readonly ranAt: string
+    /** The kept output tail of a red check (task/verify.ts recordRuns), which says why it is red; null for a green one. */
+    readonly detail: string | null
 }
 
 interface TaskDetail {
@@ -75,7 +77,7 @@ const attemptsOf = (db: DatabaseSync, taskId: string): AttemptRow[] =>
 
 const checkRunsOf = (db: DatabaseSync, taskId: string): CheckRunRow[] =>
     db
-        .prepare("SELECT name, runner, status, exit_code, attempt_id, contract_hash, ran_at FROM check_runs WHERE task_id = ? ORDER BY id DESC LIMIT ?")
+        .prepare("SELECT name, runner, status, exit_code, attempt_id, contract_hash, ran_at, detail FROM check_runs WHERE task_id = ? ORDER BY id DESC LIMIT ?")
         .all(taskId, CHECK_RUNS_SHOWN)
         .map((row) => ({
             name: text(row.name),
@@ -85,6 +87,7 @@ const checkRunsOf = (db: DatabaseSync, taskId: string): CheckRunRow[] =>
             attemptId: optText(row.attempt_id),
             contractHash: text(row.contract_hash),
             ranAt: text(row.ran_at),
+            detail: row.status === "red" ? text(row.detail) : null,
         }))
 
 /** The folders a task's dirty work was preserved into, oldest first. */
@@ -121,6 +124,9 @@ const describe = (detail: TaskDetail): string => {
     if (leases.length > 0) lines.push("", formatTable([["LEASE", "DUE", "HELD"], ...leases.map((lease) => [lease.path, `${lease.expiresAt}${lease.overdue ? " (overdue)" : ""}`, lease.live ? "yes" : "no"])]))
     for (const dir of preserved) lines.push(`preserved: ${dir}`)
     if (checkRuns.length > 0) lines.push("", formatTable([["CHECK", "RUNNER", "STATUS", "RAN"], ...checkRuns.map((run) => [run.name, run.runner, run.status, run.ranAt])]))
+    // One verify records all its checks at one time: the red ones of the newest, each with its kept output.
+    const newest = checkRuns[0]?.ranAt
+    for (const run of checkRuns) if (run.ranAt === newest && run.detail !== null) lines.push("", `--- ${run.name} (red at ${run.ranAt})`, run.detail)
     return lines.join("\n")
 }
 
@@ -139,7 +145,7 @@ const summaryOf = (task: TaskRow): TaskSummary => ({
 /** `starci task status [task-id]`: one task with its full contract, attempts, result, leases and checks; or the table of tasks. */
 export const taskStatusVerb = defineVerb({
     path: ["task", "status"],
-    summary: "one task with its contract, attempts, latest result, leases and check runs; without an id, the table of tasks",
+    summary: "one task with its contract, attempts, latest result, leases and check runs, and the kept output of the red checks of its newest verify; without an id, the table of tasks",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,

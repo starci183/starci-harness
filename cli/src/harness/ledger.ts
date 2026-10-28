@@ -168,6 +168,9 @@ export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 /** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */
 export const hostLauncherPath = (service: string, extension: "cmd" | "vbs"): string => join(stateBase(), "host", `${service}.${extension}`)
 
+/** The output of one workspace dependency's build, kept by its content key (core/check/workspace-deps.ts): `<state base>/cache/workspace-builds/<key>`. */
+export const workspaceBuildCachePath = (key: string): string => join(stateBase(), "cache", "workspace-builds", key)
+
 /** A coordinator's immutable launch brief, in its project's state folder, outside every product repository. */
 export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string => join(projectDir(root), "briefs", `${role}-${launchId}.md`)
 

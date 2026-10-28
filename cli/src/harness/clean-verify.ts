@@ -6,6 +6,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
+import { evidenceTail } from "../shared/output.js"
 import { locateTree } from "../shared/tree.js"
 import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
@@ -16,8 +17,6 @@ import { runCheck, strayFiles } from "./run-checks.js"
 import { assertWorktreeHooks } from "./worktree.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
-
-const DETAIL_LINES = 30
 
 const LIST_SHOWN = 20
 
@@ -179,14 +178,13 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
     }
 }
 
-const tail = (stdout: string, stderr: string): string => [stdout, stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
 
 /** `npm ci` where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none. */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")))
     if (dir === undefined) return undefined
     const run = await captureNpm(["ci", "--no-audit", "--no-fund"], dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
-    return { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: tail(run.stdout, run.stderr) }
+    return { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: evidenceTail(run.stdout, run.stderr) }
 }
 
 /** Runs the contract's setup commands in cwd (npm through the running Node), one outcome for all; undefined when none. */
@@ -195,7 +193,7 @@ const setUp = async (commands: readonly (readonly string[])[], place: CheckPlace
     const options = place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs }
     for (const [tool = "", ...args] of commands) {
         const run = tool === "npm" ? await captureNpm(args, place.cwd, options) : await captureTool(tool, args, place.cwd, options)
-        if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${tail(run.stdout, run.stderr)}` }
+        if (run.exitCode !== 0) return { name: "setup", kind: "setup", status: "red", exitCode: run.exitCode, detail: `${[tool, ...args].join(" ")}\n${evidenceTail(run.stdout, run.stderr)}` }
     }
     return { name: "setup", kind: "setup", status: "green", exitCode: 0, detail: commands.map((command) => command.join(" ")).join("\n") }
 }

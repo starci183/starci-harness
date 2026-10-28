@@ -72,7 +72,21 @@ export const lineFindings = (file: string, text: string): string[] =>
         return !rule.placeholder?.test(hit[1] ?? "")
     }).map((rule) => rule.name)
 
-const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+/**
+ * The text with every value a value rule recognises replaced by `[redacted:<rule>]` (an assigned secret keeps its name, a
+ * stand-in its value): the one redactor of tool output the harness shows or keeps as evidence.
+ */
+export const redactSecrets = (text: string): string =>
+    VALUE_RULES.reduce(
+        (out, rule) =>
+            out.replace(new RegExp(rule.pattern.source, `${rule.pattern.flags}g`), (match: string, value: unknown) => {
+                if (typeof value !== "string") return `[redacted:${rule.name}]`
+                return rule.placeholder?.test(value) === true ? match : match.replace(value, `[redacted:${rule.name}]`)
+            }),
+        text,
+    )
+
+const HUNK_HEADER =/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
 const isEncryptedFile = (file: string, readFile: (file: string) => string | undefined): boolean => file.endsWith(".enc") && isSopsEnvelope(readFile(file) ?? "")
 
