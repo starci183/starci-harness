@@ -82,6 +82,24 @@ export const ownChanges = async (root: string, taskId: string): Promise<Readonly
 }
 
 /**
+ * The base a task's own checks diff against in its Op worktree: the fork, the workflow branch's head its worktree was cut
+ * from, so lint, typecheck, tests and coverage judge this attempt's diff alone and never what earlier tasks left on the
+ * workflow branch (nor the distance to main). Undefined for a task without an Op worktree or whose fork is not in `root`.
+ */
+export const opForkOf = async (root: string, taskId: string): Promise<string | undefined> => {
+    const db = openExistingLedger(root)
+    if (db === undefined) return undefined
+    let fork: string | undefined
+    try {
+        fork = opWorktreeOf(db, taskId)?.fork
+    } finally {
+        db.close()
+    }
+    if (fork === undefined || (await captureGit(["cat-file", "-e", `${fork}^{commit}`], root)).exitCode !== 0) return undefined
+    return fork
+}
+
+/**
  * The dirty files under a task's allowPaths that are not its own: there, unchanged, since its work began, such as the owner's
  * edits in the checkout it shares. None for a task without a baseline (an Op worktree's). A candidate, a preserve and a reset leave them be.
  */

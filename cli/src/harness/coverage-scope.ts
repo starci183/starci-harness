@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { basename, dirname, extname, join, posix, relative, resolve, sep } from "node:path"
 import { captureTool } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
@@ -79,6 +79,8 @@ export const changedCoverageScope = async (place: CoveragePlace, allowPaths: rea
         const jestRoot = nearestJestRoot(place.root, dirname(join(place.root, file)))
         if (jestRoot !== undefined) groups.set(jestRoot, [...(groups.get(jestRoot) ?? []), file])
     }
+    // No changed logic at all: this attempt holds nothing coverage measures, so no baseline threshold of others' code judges it.
+    if (changed.length === 0) return { args: ["--coverage=false"], detail: `coverage: no source file under allowPaths changed since ${place.diffBase ?? "HEAD"}; the measured scope is CI's` }
     if (groups.size === 0) return { args: [], detail: "coverage: no changed source file under allowPaths has a jest config above it; the command runs as named" }
     const measured: string[] = []
     const problems: string[] = []
@@ -98,6 +100,39 @@ export const changedCoverageScope = async (place: CoveragePlace, allowPaths: rea
     if (problems.length > 0) return { args: [], detail: `coverage: the scope could not be read (${problems.join("; ")}); the command runs as named` }
     if (measured.length === 0) return { args: ["--coverage=false"], detail: `coverage: none of the ${String(changed.length)} changed source file(s) is measured logic; the measured scope is CI's` }
     return { args: measured.map((file) => `--collectCoverageFrom=${file}`), detail: `coverage judged on the ${String(measured.length)} changed logic file(s): ${measured.join(", ")}` }
+}
+
+const PACKAGE_MANAGERS: ReadonlySet<string> = new Set(["npm", "pnpm", "yarn"])
+
+/** The script a package manager command runs (`npm test`, `npm run test`, `yarn test`), read from the package.json in `cwd`. */
+const scriptOf = (argv: readonly string[], cwd: string): string | undefined => {
+    const name = argv[1] === "run" || argv[1] === "run-script" ? argv[2] : argv[1]
+    if (name === undefined || name.startsWith("-")) return undefined
+    for (let current = cwd; ; current = dirname(current)) {
+        const file = join(current, "package.json")
+        if (existsSync(file)) {
+            try {
+                const scripts: unknown = (JSON.parse(readFileSync(file, "utf8")) as { scripts?: unknown }).scripts
+                const script = typeof scripts === "object" && scripts !== null ? (scripts as Record<string, unknown>)[name] : undefined
+                return typeof script === "string" ? script : undefined
+            } catch {
+                return undefined
+            }
+        }
+        if (dirname(current) === current) return undefined
+    }
+}
+
+/**
+ * True when a command runs jest: `jest`, `npx jest`, or a package manager script (`npm test`, `npm run test`) whose script
+ * calls jest. Coverage arguments are appended to nothing else (a `git diff --no-index` check refuses an unknown option).
+ */
+export const runsJest = (argv: readonly string[], cwd: string): boolean => {
+    const runner = basename(argv[0] ?? "", extname(argv[0] ?? "")).toLowerCase()
+    if (runner === "jest") return true
+    if (runner === "npx") return argv.slice(1).find((arg) => !arg.startsWith("-")) === "jest"
+    if (!PACKAGE_MANAGERS.has(runner)) return false
+    return /(?:^|[\s/&;|])jest(?:\s|$)/.test(scriptOf(argv, cwd) ?? "")
 }
 
 /** The command's argv with the coverage arguments appended where its runner forwards them to jest (after a `--` for npm). */

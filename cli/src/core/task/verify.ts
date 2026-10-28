@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import type { DatabaseSync } from "node:sqlite"
 import { join, resolve } from "node:path"
+import { opForkOf } from "../../harness/baseline.js"
 import { briefFiles } from "../../harness/brief.js"
 import { cleanVerify, pruneVerifyWorktrees } from "../../harness/clean-verify.js"
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
@@ -135,6 +136,9 @@ const verifyContract = async (cwd: string, file: string, taskId: string | undefi
         } finally {
             db.close()
         }
+        // In its Op worktree a task's scoped checks and changed-file coverage diff from its fork, so they judge this attempt alone.
+        const fork = await opForkOf(root, taskId)
+        if (fork !== undefined) place = { ...place, diffBase: fork }
     }
     const checks = await inOrder(resolveChecks(contract, ops), (check) => runCheck(check, contract, place))
     const verdict = checks.every((check) => check.status === "green") ? "green" : "red"
