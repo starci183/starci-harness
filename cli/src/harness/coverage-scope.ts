@@ -154,8 +154,11 @@ const LIVE = /\buseSandbox\s*\(/
 /** The folders a spec walk never enters. */
 const SKIPPED = new Set(["node_modules", "dist", "coverage", ".git"])
 
-/** What `scopedTests` makes of a jest command: the argv to run and the line the check's detail opens with, or why it cannot run. */
-export type TestScope = { readonly argv: readonly string[]; readonly detail: string } | { readonly problem: string }
+/**
+ * What `scopedTests` makes of a jest command: the argv to run, the line the check's detail opens with and the live-provider spec
+ * files among what it runs (their declared keys come from custody, harness/custody.ts), or why it cannot run.
+ */
+export type TestScope = { readonly argv: readonly string[]; readonly detail: string; readonly live: readonly string[] } | { readonly problem: string }
 
 /** Where a test scope is read: the checkout, the folder the command runs in and the base the task's change is diffed against. */
 export interface TestPlace {
@@ -249,7 +252,8 @@ export const scopedTests = async (argv: readonly string[], place: TestPlace, all
     const base = separator >= 0 ? argv.slice(0, separator + 1) : argv.slice(0, scriptIndex(argv) + 1)
     const kept = extra.filter((arg) => arg.startsWith("-"))
     const lead = NEEDS_SEPARATOR.has(runner) && separator < 0 ? ["--"] : []
-    return { argv: [...base, ...lead, ...kept, "--runTestsByPath", ...paths], detail: `tests: ${String(paths.length)} spec file(s) run by path, ${why}: ${paths.join(", ")}` }
+    const live = [...new Set(files)].filter((file) => isLive(file))
+    return { live, argv: [...base, ...lead, ...kept, "--runTestsByPath", ...paths], detail: `tests: ${String(paths.length)} spec file(s) run by path, ${why}: ${paths.join(", ")}` }
 }
 
 /** The command's argv with the coverage arguments appended where its runner forwards them to jest (after a `--` for npm). */

@@ -42,7 +42,11 @@ reviveMax: 3
 # sized for a cold npm ci on this host), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
 # (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
-# only while free memory is at least seatFreeMb; otherwise its task stays queued. `starci host load` shows the capacity and why.
+# only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
+# memory), so `workflow status` names it. `starci host load` shows the capacity, each queued command's wait and why, and who
+# holds the memory (managed: the harness's heavy commands and seats; unmanaged: other node, WSL or Docker, IDEs, agents).
+# When admission or seat launch has been held for more than starvedTicketMinutes without a break, `supervisor tick` opens one
+# harness-defect ticket naming the top unmanaged holders, once per episode; these rules do not change for it.
 # maxSlots (optional) caps the count below floor(logical cores / 2).
 heavy:
   reserveMb: 8192
@@ -69,6 +73,7 @@ heavy:
     eslint: 10
   testWorkers: "50%"
   seatFreeMb: 6144
+  starvedTicketMinutes: 45
 
 # Coordinators (`kernel next`, `supervisor next`): the mechanics the deterministic driver applies, never an LLM's choice.
 coordinators:

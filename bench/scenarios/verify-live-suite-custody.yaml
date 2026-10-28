@@ -1,0 +1,162 @@
+schema: starci/scenario@1
+id: verify-live-suite-custody
+group: verify
+title: "an opt-in live suite gets the keys its world declares from the app's custody, in its run's environment only; a key custody lacks blocks the task for the owner without spending a try"
+inject: >-
+  the app's custody (.starcistacks/dev, sealed with app secret set --from-host from the run's secret.env) holds OPENROUTER_API_KEY
+  with a fake value; one task names a live suite declaring that key, whose jest stand-in passes only when the key reaches its
+  environment and prints the value it got; a second task names a live suite declaring a key custody lacks
+expect: >-
+  the first verify reads the declared key from the sealed member and hands it to that test run's child environment alone: the
+  suite passes, the check names where the key came from, and the value it printed is scrubbed from the run's output, so it is in
+  no verb output, check row or event; the second verify ends the task awaiting_owner with "custody lacks MISSING_PROVIDER_KEY in
+  dev", no red verdict and no try spent, and workflow status names that block
+pass:
+  - the live suite with its key in custody runs green and names the custody member
+  - the fake value appears in no verb output, check row, event or ticket
+  - the key custody lacks leaves the task awaiting_owner at try 1 with the owner-gated reason, no red verdict
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  OPENROUTER_API_KEY: ""
+  STARCI_OPS_DIR: ${repo}/ops
+# The jest stand-in runs exactly the paths --runTestsByPath gives it. A spec calling useSandbox( passes only when every key it
+# declares is in the environment, and the OPENROUTER_API_KEY it got hashes to the fixture value's sha256; it then prints the value
+# (as a careless suite might), which the harness must scrub before the output becomes evidence.
+repo:
+  files:
+    README.md: "# bench scratch custody\n"
+    hfs.json: '{"hfs": 3, "kind": "app", "edition": "full", "project": "bench-custody"}'
+    package.json: '{"name": "bench-custody", "version": "1.0.0", "private": true, "scripts": {"test:e2e": "cd be && node ../node_modules/jest/bin/jest.js --selectProjects e2e"}}'
+    be/jest.config.js: |
+      module.exports = { projects: [{ displayName: "e2e", testMatch: ["<rootDir>/src/tests/e2e/**/*.e2e-spec.ts"] }] }
+    be/src/tests/e2e/ai/router.e2e-spec.ts: |
+      useSandbox({ provider: "openrouter", keys: ["OPENROUTER_API_KEY"] })
+    be/src/tests/e2e/other/other.e2e-spec.ts: |
+      useSandbox({ provider: "other", keys: ["MISSING_PROVIDER_KEY"] })
+    node_modules/jest/bin/jest.js: |
+      const { createHash } = require("node:crypto")
+      const { readFileSync } = require("node:fs")
+      const args = process.argv.slice(2)
+      const files = args.filter((a) => !a.startsWith("-") && a !== "e2e")
+      let failed = 0
+      for (const f of files) {
+        const text = readFileSync(f, "utf8")
+        const keys = [...text.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((m) => m[1])
+        const missing = keys.filter((k) => !process.env[k])
+        if (missing.length > 0) {
+          failed += 1
+          console.log("FAIL " + f + " TestWorldError: TEST_WORLD_NOT_DECLARED: " + missing.join(", "))
+          continue
+        }
+        const got = process.env.OPENROUTER_API_KEY || ""
+        const ok = createHash("sha256").update(got).digest("hex") === "bea4dde82d6a6f8e410532875c4dbe5902ae549c85aa1101a5f74d03eb7fbd69"
+        console.log("debug: provider key " + got)
+        if (ok) console.log("PASS " + f + " custody key reached the run")
+        else { failed += 1; console.log("FAIL " + f + " the key is not the custody value") }
+      }
+      process.exit(failed === 0 ? 0 : 1)
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - write: { path: contexts/project/work.md, from: "${ops}/../contexts/project/work.md" }
+  - name: the suites run whatever else this host runs (the governor is not under test here)
+    starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
+  - starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - name: the host's secret.env holds the fake provider key the owner seals into custody
+    file:
+      path: ${run}/secret.env
+      content: |
+        OPENROUTER_API_KEY=bench-fixture-custody-value
+  - starci: [app, secret, init]
+  - name: the dev environment's ai member holds the key, sealed
+    starci: [app, secret, set, dev, ai, OPENROUTER_API_KEY, --from-host, OPENROUTER_API_KEY]
+    expect: { exit: 0, lacks: bench-fixture-custody-value }
+  - name: the host secret.env is gone, so only custody can hand the key over
+    file:
+      path: ${run}/secret.env
+      content: "# empty\n"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: dev custody"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: live
+        goal: bench live suites from custody
+        runner: inline
+        tasks:
+          - id: router
+            label: docs
+            summary: run the ai router live suite
+            allowPaths: [be/src/tests/reports/router]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e -- src/tests/e2e/ai
+          - id: other
+            label: docs
+            summary: run the other live suite
+            allowPaths: [be/src/tests/reports/other]
+            checks:
+              - preset: tests-pass
+                args:
+                  command: npm run test:e2e -- src/tests/e2e/other
+            dependsOn: [router]
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, live]
+    save:
+      router: data.nodes.0.task.id
+  - worker:
+      task: ${router}
+      files:
+        be/src/tests/reports/router/run.txt: "ran\n"
+  - name: the router task verifies green with its key from custody
+    starci: [workflow, step, live]
+    expect: { lacks: bench-fixture-custody-value }
+    save:
+      other: data.nodes.1.task.id
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${router}' AND name = 'tests-pass' AND status = 'green' AND detail LIKE '%custody: OPENROUTER_API_KEY from dev/ai, handed to this run''s environment only%' AND detail LIKE '%PASS src/tests/e2e/ai/router.e2e-spec.ts custody key reached the run%' AND detail LIKE '%debug: provider key [redacted:custody]%'"
+        equals: [1]
+  - name: the value is in no check row and no event
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM check_runs WHERE detail LIKE '%bench-fixture-custody-value%') + (SELECT COUNT(*) FROM events WHERE data_json LIKE '%bench-fixture-custody-value%')"
+        equals: [0]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${router}'"
+        equals: [done]
+  - worker:
+      task: ${other}
+      files:
+        be/src/tests/reports/other/run.txt: "ran\n"
+  - name: the other task's key is not in custody, so its verify ends awaiting the owner
+    starci: [workflow, step, live]
+    expect: { lacks: bench-fixture-custody-value }
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || t.try_no || ':' || (SELECT COUNT(*) FROM attempts a WHERE a.task_id = t.id AND a.verdict = 'red') FROM tasks t WHERE t.id = '${other}'"
+        equals: ["awaiting_owner:1:0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE subject = '${other}' AND kind = 'verify-stuck' AND json_extract(data_json, '$.code') = 'CUSTODY_KEY_MISSING' AND json_extract(data_json, '$.reason') LIKE 'custody lacks MISSING_PROVIDER_KEY in dev%' AND json_extract(data_json, '$.owner') = 1"
+        equals: [1]
+  - name: workflow status names the owner-gated block
+    starci: [workflow, status, live]
+    expect: { exit: 0, contains: "blocked, awaiting the owner: custody lacks MISSING_PROVIDER_KEY in dev", lacks: bench-fixture-custody-value }
+  - name: the tick files it as the owner's question on credentials, never naming the value
+    starci: [supervisor, tick]
+    expect: { lacks: bench-fixture-custody-value }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM tickets WHERE kind = 'question:business' AND title LIKE '%custody lacks MISSING_PROVIDER_KEY in dev%' AND evidence_json NOT LIKE '%bench-fixture-custody-value%'"
+        equals: [1]

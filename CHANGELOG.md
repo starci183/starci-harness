@@ -34,6 +34,22 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Host starvation is visible, and ticketed once.** `starci host load` adds who holds the memory: the top processes by working
+  set, managed (a recorded heavy command or seat, a process under one, one working in the harness's state folder) or unmanaged
+  (other node, WSL and Docker, IDEs, agents), each command line clipped and redacted, with totals per group; each queued heavy
+  command shows how long it waited and why ("free RAM 2.6 GB below reserve 8 GB"), and the seat holds are listed
+  (`harness/host-holders.ts`). `seat start` records a `SEAT_RAM_LOW` hold (since when, on what memory) and `workflow status`
+  names it instead of a bare `queued` ("held: free RAM 2.6 GB below seat floor 6 GB (since 21:02Z)"), as it names a verify
+  waiting for a heavy slot and a task awaiting the owner. When admission or a seat launch has been held past
+  `heavy.starvedTicketMinutes` (ops/liveness.yaml, 45), `supervisor tick` opens one `harness-defect` ticket per episode
+  (`HOST_STARVED`) listing the top unmanaged holders; the governor's rules are unchanged. Bench: `host-starvation-visibility`.
+- **Custody into an opt-in live suite.** A command check whose run holds a `useSandbox` spec reads the keys its world declares
+  from the app's sealed `.starcistacks/<env>` members, with the code `app secret materialize` uses, into that test run's child
+  environment only, and scrubs every handed value from the output before it becomes evidence (`harness/custody.ts`). A key
+  custody lacks is `CUSTODY_KEY_MISSING` ("custody lacks OPENROUTER_API_KEY in dev"): the task ends `awaiting_owner`, in its
+  verify or in the wave that runs its deferred tests, spends no try and is filed as the owner's question on credentials, where
+  it used to fail red with TEST_WORLD_NOT_DECLARED. Bench: `verify-live-suite-custody`, whose fake value appears in no output,
+  check row, event or ticket. A bench verb step that fails inside `starci app` now shows @starci/hfs's stderr.
 - **`/status` on Telegram.** One message summing up the workflows of every registered ledger: counts by status per project,
   each blocked workflow with its reason, each running or paused one, the questions awaiting the owner and the open defects.
 

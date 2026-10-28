@@ -29,6 +29,7 @@ const heavySchema = z.strictObject({
     timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
     seatFreeMb: z.number().int().positive(),
+    starvedTicketMinutes: z.number().positive(),
 })
 
 /** The `heavy` block of ops/liveness.yaml: the host's heavy-command slots, the RAM and CPU that admit them, each kind's memory cap and the seat RAM floor. */
@@ -116,6 +117,9 @@ CREATE TABLE IF NOT EXISTS heavy_slots (
   id TEXT PRIMARY KEY, pid INTEGER NOT NULL, child_pid INTEGER, kind TEXT NOT NULL, label TEXT NOT NULL, cwd TEXT NOT NULL,
   state TEXT NOT NULL, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS cpu_samples (at_ms INTEGER NOT NULL, idle REAL NOT NULL, total REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS seat_holds (
+  task TEXT PRIMARY KEY, repo TEXT NOT NULL, since TEXT NOT NULL, last_at TEXT NOT NULL, free_mb INTEGER NOT NULL, floor_mb INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS host_starvation (id INTEGER PRIMARY KEY CHECK (id = 1), since TEXT NOT NULL, ticket TEXT);
 `
 
 /** This host's CPU time so far, summed over every core. */
@@ -302,4 +306,126 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
 export const seatRoom = (rules: HeavyRules = loadHeavyRules()): { readonly ok: boolean; readonly freeMb: number; readonly floorMb: number } => {
     const freeMb = Math.floor(freemem() / 1_048_576)
     return { ok: freeMb >= rules.seatFreeMb, freeMb, floorMb: rules.seatFreeMb }
+}
+
+/** Megabytes as gigabytes with one decimal ("2.6 GB"), the unit every hold reason speaks in. */
+export const gb = (mb: number): string => `${(mb / 1024).toFixed(1).replace(/\.0$/, "")} GB`
+
+/** An ISO time as the short UTC clock a hold reason names ("21:02Z"); the date too when it is not today. */
+export const clockOf = (at: string): string => {
+    const date = new Date(at)
+    if (Number.isNaN(date.getTime())) return at
+    const clock = `${date.toISOString().slice(11, 16)}Z`
+    return date.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10) ? clock : `${date.toISOString().slice(0, 10)} ${clock}`
+}
+
+/**
+ * Why a heavy command of `kind` is not admitted now, in one short clause ("free RAM 2.6 GB below reserve 8 GB"); undefined when it
+ * would be admitted. The full arithmetic is `admission(...).reason`.
+ */
+export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuPercent">, running: readonly string[], kind: HeavyKind): string | undefined => {
+    const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind)
+    if (judged.admits) return undefined
+    if (load.cpuPercent > rules.maxCpuPercent) return `CPU ${String(load.cpuPercent)}% above ${String(rules.maxCpuPercent)}%`
+    if (running.length >= judged.cap) return `${String(running.length)} running reach the cap of ${String(judged.cap)}`
+    if (load.freeMb < rules.reserveMb) return `free RAM ${gb(load.freeMb)} below reserve ${gb(rules.reserveMb)}`
+    return `free RAM ${gb(load.freeMb)} less reserve ${gb(rules.reserveMb)} and ${gb(judged.committedMb)} running leaves no room for ${kind} (${gb(rules.estimateMb[kind])})`
+}
+
+/** The kinds of the heavy commands running now, from the governor's store (live rows only after `heavySlots`). */
+export const runningHeavyKinds = (): string[] =>
+    withGovernor((db) => {
+        db.exec(TABLES)
+        return runningKinds(db)
+    })
+
+/** A queued task whose worker seat the RAM floor held: since when, last seen, and the memory it was judged on. */
+export interface SeatHold {
+    readonly task: string
+    readonly repo: string
+    readonly since: string
+    readonly lastAt: string
+    readonly freeMb: number
+    readonly floorMb: number
+}
+
+/** The reason a seat hold reads as: "free RAM 2.6 GB below seat floor 6 GB (since 21:02Z)". */
+export const seatHoldWhy = (hold: Pick<SeatHold, "freeMb" | "floorMb" | "since">): string => `free RAM ${gb(hold.freeMb)} below seat floor ${gb(hold.floorMb)} (since ${clockOf(hold.since)})`
+
+/**
+ * Records that the seat floor held a task's launch (core/seat/start.ts, SEAT_RAM_LOW): its first hold keeps its time, every later
+ * one refreshes the memory it was judged on. The hold ends when the task launches or the floor admits again (`clearSeatHolds`).
+ */
+export const recordSeatHold = (repo: string, task: string, room: { readonly freeMb: number; readonly floorMb: number }): void => {
+    withGovernor((db) => {
+        db.exec(TABLES)
+        const at = now()
+        db.prepare("INSERT INTO seat_holds (task, repo, since, last_at, free_mb, floor_mb) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (task) DO UPDATE SET last_at = excluded.last_at, free_mb = excluded.free_mb, floor_mb = excluded.floor_mb").run(task, repo.replaceAll("\\", "/"), at, at, room.freeMb, room.floorMb)
+    })
+}
+
+/** Ends the seat holds of `task`, or every one when no task is named (the floor admits again: nothing it held is held any more). */
+export const clearSeatHolds = (task?: string): void => {
+    withGovernor((db) => {
+        db.exec(TABLES)
+        if (task === undefined) db.prepare("DELETE FROM seat_holds").run()
+        else db.prepare("DELETE FROM seat_holds WHERE task = ?").run(task)
+    })
+}
+
+/** Every open seat hold, oldest first. */
+export const seatHolds = (): SeatHold[] =>
+    withGovernor((db) => {
+        db.exec(TABLES)
+        return db
+            .prepare("SELECT * FROM seat_holds ORDER BY since, task")
+            .all()
+            .map((row) => ({ task: String(row.task), repo: String(row.repo), since: String(row.since), lastAt: String(row.last_at), freeMb: Number(row.free_mb), floorMb: Number(row.floor_mb) }))
+    })
+
+/**
+ * How long the host has starved the harness's work: since when heavy admission has held a command (its oldest waiting row) and
+ * since when the seat floor has held a launch (its oldest seat hold), each null while nothing is held. A seat hold the floor no
+ * longer justifies (free memory is back above it) is cleared first.
+ */
+export interface Starvation {
+    readonly admissionSince: string | null
+    readonly waiting: number
+    readonly seatSince: string | null
+    readonly seatHeld: number
+}
+
+/** Reads the starvation now (`Starvation`). */
+export const starvation = (rules: HeavyRules = loadHeavyRules()): Starvation => {
+    if (seatRoom(rules).ok) clearSeatHolds()
+    const waiting = heavySlots().filter((slot) => slot.state === "waiting")
+    const holds = seatHolds()
+    return { admissionSince: waiting.map((slot) => slot.at).sort((left, right) => left.localeCompare(right))[0] ?? null, waiting: waiting.length, seatSince: holds[0]?.since ?? null, seatHeld: holds.length }
+}
+
+/**
+ * The starvation episode's ticket bookkeeping: `ticketed` when the episode that began at or before `since` already opened its
+ * ticket. An episode ends when nothing is held (`endStarvation`), so a new hold after it is a new episode.
+ */
+export const starvationTicketed = (): string | null =>
+    withGovernor((db) => {
+        db.exec(TABLES)
+        const row = db.prepare("SELECT ticket FROM host_starvation WHERE id = 1").get()
+        return row === undefined || row.ticket === null ? null : String(row.ticket)
+    })
+
+/** Records the ticket the starvation episode that began at `since` opened. */
+export const markStarvationTicketed = (since: string, ticket: string): void => {
+    withGovernor((db) => {
+        db.exec(TABLES)
+        db.prepare("INSERT INTO host_starvation (id, since, ticket) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET since = excluded.since, ticket = excluded.ticket").run(since, ticket)
+    })
+}
+
+/** Ends the starvation episode: nothing is held any more. */
+export const endStarvation = (): void => {
+    withGovernor((db) => {
+        db.exec(TABLES)
+        db.prepare("DELETE FROM host_starvation").run()
+    })
 }
