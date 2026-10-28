@@ -30,6 +30,7 @@ import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
 import { recordEvent } from "../../harness/tasks.js"
+import { ticketEscalations } from "../../harness/tickets.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
 import { DISPATCHING, getWorkflow, listWorkflows, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -467,6 +468,7 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
         .flatMap((project) => withLedger(project, (db) => openDecisions(db, "supervisor").map((decision) => ({ ...decision, project }))))
         .toSorted((a, b) => Number(awaitsOwner(a)) - Number(awaitsOwner(b)) || a.raisedAt.localeCompare(b.raisedAt))
 
+
 /**
  * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
@@ -513,6 +515,8 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
             actions.push(...(await tendWorkers(context, attached, binary, project)))
         }
         sweepMs = Math.max(sweepMs, Date.now() - swept)
+        // Every escalation the Supervisor cannot rule becomes its ticket: a harness defect for Debug, an owner question for the owner.
+        if (attached !== null) actions.push(...repos.flatMap((repo) => ticketEscalations(repo, project)))
         const decisions = openSupervisorDecisions(repos).filter((open) => !awaitsOwner(open) || attached === null || !relayed(open))
         const handOver = (decision: SupervisorDecision): SupervisorNext => {
             const digest = withLedger(decision.project, (db) => {

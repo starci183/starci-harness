@@ -1,0 +1,158 @@
+schema: starci/scenario@1
+id: ticket-harness-defect-debug-closes
+group: messaging
+title: "a harness defect becomes one Supervisor ticket in Debug's queue: a repeat bumps it, the owner hears of it once, only Debug or the owner closes it, and the close releases the escalation and wakes the Supervisor"
+inject: >-
+  a Kernel escalates kind harness (a red check it reads as the harness's: CHECK_SCOPE_EMPTY from
+  cli/src/harness/run-checks.ts); the Supervisor files the same defect again by hand; the tick runs; the Supervisor tries to close
+  the ticket; Debug takes it and closes it with the fixing commit
+expect: >-
+  supervisor next files the escalation as one blocking harness-defect ticket opened by the supervisor, the escalation waiting
+  on it; the Supervisor's own report of the same error code and module bumps its occurrences instead of opening a second; the
+  tick sends the owner one notice naming the ticket and Debug; ticket list --state open puts it first; the Supervisor's close is
+  refused ROLE_REFUSED; Debug's take marks it in-progress and its close records the commit, releases the escalation and wakes the
+  Supervisor with an owner request naming the ticket, the fix and the decision; the next tick sends one close notice naming the
+  commit
+pass:
+  - one ticket, seen twice, opened by the supervisor, reported by the supervisor
+  - one open notice and one close notice in the owner's chat
+  - a non-debug role cannot close the ticket
+  - the close records the fixing commit, releases the escalation and wakes the Supervisor
+  - no actor overstepping its role
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - file:
+      path: esc-harness.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-harness-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: harness
+          question: "task verify refuses CHECK_SCOPE_EMPTY from cli/src/harness/run-checks.ts though docs/a.md is in allowPaths"
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-harness.yaml"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation'"
+      as: decision
+  - name: the Supervisor's driver files the defect as a ticket for Debug
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: filed as ticket tk-
+  - read:
+      db: machine
+      query: SELECT id FROM tickets
+      as: ticket
+  - name: the Supervisor's own report of the same defect bumps the ticket
+    seat: supervisor
+    starci: [ticket, open, --kind, harness-defect, --severity, blocking, --title, "verify of doc b refuses CHECK_SCOPE_EMPTY (cli/src/harness/run-checks.ts)", --tried, "relaunched the Kernel once"]
+    expect:
+      contains: "\"outcome\": \"repeat\""
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || MAX(occurrences) || ':' || MAX(opened_by) || ':' || MAX(reporters_json) FROM tickets"
+        equals: ['1:2:supervisor:["supervisor"]']
+  - name: the tick tells the owner once
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "ticket:${ticket}:open:r1"
+  - env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "\"sent\": []"
+  - name: Debug's queue holds it
+    env:
+      STARCI_ROLE: debug
+    starci: [ticket, list, --state, open]
+    expect:
+      contains: ${ticket}
+  - name: the Supervisor may not close a ticket
+    seat: supervisor
+    starci: [ticket, close, "${ticket}", --fixed-by, abc1234]
+    expect:
+      exit: 1
+      code: ROLE_REFUSED
+  - env:
+      STARCI_ROLE: debug
+    starci: [ticket, take, "${ticket}"]
+    expect:
+      contains: in-progress
+  - name: Debug closes it with the fixing commit
+    env:
+      STARCI_ROLE: debug
+    starci: [ticket, close, "${ticket}", --fixed-by, abc1234]
+    expect:
+      contains: "\"state\": \"fixed\""
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || fixed_by || ':' || closed_by || ':' || taken_by FROM tickets"
+        equals: ["fixed:abc1234:debug:debug"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT subject || ':' || (released_at IS NOT NULL) FROM ticket_waiters"
+        equals: ["decision:${decision}:1"]
+  - name: the woken Supervisor reads the fix and what it releases
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: "fixed by abc1234"
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT by || ':' || (text LIKE '%decision:${decision}%') FROM owner_requests"
+        equals: ["debug:1"]
+  - name: the tick tells the owner of the close once
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "ticket:${ticket}:fixed:r1"
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: Đã sửa bởi commit abc1234
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT key FROM telegram_notices WHERE kind = 'ticket' ORDER BY at"
+        equals: ["ticket:${ticket}:open:r1", "ticket:${ticket}:fixed:r1"]

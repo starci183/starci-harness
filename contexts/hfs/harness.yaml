@@ -251,6 +251,13 @@ slots:
     presence: optional
     holds: the Kernel's and the Supervisor's briefs
     rule: CONTRIB-4
+  - id: ops.telegram-assets
+    path: "ops/telegram/*.png"
+    presence: required
+    requires:
+      - ops/telegram/ticket-banner.png
+    holds: the one decorative banner every ticket notice is sent with (ops/telegram.yaml banner), generated once with Codex's image generation; the facts are its caption
+    rule: CONTRIB-4
   - id: policy.rules
     path: "policy/{README.md,*.yaml}"
     presence: required

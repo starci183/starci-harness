@@ -22,6 +22,9 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  *   worktree, the completion `supervisor next` last handed over, and how the Supervisor ended it (harness/project-workers.ts).
  * - shared_needs / shared_need_waiters: one row per (project, need key) and one per task waiting on it: its scope, router level,
  *   state, decision, owner and resolver, and each waiter's report, parking and release (harness/needs.ts).
+ * - tickets / ticket_waiters: what the Supervisor could not resolve within its authority, one row per fingerprint: a defect for
+ *   Debug or a question for the owner, with its kind, severity, evidence, proposed default, state, fix or answer and who gave it,
+ *   and occurrences; and one row per task or decision waiting on it, released when it ends (harness/tickets.ts).
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -69,6 +72,16 @@ CREATE TABLE IF NOT EXISTS shared_need_waiters (
   given_key TEXT NOT NULL, rules_json TEXT NOT NULL, paths_json TEXT NOT NULL, note TEXT, reported_at TEXT NOT NULL, parked_at TEXT,
   released_at TEXT, release_json TEXT, PRIMARY KEY (project, key, repo, task_id));
 CREATE INDEX IF NOT EXISTS shared_need_waiters_by_workflow ON shared_need_waiters (workflow_id, task_key);
+CREATE TABLE IF NOT EXISTS tickets (
+  id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, project TEXT NOT NULL, project_root TEXT NOT NULL, workflow_id TEXT, kind TEXT NOT NULL,
+  severity TEXT NOT NULL, title TEXT NOT NULL, evidence_json TEXT NOT NULL, tried TEXT, proposed_default TEXT, options_json TEXT NOT NULL, state TEXT NOT NULL, opened_by TEXT NOT NULL, opened_seat TEXT,
+  reporters_json TEXT NOT NULL,
+  taken_by TEXT, fixed_by TEXT, answer TEXT, reason TEXT, duplicate_of TEXT, closed_by TEXT, occurrences INTEGER NOT NULL, round INTEGER NOT NULL,
+  opened_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, taken_at TEXT, closed_at TEXT);
+CREATE INDEX IF NOT EXISTS tickets_by_fingerprint ON tickets (fingerprint, opened_at);
+CREATE TABLE IF NOT EXISTS ticket_waiters (
+  ticket_id TEXT NOT NULL, repo TEXT NOT NULL, subject TEXT NOT NULL, project TEXT NOT NULL, project_root TEXT NOT NULL, workflow_id TEXT,
+  linked_at TEXT NOT NULL, released_at TEXT, request_id TEXT, PRIMARY KEY (ticket_id, repo, subject));
 `
 
 /** How long a recorded Orca terminal list stands as evidence for a pool count: older, it proves nothing. */

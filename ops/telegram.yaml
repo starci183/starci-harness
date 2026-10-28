@@ -15,3 +15,12 @@ sendPerMinute: 6
 sendTries: 3
 # A notice carries at most this many characters of a question or a reason.
 questionChars: 700
+# A ticket below blocking severity (harness-internal noise) is noticed only once it was seen more than this many times.
+ticketOccurrences: 5
+# The one decorative banner every ticket notice is sent with (generated once with Codex's image generation), relative to ops/;
+# uploaded once, then sent by the file id Telegram keeps it under. The ticket's facts are the caption and the buttons.
+banner: telegram/ticket-banner.png
+# The link of the "Xem commit" button of a fixed ticket.
+commitUrl: https://github.com/starci183/starci-harness/commit/{sha}
+# How long the "Tắt tiếng 1h" button holds back the defect notices.
+muteMinutes: 60

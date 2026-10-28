@@ -53,8 +53,9 @@ works hands-on. Each orca workflow's `[Kernel]` plans (every contract and the wo
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
 
-A chat agent outside Orca is Debug: it diagnoses the harness, changes nothing but a harness setting (`starci config set`),
-hands the Supervisor a repair job or the owner's words (`starci supervisor ask`), and alone lands work: it merges the
+A chat agent outside Orca is Debug: it diagnoses the harness and works the ticket queue (`starci ticket list --state open`,
+then `ticket take` and `ticket close --fixed-by <sha>`), changes nothing but a harness setting (`starci config set`),
+hands the Supervisor the owner's words (`starci supervisor ask`), and alone lands work: it merges the
 workflows' and workers' branches, pushes (`starci release push`) and publishes harness packages with the owner's yes; it
 never starts an orca workflow (that refuses `SUPERVISOR_REQUIRED`). Under the `inline` runner the chat is the Kernel and
 the worker, one task at a time, without seats.

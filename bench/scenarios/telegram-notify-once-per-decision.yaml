@@ -1,19 +1,21 @@
 schema: starci/scenario@1
 id: telegram-notify-once-per-decision
 group: messaging
-title: "an owner escalation reaches the owner's Telegram chat once, by the tick, however many sweeps and bridge cycles run; a harness escalation never does"
+title: "an escalation the Supervisor cannot rule reaches the owner's Telegram chat once, as its ticket, by the tick, however many sweeps and bridge cycles run"
 inject: >-
-  the owner messages the bot and connects the channel; a Kernel escalates a question of kind owner and one of kind harness; the
-  scheduled tick runs (no bridge running), then the notice sweep by hand and a bridge cycle, all against the Telegram stand-in
+  the owner messages the bot and connects the channel; a Kernel escalates a question of kind owner (no default) and one of kind
+  harness; the scheduled tick runs (no bridge running), then the notice sweep by hand and a bridge cycle, all against the
+  Telegram stand-in
 expect: >-
-  discover-chat stores the one chat that wrote to the bot and greets it; the tick sends one notice naming the project, the
-  workflow, the decision id, the question and how to answer; the harness escalation is Debug's and is never sent; the later sweep
-  and the bridge cycle send nothing more; the notice row is sent once with the message id the owner replies to
+  discover-chat stores the one chat that wrote to the bot and greets it; the tick files each escalation as its ticket, a
+  question:business ticket for the owner and a blocking harness-defect ticket for Debug, each waiting on its escalation, and
+  sends one notice for each: the question with its ticket id and how to answer, and the defect saying Debug works it; the later
+  sweep and the bridge cycle send nothing more; each notice row is sent once with the message id the owner replies to
 pass:
-  - one greeting and exactly one notice in the chat, sent by the tick
-  - no notice for the harness escalation
-  - "the notice carries the question, the decision id and /answer"
-  - one telegram_notices row, sent
+  - one greeting and exactly two notices in the chat, sent by the tick
+  - "the question notice carries the question, the ticket id and /answer; the defect notice names Debug"
+  - two tickets opened by the supervisor, each with its escalation waiting
+  - two telegram_notices rows, sent once
   - no actor overstepping its role
 automation: automated
 env:
@@ -81,11 +83,11 @@ steps:
           question: the files-exist preset reads the wrong folder
   - seat: kernel:ask
     starci: [kernel, submit, "${run}/esc-harness.yaml"]
-  - name: the scheduled tick sends the owner notice, with no bridge running
+  - name: the scheduled tick files both escalations as tickets and sends their notices, with no bridge running
     env: *tg
     starci: [supervisor, tick]
     expect:
-      contains: "decision:d-"
+      contains: "ticket:tk-"
   - name: a sweep by hand sends nothing more
     env: *tg
     starci: [connect, telegram, notify]
@@ -96,31 +98,29 @@ steps:
     starci: [supervisor, telegram-bridge, run, --once]
     expect:
       contains: "\"sent\": []"
-  - name: the chat holds the greeting and one notice
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT kind || ':' || severity || ':' || state || ':' || opened_by || ':' || (SELECT COUNT(*) FROM ticket_waiters w WHERE w.ticket_id = tickets.id AND w.subject LIKE 'decision:d-%' AND w.released_at IS NULL) FROM tickets ORDER BY kind"
+        equals: ["harness-defect:blocking:open:supervisor:1", "question:business:blocking:open:supervisor:1"]
+  - name: the chat holds the greeting and two notices
     http:
       url: ${tg.url}/__sent
       expect:
         contains: may doc a name the product?
         equals:
-          data.count: 2
+          data.count: 3
           data.messages.1.chat_id: "7001"
   - http:
       url: ${tg.url}/__sent
       expect:
-        contains: /answer d-
+        contains: /answer tk-
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: Claude Debug xử lý
   - assert:
       sql:
         db: machine
         query: SELECT kind || ':' || status || ':' || tries || ':' || (message_id IS NOT NULL) FROM telegram_notices
-        equals: ["decision:sent:1:1"]
-  - http:
-      url: ${tg.url}/__sent
-      expect:
-        equals:
-          data.count: 2
-  - name: the harness question never reached the chat
-    assert:
-      sql:
-        db: machine
-        query: "SELECT COUNT(*) FROM telegram_notices WHERE text LIKE '%wrong folder%'"
-        equals: [0]
+        equals: ["ticket:sent:1:1", "ticket:sent:1:1"]

@@ -35,9 +35,10 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   are relayed onto its own branch (a relay that conflicts goes to the Supervisor as a `conflict`). It
   runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
 - **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
-  every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the
-  owner's answer there becomes an owner request that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's
-  Telegram channel", `cli/src/harness/telegram-bridge.ts`).
+  every ticket (a question put to the owner, a defect noticed once), owner request taken up and workflow ended is sent once to
+  the owner's chat; the owner's reply to a question answers its ticket, and any other answer there becomes an owner request
+  that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's Telegram channel",
+  `cli/src/harness/telegram-bridge.ts`).
 - **Host credentials live in the harness's secret.env.** The owner keeps every host credential in `secret.env` at the harness
   root, untracked; the committed [secret.env.example](../../secret.env.example) names its keys and where to get each. Agents
   and tools never open it; the CLI's secret loader reads a key policy/security.yaml `secretKeys` lists, the environment
@@ -95,11 +96,22 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `cli/src/harness/stall.ts`); Claude's pool holds `coordinatorReserve` of its slots for coordinators, so workers never
   take the slots a coordinator needs (`capacityReason` in `cli/src/harness/router.ts`); only the circuit or quota taking
   Claude out hands the seat to the next member (`decide` in `cli/src/harness/router.ts`).
-- **Harness problems never wait on the owner.** An escalation of kind `harness` is Debug's: the Supervisor keeps it in the
-  ledger, never asks the owner about it, keeps its other work moving and relays Debug's answer, which arrives as a
-  `supervisor ask` by `debug`. Neither it nor an owner escalation makes a waiting Supervisor stalled (`awaitsOwner` in
+- **What the Supervisor cannot resolve becomes one ticket (`tickets`).** Questions climb one level at a time, each level
+  answering when it can and nobody guessing silently: an Op files `blocked` with its question and proposed default, its Kernel
+  answers from the goal, the specs and the canon or escalates, and the Supervisor answers or opens one ticket. A question
+  ticket (business, code, spec; an `owner` escalation with no default it may take) goes to the owner on Telegram, whose reply
+  or `ticket answer` answers it, a proposed default accepted as it stands; a defect ticket (a `harness` escalation, a defect the
+  Supervisor or the monitor sees) goes to Debug's queue, blocking first then by occurrences, with one Telegram notice, and Debug
+  closes it with the fixing commit. A repeat of the same defect (kind, error code, module) or question bumps one ticket; its
+  answer or close is recorded with who gave it and why, releases every task and escalation waiting on it, wakes the Supervisor,
+  and reaches every later brief of the workflow ([ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md),
+  `cli/src/harness/tickets.ts`). Owner, 2026-10-29: "Chốt, làm đi"; "op mà stuck báo lên kernel, kernel không giải quyết dc
+  gửi lên supervisor".
+- **Harness problems never wait on the owner.** An escalation of kind `harness` is Debug's: the Supervisor's driver files it as
+  a defect ticket, the Supervisor never asks the owner about it, keeps its other work moving and relays Debug's close; only an
+  `owner` escalation goes to the owner, as a question ticket. Neither makes a waiting Supervisor stalled (`awaitsOwner` in
   `cli/src/harness/coordinator-commands.ts`, [ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md)).
-- **Coordinators run on their own (`coordinators-self-sufficient`).** The monitor diagnoses harness bugs and Debug fixes the
+- **Coordinators run on their own (`coordinators-self-sufficient`).** The monitor files harness bugs as tickets and Debug fixes the
   harness; nobody nudges a Supervisor or a Kernel by hand. An `owner` escalation names its topic; a product choice inside the
   accepted goal that carries a proposed default (the goal's or the plan's, with its reason) is decided by the Supervisor's
   driver on that default and recorded with its reasoning, and only scope changes, money or real charges, credentials or

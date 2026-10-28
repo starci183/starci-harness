@@ -164,16 +164,16 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/decisions.md](../harness/decisions.md) · 15 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 16 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 1 KB
-- [harness/roles.md](../harness/roles.md) · 5 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
+- [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 3 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 4 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 6 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing
 - [hfs/harness.yaml](../hfs/harness.yaml) · 17 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, bench.fixtures, bench.map, bench.scenarios, bench.stub, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, never.build-output, never.cli-js, never.env and 33 more
+  - ids: app.package, app.tree, bench.fixtures, bench.map, bench.scenarios, bench.stub, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, never.build-output, never.cli-js, never.env and 34 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 94 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 226 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 91 KB — The HFS slot manifest: what may exist in an app repository and where.
