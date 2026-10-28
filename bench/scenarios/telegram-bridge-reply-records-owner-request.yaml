@@ -11,7 +11,7 @@ expect: >-
   the Supervisor with one owner request naming the ticket, the answer and the released decision; the later /answer finds the
   ticket answered and becomes an owner request carrying the owner's words; the Supervisor's Run is mailed once per request and
   supervisor next returns the request as owner-request; the owner gets a receipt each time; an update already handled is never
-  recorded twice
+  recorded twice; the Supervisor taking up the request and stopping the workflow sends nothing
 pass:
   - the ticket answered by the owner with the reply's words, its escalation released
   - two owner requests by owner, the first naming the ticket, the answer and the decision
@@ -168,12 +168,8 @@ steps:
         mode: hard
   - seat: supervisor
     starci: [supervisor, submit, "${run}/stop.yaml"]
-  - name: the next cycle tells the owner the request was taken up and the workflow stopped, once each
+  - name: the next cycle sends nothing about the request taken up or the workflow stopped, which need no decision
     env: *tg
-    starci: [supervisor, telegram-bridge, run, --once]
-    expect:
-      contains: "request:${request}"
-  - env: *tg
     starci: [supervisor, telegram-bridge, run, --once]
     expect:
       contains: "\"sent\": []"
@@ -181,10 +177,9 @@ steps:
       sql:
         db: machine
         query: SELECT kind || ':' || status FROM telegram_notices ORDER BY kind
-        equals: ["request:sent", "ticket:sent", "workflow:sent"]
+        equals: ["ticket:sent"]
   - http:
       url: ${tg.url}/__sent
       expect:
-        contains: "workflow ask stopped"
         equals:
-          data.count: 6
+          data.count: 4

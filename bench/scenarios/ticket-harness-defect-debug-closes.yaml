@@ -1,7 +1,7 @@
 schema: starci/scenario@1
 id: ticket-harness-defect-debug-closes
 group: messaging
-title: "a harness defect becomes one Supervisor ticket in Debug's queue: a repeat bumps it, the owner hears of it once, only Debug or the owner closes it, and the close releases the escalation and wakes the Supervisor"
+title: "a harness defect becomes one Supervisor ticket in Debug's queue: a repeat bumps it, the owner's Telegram hears nothing of it, only Debug or the owner closes it, and the close releases the escalation and wakes the Supervisor"
 inject: >-
   a Kernel escalates kind harness (a red check it reads as the harness's: CHECK_SCOPE_EMPTY from
   cli/src/harness/run-checks.ts); the Supervisor files the same defect again by hand; the tick runs; the Supervisor tries to close
@@ -9,13 +9,13 @@ inject: >-
 expect: >-
   supervisor next files the escalation as one blocking harness-defect ticket opened by the supervisor, the escalation waiting
   on it; the Supervisor's own report of the same error code and module bumps its occurrences instead of opening a second; the
-  tick sends the owner one notice naming the ticket and Debug; ticket list --state open puts it first; the Supervisor's close is
-  refused ROLE_REFUSED; Debug's take marks it in-progress and its close records the commit, releases the escalation and wakes the
-  Supervisor with an owner request naming the ticket, the fix and the decision; the next tick sends one close notice naming the
-  commit
+  tick sends the owner nothing (ops/telegram.yaml notices leaves defect out); ticket list --state open puts it first; the
+  Supervisor's close is refused ROLE_REFUSED; Debug's take marks it in-progress and its close records the commit, releases the
+  escalation and wakes the Supervisor with an owner request naming the ticket, the fix and the decision; the next tick sends
+  nothing either
 pass:
   - one ticket, seen twice, opened by the supervisor, reported by the supervisor
-  - one open notice and one close notice in the owner's chat
+  - no notice in the owner's chat beyond the greeting, opened or fixed
   - a non-debug role cannot close the ticket
   - the close records the fixing commit, releases the escalation and wakes the Supervisor
   - no actor overstepping its role
@@ -90,12 +90,8 @@ steps:
         db: machine
         query: "SELECT COUNT(*) || ':' || MAX(occurrences) || ':' || MAX(opened_by) || ':' || MAX(reporters_json) FROM tickets"
         equals: ['1:2:supervisor:["supervisor"]']
-  - name: the tick tells the owner once
+  - name: the tick sends the owner nothing about a defect, which is Debug's
     env: *tg
-    starci: [supervisor, tick]
-    expect:
-      contains: "ticket:${ticket}:open:r1"
-  - env: *tg
     starci: [supervisor, tick]
     expect:
       contains: "\"sent\": []"
@@ -142,17 +138,19 @@ steps:
         db: machine
         query: "SELECT by || ':' || (text LIKE '%decision:${decision}%') FROM owner_requests"
         equals: ["debug:1"]
-  - name: the tick tells the owner of the close once
+  - name: the tick sends nothing about the fix either
     env: *tg
     starci: [supervisor, tick]
     expect:
-      contains: "ticket:${ticket}:fixed:r1"
-  - http:
+      contains: "\"sent\": []"
+  - name: the owner's chat holds the greeting alone
+    http:
       url: ${tg.url}/__sent
       expect:
-        contains: Đã sửa bởi commit abc1234
+        equals:
+          data.count: 1
   - assert:
       sql:
         db: machine
-        query: "SELECT key FROM telegram_notices WHERE kind = 'ticket' ORDER BY at"
-        equals: ["ticket:${ticket}:open:r1", "ticket:${ticket}:fixed:r1"]
+        query: SELECT COUNT(*) FROM telegram_notices
+        equals: [0]

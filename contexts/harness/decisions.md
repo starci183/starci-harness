@@ -34,11 +34,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   other workflow waits on that owner as a recorded dependency and is released, from its kept work, once the resolving commits
   are relayed onto its own branch (a relay that conflicts goes to the Supervisor as a `conflict`). It
   runs always, with no switch to turn it off (`cli/src/harness/needs.ts`, `cli/src/core/needs/tend.ts`).
-- **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
-  every ticket (a question put to the owner, a defect noticed once), owner request taken up and workflow ended is sent once to
-  the owner's chat; the owner's reply to a question answers its ticket, and any other answer there becomes an owner request
-  that wakes the Supervisor ([cli/README.md](../../cli/README.md) "The owner's Telegram channel",
-  `cli/src/harness/telegram-bridge.ts`).
+- **Telegram carries only what needs the owner's decision.** The owner's channel is the Supervisor's terminal, the desktop
+  app and Telegram. Telegram sends a question ticket awaiting his answer (scope, money, credentials, legal, a product choice with
+  no default) once as its card with buttons, reminds him of it at most once a day while it stays open, and acknowledges his
+  answer with one short line; nothing else is pushed: a workflow done, blocked or stopped, an owner request taken up, a defect
+  ticket opened or fixed and relaunches stay on `/status`, `/tickets`, the harness UI and the monitor's report. The owner's
+  reply to a question answers its ticket, and any other answer there becomes an owner request that wakes the Supervisor
+  (`notices` and `reminderHours` of [ops/telegram.yaml](../../ops/telegram.yaml), [cli/README.md](../../cli/README.md) "The
+  owner's Telegram channel", `cli/src/harness/telegram-bridge.ts`). Owner, 2026-10-29: "báo ticket nào cần thầy sửa thôi nhé ko
+  spam ntn ... cần quyết định của thầy".
 - **Host credentials live in the harness's secret.env.** The owner keeps every host credential in `secret.env` at the harness
   root, untracked; the committed [secret.env.example](../../secret.env.example) names its keys and where to get each. Agents
   and tools never open it; the CLI's secret loader reads a key policy/security.yaml `secretKeys` lists, the environment
@@ -101,7 +105,7 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   answers from the goal, the specs and the canon or escalates, and the Supervisor answers or opens one ticket. A question
   ticket (business, code, spec; an `owner` escalation with no default it may take) goes to the owner on Telegram, whose reply
   or `ticket answer` answers it, a proposed default accepted as it stands; a defect ticket (a `harness` escalation, a defect the
-  Supervisor or the monitor sees) goes to Debug's queue, blocking first then by occurrences, with one Telegram notice, and Debug
+  Supervisor or the monitor sees) goes to Debug's queue, blocking first then by occurrences, with no Telegram notice, and Debug
   closes it with the fixing commit. A repeat of the same defect (kind, error code, module) or question bumps one ticket; its
   answer or close is recorded with who gave it and why, releases every task and escalation waiting on it, wakes the Supervisor,
   and reaches every later brief of the workflow ([ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md),
@@ -125,7 +129,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   preserved, never done with its work beside the branch (`lands` in `cli/src/harness/clean-verify.ts`, `preserveEscaped` in
   `cli/src/core/task/verify.ts`). A check whose premise is stale is the Kernel's to amend, never the worker's
   (`check-premise`, `cli/src/harness/check-premise.ts`). Every escalation awaiting the owner or Debug, with or without a
-  topic, and every task left awaiting the owner becomes a ticket with its Telegram notice on the next tick or Supervisor next
+  topic, and every task left awaiting the owner becomes a ticket on the next tick or Supervisor next, a question among them sent
+  to the owner's Telegram
   (`ticketEscalations` in `cli/src/harness/tickets.ts`).
   A contract that takes another workflow's branch or landed commit as its source is refused `NEEDS_REQUIRED`: shared needs
   are mandatory across workflows (`cli/src/harness/foreign-source.ts`). Owner, 2026-10-29: the Supervisor and Kernels must

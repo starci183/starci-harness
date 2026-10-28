@@ -476,10 +476,15 @@ it (`--chat` picks among several) in machine.sqlite `telegram_channel`, never in
 is sent. A notice sweep (`connect telegram notify`, every bridge cycle, and every `supervisor tick` once the token is set and the
 chat stored, its failure reported and never failing the tick) sends, oldest first and at most `sendPerMinute`,
 each fact not sent yet across every registered ledger, after filing every escalation the Supervisor cannot rule as its
-ticket: a question ticket put to the owner (`ticket:<id>:ask`: project, workflow, topic, the question, the proposed default,
-how to answer); a defect ticket's opening and its close, once per state and round, only when it is blocking or seen more than
-`ticketOccurrences` times and while the owner has not muted them; an owner request a Supervisor command took up; and a
-workflow that is done, blocked or stopped (keyed by its status and versions). A ticket's notice is its card
+ticket, of the kinds ops/telegram.yaml `notices` lists (by default `question` alone: only what needs the owner's decision): a
+question ticket put to the owner (`question`, `ticket:<id>:ask`: project, workflow, topic, the question, the proposed default,
+how to answer) and, while it stays live, its reminder every `reminderHours` after the card went out, a reply to the card with
+its buttons keyed by the count of periods elapsed (`ticket:<id>:remind:<n>`), so at most one per period however often the
+sweep runs; a defect ticket's opening and its close (`defect`), once per state and round, only when it is blocking or seen more
+than `ticketOccurrences` times and while the owner has not muted them; an owner request a Supervisor command took up
+(`request`); and a workflow that is done, blocked or stopped (`workflow`), keyed by its status and a hash of its reason, never by
+its goal or graph version, which a Kernel amending a blocked workflow bumps every minute (`workflowNoticeKey`). A kind left out is
+never read and never sent; it stays on `/tickets`, `/status`, `ticket list`, the harness UI and the monitor's report. A ticket's notice is its card
 (`harness/telegram-tickets.ts`): the one banner of ops/telegram.yaml `banner`, uploaded once and then sent by the file id
 Telegram keeps it under (machine.sqlite `telegram_files`, uploaded again when its content changes), its Vietnamese HTML
 caption the ticket's facts (id, kind, severity, title, project, workflow, occurrences, what was tried; a question's proposed
@@ -493,7 +498,9 @@ each update is claimed once in `telegram_inbound`. A message of any chat but the
 id, never its text; the owner's reply to a live question ticket's notice, or `/answer <ticket> <text>` (`default` accepts the
 proposed default), answers that ticket as the owner's; any other reply to a notice, `/answer <id> <text>` or `/ask <project>
 <text>` is recorded as an owner request of that project by the owner (`askSupervisor`, as `supervisor ask` does), which wakes
-its Supervisor; the owner gets a receipt either way. `/tickets` lists the open tickets, blocking first, with a button per
+its Supervisor; the owner gets one short receipt either way (an answer's is `Answered <ticket>: <answer>`). `/status` sums up
+the workflows of every registered ledger in one message: per project the count by status, each blocked workflow with its
+reason and each running or paused one, then the questions awaiting the owner and the open defect tickets. `/tickets` lists the open tickets, blocking first, with a button per
 ticket and "Đã đóng hôm nay"; `/ticket <id>` shows one in full, its evidence, waiters and red tail redacted. A button press
 (`callback_query`) is acted on only from the owner's chat, through the ticket functions the verbs use, then answered
 (`answerCallbackQuery`) and its card's keyboard edited to the new state (`editMessageReplyMarkup`); a press from any other

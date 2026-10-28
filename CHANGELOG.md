@@ -6,6 +6,26 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **Telegram carries only what needs the owner's decision** (owner, 2026-10-29). ops/telegram.yaml `notices` lists the notice
+  kinds that go out, `question` alone by default: a question ticket awaiting the owner is sent once as its card, reminded at
+  most once per `reminderHours` (24) while it stays open as a reply to the card with its buttons, and an answer is acknowledged
+  with one short line. Workflow done, blocked or stopped, owner requests taken up and defect tickets opened or fixed are no
+  longer sent (`workflow`, `request`, `defect` switch them back on); they stay on `/status`, `/tickets`, the harness UI and the
+  monitor's report. Bench: `telegram-owner-decisions-only`; `ticket-telegram-card-buttons` switches `defect` on.
+
+### Added
+
+- **`/status` on Telegram.** One message summing up the workflows of every registered ledger: counts by status per project,
+  each blocked workflow with its reason, each running or paused one, the questions awaiting the owner and the open defects.
+
+### Fixed
+
+- **A workflow notice is sent once per state.** Its key held the goal and graph versions, which a Kernel amending a blocked
+  workflow bumps every minute, so "workflow lesson-ai is blocked" went out at 2:59, 3:00 and 3:02; it is now keyed by status and
+  a hash of the reason (`workflowNoticeKey`). Bench: `telegram-workflow-notice-once-per-state`.
+
 ## [1.1.0-alpha.6] - 2026-10-29
 
 - **Desktop app 0.2.0, released as latest.** The app-v* release is no longer a pre-release, so the repository sidebar shows it; README gains a Packages section with every published package, its npm link and a live version badge.

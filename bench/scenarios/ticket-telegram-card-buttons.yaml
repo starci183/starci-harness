@@ -3,7 +3,7 @@ id: ticket-telegram-card-buttons
 group: owner
 title: "each ticket reaches the owner as the banner with its facts and buttons, uploaded once; the owner's button accepts a question's default and releases its escalation, /tickets lists the open ones, and a foreign press is ignored"
 inject: >-
-  a Kernel escalates kind owner (topic scope) proposing a default, and kind harness; the tick runs; a chat that is not the
+  ops/telegram.yaml notices switched to question and defect; a Kernel escalates kind owner (topic scope) proposing a default, and kind harness; the tick runs; a chat that is not the
   owner's presses the question's "Đồng ý mặc định"; then the owner presses it; then the owner sends /tickets
 expect: >-
   the tick sends each ticket as one photo of the banner with its facts as the caption and its buttons: the question with accept
@@ -22,6 +22,14 @@ env:
   TELEGRAM_BOT_TOKEN: ""
   STARCI_TELEGRAM_API: http://127.0.0.1:9
 steps:
+  - name: an ops/ copy with defect notices switched on beside the questions, read by the Telegram steps alone
+    write: { path: ops, from: "${ops}" }
+  - env: {STARCI_OPS_DIR: "${repo}/ops"}
+    starci: [config, set, telegram.notices, '["question","defect"]']
+    expect:
+      contains: "telegram.notices"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy with defect notices"]
   - serve:
       stub: telegram
       as: tg
@@ -32,6 +40,7 @@ steps:
   - env: &tg
       TELEGRAM_BOT_TOKEN: ${tg.token}
       STARCI_TELEGRAM_API: ${tg.url}
+      STARCI_OPS_DIR: ${repo}/ops
     starci: [connect, telegram, discover-chat]
   - file:
       path: wf.yaml

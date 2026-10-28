@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { basename } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { registeredRepositories } from "./project-workers.js"
@@ -7,8 +8,8 @@ import { readMachine, textOf } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
 import { inOrder } from "./sequential.js"
 import { liveSupervisors, projectOfRecord, supervisorTitle } from "./supervisor.js"
-import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenSource, withChannelStore } from "./telegram.js"
-import type { Channel, Keyboard, TelegramBot, TelegramConfig, TelegramMessage, TelegramUpdate } from "./telegram.js"
+import { chatName, escapeHtml, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenSource, withChannelStore } from "./telegram.js"
+import type { Channel, Keyboard, NoticeKind, TelegramBot, TelegramConfig, TelegramMessage, TelegramUpdate } from "./telegram.js"
 import { handleTicketCallback, mutedUntil, openTicketsMessage, sendTicketCard, takePending, ticketCaption, ticketDetails, ticketKeyboard } from "./telegram-tickets.js"
 import type { CardStage } from "./telegram-tickets.js"
 import { closeTicket, findTicket, isLive, isQuestion, listTickets, ticketHostEscalations, wakeOnClose } from "./tickets.js"
@@ -16,10 +17,12 @@ import type { Ticket } from "./tickets.js"
 import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
 import { listWorkflows } from "./workflow.js"
+import type { WorkflowRow } from "./workflow.js"
 
 /**
- * One fact the owner hears about once: a ticket (an escalation the Supervisor cannot rule: an owner question put to the owner, or
- * a harness defect for Debug, opened, reopened by a repeat or closed), an owner request taken up, and a workflow that ended.
+ * One fact the owner hears about once, of one of the kinds ops/telegram.yaml `notices` switches: a question ticket put to the
+ * owner and its reminder, a defect ticket opened, reopened by a repeat or closed, an owner request taken up, and a workflow that
+ * ended. A kind left out of `notices` is never read, so it is never sent.
  */
 interface Notice {
     readonly key: string
@@ -31,6 +34,8 @@ interface Notice {
     readonly at: string
     /** A ticket's notice is sent as its card: the ticket and which notice of it this is. */
     readonly card?: { readonly ticket: Ticket; readonly stage: CardStage }
+    /** A reminder is a reply to the card it reminds of, by that card's message id. */
+    readonly replyTo?: number
 }
 
 const clip = (text: string, chars: number): string => {
@@ -39,6 +44,14 @@ const clip = (text: string, chars: number): string => {
 }
 
 const ENDED: Readonly<Record<string, string>> = { done: "is done", blocked: "is blocked", stopped: "stopped" }
+
+/**
+ * The key of a workflow's notice: one per workflow, status and reason, so a workflow is noticed once per state it ends in. Its
+ * goal and graph versions are no part of it: a Kernel amending a blocked workflow bumps them every minute without changing what
+ * the owner would hear (2026-10-29: "lesson-ai is blocked" went out at 2:59, 3:00 and 3:02).
+ */
+export const workflowNoticeKey = (project: Project, workflow: Pick<WorkflowRow, "id" | "status" | "reason">): string =>
+    `workflow:${project.key}:${workflow.id}:${workflow.status}:${createHash("sha256").update(workflow.reason ?? "").digest("hex").slice(0, 12)}`
 
 /** The facts of one registered repository's ledger: workflows that ended, since `since`. */
 const ledgerNotices = (repo: string, project: Project, since: string, chars: number): Notice[] => {
@@ -51,8 +64,7 @@ const ledgerNotices = (repo: string, project: Project, since: string, chars: num
             if (ended === undefined || at <= since) return []
             const reason = workflow.reason === null ? "" : `: ${clip(workflow.reason, chars)}`
             const text = [`[StarCi] ${project.name} · workflow ${workflow.id} ${ended}${reason}`, `More to do: reply to this message, or send /ask ${project.name} <request>.`].join("\n")
-            const key = `workflow:${project.key}:${workflow.id}:${workflow.status}:g${String(workflow.goalVersion)}v${String(workflow.graphVersion)}`
-            return [{ key, kind: "workflow", project, workflow: workflow.id, subject: workflow.id, text, at }]
+            return [{ key: workflowNoticeKey(project, workflow), kind: "workflow", project, workflow: workflow.id, subject: workflow.id, text, at }]
         })
         return workflows
     } finally {
@@ -83,18 +95,49 @@ const repositoryProjects = async (): Promise<{ readonly repo: string; readonly p
     return found.flat()
 }
 
+/** A question's card as sent: when, and the message id its reminder replies to; undefined until it was sent. */
+const sentCard = (key: string): { readonly sentAt: string; readonly messageId: number } | undefined =>
+    withChannelStore((db) => {
+        const row = db.prepare("SELECT sent_at, message_id FROM telegram_notices WHERE key = ? AND status = 'sent'").get(key)
+        const sentAt = textOf(row?.sent_at)
+        const messageId = row?.message_id
+        return sentAt === null || typeof messageId !== "number" ? undefined : { sentAt, messageId }
+    })
+
 /**
- * The tickets' facts since `since`, each sent as a ticket card (harness/telegram-tickets.ts: the banner, the facts as its caption,
- * the buttons). A question is put to the owner once. A defect is noticed once per state and round: its opening (and its
- * reopening by a repeat after a fix) and its end; one below blocking severity is harness-internal noise, noticed only once seen
- * more than `occurrences` times (ops/telegram.yaml ticketOccurrences), and every defect notice waits while the owner muted them.
+ * The reminder of a live question whose card went out at least `hours` ago: one per `hours` elapsed since, keyed by that count,
+ * so it goes out at most once in any `hours` however often the sweep runs, and only the latest one due after the bridge was down.
  */
-const ticketNotices = (since: string, chars: number, occurrences: number): Notice[] => {
-    const muted = mutedUntil() !== null
+const reminderOf = (ticket: Ticket, hours: number, at: number): { readonly key: string; readonly at: string; readonly replyTo: number } | undefined => {
+    const card = sentCard(`ticket:${ticket.id}:ask`)
+    if (card === undefined) return undefined
+    const span = hours * 3_600_000
+    const due = Math.floor((at - Date.parse(card.sentAt)) / span)
+    if (due < 1) return undefined
+    return { key: `ticket:${ticket.id}:remind:${String(due)}`, at: new Date(Date.parse(card.sentAt) + due * span).toISOString(), replyTo: card.messageId }
+}
+
+/**
+ * The tickets' facts since `since`, of the kinds `kinds` holds, each sent as a ticket card (harness/telegram-tickets.ts: the
+ * banner, the facts as its caption, the buttons). A question is put to the owner once, then reminded while it stays live
+ * (`reminderOf`, every ops/telegram.yaml reminderHours). A defect is noticed once per state and round: its opening (and its
+ * reopening by a repeat after a fix) and its end; one below blocking severity is harness-internal noise, noticed only once seen
+ * more than ticketOccurrences times, and every defect notice waits while the owner muted them.
+ */
+const ticketNotices = (since: string, config: TelegramConfig, kinds: ReadonlySet<NoticeKind>): Notice[] => {
+    const chars = config.questionChars
+    const muted = kinds.has("defect") && mutedUntil() !== null
+    const at = Date.now()
     return listTickets({}).flatMap((ticket): Notice[] => {
-        const card = (stage: CardStage, key: string, at: string): Notice => ({ key, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text: ticketCaption(ticket, stage, chars), at, card: { ticket, stage } })
-        if (isQuestion(ticket.kind)) return [card("ask", `ticket:${ticket.id}:ask`, ticket.openedAt)].filter((notice) => notice.at > since)
-        if (muted || (ticket.severity !== "blocking" && ticket.occurrences <= occurrences)) return []
+        const question = isQuestion(ticket.kind)
+        if (!kinds.has(question ? "question" : "defect")) return []
+        const card = (stage: CardStage, key: string, noticeAt: string): Notice => ({ key, kind: "ticket", project: ticket.project, workflow: ticket.workflow, subject: ticket.id, text: ticketCaption(ticket, stage, chars), at: noticeAt, card: { ticket, stage } })
+        if (question) {
+            const reminder = isLive(ticket.state) ? reminderOf(ticket, config.reminderHours, at) : undefined
+            const reminders = reminder === undefined ? [] : [{ ...card("remind", reminder.key, reminder.at), replyTo: reminder.replyTo }]
+            return [card("ask", `ticket:${ticket.id}:ask`, ticket.openedAt), ...reminders].filter((notice) => notice.at > since)
+        }
+        if (muted || (ticket.severity !== "blocking" && ticket.occurrences <= config.ticketOccurrences)) return []
         const round = `r${String(ticket.round)}`
         const open = card("open", `ticket:${ticket.id}:open:${round}`, ticket.severity === "blocking" ? ticket.openedAt : ticket.lastSeenAt)
         const closedAt = ticket.closedAt
@@ -103,11 +146,13 @@ const ticketNotices = (since: string, chars: number, occurrences: number): Notic
     })
 }
 
-/** Every fact noticed since the channel was connected, oldest first. */
+/** Every fact noticed since the channel was connected, of the kinds ops/telegram.yaml `notices` lists, oldest first. */
 const pendingNotices = async (since: string, config: TelegramConfig): Promise<Notice[]> => {
     const chars = config.questionChars
-    const ledgers = (await repositoryProjects()).flatMap(({ repo, project }) => ledgerNotices(repo, project, since, chars))
-    return [...ledgers, ...requestNotices(since, chars), ...ticketNotices(since, chars, config.ticketOccurrences)].sort((a, b) => a.at.localeCompare(b.at) || a.key.localeCompare(b.key))
+    const kinds = new Set(config.notices)
+    const ledgers = kinds.has("workflow") ? (await repositoryProjects()).flatMap(({ repo, project }) => ledgerNotices(repo, project, since, chars)) : []
+    const requests = kinds.has("request") ? requestNotices(since, chars) : []
+    return [...ledgers, ...requests, ...ticketNotices(since, config, kinds)].sort((a, b) => a.at.localeCompare(b.at) || a.key.localeCompare(b.key))
 }
 
 /** Claims a notice to send: new, or failed with tries left; a notice sent or being sent is never claimed again. */
@@ -137,6 +182,14 @@ const claim = (notice: Notice, chatId: string, tries: number): boolean =>
 const allowance = (perMinute: number): number =>
     withChannelStore((db) => perMinute - Number(db.prepare("SELECT COUNT(*) AS n FROM telegram_notices WHERE status IN ('sent', 'sending') AND at > ?").get(new Date(Date.now() - 60_000).toISOString())?.n ?? 0))
 
+/** Sends one notice: a plain text, a reminder as an HTML reply to its card with the card's buttons, or a ticket's card. */
+const sendNotice = async (bot: TelegramBot, chatId: string, notice: Notice): Promise<number> => {
+    if (notice.card === undefined) return sendMessage(bot, chatId, notice.text)
+    const keyboard = ticketKeyboard(notice.card.ticket, notice.card.stage, bot.config)
+    if (notice.replyTo !== undefined) return sendMessage(bot, chatId, notice.text, notice.replyTo, { html: true, keyboard })
+    return sendTicketCard(bot, chatId, notice.text, keyboard)
+}
+
 /** What one sweep did. */
 export interface Sweep {
     readonly sent: readonly string[]
@@ -165,7 +218,7 @@ export const sweepNotices = async (bot: TelegramBot, channel: Channel & { readon
         if (!claim(notice, channel.chatId, config.sendTries)) return
         budget -= 1
         try {
-            const messageId = notice.card === undefined ? await sendMessage(bot, channel.chatId, notice.text) : await sendTicketCard(bot, channel.chatId, notice.text, ticketKeyboard(notice.card.ticket, notice.card.stage, config))
+            const messageId = await sendNotice(bot, channel.chatId, notice)
             withChannelStore((db) => db.prepare("UPDATE telegram_notices SET status = 'sent', message_id = ?, sent_at = ?, error = NULL WHERE key = ?").run(messageId, now(), notice.key))
             sent.push(notice.key)
         } catch (error: unknown) {
@@ -233,7 +286,58 @@ const projectNamed = async (name: string): Promise<{ readonly project: Project |
     return { project: projects.find((project) => project.name.toLowerCase() === wanted || project.key === name), known: projects.map((project) => project.name) }
 }
 
-const HELP = "Reply to a StarCi notice to answer it, or send /answer <decision or ticket id> <answer>, or /ask <project> <request>."
+const HELP = "Reply to a StarCi question to answer it, or send /answer <ticket id> <answer>, /ask <project> <request>, /status for the workflows, /tickets for the open tickets."
+
+const STATUS_ORDER = ["blocked", "running", "paused", "stopping", "defined", "done", "stopped"] as const
+
+/**
+ * `/status`: one message summing up the workflows of every registered repository on demand, the notices left out of
+ * ops/telegram.yaml `notices` read here instead: per project the count by status, then each blocked workflow with its reason and
+ * each running or paused one, then the questions awaiting the owner and the open defect tickets.
+ */
+const statusMessage = async (chars: number): Promise<string> => {
+    const byProject = new Map<string, { readonly name: string; readonly workflows: Map<string, WorkflowRow> }>()
+    for (const { repo, project } of await repositoryProjects()) {
+        const db = openExistingLedger(repo)
+        if (db === undefined) continue
+        try {
+            const entry = byProject.get(project.key) ?? { name: project.name, workflows: new Map<string, WorkflowRow>() }
+            for (const workflow of listWorkflows(db)) if (!entry.workflows.has(workflow.id)) entry.workflows.set(workflow.id, workflow)
+            byProject.set(project.key, entry)
+        } finally {
+            db.close()
+        }
+    }
+    const projects = [...byProject.values()].filter((entry) => entry.workflows.size > 0).toSorted((a, b) => a.name.localeCompare(b.name))
+    const lines = projects.flatMap(({ name, workflows }) => {
+        const all = [...workflows.values()]
+        const counts = STATUS_ORDER.flatMap((status) => {
+            const n = all.filter((workflow) => workflow.status === status).length
+            return n === 0 ? [] : [`${String(n)} ${status}`]
+        })
+        const live = STATUS_ORDER.slice(0, 3).flatMap((status) => all.filter((workflow) => workflow.status === status).toSorted((a, b) => a.id.localeCompare(b.id)))
+        return [
+            `<b>${escapeHtml(name)}</b>: ${counts.join(", ")}`,
+            ...live.map((workflow) => `${workflow.status === "blocked" ? "🔴" : workflow.status === "paused" ? "⏸" : "🟢"} ${escapeHtml(workflow.id)} ${workflow.status}${workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""}`),
+        ]
+    })
+    const open = [...listTickets({ state: "open" }), ...listTickets({ state: "in-progress" })]
+    const questions = open.filter((ticket) => isQuestion(ticket.kind)).length
+    const tickets = `Câu hỏi chờ trả lời: ${String(questions)} · ticket lỗi đang mở: ${String(open.length - questions)} (/tickets)`
+    const body = lines.length === 0 ? ["Không có workflow nào."] : lines
+    // One Telegram message holds 4096 characters: whole lines are dropped from the end, never cut through an HTML tag.
+    const kept: string[] = []
+    let length = tickets.length + 40
+    for (const line of body) {
+        if (length + line.length + 1 > 4000) {
+            kept.push("…")
+            break
+        }
+        kept.push(line)
+        length += line.length + 1
+    }
+    return ["📊 <b>Trạng thái workflow</b>", ...kept, tickets].join("\n")
+}
 
 /** What the owner's message asks: a request for a project, or a reply explaining why nothing was recorded. */
 type Target = { readonly project: Project; readonly text: string; readonly ticket?: string; readonly body?: string } | { readonly reply: string; readonly outcome: string; readonly html?: boolean; readonly keyboard?: Keyboard }
@@ -268,6 +372,7 @@ const targetOf = async (message: TelegramMessage, chatId: string): Promise<Targe
             if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
             return { project, text: body }
         }
+        if (verb === "status") return { reply: await statusMessage(loadTelegram().questionChars), outcome: "status", html: true }
         if (verb === "tickets") {
             const list = openTicketsMessage()
             return { reply: list.text, outcome: "tickets", html: true, keyboard: list.keyboard }
@@ -361,7 +466,7 @@ export const handleUpdate = async (bot: TelegramBot, chatId: string, update: Tel
     if (answered !== undefined) {
         const outcome = `answered ${target.ticket ?? "-"}`
         settleUpdate(update.update_id, outcome, answered.request, target.project.key)
-        await sendMessage(bot, chatId, `Answered ${target.ticket ?? "-"}: ${clip(answered.answer, 300)}. ${supervisorTitle(target.project.name)} resumes the work waiting on it.`, message.message_id).catch(() => undefined)
+        await sendMessage(bot, chatId, `Answered ${target.ticket ?? "-"}: ${clip(answered.answer, 80)}`, message.message_id).catch(() => undefined)
         return { update: update.update_id, outcome, request: answered.request }
     }
     const { request, mail } = await askSupervisor(target.project, "owner", target.text, cwd)

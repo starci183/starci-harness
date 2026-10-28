@@ -8,7 +8,7 @@ import type { VerbResult } from "../../shared/verb.js"
 
 const ACTIONS = ["discover-chat", "status", "notify"] as const
 
-const CONNECTED = "StarCi is connected: questions for you arrive here. Reply to a notice to answer it, or send /ask <project> <request>."
+const CONNECTED = "StarCi is connected: only questions that need your decision arrive here. Reply to one to answer it; /status sums up the workflows, /tickets lists the open tickets, /ask <project> <request> sends a request."
 
 /**
  * `starci connect telegram <discover-chat|status|notify>`: the owner's Telegram channel. `discover-chat` reads the bot's updates

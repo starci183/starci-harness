@@ -12,8 +12,8 @@ import type { Keyboard, TelegramBot, TelegramCallback, TelegramConfig } from "./
 import { closeLine, closeTicket, findTicket, isLive, isQuestion, listTickets, reopenTicket, takeTicket, ticketsClosedSince, waitersOf, wakeOnClose } from "./tickets.js"
 import type { Ticket, TicketKind } from "./tickets.js"
 
-/** Which notice of a ticket a card is: a defect's opening, a question put to the owner, or an end. */
-export type CardStage = "open" | "ask" | "closed"
+/** Which notice of a ticket a card is: a defect's opening, a question put to the owner, its reminder, or an end. */
+export type CardStage = "open" | "ask" | "remind" | "closed"
 
 const KIND_LABEL: Readonly<Record<TicketKind, string>> = {
     "harness-defect": "lỗi harness",
@@ -52,6 +52,7 @@ export const ticketCaption = (ticket: Ticket, stage: CardStage, chars: number): 
     const field = Math.min(chars, 260)
     const head = `${toneOf(ticket, stage)} <b>${isQuestion(ticket.kind) ? "Câu hỏi" : "Ticket"} ${ticket.id}</b> · ${KIND_LABEL[ticket.kind]}${ticket.evidence.topic === undefined ? "" : ` (${escapeHtml(ticket.evidence.topic)})`}${isQuestion(ticket.kind) ? "" : `, ${ticket.severity === "blocking" ? "chặn" : "thường"}`}`
     const tried = ticket.tried === null ? [] : [`Đã thử: ${html(ticket.tried, field)}`]
+    if (stage === "remind") return [`⏰ <b>Nhắc: câu hỏi ${ticket.id}</b> vẫn chờ câu trả lời.`, `<b>${html(ticket.title, field)}</b>`, where(ticket), `Trả lời: chọn nút, trả lời tin này, hoặc /answer ${ticket.id} &lt;câu trả lời&gt;.`].join("\n").slice(0, 1024)
     const lines =
         stage === "ask"
             ? [
@@ -94,7 +95,7 @@ const LIST_BUTTON = { text: "Danh sách ticket", callback_data: data("l") }
  */
 export const ticketKeyboard = (ticket: Ticket, stage: CardStage, config: TelegramConfig): Keyboard => {
     const id = ticket.id
-    if (stage === "ask") {
+    if (stage === "ask" || stage === "remind") {
         return [
             ...(ticket.proposedDefault === null ? [] : [[{ text: "Đồng ý mặc định", callback_data: data("a", id, "d") }]]),
             ...ticket.options.slice(0, 8).map((option, index) => [{ text: clip(option, 60), callback_data: data("a", id, String(index)) }]),
