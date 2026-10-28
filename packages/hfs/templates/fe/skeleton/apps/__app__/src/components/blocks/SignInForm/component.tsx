@@ -1,14 +1,16 @@
 import { Button, Form, Input, SectionHeader, Text } from "@starci/grammar/common"
 
-/** Copy, state and action supplied by the connected sign-in block. */
+/** Copy, the pending flag, the first error message and the action supplied by the connected sign-in block. */
 export interface SignInFormBaseProps {
-    readonly state: "ready" | "working" | "failed"
     readonly props: {
         readonly title: string
         readonly emailLabel: string
         readonly passwordLabel: string
         readonly submitLabel: string
-        readonly failure: string | undefined
+        /** True while the sign-in request runs. */
+        readonly pending: boolean
+        /** The resolved message of the last refused sign-in, or undefined. */
+        readonly errorMessage: string | undefined
     }
     readonly on: { readonly submit: (input: FormData) => void }
 }
@@ -17,11 +19,11 @@ export interface SignInFormBaseProps {
 export const SignInFormBase = (props: SignInFormBaseProps) => (
     <>
         <SectionHeader title={props.props.title} level={2} />
-        <Form label={props.props.title} isPending={props.state === "working"} onSubmit={props.on.submit}>
+        <Form label={props.props.title} isPending={props.props.pending} onSubmit={props.on.submit}>
             <Input id="sign-in-email" name="email" label={props.props.emailLabel} kind="email" isRequired />
             <Input id="sign-in-password" name="password" label={props.props.passwordLabel} kind="password" isRequired />
-            {props.props.failure === undefined ? null : <Text live="assertive">{props.props.failure}</Text>}
-            <Button type="submit" intent="commit" isPending={props.state === "working"}>
+            {props.props.errorMessage === undefined ? null : <Text live="assertive">{props.props.errorMessage}</Text>}
+            <Button type="submit" intent="commit" isPending={props.props.pending}>
                 {props.props.submitLabel}
             </Button>
         </Form>

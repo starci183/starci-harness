@@ -225,6 +225,7 @@ test("FE-CLIENT-2b: a module that uses the server marks itself server-only", () 
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: 'import { headers } from "next/headers"\nexport default async function Page() { await headers(); return null }' },
       { filename: at("apps/web/src/app/health/live/route.ts"), code: 'import { NextResponse } from "next/server"\nexport const GET = () => NextResponse.json({})' },
       { filename: at("apps/web/src/proxy.ts"), code: 'import { NextResponse } from "next/server"\nexport const proxy = () => NextResponse.next()' },
+      { filename: at("apps/web/src/app/auth/callback/route.ts"), code: 'import { NextResponse } from "next/server"\nimport { readMarked } from "../../../modules/marked/read-marked"\nexport const GET = async () => { await readMarked(); return NextResponse.json({}) }' },
       // a server COMPONENT (feature page, connected block) is judged by reachability (FE_CLIENT_REACHES_SERVER), not by a marker:
       // a components/blocks/<name>/index.tsx that imports a marked reader needs no marker of its own
       { filename: FEATURE, code: 'import { getTranslations } from "next-intl/server"\nexport default async function Home() { await getTranslations(); return null }' },
