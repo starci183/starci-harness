@@ -553,7 +553,7 @@ const finalVerify = async (context: VerbContext, root: string, snapshot: Snapsho
     let verdict: "green" | "red"
     let reason: string
     try {
-        const run = await checkRunVerb.run({ ...context, cwd: checkout }, { base: "HEAD", all: false, task: undefined, workflow: snapshot.workflow.id, within: false, paths: [] })
+        const run = await checkRunVerb.run({ ...context, cwd: checkout }, { base: "HEAD", all: false, task: undefined, workflow: snapshot.workflow.id, within: false, wave: undefined, paths: [] })
         verdict = run.exitCode === 1 ? "red" : "green"
         reason = verdict === "green" ? "the deferred modules are composed" : `a deferred module is not composed: ${redSteps(run.data).join("\n")}`
     } catch (error: unknown) {

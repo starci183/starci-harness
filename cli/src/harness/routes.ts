@@ -6,6 +6,7 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { readContract } from "./contract.js"
 import { CHANGE_SCHEMA } from "./graph.js"
+import { opWorktreeOf } from "./land.js"
 import { laneOf, loadLanes, recordsOf, repoOfLedger } from "./lanes.js"
 import { loadOps } from "./ops.js"
 import type { Ops } from "./ops.js"
@@ -106,8 +107,9 @@ export const routeOptions = (db: DatabaseSync, workflowId: string, kind: RoutedK
     const cause = causeOf(db, taskId, kind)
     const ops = loadOps()
     const build = (): string | undefined => {
-        const repo = task.worktree ?? repoOfLedger(db)
-        if (repo === undefined || !existsSync(repo)) return undefined
+        // A settled task's Op worktree is removed: its records are read where it lands, else from the ledger's repository.
+        const repo = [task.worktree ?? undefined, opWorktreeOf(db, task.id)?.target, repoOfLedger(db)].find((candidate): candidate is string => candidate !== undefined && existsSync(candidate))
+        if (repo === undefined) return undefined
         const lanes = loadLanes(ops)
         return recordsOf(task.contract, repo)
             .map((ref) => laneOf(ref, lanes, repo)?.build)

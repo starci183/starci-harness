@@ -3,11 +3,13 @@ id: verify-sibling-dirt-not-judged
 group: verify
 title: another task's uncommitted work in the shared checkout neither fails a task's paths-only nor reaches its lint, its candidate or its preserve
 inject: "before the task's work begins, another task left an untracked file holding a lint error inside the task's allowPaths and an untracked script outside them"
+# A workflow's task works in its own Op worktree, which holds no other task's dirt (verify-op-judged-from-its-fork). The
+# checkout that is shared is the owner's: a task outside a workflow, sent and launched from it, works there beside the dirt.
 expect: >-
-  the task's work begins with a baseline of its checkout; verify judges only what changed since: the candidate leaves the
-  leftover inside allowPaths out (named in lands), paths-only clears the leftover outside allowPaths as there before the
-  task, and check-run-green lints only the task's own file, so the task settles done; the leftovers stay in the checkout,
-  untouched and uncommitted; a later red task neither preserves nor resets them
+  the task sent from the owner's checkout begins its work there with a baseline of the checkout; verify judges only what
+  changed since: the candidate leaves the leftover inside allowPaths out (named in lands), paths-only clears the leftover
+  outside allowPaths as there before the task, and check-run-green lints only the task's own file, so the task settles done;
+  the leftovers stay in the checkout, untouched and uncommitted; a later red task neither preserves nor resets them
 pass:
   - the task is done; its settle commit holds its own file and neither leftover
   - lands names the leftover inside allowPaths as left out, paths-only names the one outside as there before the task
@@ -27,6 +29,8 @@ steps:
   - write: { path: node_modules/eslint, from: "${ops}/../bench/fixtures/lint-findings/stand-ins/eslint" }
   - git: [add, -A]
   - git: [commit, -q, -m, "bench: the lint fixture"]
+  - name: boot the project's Supervisor, whose terminal launches the owner's tasks
+    boot: {}
   - name: another task's leftovers sit in the checkout, one inside the allowPaths and one outside
     write:
       path: src/smoke.ts
@@ -35,37 +39,29 @@ steps:
       path: build-smoke.cjs
       content: "module.exports = 1\n"
   - file:
-      path: wf.yaml
-      yaml:
-        schema: starci/workflow@1
-        id: own
-        goal: the app counts to two
-        runner: inline
-        tasks:
-          - id: count
-            label: docs
-            summary: make the app count to two
-            allowPaths: [src]
-            checks: [check-run-green]
-          - id: broken
-            label: docs
-            summary: a task whose work fails its checks
-            allowPaths: [src]
-            dependsOn: [count]
-            checks: [check-run-green]
-  - name: define
-    starci: [workflow, define, "${run}/wf.yaml"]
-  - name: start, which begins the task's work with its baseline
-    starci: [workflow, start, own]
+      path: count.json
+      content: >-
+        {"schema": "starci/contract@2", "label": "docs", "context": {"revision": "HEAD", "allowPaths": ["src"]},
+        "input": {"summary": "make the app count to two"}, "budget": {"minutes": 10, "tries": 1},
+        "checks": {"extend": [{"preset": "check-run-green"}]}}
+  - file:
+      path: broken.json
+      content: >-
+        {"schema": "starci/contract@2", "label": "docs", "context": {"revision": "HEAD", "allowPaths": ["src"]},
+        "input": {"summary": "a task whose work fails its checks"}, "budget": {"minutes": 10, "tries": 1},
+        "checks": {"extend": [{"preset": "check-run-green"}]}}
+  - name: the task is sent from the owner's checkout and launched there, which begins its work with its baseline
+    seat: supervisor
+    starci: [task, send, "${run}/count.json", --launch, --agent, claude, --model, claude-sonnet-4-6]
     save:
-      count: data.nodes.0.task.id
+      count: data.task
   - name: the worker changes its own file
     worker:
       task: ${count}
       files:
         src/app.ts: "export const app = 2\n"
-  - name: step verifies it on what it changed alone
-    starci: [workflow, step, own]
+  - name: verify judges it on what it changed alone
+    starci: [task, verify, "${count}"]
   - assert:
       sql:
         db: ledger
@@ -93,17 +89,18 @@ steps:
         equals: [1]
   - name: the settle commit holds the task's file alone
     git: [diff, --exit-code, --quiet, "HEAD~1", HEAD, --, src/smoke.ts, build-smoke.cjs]
-  - read:
-      db: ledger
-      query: "SELECT id FROM tasks WHERE plan_key = 'broken'"
-      as: broken
-  - name: the next task's work fails its lint
+  - name: the next task is sent and launched from the same checkout
+    seat: supervisor
+    starci: [task, send, "${run}/broken.json", --launch, --agent, claude, --model, claude-sonnet-4-6]
+    save:
+      broken: data.task
+  - name: its work fails its lint
     worker:
       task: ${broken}
       files:
         src/app.ts: "export const app = 3 // LINT_ERROR\n"
   - name: its red verify preserves and resets its own work only
-    starci: [workflow, step, own]
+    starci: [task, verify, "${broken}"]
     expect:
       exit: 1
   - assert:
