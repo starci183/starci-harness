@@ -74,6 +74,20 @@ export const explainLaunchFailure = async (binary: OrcaBinary, error: Refusal, c
     return { ...base, kind: prompt === null ? kind : BLOCKED_PROMPT, prompt, screen, screenNote: null }
 }
 
+/**
+ * The screen row that shows a pasted dispatch, wherever the marker sits on it (an agent draws it after its prompt glyph and
+ * any text before it); a marker the screen wrapped over two rows is found on the pair joined back.
+ */
+export const pastedLine = (rows: readonly string[], patterns: readonly string[]): string | undefined => {
+    const shows = (text: string): boolean => patterns.some((pattern) => new RegExp(pattern, "i").test(text))
+    for (const [index, row] of rows.entries()) {
+        if (shows(row)) return row
+        const next = rows[index + 1]
+        if (next !== undefined && (shows(`${row.trimEnd()}${next.trimStart()}`) || shows(`${row.trimEnd()} ${next.trimStart()}`))) return `${row.trimEnd()} ${next.trimStart()}`
+    }
+    return undefined
+}
+
 /** The event a composer re-submit records on its seat (data: the attempt number, the terminal, the matching line). */
 export const COMPOSER_RESUBMITTED = "seat-composer-resubmitted"
 
@@ -89,7 +103,7 @@ export const resubmitPendingComposer = async (binary: OrcaBinary, cwd: string, r
     const sent = withLedgerOf(root, (db) => Number(db.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = ? AND subject = ?").get(COMPOSER_RESUBMITTED, seat.id)?.n ?? 0))
     if (sent >= resubmitMax) return null
     const rows = await terminalRead(binary, seat.terminal, routing.blockedPrompts.screenLines * 2, cwd).catch(() => null)
-    const line = rows === null ? undefined : lastLines(rows, routing.blockedPrompts.screenLines).find((row) => patterns.some((pattern) => new RegExp(pattern, "i").test(row)))
+    const line = rows === null ? undefined : pastedLine(lastLines(rows, routing.blockedPrompts.screenLines), patterns)
     if (line === undefined) return null
     const terminal = seat.terminal
     await terminalSubmit(binary, { terminal, retryRequest: requestIdOf("composer-submit", `${seat.id}\0${String(sent + 1)}`) }, cwd)

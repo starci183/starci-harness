@@ -25,13 +25,13 @@ export interface GcEntry {
 
 const ENDED_WORKFLOW = new Set(["done", "stopped"])
 
-interface Listed {
+export interface Listed {
     readonly path: string
     readonly branch: string | null
 }
 
 /** The linked worktrees git lists for a repository (its main checkout aside). */
-const listWorktrees = async (root: string): Promise<Listed[]> => {
+export const listWorktrees = async (root: string): Promise<Listed[]> => {
     const out = await git(root, ["worktree", "list", "--porcelain"])
     const main = await mainCheckout(root)
     return out
@@ -40,7 +40,8 @@ const listWorktrees = async (root: string): Promise<Listed[]> => {
         .filter((entry) => entry.path !== "" && !samePath(entry.path, main))
 }
 
-const inside = (folder: string, path: string): string | undefined => {
+/** `path` relative to `folder` with forward slashes, or undefined when it lies outside it. */
+export const inside = (folder: string, path: string): string | undefined => {
     const rel = relative(folder, path)
     return rel === "" || rel.startsWith("..") || rel.includes(":") ? undefined : rel.split(sep).join("/")
 }
@@ -129,6 +130,22 @@ const landedPackages = async (): Promise<GcEntry[]> => {
         return { path: worktree, kind: "package", owner: String(row.branch), due: landed, reason: landed ? `${String(row.branch)} is on main` : `${String(row.branch)} is not landed yet`, preserved: null, removed: false, detail: "" }
     })
     return found.filter((entry): entry is GcEntry => entry !== undefined)
+}
+
+/**
+ * Removes every worktree the harness made for a repository whose project is retired (`project retire`): each one under its state
+ * folder is due whatever its owner's state, since no sweep or tick reaches a retired ledger again. Its uncommitted work is
+ * preserved first, links are unlinked as links, removal goes through Orca and git, and branches stay.
+ */
+export const retireWorktrees = async (root: string): Promise<GcEntry[]> => {
+    const stateWorktrees = join(projectDir(root), "worktrees")
+    const listed = (await listWorktrees(root)).filter((entry) => inside(stateWorktrees, entry.path) !== undefined)
+    return inOrder(listed, async (entry): Promise<GcEntry> => {
+        const owned = judge(root, entry, stateWorktrees)
+        const preserved = await preserveCheckout(root, entry.path)
+        const removal = await removeWorktree(root, entry.path, true)
+        return { path: entry.path, kind: owned?.kind ?? "orphan", owner: owned?.owner ?? null, due: true, reason: "its project is retired", preserved, ...removal }
+    })
 }
 
 /**

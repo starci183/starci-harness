@@ -48,6 +48,7 @@ is kept.
 | a Supervisor's `[Worker]` | `supervisor dispatch` | the Supervisor accepts or rejects the worker; its branch stays for landing |
 | a package edit (`pkg branch`) | `pkg branch` | Debug landed its handed-off head on main |
 | a clean-verify checkout | `task verify` | its verdict is reached |
+| any of the above of a retired project | its maker | `project retire`, which then detaches the repository from Orca |
 
 The collector `starci worktree gc` (run by every `supervisor tick`, and by `supervisor accept`, `reject` and a workflow step
 of an ended workflow) finds every harness worktree whose owner ended and every orphan no ledger row owns, and removes it as

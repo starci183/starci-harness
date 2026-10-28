@@ -382,6 +382,10 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
         const signals = await askIdle(binary, cwd, { terminal, handle: seat.handle }, inventory, rules)
         const lastActive = signals.lastActive ?? seat.startedAt
         if (signals.idle !== true || !olderThan(lastActive, rules.idleMinutes)) return null
+        // An Op idle with its dispatch still pasted in the composer never started: it is submitted, not nudged (a nudge would
+        // paste a second prompt behind the first).
+        const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting())
+        if (resubmitted !== null) return { key, task, action: "wait", detail: `Op idle at its prompt: ${resubmitted}` }
         const step = stallStep(lastActive, nudges, rules)
         if (step.kind === "wait") return { key, task, action: "wait", detail: `Op idle at its prompt (${signals.evidence.join("; ")}); ${step.detail}` }
         if (step.kind === "nudge") {
@@ -435,10 +439,9 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
     const { verdict, states, terminal, printed } = judgeStart({ shown, seat, live, alive: false }, loadStallRules())
     const said = states.join("/") || "unknown"
     if (verdict === "waiting" || verdict === "quiet") withLedger(root, (db) => { holdTerminal(db, seat, terminal); })
-    if (shown !== null && (verdict === "waiting" || verdict === "quiet")) {
-        const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting())
-        if (resubmitted !== null) return { key, task, action: "wait", detail: `dispatch ${dispatchId}: ${resubmitted}` }
-    }
+    // The paste itself prints, so a dispatch left in its composer reads as started too: the screen is read before any adoption.
+    const resubmitted = shown !== null && (verdict === "waiting" || verdict === "quiet" || verdict === "started") ? await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting()) : null
+    if (resubmitted !== null && verdict !== "started") return { key, task, action: "wait", detail: `dispatch ${dispatchId}: ${resubmitted}` }
     if (verdict === "started" && shown !== null) {
         const status = shown.state === null || UNKNOWN_STATES.includes(shown.state) || loadStallRules().startUnknownStates.includes(shown.state) ? "ready" : shown.state
         withLedger(root, (db) => { inTransaction(db, () => {
@@ -446,7 +449,7 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
             if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
             recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state, printed })
         }); })
-        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printed === null ? "" : `, last printed ${printed}`}, adopted` }
+        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printed === null ? "" : `, last printed ${printed}`}, adopted${resubmitted === null ? "" : `; ${resubmitted}`}` }
     }
     if (verdict === "quiet") {
         const deadline = loadCoordinatorLiveness().effectUnknownDeadlineMinutes

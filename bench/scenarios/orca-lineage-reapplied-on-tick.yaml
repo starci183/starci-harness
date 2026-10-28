@@ -1,0 +1,81 @@
+schema: starci/scenario@1
+id: orca-lineage-reapplied-on-tick
+group: orca
+title: "an Op worktree Orca listed at top level is put back under its Kernel's worktree by the tick, and a refusal is logged with its reason"
+inject: >-
+  Orca refuses the [Op] lineage when the Op launches, and refuses it once more on the first tick
+expect: >-
+  the launch goes on (the refusal is an op-worktree-nest-skipped event, never a failed launch); every supervisor tick lists
+  the repository's worktrees in Orca once and re-applies the lineage of each harness worktree listed without its parent: the
+  first tick records Orca's refusal with its reason (orca-lineage-refused, once per reason), the second sets it
+  (orca-lineage-set) and a third finds nothing to do
+pass:
+  - one worker-start for the Op, its task running
+  - one orca-lineage-refused event naming Orca's reason, then one orca-lineage-set event
+  - the third tick sets nothing
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: lin
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: lin
+  - name: Orca refuses the Op's lineage at launch and on the first tick
+    orca:
+      rules:
+        - command: worktree set
+          fault: refuse
+          code: parent_not_found
+          message: the parent worktree is not known yet
+          times: 2
+          match:
+            display-name: '^\[Op\] lin: '
+  - seat: kernel:lin
+    starci: [kernel, next, lin, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT status FROM tasks) || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-nest-skipped')"
+        equals: ["running:1"]
+  - name: the first tick meets Orca's refusal and logs its reason
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.reason') LIKE '%parent worktree is not known yet%' FROM events WHERE kind = 'orca-lineage-refused'"
+        equals: [1]
+  - name: the second tick sets the lineage
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'orca-lineage-set'"
+        equals: [1]
+  - name: the third tick finds every lineage in place
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM events WHERE kind = 'orca-lineage-set') || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'orca-lineage-refused')"
+        equals: ["1:1"]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1

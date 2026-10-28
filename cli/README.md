@@ -98,7 +98,11 @@ node_modules folder of that checkout and each lockfile folder of its own, an ins
 junction on Windows), always the link in local package mode (`ensureOpWorktree` and `linkInstall` in `harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
 runner the worktree is listed in Orca under the workflow's worktree as `[Op] <workflow>: <task>`, and the workflow's
 worktree under the project's main checkout as `[Kernel] <workflow>` (`orca worktree set --parent-worktree`), so
-Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. Every worktree the
+Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. A start sets it whether its
+launch ends ready or unknown, and every `supervisor tick` lists each repository's worktrees in Orca once and re-applies the
+lineage of any harness worktree of an orca workflow listed without its parent, recording `orca-lineage-set`, or Orca's
+refusal with its reason as `orca-lineage-refused` once per reason (`reconcileLineage` in `harness/orca/lineage.ts`).
+Concurrent starts of one task make its Op worktree one at a time, under a ledger lock per task. Every worktree the
 harness made is removed once its owner's work ends ([contexts/authority/README.md](../contexts/authority/README.md)
 "Worktrees"): an Op's by verify, cancel and a failed result at once, and by every `workflow step` for a task a fence,
 a stall or a crash ended (`sweepOpWorktrees`); every other kind, and any orphan, by the collector `worktree gc`, which
@@ -301,8 +305,10 @@ limit came with no progress the next relaunch pauses the workflow and escalates 
 never confirmed (`launch-unknown`, or still `starting`) is reconciled, never launched beside: its dispatch (the one the failed
 worker-start named, else request-show's receipt, else a replay of worker-start under the same request id) is adopted when its
 worker started, when the Kernel's own `kernel attach` came through from that dispatch's live terminal, or when that live
-terminal printed after the launch (Orca may keep such a worker at `start_unknown`); while it waits, a dispatch left pasted in the
-agent's composer is submitted again with a bare Enter (routing.yaml `pendingComposer`, for Ops too); a live terminal that stayed quiet is never
+terminal printed after the launch (Orca may keep such a worker at `start_unknown`); while it waits, and before it is adopted on
+its terminal's print (the paste itself prints), a dispatch left pasted in the agent's composer, its marker anywhere on a row or
+wrapped over two, is submitted again with a bare Enter (routing.yaml `pendingComposer`, for Ops too, and before any stall nudge
+of an idle Kernel or Op); a live terminal that stayed quiet is never
 fenced (waited on past `stall.startDeadlineMinutes`, escalated past `effectUnknownDeadlineMinutes`); only a worker Orca reports
 gone, or one never started past the deadline whose terminal Orca no longer lists, is fenced, closed `launch-failed` and
 relaunched once, and only once the fence held (`resolveKernelLaunch` in `core/supervisor/driver.ts`); a live Kernel idle at
@@ -343,7 +349,8 @@ would close and does nothing else); then it records Orca's full terminal list, b
 `harness/machine.ts`) leaves out a seat whose terminal Orca no longer lists, and closes `launch-failed` every Kernel launch of
 any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` with nothing of it alive
 (`harness/stale-launch.ts`), so an abandoned launch stops holding a slot; a ledger `project retire` retired is read by none of
-it; then `ensureSupervisors` keeps
+it (retiring also removes the project's harness worktrees, their work preserved, and detaches the repository from Orca's
+project list with `orca project setup-delete` once Orca lists no other worktree of it); then `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
 owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
