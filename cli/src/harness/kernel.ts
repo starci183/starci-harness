@@ -14,7 +14,6 @@ import { inTransaction } from "./leases.js"
 import { awaitWorktree, closeWorker, dispatchOfFailure, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalOfFailure, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerClosed, WorkerStarted, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
-import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
 import { getSeat, kernelSeatOf, kernelSeatsOf, launchUnreconciled, noteTab, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
 import type { SeatRow } from "./seats.js"
@@ -160,12 +159,11 @@ export const ensureKernel = async (root: string, cwd: string, workflowId: string
 
 /**
  * How a Kernel start runs: `replace` fences a Kernel Orca still shows, `acting` is the attached Supervisor the host driver acts
- * for (else the caller must be its terminal), `stalled` the members whose seats of this workflow the stall ladder gave up on.
+ * for (else the caller must be its terminal).
  */
 export interface KernelStartOptions {
     readonly replace?: boolean
     readonly acting?: AttachedSupervisor
-    readonly stalled?: readonly RouteMember[]
 }
 
 const retiredStatus = (closed: WorkerClosed, current: string): string => {
@@ -219,7 +217,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     for (const [index, seat] of open.entries()) notes.push(await retireOpenSeat(root, cwd, seat, binary, options.replace === true || index > 0))
     if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open.length === 0) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
-    const pick = pickCoordinator("kernel", { stalled: options.stalled ?? [] })
+    const pick = pickCoordinator("kernel")
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const launchId = `k-${randomUUID().slice(0, 8)}`
     const spec = coordinatorBrief({ role: "kernel", root, workflowId, launchId, agent: pick.agent, model: pick.model, worktree })

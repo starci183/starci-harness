@@ -26,7 +26,7 @@ export interface RouteMember {
  * What the router needs to pick: the label, an optional measured difficulty (a name or 1..4; the label's floor raises it), the
  * 1-based attempt number in the task's lineage, the contract-red attempts so far (their members, or just their count) and the
  * task's risk tags (any of routing.yaml qualification.riskTags makes it high-risk), and the members of its lineage the stall ladder
- * gave up on (a task's stalled attempts, a coordinator's stalled seat being relaunched).
+ * gave up on (a task's stalled attempts; a coordinator has no lineage).
  */
 export interface RouteInput {
     readonly label: string
@@ -561,12 +561,12 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
     return pick
 }
 
-/** The router input of a coordinator seat: its role is its label, its tier routing.yaml coordinators.<role>, its lineage the stalled seats being relaunched. */
-export const coordinatorInput = (role: CoordinatorRole, stalled?: readonly RouteMember[]): RouteInput => ({ label: role, coordinator: role, attempt: 1, stalled })
+/** The router input of a coordinator seat: its role is its label and its tier routing.yaml coordinators.<role>, taken in listed order with no lineage. */
+export const coordinatorInput = (role: CoordinatorRole): RouteInput => ({ label: role, coordinator: role, attempt: 1 })
 
 /** Routes a coordinator through the shared circuit, capacity, quota, probe, scoring and balance pipeline. */
-export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean; readonly stalled?: readonly RouteMember[] } = {}): RoutePick | RouteRefusal =>
-    pickRoute(coordinatorInput(role, options.stalled), { record: options.record ?? true })
+export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
+    pickRoute(coordinatorInput(role), { record: options.record ?? true })
 
 /** What `simulateRoute` counted over its picks: each member's picks, how many explored and probed, and the refusals. */
 export interface RouteSimulation {

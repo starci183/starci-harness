@@ -8,7 +8,7 @@ import { supervisorTick } from "./driver.js"
  * Orca terminal the harness made that no open seat or live Supervisor holds any more, and every orphaned one (`data.terminals`).
  * Then it keeps every project's Supervisor (relaunched when Orca says it is gone) and, acting for each attached one, sweeps the
  * Kernels and Ops of the workflows it owns in its project and the Supervisor itself: gone or silent Kernels are relaunched, agents
- * idle at their prompt with work pending are nudged, then relaunched (or fenced) on another member, then escalated. It also names
+ * idle at their prompt with work pending are nudged, then relaunched (a Kernel or Supervisor on the coordinator tier's order) or fenced (an Op, retried on another member), then escalated. It also names
  * every owner feedback still open (`data.feedback`, overdue past ops/liveness.yaml feedback.openMaxDays), and, once the owner's
  * Telegram chat is connected, sends the owner the notices due (`data.telegram`, `tickNotices` in harness/telegram-bridge.ts), so
  * they go out with no bridge running. Idempotent; no LLM needs to be awake. `--dry-run` reports what the terminal sweep would close
