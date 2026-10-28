@@ -43,7 +43,10 @@ reviveMax: 3
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
 # (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued. `starci host load` shows the capacity and why.
-# maxSlots (optional) caps the count below floor(logical cores / 2).
+# maxSlots (optional) caps the count below floor(logical cores / 2). The eslint memory is also the heap of the ESLint child an app lint
+# or app check spawns (a typed lint of a large app's back end outgrew node's default 4 GB), and its estimate matches it. bootProofTimeoutSeconds
+# is the budget of the lite boot proof's worker, counted from its spawn: one timeout is retried, a second is BOOT_PROOF_TIMEOUT, not a failure.
+# @starci/hfs reads both through the environment the CLI sets (cli/src/harness/heavy.ts hfsLimitsEnv).
 heavy:
   reserveMb: 8192
   maxCpuPercent: 85
@@ -51,14 +54,14 @@ heavy:
   pollSeconds: 2
   estimateMb:
     tsc: 2048
-    eslint: 1536
+    eslint: 8192
     test: 2048
     build: 3072
     install: 1500
     uat: 2048
   memoryMb:
     tsc: 2048
-    eslint: 2048
+    eslint: 8192
     test: 4096
     build: 4096
     install: 2048
@@ -69,6 +72,7 @@ heavy:
     eslint: 10
   testWorkers: "50%"
   seatFreeMb: 6144
+  bootProofTimeoutSeconds: 300
 
 # Coordinators (`kernel next`, `supervisor next`): the mechanics the deterministic driver applies, never an LLM's choice.
 coordinators:

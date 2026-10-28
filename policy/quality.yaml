@@ -19,9 +19,11 @@ runtime:
 # task: every check runs in each task's own verify. A task sent alone (`task send`) always verifies everything itself.
 verify:
   tier: wave
-# Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
-# release.publish is not listed: on the harness CI's own publish jobs run it once each package's own jobs are green, and Debug's
-# workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
+# Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green, or, when the caller passes --urgent,
+# unless the commit carries the pushed URGENT record of `starci app release push --urgent` (owner ruling urgent-release, 2026-10-29,
+# contexts/harness/decisions.md: an urgent deploy needs no CI; its full gate runs later as `app release gate --backfill <tag>`, and
+# the deploy's safety floor is never skipped). release.publish is not listed: on the harness CI's own publish jobs run it once each
+# package's own jobs are green, and Debug's workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
 requireCi: [release.cut, deploy.prod]
 # The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
 defaults:

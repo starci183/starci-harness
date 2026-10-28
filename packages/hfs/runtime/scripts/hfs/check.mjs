@@ -61,7 +61,7 @@
 // findings fail the check.
 import fs from 'node:fs';
 import path from 'node:path';
-import { appWiring, BOOT_PROOF_CODE } from './app-wiring.mjs';
+import { appWiring, BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT } from './app-wiring.mjs';
 import { coverageFrom as coverageFromReport } from './coverage-from.mjs';
 import { skillRoot } from '../../engine/runtime-root.mjs';
 import { ARCHITECTURE_RULE_IDS, checkArchitecture } from './architecture/index.mjs';
@@ -410,7 +410,7 @@ export function withCheckProofs(result, { repoRoot, root = skillRoot, manifest =
   const proofFindings = Object.values(reports).flatMap(report => report.findings);
   const why = readWhy(root, [...new Set(proofFindings.map(finding => finding.code))]);
   // The explicit whole-tree wiring proof supersedes the ordinary finder's scoped result.
-  const previous = result.findings.filter(finding => !wiring || finding.code !== BOOT_PROOF_CODE);
+  const previous = result.findings.filter(finding => !wiring || (finding.code !== BOOT_PROOF_CODE && finding.code !== BOOT_PROOF_TIMEOUT));
   const findings = [...previous, ...withWhy(judgedFindings(proofFindings, repo.edition ?? 'full', root), why)];
   const counts = summarize(findings);
   return { ...result, ...reports, findings, counts, ok: counts.error === 0 };

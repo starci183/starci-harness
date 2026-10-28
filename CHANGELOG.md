@@ -6,6 +6,25 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **The urgent release** (owner, 2026-10-29: "deploy gấp không cần ci cd gì hết!!!! cái này là tính năng nha"). `starci app release
+  push --urgent --reason "<text>"` ships an app after its fast local checks alone and writes an URGENT record (role, reason, checks,
+  commit); `starci app release gate --backfill <tag>` runs the full gate on that commit later, promoting the record to L4 when green
+  and opening a blocking `verify` ticket when red (`cli/src/core/app/release.ts` hands @starci/hfs 4.9.10 the caller's role and the
+  ticket queue). `requireCi` of `deploy.prod` and `release.cut` accepts the commit's pushed urgent record when the caller passes
+  `--urgent` (`cli/src/core/check/ci.ts`), and `starci app stack deploy --env production --execute` now holds `deploy.prod` itself
+  (`cli/src/core/app/stack.ts`); with `--urgent` the deploy's safety floor runs first and is never skipped. Bench:
+  `release-urgent-push-deploy-accepted`, `release-urgent-backfill-green-promotes`, `release-urgent-backfill-red-opens-ticket`,
+  `app-lint-eslint-heap-flag`; the boot proof timeout is held by `packages/hfs/src/hfs-boot-proof.spec.mjs` on a real worker.
+
+### Changed
+
+- **The release gate's load defects.** The eslint memory of ops/liveness.yaml `heavy` is 8192 MB, its admission estimate matches,
+  and the CLI hands it to the ESLint child of an app lint or app check as its heap; `heavy.bootProofTimeoutSeconds` (300) is the
+  lite boot proof's own budget from its spawn, a timeout retried once and then reported `BOOT_PROOF_TIMEOUT`, not as a failed proof
+  (`hfsLimitsEnv` in `cli/src/harness/heavy.ts`).
+
 ### Fixed
 
 - **A held worktree no longer loops or fails a settle.** Removing a harness worktree first closes every Orca terminal whose

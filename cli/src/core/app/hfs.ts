@@ -1,10 +1,20 @@
 import { z } from "zod"
+import { hfsLimitsEnv } from "../../harness/heavy.js"
 import { UsageError } from "../../shared/errors.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
 export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "explain" | "hygiene" | "lint" | "new" | "release" | "scaffold" | "secret" | "stack" | "sync" | "upgrade"
+
+/**
+ * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
+ * ticket queue a red release back-fill files its fix ticket into (returns the ticket id).
+ */
+export interface HfsHarness {
+    readonly role?: string
+    readonly openTicket?: (input: { readonly title: string; readonly tail: string; readonly code: string; readonly tag: string; readonly head: string }) => string | null
+}
 
 /** What one `starci app` run did: the @starci/hfs argv, its exit code and, under `--json`, what it printed. */
 export interface HfsRunData {
@@ -83,13 +93,15 @@ const parsed = (text: string): unknown => {
  * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
  * never a pin bundled in @starci/hfs. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
  * `stdin`, when given, replaces the process stdin of a verb that reads one (`app secret set`): what it returns stays in memory
- * and reaches @starci/hfs alone.
+ * and reaches @starci/hfs alone. `extra` adds the role and ticket queue of HfsHarness. The limits of ops/liveness.yaml @starci/hfs reads from its
+ * environment (`hfsLimitsEnv`: the ESLint heap, the boot proof's budget) are set on this process first, so the children it spawns inherit them.
  */
-export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean, stdin?: () => string): Promise<VerbResult<HfsRunData>> => {
+export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean, stdin?: () => string, extra: HfsHarness = {}): Promise<VerbResult<HfsRunData>> => {
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
     let stdout = ""
     let stderr = ""
-    const harness = { version: packageVersion() }
+    Object.assign(process.env, hfsLimitsEnv())
+    const harness = { version: packageVersion(), ...extra }
     const io = context.json
         ? { cwd: context.cwd, harness, stdin, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
         : { cwd: context.cwd, harness, stdin, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }

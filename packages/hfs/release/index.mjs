@@ -1,7 +1,9 @@
 // index.mjs - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
 // parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
-//   starci app release gate [--execute] [--sonar] [--source <ref>] [--tag-prefix <prefix>] [--json]
-//   starci app release push [--execute] [--remote <name>] [--json]
+//   starci app release gate [--execute] [--sonar] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
+//   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
+// `harness` of the app IO ({ version, role, openTicket }) is what the starci CLI hands in: the caller's role an urgent record names and the ticket
+// queue a red back-fill files into.
 // Every action is a dry run unless --execute is given. A refusal is a StackError (exit 2); a failed step returns ok false (exit 1).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +15,7 @@ import { stackContext } from '../stack/context.mjs';
 import { EXIT, StackError, refusal } from '../stack/errors.mjs';
 import { RELEASE_CODE, VERSION, normalizeRelease, releaseGate } from './gate.mjs';
 import { releasePush } from './push.mjs';
+import { releaseUrgentPush } from './urgent.mjs';
 
 const IO_KEYS = ['cwd', 'stdout', 'stderr', 'env', 'sops'];
 
@@ -85,12 +88,19 @@ export async function runVerb({ label, name, io, argv, spec, run, code = 'RELEAS
 
 const ACTIONS = {
   gate: {
-    spec: { boolean: ['--execute', '--json', '--sonar'], value: ['--source', '--tag-prefix'] },
-    run: (ctx, flags) => releaseGate(ctx, loadReleaseConfig(ctx.cwd), { execute: flags.execute === true, sonar: flags.sonar === true, source: flags.source, tagPrefix: flags['tag-prefix'] }),
+    spec: { boolean: ['--execute', '--json', '--sonar'], value: ['--source', '--tag-prefix', '--backfill'] },
+    run: (ctx, flags, harness) => releaseGate(ctx, loadReleaseConfig(ctx.cwd), {
+      execute: flags.execute === true, sonar: flags.sonar === true, source: flags.source, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket,
+    }),
   },
   push: {
-    spec: { boolean: ['--execute', '--json'], value: ['--remote'] },
-    run: (ctx, flags) => releasePush(ctx, loadReleaseConfig(ctx.cwd), { execute: flags.execute === true, remote: flags.remote }),
+    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason'] },
+    run: (ctx, flags, harness) => {
+      if (flags.reason !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--reason belongs to an urgent release (--urgent)');
+      const config = loadReleaseConfig(ctx.cwd);
+      if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, role: harness?.role ?? ctx.env.STARCI_ROLE });
+      return releasePush(ctx, config, { execute: flags.execute === true, remote: flags.remote });
+    },
   },
 };
 
@@ -101,5 +111,5 @@ export async function releaseMain(argv, io = {}) {
     contextOf(io).stderr('starci app release: takes gate or push\n');
     return EXIT.refused;
   }
-  return runVerb({ label: 'starci app release', name: argv[0], io, argv: argv.slice(1), spec: action.spec, run: action.run });
+  return runVerb({ label: 'starci app release', name: argv[0], io, argv: argv.slice(1), spec: action.spec, run: (ctx, flags) => action.run(ctx, flags, io.harness) });
 }

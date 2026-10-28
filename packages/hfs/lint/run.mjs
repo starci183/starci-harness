@@ -85,6 +85,15 @@ export function parseLintArgs(argv) {
 /** The typed ESLint run reads nothing above the app root: its TypeScript `sys` is bound by this preload (3.3, bound-sys.cjs). */
 const BOUND_ENV = 'STARCI_LINT_BOUND';
 const linterBoundArgs = () => ['--require', fileURLToPath(new URL('./bound-sys.cjs', import.meta.url))];
+/**
+ * The heap of the ESLint child in MiB: the starci CLI sets it from its one owner, the eslint memory of ops/liveness.yaml `heavy` (a typed whole-side
+ * lint of a large app outgrows node's default heap). Unset, ESLint runs on node's default.
+ */
+export const ESLINT_HEAP_ENV = 'STARCI_ESLINT_HEAP_MB';
+export function eslintHeapArgs(env = process.env) {
+  const mb = Number(env[ESLINT_HEAP_ENV]);
+  return Number.isInteger(mb) && mb > 0 ? [`--max-old-space-size=${mb}`] : [];
+}
 
 /** The child `node` ran with `args` from `cwd`: its exit status, signal, spawn error and the text of both streams, once it closes. */
 function runNode(args, options) {
@@ -103,7 +112,7 @@ function runNode(args, options) {
 }
 
 /** A linter's json results through the app's own install, run from `cwd` (a side folder): `{ results }` or `{ error }`. The child runs while the caller goes on. */
-async function runLinter({ cwd, pkg, bin, args, bound = null }) {
+export async function runLinter({ cwd, pkg, bin, args, bound = null }) {
   let entry;
   try {
     const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${pkg}/package.json`);
@@ -112,7 +121,8 @@ async function runLinter({ cwd, pkg, bin, args, bound = null }) {
   } catch {
     return { error: `${pkg} is not installed for ${cwd}` };
   }
-  const run = await runNode([...(bound ? linterBoundArgs() : []), entry, ...args], { cwd, ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) });
+  const heap = pkg === 'eslint' ? eslintHeapArgs() : [];
+  const run = await runNode([...heap, ...(bound ? linterBoundArgs() : []), entry, ...args], { cwd, ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) });
   // ESLint prints its report on stdout; stylelint uses stderr. JSON does not prove a completed child: only exits 0/1
   // without a spawn error or signal are measurable, and exit 1 must carry findings.
   let results;

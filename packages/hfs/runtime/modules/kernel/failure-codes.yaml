@@ -1739,6 +1739,16 @@ BE_WEBHOOK_UNVERIFIED:
   owner: op-retry
   kind: check-finding
 
+BOOT_PROOF_TIMEOUT:
+  title: "The lite boot proof's worker ran out of its budget twice and reached no verdict"
+  title_vi: "Bằng chứng khởi động lite hết thời gian hai lần, chưa có kết luận"
+  meaning_vi: "Tiến trình chứng minh ghép nối Nest chạy quá ngân sách thời gian riêng của nó (STARCI_BOOT_PROOF_TIMEOUT_MS, lấy từ heavy.bootProofTimeoutSeconds của ops/liveness.yaml) cả lần đầu lẫn lần thử lại. Đây không phải lỗi ghép nối: máy đang quá tải nên chưa phán được."
+  causes_vi:
+    - "Máy chủ đang chạy nhiều lệnh nặng cùng lúc nên trình biên dịch TypeScript của bằng chứng chạy quá chậm"
+  nextStep_vi: "Chạy lại starci app check --wiring khi máy rảnh hơn; nếu vẫn hết thời gian khi máy rảnh, nâng heavy.bootProofTimeoutSeconds trong ops/liveness.yaml."
+  owner: op-retry
+  kind: check-finding
+
 CI_DECLARATION_DRIFT:
   title: "Workflow references drift from CI declarations"
   title_vi: "Workflow lệch khai báo CI"

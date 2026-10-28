@@ -19,7 +19,7 @@ pins:
   '@starci/jest-preset': {version: 2.4.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.2.3, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.3.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 4.9.9, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 4.9.10, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   typescript: {version: 5.9.3, group: tooling, side: both}
   turbo: {version: 2.11.6, group: tooling, side: fe, why: "runs build, dev, lint and typecheck over the fe workspaces"}
   prettier: {version: 3.9.6, group: tooling, side: both}

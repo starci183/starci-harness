@@ -1,10 +1,11 @@
 // proves: BE_APP_BOOT_PROOF_MISSING@lite
+// proves: BOOT_PROOF_TIMEOUT@lite
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appWiring, appWiringMain, wiringFixturePath } from '../runtime/scripts/hfs/app-wiring.mjs';
+import { appWiring, appWiringMain, BOOT_PROOF_TIMEOUT, BOOT_PROOF_TIMEOUT_ENV, wiringFixturePath, workerBudget } from '../runtime/scripts/hfs/app-wiring.mjs';
 import { bootProofFindings } from '../runtime/scripts/hfs/rules/boot-proof.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 
@@ -237,4 +238,45 @@ test('BE_APP_BOOT_PROOF_MISSING lite: CLI reports app-relative paths and returns
 test('BE_APP_BOOT_PROOF_MISSING lite: the append-only a15 registry invokes this finder', t => {
   const context = fixture(t, {});
   assert.ok(a15Findings(context).some(finding => finding.code === CODE));
+});
+
+const TIMED_OUT = Object.freeze({ status: null, signal: 'SIGTERM', stdout: '', stderr: '', error: Object.assign(new Error('spawnSync node ETIMEDOUT'), { code: 'ETIMEDOUT' }) });
+
+test('BOOT_PROOF_TIMEOUT lite: a worker that runs out of its budget twice is a timeout warning, never a failed proof', t => {
+  const budgets = [];
+  const run = (_command, _args, options) => { budgets.push(options.timeout); return TIMED_OUT; };
+  const previous = process.env[BOOT_PROOF_TIMEOUT_ENV];
+  process.env[BOOT_PROOF_TIMEOUT_ENV] = '4000';
+  t.after(() => { if (previous === undefined) delete process.env[BOOT_PROOF_TIMEOUT_ENV]; else process.env[BOOT_PROOF_TIMEOUT_ENV] = previous; });
+  const report = appWiring({ ...fixture(t, { [APP_MODULE]: passingModule }), run });
+  assert.deepEqual(budgets, [4000, 4000], 'its own budget from the environment, retried once');
+  assert.equal(report.findings.length, 1);
+  assert.equal(report.findings[0].code, BOOT_PROOF_TIMEOUT);
+  assert.equal(report.findings[0].level, 'warning');
+  assert.equal(report.findings.some((finding) => finding.code === CODE), false);
+});
+
+test('BOOT_PROOF_TIMEOUT lite: a real worker stuck in a TypeScript that never returns is stopped by its budget, retried once and reported', t => {
+  const hang = 'Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 120000);\n';
+  const context = fixture(t, { [`be/${APP_MODULE}`]: passingModule, 'be/node_modules/typescript/package.json': '{"name":"typescript","version":"0.0.0","main":"index.js"}', 'be/node_modules/typescript/index.js': hang }, 'lite', true);
+  const previous = process.env[BOOT_PROOF_TIMEOUT_ENV];
+  process.env[BOOT_PROOF_TIMEOUT_ENV] = '2000';
+  t.after(() => { if (previous === undefined) delete process.env[BOOT_PROOF_TIMEOUT_ENV]; else process.env[BOOT_PROOF_TIMEOUT_ENV] = previous; });
+  const started = Date.now();
+  const report = appWiring(context);
+  assert.ok(Date.now() - started >= 4000, 'two spawns, each stopped at its own budget');
+  assert.deepEqual(report.findings.map((finding) => [finding.code, finding.level]), [[BOOT_PROOF_TIMEOUT, 'warning']]);
+});
+
+test('BOOT_PROOF_TIMEOUT lite: one timeout is retried and a green retry is a green proof', t => {
+  let calls = 0;
+  const run = () => (calls++ === 0 ? TIMED_OUT : { status: 0, stdout: JSON.stringify({ ok: true }), stderr: '' });
+  const report = appWiring({ ...fixture(t, { [APP_MODULE]: passingModule }), run });
+  assert.equal(calls, 2);
+  assert.deepEqual(report.findings, []);
+});
+
+test('BOOT_PROOF_TIMEOUT lite: without the CLI the worker keeps the four-deadline budget', () => {
+  assert.equal(workerBudget(15000, {}), 62000);
+  assert.equal(workerBudget(15000, { [BOOT_PROOF_TIMEOUT_ENV]: '300000' }), 300000);
 });

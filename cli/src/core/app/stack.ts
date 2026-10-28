@@ -1,5 +1,7 @@
 import { z } from "zod"
+import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { requireCiGreen } from "../check/ci.js"
 import type { FlagSpec } from "../../shared/verb.js"
 import { hfsArgv, NUMBER, QUIET_FLAG, runHfs } from "./hfs.js"
 
@@ -34,6 +36,9 @@ const FLAGS = {
     "swarm-state": { kind: "boolean", summary: "backup: also archive /var/lib/docker/swarm, encrypted" },
     "skip-public": { kind: "boolean", summary: "deploy, verify: skip the public HTTP checks (deploy then leaves the release pending until accept)" },
     "skip-internal": { kind: "boolean", summary: "verify: skip the checks run inside a service task" },
+    urgent: { kind: "boolean", summary: "deploy: an urgent release (owner ruling 2026-10-29): its pushed urgent record stands in for CI, and the safety floor runs first and is never skipped (fresh verified encrypted backup with a test decrypt, migrate preview then execute, readiness verify, automatic rollback)" },
+    "db-url-env": { kind: "string", summary: "deploy --urgent: the environment variable holding the database URL the floor backs up and migrates (default the linked project of the database block)" },
+    "backup-out": { kind: "string", summary: "deploy --urgent: the folder outside every repository that receives the floor's encrypted backup (default ~/.starci-backups/<project>)" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 
@@ -52,5 +57,12 @@ export const appStackVerb = defineVerb({
     roles: ["owner", "release", "supervisor", "op", "worker", "agent"],
     schema: "starci/app-stack@1",
     flags: FLAGS,
-    run: (context, flags) => runHfs(context, "stack", hfsArgv(FLAGS, flags, CHOICES), true),
+    run: async (context, flags) => {
+        // Shipping production waits for a green CI when policy/quality.yaml lists deploy.prod in requireCi; --urgent lets the commit's urgent record stand in.
+        if (flags.action === "deploy" && flags.execute && (flags.env ?? "production") === "production" && flags["source-sha"] !== undefined) {
+            const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", flags["source-sha"], { urgent: flags.urgent })
+            if (accepted !== undefined) context.progress(`deploy.prod: ${accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`}`)
+        }
+        return runHfs(context, "stack", hfsArgv(FLAGS, flags, CHOICES), true)
+    },
 })

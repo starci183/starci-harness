@@ -87,7 +87,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m) => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'rewrittenBy'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
 const LITE_OVERLAY_KEYS = ['path', 'requires', 'allows', 'forbids', 'minInstances', 'requiredInstances', 'why'];
 /** A runtime slot has no app kind, side composition, layer or managed template; it may name the generator of a generated copy. */
@@ -114,6 +114,7 @@ function appIdentityProblems(slot, at, appScope, scopes) {
   if (!SLOT_ID.test(String(slot.id))) bad.push(`${at}: id must look like be.transport.http`);
   if (profilesInvalid(slot.profiles, appScope, scopes)) bad.push(`${at}: profiles must be [app] or a unique non-empty subset of be, fe`);
   else if ((slot.profiles[0] === appScope) !== String(slot.id).startsWith(`${appScope}.`)) bad.push(`${at}: an app-root slot has profiles [app] and an id app.<name>, and only it`);
+  if (slot.rewrittenBy !== undefined && (typeof slot.rewrittenBy !== 'string' || !slot.rewrittenBy.trim() || slot.tracked !== 'ignored' || String(slot.path).endsWith('/'))) bad.push(`${at}: rewrittenBy names the dev server that writes the files of an ignored file slot`);
   return bad;
 }
 

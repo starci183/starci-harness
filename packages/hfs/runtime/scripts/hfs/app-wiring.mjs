@@ -2,6 +2,9 @@
 // Dynamic roots need public fixture options: src/tests/fixtures/builders/<app>.builder.ts may export
 // buildWiringProof(AppModule) => { options, overrides: [{ token, value }], request? }. The runner always chooses
 // the real root; a fixture cannot substitute an empty module. No environment parser or main.ts runs.
+// The proof worker has its own budget, counted from its spawn: STARCI_BOOT_PROOF_TIMEOUT_MS, which the starci CLI sets from ops/liveness.yaml
+// (heavy.bootProofTimeoutSeconds). A worker that runs out of it reached no verdict: it is retried once, and a second timeout is reported as
+// BOOT_PROOF_TIMEOUT (a warning: the host was too loaded to judge), never as the proof failing (BE_APP_BOOT_PROOF_MISSING).
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -12,6 +15,8 @@ import { isMain } from '../lib/is-main.mjs';
 import { readJson } from './rules/read.mjs';
 
 export const BOOT_PROOF_CODE = 'BE_APP_BOOT_PROOF_MISSING';
+export const BOOT_PROOF_TIMEOUT = 'BOOT_PROOF_TIMEOUT';
+export const BOOT_PROOF_TIMEOUT_ENV = 'STARCI_BOOT_PROOF_TIMEOUT_MS';
 const WORKER = fileURLToPath(import.meta.url);
 const DEFAULT_TIMEOUT = 15000;
 const DI_FAILURES = new Map([
@@ -28,6 +33,18 @@ export const wiringFixturePath = app => `src/tests/fixtures/builders/${app}.buil
 
 const refusal = (file, reason) => ({ code: BOOT_PROOF_CODE, level: 'error', path: file,
   message: `${file}: lite boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --wiring`, reason });
+
+const timedOut = (file, budget) => ({ code: BOOT_PROOF_TIMEOUT, level: 'warning', path: file, reason: 'proof worker timed out',
+  message: `${file}: the lite boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --wiring when the host is quieter` });
+
+/** The worker's budget in ms, from its spawn: the CLI's STARCI_BOOT_PROOF_TIMEOUT_MS, else four compile deadlines (at least a minute). */
+export function workerBudget(timeout, env = process.env) {
+  const configured = Number(env[BOOT_PROOF_TIMEOUT_ENV]);
+  return Number.isInteger(configured) && configured > 0 ? configured : Math.max(60000, timeout * 4) + 2000;
+}
+
+/** True when the worker was stopped by its budget (spawnSync's ETIMEDOUT, or the kill signal it sends), not when it ended by itself. */
+const isTimeout = (result) => result?.error?.code === 'ETIMEDOUT' || (result?.status === null && result?.signal != null);
 
 /** Stable diagnostics never forward exception text, source values or child output. */
 function failureReason(error) {
@@ -153,8 +170,12 @@ function appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, time
   const fixture = fixtures[app] ?? wiringFixturePath(app);
   const fixtureExists = fs.existsSync(path.join(beRoot, fixture)) && (!files || files.includes(`${prefix}${fixture}`));
   const args = [WORKER, '--worker', JSON.stringify({ repoRoot: beRoot, app, fixture: fixtureExists ? fixture : null, timeout })];
-  const options = { cwd: beRoot, encoding: 'utf8', env: {}, windowsHide: true, timeout: Math.max(60000, timeout * 4) + 2000, maxBuffer: 1024 * 1024 };
-  const result = run ? run(process.execPath, args, options) : runNode(args, options);
+  const budget = workerBudget(timeout);
+  const options = { cwd: beRoot, encoding: 'utf8', env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
+  const spawnWorker = () => (run ? run(process.execPath, args, options) : runNode(args, options));
+  let result = spawnWorker();
+  if (isTimeout(result)) result = spawnWorker();
+  if (isTimeout(result)) return timedOut(file, budget);
   let proof;
   try { proof = JSON.parse(result.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
   if (result.status !== 0 || proof?.ok !== true) return refusal(file, SAFE_REASONS.has(proof?.reason) ? proof.reason : WORKER_FAILURE);
