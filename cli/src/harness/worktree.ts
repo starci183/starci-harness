@@ -2,6 +2,7 @@ import { chmodSync, cpSync, existsSync, readFileSync, readdirSync, statSync } fr
 import { isAbsolute, join, relative, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm } from "../shared/exec.js"
+import { withHeavySlot } from "./heavy.js"
 import { captureGit, mainCheckout } from "../shared/git.js"
 
 /**
@@ -58,7 +59,7 @@ export const materialiseHooks = async (root: string, worktree: string): Promise<
     const hooks = await declaredHooksPath(root)
     if (hooks === undefined) return hooks
     const folder = join(worktree, hooks)
-    if (!existsSync(folder) && declaresPrepare(worktree)) await captureNpm(["run", "--silent", "prepare"], worktree, { timeoutMs: 120_000 }).catch(() => undefined)
+    if (!existsSync(folder) && declaresPrepare(worktree)) await withHeavySlot("build", "npm run prepare", worktree, { timeoutMs: 120_000 }, (held) => captureNpm(["run", "--silent", "prepare"], worktree, held.options)).catch(() => undefined)
     if (!existsSync(folder)) {
         const source = join(await mainCheckout(root), hooks)
         if (existsSync(source)) cpSync(source, folder, { recursive: true, dereference: true })

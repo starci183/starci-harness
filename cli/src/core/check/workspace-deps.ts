@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve, sep } from "node:path"
 import { workspaceBuildCachePath } from "../../harness/ledger.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { captureNpm } from "../../shared/exec.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { git, nulPaths } from "../../shared/git.js"
@@ -192,7 +193,7 @@ export const buildWorkspaceDependencies = async (scope: Scope, options: RunOptio
             continue
         }
         const before = snapshot(pkg.dir)
-        const run = await captureNpm(["run", "build"], pkg.dir, options)
+        const run = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.dir, options, (held) => captureNpm(["run", "build"], pkg.dir, held.options))
         const still = missingEntries(pkg)
         if (run.exitCode !== 0 || still.length > 0) {
             failed.add(pkg)

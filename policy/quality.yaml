@@ -11,6 +11,14 @@ runtime:
   # composer (`composedBy`) defers their findings on its own allowPaths to that task; the composer's verify and the
   # workflow's final verify enforce them (cli/src/core/check/composition.ts).
   compositionRules: [dead-exports, feature-not-composed]
+# Where a task's heavy checks run (typecheck, lint and tests: the scoped `starci check` presets and every command check).
+# wave: `task verify` runs only the cheap checks of each task (lands, secrets and loosening on its diff, paths, files, json,
+#   cited and cite); a workflow's wave verify runs the heavy ones once over the union of the tasks that landed, before any
+#   task depending on them starts and before the workflow is done, and fails the tasks whose files are red; a Supervisor's
+#   [Worker] leaves them to Debug's round after it lands the worker's branch.
+# task: every check runs in each task's own verify. A task sent alone (`task send`) always verifies everything itself.
+verify:
+  tier: wave
 # Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
 # release.publish is not listed: on the harness CI's own publish job runs it after its ci job is green, and Debug's
 # workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).

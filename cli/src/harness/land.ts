@@ -1,9 +1,11 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, rmdirSync, symlinkSync, unlinkSync } from "node:fs"
-import { dirname, join, relative } from "node:path"
+import { existsSync, mkdirSync, symlinkSync } from "node:fs"
+import { dirname, join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
 import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha } from "../shared/git.js"
+import { readRecord } from "../core/deps/packages.js"
+import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkInstallLinks } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent, recordTaskWorktree } from "./tasks.js"
@@ -25,7 +27,7 @@ const REMOVED_EVENT = "op-worktree-removed"
 /**
  * One Op's own git worktree: `path` on `branch`, cut at `fork` from `targetBranch`, the branch its verified commit lands on,
  * checked out at `target` (the workflow's worktree, else the checkout an inline workflow runs in). `links` are the
- * install folders linked from the target, which removal unlinks.
+ * install folders linkInstall made, which removal unlinks.
  */
 export interface OpWorktree {
     readonly path: string
@@ -74,51 +76,24 @@ export const opWorktreePlace = (root: string, workflowId: string, taskId: string
     branch: `starci/${workflowId}.ops/${taskId}`,
 })
 
-/** The node_modules folders of a checkout, relative to it, down to `depth` levels, never inside one another or inside .git. */
-const modulesFolders = (root: string, at: string, depth: number): string[] => {
-    if (depth < 0 || !existsSync(at)) return []
-    const found: string[] = []
-    for (const entry of readdirSync(at, { withFileTypes: true })) {
-        if (entry.name === ".git") continue
-        const path = join(at, entry.name)
-        if (entry.name === "node_modules" && (entry.isDirectory() || entry.isSymbolicLink())) found.push(relative(root, path).replaceAll("\\", "/"))
-        else if (entry.isDirectory()) found.push(...modulesFolders(root, path, depth - 1))
-    }
-    return found
-}
-
-const MODULES_DEPTH = 3
-
 /**
- * Gives an Op worktree the install its target already holds, never a fresh one: each node_modules folder of the target is
- * linked (a junction on Windows, a symlink elsewhere) at the same place in the worktree. The target's install is the shared
- * install of tier 1 (contexts/authority/branch.md); its local `@starci` copies (`starci deps source --local`) reach the Op
- * through the link. Returns the linked folders, relative to the worktree.
+ * Gives an Op worktree an install without running npm, for each node_modules folder of the target and each lockfile folder of
+ * the worktree: from the shared install cache when it holds the key of that folder's lockfile (harness/install-cache.ts
+ * linkCachedInstall, as a clean verify gets it), else linked to the target's own folder when it has one (a junction on Windows,
+ * a symlink elsewhere). A repository in local package mode (`starci deps source --local`) always links the target's folder, so
+ * its local `@starci` copies reach the Op. Returns the folders made, relative to the worktree.
  */
-const linkInstall = (target: string, worktree: string): string[] =>
-    modulesFolders(target, target, MODULES_DEPTH).flatMap((folder) => {
+const linkInstall = (target: string, worktree: string): string[] => {
+    const local = (readRecord(target)?.packages.length ?? 0) > 0
+    const folders = new Set([...modulesFolders(target), ...lockfileFolders(worktree).map((folder) => (folder === "." ? "node_modules" : `${folder}/node_modules`))])
+    return [...folders].flatMap((folder) => {
         const path = join(worktree, folder)
         if (!existsSync(dirname(path)) || existsSync(path)) return []
+        if (!local && linkCachedInstall(dirname(path))) return [folder]
+        if (!existsSync(join(target, folder))) return []
         symlinkSync(join(target, folder), path, process.platform === "win32" ? "junction" : "dir")
         return [folder]
     })
-
-/**
- * Removes a link with a plain unlink (a junction that refuses one goes with a non-recursive rmdir), never a recursive delete
- * through it, so removing the worktree can never reach the install the link names.
- */
-const unlinkFolder = (path: string): void => {
-    if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return
-    try {
-        unlinkSync(path)
-    } catch {
-        rmdirSync(path)
-    }
-}
-
-/** Unlinks every linked install folder of a checkout (the recorded `links`, and any node_modules link found), link only. */
-export const unlinkInstallLinks = (checkout: string, links: readonly string[] = []): void => {
-    for (const folder of [...new Set([...links, ...modulesFolders(checkout, checkout, MODULES_DEPTH)])]) unlinkFolder(join(checkout, folder))
 }
 
 /**

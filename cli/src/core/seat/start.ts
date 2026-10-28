@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
 import type { BriefFiles } from "../../harness/brief.js"
+import { seatRoom } from "../../harness/heavy.js"
 import { inTransaction, now, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { recordOutcome } from "../../harness/circuit.js"
@@ -465,6 +466,9 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
     try {
         const task = getTask(db, given.task)
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
+        // Every agent terminal costs memory: nothing launches while free RAM is under the seat floor (ops/liveness.yaml heavy.seatFreeMb).
+        const room = seatRoom()
+        if (!room.ok && given.dryRun !== true) throw new Refusal("SEAT_RAM_LOW", `free RAM ${String(room.freeMb)} MB is under the seat floor ${String(room.floorMb)} MB; task ${task.id} stays queued, launch it once memory is free`)
         // Every Op of a workflow works in a worktree of its own, cut from the branch of the workflow's worktree (or of the folder
         // --worktree names), and lands back on it; a task outside a workflow runs where --worktree says, else in this repository.
         const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)

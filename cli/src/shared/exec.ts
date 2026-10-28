@@ -1,7 +1,8 @@
 import { spawn, spawnSync } from "node:child_process"
 import type { ChildProcess, ChildProcessByStdio } from "node:child_process"
 import type { Readable } from "node:stream"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { setPriority } from "node:os"
 import { dirname, join } from "node:path"
 import { Refusal } from "./errors.js"
 
@@ -9,6 +10,9 @@ const MAX_BUFFER = 64 * 1024 * 1024
 
 /** The exit code a run gets when its timeout killed it (the coreutils `timeout` convention). */
 export const EXIT_TIMEOUT = 124
+
+/** How long a run waits for its output pipes to close once its process exited or was killed. */
+const PIPE_GRACE_MS = 5000
 
 /** The captured output of one finished tool run. */
 export interface ToolOutput {
@@ -28,6 +32,10 @@ export interface RunOptions {
     readonly env?: Readonly<Record<string, string>>
     /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
     readonly baseEnv?: NodeJS.ProcessEnv
+    /** The OS priority the child runs at once started (os.constants.priority; harness/heavy.ts lowers its heavy commands). */
+    readonly priority?: number
+    /** Told the child's pid once it started (the heavy-command semaphore records it). */
+    readonly onSpawn?: (pid: number) => void
 }
 
 interface Finished extends ToolRun {
@@ -83,6 +91,15 @@ const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: (
     }
 }
 
+/** Sets a started child's OS priority; a child that already exited, or a host that refuses it, keeps the priority it has. */
+const lowerPriority = (pid: number, priority: number): void => {
+    try {
+        setPriority(pid, priority)
+    } catch {
+        // A refused priority leaves the run as it is; it never fails it.
+    }
+}
+
 const execute = (tool: string, args: readonly string[], cwd: string, options: RunOptions): Promise<Finished> =>
     new Promise((settle) => {
         let timedOut = false
@@ -101,6 +118,10 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             const code = errorCode(error)
             settle({ exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : String(error), notStarted: typeof code === "string" ? code : "spawn failed", timedOut: false })
             return
+        }
+        if (child.pid !== undefined) {
+            if (options.priority !== undefined) lowerPriority(child.pid, options.priority)
+            options.onSpawn?.(child.pid)
         }
         child.stdout.on("data", stdout.push)
         child.stderr.on("data", stderr.push)
@@ -124,10 +145,24 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             }
         })
         child.on("close", finish)
+        // `close` waits for the output pipes too, which a grandchild that outlives the process (a detached daemon a postinstall
+        // or a build started) can hold open forever: once the process itself exited, the run ends at most PIPE_GRACE_MS later.
+        child.on("exit", (code: number | null) => {
+            setTimeout(() => {
+                if (done) return
+                child.stdout.destroy()
+                child.stderr.destroy()
+                finish(code)
+            }, PIPE_GRACE_MS).unref()
+        })
         if (options.timeoutMs !== undefined) {
             timer = setTimeout(() => {
                 timedOut = true
                 killTree(child)
+                // A tree the kill could not reach keeps its pipes: the run ends anyway once the grace passes.
+                setTimeout(() => {
+                    finish(null)
+                }, PIPE_GRACE_MS).unref()
             }, options.timeoutMs)
         }
     })
@@ -179,6 +214,14 @@ const npmEntry = (): string | undefined => {
     const nodeDir = dirname(process.execPath)
     const candidates = [join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"), join(nodeDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js")]
     return candidates.find((candidate) => existsSync(candidate))
+}
+
+/** The version of the npm bundled with this Node, read from its own package.json; undefined when Node ships without npm. */
+export const npmVersion = (): string | undefined => {
+    const entry = npmEntry()
+    if (entry === undefined) return undefined
+    const manifest: unknown = JSON.parse(readFileSync(join(dirname(entry), "..", "package.json"), "utf8"))
+    return typeof manifest === "object" && manifest !== null && "version" in manifest && typeof manifest.version === "string" ? manifest.version : undefined
 }
 
 /** Runs npm through the current Node, so no shell is involved on any platform. */

@@ -11,6 +11,7 @@ import type { CleanVerify } from "./clean-verify.js"
 import type { Contract } from "./contract.js"
 import type { LandTarget } from "./land.js"
 import { now } from "./ledger.js"
+import { loadLiveness } from "./liveness.js"
 import { loadOps } from "./ops.js"
 import type { ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
@@ -85,10 +86,14 @@ const LOCK_BEAT_MS = 10_000
 
 const LOCK_STALE_MS = 120_000
 
-/** The settle lock row as stored: the verifier and its last heartbeat. */
+/** The settle lock row as stored: the verifier, its last heartbeat and when it took the lock. */
 interface LockRow extends Verifier {
     readonly beat: string
+    readonly since: string
 }
+
+/** How long one verify may hold a lock (ops/liveness.yaml verifyDeadlineMinutes): past it the holder gives the lock up, and counts as gone. */
+const verifyDeadlineMs = (): number => loadLiveness().verifyDeadlineMinutes * 60_000
 
 const readLock = (db: DatabaseSync, key: string): LockRow | undefined => {
     const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key)
@@ -96,15 +101,17 @@ const readLock = (db: DatabaseSync, key: string): LockRow | undefined => {
     const value: unknown = JSON.parse(String(row.value))
     const verifier = asVerifier(value)
     if (verifier === undefined) return undefined
-    const beat = (value as Record<string, unknown>).beat
-    return { ...verifier, beat: typeof beat === "string" ? beat : verifier.at }
+    const { beat, since } = value as Record<string, unknown>
+    return { ...verifier, beat: typeof beat === "string" ? beat : verifier.at, since: typeof since === "string" ? since : verifier.at }
 }
 
 /**
- * True while the lock's holder lives: its heartbeat is fresh, and on this host its pid still runs. A stale heartbeat frees the
- * lock even when the pid runs, since Windows reuses pids and a reused pid would otherwise hold the lock forever.
+ * True while the lock's holder lives: its heartbeat is fresh, it took the lock less than the verify deadline ago, and on this host
+ * its pid still runs. A stale heartbeat frees the lock even when the pid runs, since Windows reuses pids and a reused pid would
+ * otherwise hold the lock forever; a holder past the deadline (a verify hung in-process, its heartbeat still beating) is gone too,
+ * so `task verify --recover` takes its task over.
  */
-const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && verifierAlive(holder)
+const holderAlive = (holder: LockRow): boolean => Date.now() - Date.parse(holder.beat) < LOCK_STALE_MS && Date.now() - Date.parse(holder.since) < verifyDeadlineMs() && verifierAlive(holder)
 
 /** The live holder of a lock (`verifyLockKey` of a task, or a land lock), if any: a verifying task with no live holder has no verifier left. */
 export const settleLockHolder = (db: DatabaseSync, key: string): Verifier | undefined => {
@@ -123,7 +130,7 @@ const tryLock = (db: DatabaseSync, me: Verifier, key: string): Verifier | undefi
             db.exec("COMMIT")
             return holder
         }
-        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, JSON.stringify({ ...me, beat: now() }))
+        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, JSON.stringify({ ...me, beat: now(), since: now() }))
         db.exec("COMMIT")
         return undefined
     } catch (error: unknown) {
@@ -144,11 +151,21 @@ const acquireLock = async (db: DatabaseSync, me: Verifier, key: string, deadline
 }
 
 /**
+ * Refuses with VERIFY_DEADLINE once `me` no longer holds the lock `key`: a verify that resumes after the lock gave it up at its
+ * deadline (another verifier may hold it now) records, preserves and lands nothing.
+ */
+export const assertSettleLockHeld = (db: DatabaseSync, me: Verifier, key: string): void => {
+    if (db.prepare(`SELECT 1 FROM meta WHERE ${mine}`).get(key, me.task, me.pid, me.host) !== undefined) return
+    throw new Refusal("VERIFY_DEADLINE", `the verify of ${me.task} no longer holds its lock (it passed its deadline); it settles nothing`)
+}
+
+/**
  * Runs `work` while this process holds the lock `key` (a ledger row): a task's verifier lock (`verifyLockKey`) for its whole
  * settling verify, or a land lock (harness/land.ts `landLockKey`), one per target branch, only while a verified commit is
  * integrated, so landings onto one branch run one at a time and each lands on the head the previous one left. A holder whose
  * process died is taken over; waiting longer than `waitMs` refuses with SETTLE_BUSY and changes nothing. The holder stamps a
- * heartbeat while it works, so a lock whose holder stopped beating is taken over even when its pid was reused.
+ * heartbeat while it works, so a lock whose holder stopped beating is taken over even when its pid was reused, and gives the
+ * lock up at the verify deadline, refusing with VERIFY_DEADLINE (work that resumes later is fenced by assertSettleLockHeld).
  */
 export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: number, key: string, work: () => Promise<T>): Promise<T> => {
     await acquireLock(db, me, key, Date.now() + waitMs)
@@ -161,9 +178,18 @@ export const withSettleLock = async <T>(db: DatabaseSync, me: Verifier, waitMs: 
         }
     }, LOCK_BEAT_MS)
     beat.unref()
+    // The holder gives the lock up itself at the verify deadline: a verify hung on an await never holds it past that.
+    let deadline: NodeJS.Timeout | undefined
+    const expired = new Promise<never>((_, refuse) => {
+        deadline = setTimeout(() => {
+            refuse(new Refusal("VERIFY_DEADLINE", `the verify of ${me.task} held the lock ${key} past its deadline (ops/liveness.yaml verifyDeadlineMinutes) and gave it up; it reached no verdict`))
+        }, verifyDeadlineMs())
+        deadline.unref()
+    })
     try {
-        return await work()
+        return await Promise.race([work(), expired])
     } finally {
+        clearTimeout(deadline)
         clearInterval(beat)
         db.prepare(`DELETE FROM meta WHERE ${mine}`).run(...keys)
     }

@@ -7,7 +7,8 @@ import { supervisorTick } from "./driver.js"
  * `starci supervisor tick`: one deterministic pass of the host driver, for a scheduler to run every minute. It first closes every
  * Orca terminal the harness made that no open seat or live Supervisor holds any more, and every orphaned one (`data.terminals`).
  * Then it keeps every project's Supervisor (relaunched when Orca says it is gone) and, acting for each attached one, sweeps the
- * Kernels and Ops of the workflows it owns in its project and the Supervisor itself: gone or silent Kernels are relaunched, agents
+ * Kernels and Ops of the workflows it owns in its project and the Supervisor itself: each workflow is settled (its reported tasks
+ * verified, a dead or hung verify reclaimed, settled workers' seats closed, a due wave run: settleWorkflow), gone or silent Kernels are relaunched, agents
  * idle at their prompt with work pending are nudged, then relaunched (a Kernel or Supervisor on the coordinator tier's order) or fenced (an Op, retried on another member), then escalated; an Op past its budget is asked to wrap up, then fenced past the grace (the budget ladder). It also names
  * every owner feedback still open (`data.feedback`, overdue past ops/liveness.yaml feedback.openMaxDays), and, once the owner's
  * Telegram chat is connected, sends the owner the notices due (`data.telegram`, `tickNotices` in harness/telegram-bridge.ts), so

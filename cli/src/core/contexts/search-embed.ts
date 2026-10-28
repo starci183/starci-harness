@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { runtimeRoot } from "../../harness/ledger.js"
+import { mainCheckoutOf, runtimeRoot } from "../../harness/ledger.js"
 
 /** One pinned local embedding model: the Hugging Face repository, its commit, the ONNX file and that file's sha256 (its LFS oid). */
 export interface EmbedModel {
@@ -57,8 +57,11 @@ export const chosenModel = (): EmbedModel | undefined => {
     return model
 }
 
-/** Where model weights are cached: downloaded once at build, read offline at query time, never committed. */
-export const modelCache = (): string => process.env[MODEL_CACHE_ENV] ?? join(runtimeRoot(), ".runtime", "models")
+/**
+ * Where model weights are cached: downloaded once at build, read offline at query time, never committed; in the harness's main
+ * checkout (ledger.ts mainCheckoutOf), so every worktree of it shares one model and vector cache.
+ */
+export const modelCache = (): string => process.env[MODEL_CACHE_ENV] ?? join(mainCheckoutOf(runtimeRoot()), ".runtime", "models")
 
 const modelDir = (model: EmbedModel): string => join(modelCache(), model.repo, model.revision)
 

@@ -22,7 +22,7 @@ the filed result, its Op worktree, check runs and preserved work. `seat list --l
 | Seen | Cause | Do |
 | --- | --- | --- |
 | `effect_unknown` | Orca could not confirm or deny a launch; the task keeps its worktree and seat | `starci seat start <task> --resume` replays the same request; never send a second task |
-| `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, or died | the next `workflow step` recovers it once no verifier holds the settle lock; `starci task verify <task> --recover` does the same by hand |
+| `verifying` that never ends, `VERIFY_LIVE` | a verifier is running, died or hung past `verifyDeadlineMinutes` | the next `workflow step` or `supervisor tick` recovers it once no live verifier holds its verifier lock (one past the deadline counts as gone); `starci task verify <task> --recover` does the same by hand |
 | `HEAD_MOVED`, `SETTLE_BUSY` | the branch moved or another settle runs | no try spent: step or verify again |
 | `LAND_CONFLICT`, attempt outcome `conflict` | the task's verified work does not rebase onto the branch's new head; its work is preserved | the Kernel retries the node by an amend, which starts from the preserved work on the new head; never resolve it by hand in the harness |
 | `running` with no result | the worker is working or lost | `starci seat ping <seat>`; `seat list` shows live, stale, quiet, unknown or lost. Unknown is never dead |

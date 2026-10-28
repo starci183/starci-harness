@@ -83,9 +83,9 @@ export const listedTerminals = (): ListedTerminals | null => {
     return { at: String(row.at), handles: new Set(Array.isArray(handles) ? handles.map(String) : []) }
 }
 
-/** Runs `work` on the host store with the P2 tables in place, atomically (BEGIN IMMEDIATE), and closes it. */
-export const withMachine = <T>(work: (db: DatabaseSync) => T): T => {
-    const db = openMachine()
+/** Runs `work` on the host store (or the store at `file`) with the P2 tables in place, atomically (BEGIN IMMEDIATE), and closes it. */
+export const withMachine = <T>(work: (db: DatabaseSync) => T, file?: string): T => {
+    const db = openMachine(file)
     try {
         db.exec(TABLES)
         return inTransaction(db, () => work(db))

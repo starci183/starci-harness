@@ -1,0 +1,41 @@
+schema: starci/scenario@1
+id: check-run-green-row-reused
+group: verify
+title: a green typecheck or lint row is reused while its inputs are unchanged, and rerun once one of them changes
+inject: "the same scoped check run again on an unchanged tree with its tools made to refuse, then after a judged file changed"
+expect: >-
+  the first check run runs tsc and eslint and records each green step under the digest of its inputs (the check, the judged
+  files, the package's content and its root files, Node and the tool's version); the second, with nothing changed, reuses both
+  rows and starts no tool, so tools that would now refuse leave it green; once a judged file changes the digest differs, the
+  steps run again and the refusing tools turn it red
+pass:
+  - the second run is green with both rows reused, though its tools would refuse
+  - after a change the steps run again
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    package.json: '{"name": "bench-reuse", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    .gitignore: "refuse\n"
+    node_modules/typescript/package.json: '{"name": "typescript", "version": "5.9.9"}'
+    node_modules/typescript/bin/tsc: "process.exit(require('node:fs').existsSync(require('node:path').join(__dirname, '..', '..', '..', 'refuse')) ? 2 : 0)\n"
+    node_modules/eslint/package.json: '{"name": "eslint", "version": "9.9.9"}'
+    node_modules/eslint/bin/eslint.js: "process.exit(require('node:fs').existsSync(require('node:path').join(__dirname, '..', '..', '..', 'refuse')) ? 1 : 0)\n"
+steps:
+  - write: { path: src/changed.ts, content: "export const changed = 1\n" }
+  - name: the first run runs both tools and records their green rows
+    starci: [check, run, --base, HEAD]
+    expect: { exit: 0 }
+  - name: from here every tool refuses
+    write: { path: refuse, content: "x\n" }
+  - name: the second run reuses both rows and starts no tool
+    starci: [check, run, --base, HEAD]
+    expect: { exit: 0, contains: "reused: green row" }
+  - write: { path: src/changed.ts, content: "export const changed = 2\n" }
+  - name: a changed input runs the steps again, and the refusing tools turn it red
+    starci: [check, run, --base, HEAD]
+    expect: { exit: 1 }

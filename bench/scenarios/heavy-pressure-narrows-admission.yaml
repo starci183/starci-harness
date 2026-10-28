@@ -1,0 +1,58 @@
+schema: starci/scenario@1
+id: heavy-pressure-narrows-admission
+group: resources
+title: "under memory pressure one heavy command runs at a time, and over the CPU ceiling none starts; host load says why"
+inject: "the heavy rules of an ops/ copy set so the host's free memory is under the low floor, then its CPU over the ceiling"
+expect: >-
+  with free memory under heavy.lowFreeMb the governor admits one heavy command: of two check runs at once one waits, both end
+  green, and host load reports one slot admitted and why; with the CPU average above heavy.maxCpuPercent it admits none and
+  host load says the CPU holds new heavy work
+pass:
+  - two check runs at once both exit 0 and one of them waited
+  - host load reports one admitted slot under the low floor
+  - host load reports no admitted slot over the CPU ceiling
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+repo:
+  files:
+    package.json: '{"name": "bench-heavy", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "setTimeout(() => process.exit(0), 3000)\n"
+    node_modules/eslint/bin/eslint.js: "process.exit(0)\n"
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - name: the low floor is above any host's free memory
+    starci: [config, set, liveness.heavy.lowFreeMb, "100000000"]
+  - name: no CPU holds work back yet, whatever else this host runs
+    starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
+  - git: [commit, -q, -am, "bench: memory pressure"]
+  - write: { path: src/changed.ts, content: "export const changed = 1\n" }
+  - name: host load admits one slot and names the low floor
+    starci: [host, load]
+    expect: { exit: 0, contains: "is under the low floor" }
+  - starci: [host, load]
+    expect: { exit: 0, contains: '"admitted": 1' }
+  - name: two check runs at once, one at a time
+    starci: [check, run, --base, HEAD]
+    parallel: 2
+    expect: { exit: 0 }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) >= 1 FROM host_events WHERE kind = 'heavy-wait'"
+        equals: [1]
+  - name: a CPU ceiling no host is under
+    starci: [config, set, liveness.heavy.maxCpuPercent, "0.0001"]
+  - name: host load admits none and names the CPU
+    starci: [host, load]
+    expect: { exit: 0, contains: '"admitted": 0' }
+  - starci: [host, load]
+    expect: { exit: 0, contains: "% over 60 s is above 0.0001%" }

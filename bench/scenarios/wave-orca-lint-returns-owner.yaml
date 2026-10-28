@@ -1,0 +1,93 @@
+schema: starci/scenario@1
+id: wave-orca-lint-returns-owner
+group: verify
+title: "orca: task verify skips the heavy checks, the Kernel's step runs one wave over the landed batch and returns the task whose file is red"
+inject: "of two parallel Ops of an orca workflow, the second lands a file with a lint error"
+expect: >-
+  the Kernel launches both Ops; each task verify runs only the cheap checks and leaves check-run-green to the wave; once the
+  batch has landed `kernel next` runs one wave in the workflow's worktree, its scoped lint red on the second Op's file, so that
+  task turns failed and the workflow blocks while the first stays done: the same wave the inline runner runs
+pass:
+  - neither task verify ran check-run-green
+  - one wave over both tasks; b failed, a done
+  - the workflow is blocked, not done
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z"
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z"
+repo:
+  files:
+    package.json: '{"name": "bench-wave", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "process.exit(0)\n"
+    node_modules/eslint/bin/eslint.js: |
+      const { readFileSync } = require("node:fs")
+      const { resolve } = require("node:path")
+      const bad = process.argv.slice(2).filter((a) => !a.startsWith("--") && readFileSync(a, "utf8").includes("LINT_ERROR"))
+      for (const f of bad) console.log(resolve(f) + ": error LINT_ERROR bench/no-error")
+      process.exit(bad.length === 0 ? 0 : 1)
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: wave
+        goal: two parallel changes, one of them red on lint
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: add module a
+            allowPaths: [src/a.ts]
+            checks: [check-run-green]
+          - id: b
+            label: docs
+            summary: add module b
+            allowPaths: [src/b.ts]
+            checks: [check-run-green]
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: wave
+  - name: kernel next launches both Ops
+    seat: kernel:wave
+    starci: [kernel, next, wave, --wait, "0"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a'"
+      as: a
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'b'"
+      as: b
+  - worker:
+      task: ${a}
+      files:
+        src/a.ts: "export const a = 1\n"
+  - worker:
+      task: ${b}
+      files:
+        src/b.ts: "export const b = 1 // LINT_ERROR\n"
+  - name: kernel next verifies both, then runs the wave
+    seat: kernel:wave
+    starci: [kernel, next, wave, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT plan_key || ':' || status FROM tasks ORDER BY plan_key"
+        equals: ["a:done", "b:failed"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM events WHERE kind = 'wave-verified') || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'wave-returned' AND subject = '${b}') || ':' || (SELECT COUNT(*) FROM check_runs WHERE name = 'check-run-green' AND status = 'red' AND task_id = '${a}')"
+        equals: ["1:1:0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM workflows WHERE id = 'wave'"
+        equals: [blocked]

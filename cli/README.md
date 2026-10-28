@@ -58,9 +58,11 @@ graph version's nodes with contract hash, node hash, routing hints and retry rou
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
 `check_runs` (every check of every verify with its status, exit code and detail: the tail of its output, at most `EVIDENCE_LINES` of `shared/output.ts` per tool run, with every value `redactSecrets` of `shared/secrets.ts` recognises redacted, which `task status` prints for the red checks of the newest verify); `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
-settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
+settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); `check_rows`, the green
+check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
-`pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, `project_supervisors`, one live
+`pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, the heavy-command
+governor's `heavy_slots` and `cpu_samples` (`harness/heavy.ts`), `project_supervisors`, one live
 Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
 `telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`).
@@ -75,7 +77,8 @@ no SQLite database or a damaged one is refused `LEDGER_CORRUPT`, naming the file
 compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
-failed returns the task to `queued`; a verify with no verdict returns it to `reported` with no try spent, until one
+failed returns the task to `queued`; a red wave verify returns a `done` task to `failed` (its only way out; it holds
+nothing either way); a verify with no verdict returns it to `reported` with no try spent, until one
 result has reached no verdict `settleNoVerdictMax` times ([ops/liveness.yaml](../ops/liveness.yaml)): then the failure is
 persistent and the task ends `awaiting_owner` with the last reason (`noVerdict` in `core/task/verify.ts`). A command
 with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
@@ -89,9 +92,10 @@ act there whatever checkout the caller is in.
 `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut when its seat starts (or
 its inline step hands it out) from the head of the branch its workflow's worktree has checked out (an inline workflow
 without one: the checkout it runs in), beside that worktree rather than inside it, since git keeps no branch below another
-branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and links each
-node_modules folder of that checkout (a junction on Windows), never a fresh install (`ensureOpWorktree` in
-`harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
+branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and, for each
+node_modules folder of that checkout and each lockfile folder of its own, an install without npm: from the install cache
+(below) when it holds the key of that folder's lockfile, else a link to the checkout's own folder when it has one (a
+junction on Windows), always the link in local package mode (`ensureOpWorktree` and `linkInstall` in `harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
 runner the worktree is listed in Orca under the workflow's worktree as `[Op] <workflow>: <task>`, and the workflow's
 worktree under the project's main checkout as `[Kernel] <workflow>` (`orca worktree set --parent-worktree`), so
 Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. Every worktree the
@@ -108,7 +112,8 @@ landed on, every other branch is kept.
 Orca cannot confirm the stop), then builds a candidate from HEAD of the task's checkout plus its work under its
 `allowPaths`, rebases it onto the head of the branch it lands on without a work tree (`git merge-tree --write-tree` with
 the candidate's parent as the base, `rebaseCandidate` in `harness/land.ts`), and replays every check on a clean checkout
-of that rebased commit, never in the worker's environment, so what is verified is what lands; what the candidate misses
+of that rebased commit, never in the worker's environment (a workflow task's heavy checks wait for its wave, below), so
+what is verified is what lands; what the candidate misses
 is read against the same staged snapshot. A textual conflict is never resolved by the harness: no check runs, the work
 is preserved, the attempt ends `conflict` and the task fails without a verdict, and the Kernel gets a `conflict`
 decision to amend the node on the new head, whose retry starts from the preserved work. A task working in a checkout it
@@ -132,13 +137,66 @@ worktree is removed. A verify holds its task's verifier lock throughout, and the
 overwrite a local edit, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
 when another task landed between a verify's rebase and its landing, it verifies again on the new head under the land
 lock, so each lands on the head the previous one left. A lock's holder stamps a heartbeat, so a dead holder whose pid
-Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`). Git is the authority
-for landed: a task left verifying by a verifier that no longer holds its verifier lock (dead, or its beat stale) is
-reconciled by `task verify --recover`, which every `workflow step` (and so `kernel next`) runs on such a task before it
-settles: done when the branch it lands on carries the settle commit (its message and `Starci-Task:` trailer after the head
+Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`), and holds a lock at most
+`verifyDeadlineMinutes` ([ops/liveness.yaml](../ops/liveness.yaml)): at the deadline the holder gives it up itself
+(`VERIFY_DEADLINE`, no verdict, back to reported, and work that resumes later lands nothing), and a holder still listed
+past it counts as gone though it beats. A tool run ends at most a few seconds after its process exited or was killed even
+when a grandchild keeps its output pipes open (`shared/exec.ts`). Git is the authority for landed: a task left verifying
+by a verifier that no longer holds its verifier lock (dead, its beat stale, or past the deadline) is reconciled by `task
+verify --recover`, which the settling half of every `workflow step` (`settleWorkflow`, so `kernel next`) runs on such a
+task before it settles, and which `supervisor tick` and `supervisor next` run for every workflow the Supervisor
+coordinates, so a filed result is verified and its worker's seat closed with no Kernel turn: done when the branch it lands on carries the settle commit (its message and `Starci-Task:` trailer after the head
 the verify started from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
 `shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
 NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
+
+**Wave verify.** The tiers are [contexts/authority/](../contexts/authority/README.md)'s; policy/quality.yaml `verify.tier`
+picks where a workflow task's heavy checks run. In `wave` (the default) `task verify` splits the contract's checks
+(`splitChecks` in `harness/wave.ts`): the heavy ones, a scoped `starci check` verb or any command check (typecheck, lint,
+tests, a suite), are left to the wave and recorded `wave-due` when the task settles; the rest run in its own verify, and
+a task left with no tool-running check gets no install or setup at all. A Supervisor's `[Worker]` leaves them the same way,
+to Debug's round after it lands the worker's branch; a task sent alone (`task send`), or the `task` tier, runs every check
+itself. `workflow step` (so `kernel next`, inline and orca alike) runs the wave (`runWave`) once the
+batch in flight has landed (no task of the workflow live) and nothing more can be dispatched without it (no ready node,
+or every ready node depends on a task of the wave); a ready node depending on a due task waits for it, and a workflow is
+never done while a wave is due (`derivedStatus` of `harness/workflow.ts`). The wave writes its scope decision first
+(`wave-scope`: the diff from the oldest settle parent of its tasks to HEAD, the changed files, the commands, what it
+skips), then, on one clean checkout of the workflow's HEAD, prepares one install and every contract's setup, runs each
+scoped check once over the union and each command once per cwd and argv (per task when it reads the task's result or
+coverage). A red check belongs to the tasks whose landed files its output names (every task that left it when it names
+none): those tasks go `done → failed` with the red rows on their attempt (`wave-returned`), back to the Kernel like any
+red verify, and every task of the wave is judged (`wave-judged`, `wave-verified`). `workflow wave <id>` runs a due wave by
+hand.
+
+**Install cache.** A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
+(`harness/install-cache.ts`) keys an install by the lockfile's bytes, Node's version and npm's
+(`<state base>/cache/installs/<key>`, path in `harness/ledger.ts`). A miss runs `npm ci` in the checkout and copies its
+node_modules into the cache (staged, then renamed into place), recording the links npm made to the checkout's own folders
+(workspace members) relative to the install folder; a hit gives the checkout a real node_modules whose every package is a
+link into the cache (a junction on Windows), those workspace links re-made to the checkout, and a marker. A repository in
+local package mode gets a copy instead, then the same `reapplyLocal`. Before a checkout is removed, and when a leftover
+one is pruned, every install link it holds (a node_modules that is itself a link, and every link inside a real one) is removed with a
+plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
+
+**Heavy-command governor.** Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
+build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
+`harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
+or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
+it) while it runs, admitted by free
+memory and the CPU average over a window (samples in `cpu_samples`), with the limits, memory caps and seat floor in the
+`heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command with no slot waits in the queue, says so on stderr
+and records a `heavy-wait` host event; waiting never fails it. Each child runs below normal priority, a node tool under
+its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
+pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
+it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
+`seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait.
+`host load` prints the load, the slots in use with each child's pid and RSS, and the queue.
+
+**Result reuse.** `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
+`harness/check-reuse.ts`: the gate, the judged files, the content of the package and the workspace packages it reaches
+and of the repository's root files, dirty files hashed as they stand, Node's version and the tool's) and keeps green
+steps in the project ledger's `check_rows`; a step whose digest has a green row is that row, reused and never rerun, in a
+wave, in Debug's scoped round and before a push alike.
 
 **Workflow graph.** A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
 a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is

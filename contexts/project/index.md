@@ -7,7 +7,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 
 - [README.md](../README.md) · 14 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
-- [authority/README.md](../authority/README.md) · 6 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
+- [authority/README.md](../authority/README.md) · 5 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
@@ -172,8 +172,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 6 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing
-- [hfs/harness.yaml](../hfs/harness.yaml) · 16 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, bench.fixtures, bench.map, bench.scenarios, bench.stub, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.workflows, never.build-output, never.cli-js, never.env, never.examples and 31 more
+- [hfs/harness.yaml](../hfs/harness.yaml) · 17 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+  - ids: app.package, app.tree, bench.fixtures, bench.map, bench.scenarios, bench.stub, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.workflows, never.build-output, never.cli-js, never.env, never.examples and 32 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 94 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 226 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 91 KB — The HFS slot manifest: what may exist in an app repository and where.

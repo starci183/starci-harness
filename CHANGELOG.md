@@ -46,6 +46,33 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   the commit's siblings packed over the registry copies (`.github/actions/cli-install`), and the publish job moves its
   requirements and lockfile to the siblings it just published. The workflow reads the `NPM_TOKEN` secret (CONTRIB-20).
   Bench: `release-publish-version-not-bumped`, `release-publish-plan-guard`.
+- **Speed flow: per-task verify is cheap, the wave runs the heavy checks.** policy/quality.yaml `verify.tier` (default
+  `wave`): `task verify` of a workflow task runs only its cheap checks (lands, secrets and loosening on its diff, paths,
+  files, json, cited, cite) and no install, and records its typecheck, lint and test checks as due; `workflow step` (inline
+  and orca, so `kernel next` too) runs one wave verify once the batch has landed and before any dependent starts or the
+  workflow is done, its scope decision recorded first, the heavy checks once over the union of the landed tasks; a red wave
+  returns the tasks whose files are red (`done → failed`). `workflow wave <id>` runs a due wave by hand. Bench:
+  `wave-inline-lint-returns-owner`, `wave-orca-lint-returns-owner`.
+- **Shared install cache.** A clean checkout and an Op worktree link their node_modules from `<state base>/cache/installs/<key>`
+  (lockfile, Node and npm versions) instead of running `npm ci` (an Op worktree falls back to linking its target's install on a
+  miss, and always in local package mode); workspace links are re-made per checkout, a clean checkout in local package mode
+  gets a copy, and every link is unlinked before the checkout is removed. Bench: `verify-install-cache-reused`.
+- **Host heavy-command governor.** Every tsc, eslint, test or suite command, build, npm install, setup and uat container
+  the harness runs takes a slot of a machine-wide semaphore in machine.sqlite (`heavy` of ops/liveness.yaml: 2 slots, one
+  under the low RAM floor, none under the critical floor or over the CPU ceiling), runs below normal priority under its
+  kind's memory cap (`--max-old-space-size`, `--memory`, `--maxWorkers`), and waits, logged, never failing. A worker seat
+  waits while free RAM is under the seat floor (`SEAT_RAM_LOW`). New: `host load`, and `check heavy-sites`, a CI gate
+  red for a spawn site outside the governor. Bench: `heavy-third-command-waits`, `heavy-pressure-narrows-admission`,
+  `seat-launch-waits-on-ram`.
+- **A filed result is verified with no Kernel turn, and a hung verify is reclaimed.** `supervisor tick` and `supervisor
+  next` run the settling half of a workflow step (`settleWorkflow`: recover, verify, close seats, wave) for every workflow
+  the Supervisor coordinates; a reported task's worker seat is released and its tab closed. A verify holds its verifier lock
+  at most `verifyDeadlineMinutes` (ops/liveness.yaml): it gives the lock up itself at the deadline, and a holder past it counts
+  as gone, so `--recover` takes its task over. A tool run whose process exited ends within seconds even when a grandchild
+  holds its output pipes. Bench: `verify-hung-holder-reclaimed`, `orca-tick-verifies-reported`.
+- **Green rows are reused.** `check run` keys each typecheck and lint step by the digest of its inputs and reuses a green
+  row of the project ledger instead of rerunning it, in a wave, Debug's scoped round and before a push. Bench:
+  `check-run-green-row-reused`.
 - **Host secrets come from the harness's secret.env.** One secret loader (`cli/src/harness/secret-env.ts`) reads a named key
   from the process environment, else from `secret.env` at the harness root, and only the keys policy/security.yaml
   `secretKeys` lists (`SECRET_KEY_UNLISTED` otherwise); no output carries a value. The Telegram verbs, the

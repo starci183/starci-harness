@@ -27,6 +27,8 @@ import { taskCancelVerb } from "../task/cancel.js"
 import { inOrder } from "../../harness/sequential.js"
 import { taskVerifyVerb } from "../task/verify.js"
 import { checkRunVerb } from "../check/run.js"
+import { loadPolicy } from "../../harness/policy.js"
+import { runWave } from "../../harness/wave.js"
 
 /**
  * What one step did to one task: settled it, dispatched it, launched or cancelled it, closed its seats once its result was
@@ -66,6 +68,15 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
     const db = openLedger(root)
     try {
         return work(db)
+    } finally {
+        db.close()
+    }
+}
+
+const withLedgerAsync = async <T>(root: string, work: (db: DatabaseSync) => Promise<T>): Promise<T> => {
+    const db = openLedger(root)
+    try {
+        return await work(db)
     } finally {
         db.close()
     }
@@ -147,9 +158,9 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
 }
 
 /**
- * Reconciles each verifying node whose verifier died (it no longer holds the settle lock, or its heartbeat went stale) through
- * `task verify --recover`: git first, so a settle commit that landed makes it done, else it returns to reported for this same
- * step to verify. A verifier still alive (VERIFY_LIVE) is a wait.
+ * Reconciles each verifying node whose verifier is gone (it no longer holds its verifier lock: dead, its heartbeat stale, or past
+ * the verify deadline) through `task verify --recover`: git first, so a settle commit that landed makes it done, else it returns
+ * to reported for this same step to verify. A verifier still alive (VERIFY_LIVE) is a wait.
  */
 const recoverOrphans = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
     const verifying = snapshot.views.flatMap((view) => (view.state === "verifying" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
@@ -182,9 +193,9 @@ const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise
     })
 }
 
-/** True for a task whose result is settled: it ended, or it came back to the Kernel (blocked or mismatch); its worker has nothing left to do. */
+/** True for a task whose worker has nothing left to do: it filed its result (reported, being verified) or it ended. */
 const isSettled = (task: WorkflowTask): boolean =>
-    task.status === "done" || task.status === "failed" || task.status === "cancelled" || task.status === "awaiting_owner" || (task.status === "reported" && task.result !== null && task.result !== "done")
+    task.status === "done" || task.status === "failed" || task.status === "cancelled" || task.status === "awaiting_owner" || task.status === "reported" || task.status === "verifying"
 
 // A stopped seat waits for `seat stop` and a lost one is gone by Orca's word: the sweep asks Orca about neither again.
 const isSweepable = (seat: SeatRow): boolean => isSeatOpen(seat) && seat.handle !== null && seat.status !== SEAT_STOPPED && seat.status !== SEAT_WORKER_LOST
@@ -293,7 +304,7 @@ const launchTask = async (context: VerbContext, root: string, workflow: Workflow
         return { key: node.key, task, action: "launched", detail: `${chosen.agent}/${chosen.model} routed (tier ${chosen.tier}, pool ${chosen.pool}, by ${chosen.record.chosen?.by ?? "?"}): ${started.message.split("\n")[0] ?? "launched"}` }
     } catch (error: unknown) {
         const refusal = asRefusal(error)
-        return { key: node.key, task, action: "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
+        return { key: node.key, task, action: refusal.code === "SEAT_RAM_LOW" ? "wait" : "problem", detail: `launch refused (${refusal.code}): ${refusal.message}; the task stays queued and the next step launches it again` }
     }
 }
 
@@ -332,6 +343,37 @@ const queueOne = (root: string, workflow: Snapshot["workflow"], node: Snapshot["
     return { action: made.action, queued: made.queued, stop: made.halted, halted: made.halted }
 }
 
+/** The plan keys of the tasks whose wave verify is due: a ready node depending on one waits for that wave. */
+const waveKeys = (snapshot: Snapshot): ReadonlySet<string> =>
+    new Set(snapshot.tasks.flatMap((task) => (task.key !== null && snapshot.waveDue.includes(task.id) ? [task.key] : [])))
+
+/**
+ * The wave verify (harness/wave.ts), the same for inline and orca: it runs once the batch in flight has landed (no task of the
+ * workflow is live) and nothing more can be dispatched without it (no ready node, or every ready node depends on a task of the
+ * wave), so a wave covers every task that landed since the last one, a dependent never starts on unjudged work, and a
+ * workflow is never done before its last wave. A red wave fails the tasks whose files are red; the Kernel retries them.
+ */
+const waveActions = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
+    if (snapshot.waveDue.length === 0 || snapshot.live > 0 || !DISPATCHING.includes(snapshot.workflow.status)) return []
+    const waiting = waveKeys(snapshot)
+    const free = snapshot.views.some((view) => view.state === "ready" && !(snapshot.nodes.find((node) => node.key === view.key)?.dependsOn.some((dep) => waiting.has(dep)) ?? false))
+    if (free) return []
+    const timeoutMs = loadPolicy(root).quality.runtime.stepTimeoutSeconds * 1000
+    try {
+        const wave = await withLedgerAsync(root, (db) => runWave(db, root, snapshot.workflow.id, timeoutMs))
+        if (wave === undefined) return []
+        const keyOf = (id: string): string | null => snapshot.tasks.find((task) => task.id === id)?.key ?? null
+        const red = (id: string): string[] => (wave.outcomes[id] ?? []).filter((outcome) => outcome.status === "red").map((outcome) => outcome.name)
+        return [
+            { key: null, task: null, action: "verified", detail: `wave ${wave.verdict} over ${String(wave.tasks.length)} task(s), ${wave.base.slice(0, 12)}..${wave.head.slice(0, 12)}` },
+            ...wave.returned.map((id): StepAction => ({ key: keyOf(id), task: id, action: "verified", detail: `wave red: ${red(id).join(", ") || wave.prepared.map((outcome) => outcome.name).join(", ")}; task failed, back to the Kernel (starci task status ${id})` })),
+        ]
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return [{ key: null, task: null, action: "problem", detail: `wave verify reached no verdict (${refusal.code}): ${refusal.message}; the next step runs it again` }]
+    }
+}
+
 /** The ready nodes in dependency order become queued tasks while there are free slots and budget; `halted` says the workflow stopped dispatching. */
 const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepAction[]; readonly halted: boolean } => {
     const { workflow } = snapshot
@@ -340,8 +382,14 @@ const queueReady = (root: string, snapshot: Snapshot): { readonly actions: StepA
     const slots = parallelSlots(workflow.header)
     let free = slots - snapshot.live
     const noSlot = orca ? `all ${String(slots)} parallel slot(s) are taken` : "the inline run works one task at a time"
+    const waiting = waveKeys(snapshot)
     for (const view of snapshot.views) {
         if (view.state !== "ready") continue
+        const onWave = snapshot.nodes.find((candidate) => candidate.key === view.key)?.dependsOn.filter((dep) => waiting.has(dep)) ?? []
+        if (onWave.length > 0) {
+            actions.push({ key: view.key, task: null, action: "wait", detail: `waits for the wave verify of ${onWave.join(", ")}` })
+            continue
+        }
         if (free <= 0) {
             actions.push({ key: view.key, task: null, action: "wait", detail: noSlot })
             continue
@@ -398,9 +446,27 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
 }
 
 /**
- * One dispatch tick, idempotent: cancel live tasks no node carries any more, recover verifying nodes whose verifier died,
- * settle reported nodes through `task verify`,
- * close the seats of settled tasks, dispatch the nodes that became ready (orca: launch their seats under the Kernel), then move
+ * The settling half of a step, which needs no coordinator's turn: reconcile each verifying task whose verifier died (`task
+ * verify --recover`, git first), verify every reported task, close the seats of every task whose result is in, remove the Op
+ * worktrees of ended tasks, and run a due wave, then move the workflow's status. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
+ * whose Supervisor it acts for, so a filed result is verified and its worker's seat closed whether or not its Kernel takes a turn.
+ */
+export const settleWorkflow = async (context: VerbContext, root: string, id: string): Promise<StepAction[]> => {
+    if (!SETTLING.includes(readSnapshot(root, id).workflow.status)) return []
+    const actions = [
+        ...(await recoverOrphans(context, readSnapshot(root, id))),
+        ...(await settleReported(context, readSnapshot(root, id))),
+        ...(await closeSettledSeats(root, readSnapshot(root, id))),
+        ...(await worktreeSweepActions(root, id)),
+    ]
+    actions.push(...(await waveActions(root, readSnapshot(root, id))))
+    reconcile(root, id)
+    return actions
+}
+
+/**
+ * One dispatch tick, idempotent: cancel live tasks no node carries any more, check seat liveness, run the settling half
+ * (settleWorkflow), dispatch the nodes that became ready (orca: launch their seats under the Kernel), then move
  * the workflow to the status its nodes call for; a stopped workflow's Kernel terminal is closed.
  * This is what a loop, the daemon or an inline chat agent calls.
  */
@@ -414,10 +480,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(
             ...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)),
             ...(await checkLiveness(context, root, readSnapshot(root, id))),
-            ...(await recoverOrphans(context, readSnapshot(root, id))),
-            ...(await settleReported(context, readSnapshot(root, id))),
-            ...(await closeSettledSeats(root, readSnapshot(root, id))),
-            ...(await worktreeSweepActions(root, id)),
+            ...(await settleWorkflow(context, root, id)),
         )
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))

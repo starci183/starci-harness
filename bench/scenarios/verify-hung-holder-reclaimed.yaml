@@ -1,0 +1,64 @@
+schema: starci/scenario@1
+id: verify-hung-holder-reclaimed
+group: crash
+title: "inline: a verify hung in-process holds the settle lock past its deadline; the next step reclaims the task and verifies it"
+inject: >-
+  the task sits in verifying under a settle lock whose holder still beats its heartbeat (a live process on another host, so its
+  pid cannot be judged) but took the lock long before the verify deadline (ops/liveness.yaml verifyDeadlineMinutes)
+expect: >-
+  a holder past the verify deadline counts as gone though its heartbeat is fresh, so the next workflow step reconciles the task
+  from git (no settle commit: back to reported, no try spent) and verifies it to done in the same step; nothing waits for the hung
+  process and nobody has to kill it
+pass:
+  - task done after one step, try_no still 1, one task commit
+  - the reconcile is recorded (verify-recovered)
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: hung
+        goal: a doc whose verify hung
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/a.md] }
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, hung]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# a\n"
+  - name: a verifier took the lock long ago and hangs, its heartbeat still fresh
+    sql:
+      db: ledger
+      exec: >-
+        UPDATE tasks SET status = 'verifying';
+        INSERT INTO meta (key, value) VALUES ('verify-lock:${a}', json_object('task', '${a}', 'pid', 4242, 'host', 'a-host-hung-elsewhere',
+        'at', '2026-01-01T00:00:00.000Z', 'beat', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'since', '2026-01-01T00:00:00.000Z'))
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  - name: the step reclaims the task and verifies it
+    starci: [workflow, step, hung]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status || ':' || try_no FROM tasks"
+        equals: ["done:1"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'verify-recovered' AND subject = '${a}'"
+        equals: [1]
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1

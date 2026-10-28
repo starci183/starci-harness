@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { captureGit, currentBranch, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { assertMayPushBranch } from "../pkg/edit.js"
 import { formatTable } from "../../shared/output.js"
@@ -109,7 +110,7 @@ const publishHeld = async (row: PlanRow, packages: readonly WorkspacePackage[], 
                 }
             }
             writeFileSync(manifestPath, moved.text)
-            const refresh = await captureNpm(["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], pkg.dir)
+            const refresh = await withHeavySlot("install", "npm install --package-lock-only", pkg.dir, {}, (held) => captureNpm(["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], pkg.dir, held.options))
             if (refresh.exitCode !== 0) throw new Refusal("PUBLISH_LOCK_REFRESH_FAILED", `the lockfile of ${row.package} could not move to ${moved.moves.map((sibling) => `${sibling.name}@${sibling.version}`).join(", ")}: ${(refresh.stderr || refresh.stdout).split("\n").slice(-3).join(" ")}`)
         }
         return await publishRow(row, packages, root)

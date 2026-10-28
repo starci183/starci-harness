@@ -12,6 +12,8 @@ import { treeFiles } from "./tree-files.js"
 import { DEP_BUILD_FAILED, buildWorkspaceDependencies } from "./workspace-deps.js"
 import type { DependencyBuilds } from "./workspace-deps.js"
 import { inOrder } from "../../harness/sequential.js"
+import { checkDigest, greenRow, recordGreen } from "../../harness/check-reuse.js"
+import { listPackages } from "../../shared/workspace.js"
 
 /** The verdict of one repository gate: it judges the tree (loosening) or the judged files (secrets), not one package. */
 interface GateResult {
@@ -59,6 +61,20 @@ const heldStep = (gate: "typecheck" | "lint", target: ScopeTarget, unbuilt: read
     output: "",
 })
 
+/**
+ * A typecheck or lint step whose inputs (harness/check-reuse.ts checkDigest) match a green row of the project's ledger is that row,
+ * reused and never rerun; a step that runs and is green is recorded for the next round (a wave, Debug's scoped round, a push).
+ */
+const reusing = async (gate: "typecheck" | "lint", scope: Scope, target: ScopeTarget, run: () => Promise<StepResult>): Promise<StepResult> => {
+    // The composition a lint judges by (a deferral, the modules judged in full) is part of what the step checks.
+    const digest = await checkDigest(scope.root, listPackages(scope.root), target.pkg, gate, `${gate} ${JSON.stringify(scope.composition)}`, target.files, scope.all)
+    const row = greenRow(scope.root, digest)
+    if (row !== undefined) return { package: target.pkg.name, step: gate, command: row.command, status: "green", reason: `reused: green row ${digest.slice(0, 12)} of ${row.at}, inputs unchanged (${row.reason})`, output: "" }
+    const result = await run()
+    if (result.status === "green") recordGreen(scope.root, digest, gate, target.pkg.name, result.command, result.reason)
+    return result
+}
+
 /** The package step a gate of the tier runs on one target, as a task; the repository gates run no package step. */
 const packageStep = (gate: RuntimeGate, scope: Scope, target: ScopeTarget, canon: CanonByTool, builds: DependencyBuilds, options: RunOptions): (() => Promise<StepResult>)[] => {
     const unbuilt = builds.unbuilt(target.pkg)
@@ -66,9 +82,9 @@ const packageStep = (gate: RuntimeGate, scope: Scope, target: ScopeTarget, canon
         case "canon":
             return [() => Promise.resolve(canonPackage(scope, target, canon))]
         case "typecheck":
-            return [() => (unbuilt.length > 0 ? Promise.resolve(heldStep(gate, target, unbuilt)) : typecheckPackage(scope, target, options))]
+            return [() => (unbuilt.length > 0 ? Promise.resolve(heldStep(gate, target, unbuilt)) : reusing(gate, scope, target, () => typecheckPackage(scope, target, options)))]
         case "lint":
-            return [() => (unbuilt.length > 0 ? Promise.resolve(heldStep(gate, target, unbuilt)) : lintPackage(scope, target, options))]
+            return [() => (unbuilt.length > 0 ? Promise.resolve(heldStep(gate, target, unbuilt)) : reusing(gate, scope, target, () => lintPackage(scope, target, options)))]
         case "secrets":
         case "loosening":
             return []

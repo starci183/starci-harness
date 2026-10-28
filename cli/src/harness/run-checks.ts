@@ -7,6 +7,7 @@ import { changedFiles } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
+import { testWorkerArgs, withHeavySlot } from "./heavy.js"
 import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -48,6 +49,10 @@ const PROBE_TIMEOUT_MS = 10_000
 const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typecheck"])
 
 const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
+
+/** A command check's argv (a test runner, a suite, a build) runs under a host heavy-command slot, a test runner at its worker count (harness/heavy.ts). */
+const heavyCommand = (argv: readonly string[], cwd: string, options: { readonly timeoutMs?: number }): Promise<ToolRun> =>
+    withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, options, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
 const selfEntry = (): string => fileURLToPath(new URL("../main.js", import.meta.url))
@@ -300,7 +305,7 @@ const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kin
  * honestly is a finding and a claim the run contradicts is red.
  */
 const runVerdictCommand = async (check: ResolvedCheck, argv: readonly string[], key: string, place: CheckPlace, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
-    const run = await captureCommand(argv, place.cwd, options)
+    const run = await heavyCommand(argv, place.cwd, options)
     const observed = run.exitCode === 0 ? "passed" : "failed"
     const document = readJsonDocument(RESULT_FILE, place)
     const claimed = "problem" in document ? undefined : asRecord(document.value)[key]
@@ -373,7 +378,7 @@ const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readon
     try {
         const scope = primitive.coverage === "changed" ? await changedCoverageScope(place, allowPaths) : undefined
         const argv = scope === undefined ? named : withCoverageArgs(named, scope)
-        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await captureCommand(argv, place.cwd, options))
+        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await heavyCommand(argv, place.cwd, options))
         return scope === undefined ? judged : { ...judged, detail: `${scope.detail}\n${judged.detail}` }
     } catch (error: unknown) {
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
