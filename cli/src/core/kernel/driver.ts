@@ -12,11 +12,11 @@ import { deadOnArrivalFailure } from "../../harness/launch-failure.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
-import { inLaunchGrace, livenessOf, loadLiveness } from "../../harness/liveness.js"
+import { inLaunchGrace, judgeStart, livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
 import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
-import { isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
+import { holdTerminal, isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
 import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
@@ -409,36 +409,44 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
 
 /**
  * A completed launch request whose receipt names a dispatch is judged by that dispatch, never replayed (a replay answers the same
- * receipt forever): a worker Orca shows started is adopted on the seat (the task runs); one that is gone, or still has not started
- * its turn (stall.startUnknownStates) past stall.startDeadlineMinutes, was dead on arrival: it is fenced (worker-stop, else
+ * receipt forever), through `judgeStart` (harness/liveness.ts): a worker Orca shows started, or whose live terminal printed after
+ * the launch, is adopted on the seat (the task runs); one whose listed terminal stayed quiet past stall.startDeadlineMinutes is
+ * never fenced on that unverifiable start: it waits, and past effectUnknownDeadlineMinutes is a red decision. One that is gone,
+ * or never started past the deadline with its terminal no longer listed, was dead on arrival: it is fenced (worker-stop, else
  * worker-abandon), its attempt closes launch-failed (no try spent), its member reports a `stall` to its provider's circuit, and
  * the task goes back to the queue, where the router puts that pool behind every other. Anything else waits.
  */
-const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: string, target: { readonly key: string | null; readonly task: string; readonly seat: SeatRow }, dispatchId: string): Promise<StepAction> => {
+const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: string, target: { readonly key: string | null; readonly task: string; readonly seat: SeatRow; readonly workflowId: string }, dispatchId: string): Promise<StepAction> => {
     const { key, task, seat } = target
-    const stall = loadStallRules()
     const shown = await workerShow(binary, dispatchId, cwd).catch(() => null)
-    const states = shown === null ? [] : [shown.state, shown.observed].filter((state): state is string => state !== null)
-    const gone = states.some((state) => loadLiveness().goneStates.includes(state))
-    const unstarted = states.some((state) => stall.startUnknownStates.includes(state))
-    if (shown?.state != null && !gone && !unstarted && !UNKNOWN_STATES.includes(shown.state)) {
+    const live = await terminalList(binary, cwd).catch(() => null)
+    const { verdict, states, terminal, printed } = judgeStart({ shown, seat, live, alive: false }, loadStallRules())
+    const said = states.join("/") || "unknown"
+    if (verdict === "waiting" || verdict === "quiet") withLedger(root, (db) => { holdTerminal(db, seat, terminal); })
+    if (verdict === "started" && shown !== null) {
+        const status = shown.state === null || UNKNOWN_STATES.includes(shown.state) || loadStallRules().startUnknownStates.includes(shown.state) ? "ready" : shown.state
         withLedger(root, (db) => { inTransaction(db, () => {
-            recordSeat(db, seat.id, { status: shown.state ?? seat.status, handle: dispatchId, terminal: shown.terminal, facts: { adopted: { dispatchId, state: shown.state } } })
+            recordSeat(db, seat.id, { status, handle: dispatchId, terminal, facts: { adopted: { dispatchId, states, printed } } })
             if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
-            recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state })
+            recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state, printed })
         }); })
-        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${shown.state}, adopted` }
+        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printed === null ? "" : `, last printed ${printed}`}, adopted` }
     }
-    if (!gone && !(unstarted && olderThan(seat.startedAt, stall.startDeadlineMinutes))) return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${states.join("/") || "unknown"}; its worker has not started yet` }
-    const closed = await closeWorker(binary, dispatchId, cwd, shown?.terminal ?? seat.terminal)
+    if (verdict === "quiet") {
+        const deadline = loadCoordinatorLiveness().effectUnknownDeadlineMinutes
+        if (olderThan(seat.startedAt, deadline)) withLedger(root, (db) => raiseDecision(db, { scope: "kernel", workflowId: target.workflowId, kind: "red", subject: task, evidence: { key, stuck: `dispatch ${dispatchId} is ${said} and its terminal ${terminal ?? "-"} is alive but printed nothing since the launch, past ${String(deadline)} min; it is never fenced while that terminal lives` } }))
+        return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${said}; its terminal ${terminal ?? "-"} is listed and quiet: never fenced while it lives` }
+    }
+    if (verdict === "waiting" || shown === null) return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${said}; its worker has not started yet` }
+    const closed = await closeWorker(binary, dispatchId, cwd, terminal)
     const fence = closed.stopped ? `stopped (${closed.stop})` : `abandoned (${await workerAbandon(binary, dispatchId, cwd, requestIdOf("doa-abandon", seat.id))})`
-    const kind = stallKindOf(shown?.failureText ?? null)
+    const kind = stallKindOf(shown.failureText)
     const requeued = withLedger(root, (db) => inTransaction(db, () => {
         const attempt = latestAttempt(db, task)
         if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'launch-failed', ended_at = COALESCE(ended_at, ?) WHERE id = ? AND outcome IS NULL").run(now(), attempt.id)
-        const failure = deadOnArrivalFailure(kind, states, shown?.failureText ?? null, shown?.terminal ?? seat.terminal)
-        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, failure, facts: { deadOnArrival: { states, failure: shown?.failureText ?? null }, closed } })
-        recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, fence })
+        const failure = deadOnArrivalFailure(kind, states, shown.failureText, terminal)
+        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, failure, facts: { deadOnArrival: { verdict, states, failure: shown.failureText }, closed } })
+        recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, verdict, fence })
         if (getTask(db, task).status !== "effect_unknown") return false
         setStatus(db, task, "queued")
         return true
@@ -464,7 +472,7 @@ const resolveUnknown = async (root: string, binary: OrcaBinary, cwd: string, sna
         const shownRequest = await requestShow(binary, request, cwd).catch(() => null)
         const state = shownRequest?.state ?? "unknown"
         const dispatchId = shownRequest?.dispatchId ?? seat.handle
-        if (state === "completed" && dispatchId !== null) return judgeLaunchedDispatch(root, binary, cwd, { key, task, seat }, dispatchId)
+        if (state === "completed" && dispatchId !== null) return judgeLaunchedDispatch(root, binary, cwd, { key, task, seat, workflowId: snapshot.workflow.id }, dispatchId)
         if (state === "completed") {
             try {
                 const resumed = await resumeSeat({ root, cwd, task })

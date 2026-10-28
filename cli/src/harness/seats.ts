@@ -123,6 +123,9 @@ export const seatsOfTask = (db: DatabaseSync, taskId: string): SeatRow[] => db.p
 /** True while a seat may still hold something on the host. */
 export const isSeatOpen = (seat: SeatRow): boolean => !CLOSED_SEAT_STATUSES.includes(seat.status)
 
+/** True while a seat's launch is not reconciled with Orca: still in launch, or its outcome unknown (whatever dispatch it names). */
+export const launchUnreconciled = (seat: SeatRow): boolean => seat.status === SEAT_STARTING || seat.status === SEAT_LAUNCH_UNKNOWN
+
 /** What a seat is opened with: who, on which task and attempt, and the launch it is about to send. */
 export interface SeatOpening {
     readonly role: SeatRole
@@ -208,6 +211,14 @@ export const recordSeat = (db: DatabaseSync, id: string, update: SeatUpdate): Se
         ...(update.failure === undefined ? {} : { failure: update.failure }),
     })
     return getSeat(db, id)
+}
+
+/**
+ * Records the agent terminal Orca names for a seat that has none yet, without changing its status: an open seat holding its
+ * terminal is what keeps the terminal sweep (harness/terminal-sweep.ts) off a launch still being judged.
+ */
+export const holdTerminal = (db: DatabaseSync, seat: SeatRow, terminal: string | null): void => {
+    if (seat.terminal === null && terminal !== null) recordSeat(db, seat.id, { status: seat.status, terminal, facts: { held: terminal } })
 }
 
 /**

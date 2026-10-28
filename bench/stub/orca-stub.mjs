@@ -262,6 +262,16 @@ if (self === "orca" || self === "orca.exe") {
         if (rule.fault === "slow") sleep(rule.ms ?? 1000)
         answer(rule.fault === "lost-reply" ? undefined : reply, 0)
     }
+    // Orca made the dispatch and its agent terminal and typed the prompt, but never saw the turn start: worker-start exits 1 with
+    // outcome_unknown naming both, and the worker stays start_unknown, as Orca keeps it even once the agent runs.
+    if (rule.fault === "turn-unobserved") {
+        const reply = defaults(command, flags, state)
+        if (reply.ok) state.workers[reply.result.dispatchId] = "start_unknown"
+        save(reply)
+        if (!reply.ok) answer(reply, 1)
+        const terminal = reply.result.worker.agentTerminalHandle
+        answer({ ok: false, result: { ...reply.result, state: "outcome_unknown", stage: "turn_start_unobserved", worker: { agentTerminalHandle: terminal, state: "start_unknown" }, effects: [{ kind: "terminal", role: "agent", action: "created", id: terminal }] } }, 1)
+    }
     save(undefined)
     if (rule.fault === "refuse") answer({ ok: false, error: { code: rule.code ?? "refused", message: rule.message ?? "refused by the bench" }, result: rule.result }, 1)
     if (rule.fault === "unknown") answer({ ok: false, error: { message: "outcome unknown" }, result: { state: "outcome_unknown" } }, 1)

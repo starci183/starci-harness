@@ -495,7 +495,8 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
         return new RouteRefusal("TOKENS_OUT", `every member of tier ${record.tier} is out of quota${resetAt === null ? "" : "; the earliest reset is " + resetAt}: ${droppedText(record, "quota")}`, record, resetAt)
     }
 
-    // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind every other member.
+    // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind
+    // every other member of a task's tier (a coordinator's keeps its listed order, step 5).
     const stalledPools = new Set((input.stalled ?? []).map((member) => member.agent))
     const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1 || stalledPools.has(candidate.pool))
     stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red or a stall: ${demoted.map((candidate) => candidate.id).join(", ")}`)
@@ -505,9 +506,10 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     record.probe = probe === undefined ? null : `${probe.provider} (${probe.circuit.failureKind ?? "?"}, ${String(probe.circuit.failedProbes)} failed probes)`
 
     // 5. Score, exploring by Thompson sampling within its share; 6. balance. A coordinator seat takes its tier's members in
-    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when Claude is out), so it
-    // is neither scored, explored nor balanced.
-    const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : [...funded.filter((candidate) => !demoted.includes(candidate)), ...demoted]
+    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when the hard filter or quota
+    // took Claude out, its circuit open), so it is neither scored, explored, balanced nor reordered by its lineage: a relaunch
+    // after a failed or stalled coordinator launch stays on that order, and the failure reaches it only through the circuit.
+    const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : funded
     const balanced = probe === undefined && input.coordinator === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
     const chosen = probe ?? balanced ?? ordered[0]
     let by = input.coordinator !== undefined ? "order" : record.explore?.exploring === true ? "explore" : "score"

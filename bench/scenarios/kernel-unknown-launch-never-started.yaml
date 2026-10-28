@@ -1,0 +1,133 @@
+schema: starci/scenario@1
+id: kernel-unknown-launch-never-started
+group: orca
+title: "a Kernel relaunch whose turn start Orca never observed, that never attaches and whose terminal goes: it waits while young, then is fenced, failed and relaunched once on the same tier order"
+inject: >-
+  the Kernel exits and the Supervisor relaunches it; that worker-start exits 1 with outcome_unknown naming its dispatch and agent
+  terminal, Orca keeps the worker at start_unknown, the agent never attaches and Orca stops listing its terminal; the launch then
+  ages past stall.startDeadlineMinutes
+expect: >-
+  while the launch is young the sweep waits: no fence, no second Kernel; past the start deadline with no attach and no terminal it
+  fences the dispatch (worker-stop), closes the seat launch-failed and relaunches the Kernel once under a new request id, on the
+  coordinator tier's listed order (the same member, since its circuit is not open); a later sweep launches nothing more
+pass:
+  - no stop and no further launch while the unknown launch is young
+  - past the deadline the dispatch is stopped and its seat ends launch-failed
+  - exactly one relaunch after it (three Kernel launches in all, three request ids)
+  - every Kernel launch on the same member (the tier's first), never the next chain entry
+  - one open Kernel seat at the end
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: kn
+        goal: bench workflow kn
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: kn
+  - name: the Kernel exits, and its relaunch's turn start goes unobserved
+    orca:
+      worker:
+        dispatch: kernel
+        state: exited
+      rules:
+        - command: worker-start
+          fault: turn-unobserved
+          match:
+            task-title: '^\[Kernel\]'
+  - name: the Kernel lease and the progress clock lapse
+    sql:
+      db: ledger
+      exec: UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel'; UPDATE events SET at = '2020-01-01T00:00:00.000Z'
+  - name: supervisor next relaunches the Kernel; Orca answers outcome_unknown
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT handle FROM seats WHERE role = 'kernel' ORDER BY started_at DESC, rowid DESC LIMIT 1
+      as: kdispatch
+  - name: a young unknown launch waits
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+        equals: [launch-unknown]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2
+  - read:
+      db: ledger
+      query: SELECT terminal FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+      as: kterm
+  - name: Orca no longer lists its terminal
+    orca:
+      terminal:
+        handle: ${kterm}
+        live: false
+  - name: the launch ages past the start deadline, never attached
+    sql:
+      db: ledger
+      exec: UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-11 minutes') WHERE role = 'kernel' AND handle = '${kdispatch}'
+  - name: the sweep fences the dead launch and relaunches once
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - name: a later sweep launches nothing more
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        match:
+          dispatch: "${kdispatch}"
+        min: 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+        equals: [launch-failed]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 3
+        distinct: retry-request
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM seats WHERE role = 'kernel' AND status NOT IN ('launch-failed', 'released')
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'kernel-relaunched'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(DISTINCT agent || '/' || model) FROM seats WHERE role = 'kernel'
+        equals: [1]

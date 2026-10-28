@@ -53,7 +53,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
-  outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
+  outcome unknown, lost reply, a worker-start whose turn start went unobserved, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not), mail a seat sent. No real Orca is ever launched.
 - **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression) are
   built by the runner at run time (`write.generated`); the run's key is `${generatedKey}` in a step's text, so a scenario can pin its line.
