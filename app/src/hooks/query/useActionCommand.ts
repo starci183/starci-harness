@@ -17,6 +17,8 @@ const invalidateAfter = (client: QueryClient, action: ActionRequest): Promise<un
             ])
         case "config":
             return client.invalidateQueries({ queryKey: queryKeys.config })
+        case "ownerRequest":
+            return client.invalidateQueries({ queryKey: queryKeys.ownerRequests })
     }
 }
 

@@ -8,6 +8,7 @@ import type {
     Decision,
     GraphNode,
     Member,
+    OwnerRequestRow,
     Overview,
     Seat,
     TaskDetail,
@@ -450,3 +451,8 @@ export const fixtureAction = (what: string): ActionResult => ({
     code: null,
     message: `Dữ liệu mẫu: ${what} được ghi nhận, không có gì thay đổi.`,
 })
+
+export const fixtureOwnerRequests: readonly OwnerRequestRow[] = [
+    { id: "r-0214a7c3b9e1", project: "starci-next", text: "Start workflow uat-sign-in sau khi auth-sign-in xong.", at: at("12:38"), status: "open", cmdId: null },
+    { id: "r-09c1e5d27f40", project: "nivo-lite", text: "Kernels về Claude.", at: at("09:10"), status: "closed", cmdId: "c-4f1a82d0" },
+]

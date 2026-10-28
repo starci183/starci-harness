@@ -3,11 +3,14 @@ import { createServer } from "node:http"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import type { AddressInfo } from "node:net"
 import { asRefusal, Refusal } from "../../shared/errors.js"
+import { spellingOf } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
-import type { ConfigSet, GoalSet, LiveEvent, Ruling } from "./contract.js"
+import { assertRole, ROLE_ENV } from "../../shared/role.js"
+import type { ActionResult, ConfigSet, GoalSet, LiveEvent, OwnerRequestSet, Ruling } from "./contract.js"
 import { poll } from "./live.js"
 import type { Markers } from "./live.js"
-import { configOf, inboxOf, overviewOf, taskOf, workflowOf } from "./read.js"
+import { places, projectsOf } from "./places.js"
+import { configOf, inboxOf, overviewOf, ownerRequestsOf, taskOf, workflowOf } from "./read.js"
 import { rule, setConfig, setGoal, WORKFLOW_ACTIONS, workflowAction } from "./write.js"
 import type { WorkflowAction } from "./write.js"
 
@@ -87,6 +90,31 @@ const goalSetOf = (body: unknown): GoalSet => {
     return { text: body.text }
 }
 
+const ownerRequestSetOf = (body: unknown): OwnerRequestSet => {
+    if (!isRecord(body) || typeof body.project !== "string" || typeof body.text !== "string") throw new Refusal("BAD_REQUEST", "an owner request is {project: string, text: string}")
+    return { project: body.project, text: body.text }
+}
+
+/**
+ * `POST /api/owner-requests`: the same code path as `starci supervisor ask` (the verb's own `run`, in this process, not a shell-out),
+ * called as the owner since the local UI is the owner's; the project is a registered project's key, handed to the verb as its root.
+ * What the verb refuses (an empty request, a Supervisor that cannot be woken) comes back as a red ActionResult with its code.
+ */
+const askSupervisor = async (context: VerbContext, set: OwnerRequestSet): Promise<ActionResult> => {
+    try {
+        const project = projectsOf(await places()).find((candidate) => candidate.key === set.project)
+        if (project === undefined) throw new Refusal("PROJECT_UNKNOWN", `no registered project ${set.project}`)
+        const verb = context.verbs.find((candidate) => spellingOf(candidate) === "supervisor ask")
+        if (verb === undefined) throw new Refusal("VERB_MISSING", "this build offers no starci supervisor ask here")
+        assertRole(verb, { ...process.env, [ROLE_ENV]: "owner" })
+        const result = await verb.run({ ...context, cwd: project.root }, { request: set.text, project: project.root })
+        return { ok: (result.exitCode ?? 0) === 0, code: null, message: result.message }
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return { ok: false, code: refusal.code, message: refusal.message }
+    }
+}
+
 const isAction = (value: string): value is WorkflowAction => (WORKFLOW_ACTIONS as readonly string[]).includes(value)
 
 /** The event stream's clients and its poller: polls only while a client listens, and tells every client each change. */
@@ -140,6 +168,7 @@ const getRoute = (context: VerbContext, parts: readonly string[]): Route => {
     if (head === "overview" && a === undefined) return () => overviewOf(context.cwd)
     if (head === "inbox" && a === undefined) return () => inboxOf()
     if (head === "config" && a === undefined) return () => configOf()
+    if (head === "owner-requests" && a === undefined) return () => ownerRequestsOf()
     if (a === undefined || b === undefined || c !== undefined) return undefined
     if (head === "workflows") return () => workflowOf(context.cwd, a, b)
     if (head === "tasks") return () => taskOf(a, b)
@@ -150,6 +179,7 @@ const getRoute = (context: VerbContext, parts: readonly string[]): Route => {
 const postRoute = (context: VerbContext, req: IncomingMessage, parts: readonly string[]): Route => {
     const [head, a, b, c, d] = parts
     if (head === "config" && a === undefined) return async () => setConfig(context, configSetOf(await readBody(req)))
+    if (head === "owner-requests" && a === undefined) return async () => askSupervisor(context, ownerRequestSetOf(await readBody(req)))
     if (a === undefined || b === undefined || c === undefined || d !== undefined) return undefined
     if (head === "inbox" && c === "ruling") return async () => rule(context, a, b, rulingOf(await readBody(req)))
     if (head === "workflows" && c === "goal") return async () => setGoal(context, a, b, goalSetOf(await readBody(req)))

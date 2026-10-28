@@ -50,6 +50,7 @@ const meta = {
             hasRefusals: false,
             summary: null,
             isSaving: false,
+            update: { title: SETTINGS.updateTitle, version: SETTINGS.updateVersion("0.1.0"), linkLabel: SETTINGS.updateLink, href: SETTINGS.updateHref },
             labels: {
                 groups: SETTINGS.groups,
                 scrollPrevious: SETTINGS.scrollPrevious,

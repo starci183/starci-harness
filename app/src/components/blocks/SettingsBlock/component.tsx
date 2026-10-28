@@ -4,6 +4,7 @@ import {
     Button,
     DataTable,
     DescriptionList,
+    Link,
     ListRow,
     PinnedActionBar,
     SurfaceCard,
@@ -93,6 +94,8 @@ export interface SettingsBlockBaseProps {
         readonly hasRefusals: boolean
         readonly summary: { readonly isOk: boolean; readonly title: string; readonly description: string | null } | null
         readonly isSaving: boolean
+        /** The "Cập nhật app" row: the running version (null when the shell cannot say) and where the latest release is. */
+        readonly update: { readonly title: string; readonly version: string | null; readonly linkLabel: string; readonly href: string }
         readonly labels: SettingsBlockLabels
     }
     readonly on: {
@@ -285,7 +288,7 @@ const PendingChanges = (props: SettingsBlockBaseProps) => {
 
 /** Pure half: the harness's ops/*.yaml values, one tab per concern, with the unsaved changes and the save bar. */
 export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
-    const { labels, summary, pending } = props.props
+    const { labels, summary, pending, update } = props.props
     return (
         <div className="app-page-stack">
             <SlotView slot={props.props.settings} placeholder={SETTINGS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry}>
@@ -309,6 +312,14 @@ export const SettingsBlockBase = (props: SettingsBlockBaseProps) => {
                     </div>
                 )}
             </SlotView>
+            <SurfaceCard label={update.title} headingLevel={2}>
+                <span className="app-row">
+                    {update.version === null ? null : <Text as="span">{update.version}</Text>}
+                    <Link href={update.href} kind="external">
+                        {update.linkLabel}
+                    </Link>
+                </span>
+            </SurfaceCard>
             {summary === null ? null : (
                 <Alert
                     tone={summary.isOk ? "affirmative" : "negative"}

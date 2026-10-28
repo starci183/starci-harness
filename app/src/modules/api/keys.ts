@@ -4,5 +4,6 @@ export const queryKeys = {
     workflow: (project: string, workflow: string) => ["workflow", project, workflow] as const,
     task: (project: string, task: string) => ["task", project, task] as const,
     inbox: ["inbox"] as const,
+    ownerRequests: ["owner-requests"] as const,
     config: ["config"] as const,
 }

@@ -332,7 +332,7 @@ export const TASK = {
 
 export const INBOX = {
     title: "Cần quyết định",
-    description: "Escalation cần chủ dự án quyết định. Việc Supervisor tự xử lý không xuất hiện ở đây.",
+    description: "Escalation cần chủ dự án quyết định, và yêu cầu chủ dự án gửi Supervisor. Việc Supervisor tự xử lý không xuất hiện ở đây.",
     list: "Quyết định đang chờ",
     listCard: "Danh sách quyết định",
     detail: "Chi tiết quyết định",
@@ -344,7 +344,7 @@ export const INBOX = {
     body: "Nội dung",
     ruling: "Phương án",
     note: "Ghi chú thêm (tuỳ chọn)",
-    send: "Gửi quyết định",
+    send: "Gửi ruling",
     commandPrefix: "Quyết định sẽ chạy",
     commandSuffix: "với gate và role như khi gõ tay.",
     sent: "Đã gửi quyết định",
@@ -356,9 +356,38 @@ export const INBOX = {
     ruledHint: "Quyết định đã gửi; mục này rời danh sách khi harness ghi nhận.",
 } as const
 
+/* ------------------------------------------------------------------ Yêu cầu cho Supervisor */
+
+export const OWNER_REQUEST = {
+    title: "Gửi yêu cầu cho Supervisor",
+    card: "Gửi yêu cầu cho Supervisor",
+    project: "Project",
+    projectPlaceholder: "Chọn project",
+    text: "Yêu cầu",
+    textHint: "Nói bằng lời của thầy; Supervisor nhận ở lượt next kế tiếp.",
+    send: "Gửi",
+    commandPrefix: "Gửi chạy",
+    commandSuffix: "với role owner.",
+    sent: "Đã gửi yêu cầu cho Supervisor",
+    refused: "Yêu cầu bị từ chối",
+    noProjects: "Chưa có project nào đăng ký",
+    list: "Yêu cầu đã gửi",
+    listCard: "Yêu cầu đã gửi cho Supervisor",
+    loadError: "Không tải được danh sách yêu cầu",
+    empty: "Chưa có yêu cầu nào",
+    emptyHint: "Yêu cầu thầy gửi Supervisor hiện ở đây cho tới khi một lệnh Supervisor đóng nó.",
+    open: "chờ Supervisor",
+    closed: "đã đóng",
+    closedBy: (cmdId: string) => `đã đóng · ${cmdId}`,
+} as const
+
 /* ------------------------------------------------------------------ Cài đặt */
 
 export const SETTINGS = {
+    updateTitle: "Cập nhật app",
+    updateVersion: (version: string) => `Phiên bản đang chạy ${version}`,
+    updateLink: "Xem bản mới nhất trên GitHub",
+    updateHref: "https://github.com/starci183/starci-harness/releases/latest",
     title: "Cài đặt",
     description: "Mỗi giá trị nằm trong file ops/*.yaml của nó. Lưu chạy starci config set, kiểm schema trước khi ghi.",
     groups: "Nhóm cấu hình",

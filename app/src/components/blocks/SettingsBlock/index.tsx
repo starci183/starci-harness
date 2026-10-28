@@ -2,6 +2,7 @@ import type { ActionResult, ConfigEntry } from "@contract"
 import { useMemo, useState } from "react"
 import { useActionCommand, useConfigQuery } from "../../../hooks/query"
 import { slotOfQuery, useSlotLabels } from "../../../hooks/slot"
+import { useAppVersion } from "../../../hooks/ui"
 import type { DataSlot } from "../../../modules/types"
 import { CONFIG_GROUPS, EFFORT_OPTIONS, SETTINGS, TIER, configFieldLabel } from "../../../modules/i18n"
 import type { ConfigFieldView, ConfigValue } from "../../composites/ConfigField"
@@ -215,6 +216,7 @@ export const SettingsBlock = () => {
     const query = useConfigQuery()
     const { send } = useActionCommand()
     const slotLabels = useSlotLabels()
+    const appVersion = useAppVersion()
     const entries = useMemo(() => query.data ?? [], [query.data])
     const groups = useMemo(() => groupEntries(entries), [entries])
     const [tab, setTab] = useState<string | null>(null)
@@ -313,6 +315,12 @@ export const SettingsBlock = () => {
                 hasRefusals: refusals.size > 0,
                 summary: summaryView,
                 isSaving,
+                update: {
+                    title: SETTINGS.updateTitle,
+                    version: appVersion === null ? null : SETTINGS.updateVersion(appVersion),
+                    linkLabel: SETTINGS.updateLink,
+                    href: SETTINGS.updateHref,
+                },
                 labels: {
                     groups: SETTINGS.groups,
                     scrollPrevious: SETTINGS.scrollPrevious,

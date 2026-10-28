@@ -36,7 +36,7 @@ import { hostStatus, loadHost, selectServices } from "../../harness/host.js"
 import { getTask } from "../../harness/tasks.js"
 import { taskStatusVerb } from "../task/status.js"
 import { rulingCommand } from "./write.js"
-import type { Check, ConfigEntry, Decision, EventRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, WorkflowDetail, WorkflowRow } from "./contract.js"
+import type { Check, ConfigEntry, Decision, EventRow, OwnerRequestRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, WorkflowDetail, WorkflowRow } from "./contract.js"
 import { placeHolding, places, projectsOf, readLedger } from "./places.js"
 
 /** How many ledger and host events the overview's feed shows, newest first. */
@@ -489,3 +489,13 @@ export const inboxOf = async (): Promise<Decision[]> => {
 
 /** `GET /api/config`: every harness setting, as `config list` reads it. */
 export const configOf = (): ConfigEntry[] => listSettings().map((setting) => ({ key: setting.key, file: setting.file, value: setting.value }))
+
+/** How many owner requests the app lists, newest first. */
+const OWNER_REQUESTS_SHOWN = 50
+
+/** `GET /api/owner-requests`: the owner requests of every project, open and closed, newest first (machine.sqlite `owner_requests`). */
+export const ownerRequestsOf = (): OwnerRequestRow[] =>
+    readMachine((db) => db.prepare("SELECT id, project, text, at, closed_by FROM owner_requests ORDER BY at DESC, id DESC LIMIT ?").all(OWNER_REQUESTS_SHOWN), []).map((row): OwnerRequestRow => {
+        const cmdId = textOf(row.closed_by)
+        return { id: String(row.id), project: String(row.project), text: String(row.text), at: String(row.at), status: cmdId === null ? "open" : "closed", cmdId }
+    })
