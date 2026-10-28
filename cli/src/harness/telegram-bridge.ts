@@ -2,20 +2,20 @@ import { basename } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { registeredRepositories } from "../core/supervisor/driver.js"
 import { asRefusal } from "../shared/errors.js"
-import { awaitsOwner, openDecisions } from "./coordinator-commands.js"
+import { openDecisions } from "./coordinator-commands.js"
 import type { Decision } from "./coordinator-commands.js"
 import { now, openExistingLedger } from "./ledger.js"
 import { readMachine, textOf } from "./machine.js"
 import { askSupervisor } from "./owner-ask.js"
 import { inOrder } from "./sequential.js"
 import { liveSupervisors, projectOfRecord, supervisorTitle } from "./supervisor.js"
-import { chatName, getUpdates, processAlive, readChannel, sendMessage, withChannelStore } from "./telegram.js"
+import { chatName, getUpdates, loadTelegram, processAlive, readChannel, sendMessage, telegramBot, tokenPresent, withChannelStore } from "./telegram.js"
 import type { Channel, TelegramBot, TelegramMessage, TelegramUpdate } from "./telegram.js"
 import { projectOf } from "./work.js"
 import type { Project } from "./work.js"
 import { listWorkflows } from "./workflow.js"
 
-/** One fact the owner hears about once: an escalation awaiting the owner, an owner request taken up, a workflow that ended. */
+/** One fact the owner hears about once: an `owner` escalation (a `harness` one is Debug's, never the owner's), an owner request taken up, a workflow that ended. */
 interface Notice {
     readonly key: string
     readonly kind: "decision" | "request" | "workflow"
@@ -37,7 +37,7 @@ const escalationOf = (decision: Decision): { readonly kind: string; readonly que
     const escalation = field(decision.evidence, "escalation")
     const kind = field(escalation, "kind")
     const question = field(escalation, "question")
-    return { kind: typeof kind === "string" ? kind : "owner", question: typeof question === "string" ? question : decision.subject }
+    return { kind: typeof kind === "string" ? kind : "", question: typeof question === "string" ? question : decision.subject }
 }
 
 const decisionNotice = (project: Project, decision: Decision, chars: number): Notice => {
@@ -52,13 +52,13 @@ const decisionNotice = (project: Project, decision: Decision, chars: number): No
 
 const ENDED: Readonly<Record<string, string>> = { done: "is done", blocked: "is blocked", stopped: "stopped" }
 
-/** The facts of one registered repository's ledger: escalations awaiting the owner and workflows that ended, since `since`. */
+/** The facts of one registered repository's ledger: open `owner` escalations and workflows that ended, since `since`. */
 const ledgerNotices = (repo: string, project: Project, since: string, chars: number): Notice[] => {
     const db = openExistingLedger(repo)
     if (db === undefined) return []
     try {
         const decisions = openDecisions(db, "supervisor")
-            .filter((decision) => awaitsOwner(decision) && decision.raisedAt > since)
+            .filter((decision) => decision.kind === "escalation" && escalationOf(decision).kind === "owner" && decision.raisedAt > since)
             .map((decision) => decisionNotice(project, decision, chars))
         const workflows = listWorkflows(db).flatMap((workflow): Notice[] => {
             const ended = ENDED[workflow.status]
@@ -167,6 +167,25 @@ export const sweepNotices = async (bot: TelegramBot, channel: Channel & { readon
         }
     })
     return { sent, failed, deferred }
+}
+
+/**
+ * The notice round of `supervisor tick`, so notices go out with no bridge running: nothing (and no call) until the token is set
+ * and the owner's chat stored; a failure of Telegram is reported, never thrown, so it never fails the tick. The claims make it
+ * safe beside a running bridge.
+ */
+export const tickNotices = async (): Promise<{ readonly sweep: Sweep | null; readonly line: string | null }> => {
+    const config = loadTelegram()
+    const channel = withChannelStore(readChannel)
+    if (!tokenPresent(config) || channel.chatId === null || channel.connectedAt === null) return { sweep: null, line: null }
+    try {
+        const sweep = await sweepNotices(telegramBot(config), { ...channel, chatId: channel.chatId, connectedAt: channel.connectedAt })
+        const sent = sweep.sent.length + sweep.failed.length === 0 ? null : `telegram: sent ${String(sweep.sent.length)}, failed ${String(sweep.failed.length)}, deferred ${String(sweep.deferred)}`
+        return { sweep, line: sent }
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        return { sweep: null, line: `telegram: ${refusal.code}: ${refusal.message}` }
+    }
 }
 
 const claimable = (key: string, tries: number): boolean =>

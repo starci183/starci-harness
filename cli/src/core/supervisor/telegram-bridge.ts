@@ -9,7 +9,7 @@ const ACTIONS = ["run", "status"] as const
 
 /**
  * `starci supervisor telegram-bridge <run|status>`: the owner's Telegram channel as a host service (ops/host.yaml
- * `telegram-bridge`). `run` holds the host's one bridge seat and loops: send every notice due (an escalation awaiting the owner,
+ * `telegram-bridge`). `run` holds the host's one bridge seat and loops: send every notice due (an `owner` escalation,
  * an owner request taken up, a workflow that ended; once each, within ops/telegram.yaml's budget), then long-poll the bot and
  * record each message of the owner's chat that answers a notice (a reply to it, `/answer <decision-id> <text>`) or asks
  * (`/ask <project> <text>`) as an owner request, as `supervisor ask` does, which wakes that project's Supervisor. A message of any

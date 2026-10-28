@@ -246,7 +246,8 @@ the harness opens no secret file ([policy/security.yaml](../policy/security.yaml
 bot without it refuses `TELEGRAM_NOT_CONFIGURED`, naming the variable and where it is set, and every error text has the
 token replaced. `connect telegram discover-chat` reads the bot's updates once and stores the one private chat that wrote to
 it (`--chat` picks among several) in machine.sqlite `telegram_channel`, never in a repository; no fact older than that moment
-is sent. A notice sweep (`connect telegram notify`, and every bridge cycle) sends, oldest first and at most `sendPerMinute`,
+is sent. A notice sweep (`connect telegram notify`, every bridge cycle, and every `supervisor tick` once the token is set and the
+chat stored, its failure reported and never failing the tick) sends, oldest first and at most `sendPerMinute`,
 each fact not sent yet across every registered ledger: an `owner` escalation (never a `harness` one, which is Debug's; project, workflow,
 decision id, the question, how to answer), an owner request a Supervisor command took up, and a workflow that is done,
 blocked or stopped (keyed by its status and versions). Each fact is claimed in `telegram_notices` by its key before it is

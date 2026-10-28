@@ -1,16 +1,17 @@
 schema: starci/scenario@1
 id: telegram-notify-once-per-decision
 group: messaging
-title: "an escalation awaiting the owner reaches the owner's Telegram chat once, however many sweeps and bridge cycles run"
+title: "an owner escalation reaches the owner's Telegram chat once, by the tick, however many sweeps and bridge cycles run; a harness escalation never does"
 inject: >-
-  the owner messages the bot and connects the channel; a Kernel escalates a question of kind owner; the notice sweep runs twice
-  by hand and the bridge runs a cycle after it, all against the Telegram stand-in
+  the owner messages the bot and connects the channel; a Kernel escalates a question of kind owner and one of kind harness; the
+  scheduled tick runs (no bridge running), then the notice sweep by hand and a bridge cycle, all against the Telegram stand-in
 expect: >-
-  discover-chat stores the one chat that wrote to the bot and greets it; the first sweep sends one notice naming the project, the
-  workflow, the decision id, the question and how to answer; the later sweep and the bridge cycle send nothing more; the notice row
-  is sent once with the message id the owner replies to
+  discover-chat stores the one chat that wrote to the bot and greets it; the tick sends one notice naming the project, the
+  workflow, the decision id, the question and how to answer; the harness escalation is Debug's and is never sent; the later sweep
+  and the bridge cycle send nothing more; the notice row is sent once with the message id the owner replies to
 pass:
-  - one greeting and exactly one notice in the chat
+  - one greeting and exactly one notice in the chat, sent by the tick
+  - no notice for the harness escalation
   - "the notice carries the question, the decision id and /answer"
   - one telegram_notices row, sent
   - no actor overstepping its role
@@ -66,12 +67,25 @@ steps:
           question: may doc a name the product?
   - seat: kernel:ask
     starci: [kernel, submit, "${run}/esc-owner.yaml"]
-  - name: the first sweep sends the notice
+  - file:
+      path: esc-harness.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-tg-harness-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: harness
+          question: the files-exist preset reads the wrong folder
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-harness.yaml"]
+  - name: the scheduled tick sends the owner notice, with no bridge running
     env: *tg
-    starci: [connect, telegram, notify]
+    starci: [supervisor, tick]
     expect:
       contains: "decision:d-"
-  - name: a second sweep sends nothing
+  - name: a sweep by hand sends nothing more
     env: *tg
     starci: [connect, telegram, notify]
     expect:
@@ -98,3 +112,14 @@ steps:
         db: machine
         query: SELECT kind || ':' || status || ':' || tries || ':' || (message_id IS NOT NULL) FROM telegram_notices
         equals: ["decision:sent:1:1"]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        equals:
+          data.count: 2
+  - name: the harness question never reached the chat
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM telegram_notices WHERE text LIKE '%wrong folder%'"
+        equals: [0]
