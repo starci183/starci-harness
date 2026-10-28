@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.9.8 - 2026-10-28
+
+- Added: `starci app add page <route> --tabs a,b` puts the page tabs in the `Page` header as link tabs (Grammar 0.15.6): the first tab is the route itself, every other one its sub-route `<route>/<tab>`; the server owner resolves the labels (`<page>.tabs.label` and `<page>.tabs.items.<tab>` in every catalog) and passes no state or handler, and the stories carry the tabs. Fewer than two or repeated tab ids are refused (`HFS_ADD_TABS_INVALID`).
+- Changed: `starci app add overlay --form` keeps the decision group in the shell's footer: the way out first, then `<Button type="submit" form="<id>">` naming the body's `Form id` (Grammar 0.15.6 `Button form`), instead of buttons inside the form; the shell no longer passes `closeLabel`, since the footer offers the way out.
+- Fixed: the skeleton's `AppHomePage` (full and lite) and the landing app's `LandingPage` draw one Grammar `Page` with the title (and the landing's lede as `description`) in its header, instead of a bare `Heading` and blocks, which R325 (`@starci/eslint-grammar-core` 0.15.6) now refuses.
+- Changed: the bundled canon pins name the Grammar family 0.15.6 and hfs 4.9.8.
+
 ## 4.9.7 - 2026-10-28
 
 - Added: `starci app add block|composite|branch|leaf|page|overlay|layout` writes every front-end unit already in the canon's shape, from `templates/fe/units` (`scaffold/add-fe-unit.mjs`, `add-fe-page.mjs`, `add-fe-overlay.mjs`, `add-fe-layout.mjs`), with its copy in every catalog; nothing that exists is overwritten.

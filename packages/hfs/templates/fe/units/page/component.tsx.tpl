@@ -7,7 +7,7 @@ export interface {{Name}}BaseProps {
         readonly breadcrumbLabel: string
         readonly homeLabel: string
         readonly homeHref: string
-{{emptyMember}}        /** True for the route's loading view: the same page, its header resting in its own boxes (STATE-8). */
+{{emptyMember}}{{tabsMember}}        /** True for the route's loading view: the same page, its header resting in its own boxes (STATE-8). */
         readonly isSkeleton: boolean
     }
 }
@@ -27,7 +27,7 @@ export const {{Name}}Base = (props: {{Name}}BaseProps) => (
                     { id: "{{routeId}}", label: props.props.title },
                 ],
             },
-        }}
+{{tabsHeader}}        }}
         isSkeleton={props.props.isSkeleton}
     >
 {{body}}

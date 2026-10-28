@@ -21,6 +21,7 @@ const FLAGS = {
     kind: { kind: "string", summary: "an overlay: its shell, modal or drawer" },
     form: { kind: "boolean", summary: "an overlay: it holds a one-column form" },
     blocks: { kind: "string", summary: "a page or layout: the existing blocks it composes, as a,b" },
+    tabs: { kind: "string", summary: "a page: its page tabs as link tabs, two or more ids as a,b (the first is the route, the rest its sub-routes)" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.6 - 2026-10-28
+
+- Changed: `starci-grammar/route-page-is-one-page` (R325) also refuses a page owner file that draws JSX but no `Page` and draws through no pure half of its own (an element imported from `./component`), with the message `missing` on its first element. The segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for it; a file that draws a bare `PageHeader` or `PageContainer` is reported once, as `part`. Spec: `src/page.spec.ts`; docs: `docs/page.md`.
+- Changed: the R324 message names link tabs (items with `href`) as the other form of `header.tabs`.
+- Changed: versioned together with Grammar 0.15.6; the bundled canon pins name the Grammar family 0.15.6 and hfs 4.9.8.
+
 ## 0.15.5 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.5 (the family equality spec); `@starci/eslint-canon-fe` 9.4.5 is the peer dependency; the bundled canon pins name the Grammar family 0.15.5. No lint rule changed.

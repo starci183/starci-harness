@@ -159,6 +159,31 @@ export const PageHeaderTabs: Story = {
   play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, true),
 };
 
+/** Link tabs: each item carries its route, no state or `onSelect`, and the tab of the current path is selected. */
+export const PageHeaderLinkTabs: Story = {
+  name: 'PageHeader (link tabs follow the path)',
+  render: () => (
+    <G.PageHeader
+      title="Main account"
+      tabs={{
+        label: 'Connection',
+        items: [
+          { id: 'overview', label: 'Overview', href: '/overview' },
+          { id: 'current', label: 'Current', href: globalThis.location.pathname },
+          { id: 'setup', label: 'Setup', href: '/setup' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const selected = canvasElement.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      expect(selected?.textContent).toContain('Current');
+      expect(selected?.tagName).toBe('A');
+    }, { timeout: 4000 });
+  },
+};
+
 export const PageHeaderPhone: Story = {
   name: 'PageHeader (360px: actions wrap under the heading)',
   parameters: {

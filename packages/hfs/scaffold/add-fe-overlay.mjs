@@ -6,9 +6,9 @@
 // The two shells an overlay owner may draw are Grammar's `Dialog` (a modal) and `Drawer` (contexts/ui/components
 // dialog-drawer.md). The connected half (`"use client"`, an overlay entry of FE-BOUNDARY-2) owns whether it is open and resolves
 // every label; the pure half takes `{ props, on }` of atoms (FE-FUNCTION-2). The decision group puts the way out first and the
-// commit last (action-group.md `decision`, CTA-5): in the shell's footer, or, with `--form`, as the last row of the Form whose
-// fields sit in a one-column `FormGrid` (text-field.md `narrow`), since a submit button submits only the form it stands in. The
-// bodies are templates/fe/units/overlay/; the stories draw it closed and open. A page or layout owner mounts it.
+// commit last (action-group.md `decision`, CTA-5), always in the shell's footer. With `--form`, the body holds a Form with an `id`
+// whose fields sit in a one-column `FormGrid` (text-field.md `narrow`), and the footer's commit is `type="submit"` with
+// `form="<id>"`, so it submits that form from outside it. The bodies are templates/fe/units/overlay/; the stories draw it closed and open. A page or layout owner mounts it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ScaffoldError, camelOf, pascalOf } from './service.mjs';
@@ -33,8 +33,18 @@ function overlayVars({ Name, nameKebab, shell, form }) {
     `${indent}    {props.props.submitLabel}`,
     `${indent}</Button>`,
   ].join('\n');
-  const shellAttributes = `${shell === 'Drawer' ? '        placement="right"\n' : ''}${form ? '        closeLabel={props.props.cancelLabel}\n' : ''}`;
+  const shellAttributes = shell === 'Drawer' ? '        placement="right"\n' : '';
+  /** The shell's footer: the decision group, the way out first and the commit last. */
+  const footer = (commit) => [
+    '        footer={(close) => (',
+    '            <>',
+    decision('                ', 'close', commit),
+    '            </>',
+    '        )}',
+    '',
+  ].join('\n');
   if (form) {
+    const formId = `${nameKebab}-form`;
     return {
       grammarImports: ['Button', shell, 'Form', 'FormGrid', 'Input'].sort().join(', '),
       labelMembers: '        readonly nameLabel: string\n',
@@ -43,15 +53,14 @@ function overlayVars({ Name, nameKebab, shell, form }) {
       submitMember: '        readonly submit: (input: FormData) => void\n',
       submitHandler: 'submit: () => setIsOpen(false)',
       submitFixture: 'submit: () => undefined',
-      doc: `The ${shell} holding one form: its fields in one column, then the way out and the commit, last.`,
+      doc: `The ${shell} holding one form: its fields in one column in the body, the footer's way out first and the submit, which names the form, last.`,
       shellAttributes,
-      footer: '',
+      footer: footer(`<Button type="submit" form="${formId}" intent="commit">`),
       body: [
-        '        <Form label={props.props.title} onSubmit={props.on.submit}>',
+        `        <Form id="${formId}" label={props.props.title} onSubmit={props.on.submit}>`,
         '            <FormGrid columns={1}>',
         `                <Input id="${nameKebab}-name" name="name" label={props.props.nameLabel} isRequired />`,
         '            </FormGrid>',
-        decision('            ', '() => props.on.openChange(false)', '<Button type="submit" intent="commit">'),
         '        </Form>',
       ].join('\n'),
     };
@@ -66,14 +75,7 @@ function overlayVars({ Name, nameKebab, shell, form }) {
     submitFixture: 'confirm: () => undefined',
     doc: `The ${shell} of one task: its sentence, and the footer's way out first and commit last.`,
     shellAttributes,
-    footer: [
-      '        footer={(close) => (',
-      '            <>',
-      decision('                ', 'close', '<Button intent="commit" onPress={props.on.confirm}>'),
-      '            </>',
-      '        )}',
-      '',
-    ].join('\n'),
+    footer: footer('<Button intent="commit" onPress={props.on.confirm}>'),
     body: '        <Text>{props.props.description}</Text>',
   };
 }

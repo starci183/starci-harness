@@ -30,6 +30,7 @@ const UNITS = ['composite:term-value', 'branch:disclosure', 'leaf:status-label']
 const OWNERS = [
   ['page', 'handoffs', { blocks: 'sign-in-form' }],
   ['page', 'settings/billing', {}],
+  ['page', 'account', { tabs: 'profile,security' }],
   ['overlay', 'invite-member', { kind: 'modal' }],
   ['overlay', 'edit-details', { kind: 'drawer', form: true }],
   ['layout', 'settings', { blocks: 'sign-in-form' }],
@@ -88,15 +89,16 @@ const STUBS = {
     'export declare const SurfaceCard: (props: { readonly label: string; readonly children: ReactNode }) => ReactNode',
     'export declare const Text: (props: { readonly children?: ReactNode; readonly tone?: "default" | "muted" | "accent"; readonly isSkeleton?: boolean }) => ReactNode',
     'export declare const Badge: (props: { readonly children?: ReactNode; readonly isSkeleton?: boolean }) => ReactNode',
-    'export declare const Button: (props: { readonly intent?: "dismiss" | "neutral" | "alternative" | "commit"; readonly type?: "button" | "submit"; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
+    'export declare const Button: (props: { readonly intent?: "dismiss" | "neutral" | "alternative" | "commit"; readonly type?: "button" | "submit"; readonly form?: string; readonly onPress?: () => void; readonly children?: ReactNode }) => ReactNode',
     'export declare const EmptyNotice: (props: { readonly message: string; readonly actionLabel?: string; readonly onAction?: () => void }) => ReactNode',
     'type Crumb = { readonly id: string; readonly label: string; readonly href?: string }',
-    'export declare const Page: (props: { readonly header?: { readonly title: string; readonly breadcrumbs?: { readonly label: string; readonly items: ReadonlyArray<Crumb> } }; readonly isSkeleton?: boolean; readonly children: ReactNode }) => ReactNode',
+    'type PageTabs = { readonly label: string; readonly items: ReadonlyArray<{ readonly id: string; readonly label: string; readonly href?: string }>; readonly selectedKey?: string }',
+    'export declare const Page: (props: { readonly header?: { readonly title: string; readonly breadcrumbs?: { readonly label: string; readonly items: ReadonlyArray<Crumb> }; readonly tabs?: PageTabs }; readonly isSkeleton?: boolean; readonly children: ReactNode }) => ReactNode',
     'export declare const Alert: (props: { readonly title: string; readonly tone?: "negative"; readonly action?: { readonly label: string; readonly onAction: () => void } }) => ReactNode',
     'type Shell = { readonly isOpen?: boolean; readonly onOpenChange?: (isOpen: boolean) => void; readonly title: string; readonly trigger?: ReactNode; readonly closeLabel?: string; readonly footer?: ReactNode | ((close: () => void) => ReactNode); readonly children?: ReactNode }',
     'export declare const Dialog: (props: Shell) => ReactNode',
     'export declare const Drawer: (props: Shell & { readonly placement?: "left" | "right" | "top" | "bottom" }) => ReactNode',
-    'export declare const Form: (props: { readonly label?: string; readonly onSubmit?: (data: FormData) => void; readonly children: ReactNode }) => ReactNode',
+    'export declare const Form: (props: { readonly id?: string; readonly label?: string; readonly onSubmit?: (data: FormData) => void; readonly children: ReactNode }) => ReactNode',
     'export declare const FormGrid: (props: { readonly columns?: 1 | 2; readonly children: ReactNode }) => ReactNode',
     'export declare const Input: (props: { readonly id: string; readonly name: string; readonly label: string; readonly isRequired?: boolean }) => ReactNode',
     'export declare const PrimaryRailLayout: (props: { readonly primary: ReactNode; readonly rail?: ReactNode }) => ReactNode',
@@ -198,6 +200,12 @@ test('the units added to a scaffolded full app pass the starci-fe canon and the 
   const findings = results.flatMap((result) => result.messages.filter((message) => !PLACEMENT.has(message.ruleId))
     .map((message) => `${path.relative(fe, result.filePath).split(path.sep).join('/')}:${message.line} ${message.ruleId ?? 'parse'} ${message.message}`));
   assert.deepEqual(findings, []);
+  // The skeleton's own page owners (the home and landing pages, the segment boundaries) hold the page frame law too.
+  const skeletonPages = fs.globSync('apps/*/src/features/pages/**/*.tsx', { cwd: fe }).map((relative) => path.join(fe, relative));
+  assert.ok(skeletonPages.length >= 4, 'the skeleton has page owners');
+  const frame = (await eslint.lintFiles(skeletonPages)).flatMap((result) => result.messages.filter((message) => message.ruleId === 'starci-grammar/route-page-is-one-page')
+    .map((message) => `${path.relative(fe, result.filePath).split(path.sep).join('/')}:${message.line} ${message.message}`));
+  assert.deepEqual(frame, [], 'every skeleton page owner draws one Page (R325)');
 });
 
 test('add block with three shapes and one slot writes the pair, the shape inventory, the status owners and the stories; tsc is green', (t) => {
@@ -247,6 +255,8 @@ test('the scaffold refuses a single shape, a shape that is no camelCase word, sh
   assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { blocks: 'lead-list' } }), /takes input/);
   assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { blocks: 'nothing-block' } }), /no block/);
   assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads/[id]' }), /kebab-case segments/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { tabs: 'open' } }), /two or more/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { tabs: 'open,open' } }), /distinct/);
   assert.throws(() => addKind({ repoRoot: root, noun: 'overlay', name: 'invite', options: { kind: 'popover' } }), /only two/);
 });
 
@@ -263,10 +273,17 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   assert.match(read('src', 'features', 'pages', 'HandoffsPage', 'index.tsx'), /export const HandoffsLoadingPage = async \(\) => <HandoffsPageBase props=\{await copyOf\(true\)\} \/>/, 'the loading view is the page in skeleton mode');
   assert.match(read('stories', 'pages', 'HandoffsPage.stories.tsx'), /dna: \{ pair: "Ready", phase: "loading" \}/);
   assert.match(read('src', 'features', 'pages', 'SettingsBillingPage', 'component.tsx'), /<EmptyNotice message=\{props\.props\.empty\} \/>/);
+  assert.doesNotMatch(read('src', 'features', 'pages', 'SettingsBillingPage', 'component.tsx'), /tabs:|tabsLabel/, 'no --tabs, no page tabs');
+  assert.match(read('src', 'features', 'pages', 'AccountPage', 'component.tsx'), /header=\{\{[\s\S]*tabs: \{ label: props\.props\.tabsLabel, items: props\.props\.tabs \},/, 'the page tabs are the header\'s');
+  const accountOwner = read('src', 'features', 'pages', 'AccountPage', 'index.tsx');
+  assert.match(accountOwner, /\{ id: "profile", label: t\("tabs\.items\.profile"\), href: "\/account" \},\s*\{ id: "security", label: t\("tabs\.items\.security"\), href: "\/account\/security" \}/, 'link tabs: the route, then its sub-route');
+  assert.doesNotMatch(accountOwner, /onSelect|selectedKey/, 'a server owner passes no state and no handler');
+  assert.deepEqual(JSON.parse(read('src', 'modules', 'i18n', 'messages', 'en.json')).accountPage.tabs, { label: 'Account', items: { profile: 'Profile', security: 'Security' } });
   const modal = read('src', 'features', 'overlays', 'InviteMemberOverlay', 'component.tsx');
   assert.match(modal, /<Dialog[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*intent="commit"/, 'the way out first, the commit last');
   const drawer = read('src', 'features', 'overlays', 'EditDetailsOverlay', 'component.tsx');
-  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*<FormGrid columns=\{1\}>[\s\S]*intent="dismiss"[\s\S]*type="submit" intent="commit"/);
+  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<FormGrid columns=\{1\}>/, 'the footer carries the way out, then the submit naming the form');
+  assert.doesNotMatch(drawer.slice(drawer.indexOf('<Form ')), /<Button/, 'no decision inside the form');
   assert.match(read('src', 'features', 'overlays', 'EditDetailsOverlay', 'index.tsx'), /^"use client"[\s\S]*useState\(false\)/);
   assert.match(read('src', 'app', '[locale]', 'settings', 'layout.tsx'), /<SettingsLayout content=\{props\.children\} \/>/);
   assert.match(read('src', 'features', 'layouts', 'SettingsLayout', 'index.tsx'), /<PrimaryRailLayout\s+primary=\{props\.content\}\s+rail=/);

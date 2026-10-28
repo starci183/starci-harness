@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.6 - 2026-10-28
+
+- Changed: versioned together with Grammar 0.15.6; `@starci/eslint-grammar-core` 0.15.6 is the peer dependency, so Offset Pop apps inherit the R325 refusal of a page owner that draws no `Page`, and the bundled canon pins name the Grammar family 0.15.6 and hfs 4.9.8.
+
 ## 0.15.5 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.5; `@starci/eslint-grammar-core` 0.15.5 is the peer dependency, and the bundled canon pins name the Grammar family 0.15.5. No rule changes.

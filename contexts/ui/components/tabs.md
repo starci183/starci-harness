@@ -38,10 +38,12 @@ Selected is a persistent value with a non-colour cue (indicator geometry); hover
 (ACCENT-3). Loading keeps the tab labels as real text (STATE-8).
 
 ## Owner split
-- **Grammar owns:** both looks, the nesting-based default, indicator motion, page inset, overflow carets.
+- **Grammar owns:** both looks, the nesting-based default, indicator motion, page inset, overflow carets, and for
+  link tabs the selected tab from the current path.
 - **Knowledge decides:** tabs vs segmented vs tags vs list; page vs region placement; one page set per page.
-- **App author decides:** the items, their labels and panels, the controlled `selectedKey`, whether page tabs
-  reflect the URL.
+- **App author decides:** the items, their labels and panels, whether page tabs reflect the URL. Tabs that reflect
+  the URL are link tabs: every item carries its `href`, and a server page passes them as data with no
+  `selectedKey` or `onSelect`; other tabs are controlled by `selectedKey` and `onSelect`.
 
 ## Rules
 STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Proof: FOCUS-2 (arrow traversal), COLOR-3, UX-7 (tab survives reload).

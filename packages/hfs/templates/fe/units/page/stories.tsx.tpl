@@ -8,7 +8,7 @@ const READY: {{Name}}BaseProps["props"] = {
     breadcrumbLabel: "Breadcrumb",
     homeLabel: "Home",
     homeHref: "/",
-{{emptyFixture}}    isSkeleton: false,
+{{emptyFixture}}{{tabsFixture}}    isSkeleton: false,
 }
 
 /** The pure half of {{Name}}: the resolved page and its loading view, paired for the DNA gate. */

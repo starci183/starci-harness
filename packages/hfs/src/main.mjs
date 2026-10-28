@@ -56,7 +56,7 @@
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
 //                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mjs). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
 //   starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
-//   starci app add <page|layout> <route> [--blocks a,b] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
+//   starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b (page)] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
 //                                            or overlay owner (scaffold/add-fe-page.mjs, add-fe-layout.mjs, add-fe-overlay.mjs).
 //                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
 //                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
@@ -141,7 +141,7 @@ starci app hygiene [--cwd <dir>]
 starci app coverage merge --out <lcov> <lcov-or-dir>... [--cwd <dir>]
 `;
 const PER_CODE_LIMIT = 25;
-const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app', '--kind', '--blocks']);
+const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs']);
 /** Flags that may repeat: their values are collected in order. */
 const LIST_FLAGS = new Set(['--inject']);
 const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring', '--form']);
@@ -395,7 +395,7 @@ function newMain(opts, { cwd: repoRoot, stdout: out }) {
 function addMain(opts, { cwd: repoRoot, stdout: out }) {
   const [noun, name, ...extra] = opts.positional;
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks } });
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks, tabs: opts.tabs } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
