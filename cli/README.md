@@ -174,7 +174,9 @@ delete through it.
 
 **Heavy-command governor.** Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
-`harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in machine.sqlite) while it runs, admitted by free
+`harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
+or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
+it) while it runs, admitted by free
 memory and the CPU average over a window (samples in `cpu_samples`), with the limits, memory caps and seat floor in the
 `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command with no slot waits in the queue, says so on stderr
 and records a `heavy-wait` host event; waiting never fails it. Each child runs below normal priority, a node tool under

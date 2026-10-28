@@ -3,12 +3,13 @@ import { readFileSync } from "node:fs"
 import { constants, cpus, freemem } from "node:os"
 import { basename, join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
+import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
 import type { RunOptions } from "../shared/exec.js"
-import { now } from "./ledger.js"
+import { governorStorePath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
 import { locateOps } from "./ops.js"
 
@@ -72,12 +73,19 @@ export interface HostLoad {
  * ceiling, one under the low floor, else every slot. Pressure is anything below every slot.
  */
 export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number): HostLoad => {
-    const at = { freeMb, cpuPercent }
-    if (freeMb < rules.criticalFreeMb) return { ...at, admitted: 0, pressure: true, reason: `free RAM ${String(freeMb)} MB is under the critical floor ${String(rules.criticalFreeMb)} MB` }
-    if (cpuPercent > rules.maxCpuPercent) return { ...at, admitted: 0, pressure: true, reason: `CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%` }
-    if (freeMb < rules.lowFreeMb) return { ...at, admitted: Math.min(1, rules.slots), pressure: true, reason: `free RAM ${String(freeMb)} MB is under the low floor ${String(rules.lowFreeMb)} MB` }
-    return { ...at, admitted: rules.slots, pressure: false, reason: "below every threshold" }
+    const critical = freeMb < rules.criticalFreeMb
+    const busy = cpuPercent > rules.maxCpuPercent
+    const low = freeMb < rules.lowFreeMb
+    const reasons = [
+        ...(critical ? [`free RAM ${String(freeMb)} MB is under the critical floor ${String(rules.criticalFreeMb)} MB`] : low ? [`free RAM ${String(freeMb)} MB is under the low floor ${String(rules.lowFreeMb)} MB`] : []),
+        ...(busy ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%`] : []),
+    ]
+    const admitted = critical || busy ? 0 : low ? Math.min(1, rules.slots) : rules.slots
+    return { freeMb, cpuPercent, admitted, pressure: admitted < rules.slots, reason: reasons.join("; ") || "below every threshold" }
 }
+
+/** Runs `work` on the governor's store (ledger.ts governorStorePath), shared by every worktree of the harness. */
+const withGovernor = <T>(work: (db: DatabaseSync) => T): T => withMachine(work, governorStorePath())
 
 const TABLES = `
 CREATE TABLE IF NOT EXISTS heavy_slots (
@@ -108,7 +116,7 @@ export const cpuPercent = async (rules: HeavyRules): Promise<number> => {
     const windowMs = rules.cpuWindowSeconds * 1000
     const reading = (): { readonly idle: number; readonly total: number; readonly atMs: number } => ({ ...cpuTimes(), atMs: Date.now() })
     const record = (sample: ReturnType<typeof reading>): { readonly idle: number; readonly total: number } | undefined =>
-        withMachine((db) => {
+        withGovernor((db) => {
             db.exec(TABLES)
             db.prepare("INSERT INTO cpu_samples (at_ms, idle, total) VALUES (?, ?, ?)").run(sample.atMs, sample.idle, sample.total)
             db.prepare("DELETE FROM cpu_samples WHERE at_ms < ?").run(sample.atMs - windowMs * 5)
@@ -146,7 +154,7 @@ export interface HeavySlot {
 
 /** Every slot row of a live process, running first; rows of a process that is gone are dropped on the way. */
 export const heavySlots = (): HeavySlot[] =>
-    withMachine((db) => {
+    withGovernor((db) => {
         db.exec(TABLES)
         const rows = db.prepare("SELECT * FROM heavy_slots ORDER BY state, at").all()
         const live: HeavySlot[] = []
@@ -162,7 +170,7 @@ export const heavySlots = (): HeavySlot[] =>
 
 /** One try for a slot, atomically: admitted, the row turns running; else it stays (or becomes) a waiting row. Null when admitted, else the holders. */
 const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, allowed: number): string[] | null =>
-    withMachine((db) => {
+    withGovernor((db) => {
         db.exec(TABLES)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
         const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
@@ -172,11 +180,11 @@ const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, allowed:
     })
 
 const setChild = (id: string, pid: number): void => {
-    withMachine((db) => db.prepare("UPDATE heavy_slots SET child_pid = ? WHERE id = ?").run(pid, id))
+    withGovernor((db) => db.prepare("UPDATE heavy_slots SET child_pid = ? WHERE id = ?").run(pid, id))
 }
 
 const release = (id: string): void => {
-    withMachine((db) => {
+    withGovernor((db) => {
         db.exec(TABLES)
         db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(id)
     })
@@ -236,7 +244,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     }
     if (announced) {
         const waitedMs = Date.now() - started
-        withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid })))
+        withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid })))
     }
     try {
         return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, pressure: load.pressure, rules })

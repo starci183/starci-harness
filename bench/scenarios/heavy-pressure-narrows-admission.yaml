@@ -31,6 +31,8 @@ steps:
   - git: [commit, -q, -m, "bench: ops copy"]
   - name: the low floor is above any host's free memory
     starci: [config, set, liveness.heavy.lowFreeMb, "100000000"]
+  - name: no CPU holds work back yet, whatever else this host runs
+    starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
   - git: [commit, -q, -am, "bench: memory pressure"]
   - write: { path: src/changed.ts, content: "export const changed = 1\n" }
   - name: host load admits one slot and names the low floor
@@ -53,4 +55,4 @@ steps:
     starci: [host, load]
     expect: { exit: 0, contains: '"admitted": 0' }
   - starci: [host, load]
-    expect: { exit: 0, contains: '"reason": "CPU' }
+    expect: { exit: 0, contains: "% over 60 s is above 0.0001%" }

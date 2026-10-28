@@ -66,7 +66,8 @@ const heldStep = (gate: "typecheck" | "lint", target: ScopeTarget, unbuilt: read
  * reused and never rerun; a step that runs and is green is recorded for the next round (a wave, Debug's scoped round, a push).
  */
 const reusing = async (gate: "typecheck" | "lint", scope: Scope, target: ScopeTarget, run: () => Promise<StepResult>): Promise<StepResult> => {
-    const digest = await checkDigest(scope.root, listPackages(scope.root), target.pkg, gate, gate, target.files, scope.all)
+    // The composition a lint judges by (a deferral, the modules judged in full) is part of what the step checks.
+    const digest = await checkDigest(scope.root, listPackages(scope.root), target.pkg, gate, `${gate} ${JSON.stringify(scope.composition)}`, target.files, scope.all)
     const row = greenRow(scope.root, digest)
     if (row !== undefined) return { package: target.pkg.name, step: gate, command: row.command, status: "green", reason: `reused: green row ${digest.slice(0, 12)} of ${row.at}, inputs unchanged (${row.reason})`, output: "" }
     const result = await run()

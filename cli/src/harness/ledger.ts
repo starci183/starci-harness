@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, realpathSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
@@ -163,6 +163,27 @@ const projectsRoot = (): string => {
 /** The host store, `<state base>/machine.sqlite`. */
 export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 
+/**
+ * The main checkout of the harness at `root`: a linked worktree's `.git` is a file naming `<main>/.git/worktrees/<name>`; a main
+ * checkout (a `.git` folder) or an installed package is its own.
+ */
+export const mainCheckoutOf = (root: string): string => {
+    const dotGit = join(root, ".git")
+    if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return root
+    const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+    const main = gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]
+    return main !== undefined && existsSync(join(main, "cli")) ? main : root
+}
+
+/**
+ * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else
+ * the machine.sqlite of the harness's main checkout, so a CLI run from any worktree of the harness takes the same slots.
+ */
+export const governorStorePath = (): string => {
+    const local = process.env[LOCAL_ROOT_ENV]
+    return local === undefined || local === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime", "machine.sqlite") : machinePath()
+}
+
 /** A launcher of a host service's schedule (`starci host install`): `<state base>/host/<service>.cmd`, and the `.vbs` that runs it hidden. */
 export const hostLauncherPath = (service: string, extension: "cmd" | "vbs"): string => join(stateBase(), "host", `${service}.${extension}`)
 
@@ -297,10 +318,10 @@ const mintLedgerId = (project: Project): string => `${nameOf(project)}-${createH
 
 const ledgerFile = (id: string): string => join(projectsRoot(), id, "runtime.sqlite")
 
-/** Opens (creating it) the host store with its base tables, for modules that add host-wide tables of their own; the caller closes it. */
-export const openMachine = (): DatabaseSync => {
-    mkdirSync(stateBase(), { recursive: true })
-    const db = connect(machinePath())
+/** Opens (creating it) the host store (or the store at `file`, the governor's) with its base tables, for modules that add host-wide tables of their own; the caller closes it. */
+export const openMachine = (file: string = machinePath()): DatabaseSync => {
+    mkdirSync(dirname(file), { recursive: true })
+    const db = connect(file)
     try {
         applyMachineSchema(db)
     } catch (error: unknown) {
