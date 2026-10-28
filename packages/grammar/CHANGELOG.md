@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.5 - 2026-10-28
+
+- Fixed: `Alert appearance="soft"` now applies its tone's soft tint at half strength and removes the surface shadow, as documented by `AlertAppearance` and the 2026-10-11 ruling. The default surface appearance and Alert anatomy are unchanged.
+
 ## 0.15.4 - 2026-10-28
 
 - Fixed: a `Button` with `width="fill"` was 36px at desktop width: the size rules excluded the fill form so a wrapped label could grow, which left it to the vendor's `md:h-9`. The fill form now holds its step as a floor (md and control 40px, sm 32px, lg 48px; ruling control-height-40) and only a wrapped label grows it. Story `Primitives/Control heights` FillWidthAtForty measures a sign-in card's submit, sm, lg and a wrapping label.
