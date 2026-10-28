@@ -5,6 +5,7 @@ import { redactSecrets } from "../shared/secrets.js"
 import { inCleanCheckout, prepareCheckout } from "./clean-verify.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
+import { opWorktreeOf } from "./land.js"
 import { inTransaction, now } from "./ledger.js"
 import { readMachine } from "./machine.js"
 import { loadOps } from "./ops.js"
@@ -130,9 +131,9 @@ const recordTask = (db: DatabaseSync, workflow: string, each: WaveTask, outcomes
 }
 
 /**
- * The wave verify of a workflow: the heavy checks its due tasks left (`waveDue`) run once, on one clean checkout of the
- * workflow's HEAD, over the union of what those tasks landed, the diff from the oldest of their settle commits' parents. The
- * install comes from the shared cache, every contract's setup runs once, a scoped check runs once for all, and a command check
+ * The wave verify of a workflow: the heavy checks its due tasks left (`waveDue`) run once, on one clean checkout of the head of
+ * the branch they landed on, over the union of what those tasks landed, the diff from the oldest of their settle commits'
+ * parents. The install comes from the shared cache, every contract's setup runs once, a scoped check runs once for all, and a command check
  * once per cwd and argv (per task when it reads the task's result or coverage). A red check is owned by the tasks whose files its
  * output names (every task that left it, when it names none); each owning task turns failed, back to the Kernel with the red
  * check rows on its attempt, and every task of the wave is judged. Undefined when no wave is due.
@@ -141,7 +142,8 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
     const ids = waveDue(db, workflow)
     const first = ids[0]
     if (first === undefined) return undefined
-    const checkout = await taskCheckout(getTask(db, first), callerRoot)
+    // The wave judges the branch the tasks landed on: an Op task's target checkout (its own worktree is gone once it landed).
+    const checkout = opWorktreeOf(db, first)?.target ?? (await taskCheckout(getTask(db, first), callerRoot))
     const tasks = await waveTasks(db, checkout, ids)
     const parents = [...new Set(tasks.flatMap((each) => (each.parent === null ? [] : [each.parent])))]
     const head = await resolveSha(checkout, "HEAD")

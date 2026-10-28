@@ -92,9 +92,10 @@ act there whatever checkout the caller is in.
 `<project state>/worktrees/<workflow>.ops/<task>` on branch `starci/<workflow>.ops/<task>`, cut when its seat starts (or
 its inline step hands it out) from the head of the branch its workflow's worktree has checked out (an inline workflow
 without one: the checkout it runs in), beside that worktree rather than inside it, since git keeps no branch below another
-branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and links each
-node_modules folder of that checkout (a junction on Windows), never a fresh install (`ensureOpWorktree` in
-`harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
+branch's name and a nested checkout would sit in the workflow's tree. It gets the product's hooks and, for each
+node_modules folder of that checkout and each lockfile folder of its own, an install without npm: from the install cache
+(below) when it holds the key of that folder's lockfile, else a link to the checkout's own folder when it has one (a
+junction on Windows), always the link in local package mode (`ensureOpWorktree` and `linkInstall` in `harness/land.ts`). No path is held while a task works: two tasks may write the same file at once. Under the orca
 runner the worktree is listed in Orca under the workflow's worktree as `[Op] <workflow>: <task>`, and the workflow's
 worktree under the project's main checkout as `[Kernel] <workflow>` (`orca worktree set --parent-worktree`), so
 Orca's worktree tree shows Supervisor, Kernel and Op whichever worktree each terminal runs in. Every worktree the
@@ -167,15 +168,15 @@ none): those tasks go `done → failed` with the red rows on their attempt (`wav
 red verify, and every task of the wave is judged (`wave-judged`, `wave-verified`). `workflow wave <id>` runs a due wave by
 hand.
 
-**Install cache.** A clean checkout never runs its own `npm ci` when the shared install exists: `cachedInstall`
+**Install cache.** A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
 (`harness/install-cache.ts`) keys an install by the lockfile's bytes, Node's version and npm's
 (`<state base>/cache/installs/<key>`, path in `harness/ledger.ts`). A miss runs `npm ci` in the checkout and copies its
 node_modules into the cache (staged, then renamed into place), recording the links npm made to the checkout's own folders
 (workspace members) relative to the install folder; a hit gives the checkout a real node_modules whose every package is a
 link into the cache (a junction on Windows), those workspace links re-made to the checkout, and a marker. A repository in
 local package mode gets a copy instead, then the same `reapplyLocal`. Before a checkout is removed, and when a leftover
-one is pruned, every link in its node_modules is removed with a plain unlink (`unlinkInstallLinks`), never a recursive
-delete through it.
+one is pruned, every install link it holds (a node_modules that is itself a link, and every link inside a real one) is removed with a
+plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
 
 **Heavy-command governor.** Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of

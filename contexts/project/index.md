@@ -7,7 +7,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 
 - [README.md](../README.md) · 14 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
-- [authority/README.md](../authority/README.md) · 6 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
+- [authority/README.md](../authority/README.md) · 5 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs

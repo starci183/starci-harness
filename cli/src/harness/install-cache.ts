@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { captureNpm, npmVersion } from "../shared/exec.js"
 import type { RunOptions, ToolRun } from "../shared/exec.js"
@@ -139,31 +139,76 @@ const freshInstall = async (dir: string, entry: string, key: string, options: Ru
 /** Whether a folder holds an install already made in it: npm's own record of it, or the marker of one linked from the cache. */
 export const isInstalled = (dir: string): boolean => existsSync(join(dir, "node_modules", ".package-lock.json")) || existsSync(join(dir, "node_modules", LINKED_MARKER))
 
-/** The node_modules folders of a checkout, down to a few levels, never inside one another or inside .git. */
-const modulesFolders = (root: string, depth: number): string[] => {
-    if (depth < 0 || !existsSync(root)) return []
-    const found: string[] = []
-    for (const entry of readdirSync(root, { withFileTypes: true })) {
-        if (!entry.isDirectory() || entry.name === ".git") continue
-        const path = join(root, entry.name)
-        if (entry.name === "node_modules") found.push(path)
-        else found.push(...modulesFolders(path, depth - 1))
+/**
+ * Links the cached install of a lockfile folder `dir` into it when the install cache holds its key (a real node_modules whose
+ * every package is a link into the cache, as a clean checkout gets it), without running npm; false on a miss, or when `dir`
+ * has no lockfile or already holds a node_modules.
+ */
+export const linkCachedInstall = (dir: string): boolean => {
+    const lockfile = join(dir, "package-lock.json")
+    if (!existsSync(lockfile) || existsSync(join(dir, "node_modules"))) return false
+    const entry = installCachePath(installKey(lockfile))
+    if (!existsSync(join(entry, LINKS_FILE))) return false
+    try {
+        fromCache(dir, entry, false)
+        return true
+    } catch {
+        unlinkInstallLinks(dir)
+        rmSync(join(dir, "node_modules"), { recursive: true, force: true })
+        return false
     }
-    return found
 }
 
 const MODULES_DEPTH = 4
 
+/** The node_modules folders of a checkout, relative to it, down to a few levels (a linked one included), never inside one another or inside .git. */
+export const modulesFolders = (root: string, at = root, depth = MODULES_DEPTH): string[] => {
+    if (depth < 0 || !existsSync(at)) return []
+    const found: string[] = []
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+        if (entry.name === ".git") continue
+        const path = join(at, entry.name)
+        if (entry.name === "node_modules" && (entry.isDirectory() || entry.isSymbolicLink())) found.push(toSlash(relative(root, path)))
+        else if (entry.isDirectory()) found.push(...modulesFolders(root, path, depth - 1))
+    }
+    return found
+}
+
+/** The folders of a checkout holding a lockfile, relative to it ("." for the root), down to a few levels, never inside node_modules or .git. */
+export const lockfileFolders = (root: string, at = root, depth = MODULES_DEPTH): string[] => {
+    if (depth < 0 || !existsSync(at)) return []
+    const found = existsSync(join(at, "package-lock.json")) ? [toSlash(relative(root, at)) || "."] : []
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+        if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules") found.push(...lockfileFolders(root, join(at, entry.name), depth - 1))
+    }
+    return found
+}
+
 /**
- * Removes every link a checkout's node_modules holds at its package level (the cache links, and the links npm made to the
- * checkout's own folders) with a plain unlink, never a recursive delete through it, so removing the checkout afterwards cannot
- * reach the cache or the folder a link names.
+ * Removes a link with a plain unlink (a junction that refuses one goes with a non-recursive rmdir), never a recursive delete
+ * through it, so nothing removed afterwards can reach the folder the link names.
  */
-export const unlinkInstallLinks = (checkout: string): void => {
-    for (const modules of modulesFolders(checkout, MODULES_DEPTH)) {
-        for (const name of entriesOf(modules)) {
-            const path = join(modules, name)
-            if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() === true) unlinkSync(path)
-        }
+const unlinkFolder = (path: string): void => {
+    if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return
+    try {
+        unlinkSync(path)
+    } catch {
+        rmdirSync(path)
+    }
+}
+
+/**
+ * Removes every install link of a checkout, link only: a node_modules folder that is itself a link (an Op worktree linked to its
+ * target's install), and every link a real node_modules holds at its package level (the cache links, and the links npm made to
+ * the checkout's own folders), for each node_modules found and each folder in `links` (relative to the checkout). Removing the
+ * checkout afterwards therefore cannot reach the cache, a target's install or any folder a link names.
+ */
+export const unlinkInstallLinks = (checkout: string, links: readonly string[] = []): void => {
+    for (const folder of new Set([...links, ...modulesFolders(checkout)])) {
+        const modules = join(checkout, folder)
+        const stat = lstatSync(modules, { throwIfNoEntry: false })
+        if (stat === undefined) continue
+        if (stat.isSymbolicLink()) unlinkFolder(modules)
+        else if (stat.isDirectory()) for (const name of entriesOf(modules)) unlinkFolder(join(modules, name))
     }
 }

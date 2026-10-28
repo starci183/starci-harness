@@ -43,7 +43,7 @@ steps:
       db: ledger
       exec: >-
         UPDATE tasks SET status = 'verifying';
-        INSERT INTO meta (key, value) VALUES ('settle-lock', json_object('task', '${a}', 'pid', 4242, 'host', 'a-host-hung-elsewhere',
+        INSERT INTO meta (key, value) VALUES ('verify-lock:${a}', json_object('task', '${a}', 'pid', 4242, 'host', 'a-host-hung-elsewhere',
         'at', '2026-01-01T00:00:00.000Z', 'beat', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'since', '2026-01-01T00:00:00.000Z'))
         ON CONFLICT(key) DO UPDATE SET value = excluded.value
   - name: the step reclaims the task and verifies it

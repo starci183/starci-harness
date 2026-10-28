@@ -159,9 +159,8 @@ const checkLiveness = async (context: VerbContext, root: string, snapshot: Snaps
 
 /**
  * Reconciles each verifying node whose verifier is gone (it no longer holds its verifier lock: dead, its heartbeat stale, or past
- * the verify deadline) through
- * `task verify --recover`: git first, so a settle commit that landed makes it done, else it returns to reported for this same
- * step to verify. A verifier still alive (VERIFY_LIVE) is a wait.
+ * the verify deadline) through `task verify --recover`: git first, so a settle commit that landed makes it done, else it returns
+ * to reported for this same step to verify. A verifier still alive (VERIFY_LIVE) is a wait.
  */
 const recoverOrphans = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
     const verifying = snapshot.views.flatMap((view) => (view.state === "verifying" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))

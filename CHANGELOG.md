@@ -53,9 +53,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   workflow is done, its scope decision recorded first, the heavy checks once over the union of the landed tasks; a red wave
   returns the tasks whose files are red (`done → failed`). `workflow wave <id>` runs a due wave by hand. Bench:
   `wave-inline-lint-returns-owner`, `wave-orca-lint-returns-owner`.
-- **Shared install cache.** A clean checkout links its node_modules from `<state base>/cache/installs/<key>` (lockfile,
-  Node and npm versions) instead of running `npm ci`; workspace links are re-made per checkout, local package mode gets a
-  copy, and every link is unlinked before the checkout is removed. Bench: `verify-install-cache-reused`.
+- **Shared install cache.** A clean checkout and an Op worktree link their node_modules from `<state base>/cache/installs/<key>`
+  (lockfile, Node and npm versions) instead of running `npm ci` (an Op worktree falls back to linking its target's install on a
+  miss, and always in local package mode); workspace links are re-made per checkout, a clean checkout in local package mode
+  gets a copy, and every link is unlinked before the checkout is removed. Bench: `verify-install-cache-reused`.
 - **Host heavy-command governor.** Every tsc, eslint, test or suite command, build, npm install, setup and uat container
   the harness runs takes a slot of a machine-wide semaphore in machine.sqlite (`heavy` of ops/liveness.yaml: 2 slots, one
   under the low RAM floor, none under the critical floor or over the CPU ceiling), runs below normal priority under its
