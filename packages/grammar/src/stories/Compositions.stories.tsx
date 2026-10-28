@@ -270,6 +270,58 @@ export const PageSkeleton: Story = {
   },
 };
 
+const bleedTrail = { label: 'Breadcrumb', items: [{ id: 'agents', label: 'Agents', href: '#agents' }, { id: 'chat', label: 'Support agent' }] };
+
+/** An app surface: one joined card that fills the viewport height left below the trail or the band. */
+const PageBleedDemo = ({ withBand }: { readonly withBand: boolean }) => (
+  <G.Page
+    chrome="bleed"
+    header={withBand ? { breadcrumbs: bleedTrail, title: 'Support agent', tabs: { label: 'Agent', items: [{ id: 'setup', label: 'Setup', href: globalThis.location.pathname }, { id: 'settings', label: 'Settings', href: '/settings' }] } } : { breadcrumbs: bleedTrail }}
+  >
+    <G.FillViewport minHeight="sm" bottomInset="page">
+      <G.SurfaceCard ariaLabel="Conversation" composition="joined" height="fill">
+        <div style={{ display: 'flex', blockSize: '100%', minBlockSize: 0 }}>
+          <div style={{ inlineSize: '16rem', padding: '1rem' }}><G.Text tone="muted">Conversations</G.Text></div>
+          <G.Divider orientation="vertical" semantics="presentation" />
+          <div style={{ flex: '1 1 auto', padding: '1rem' }}><G.Text tone="muted">Thread</G.Text></div>
+        </div>
+      </G.SurfaceCard>
+    </G.FillViewport>
+  </G.Page>
+);
+
+/** A bleed body has no gutter, no block padding and no clip, and fills the page; the FillViewport keeps the one bottom inset. */
+const assertPageBleed = async (canvasElement: HTMLElement, withBand: boolean) => {
+  await waitFor(() => {
+    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="bleed"]');
+    const body = page?.querySelector<HTMLElement>(':scope > [data-grammar-page-body]');
+    if (!page || !body) throw new Error('The bleed Page and its body must render');
+    const pageStyle = getComputedStyle(page);
+    const bodyStyle = getComputedStyle(body);
+    expect(Number.parseFloat(pageStyle.paddingTop)).toBe(0);
+    expect(Number.parseFloat(pageStyle.paddingBottom)).toBe(0);
+    expect(Number.parseFloat(bodyStyle.paddingLeft)).toBe(0);
+    expect(Number.parseFloat(bodyStyle.paddingRight)).toBe(0);
+    expect(bodyStyle.overflowX).toBe('visible');
+    expect(Math.abs(body.getBoundingClientRect().width - page.getBoundingClientRect().width)).toBeLessThanOrEqual(0.5);
+    expect(page.querySelectorAll('h1')).toHaveLength(withBand ? 1 : 0);
+    expect(page.querySelector(':scope > [data-component="PageHeader"]') !== null).toBe(withBand);
+    expect(page.querySelector(':scope > .starci-core-page-trail [data-component="Breadcrumbs"]') !== null).toBe(!withBand);
+  }, { timeout: 4000 });
+};
+
+export const PageBleedTrail: Story = {
+  name: 'Page bleed (breadcrumbs only, an app surface fills the region)',
+  render: () => <PageBleedDemo withBand={false} />,
+  play: async ({ canvasElement }) => assertPageBleed(canvasElement, false),
+};
+
+export const PageBleedBand: Story = {
+  name: 'Page bleed (with the band and its link tabs)',
+  render: () => <PageBleedDemo withBand />,
+  play: async ({ canvasElement }) => assertPageBleed(canvasElement, true),
+};
+
 export const PrimaryRailLayout: Story = {
   render: () => (
     <G.PageContainer>

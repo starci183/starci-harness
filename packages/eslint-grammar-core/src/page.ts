@@ -1,7 +1,8 @@
 import type { Rule } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { inSlot, isProductSource, kindOfFile } from "@starci/eslint-canon-fe/lib/scope.mjs"
-import { PURE_HALF, blockDrawsPage, mountedOnlyUnderAuthGroup } from "./lib/page-frame.ts"
+import { PURE_HALF, blockDrawsPage, mountedOnlyUnderAuthGroup, segmentFrame } from "./lib/page-frame.ts"
+import type { SegmentFrame } from "./lib/page-frame.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { ReaderContext } from "./lib/types.ts"
 /**
@@ -13,19 +14,23 @@ import type { ReaderContext } from "./lib/types.ts"
  *   drawn outside the band: it misses the separator it stands on and takes the body's inset and gap.
  * - R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`): a route draws exactly one `Page` and nothing beside it. The page owner
  *   (`fe.feature`, kind `pages`) draws it itself, through its pure half (`./component`), or through the one connected
- *   block it renders as its root, where client data builds the header a server owner cannot build. A `Page` (or a block
- *   that draws one) with an element sibling, a `Page` inside another, or a bare `PageHeader` or `PageContainer` in the
- *   page owner re-decides the inset and the rhythm `Page` owns. A page owner file that draws JSX but no `Page` in one of
- *   those ways has no page frame at all, unless every route that mounts it lies under the auth route group `(auth)` with
- *   its own layout: that layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages.
+ *   block it renders as its root, where client data builds the header a server owner cannot build. A route segment
+ *   `layout` whose owner (`fe.feature`, kind `layouts`) draws, in the same ways, a `Page` whose `header` carries `tabs` is
+ *   the one `Page` of every route under it: those page owners draw body content only, so a `Page` they draw is a second
+ *   one, and they need none. A `Page` (or a block that draws one) with an element sibling, a `Page` inside another, or a
+ *   bare `PageHeader` or `PageContainer` in a page or layout owner re-decides the inset and the rhythm `Page` owns. A page
+ *   owner file that draws JSX but no `Page` in one of those ways has no page frame at all, unless a segment layout frames
+ *   every route that mounts it, or every such route lies under the auth route group `(auth)` with its own layout: that
+ *   layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages.
  *
  * WHAT IT READS. Element names (`Page`, or `Grammar.Page` as `Page`), the element children of one JSX parent, and the
  * names a file imports from a relative module; whitespace text and JSX comments are not children. For R325 it also reads,
  * one level deep, the source of each app block (`fe.components`, kind `blocks`) the owner draws with that block's pure
- * half, and the app's route `page` files that import the owner. A page owner that draws no JSX (its body only calls
- * `redirect()` or `notFound()`, or returns null) draws no UI and is not judged. A `Tabs` lower in the
- * body, a `Page` wrapped alone in a provider, and files outside a page owner (for R325) are not judged. The segment
- * boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for a missing `Page`:
+ * half, the app's route `page` files that import the owner, and the route `layout` files of the segments above them with
+ * the layout owners they render (the same one level). A page owner that draws no JSX (its body only calls
+ * `redirect()` or `notFound()`, or returns null) draws no UI and is not judged, nor is a layout owner for a missing
+ * `Page`. A `Tabs` lower in the body, a `Page` wrapped alone in a provider, and files outside a page or layout owner (for
+ * R325) are not judged. The segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for a missing `Page`:
  * an app-level boundary stands in for whichever page failed or waits and draws its notice.
  */
 
@@ -84,8 +89,12 @@ export const pageTabsInHeader: Rule.RuleModule = defineRule({
 
 const PAGE_PARTS = new Set(["PageHeader", "PageContainer"])
 
-/** True for a page owner's file: `fe.feature`, kind `pages`. */
-const isPageOwner = (context: ReaderContext): boolean => inSlot(context, "fe.feature") && kindOfFile(context) === "pages"
+/** The owner kind a file belongs to: a page owner or a layout owner (`fe.feature`, kind `pages` or `layouts`), or null. */
+const ownerKind = (context: ReaderContext): "pages" | "layouts" | null => {
+  if (!inSlot(context, "fe.feature")) return null
+  const kind = kindOfFile(context)
+  return kind === "pages" || kind === "layouts" ? kind : null
+}
 
 /** The segment boundary owners of FE-BOUNDARY-1: an error, loading or not-found page, which may draw a notice. */
 const BOUNDARY_OWNER = /\/features\/pages\/[^/]*(?:ErrorPage|LoadingPage|NotFoundPage)\//
@@ -109,22 +118,30 @@ const enclosingElement = (node: TSESTree.Node): TSESTree.JSXElement | null => {
 export const routePageIsOnePage: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R325: a route draws one Page (in its page owner, its pure half or its one root block) with nothing beside it, never a bare PageHeader or PageContainer, and never no Page at all." },
+    docs: { description: "R325: a route draws one Page (in its page owner, its pure half or its one root block, or in the layout of its tabbed segment) with nothing beside it, never a bare PageHeader or PageContainer, and never no Page at all." },
     schema: [],
     messages: {
       sibling:
         "This `{{name}}` draws the route's `Page` and has a sibling: a route page is one `Page`, and whatever sits beside it escapes the header band, the measure and the rhythm `Page` owns. Move the sibling into the `Page` body (as the block's children when a block draws the `Page`), or into `header` when it heads the page.",
       twice:
-        "This `{{name}}` draws a second `Page` inside the route's `Page`: a route page is exactly one `Page`, so the band, the measure and the rhythm would be decided twice. Draw its content as the body of the one `Page`.",
+        "This `{{name}}` draws a second `Page` inside the route's `Page`{{framer}}: a route page is exactly one `Page`, so the band, the measure and the rhythm would be decided twice. Draw its content as the body of the one `Page`.",
       part:
-        "`{{name}}` is drawn by `Page`: a page owner composes `Page` (`header` for the band, `measure` for the body), so the inset and the rhythm have one owner. Replace it with `Page`.",
+        "`{{name}}` is drawn by `Page`: a page or layout owner composes `Page` (`header` for the band, `measure` for the body), so the inset and the rhythm have one owner. Replace it with `Page`.",
       missing:
         "This page owner draws no `Page`: a route page is one Grammar `Page`, which owns the header band, the measure and the rhythm, so without it the page has no heading band and its body sits on no inset. Wrap what it draws in a `Page` whose `header.title` is the page heading (never a `Heading` of its own), draw it through the owner's pure half in `./component`, or render as the root the one connected block that draws the `Page` from client data.",
     },
   },
   create(context) {
-    if (!isProductSource(context) || !isPageOwner(context)) return {}
-    const judgeMissing = !isBoundaryOwner(context)
+    const kind = isProductSource(context) ? ownerKind(context) : null
+    if (kind === null) return {}
+    // A layout owner may draw no Page (a pure frame); a boundary owner draws its notice.
+    const judgeMissing = kind === "pages" && !isBoundaryOwner(context)
+    let segment: SegmentFrame | null = null
+    /** The segment layout above the page owner's routes, read once and only when a finding needs it. */
+    const framedBy = (): SegmentFrame => {
+      segment ??= kind === "pages" ? segmentFrame(context) : { some: false, every: false, layout: null }
+      return segment
+    }
     const pureHalf = new Set<string>()
     const appImports = new Set<string>()
     const frames = new Set<TSESTree.JSXElement>()
@@ -158,9 +175,15 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
         drawsPage = true
         frames.add(element)
         const label = name ?? "Page"
+        const framer = framedBy()
+        if (framer.some) {
+          const layout = framer.layout ?? "layout"
+          context.report({ node: element, messageId: "twice", data: { name: label, framer: ` (the segment layout \`${layout}\` draws it; a page under it draws its body only)` } })
+          return
+        }
         for (let outer = enclosingElement(element); outer; outer = enclosingElement(outer)) {
           if (!frames.has(outer)) continue
-          context.report({ node: element, messageId: "twice", data: { name: label } })
+          context.report({ node: element, messageId: "twice", data: { name: label, framer: "" } })
           return
         }
         const parent = element.parent
@@ -168,7 +191,7 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
         if (renderedChildren(parent.children).length > 1) context.report({ node: element, messageId: "sibling", data: { name: label } })
       },
       "Program:exit"() {
-        if (!judgeMissing || first === null || drawsPage) return
+        if (!judgeMissing || first === null || drawsPage || framedBy().every) return
         if (!mountedOnlyUnderAuthGroup(context)) context.report({ node: first, messageId: "missing" })
       },
     }

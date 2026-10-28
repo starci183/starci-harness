@@ -338,14 +338,15 @@ roles:
     ui: ui/components/page-header.md
     renderers: [Page]
     vendorParity: [breadcrumbs, tabs, separator]
-    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs)", children]
+    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs); in bleed the breadcrumbs alone", children]
     variants:
-      header: { values: [none, the page header band], chosenBy: app }
+      chrome: { values: [standard, bleed], chosenBy: app from page-header.choose.head (bleed for an app surface) }
+      header: { values: [none, the page header band, the trail alone (bleed only)], chosenBy: app }
       measure: { values: [reading, product, full], chosenBy: app, equals: the header's content measure }
     sizes: none
     states: [ready, skeleton (passed to the header)]
     grammarMayChange: [the header band's paint (page-header)]
-    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP]
+    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY]
 
   - id: diagram
     ui: ui/components/diagram.md
@@ -906,10 +907,10 @@ mustKeep:
       owner: page-frame
     - id: DNA-COMMON-PAGE-BODY-EDGES
       role: page
-      law: The page body is inset by the page inset inline, so its content edges are the header content's edges.
+      law: A standard page body is inset by the page inset inline, so its content edges are the header content's edges.
       measure:
         kind: style
-        select: '[data-component="Page"] > [data-grammar-page-body]'
+        select: '[data-component="Page"][data-grammar-page-chrome="standard"] > [data-grammar-page-body]'
         checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }]
       owner: page-frame
     - id: DNA-COMMON-PAGE-BODY-GAP
@@ -924,11 +925,19 @@ mustKeep:
       owner: page-frame
     - id: DNA-COMMON-PAGE-BODY-CLIP
       role: page
-      law: Nothing in the page body reaches across the gutter; the body clips past its content box.
+      law: Nothing in a standard page body reaches across the gutter; the body clips past its content box.
       measure:
         kind: style
-        select: '[data-component="Page"] > [data-grammar-page-body]'
+        select: '[data-component="Page"][data-grammar-page-chrome="standard"] > [data-grammar-page-body]'
         checks: [{ metric: overflow-x, op: "=", value: clip }, { metric: overflow-clip-margin, op: matches, value: content-box }]
+      owner: page-frame
+    - id: DNA-COMMON-PAGE-BLEED-BODY
+      role: page
+      law: A bleed page is an app surface; it keeps no block padding, and its body no inline gutter and no clip, so the body fills the region and a FillViewport in it keeps the one bottom inset.
+      measure:
+        kind: style
+        select: '[data-component="Page"][data-grammar-page-chrome="bleed"] > [data-grammar-page-body]'
+        checks: [{ metric: padding-inline-start, op: "=", value: 0px }, { metric: padding-inline-end, op: "=", value: 0px }, { metric: overflow-x, op: "=", value: visible }]
       owner: page-frame
 
     # --- diagram (ruling mermaid-diagram)

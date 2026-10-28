@@ -468,6 +468,30 @@
     }
 
     /*
+     * Page chrome="bleed": an app surface (a chat, a split editor) that fills its region edge to edge. No block padding,
+     * no inline gutter and no clip; the page and its body grow to the region's height, so a FillViewport in the body
+     * measures its own top and keeps its own bottom inset, never doubled. The trail alone (breadcrumbs, no band) or the
+     * band sits a region step above the body, the step the region keeps between its children.
+     */
+    .starci-core-page[data-grammar-page-chrome="bleed"] {
+        flex: 1 0 auto;
+        padding-block: 0;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="bleed"] > .starci-core-page-body {
+        min-width: 0;
+        flex: 1 0 auto;
+        overflow: visible;
+    }
+
+    /* The trail alone stands as the region's own child would: full width, wrapping inside it. */
+    .starci-core-page-trail {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    /*
      * Keyboard-reachable scroll owners (VerticalScrollRegion / HorizontalScrollRegion when focusable,
      * the Rail body, fenced code and Markdown table frames) draw the same inset focus ring the chat
      * scroll owners use, so a Tab stop that scrolls is never invisible.

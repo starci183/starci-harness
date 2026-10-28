@@ -6,6 +6,7 @@
 - Unchanged on purpose: `platform/http` and `platform/http-security` still export only what the skeleton consumes (R25 HFS_UNUSED_EXPORT); code that first consumes `InjectHttpClient` or `RateLimit`/`RateTier` adds the export line to the owner entry in the same change, as the webhook generators already do.
 - Changed: the bundled canon pins name hfs 4.9.9 and eslint-canon-be 3.6.5.
 - Changed: the bundled canon pins name the Grammar family 0.15.7 (grammar, eslint-grammar-core, eslint-grammar-offset-pop) and eslint-canon-fe 9.4.6.
+- Changed: the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6.
 
 ## 4.9.8 - 2026-10-28
 

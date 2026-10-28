@@ -171,5 +171,8 @@ export const importedHeader = (context: ReaderContext, opening: TSESTree.JSXOpen
   return target ? headerExport(target, exported) : null
 }
 
+/** A file of the app parsed on its own (a route `layout`), sharing the run's parse cache. */
+export const parsedSource = (context: ReaderContext, filename: string): ParsedContext => sourceContext(context, filename)
+
 /** The per-repository proof cache shares the same lifetime as parsed header source. */
 export const headerProofs = (context: ReaderContext): Map<string, boolean> => stateOf(context).proofs

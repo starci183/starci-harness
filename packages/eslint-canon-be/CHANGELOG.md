@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.6.6 - 2026-10-29
+
+- Changed: the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6. No rule changed.
+
 ## 3.6.5 - 2026-10-29
 
 - Changed: `starci-be/em-injection-slots` (R88) admits `platform/http-security` as a persistence capability: it owns the shared rate limit windows (BE-AUTH-4), and its guard counts in them through the primary `EntityManager`. Spec: `src/connections.spec.ts`.

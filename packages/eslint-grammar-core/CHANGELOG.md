@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.8 - 2026-10-29
+
+- Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling `page-frame` as rewritten: a route segment `layout` whose owner (`fe.feature`, kind `layouts`), its pure half or its one root block draws a `Page` whose `header` carries `tabs` is the one `Page` of every route under it. The rule finds the route `page` files that mount a page owner, walks up through the `layout` files of their segments and resolves each layout's owner one level deep. A page owner every route of which is so framed is not judged `missing`; one that draws a `Page` (or a root block that draws one) under such a layout is `twice`, and the message names the layout. A layout whose `Page` carries no `tabs` frames no segment.
+- Changed: R325 also judges layout owners (`fe.feature`, kind `layouts`): a `Page` they draw has nothing beside it (`sibling`; a `PageHeader` block beside the segment's `Page` belongs in its `header`), no `Page` inside another (`twice`), and no bare `PageHeader` or `PageContainer` (`part`). A layout owner that draws no `Page` is never `missing`.
+- Changed: `@starci/eslint-canon-fe` 9.4.7 is the peer dependency; versioned together with Grammar 0.15.8; the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6.
+- Spec: `src/page.spec.ts`, `src/page-owners.spec.ts` (layout cases on the project fixture); docs: `docs/page.md`.
+
 ## 0.15.7 - 2026-10-29
 
 - Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling that a route draws exactly one `Page`, drawn by the page owner, its pure half (`./component`), or the one connected block (`fe.components`, kind `blocks`) the owner renders as its root, read one level deep (the block's connected half and its own pure half). A server page owner whose header needs client data renders that block and passes the page body as its children. An element that draws the `Page` with an element sibling stays `sibling`; a `Page` (or a block that draws one) inside another is the new finding `twice`.
