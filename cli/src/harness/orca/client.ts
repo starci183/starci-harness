@@ -539,12 +539,26 @@ export const dispatchOfFailure = (failure: OrcaFailure): string | undefined => {
     return parsed.success ? parsed.data.dispatchId : undefined
 }
 
-const failedTerminalSchema = z.looseObject({ worker: z.looseObject({ agentTerminalHandle: z.string().min(1) }) })
+const createdTerminalSchema = z.looseObject({ kind: z.literal("terminal"), role: z.string().nullish(), id: z.string().min(1) })
 
-/** The agent terminal a failed worker-start still names, if any: the tab to close once its dispatch is released. */
+const failedTerminalSchema = z.looseObject({
+    worker: z.looseObject({ agentTerminalHandle: z.string().min(1).nullish() }).nullish(),
+    effects: z.array(z.unknown()).nullish(),
+    residualResources: z.array(z.unknown()).nullish(),
+})
+
+/**
+ * The agent terminal a failed worker-start still names, if any: the worker's handle, else the agent terminal its receipt's
+ * effects or residualResources say it created. It is the tab to close once the dispatch is released, and the screen a
+ * readiness failure reads (harness/launch-failure.ts).
+ */
 export const terminalOfFailure = (failure: OrcaFailure): string | undefined => {
     const parsed = failedTerminalSchema.safeParse(failure.result)
-    return parsed.success ? parsed.data.worker.agentTerminalHandle : undefined
+    if (!parsed.success) return undefined
+    const created = [...(parsed.data.effects ?? []), ...(parsed.data.residualResources ?? [])]
+        .map((effect) => createdTerminalSchema.safeParse(effect).data)
+        .find((effect) => effect !== undefined && (effect.role ?? "agent") === "agent")
+    return parsed.data.worker?.agentTerminalHandle ?? created?.id
 }
 
 const launchSchema = z.looseObject({

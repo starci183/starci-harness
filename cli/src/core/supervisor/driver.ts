@@ -9,6 +9,7 @@ import { GOAL_CHANGE_SCHEMA, recordGoalChange } from "../../harness/goal.js"
 import type { GoalChange } from "../../harness/goal.js"
 import { coordinatorOf, foreignKernelTerminal, launchKernelSeat, startKernel, SUPERVISOR_COORDINATOR } from "../../harness/kernel.js"
 import type { NodeState } from "../../harness/graph.js"
+import { deadOnArrivalFailure, openBlockedPrompts } from "../../harness/launch-failure.js"
 import { ledgerPath, now, openLedger } from "../../harness/ledger.js"
 import { inTransaction } from "../../harness/leases.js"
 import { loadLiveness } from "../../harness/liveness.js"
@@ -164,7 +165,8 @@ const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, sea
     }
     if (!gone && !(unstarted && olderThan(seat.startedAt, stall.startDeadlineMinutes))) return null
     await closeWorker(binary, dispatchId, cwd, shown?.terminal ?? seat.terminal)
-    withLedger(root, (db) => { recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, handle: dispatchId, facts: { deadOnArrival: { states } } }); })
+    const failure = deadOnArrivalFailure(stallKindOf(shown?.failureText ?? null), states, shown?.failureText ?? null, shown?.terminal ?? seat.terminal)
+    withLedger(root, (db) => { recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, handle: dispatchId, failure, facts: { deadOnArrival: { states, failure: shown?.failureText ?? null } } }); })
     const stalled = seat.agent === null ? [] : [{ agent: seat.agent, model: seat.model ?? "" }]
     return relaunch(root, binary, cwd, workflow, `Kernel launch ${seat.id} never started (${states.join("/") || "unknown"})`, { replace: false, acting, stalled }, rules)
 }
@@ -459,13 +461,23 @@ export interface SupervisorTick {
     readonly actions: readonly string[]
 }
 
+const questionOf = (decision: Decision): string => {
+    const evidence = decision.evidence
+    const escalation = typeof evidence === "object" && evidence !== null && "escalation" in evidence ? evidence.escalation : null
+    return typeof escalation === "object" && escalation !== null && "question" in escalation && typeof escalation.question === "string" ? escalation.question : decision.subject
+}
+
+/** Every open blocked-prompt escalation of a repository's ledger, named loudly on each tick until the Supervisor answers it. */
+const blockedPromptLines = (root: string): string[] =>
+    ledgerPath(root) === undefined ? [] : withLedger(root, (db) => openBlockedPrompts(db).map((decision) => `BLOCKED PROMPT (${decision.id}, ${decision.workflowId}): ${questionOf(decision)}`))
+
 /**
  * `supervisor tick`: one deterministic pass of the host driver, idempotent and safe to run every minute, with no LLM awake. It
  * keeps every project's Supervisor (`ensureSupervisors`), retires a version-2 host Supervisor Orca reports gone, and for each
  * Supervisor attached and alive it acts for it, over its project only: the owned workflows of the project's repositories get the
  * Kernel sweep (adoption from a host Supervisor, relaunch on Orca's word, the relaunch limit, a Kernel launch with no receipt) and
- * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every action is an event (project
- * ledger, or host_events for a Supervisor and the tick).
+ * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every open blocked-prompt escalation
+ * is named on each tick until answered. Every action is an event (project ledger, or host_events for a Supervisor and the tick).
  */
 export const supervisorTick = async (context: VerbContext): Promise<SupervisorTick> => {
     const rules = loadCoordinatorLiveness()
@@ -487,6 +499,7 @@ export const supervisorTick = async (context: VerbContext): Promise<SupervisorTi
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
         lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
+        lines.push(...repos.flatMap(blockedPromptLines))
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)

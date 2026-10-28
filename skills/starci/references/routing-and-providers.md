@@ -13,7 +13,7 @@ the tier and why, each step (hard filter with qualification, quota, lineage, pro
 dropped member and its reason, every member's score, the exploration roll, the probe decision and the chosen
 member ([ops/README.md](../../../ops/README.md) "The router" owns the steps). Add `--attempt <n>` and
 `--red <agent/model,...>` to see a retry (a second contract-red raises the tier one step), and `--simulate <n>`
-to see how a run of picks spreads.
+to see how a run of picks spreads. `--label kernel` or `--label supervisor` explains the pick of that coordinator seat.
 
 ## Provider health
 

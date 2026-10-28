@@ -29,6 +29,7 @@ the filed result, leases, check runs and preserved work. `seat list --live` asks
 | seat `worker-lost`, node `lost` | Orca reported the worker gone; the task is `effect_unknown` and keeps its leases | `starci task cancel <task> --reason "<why>"`, then retry by an amend |
 | a dispatch refused (`ROUTE_NO_MEMBER`, `POOLS_FULL`, `PROVIDERS_UNAVAILABLE`, `TOKENS_OUT`) | no member can take it now | the task stays queued and the next step routes it again; read `route explain` and `provider status` |
 | a circuit open | a provider failed (rate, quota, capacity, auth) | wait for the cooldown; recover only after a passing probe and the owner's OK |
+| seat failure `blocked-prompt`, `BLOCKED PROMPT` in `supervisor tick` | the agent waits at a dialog in its worktree (trust, external import, login, a confirmation); the provider is not at fault | read the screen `seat list` prints, answer or remove the prompt in that worktree's agent config, then answer the harness escalation |
 | `BUDGET_EXHAUSTED`, `TRIES_EXHAUSTED` | a ceiling is reached | ask the owner |
 | `failed` after a red verify | the checks are red; work is under `preserved/<task>` | read the red checks, then retry or fix the contract by an amend |
 | `returned` | the worker filed `blocked` or `mismatch` | supply what is missing, or fix the contract by an amend |

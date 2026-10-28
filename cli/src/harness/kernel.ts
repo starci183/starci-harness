@@ -6,11 +6,13 @@ import { Refusal } from "../shared/errors.js"
 import { git, refExists } from "../shared/git.js"
 import { coordinatorBrief } from "./coordinator-brief.js"
 import { coordinatorLaunch } from "./coordinator-launch.js"
+import { BLOCKED_PROMPT, escalateBlockedPrompt } from "./launch-failure.js"
+import type { LaunchFailure } from "./launch-failure.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { now, openLedger, projectDir } from "./ledger.js"
 import { inTransaction } from "./leases.js"
 import { awaitWorktree, closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
-import type { OrcaBinary, WorkerStartInput } from "./orca/client.js"
+import type { OrcaBinary, WorkerStarted, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
@@ -236,8 +238,9 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
 
 /** Sends (or replays, under the same request id) a reserved Kernel seat's worker-start and records what Orca answered. */
 export const launchKernelSeat = async (root: string, cwd: string, seatId: string, input: WorkerStartInput, binary: OrcaBinary): Promise<SeatRow> => {
+    const explained: { failure?: LaunchFailure } = {}
     try {
-        const started = await coordinatorLaunch({ agent: input.agent, pool: input.agent }, async () => {
+        const start = async (): Promise<WorkerStarted> => {
             try {
                 return await workerStart(binary, input, cwd)
             } catch (error: unknown) {
@@ -246,13 +249,20 @@ export const launchKernelSeat = async (root: string, cwd: string, seatId: string
                 await awaitWorktree(binary, input.worktree, cwd)
                 return workerStart(binary, input, cwd)
             }
-        })
+        }
+        const started = await coordinatorLaunch({ agent: input.agent, pool: input.agent }, start, { binary, cwd, explained: (failure) => (explained.failure = failure) })
         const seat = withRecord(root, (db) => recordSeat(db, seatId, { status: started.state, handle: started.dispatchId, terminal: started.terminal, ...(started.runId === null ? {} : { runId: started.runId }) }))
         if (started.terminal !== null) await terminalRename(binary, started.terminal, kernelTitle(seat.workflowId ?? ""), cwd)
         return seat
     } catch (error: unknown) {
         const status = error instanceof OrcaFailure && error.effect === "none" ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNKNOWN
-        withRecord(root, (db) => recordSeat(db, seatId, { status, facts: { error: error instanceof Error ? error.message : String(error) } }))
+        const { failure } = explained
+        withRecord(root, (db) => {
+            const seat = recordSeat(db, seatId, { status, ...(failure === undefined ? {} : { failure }), facts: { error: error instanceof Error ? error.message : String(error) } })
+            if (failure?.kind === BLOCKED_PROMPT && seat.workflowId !== null) {
+                escalateBlockedPrompt(db, { project: root, workflowId: seat.workflowId, seat: seatId, worktree: input.worktree.replace(/^path:/, ""), failure })
+            }
+        })
         throw error
     }
 }

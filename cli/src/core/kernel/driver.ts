@@ -8,6 +8,7 @@ import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-li
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { workflowLanes } from "../../harness/lanes.js"
+import { deadOnArrivalFailure } from "../../harness/launch-failure.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
@@ -431,16 +432,18 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
     if (!gone && !(unstarted && olderThan(seat.startedAt, stall.startDeadlineMinutes))) return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${states.join("/") || "unknown"}; its worker has not started yet` }
     const closed = await closeWorker(binary, dispatchId, cwd, shown?.terminal ?? seat.terminal)
     const fence = closed.stopped ? `stopped (${closed.stop})` : `abandoned (${await workerAbandon(binary, dispatchId, cwd, requestIdOf("doa-abandon", seat.id))})`
+    const kind = stallKindOf(shown?.failureText ?? null)
     const requeued = withLedger(root, (db) => inTransaction(db, () => {
         const attempt = latestAttempt(db, task)
         if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'launch-failed', ended_at = COALESCE(ended_at, ?) WHERE id = ? AND outcome IS NULL").run(now(), attempt.id)
-        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, facts: { deadOnArrival: { states, failure: shown?.failureText ?? null }, closed } })
+        const failure = deadOnArrivalFailure(kind, states, shown?.failureText ?? null, shown?.terminal ?? seat.terminal)
+        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, failure, facts: { deadOnArrival: { states, failure: shown?.failureText ?? null }, closed } })
         recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, fence })
         if (getTask(db, task).status !== "effect_unknown") return false
         setStatus(db, task, "queued")
         return true
     }))
-    if (seat.agent !== null) reportStalled(seat.agent, stallKindOf(shown?.failureText ?? null), `dispatch ${dispatchId} of ${task} never started (${states.join("/") || "no answer"})`)
+    if (seat.agent !== null) reportStalled(seat.agent, kind, `dispatch ${dispatchId} of ${task} never started (${states.join("/") || "no answer"})`)
     return { key, task, action: "lost", detail: `dispatch ${dispatchId} dead on arrival (${states.join("/") || "no answer"}): ${fence}; attempt launch-failed${requeued ? ", task queued again" : ""}` }
 }
 

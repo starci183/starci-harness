@@ -557,9 +557,12 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
     return pick
 }
 
+/** The router input of a coordinator seat: its role is its label, its tier routing.yaml coordinators.<role>, its lineage the stalled seats being relaunched. */
+export const coordinatorInput = (role: CoordinatorRole, stalled?: readonly RouteMember[]): RouteInput => ({ label: role, coordinator: role, attempt: 1, stalled })
+
 /** Routes a coordinator through the shared circuit, capacity, quota, probe, scoring and balance pipeline. */
 export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean; readonly stalled?: readonly RouteMember[] } = {}): RoutePick | RouteRefusal =>
-    pickRoute({ label: role, coordinator: role, attempt: 1, stalled: options.stalled }, { record: options.record ?? true })
+    pickRoute(coordinatorInput(role, options.stalled), { record: options.record ?? true })
 
 /** What `simulateRoute` counted over its picks: each member's picks, how many explored and probed, and the refusals. */
 export interface RouteSimulation {
@@ -641,8 +644,8 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
     return Array.isArray(risk) ? risk.filter((tag): tag is string => typeof tag === "string") : []
 }
 
-/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, timed out, or a worker that never started. */
-const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "timeout"])
+/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, timed out, or a worker that never started (blocked at a prompt among them). */
+const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "blocked-prompt", "timeout"])
 
 /** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {

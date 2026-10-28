@@ -23,6 +23,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   jobs, behind one required `ci` job, and a `v*` tag on a commit whose run on main succeeded reuses that run. Bench:
   `release-affected-ci-plan`.
 
+### Fixed
+
+- **`route explain --label kernel|supervisor`** explains a coordinator seat's pick through `pickCoordinator` (tier from
+  `coordinators`, then the same filters, circuit, quota, qualification, scoring and balance as a worker) instead of
+  refusing `LABEL_UNKNOWN`; `--coordinator` is gone, the label names the seat. Bench: `route-explain-coordinator-circuit`.
+- **A launch that fails at agent readiness says why.** The agent terminal Orca's failed receipt names (its effects and
+  residualResources, so the tab is also closed now) is read once before the worker is released, and its last non-empty
+  lines are the seat's failure facts (`seats.failure_json`, ledger version 9, shown by `seat list`) and part of the
+  launch error. A screen at one of routing.yaml `blockedPrompts` (Claude Code's trust or external-import dialog, a login,
+  a "Do you want to" confirmation) is a `blocked-prompt`: no provider strike, no member outcome, a free attempt with that
+  pool put behind, and a `harness` escalation for the Supervisor naming the prompt and the worktree, which `supervisor
+  tick` names on every pass. Every launch-failed seat, dead-on-arrival ones included, records its failure. Bench:
+  `seat-launch-blocked-prompt`, `seat-launch-readiness-timeout-strikes`.
+
 ## [1.1.0-alpha.3] - 2026-10-28
 
 Runs `@starci/hfs` 4.9.3 (an exact dependency).
