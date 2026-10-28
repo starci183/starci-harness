@@ -1,6 +1,7 @@
 import type { Rule } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { inSlot, isProductSource, kindOfFile } from "@starci/eslint-canon-fe/lib/scope.mjs"
+import { PURE_HALF, blockDrawsPage, mountedOnlyUnderAuthGroup } from "./lib/page-frame.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { ReaderContext } from "./lib/types.ts"
 /**
@@ -10,13 +11,19 @@ import type { ReaderContext } from "./lib/types.ts"
  * - R324 (`FE_PAGE_TABS_OUTSIDE_HEADER`): page tabs are the header's tabs. A `Tabs` that is the first element child of a
  *   `Page` (the top of the body, right under the band), or the next element sibling of a `PageHeader`, is a page tab bar
  *   drawn outside the band: it misses the separator it stands on and takes the body's inset and gap.
- * - R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`): a page owner (`fe.feature`, kind `pages`) draws one `Page` and nothing beside it.
- *   A `Page` with an element sibling, or a bare `PageHeader` or `PageContainer` in the page owner, re-decides the inset
- *   and the rhythm `Page` owns. A page owner file that draws JSX but no `Page`, and hands drawing to no pure half of its
- *   own (an element imported from `./component`), has no page frame at all.
+ * - R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`): a route draws exactly one `Page` and nothing beside it. The page owner
+ *   (`fe.feature`, kind `pages`) draws it itself, through its pure half (`./component`), or through the one connected
+ *   block it renders as its root, where client data builds the header a server owner cannot build. A `Page` (or a block
+ *   that draws one) with an element sibling, a `Page` inside another, or a bare `PageHeader` or `PageContainer` in the
+ *   page owner re-decides the inset and the rhythm `Page` owns. A page owner file that draws JSX but no `Page` in one of
+ *   those ways has no page frame at all, unless every route that mounts it lies under the auth route group `(auth)` with
+ *   its own layout: that layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages.
  *
  * WHAT IT READS. Element names (`Page`, or `Grammar.Page` as `Page`), the element children of one JSX parent, and the
- * names a file imports from a relative module; whitespace text and JSX comments are not children. A `Tabs` lower in the
+ * names a file imports from a relative module; whitespace text and JSX comments are not children. For R325 it also reads,
+ * one level deep, the source of each app block (`fe.components`, kind `blocks`) the owner draws with that block's pure
+ * half, and the app's route `page` files that import the owner. A page owner that draws no JSX (its body only calls
+ * `redirect()` or `notFound()`, or returns null) draws no UI and is not judged. A `Tabs` lower in the
  * body, a `Page` wrapped alone in a provider, and files outside a page owner (for R325) are not judged. The segment
  * boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for a missing `Page`:
  * an app-level boundary stands in for whichever page failed or waits and draws its notice.
@@ -86,34 +93,55 @@ const BOUNDARY_OWNER = /\/features\/pages\/[^/]*(?:ErrorPage|LoadingPage|NotFoun
 /** True when the file is a boundary owner's, judged by its owner folder. */
 const isBoundaryOwner = (context: ReaderContext): boolean => BOUNDARY_OWNER.test(context.filename.replaceAll("\\", "/"))
 
-/** The pure half of a page owner: the module its connected half draws through. */
-const PURE_HALF = /^\.\/component(?:\.[cm]?[jt]sx?)?$/
+/** An import of the app's own source (`@/...` or a relative path), where its blocks come from. */
+const APP_SOURCE = /^(?:@\/|\.\.?\/)/
 
-/** A page owner draws one `Page` and nothing beside it; `PageHeader` and `PageContainer` are Page's own parts. */
+/** The nearest JSX element that encloses a node, or null. */
+const enclosingElement = (node: TSESTree.Node): TSESTree.JSXElement | null => {
+  for (let parent = node.parent; parent; parent = parent.parent) if (parent.type === "JSXElement") return parent
+  return null
+}
+
+/**
+ * A route draws exactly one `Page` and nothing beside it: the page owner draws it, its pure half does, or the one connected
+ * block it renders as its root does. `PageHeader` and `PageContainer` are Page's own parts.
+ */
 export const routePageIsOnePage: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R325: a page owner draws one Page with nothing beside it, never a bare PageHeader or PageContainer, and never no Page at all." },
+    docs: { description: "R325: a route draws one Page (in its page owner, its pure half or its one root block) with nothing beside it, never a bare PageHeader or PageContainer, and never no Page at all." },
     schema: [],
     messages: {
       sibling:
-        "This `Page` has a sibling: a route page is one `Page`, and whatever sits beside it escapes the header band, the measure and the rhythm `Page` owns. Move the sibling into the `Page` body, or into `header` when it heads the page.",
+        "This `{{name}}` draws the route's `Page` and has a sibling: a route page is one `Page`, and whatever sits beside it escapes the header band, the measure and the rhythm `Page` owns. Move the sibling into the `Page` body (as the block's children when a block draws the `Page`), or into `header` when it heads the page.",
+      twice:
+        "This `{{name}}` draws a second `Page` inside the route's `Page`: a route page is exactly one `Page`, so the band, the measure and the rhythm would be decided twice. Draw its content as the body of the one `Page`.",
       part:
         "`{{name}}` is drawn by `Page`: a page owner composes `Page` (`header` for the band, `measure` for the body), so the inset and the rhythm have one owner. Replace it with `Page`.",
       missing:
-        "This page owner draws no `Page`: a route page is one Grammar `Page`, which owns the header band, the measure and the rhythm, so without it the page has no heading band and its body sits on no inset. Wrap what it draws in a `Page` whose `header.title` is the page heading (never a `Heading` of its own), or draw it through the owner's pure half in `./component`.",
+        "This page owner draws no `Page`: a route page is one Grammar `Page`, which owns the header band, the measure and the rhythm, so without it the page has no heading band and its body sits on no inset. Wrap what it draws in a `Page` whose `header.title` is the page heading (never a `Heading` of its own), draw it through the owner's pure half in `./component`, or render as the root the one connected block that draws the `Page` from client data.",
     },
   },
   create(context) {
     if (!isProductSource(context) || !isPageOwner(context)) return {}
     const judgeMissing = !isBoundaryOwner(context)
     const pureHalf = new Set<string>()
+    const appImports = new Set<string>()
+    const frames = new Set<TSESTree.JSXElement>()
     let first: TSESTree.JSXElement | null = null
     let drawsPage = false
+    /** True when the element draws the route's `Page`: a `Page`, or an app block whose source draws one. */
+    const drawsFrame = (element: TSESTree.JSXElement, name: string | null): boolean => {
+      if (name === "Page") return true
+      const opening = element.openingElement.name
+      return opening.type === "JSXIdentifier" && appImports.has(opening.name) && blockDrawsPage(context, element.openingElement)
+    }
     return {
       ImportDeclaration(declaration) {
-        if (!PURE_HALF.test(String(declaration.source.value))) return
-        for (const specifier of declaration.specifiers) pureHalf.add(specifier.local.name)
+        const source = String(declaration.source.value)
+        const into = PURE_HALF.test(source) ? pureHalf : APP_SOURCE.test(source) ? appImports : null
+        if (into === null || declaration.importKind === "type") return
+        for (const specifier of declaration.specifiers) into.add(specifier.local.name)
       },
       JSXElement(element) {
         first ??= element
@@ -126,14 +154,22 @@ export const routePageIsOnePage: Rule.RuleModule = defineRule({
           context.report({ node: element, messageId: "part", data: { name } })
           return
         }
-        if (name !== "Page") return
+        if (!drawsFrame(element, name)) return
         drawsPage = true
+        frames.add(element)
+        const label = name ?? "Page"
+        for (let outer = enclosingElement(element); outer; outer = enclosingElement(outer)) {
+          if (!frames.has(outer)) continue
+          context.report({ node: element, messageId: "twice", data: { name: label } })
+          return
+        }
         const parent = element.parent
         if (parent.type !== "JSXElement" && parent.type !== "JSXFragment") return
-        if (renderedChildren(parent.children).length > 1) context.report({ node: element, messageId: "sibling" })
+        if (renderedChildren(parent.children).length > 1) context.report({ node: element, messageId: "sibling", data: { name: label } })
       },
       "Program:exit"() {
-        if (judgeMissing && first !== null && !drawsPage) context.report({ node: first, messageId: "missing" })
+        if (!judgeMissing || first === null || drawsPage) return
+        if (!mountedOnlyUnderAuthGroup(context)) context.report({ node: first, messageId: "missing" })
       },
     }
   },

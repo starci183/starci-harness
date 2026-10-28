@@ -66,10 +66,16 @@ test("R325: a page owner draws one Page with nothing beside it and no bare PageH
       { filename: BOUNDARY, code: "export const A = () => <NotFoundNotice title={title} />" },
       // a page owner file with no JSX is not judged
       { filename: OWNER, code: "export const copy = { title: \"Main account\" }" },
+      // a page owner that draws no UI: it only redirects, only refuses, or returns null
+      { filename: OWNER_INDEX, code: "import { redirect } from \"next/navigation\"\nexport const A = () => redirect(\"/en/home\")" },
+      { filename: OWNER_INDEX, code: "import { notFound } from \"next/navigation\"\nexport const A = async () => { notFound() }" },
+      { filename: OWNER, code: "export const A = () => null" },
     ],
     invalid: [
       { filename: OWNER, code: `export const A = () => <><Banner /><Page ${HEADER}><Card /></Page></>`, errors: [{ messageId: "sibling" }] },
       { filename: OWNER, code: `export const A = () => <div><Page ${HEADER}><Card /></Page>{footer}</div>`, errors: [{ messageId: "sibling" }] },
+      // two Pages: one inside the other
+      { filename: OWNER, code: `export const A = () => <Page ${HEADER}><Card /><Page ${HEADER}><Card /></Page></Page>`, errors: [{ messageId: "twice" }] },
       { filename: OWNER, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><G.PageContainer measure="reading"><Card /></G.PageContainer></Page>`, errors: [{ messageId: "part", data: { name: "PageContainer" } }] },
       // no Page at all: a heading and blocks on no frame

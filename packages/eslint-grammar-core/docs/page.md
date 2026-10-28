@@ -31,7 +31,22 @@ A `Tabs` element that is the first element child of a `Page`, or the next elemen
 
 ## `starci-grammar/route-page-is-one-page`
 
-In a page owner (`fe.feature`, kind `pages`), a `Page` with an element sibling in its parent is a finding, and so is any `PageHeader` or `PageContainer`: both are Page's own parts. A page owner file that draws JSX but no `Page`, and draws no element imported from its own pure half (`./component`), is a finding too, reported on its first element: the page has no frame at all. A `Page` alone in a fragment or a provider, and one `Page` per branch of a conditional, are legal. Files outside a page owner are not judged, and the segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for a missing `Page`: an app-level boundary stands in for whichever page failed or waits and draws its notice.
+A route draws exactly one `Page`. In a page owner (`fe.feature`, kind `pages`) the element that draws it is a `Page`, or an element of one of the app's connected blocks (`fe.components`, kind `blocks`, imported from `@/` or a relative path) whose source draws a `Page` in its connected half or in the pure half it draws through (`./component`). The rule reads that block one level deep: a block the block relays to is not followed. This is how a server page owner gets a header built from client data: it renders that block as its root and passes the page's content as the block's children.
+
+Findings, each reported on the element:
+
+- `sibling`: an element that draws the `Page` has an element sibling in its parent.
+- `twice`: an element that draws a `Page` sits inside another one (a `Page` in a `Page`, or a block that draws one inside a `Page` or inside the root block).
+- `part`: any `PageHeader` or `PageContainer`: both are Page's own parts.
+- `missing`: a page owner file draws JSX but nothing that draws the `Page`, and draws no element imported from its own pure half, reported on its first element: the page has no frame at all.
+
+A `Page` (or the root block) alone in a fragment or a provider, and one per branch of a conditional, are legal; the root block's children are the page body. Not judged for `missing`:
+
+- files outside a page owner, and a page owner that draws no JSX: its body only calls `redirect()` or `notFound()`, or returns null, so it draws no UI;
+- the segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`): an app-level boundary stands in for whichever page failed or waits and draws its notice;
+- an auth page: every route `page` file of the app (`src/app/**/page.tsx`) that imports the owner (`@/features/pages/<Owner>`) lies under the route group `(auth)`, and that group has its own `layout`. The Grammar ships no auth frame; the app's `(auth)` layout draws it, and it is the page frame of the sign-in, sign-up, password and callback pages it holds. An owner no route mounts, one also mounted outside the group, or a group without a layout gets no exemption.
+
+A workbench page is an ordinary page: it draws its `Page` like any other, usually through its root block.
 
 **Invalid** (`src/features/pages/ConnectionPage/component.tsx`)
 
@@ -51,12 +66,30 @@ In a page owner (`fe.feature`, kind `pages`), a `Page` with an element sibling i
 </>
 ```
 
+**Invalid** (`src/features/pages/DecisionsPage/component.tsx`, `DecisionsBoard` draws the `Page`)
+
+```tsx
+<>
+  <Banner />
+  <DecisionsBoard />
+</>
+```
+
 **Valid**
 
 ```tsx
 <Page header={{ title: "Main account" }}>
   <WebhookCard />
 </Page>
+```
+
+**Valid** (`src/features/pages/AgentProfilePage/component.tsx`, the connected block `AgentProfileHead` draws the `Page` from client data)
+
+```tsx
+<AgentProfileHead agentId={agentId}>
+  <AgentProfileOwner agentId={agentId} />
+  <AgentProfileRecent agentId={agentId} />
+</AgentProfileHead>
 ```
 
 **Finding code:** `FE_ROUTE_PAGE_OUTSIDE_PAGE`

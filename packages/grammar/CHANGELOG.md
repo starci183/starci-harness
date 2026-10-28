@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.7 - 2026-10-29
+
+- Changed: versioned together with `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.15.7 (R325 reads a page's one `Page` through its root block). No component changed.
+
 ## 0.15.6 - 2026-10-28
 
 - Added: link tabs. A `TabItem` takes `href`; a tab with one renders as a link and navigates through the `GrammarRoot` router (`navigate`, `useHref`) or the browser. `TabsProps.selectedKey` is optional: link tabs without it select the tab whose `href` is the current path, else the longest `href` the path lies under, else the first tab, and follow history moves; a press moves the indicator ahead of the route change. A server page can therefore pass `Page` `header.tabs` (or `PageHeader` `tabs`) as plain data with no `onSelect`. Controlled tabs (`selectedKey`, `onSelect`) are unchanged.

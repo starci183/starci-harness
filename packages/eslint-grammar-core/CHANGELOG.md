@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.7 - 2026-10-29
+
+- Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling that a route draws exactly one `Page`, drawn by the page owner, its pure half (`./component`), or the one connected block (`fe.components`, kind `blocks`) the owner renders as its root, read one level deep (the block's connected half and its own pure half). A server page owner whose header needs client data renders that block and passes the page body as its children. An element that draws the `Page` with an element sibling stays `sibling`; a `Page` (or a block that draws one) inside another is the new finding `twice`.
+- Changed: R325 does not judge a page owner as `missing` when every route `page` file that imports it lies under the route group `(auth)` with its own `layout`: that layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages. A page owner that draws no JSX (it only calls `redirect()` or `notFound()`, or returns null) stays unjudged. Workbench pages get no exemption.
+- Changed: `@starci/eslint-canon-fe` 9.4.6 is the peer dependency; versioned together with Grammar 0.15.7; the bundled canon pins name the Grammar family 0.15.7 (grammar, eslint-grammar-core, eslint-grammar-offset-pop) and eslint-canon-fe 9.4.6.
+- Spec: `src/page.spec.ts`, `src/page-owners.spec.ts` (new, cross-file); docs: `docs/page.md`.
+
 ## 0.15.6 - 2026-10-28
 
 - Changed: `starci-grammar/route-page-is-one-page` (R325) also refuses a page owner file that draws JSX but no `Page` and draws through no pure half of its own (an element imported from `./component`), with the message `missing` on its first element. The segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for it; a file that draws a bare `PageHeader` or `PageContainer` is reported once, as `part`. Spec: `src/page.spec.ts`; docs: `docs/page.md`.
