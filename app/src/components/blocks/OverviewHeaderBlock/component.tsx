@@ -1,5 +1,5 @@
 import { PlusIcon } from "@heroicons/react/20/solid"
-import { Button, Icon, SectionHeader } from "@starci/grammar/core"
+import { Button, Divider, Icon, PageContainer, SectionHeader } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -23,29 +23,39 @@ export interface OverviewHeaderBlockBaseProps {
 
 const COUNTS_PLACEHOLDER = " "
 
-/** Pure half: the page title, the live counts and the (not yet wired) new-workflow action. */
+/**
+ * Pure half: the page header band (title, live counts, the not-yet-wired new-workflow action) over the canvas, closed by a
+ * full-width separator. The title stays when the counts read fails; only the counts line carries the notice and its retry.
+ */
 export const OverviewHeaderBlockBase = (props: OverviewHeaderBlockBaseProps) => {
-    const { labels } = props.props
+    const { labels, counts } = props.props
     return (
-        <SlotView slot={props.props.counts} placeholder={COUNTS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry}>
-            {(counts, isSkeleton) => (
-                <SectionHeader
-                    level={1}
-                    title={labels.title}
-                    description={counts}
-                    isSkeleton={isSkeleton}
-                    action={
-                        <Button
-                            intent="commit"
-                            isDisabled
-                            disabledReason={labels.newWorkflowReason}
-                            startContent={<Icon source={PlusIcon} usage="leading" />}
-                        >
-                            {labels.newWorkflow}
-                        </Button>
-                    }
-                />
-            )}
-        </SlotView>
+        <>
+            <div className="app-page-band">
+                <PageContainer measure="full" className="app-page-band-inner">
+                    <SectionHeader
+                        level={1}
+                        title={labels.title}
+                        isSkeleton={counts.isLoading === true}
+                        description={
+                            <SlotView slot={counts} placeholder={COUNTS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry}>
+                                {(line) => line}
+                            </SlotView>
+                        }
+                        action={
+                            <Button
+                                intent="commit"
+                                isDisabled
+                                disabledReason={labels.newWorkflowReason}
+                                startContent={<Icon source={PlusIcon} usage="leading" />}
+                            >
+                                {labels.newWorkflow}
+                            </Button>
+                        }
+                    />
+                </PageContainer>
+            </div>
+            <Divider semantics="presentation" />
+        </>
     )
 }

@@ -14,7 +14,6 @@ export interface WorkflowRowView {
     readonly status: ToneLabel
     /** The flag a workflow carries while an owner decision on it is open. */
     readonly awaiting: ToneLabel | null
-    readonly reason: string | null
     readonly progressLabel: string
     readonly progress: number
     readonly progressText: string
@@ -58,7 +57,6 @@ const ROWS_PLACEHOLDER: readonly WorkflowRowView[] = ["r0", "r1", "r2", "r3"].ma
     project: "",
     status: { label: "", tone: "neutral" },
     awaiting: null,
-    reason: null,
     progressLabel: id,
     progress: 0,
     progressText: "",
@@ -88,17 +86,10 @@ const Cell = ({ row, columnId }: { readonly row: WorkflowRowView; readonly colum
             )
         case "status":
             return (
-                <div className="app-pair">
-                    <span className="app-row">
-                        <StatusWord status={row.status} />
-                        {row.awaiting === null ? null : <Badge tone={row.awaiting.tone}>{row.awaiting.label}</Badge>}
-                    </span>
-                    {row.reason === null ? null : (
-                        <Text size="xs" tone="muted" overflow="truncate">
-                            {row.reason}
-                        </Text>
-                    )}
-                </div>
+                <span className="app-row">
+                    <StatusWord status={row.status} />
+                    {row.awaiting === null ? null : <Badge tone={row.awaiting.tone}>{row.awaiting.label}</Badge>}
+                </span>
             )
         case "progress":
             return (
