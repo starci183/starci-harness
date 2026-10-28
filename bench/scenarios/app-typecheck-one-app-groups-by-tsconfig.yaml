@@ -1,0 +1,84 @@
+schema: starci/scenario@1
+id: app-typecheck-one-app-groups-by-tsconfig
+group: verify
+title: a one-app repository typechecks its be and fe files each by its own side's tsconfig, and a changed ts file under no tsconfig is red
+inject: "a one-app tree whose root package has no tsconfig.json, with be/tsconfig.json and fe/tsconfig.json beside an unconfigured scripts/ folder"
+expect: >-
+  the root package's changed TypeScript files are grouped by their nearest tsconfig.json and each group is checked with
+  one tsc run from that tsconfig's folder; a type error in be is red through be/tsconfig.json while fe stays clean; a
+  changed .ts file under no tsconfig up to the root is red with TYPECHECK_CONFIG_MISSING naming it instead of a silent skip
+pass:
+  - changed be and fe files typecheck green, each by its own tsconfig, and no "no tsconfig.json" skip at the root
+  - a type error in a be file is found through be/tsconfig.json and fe is not blamed
+  - a widened run counts the unchanged unconfigured script without turning red
+  - a changed stray .ts file with no tsconfig up to the root is red with TYPECHECK_CONFIG_MISSING naming it
+  - no human intervention beyond the injected fault
+automation: automated
+# The tsc stand-in refuses to run without a tsconfig.json in its working folder and reports every .ts file under that
+# folder holding TYPE_ERROR.
+repo:
+  files:
+    README.md: "# bench scratch one-app\n"
+    package.json: '{"name": "bench-one-app", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"be": {}, "fe": {"grammar": "starci"}}}'
+    be/tsconfig.json: '{"compilerOptions": {}}'
+    be/src/lesson/lesson.service.ts: "export const lesson = 1\n"
+    fe/tsconfig.json: '{"compilerOptions": {}}'
+    fe/src/page.ts: "export const page = 1\n"
+    scripts/tool.ts: "export const tool = 1\n"
+    node_modules/typescript/bin/tsc: |
+      const { existsSync, readFileSync, readdirSync, statSync } = require("node:fs")
+      const { join } = require("node:path")
+      if (!existsSync(join(process.cwd(), "tsconfig.json"))) {
+        console.log("tsc: no tsconfig.json in " + process.cwd())
+        process.exit(2)
+      }
+      const walk = (dir) => readdirSync(dir).flatMap((name) => { const path = join(dir, name); return statSync(path).isDirectory() ? (name === "node_modules" ? [] : walk(path)) : [path] })
+      const bad = walk(process.cwd()).filter((f) => f.endsWith(".ts") && readFileSync(f, "utf8").includes("TYPE_ERROR"))
+      for (const f of bad) console.log(f + ": error TS2322: TYPE_ERROR")
+      process.exit(bad.length === 0 ? 0 : 1)
+steps:
+  - name: a be file and an fe file change
+    write:
+      path: be/src/lesson/lesson.service.ts
+      content: "export const lesson = 2\n"
+  - write:
+      path: fe/src/page.ts
+      content: "export const page = 2\n"
+  - name: both sides are checked, each by its own tsconfig
+    starci: [check, typecheck, --base, HEAD]
+    expect:
+      exit: 0
+      contains: "tsconfig be/tsconfig.json"
+  - starci: [check, typecheck, --base, HEAD]
+    expect:
+      exit: 0
+      contains: "tsconfig fe/tsconfig.json"
+  - name: a type error in be is found through be/tsconfig.json
+    write:
+      path: be/src/lesson/lesson.service.ts
+      content: "export const lesson: number = 'TYPE_ERROR'\n"
+  - starci: [check, typecheck, --base, HEAD]
+    expect:
+      exit: 1
+      contains: "lesson.service.ts: error TS2322"
+  - name: the error is fixed and the root manifest changes, widening to every file
+    write:
+      path: be/src/lesson/lesson.service.ts
+      content: "export const lesson = 4\n"
+  - write:
+      path: package.json
+      content: '{"name": "bench-one-app", "version": "1.0.1", "private": true}'
+  - name: the widened run is green and counts the unchanged unconfigured script
+    starci: [check, typecheck, --base, HEAD]
+    expect:
+      exit: 0
+      contains: "1 unchanged file(s) under no tsconfig.json, not checked: scripts/tool.ts"
+  - name: a changed ts file under no tsconfig up to the root is red and named
+    write:
+      path: scripts/stray.ts
+      content: "export const stray = 1\n"
+  - starci: [check, typecheck, --base, HEAD]
+    expect:
+      exit: 1
+      contains: "TYPECHECK_CONFIG_MISSING: no tsconfig.json in the folder of scripts/stray.ts"

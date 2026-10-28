@@ -111,27 +111,68 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     return { root, base, all: widen, changed, paths, files, targets, skipped }
 }
 
-/** The package's own copy of a tool script, else the repository root's. */
-const localBin = (scope: Scope, pkg: WorkspacePackage, relativeScript: string): string | undefined =>
-    [join(pkg.dir, "node_modules", relativeScript), join(scope.root, "node_modules", relativeScript)].find((candidate) => existsSync(candidate))
-
 const tail = (run: ToolRun): string => [run.stdout, run.stderr].filter((text) => text !== "").join("\n").split("\n").slice(-OUTPUT_LINES).join("\n")
 
 const skipped = (pkg: WorkspacePackage, step: StepResult["step"], reason: string): StepResult => ({ package: pkg.name, step, command: "-", status: "skipped", reason, output: "" })
 
-/** `tsc --noEmit` over the package's own tsconfig, within the runtime tier's deadline when one is given. */
-export const typecheckPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
-    const { pkg } = target
-    if (!pkg.hasTsconfig) return skipped(pkg, "typecheck", "no tsconfig.json")
-    if (pkg.workspaceRoot) return skipped(pkg, "typecheck", "workspace root: its members are typechecked")
-    const tsc = localBin(scope, pkg, join("typescript", "bin", "tsc"))
-    if (tsc === undefined) return skipped(pkg, "typecheck", "typescript is not installed (run npm ci)")
-    const run = await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], pkg.dir, options)
-    return { package: pkg.name, step: "typecheck", command: "tsc -p tsconfig.json --noEmit", status: run.exitCode === 0 ? "green" : "red", reason: "", output: tail(run) }
+const TYPESCRIPT_FILE = /\.[cm]?tsx?$/
+
+/** The `tsconfig.json` nearest a folder: from the folder up to the repository root. Undefined when no folder on the way holds one. */
+export const resolveTsconfig = (root: string, dir: string): string | undefined => {
+    for (let current = dir; ; current = dirname(current)) {
+        if (existsSync(join(current, "tsconfig.json"))) return current
+        if (resolve(current) === resolve(root) || dirname(current) === current) return undefined
+    }
 }
 
+/** One `tsc --noEmit -p tsconfig.json` over a tsconfig folder, from that folder so its relative paths and `extends` resolve. */
+const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, options: RunOptions): Promise<{ readonly label: string; readonly run: ToolRun | undefined }> => {
+    const label = `tsconfig ${toSlash(relative(scope.root, join(dir, "tsconfig.json")))}`
+    const tsc = [dir, pkg.dir, scope.root].map((each) => join(each, "node_modules", "typescript", "bin", "tsc")).find((candidate) => existsSync(candidate))
+    if (tsc === undefined) return { label, run: undefined }
+    return { label, run: await captureTool(process.execPath, [tsc, "-p", "tsconfig.json", "--noEmit"], dir, options) }
+}
 
-
+/**
+ * `tsc --noEmit` over the judged TypeScript files of the package (every tracked one it owns with --all), within the runtime
+ * tier's deadline when one is given. Each file is checked by the nearest `tsconfig.json` from its folder up to the repository
+ * root, so one package holding several tsconfigs (a one-app repository's `be/` and `fe/`) runs one tsc per tsconfig, from its
+ * folder. Plain `tsc -p` is run, never an app's own typecheck script: the scripts differ per side (a build, a framework wrapper,
+ * a watcher) and may emit, while the gate must be the same everywhere and write nothing. A judged file with no tsconfig up to the
+ * root is red with TYPECHECK_CONFIG_MISSING, naming it; an unchanged one met by the whole-package run is counted, not checked.
+ * A workspace root's own tsconfig is skipped (its members are typechecked), as is a package with no TypeScript file and no
+ * tsconfig of its own.
+ */
+export const typecheckPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
+    const { pkg } = target
+    const files = (await lintableFiles(scope, target)).filter((file) => TYPESCRIPT_FILE.test(file))
+    const own = pkg.hasTsconfig && !pkg.workspaceRoot
+    if (files.length === 0 && !pkg.hasTsconfig) return skipped(pkg, "typecheck", "no tsconfig.json")
+    const groups = new Set<string>()
+    const judged = new Set(scope.files)
+    const missing: string[] = []
+    const outside: string[] = []
+    for (const file of files) {
+        const dir = resolveTsconfig(scope.root, dirname(join(scope.root, file)))
+        if (dir === undefined) (judged.has(file) ? missing : outside).push(file)
+        else groups.add(dir)
+    }
+    if (files.length === 0 && own) groups.add(pkg.dir)
+    if (pkg.workspaceRoot) groups.delete(pkg.dir)
+    if (groups.size === 0 && missing.length === 0) return skipped(pkg, "typecheck", pkg.workspaceRoot ? "workspace root: its members are typechecked" : "no judged TypeScript file under a tsconfig.json")
+    const runs = await Promise.all([...groups].sort((left, right) => left.localeCompare(right)).map((dir) => typecheckGroup(scope, pkg, dir, options)))
+    const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
+    if (missing.length === 0 && ran.length === 0) return skipped(pkg, "typecheck", "typescript is not installed (run npm ci)")
+    const failed = ran.filter((each) => each.run.exitCode !== 0)
+    const reasons = [
+        ...(missing.length === 0 ? [] : [`TYPECHECK_CONFIG_MISSING: no tsconfig.json in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
+        ...runs.map((each) => (each.run === undefined ? `${each.label} skipped: typescript is not installed (run npm ci)` : each.label)),
+        ...(outside.length === 0 ? [] : [`${String(outside.length)} unchanged file(s) under no tsconfig.json, not checked: ${listedFiles(outside)}`]),
+    ]
+    const output = failed.map((each) => `--- ${each.label}\n${tail(each.run)}`).join("\n")
+    const red = missing.length > 0 || failed.length > 0
+    return { package: pkg.name, step: "typecheck", command: `tsc -p <tsconfig.json> --noEmit over ${String(groups.size)} tsconfig(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
+}
 /**
  * The flat config ESLint itself resolves for a package folder: the nearest `eslint.config.*` from the folder upward, stopping at
  * the repository root. Undefined when no folder on the way holds one.
