@@ -149,8 +149,11 @@ export const cosineRank = (query: Float32Array, vectors: readonly Float32Array[]
     return scored.sort((left, right) => right.score - left.score)
 }
 
-/** The reciprocal rank fusion constant: a lower value lets each list's top ranks weigh more. */
-export const RRF_K = 60
+/**
+ * The reciprocal rank fusion constant: a lower value lets each list's top ranks weigh more. The corpus is small and its
+ * lexical top ranks are precise (anchors, ids, headings), so a low constant keeps them; it is chosen on the search eval.
+ */
+export const RRF_K = 5
 
 /** Reciprocal rank fusion of ranked lists (each best first), over the first `depth` entries of each. */
 export const fuse = (lists: readonly (readonly { readonly index: number }[])[], depth: number, k = RRF_K): { readonly index: number; readonly score: number }[] => {
