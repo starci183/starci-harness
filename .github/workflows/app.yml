@@ -1,6 +1,6 @@
 # StarCi Harness desktop app: builds the Tauri shell in `app/`.
 # Windows -> .msi + NSIS .exe, macOS -> universal .dmg. On an `app-vX.Y.Z` tag the `release` job refuses a tag that
-# differs from the app versions, then publishes the bundles and SHA256SUMS.txt on a GitHub Release (pre-release while 0.x).
+# differs from the app versions, then publishes the bundles and SHA256SUMS.txt on a GitHub Release marked latest, so the repository sidebar shows it.
 # A manual run builds the bundles as workflow artifacts only.
 # Signing is optional: the builds are unsigned unless these repository secrets exist.
 #   macOS (wired below): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
@@ -168,7 +168,7 @@ jobs:
         run: |
           version="${TAG#app-v}"
           flags=()
-          case "$version" in 0.*) flags+=(--prerelease) ;; esac
+          flags+=(--latest)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "StarCi Harness $version" --notes-file notes.md "${flags[@]}"
             gh release upload "$TAG" dist/* --clobber

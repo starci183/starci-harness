@@ -31,6 +31,28 @@ The desktop app is on [GitHub Releases](https://github.com/starci183/starci-harn
 The builds are unsigned unless signing is configured, so Windows SmartScreen warns on the installer: choose "More info",
 then "Run anyway". Check the file against `SHA256SUMS.txt` on the release.
 
+## Packages
+
+Every package is published to [npm](https://www.npmjs.com/org/starci) by CI when its jobs on main are green (the repository's GitHub Packages list stays empty by design). The badges read the version npm serves now.
+
+| Package | Version | What it is |
+|---|---|---|
+| [`starci-harness`](https://www.npmjs.com/package/starci-harness) | [![npm](https://img.shields.io/npm/v/starci-harness/alpha)](https://www.npmjs.com/package/starci-harness) | the `starci` CLI (dist-tag `alpha`) |
+| [`@starci/grammar`](https://www.npmjs.com/package/@starci/grammar) | [![npm](https://img.shields.io/npm/v/@starci/grammar)](https://www.npmjs.com/package/@starci/grammar) | React components and compositions with packaged visual DNA |
+| [`@starci/eslint-grammar-core`](https://www.npmjs.com/package/@starci/eslint-grammar-core) | [![npm](https://img.shields.io/npm/v/@starci/eslint-grammar-core)](https://www.npmjs.com/package/@starci/eslint-grammar-core) | lint rules for the core Grammar contracts |
+| [`@starci/eslint-grammar-offset-pop`](https://www.npmjs.com/package/@starci/eslint-grammar-offset-pop) | [![npm](https://img.shields.io/npm/v/@starci/eslint-grammar-offset-pop)](https://www.npmjs.com/package/@starci/eslint-grammar-offset-pop) | lint rules for the Offset Pop Grammar |
+| [`@starci/eslint-canon-fe`](https://www.npmjs.com/package/@starci/eslint-canon-fe) | [![npm](https://img.shields.io/npm/v/@starci/eslint-canon-fe)](https://www.npmjs.com/package/@starci/eslint-canon-fe) | front-end lint canon (TypeScript, Next.js) |
+| [`@starci/eslint-canon-be`](https://www.npmjs.com/package/@starci/eslint-canon-be) | [![npm](https://img.shields.io/npm/v/@starci/eslint-canon-be)](https://www.npmjs.com/package/@starci/eslint-canon-be) | back-end lint canon |
+| [`@starci/stylelint-canon`](https://www.npmjs.com/package/@starci/stylelint-canon) | [![npm](https://img.shields.io/npm/v/@starci/stylelint-canon)](https://www.npmjs.com/package/@starci/stylelint-canon) | CSS lint canon |
+| [`@starci/hfs`](https://www.npmjs.com/package/@starci/hfs) | [![npm](https://img.shields.io/npm/v/@starci/hfs)](https://www.npmjs.com/package/@starci/hfs) | the app command: scaffold, lint, check, sync |
+| [`@starci/ai-router`](https://www.npmjs.com/package/@starci/ai-router) | [![npm](https://img.shields.io/npm/v/@starci/ai-router)](https://www.npmjs.com/package/@starci/ai-router) | router for OpenAI-compatible calls across keys, models, providers |
+| [`@starci/event-stream`](https://www.npmjs.com/package/@starci/event-stream) | [![npm](https://img.shields.io/npm/v/@starci/event-stream)](https://www.npmjs.com/package/@starci/event-stream) | Server-Sent Events client for browsers and Node |
+| [`@starci/heroicons`](https://www.npmjs.com/package/@starci/heroicons) | [![npm](https://img.shields.io/npm/v/@starci/heroicons)](https://www.npmjs.com/package/@starci/heroicons) | custom Heroicons-compatible icons |
+| [`@starci/jest-preset`](https://www.npmjs.com/package/@starci/jest-preset) | [![npm](https://img.shields.io/npm/v/@starci/jest-preset)](https://www.npmjs.com/package/@starci/jest-preset) | jest config for Nest back ends |
+| [`@starci/test-world`](https://www.npmjs.com/package/@starci/test-world) | [![npm](https://img.shields.io/npm/v/@starci/test-world)](https://www.npmjs.com/package/@starci/test-world) | shared e2e library for back ends |
+| [`@starci/tsconfig`](https://www.npmjs.com/package/@starci/tsconfig) | [![npm](https://img.shields.io/npm/v/@starci/tsconfig)](https://www.npmjs.com/package/@starci/tsconfig) | TypeScript configs |
+| [`@starci/prettier-config`](https://www.npmjs.com/package/@starci/prettier-config) | [![npm](https://img.shields.io/npm/v/@starci/prettier-config)](https://www.npmjs.com/package/@starci/prettier-config) | the Prettier config |
+
 ## Install
 
 Node 24 and git. Orca is needed only for the `orca` runner; `gh` only for `release ci-status` and `check ci`; a

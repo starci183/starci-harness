@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+- **Desktop app 0.2.0, released as latest.** The app-v* release is no longer a pre-release, so the repository sidebar shows it; README gains a Packages section with every published package, its npm link and a live version badge.
+
 ### Added
 
 - **Coordinators run on their own.** An `owner` escalation names its `topic` (`scope`, `money`, `credentials`, `legal`,
