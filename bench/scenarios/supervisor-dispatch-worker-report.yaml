@@ -8,11 +8,13 @@ expect: >-
   the docs op, and launches it through Orca under the Supervisor (its Run, its task as parent, its terminal as sender), titled
   `[Worker] <project>: <topic>` and routed by the docs label's worker tier, never the coordinator tier; the worker files done;
   supervisor next closes the worker's seat and returns its report once as kind worker; supervisor accept verifies it green, which
-  commits the file on the worker's branch and not on main, and ends the worker accepted
+  commits the file on the worker's branch and not on main, ends the worker accepted and removes its worktree (the branch
+  stays)
 pass:
   - one [Worker] worker-start into the Supervisor's Run with the Supervisor's task as parent
   - the worker's seat released before the accept, its task done after it
   - one settle commit on starci/<worker>, none on main
+  - the worker's worktree removed by the accept, its branch kept
   - supervisor next hands the report once, then is idle
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -91,7 +93,11 @@ steps:
       gitLog:
         grep: "${task}"
         count: 1
-        in: "${wt}"
+        ref: "${branch}"
+  - assert:
+      exists:
+        path: "${wt}"
+        present: false
   - assert:
       gitHas:
         path: docs/note.md
