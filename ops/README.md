@@ -16,6 +16,7 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner) | `liveness.ts` |
 | [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
+| [telegram.yaml](telegram.yaml) | the owner's Telegram channel: the token variable's name, the API, the bridge's poll and liveness, the notice budget | `telegram.ts`, `telegram-bridge.ts` |
 
 A label's floor and host tools live in its op file and nowhere else. The prose below explains how the router and the
 failure accounting use the numbers of `routing.yaml`; it never restates them.

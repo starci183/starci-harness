@@ -214,7 +214,8 @@ slots:
       - ops/liveness.yaml
       - ops/host.yaml
       - ops/uat.yaml
-    holds: check presets, routing, routes, lanes, liveness thresholds, the host and the uat image, as data the CLI validates
+      - ops/telegram.yaml
+    holds: check presets, routing, routes, lanes, liveness thresholds, the host, the uat image and the Telegram channel, as data the CLI validates
     rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"
@@ -383,7 +384,7 @@ slots:
   - id: bench.stub
     path: "bench/stub/*.mjs"
     presence: required
-    holds: the Orca stand-in, preloaded into a copied node binary, so it stays plain JavaScript
+    holds: the bench stand-ins, the Orca one preloaded into a copied node binary and the Telegram Bot API one run by node, so they stay plain JavaScript
     rule: bench/README.md
   - id: bench.fixtures
     path: "bench/fixtures/**"

@@ -1,4 +1,5 @@
 import { loadFeedbackRules, openFeedback } from "../../harness/feedback.js"
+import { tickNotices } from "../../harness/telegram-bridge.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { supervisorTick } from "./driver.js"
 
@@ -8,8 +9,10 @@ import { supervisorTick } from "./driver.js"
  * Then it keeps every project's Supervisor (relaunched when Orca says it is gone) and, acting for each attached one, sweeps the
  * Kernels and Ops of the workflows it owns in its project and the Supervisor itself: gone or silent Kernels are relaunched, agents
  * idle at their prompt with work pending are nudged, then relaunched (or fenced) on another member, then escalated. It also names
- * every owner feedback still open (`data.feedback`, overdue past ops/liveness.yaml feedback.openMaxDays). Idempotent; no LLM needs
- * to be awake. `--dry-run` reports what the terminal sweep would close and does nothing else.
+ * every owner feedback still open (`data.feedback`, overdue past ops/liveness.yaml feedback.openMaxDays), and, once the owner's
+ * Telegram chat is connected, sends the owner the notices due (`data.telegram`, `tickNotices` in harness/telegram-bridge.ts), so
+ * they go out with no bridge running. Idempotent; no LLM needs to be awake. `--dry-run` reports what the terminal sweep would close
+ * and does nothing else.
  */
 export const supervisorTickVerb = defineVerb({
     path: ["supervisor", "tick"],
@@ -26,6 +29,8 @@ export const supervisorTickVerb = defineVerb({
         const open = openFeedback(loadFeedbackRules())
         const feedback = { open: open.open.map((item) => item.id), overdue: open.overdue.map((item) => item.id) }
         const line = feedback.open.length === 0 ? [] : [`owner feedback open: ${feedback.open.map((id) => (feedback.overdue.includes(id) ? id + " (overdue)" : id)).join(", ")}`]
-        return { data: { ...swept, feedback }, message: [`supervisor tick: swept ${swept.swept.length === 0 ? "nothing" : swept.swept.join(", ")}`, ...swept.actions, ...line].join("\n") }
+        const telegram = flags["dry-run"] ? { sweep: null, line: null } : await tickNotices()
+        const notices = telegram.line === null ? [] : [telegram.line]
+        return { data: { ...swept, feedback, telegram: telegram.sweep }, message: [`supervisor tick: swept ${swept.swept.length === 0 ? "nothing" : swept.swept.join(", ")}`, ...swept.actions, ...line, ...notices].join("\n") }
     },
 })

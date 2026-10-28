@@ -133,10 +133,14 @@ const stepSchema = z.strictObject({
         .optional(),
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),
     /**
-     * Starts a long-lived verb (`starci ui --port 0`) in the scratch repository until the scenario ends, and saves the URL and
-     * token its ready line prints (`starci ui: <url> token <token>`) as `<as>.url` and `<as>.token`.
+     * Starts a long-lived verb (`starci ui --port 0`) or a bench stand-in (`stub: telegram`, bench/stub/telegram-stub.mjs) in the
+     * scratch repository until the scenario ends, and saves the URL and token its ready line prints (`starci ui: <url> token
+     * <token>`, `stub telegram: <url> token <token>`) as `<as>.url` and `<as>.token`.
      */
-    serve: z.strictObject({ starci: z.array(z.string()).min(1), as: z.string().regex(/^[\w-]+$/) }).optional(),
+    serve: z
+        .strictObject({ starci: z.array(z.string()).min(1).optional(), stub: z.enum(["telegram"]).optional(), as: z.string().regex(/^[\w-]+$/) })
+        .refine((serve) => (serve.starci === undefined) !== (serve.stub === undefined), "serve names exactly one of starci and stub")
+        .optional(),
     /**
      * One HTTP request to a served verb: `token` is sent as `Authorization: Bearer`; `stream` reads an event stream only until
      * `contains` shows. `has` lists dotted paths of the JSON answer that must exist, `equals` a value per path; `save` keeps one.

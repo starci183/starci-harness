@@ -1,0 +1,17 @@
+# The owner's Telegram channel, read by cli/src/harness/telegram.ts (`starci connect telegram`, `starci supervisor telegram-bridge`).
+# The bot token is read by name from the process environment only (`tokenVariable`); the CLI never opens a secret file
+# (policy/security.yaml neverRead). STARCI_TELEGRAM_API replaces `apiBase` (the bench points it at its stand-in).
+schema: starci/telegram@1
+# The environment variable that holds the bot token.
+tokenVariable: TELEGRAM_BOT_TOKEN
+apiBase: https://api.telegram.org
+# How long one getUpdates long poll of the bridge waits for the owner, and how long any one API call may take.
+pollSeconds: 25
+requestTimeoutSeconds: 40
+# The bridge is alive while its last beat is this recent; a newer bridge started meanwhile exits at once.
+staleSeconds: 120
+# At most this many notices in any minute; the rest wait for the next sweep. A notice whose send failed is tried this many times.
+sendPerMinute: 6
+sendTries: 3
+# A notice carries at most this many characters of a question or a reason.
+questionChars: 700

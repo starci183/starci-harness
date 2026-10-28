@@ -20,6 +20,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   and its sides) has its own `[Supervisor] <project>` in its main checkout, which starts, owns and sweeps only that
   project's workflows; one host driver (`supervisor tick`) keeps every project's Supervisor alive
   (`cli/src/harness/supervisor.ts`, `cli/src/core/supervisor/driver.ts`).
+- **Questions reach the owner on Telegram.** The owner's channel is the Supervisor's terminal, the desktop app and Telegram:
+  every `owner` escalation, owner request taken up and workflow ended is sent once to the owner's chat, and the
+  owner's answer there becomes an owner request that wakes the Supervisor. The bot token stays in the owner's user
+  environment, read by name, never from a file ([cli/README.md](../../cli/README.md) "The owner's Telegram channel",
+  `cli/src/harness/telegram-bridge.ts`).
 - **Project pattern.** `contexts/project/` is the map of a StarCi project: the app root owning `.starciwork`, its
   sides, the `hfs.json` choices, the Work life cycle, the anatomy generated from slots, where lint applies, the
   `.starcistacks` shape and the lite and full differences. It links each fact to its owner and restates none.

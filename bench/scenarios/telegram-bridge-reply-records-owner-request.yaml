@@ -1,0 +1,167 @@
+schema: starci/scenario@1
+id: telegram-bridge-reply-records-owner-request
+group: messaging
+title: "the owner answers a Telegram notice: the bridge records it as an owner request, as supervisor ask does, and wakes the Supervisor"
+inject: >-
+  a Kernel escalates a question of kind owner, the notice reaches the owner's chat; the owner replies to the notice, then sends
+  /answer with the decision id; the bridge runs a cycle after each, and once more with nothing new
+expect: >-
+  each owner message becomes one owner request of the project, by the owner, carrying the decision id and the owner's words; the
+  Supervisor's Run is mailed once per request and supervisor next returns the request as owner-request; the owner gets a receipt
+  naming the request; an update already handled is never recorded twice
+pass:
+  - two owner requests, by owner, each naming the decision and carrying the owner's words
+  - one wake-up mail per request to the Supervisor's Run
+  - supervisor next returns an owner-request
+  - a receipt in the chat for each request
+  - no actor overstepping its role
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - file:
+      path: esc-owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-tg-owner-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          question: may doc a name the product?
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-owner.yaml"]
+  - read:
+      db: ledger
+      query: "SELECT id FROM decisions WHERE kind = 'escalation'"
+      as: decision
+  - name: the bridge sends the notice
+    env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: "decision:${decision}"
+  - http:
+      url: ${tg.url}/__sent
+      save:
+        notice: data.messages.1.message_id
+  - name: the owner replies to the notice
+    http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: "yes, name it", replyTo: "${notice}"}
+  - name: the bridge records the reply as an owner request
+    env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: owner request r-
+  - name: the owner answers by id as well
+    http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: "/answer ${decision} only in the footer"}
+  - env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: owner request r-
+  - name: a cycle with nothing new records nothing
+    env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: "\"handled\": []"
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT by || ':' || (text LIKE 'Owner answer to ${decision} (workflow ask)%') || ':' || (closed_at IS NULL) FROM owner_requests ORDER BY at"
+        equals: ["owner:1:1", "owner:1:1"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM owner_requests WHERE text LIKE '%yes, name it' OR text LIKE '%only in the footer'"
+        equals: [2]
+  - assert:
+      orcaCalls:
+        command: send
+        match:
+          subject: "^\\[Owner\\] request r-"
+        count: 2
+  - name: the woken Supervisor reads the request
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: owner-request
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "Recorded r-"
+        equals:
+          data.count: 4
+  - read:
+      db: machine
+      query: SELECT id FROM owner_requests ORDER BY at LIMIT 1
+      as: request
+  - name: the Supervisor relays the ruling and stops the workflow, answering the request
+    file:
+      path: stop.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: s-tg-stop-1
+        kind: stop
+        workflow: ask
+        project: ${repo}
+        basedOn: {}
+        answers: [${request}]
+        mode: hard
+  - seat: supervisor
+    starci: [supervisor, submit, "${run}/stop.yaml"]
+  - name: the next cycle tells the owner the request was taken up and the workflow stopped, once each
+    env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: "request:${request}"
+  - env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: "\"sent\": []"
+  - assert:
+      sql:
+        db: machine
+        query: SELECT kind || ':' || status FROM telegram_notices ORDER BY kind
+        equals: ["decision:sent", "request:sent", "workflow:sent"]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "workflow ask stopped"
+        equals:
+          data.count: 6

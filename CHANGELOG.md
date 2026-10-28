@@ -10,6 +10,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   awaiting the owner) has no worker left to write, so once its lease is due `workflow step`, `supervisor tick` and every
   lease request drop it and record `leases-expired`; a task that may still write keeps its lease however overdue. Bench:
   `lease-returned-overdue-released`, `lease-live-overdue-kept`.
+- **The owner's Telegram channel.** `connect telegram discover-chat|status|notify` stores the owner's chat (after he
+  messages the bot) in machine.sqlite, reports the channel and sends the notices due; `supervisor telegram-bridge
+  run|status` is the host service (ops/host.yaml `telegram-bridge`, schedule `StarCi Telegram Bridge`) that sends each
+  `owner` escalation, owner request taken up and workflow ended once, within ops/telegram.yaml's budget, and
+  records the owner's reply to a notice, `/answer <decision-id>` or `/ask <project>` as an owner request that wakes the
+  Supervisor, ignoring and logging every other chat. The bot token is `TELEGRAM_BOT_TOKEN` in the user environment
+  (`TELEGRAM_NOT_CONFIGURED` otherwise). Bench: a Telegram Bot API stand-in (`serve: {stub: telegram}`) and four scenarios.
+
 ### Changed
 
 - **Coordinators stay on Claude through a stall.** A Supervisor or Kernel the stall ladder gives up on for a plain stall is

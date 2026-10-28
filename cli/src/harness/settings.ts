@@ -13,6 +13,7 @@ import { loadOps, locateOps } from "./ops.js"
 import { ROUTES_SCHEMA, loadRoutes } from "./routes.js"
 import { loadRouting } from "./routing.js"
 import { loadStallRules } from "./stall.js"
+import { loadTelegram } from "./telegram.js"
 import { loadUat } from "./uat.js"
 
 /**
@@ -27,6 +28,7 @@ const SETTINGS: Readonly<Record<string, (dir: string) => unknown>> = {
     checks: (dir) => ({ presets: loadOps(dir).presets }),
     host: (dir) => loadHost(dir),
     uat: (dir) => loadUat(dir),
+    telegram: (dir) => loadTelegram(dir),
 }
 
 /** The names of the settings files, `<name>.yaml` in ops/. */
