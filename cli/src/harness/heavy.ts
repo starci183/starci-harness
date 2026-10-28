@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { constants, cpus, freemem } from "node:os"
+import { availableParallelism, constants, cpus, freemem } from "node:os"
 import { basename, join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"
@@ -19,13 +19,14 @@ export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
 const HEAVY_KINDS = ["tsc", "eslint", "test", "build", "install", "uat"] as const
 
 const heavySchema = z.strictObject({
-    slots: z.number().int().positive(),
-    lowFreeMb: z.number().int().positive(),
-    criticalFreeMb: z.number().int().positive(),
+    reserveMb: z.number().int().nonnegative(),
+    maxSlots: z.number().int().positive().optional(),
     maxCpuPercent: z.number().positive().max(100),
     cpuWindowSeconds: z.number().int().positive(),
     pollSeconds: z.number().positive(),
+    estimateMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
     memoryMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
+    timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
     seatFreeMb: z.number().int().positive(),
 })
@@ -48,7 +49,6 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     }
     const parsed = z.looseObject({ heavy: heavySchema }).safeParse(raw)
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: ${z.prettifyError(parsed.error)}`)
-    if (parsed.data.heavy.criticalFreeMb > parsed.data.heavy.lowFreeMb) throw new Refusal("OPS_INVALID", `${file}: heavy.criticalFreeMb is above heavy.lowFreeMb`)
     loaded.set(dir, parsed.data.heavy)
     return parsed.data.heavy
 }
@@ -59,29 +59,53 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
  */
 export const HEAVY_HELD_ENV = "STARCI_HEAVY_HELD"
 
-/** The host's load as admission reads it: free memory, the CPU average over the window, and how many heavy commands it admits. */
+/**
+ * The host's load as admission reads it: free memory, the CPU average over the window, the count cap, the memory the running
+ * commands are estimated to hold, and `admitted`, how many heavy commands may run now (the running ones plus how many more of
+ * the smallest estimate fit), with why.
+ */
 export interface HostLoad {
     readonly freeMb: number
     readonly cpuPercent: number
+    readonly cap: number
+    readonly reserveMb: number
+    readonly committedMb: number
+    readonly running: number
     readonly admitted: number
     readonly pressure: boolean
     readonly reason: string
 }
 
+/** The count cap: floor(logical cores / 2), or `maxSlots` when set lower; at least one. */
+export const slotCap = (rules: HeavyRules, cores: number = availableParallelism()): number => Math.max(1, Math.min(Math.floor(cores / 2), rules.maxSlots ?? Number.MAX_SAFE_INTEGER))
+
 /**
- * How many heavy commands may run at once: none while free memory is under the critical floor or the CPU average is above its
- * ceiling, one under the low floor, else every slot. Pressure is anything below every slot.
+ * Dynamic admission from RAM and CPU. A command of `kind` is admitted when the CPU average is at or under its ceiling, fewer than
+ * the cap run, and (free RAM - reserveMb) covers the estimates of the running commands plus its own; while nothing runs, one is
+ * admitted once free RAM covers its own estimate, so a host under its reserve still makes progress. `running` are the kinds
+ * running now. Without a kind, `admits` is judged for the smallest estimate (what `host load` reports).
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number): HostLoad => {
-    const critical = freeMb < rules.criticalFreeMb
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, cores?: number): HostLoad & { readonly admits: boolean } => {
+    const cap = slotCap(rules, cores)
+    const estimates: Readonly<Record<string, number>> = rules.estimateMb
+    // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
+    const estimate = (name: string): number => (name in estimates ? (estimates[name] ?? 0) : Math.max(...Object.values(estimates)))
+    const committedMb = running.reduce((sum, name) => sum + estimate(name), 0)
+    const own = kind === undefined ? Math.min(...Object.values(rules.estimateMb)) : estimate(kind)
+    const room = freeMb - rules.reserveMb - committedMb
     const busy = cpuPercent > rules.maxCpuPercent
-    const low = freeMb < rules.lowFreeMb
+    const full = running.length >= cap
+    const fits = running.length === 0 ? freeMb >= own : room >= own
+    const admits = !busy && !full && fits
+    const more = busy ? 0 : Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
+    const admitted = running.length + more
     const reasons = [
-        ...(critical ? [`free RAM ${String(freeMb)} MB is under the critical floor ${String(rules.criticalFreeMb)} MB`] : low ? [`free RAM ${String(freeMb)} MB is under the low floor ${String(rules.lowFreeMb)} MB`] : []),
-        ...(busy ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%`] : []),
+        ...(busy ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%: no new heavy command starts`] : []),
+        ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`})`] : []),
+        ...(!busy && !full && room < own ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
     ]
-    const admitted = critical || busy ? 0 : low ? Math.min(1, rules.slots) : rules.slots
-    return { freeMb, cpuPercent, admitted, pressure: admitted < rules.slots, reason: reasons.join("; ") || "below every threshold" }
+    const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - running ${String(committedMb)} MB = ${String(room)} MB room`
+    return { freeMb, cpuPercent, cap, reserveMb: rules.reserveMb, committedMb, running: running.length, admitted, admits, pressure: admitted < cap, reason: reasons.length === 0 ? capacity : `${reasons.join("; ")}; ${capacity}` }
 }
 
 /** Runs `work` on the governor's store (ledger.ts governorStorePath), shared by every worktree of the harness. */
@@ -137,8 +161,16 @@ export const cpuPercent = async (rules: HeavyRules): Promise<number> => {
     return total <= 0 ? 0 : Math.round(100 * (1 - (current.idle - since.idle) / total))
 }
 
-/** The host's load now. */
-export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<HostLoad> => admission(rules, Math.floor(freemem() / 1_048_576), await cpuPercent(rules))
+/** The kinds of the heavy commands running now (live processes only). */
+const runningKinds = (db: DatabaseSync): string[] => db.prepare("SELECT kind FROM heavy_slots WHERE state = 'running'").all().map((row) => String(row.kind))
+
+/** The host's load now, over the commands running now. */
+export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<HostLoad> => {
+    const cpu = await cpuPercent(rules)
+    heavySlots()
+    const running = withGovernor((db) => runningKinds(db))
+    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running)
+}
 
 /** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for a slot. */
 export interface HeavySlot {
@@ -168,15 +200,20 @@ export const heavySlots = (): HeavySlot[] =>
         return live
     })
 
-/** One try for a slot, atomically: admitted, the row turns running; else it stays (or becomes) a waiting row. Null when admitted, else the holders. */
-const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, allowed: number): string[] | null =>
+/**
+ * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last room): admission is judged against
+ * the commands running at this instant and the free RAM read now; admitted, the row turns running, else it stays (or becomes)
+ * a waiting row. The load it was judged on, and the holders when it waits.
+ */
+const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, cpu: number): { readonly load: HostLoad; readonly holders: string[] | null } =>
     withGovernor((db) => {
         db.exec(TABLES)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
         const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
-        const state = running.length < allowed ? "running" : "waiting"
+        const load = admission(rules, Math.floor(freemem() / 1_048_576), cpu, runningKinds(db), slot.kind as HeavyKind)
+        const state = load.admits ? "running" : "waiting"
         db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET state = excluded.state").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, state, now())
-        return state === "running" ? null : running.map((row) => `${String(row.label)} (pid ${String(row.pid)})`)
+        return { load, holders: state === "running" ? null : running.map((row) => `${String(row.label)} (pid ${String(row.pid)})`) }
     })
 
 const setChild = (id: string, pid: number): void => {
@@ -226,18 +263,23 @@ export const testWorkerArgs = (argv: readonly string[], held: Held): readonly st
 export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
     const rules = loadHeavyRules()
     const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env) }
-    const base: RunOptions = { ...options, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
+    // The kind's own budget (an install sized for a cold npm ci) replaces the caller's; it runs from the child's spawn, which
+    // comes after admission, so time in the queue never counts against it.
+    const budget = rules.timeoutMinutes[kind]
+    const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
+    const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
     if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, pressure: false, rules })
     const slot = { id: randomBytes(8).toString("hex"), pid: process.pid, kind, label, cwd }
     const started = Date.now()
     let announced = false
     let load: HostLoad
     for (;;) {
-        load = await hostLoad(rules)
-        const holders = tryAcquire(slot, load.admitted)
-        if (holders === null) break
+        // Re-judged at every poll from the RAM free now and the commands running now, so admission follows the host as it frees.
+        const tried = tryAcquire(slot, rules, await cpuPercent(rules))
+        load = tried.load
+        if (tried.holders === null) break
         if (!announced) {
-            process.stderr.write(`starci: ${label} waits for a heavy-command slot (${String(load.admitted)} admitted: ${load.reason}; running: ${holders.join(", ") || "none"})\n`)
+            process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
             announced = true
         }
         await sleep(rules.pollSeconds * 1000)

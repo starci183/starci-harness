@@ -25,23 +25,33 @@ settleNoVerdictMax: 3
 # A verify holds its verifier lock (and a land lock) at most this long (cli/src/harness/settle.ts): past it the holder gives it up
 # and its task reaches no verdict, and a holder still listed past it (hung in-process, its heartbeat beating) counts as gone, so
 # the next `workflow step`, `kernel next` or `supervisor tick` reconciles its task (`task verify --recover`) and verifies it again.
-verifyDeadlineMinutes: 20
+verifyDeadlineMinutes: 45
 
 # Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build, npm ci or
-# install, a uat container. Each takes one slot of a machine-wide semaphore in machine.sqlite (cli/src/harness/heavy.ts) for as
-# long as it runs: `slots` at once, one while free memory is under lowFreeMb, none while it is under criticalFreeMb or while the
-# host's CPU average over cpuWindowSeconds is above maxCpuPercent. A command with no slot waits in the queue, polling every
-# pollSeconds; the wait is logged (stderr and a `heavy-wait` host event) and never fails its check. Each runs below normal OS
+# install, a uat container. Each runs under a row of a machine-wide governor in machine.sqlite (cli/src/harness/heavy.ts),
+# admitted dynamically from this host's RAM and CPU and re-judged at every poll: a command of kind K is admitted when
+# (free RAM - reserveMb) covers the estimateMb of every running command plus K's own, and fewer commands run than the cap,
+# floor(logical cores / 2) or maxSlots when set lower; while nothing runs, one is admitted once free RAM covers its own estimate.
+# New admissions pause while the CPU average over cpuWindowSeconds is above maxCpuPercent; running commands keep going. A command
+# not admitted waits in the queue, polling every pollSeconds; the wait is logged (stderr and a `heavy-wait` host event) and
+# never fails its check. Its timeout starts at admission, never in the queue: timeoutMinutes for its kind (an install's budget is
+# sized for a cold npm ci on this host), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
-# (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure. A worker seat launches only while free memory is at
-# least seatFreeMb; otherwise its task stays queued for a later step. `starci host load` shows all of it.
+# (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
+# only while free memory is at least seatFreeMb; otherwise its task stays queued. `starci host load` shows the capacity and why.
+# maxSlots (optional) caps the count below floor(logical cores / 2).
 heavy:
-  slots: 2
-  lowFreeMb: 4096
-  criticalFreeMb: 1536
-  maxCpuPercent: 90
+  reserveMb: 8192
+  maxCpuPercent: 85
   cpuWindowSeconds: 60
   pollSeconds: 2
+  estimateMb:
+    tsc: 2048
+    eslint: 1536
+    test: 2048
+    build: 3072
+    install: 1500
+    uat: 2048
   memoryMb:
     tsc: 2048
     eslint: 2048
@@ -49,6 +59,10 @@ heavy:
     build: 4096
     install: 2048
     uat: 4096
+  timeoutMinutes:
+    install: 15
+    tsc: 10
+    eslint: 10
   testWorkers: "50%"
   seatFreeMb: 6144
 

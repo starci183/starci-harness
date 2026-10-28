@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
 import { Refusal } from "../shared/errors.js"
-import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
+import { captureNpm, captureTool, EXIT_TIMEOUT, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
@@ -217,6 +217,20 @@ const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => 
     return { ...installed, status: reapplied.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${reapplied.detail}` }
 }
 
+/** The refusal of a verify or wave stopped by the harness's own step (an install or setup out of time): no verdict on the work. */
+export const VERIFY_INFRA = "VERIFY_INFRA"
+
+/**
+ * Refuses with VERIFY_INFRA when a preparing step failed on the harness, not on the work: the install or a setup command ran
+ * out of its budget (exit 124). The caller reaches no verdict: a task verify returns the task to reported with no try spent, a
+ * wave fails no task, and the next step verifies again.
+ */
+export const assertNoInfraFailure = (prepared: readonly CheckOutcome[]): void => {
+    const stuck = prepared.find((outcome) => outcome.status === "red" && outcome.exitCode === EXIT_TIMEOUT)
+    if (stuck === undefined) return
+    throw new Refusal(VERIFY_INFRA, `the ${stuck.name} step ran out of time (an infrastructure failure, not the task's): ${stuck.detail.split("\n")[0] ?? ""}`)
+}
+
 /**
  * Readies a clean checkout for the checks that run tools: the install, then every contract's setup commands in order; an outcome
  * per step that ran, and nothing after a red one.
@@ -355,6 +369,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         }
         const checks: CheckOutcome[] = [built.lands, ...(await policyGates(root, dir, built.facts.changed))]
         const prepared = input.install === false ? [] : await prepareCheckout(place, [contract.context.setup ?? []])
+        assertNoInfraFailure(prepared)
         checks.push(...prepared)
         if (prepared.every((outcome) => outcome.status === "green")) {
             checks.push(...(await inOrder(input.checks, (check) => checkCandidate(check, { ...input, contract: resolved }, place, built))))

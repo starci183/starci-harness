@@ -60,11 +60,11 @@ export const hostLoadVerb = defineVerb({
         const slots = heavySlots()
         const rss = await residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid])))
         const rows = slots.map((slot): LoadRow => ({ ...slot, rssMb: slot.childPid === null ? null : (rss.get(slot.childPid) ?? null) }))
-        const data: LoadData = { load, slots: rules.slots, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), seat: seatRoom(rules) }
+        const data: LoadData = { load, slots: load.cap, running: rows.filter((row) => row.state === "running"), queue: rows.filter((row) => row.state === "waiting"), seat: seatRoom(rules) }
         const table = (title: string, list: readonly LoadRow[]): string[] =>
             list.length === 0 ? [`${title}: none`] : [`${title}:`, formatTable([["KIND", "LABEL", "PID", "CHILD", "RSS MB", "SINCE"], ...list.map((row) => [row.kind, row.label, String(row.pid), row.childPid === null ? "-" : String(row.childPid), row.rssMb === null ? "-" : String(row.rssMb), row.at])])]
         const message = [
-            `free RAM ${String(load.freeMb)} MB, CPU ${String(load.cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s: ${String(load.admitted)} of ${String(rules.slots)} heavy slot(s) admitted (${load.reason})`,
+            `free RAM ${String(load.freeMb)} MB, CPU ${String(load.cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s: ${String(load.admitted)} heavy command(s) admitted now, ${String(load.running)} running, cap ${String(load.cap)} (${load.reason})`,
             `seat launches: ${data.seat.ok ? "allowed" : "held"} (floor ${String(data.seat.floorMb)} MB)`,
             ...table(`running (${String(data.running.length)})`, data.running),
             ...table(`queue (${String(data.queue.length)})`, data.queue),

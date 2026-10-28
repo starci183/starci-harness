@@ -5,7 +5,7 @@ import { pidAlive } from "../shared/exec.js"
 import { git, nulPaths, resolveSha } from "../shared/git.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
-import { inCleanCheckout, prepareCheckout } from "./clean-verify.js"
+import { assertNoInfraFailure, inCleanCheckout, prepareCheckout } from "./clean-verify.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { opWorktreeOf } from "./land.js"
@@ -282,6 +282,8 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
             const setups = [...new Map(group.flatMap((each) => each.task.contract.context.setup ?? []).map((command) => [JSON.stringify(command), command])).values()]
             return prepareCheckout({ ...place(null, null), cwd: join(dir, cwd) }, [setups])
         })).flat()
+        // An install or setup out of time is the harness's failure: the wave reaches no verdict and fails no task; it runs again.
+        assertNoInfraFailure(prepared)
         const ran = new Map<string, CheckOutcome>()
         const outcomes: Record<string, CheckOutcome[]> = {}
         if (prepared.every((outcome) => outcome.status === "green")) {
