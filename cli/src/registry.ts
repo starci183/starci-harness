@@ -72,6 +72,7 @@ import { benchRunVerb } from "./core/bench/run.js"
 import { supervisorStartVerb } from "./core/supervisor/start.js"
 import { supervisorStatusVerb } from "./core/supervisor/status.js"
 import { supervisorStopVerb } from "./core/supervisor/stop.js"
+import { supervisorAskVerb } from "./core/supervisor/ask.js"
 import { supervisorAttachVerb } from "./core/supervisor/attach.js"
 import { kernelStartVerb } from "./core/kernel/start.js"
 import { kernelAttachVerb } from "./core/kernel/attach.js"
@@ -176,6 +177,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorStartVerb,
     supervisorStatusVerb,
     supervisorStopVerb,
+    supervisorAskVerb,
     supervisorAttachVerb,
     kernelStartVerb,
     kernelAttachVerb,

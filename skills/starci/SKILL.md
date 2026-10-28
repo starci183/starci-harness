@@ -44,13 +44,14 @@ usage. Read every refusal code; never retry blindly.
 
 The host: owner runs `starci host install` once, `starci host status` to check ([ops/host.yaml](../../ops/host.yaml)).
 The owner starts a project's Supervisor once (`starci supervisor start` from any checkout of the project, or a scheduled
-`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal: it turns a request
+`starci supervisor tick` for every project) and then talks to its `[Supervisor] <project>` terminal, or hands it a request
+from anywhere with `starci supervisor ask "<request>"`: it turns a request
 into a workflow of its project, starts it from its own terminal, and answers its Kernels' escalations. Each orca workflow's `[Kernel]` plans (every contract and the workflow file) and drives
 it with `kernel next` / `kernel submit`; Ops run their label's op file ([ops/ops/](../../ops/ops/README.md)) on one
 contract. [cli/README.md](../../cli/README.md) "Seats as a tree" owns the verbs and the command file.
 
 A chat agent outside Orca is Debug: it diagnoses the harness, changes nothing but a harness setting (`starci config set`),
-and hands the Supervisor a repair contract; it
+and hands the Supervisor a repair contract or the owner's words (`starci supervisor ask`); it
 never starts an orca workflow (that refuses `SUPERVISOR_REQUIRED`). Under the `inline` runner the chat is the Kernel and
 the worker, one task at a time, without seats.
 

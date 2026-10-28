@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto"
 import { basename } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
-import { Refusal } from "../shared/errors.js"
+import { asRefusal, Refusal } from "../shared/errors.js"
 import { coordinatorBrief } from "./coordinator-brief.js"
 import { coordinatorLaunch } from "./coordinator-launch.js"
 import { leaseEnd, loadCoordinatorLiveness, olderThan } from "./coordinator-liveness.js"
 import { now, runtimeRoot } from "./ledger.js"
 import { readMachine, withMachine } from "./machine.js"
-import { agentLaunch, isSelectorNotFound, launchOperationOf, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
-import type { AgentLaunchInput, OrcaBinary } from "./orca/client.js"
+import { agentLaunch, isSelectorNotFound, launchOperationOf, locateOrca, mailSend, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
+import type { AgentLaunchInput, MailSend, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
@@ -217,6 +217,22 @@ export const ensureSupervisor = async (binary: OrcaBinary, cwd: string, project:
         }
     }
     return { project, action: "none", liveness, supervisor, detail: status.leaseExpired ? "lease expired but Orca does not say gone: held" : "nothing to do" }
+}
+
+/**
+ * Wakes a project's Supervisor by mail to its Run (`run:<id>`), from the caller's terminal when it runs in one: a Kernel's
+ * escalation or handoff (`kernel submit`) and an owner request (`supervisor ask`) alike. The ledger row is the content, so a
+ * Supervisor not attached yet, or a mail Orca refuses, changes nothing: `supervisor next` reads the row.
+ */
+export const wakeSupervisor = async (project: string, cwd: string, mail: Omit<MailSend, "to" | "from">): Promise<string> => {
+    const supervisor = supervisorRecord(project)
+    if (supervisor?.run_id == null) return "no Supervisor attached: it waits for supervisor next"
+    try {
+        await mailSend(await locateOrca(cwd), { ...mail, to: `run:${supervisor.run_id}`, from: process.env.ORCA_TERMINAL_HANDLE }, cwd)
+        return "mailed the Supervisor's Run"
+    } catch (error: unknown) {
+        return `mail not sent (${asRefusal(error).code}); it waits for supervisor next`
+    }
 }
 
 /** Binds only the reserved launch to its own Orca terminal and creates its Supervisor's Run and parent task idempotently. */

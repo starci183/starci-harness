@@ -1,0 +1,48 @@
+schema: starci/scenario@1
+id: supervisor-ask-roles
+group: lifecycle
+title: "supervisor ask is the owner's channel: Debug relays the owner's words, any other role is refused and records nothing"
+inject: "a Kernel, an Op and the project's Supervisor each try to put a request in the project's mailbox; Debug relays one for the owner"
+expect: >-
+  supervisor ask under STARCI_ROLE kernel, op or supervisor refuses ROLE_REFUSED and writes no owner request; under debug it is
+  recorded with debug as its author; with no Supervisor attached nothing is mailed and the request waits for supervisor next
+pass:
+  - three refusals, ROLE_REFUSED each, and no row for them
+  - one owner request, by debug, still open
+  - no mail sent
+  - no actor overstepping its role
+automation: automated
+steps:
+  - name: a Kernel may not ask
+    env:
+      STARCI_ROLE: kernel
+    starci: [supervisor, ask, "rewrite the gates"]
+    expect:
+      code: ROLE_REFUSED
+  - name: an Op may not ask
+    env:
+      STARCI_ROLE: op
+    starci: [supervisor, ask, "rewrite the gates"]
+    expect:
+      code: ROLE_REFUSED
+  - name: the Supervisor does not ask itself
+    env:
+      STARCI_ROLE: supervisor
+    starci: [supervisor, ask, "rewrite the gates"]
+    expect:
+      code: ROLE_REFUSED
+  - name: Debug relays the owner's words
+    env:
+      STARCI_ROLE: debug
+    starci: [supervisor, ask, "the owner asks for doc a"]
+    expect:
+      contains: no Supervisor attached
+  - assert:
+      sql:
+        db: machine
+        query: SELECT by || ':' || text || ':' || (closed_at IS NULL) FROM owner_requests
+        equals: ["debug:the owner asks for doc a:1"]
+  - assert:
+      orcaCalls:
+        command: send
+        count: 0

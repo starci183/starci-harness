@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
+import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
 import type { Command, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
@@ -14,6 +14,8 @@ import { inTransaction } from "../../harness/leases.js"
 import { loadLiveness } from "../../harness/liveness.js"
 import { readMachine, textOf, withMachine } from "../../harness/machine.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
+import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerRequests, ownerRequestProjects } from "../../harness/owner-requests.js"
+import type { OwnerRequest } from "../../harness/owner-requests.js"
 import { closeWorker, locateOrca, mailCheck, mailSend, requestIdOf, requestShow, terminalList, workerShow } from "../../harness/orca/client.js"
 import type { OrcaBinary, TerminalInventory, WorkerStartInput } from "../../harness/orca/client.js"
 import type { RouteMember } from "../../harness/router.js"
@@ -40,11 +42,12 @@ export interface SupervisorDecision extends Decision {
     readonly project: string
 }
 
-/** What `supervisor next` returns: one decision (escalation or handoff) with its workflow digest, or idle. */
+/** What `supervisor next` returns: one decision (escalation or handoff) with its workflow digest, one owner request, or idle. */
 export interface SupervisorNext {
-    readonly kind: "escalation" | "handoff" | "idle"
+    readonly kind: "escalation" | "handoff" | "owner-request" | "idle"
     readonly decision: SupervisorDecision | null
     readonly digest: Digest | null
+    readonly request: OwnerRequest | null
     readonly actions: readonly string[]
 }
 
@@ -311,7 +314,8 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
  * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch with no receipt is resolved through
- * request-show; too many relaunches pause and escalate), then returns the project's next open escalation or handoff (`openSupervisorDecisions`), else waits
+ * request-show; too many relaunches pause and escalate), then returns the project's next open escalation or handoff it rules
+ * (`openSupervisorDecisions`), else its oldest owner request (`supervisor ask`), else one awaiting the owner, else waits
  * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
  * tick` sweeps for it.
  */
@@ -343,13 +347,16 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
         if (attached !== null && binary !== null) actions.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, attached, false))).flat())
-        const decision = openSupervisorDecisions(repos)[0]
+        const decisions = openSupervisorDecisions(repos)
+        const request = openOwnerRequests(project.key)[0]
+        const decision = decisions.find((open) => request === undefined || !awaitsOwner(open))
         if (decision !== undefined) {
             const digest = withLedger(decision.project, (db) => digestOf(db, decision.workflowId))
-            return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, actions }
+            return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, request: null, actions }
         }
+        if (request !== undefined) return { kind: "owner-request", decision: null, digest: null, request, actions }
         const left = deadline - Date.now()
-        if (left <= 0) return { kind: "idle", decision: null, digest: null, actions }
+        if (left <= 0) return { kind: "idle", decision: null, digest: null, request: null, actions }
         return round(await awaitMail(delivery, Math.min(rules.nextPollSeconds * 1000, left)))
     }
     return round(undefined)
@@ -365,8 +372,8 @@ const hostEventsOf = (kind: string, subject: string): { readonly at: string; rea
 const decisionOf = (data: unknown): unknown => (typeof data === "object" && data !== null && "decision" in data ? data.decision : null)
 
 /**
- * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while a decision of its project that it rules waits (one
- * awaiting the owner is not its work: it waits for the owner's answer) and
+ * The stall ladder of a Supervisor seat: idle at its prompt (stall rules) while a decision of its project that it rules or an owner
+ * request waits (a decision awaiting the owner is not its work: it waits for the owner's answer) and
  * no driver call came for stall.idleMinutes, it is nudged with its loop prompt; a nudge unanswered past nudgeGraceMinutes, or a
  * stall after nudgeMax nudges, gives it up: its member records a `stalled` outcome and the project's Supervisor is replaced by a
  * new launch with that member behind every other. Once kernelRelaunchMax replacements left the same decision waiting, the tick
@@ -376,7 +383,7 @@ const supervisorStall = async (binary: OrcaBinary, cwd: string, seat: AttachedSu
     const stall = loadStallRules()
     const project = projectOfRecord(seat)
     const title = supervisorTitle(project.name)
-    const decision = openSupervisorDecisions(repos).find((open) => !awaitsOwner(open))
+    const decision = openSupervisorDecisions(repos).find((open) => !awaitsOwner(open)) ?? openOwnerRequests(project.key)[0]
     const lastCall = lastCallOf(seat.lease_until, rules.supervisorTtlMinutes, seat.started_at)
     if (decision === undefined || !olderThan(lastCall, stall.idleMinutes)) return null
     const signals = await askIdle(binary, cwd, { terminal: seat.terminal, handle: null }, inventory, stall)
@@ -427,13 +434,13 @@ export interface SupervisorsEnsured {
 
 /**
  * Keeps every project's Supervisor alive, the host-wide half of `supervisor tick` (and what a host service calls to start the
- * Supervisors): the projects of `keptProjects` (a live Supervisor, or one ended by anything but the owner's stop) and every
- * project owning a running orca workflow get `ensureSupervisor`, each once.
+ * Supervisors): the projects of `keptProjects` (a live Supervisor, or one ended by anything but the owner's stop), every project
+ * holding an open owner request and every project owning a running orca workflow get `ensureSupervisor`, each once.
  */
 export const ensureSupervisors = async (binary: OrcaBinary, cwd: string): Promise<SupervisorsEnsured> => {
     const problems: string[] = []
     const projects = new Map<string, Project>()
-    for (const project of [...keptProjects(), ...(await projectsWithWorkflows(problems))]) if (!projects.has(project.key)) projects.set(project.key, project)
+    for (const project of [...keptProjects(), ...ownerRequestProjects(), ...(await projectsWithWorkflows(problems))]) if (!projects.has(project.key)) projects.set(project.key, project)
     const ensured: SupervisorEnsured[] = []
     await inOrder([...projects.values()], async (project) => {
         try {
@@ -509,13 +516,13 @@ const wakeKernel = async (root: string, cwd: string, command: Command, decision:
 /** Raises the Kernel's decision for a Supervisor command, and an escalation-answer for each other workflow whose escalation it answers. */
 /** Raises an escalation-answer for the Kernel of each other workflow whose escalation a Supervisor command answers. */
 const answerOtherWorkflows = (db: DatabaseSync, command: Command): string[] =>
-    (command.answers ?? [])
+    ledgerAnswers(command, "supervisor")
         .map((id) => getDecision(db, id))
         .filter((decision): decision is Decision => decision !== undefined && decision.workflowId !== command.workflow)
         .map((decision) => raiseDecision(db, { scope: "kernel", workflowId: decision.workflowId, kind: "escalation-answer", subject: command.cmdId, evidence: { answers: decision.id, ruling: command.note ?? null, by: command.kind, workflow: command.workflow, goal: command.goal ?? null } }))
 
 const raiseForKernel = (db: DatabaseSync, root: string, command: Command): string => {
-    const answered = (command.answers ?? []).map((id) => getDecision(db, id)).filter((decision) => decision !== undefined)
+    const answered = ledgerAnswers(command, "supervisor").map((id) => getDecision(db, id)).filter((decision) => decision !== undefined)
     answerOtherWorkflows(db, command)
     const own: KernelDecisionKind = command.kind === "goal" || command.kind === "goal-change" ? command.kind : "done"
     const kind: KernelDecisionKind = answered.some((decision) => decision.workflowId === command.workflow) ? "escalation-answer" : own
@@ -560,7 +567,7 @@ const applySupervisor = async (context: VerbContext, root: string, command: Comm
 /**
  * `supervisor submit <file>`: one Supervisor command to a workflow's Kernel (goal, goal-change, stop), possibly answering
  * escalations. It is admitted under cmdId dedupe and basedOn (goal version), applied (a Kernel decision is raised, stop runs
- * `workflow stop`), and the escalations it answers close with it.
+ * `workflow stop`), and the escalations and owner requests (`supervisor ask`) it answers close with it, each recording its cmdId.
  */
 export const supervisorSubmit = async (context: VerbContext, file: string, projectFlag?: string): Promise<{ readonly command: unknown; readonly replay: boolean; readonly project: string }> => {
     const parsed = readCommand(file, "supervisor")
@@ -574,11 +581,17 @@ export const supervisorSubmit = async (context: VerbContext, file: string, proje
     if (caller !== undefined && caller.project !== owner.key) {
         throw new Refusal("PROJECT_FOREIGN", `workflow ${command.workflow} of ${root} belongs to project ${owner.name}, not to this ${supervisorTitle(projectOfRecord(caller).name)}; its own Supervisor submits it`)
     }
+    const requests = (command.answers ?? []).filter(isOwnerRequestId)
+    assertOwnerRequests(owner.key, requests, command.cmdId)
     if (command.kind === "goal" && withLedger(root, (db) => db.prepare("SELECT 1 FROM commands WHERE workflow_id = ? AND kind = 'goal' AND status = 'applied'").get(command.workflow)) !== undefined) {
         throw new Refusal("GOAL_EXISTS", `workflow ${command.workflow} has its goal; change it with a goal-change based on its goal version`)
     }
     const admitted = withLedger(root, (db) => admitCommand(db, "supervisor", parsed))
-    if (admitted.kind === "replay") return { command: admitted.row, replay: true, project: root }
+    const closing = { cmdId: command.cmdId, workflow: command.workflow, repository: root }
+    if (admitted.kind === "replay") {
+        closeOwnerRequests(requests, closing)
+        return { command: admitted.row, replay: true, project: root }
+    }
     let outcome: unknown
     try {
         outcome = await applySupervisor(context, root, command, parsed.sha256)
@@ -588,6 +601,7 @@ export const supervisorSubmit = async (context: VerbContext, file: string, proje
         throw error
     }
     const row = withLedger(root, (db) => finishCommand(db, "supervisor", command, "applied", outcome))
+    closeOwnerRequests(requests, closing)
     if (caller !== undefined) renewSupervisorLease(caller.id)
     return { command: row, replay: false, project: root }
 }

@@ -8,6 +8,7 @@ import { Refusal } from "../shared/errors.js"
 import { scopeSchema } from "./graph.js"
 import { now } from "./ledger.js"
 import { inTransaction } from "./leases.js"
+import { isOwnerRequestId } from "./owner-requests.js"
 import { assertRoute, isRouted, withRoutes } from "./routes.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
@@ -131,6 +132,12 @@ export const getCommand = (db: DatabaseSync, cmdId: string): CommandRow | undefi
 /** The goal version of a workflow (goal@1 is the defined goal; workflow regoal and a goal-change move it). */
 export const goalVersionOf = (db: DatabaseSync, workflowId: string): number => getWorkflow(db, workflowId).goalVersion
 
+/**
+ * The decisions of the ledger a command answers: its `answers` but, for a Supervisor command, the owner requests of the host
+ * store it closes (harness/owner-requests.ts), which `supervisor submit` validates and closes itself.
+ */
+export const ledgerAnswers = (command: Command, scope: CommandScope): string[] => (command.answers ?? []).filter((id) => scope === "kernel" || !isOwnerRequestId(id))
+
 /** The admission of a command: `new` (an intent row is written, apply it), or `replay` of a command already applied. */
 export type Admission = { readonly kind: "new" } | { readonly kind: "replay"; readonly row: CommandRow }
 
@@ -160,7 +167,7 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
         if (known?.status === "applying") throw new Refusal("CMD_IN_FLIGHT", `command ${command.cmdId} is being applied; read its outcome with the next ${scope} next`)
         const workflow = getWorkflow(db, command.workflow)
         assertBasedOn(db, command, workflow)
-        for (const id of command.answers ?? []) {
+        for (const id of ledgerAnswers(command, scope)) {
             const decision = getDecision(db, id)
             if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
@@ -185,7 +192,7 @@ export const finishCommand = (db: DatabaseSync, scope: CommandScope, command: Co
     inTransaction(db, () => {
         const at = now()
         db.prepare("UPDATE commands SET status = ?, outcome_json = ?, applied_at = ? WHERE cmd_id = ?").run(status, JSON.stringify(outcome), at, command.cmdId)
-        if (status === "applied") for (const id of command.answers ?? []) answerDecision(db, id, command.cmdId, scope)
+        if (status === "applied") for (const id of ledgerAnswers(command, scope)) answerDecision(db, id, command.cmdId, scope)
         recordEvent(db, `command-${status}`, command.workflow, { cmdId: command.cmdId, scope, kind: command.kind })
         const row = getCommand(db, command.cmdId)
         if (row === undefined) throw new Refusal("CMD_LOST", `command ${command.cmdId} vanished from the ledger`)
