@@ -426,15 +426,25 @@ export const hostUp = async (config: HostConfig, services: readonly HostService[
     })
 }
 
-/** Starts a service by its start argv: detached, or run to its end within waitSeconds. */
+/**
+ * The variables an agent session sets for itself and its children (Claude Code, the Anthropic SDK, Codex, Orca panes, the
+ * harness role). A service started from inside such a session would hand them to every terminal it opens: Orca started from a
+ * Claude Code session made each Claude it launched believe it was that session's child, so Orca never saw it become ready.
+ */
+const SESSION_VARIABLE = /^(CLAUDE|CLAUDECODE$|ANTHROPIC_|CODEX_|OPENAI_|ORCA_|STARCI_ROLE$)/i
+
+/** This process's environment without the agent-session variables, for a host service to start from. */
+export const serviceEnv = (): NodeJS.ProcessEnv => Object.fromEntries(Object.entries(process.env).filter(([name]) => !SESSION_VARIABLE.test(name)))
+
+/** Starts a service by its start argv, from a clean environment: detached, or run to its end within waitSeconds. */
 const startService = async (start: NonNullable<HostService["start"]>, config: HostConfig, cwd: string): Promise<void> => {
     const argv = expandArgv(start.argv)
     if (start.detach) {
-        await startDetached(argv, cwd)
+        await startDetached(argv, cwd, serviceEnv())
         return
     }
     const [tool, ...args] = argv
-    if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: config.waitSeconds * 1000 })
+    if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: config.waitSeconds * 1000, baseEnv: serviceEnv() })
 }
 
 /** Probes a started service until its check says up or the deadline passes, POLL_MS apart. */

@@ -26,6 +26,8 @@ export interface ToolRun extends ToolOutput {
 export interface RunOptions {
     readonly timeoutMs?: number
     readonly env?: Readonly<Record<string, string>>
+    /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
+    readonly baseEnv?: NodeJS.ProcessEnv
 }
 
 interface Finished extends ToolRun {
@@ -88,7 +90,8 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         let timer: NodeJS.Timeout | undefined
         const stdout = collector()
         const stderr = collector()
-        const env = options.env === undefined ? process.env : { ...process.env, ...options.env }
+        const base = options.baseEnv ?? process.env
+        const env = options.env === undefined ? base : { ...base, ...options.env }
         const detached = options.timeoutMs !== undefined && process.platform !== "win32"
         let child: ChildProcessByStdio<null, Readable, Readable>
         try {
@@ -224,7 +227,7 @@ export const captureCommand = async (argv: readonly string[], cwd: string, optio
  * Starts a long-lived host program (a desktop app) without a shell and without waiting for it: detached, its output ignored,
  * so this CLI exits while it runs. Refuses with ToolNotStarted when the program could not be started.
  */
-export const startDetached = (argv: readonly string[], cwd: string): Promise<void> =>
+export const startDetached = (argv: readonly string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<void> =>
     new Promise((settle, refuse) => {
         const [tool, ...args] = argv
         if (tool === undefined) {
@@ -233,7 +236,7 @@ export const startDetached = (argv: readonly string[], cwd: string): Promise<voi
         }
         let child: ChildProcess
         try {
-            child = spawn(tool, args, { cwd, windowsHide: true, detached: true, stdio: "ignore" })
+            child = spawn(tool, args, { cwd, env, windowsHide: true, detached: true, stdio: "ignore" })
         } catch (error: unknown) {
             const code = errorCode(error)
             refuse(new ToolNotStarted(tool, typeof code === "string" ? code : "spawn failed"))
