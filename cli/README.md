@@ -56,7 +56,7 @@ src/
 every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`, `edges` and `graph_versions` (each
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
-`check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees the path of a task that may still write, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
+`check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time (the task's budget plus the budget ladder's grace) never frees the path of a task that may still write, since the budget ladder fences a running attempt by then, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
 `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
@@ -187,8 +187,11 @@ worktree, where verify settles it, so a relaunched Kernel or a retried attempt c
 
 Coordinators decide; deterministic drivers do the rest, and a coordinator never ends its turn while its driver is its own
 (it loops on the blocking `next`). `kernel next <workflow>` is the Kernel's driver: it drains the Kernel Run's mail, steps
-the workflow (dispatch, verify, close seats), fences an Op Orca reports idle past its budget.minutes (worker-stop, else
-worker-abandon; the task fails with outcome `timeout`), runs the stall ladder on its Ops (below), resolves an effect_unknown
+the workflow (dispatch, verify, close seats), runs the budget ladder on its Ops (an attempt past its contract's
+budget.minutes with no result is asked once to wrap up and file, then fenced `budget.graceMinutes` later as a red verify ends
+one: seats closed, dirty allowPaths preserved and reset, the task failed `over-budget` with its try spent, its leases
+released; `sweepOpBudgets` in `core/kernel/driver.ts`, `fenceAttempt` in `harness/fence.ts`; `supervisor tick` runs it too),
+runs the stall ladder on its Ops (below), resolves an effect_unknown
 launch through `request-show` with its attempt's request id (completed with a dispatch: that dispatch is judged by worker-show,
 adopted when its worker started, fenced and the task queued again with no try spent when it never started its turn past
 `stall.startDeadlineMinutes`; completed with none: replayed; absent past the deadline: stuck), holds the workflow `paused(orca-down)` while

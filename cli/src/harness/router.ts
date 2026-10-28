@@ -648,8 +648,8 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
     return Array.isArray(risk) ? risk.filter((tag): tag is string => typeof tag === "string") : []
 }
 
-/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, timed out, or a worker that never started (blocked at a prompt among them). */
-const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "blocked-prompt", "timeout"])
+/** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, fenced over its budget, or a worker that never started (blocked at a prompt among them). */
+const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "blocked-prompt", "over-budget"])
 
 /** Walks a task's retry chain in its ledger; every attempt counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {

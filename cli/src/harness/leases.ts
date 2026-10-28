@@ -1,19 +1,18 @@
 import { randomUUID } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
+import { budgetDue } from "./budget-ladder.js"
 import { normaliseRepoPath } from "./contract.js"
 import { now } from "./ledger.js"
 import type { TaskRow, TaskStatus } from "./tasks.js"
 import { recordEvent, TERMINAL_STATUSES } from "./tasks.js"
 
-/** Minutes past its task's budget a lease is due; the due time is information for the Kernel, never a reason to drop the lease. */
-export const LEASE_GRACE_MINUTES = 15
-
 /**
  * One path lease: a task holds a repository path (and everything below it) until the task ends. `expiresAt` says when the
  * task was due (`overdue` once passed). Time alone never frees the path of a task that may still write (queued, running,
- * verifying, effect_unknown); a task returned to the Kernel has no worker left to write, so its lease lapses at `expiresAt`
- * (`expireLeases`) and the next `workflow step`, `supervisor tick` or lease request frees it.
+ * verifying, effect_unknown): a running attempt past its budget is fenced by the budget ladder (`sweepOpBudgets`), which
+ * preserves its work and ends the task first; a task returned to the Kernel has no worker left to write, so its lease lapses
+ * at `expiresAt` (`expireLeases`) and the next `workflow step`, `supervisor tick` or lease request frees it.
  */
 export interface LeaseRow {
     readonly path: string
@@ -131,7 +130,8 @@ export const listLeases = (db: DatabaseSync, taskId?: string): LeaseRow[] => {
     return rows.map((row) => toLease(row, at))
 }
 
-const dueAt = (task: TaskRow): string => new Date(Date.now() + (task.contract.budget.minutes + LEASE_GRACE_MINUTES) * 60_000).toISOString()
+/** When a task's leases fall due: its budget plus the budget ladder's grace, the time its running attempt is fenced at the latest. */
+const dueAt = (task: TaskRow): string => budgetDue(task.contract.budget.minutes)
 
 /** The lease paths of a task: its allowPaths, normalised and without duplicates. */
 export const leasePaths = (task: TaskRow): string[] => [...new Set(task.contract.context.allowPaths.map(normaliseRepoPath))]

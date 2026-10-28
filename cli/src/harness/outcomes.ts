@@ -5,7 +5,7 @@ import { readMachine, textOf, withMachine } from "./machine.js"
 import type { Qualification, Routing } from "./routing.js"
 
 /**
- * How one ended attempt counts for its member: a green or red verdict, a timeout (fenced past its budget), stalled (given up
+ * How one ended attempt counts for its member: a green or red verdict, a timeout (fenced `over-budget` by the budget ladder), stalled (given up
  * by the stall ladder: idle at its prompt with its work pending), lost (the worker went away), a launch that certainly
  * failed, or a model mismatch. A cancelled or unjudged attempt does not count.
  */
@@ -13,7 +13,7 @@ export type OutcomeClass = "green" | "red" | "timeout" | "lost" | "stalled" | "l
 
 const CLASSES: readonly OutcomeClass[] = ["green", "red", "timeout", "lost", "stalled", "launch", "mismatch"]
 
-const BY_OUTCOME: Readonly<Record<string, OutcomeClass>> = { timeout: "timeout", orphaned: "lost", stalled: "stalled", "launch-failed": "launch", "model-mismatch": "mismatch" }
+const BY_OUTCOME: Readonly<Record<string, OutcomeClass>> = { "over-budget": "timeout", orphaned: "lost", stalled: "stalled", "launch-failed": "launch", "model-mismatch": "mismatch" }
 
 /** The class of an attempt from its verdict, else its ended outcome; null while it has neither. */
 export const classOf = (verdict: string | null, outcome: string | null): OutcomeClass | null => {
