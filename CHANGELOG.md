@@ -14,7 +14,7 @@ the whole list.
 ### Added
 
 - **The app commands.** The CLI carries `starci app scaffold|sync|check|lint|add|new|emit|explain|hygiene|coverage|codemod|ci|db|secret|stack|release|upgrade`,
-  each a verb with its typed flags, effect and roles that runs `@starci/hfs` (4.9.1, an exact dependency) in-process in
+  each a verb with its typed flags, effect and roles that runs `@starci/hfs` (4.9.2, an exact dependency) in-process in
   the app: in human mode its output streams as it prints, under `--json` the envelope carries its report and exit code. A
   product pins `starci-harness` as its devDependency, its husky hooks and CI run `npx starci app ...`, and its codegen loads
   `starci-harness/input-bounds`; `@starci/cli` is retired. A verb flag may now be a `list`, given once per value.
