@@ -31,7 +31,7 @@ const SURFACES = new Set<string | undefined>([
 ])
 const FIELDS = new Set<string | undefined>([
   "Input", "TextField", "Textarea", "TextArea", "SearchField", "NumberField", "DateField", "TimeField",
-  "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput",
+  "Select", "ComboBox", "DatePicker", "DateRangePicker", "Checkbox", "CheckboxGroup", "RadioGroup", "PressableField", "OtpInput", "CopyField",
 ])
 const CLASS_BUILDERS = new Set(["cn", "clsx", "classNames", "cva", "tv"])
 

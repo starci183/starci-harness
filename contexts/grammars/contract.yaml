@@ -191,15 +191,16 @@ roles:
 
   - id: input
     ui: ui/components/text-field.md
-    renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput]
+    renderers: [Input, Textarea, SearchField, NumberField, DateField, TimeField, Field, OtpInput, FormGrid]
     vendorParity: [textfield, input, input-group, textarea, search-field, number-field, date-field, time-field, input-otp]
-    slots: [label, description, errorMessage, prefix, suffix]
+    slots: [label, control, description, errorMessage, prefix, suffix]
     variants:
       variant: { values: [primary, secondary], meaning: { primary: on the canvas, secondary: inside a surface }, chosenBy: context }
+      formColumns: { values: [1, 2], meaning: { 2: FormGrid rows of two once its own width holds them }, chosenBy: app }
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE]
 
   - id: select
     ui: ui/components/select.md
@@ -211,7 +212,20 @@ roles:
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE]
+
+  - id: copy-field
+    ui: ui/components/text-field.md
+    renderers: [CopyField]
+    vendorParity: [textfield, input-group, tooltip]
+    slots: [label, control (the value and the copy action at its end), description, "errorMessage (copyErrorLabel)", "action: copyLabel, copiedLabel"]
+    variants:
+      masked: { values: [false, true], meaning: { false: "the value, truncated in the middle with the whole value in a tooltip", true: "bullets and the last four characters; the clear value comes only from onCopy" }, chosenBy: app from the fact (a secret) }
+      variant: { values: [primary, secondary], chosenBy: context }
+    sizes: { steps: [md], default: md }
+    states: [rest, focus-visible, pending, copied (about 2s, announced politely), failed, disabled, skeleton]
+    grammarMayChange: [the field frame's paint as Input's, the action glyph paint]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL]
 
   - id: dialog
     ui: ui/components/dialog-drawer.md
@@ -440,9 +454,9 @@ mustKeep:
       measure: { kind: box, select: '[data-component="IconButton"]', metric: width, op: "=", value: { self: height, times: 1 } }
       owner: contract roles.button
     - id: DNA-COMMON-FIELD-MD
-      role: [input, select]
-      law: Every single-line field box (input, select trigger, combo box, search, number, date and time field) is as tall as an md control, 40px.
-      measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group)', metric: height, op: "=", value: 40px }
+      role: [input, select, copy-field]
+      law: Every single-line field box (input, select trigger, combo box, search, number, date and time field, copy field) is as tall as an md control, 40px.
+      measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group)', metric: height, op: "=", value: 40px }
       owner: control-height-40
     - id: DNA-COMMON-SEGMENTED-RAMP
       role: segmented-control
@@ -694,15 +708,15 @@ mustKeep:
       measure: { kind: count, scope: '[data-component="SegmentedControl"]', select: '[role="radio"][aria-checked="true"]', op: "=", value: 1 }
       owner: STATE-6/case-5
     - id: DNA-COMMON-FIELD-BY-LAYER
-      role: [input, select]
+      role: [input, select, copy-field]
       law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice.
       measure:
         kind: attr
         metric: data-grammar-variant
         op: "="
         cases:
-          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"]):not([data-grammar-nesting="surface"] *)', value: primary }
-          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"])', value: secondary }
+          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"]):not([data-grammar-nesting="surface"] *)', value: primary }
+          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"])', value: secondary }
       owner: R318/case-1; UI-10
     - id: DNA-COMMON-FIELD-NAME-IS-LABEL
       role: [input, select]
@@ -719,6 +733,32 @@ mustKeep:
       law: A focused single-line field shows exactly one focus ring, on the field frame.
       measure: { kind: interaction, select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="ComboBox"])', act: [focus], then: { metric: focus-rings, op: "=", value: 1 } }
       owner: FOCUS-1/case-6
+    - id: DNA-COMMON-FIELD-ANATOMY-ORDER
+      role: [input, select, copy-field]
+      law: A field draws HeroUI's order, label, control, description, error; its description is standing guidance under the control, never between the label and the control.
+      measure:
+        kind: relation
+        select: ':is([data-component="Input"],[data-component="Field"],[data-component="Textarea"],[data-component="SearchField"],[data-component="NumberField"],[data-component="DateField"],[data-component="TimeField"],[data-component="FileDropzone"],[data-component="Select"],[data-component="ComboBox"],[data-component="DatePicker"],[data-component="DateRangePicker"],[data-component="CopyField"]) [data-grammar-field-description]:not([data-grammar-field-control] *)'
+        metric: top
+        op: ">="
+        ref: { within: ':is([data-component="Input"],[data-component="Field"],[data-component="Textarea"],[data-component="SearchField"],[data-component="NumberField"],[data-component="DateField"],[data-component="TimeField"],[data-component="FileDropzone"],[data-component="Select"],[data-component="ComboBox"],[data-component="DatePicker"],[data-component="DateRangePicker"],[data-component="CopyField"])', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"])', metric: bottom }
+      owner: field-anatomy-order; vendor/parity.yaml textfield
+    - id: DNA-COMMON-FIELD-ROW-CONTROL-LINE
+      role: [input, select, copy-field]
+      law: The fields of one FormGrid row laid out in columns start their control boxes on one line, whatever label, description or error a neighbour carries.
+      measure: { kind: uniform, scope: '[data-component="FormGrid"] [data-grammar-form-grid-row]', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"]):not(:is([data-grammar-field-control="true"],[data-grammar-input-control="true"]) *)', metric: top }
+      owner: field-anatomy-order
+    # --- copy field
+    - id: DNA-COMMON-COPYFIELD-MASKED
+      role: copy-field
+      law: A masked CopyField never renders its clear value; it shows bullets and at most the last four characters, and opens no full-value tooltip.
+      measure: { kind: text, select: '[data-component="CopyField"][data-grammar-copy-masked="true"] [data-grammar-copy-value]', metric: text, op: matches, value: '^•{8}.{0,4}$' }
+      owner: copy-field
+    - id: DNA-COMMON-COPYFIELD-TAIL
+      role: copy-field
+      law: A CopyField value gives up its middle, never its end; the tail stays whole before the copy action.
+      measure: { kind: relation, select: '[data-component="CopyField"] [data-grammar-copy-tail]', metric: right, op: "<=", ref: { within: '[data-component="CopyField"]', select: '[data-grammar-copy-action]', metric: left } }
+      owner: copy-field
     # --- chips and status dots
     - id: DNA-COMMON-CHIP-NOT-TARGET
       role: chip

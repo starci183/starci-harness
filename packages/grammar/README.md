@@ -218,12 +218,20 @@ selected/current states where they apply. Overlay stories open by default.
 IconButton, IconTile, Image, IncludedMark, Kbd, Label, LeadingNumber, Link, Meter, PlainPressable,
 Progress, ProgressCircle, RankArtwork, RelativeTime, Skeleton, Spinner, StateMark, Text, TextAction.
 
-**Forms (24).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, DateField, DatePicker,
-DateRangePicker, Field, Fieldset, FileDropzone, Form, Input, NumberField, OtpInput,
+**Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,
+DateRangePicker, Field, Fieldset, FileDropzone, Form, FormGrid, Input, NumberField, OtpInput,
 PressableField, RadioGroup, Rating, SearchField, SegmentedControl, Select, Slider, Switch,
 Textarea, TimeField. Every Field-contract control takes `label`, `description`, `errorMessage`,
-`isRequired`, `isDisabled`, `isReadOnly` and `isInvalid`. `Select`, `ComboBox`, `SearchField` and
-`Form` also take `isPending`. `OtpInput` names the code with `label` or an existing label's `labelledBy`.
+`isRequired`, `isDisabled`, `isReadOnly` and `isInvalid`, and draws HeroUI's field order: label, control,
+description, error. `Select`, `ComboBox`, `SearchField` and `Form` also take `isPending`. `OtpInput` names the
+code with `label` or an existing label's `labelledBy`.
+
+`CopyField` is a read-only value with its copy action inside the field, at its end, as tall as every single-line
+field: `label`, `value`, `description`, `copyLabel`, `copiedLabel`, `copyErrorLabel` (the app's words), `onCopy`,
+`isDisabled`, `isSkeleton`. A long value is truncated in the middle, whole in a Tooltip on hover and focus and whole
+for a screen reader. `masked` with `lastFour` draws bullets and the last four characters; its `onCopy` resolves the
+clear value (a server reveal may be async) and the field writes it to the clipboard without keeping it. `FormGrid`
+lays fields in rows (`columns` 1 or 2, two once its own width holds them) whose controls stand on one line.
 
 **Overlays (9).** Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Popover, Toast, Toaster,
 Tooltip. Dialog, AlertDialog, Drawer, Popover and DropdownMenu support uncontrolled `defaultOpen`
@@ -411,7 +419,7 @@ a surface: the top layer is raised and a nested layer is subordinate; never rais
 Each family's DNA owns the paint. SurfaceCard and bounded
 SurfaceAccordionCard derive their depth from the parent context. SurfaceAccordionCard defaults to
 `frame="bounded"`; `frame="unpainted"` and Rail pass the parent's context through.
-Omit a field's `variant`: Input, SearchField, Textarea, NumberField, DateField, TimeField, Select,
+Omit a field's `variant`: Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField, Select,
 ComboBox, DatePicker, DateRangePicker, Checkbox, CheckboxGroup, RadioGroup, PressableField and OtpInput use `secondary`
 inside these surfaces and `primary` outside. Overlay triggers keep their surrounding context.
 Tabs also default to `secondary` inside a surface and `primary` on the page background. The FE

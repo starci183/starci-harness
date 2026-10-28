@@ -141,10 +141,26 @@ drag and by Alt+arrow keys and announces each move.
 
 ### Input
 
-A field is a label, a control, a description and an error slot; the label is the accessible name and the error
-lives in the field's own slot. Its look comes from context: `primary` on the canvas, `secondary` inside a surface,
-so a field never vanishes into its surface; the app omits `variant`. A field has one step, `md`, so a field and
-its submit align and mobile text stays at the size that prevents focus zoom.
+A field is a label, a control, a description and an error slot, drawn in that order, HeroUI's: the label is the
+accessible name and sits on the control, the description is standing guidance under the control, and the error
+lives in the field's own slot last. Label and control stay adjacent so a row of fields can align on its controls:
+`FormGrid` lays fields in rows whose label, control, description and error are shared tracks, so neighbouring
+controls stand on one line whatever their neighbours carry, and its columns come from its own width. Groups
+(`RadioGroup`, `CheckboxGroup`, `Fieldset`) keep HeroUI's group order, their description before the options they
+explain. Its look comes from context: `primary` on the canvas, `secondary` inside a surface, so a field never
+vanishes into its surface; the app omits `variant`. A field has one step, `md`, so a field and its submit align and
+mobile text stays at the size that prevents focus zoom.
+
+### CopyField
+
+A copy field is a read-only value the reader takes away: a field whose control is the value and, at its end inside
+the frame, the copy action, at the height and in the anatomy of every field so it sits level with them in a row.
+The value is a read-only textbox whose text is the whole value; a value too long for its box gives up its middle
+under an ellipsis and keeps its end, because the end is what tells two keys or URLs apart, and the whole value
+shows in a tooltip on hover and focus. A masked field is a secret: bullets and the last four characters, no
+tooltip, and the clear value exists only in the app's `onCopy`, so the page never holds it. The action names
+itself in the app's words; a copy confirms for about two seconds (glyph and name swap, announced politely), and a
+refused copy is the field's error.
 
 ### Select
 

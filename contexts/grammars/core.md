@@ -40,6 +40,7 @@ bindings and the few scoped rules `src/core/styles.css`, root `CoreGrammarRoot` 
 | Chip | Badge and StatusDot with text as the vendor soft chip: tone tint with its soft foreground |
 | Input | Surface-coloured fill, transparent border, control radius; inside a surface the vendor's neutral fill |
 | Select | As Input; selection indicator at the end; option rows as List |
+| CopyField | As Input; the copy action a muted in-field glyph at the end, the success foreground while copied, danger when the copy failed |
 | Dialog | Surface material with the soft shadow; vendor backdrop; overlays keep the grammar through the root |
 | Menu | Selection mark at the start (submenu mark at the end), 20px leading glyphs, separators between sections (Common arrangement) |
 | List | Vendor rows; selection as a fill without a check where the list is navigation-like; unread rows at the Common unread weight |

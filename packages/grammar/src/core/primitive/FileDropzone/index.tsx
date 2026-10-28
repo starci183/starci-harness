@@ -70,9 +70,6 @@ export const FileDropzone = ({
                 {label}
                 {isRequired === true ? <span aria-hidden="true" className="starci-core-field-required">*</span> : null}
             </label>
-            {descriptionId === undefined ? null : (
-                <span id={descriptionId} className="starci-core-field-description" data-grammar-field-description="true">{description}</span>
-            )}
             <div
                 className="starci-core-file-dropzone-target"
                 data-grammar-field-control="true"
@@ -110,6 +107,9 @@ export const FileDropzone = ({
                     <span>{prompt}</span>
                 </span>
             </div>
+            {descriptionId === undefined ? null : (
+                <span id={descriptionId} className="starci-core-field-description" data-grammar-field-description="true">{description}</span>
+            )}
             {hideFileList || files.length === 0 ? null : (
                 <ul className="starci-core-file-dropzone-files" data-grammar-file-list="true" aria-live="polite">
                     {files.map((file, index) => <li key={`${file.name}-${index}`}>{file.name}</li>)}
