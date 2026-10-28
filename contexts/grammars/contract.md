@@ -201,6 +201,23 @@ and which ends in its own full-width separator, drawn with or without tabs. Page
 selected underline lies over it, so the tabs read as the switch of everything below. A grammar decides the band's
 paint and the separator's weight; the slots, the inset, the separator and where tabs stand are the same everywhere.
 
+### Page
+
+A page is one route's frame: the page header band (PageHeader's slots, given as data) across the region, then the
+body in the page measure and gutter. The page is the single owner of the page inset and the vertical rhythm: the band
+and the body, and the body's sections, sit a region step apart, and the body clips past its content box so nothing in
+it reaches across the gutter. Layout frames place regions and never inset a page. A page without a band starts its
+body one region step down. Skeleton passes to the band; the body's blocks own their loading.
+
+### Diagram
+
+A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
+tokens, `FlowGraph` draws nodes and edges the app holds (flowchart shapes, edge labels, layered or radial layout). A
+diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
+and a source the renderer refuses stays in the region as code under an error. A labelled edge is also spoken in the
+graph's text list. A grammar decides the frame and the paint; the reserved box and the error carrier are the same
+everywhere.
+
 ### Shell
 
 The shell is the frame of an app: one shell owns the bar, the navigation and the mobile drawer, and one owner

@@ -133,7 +133,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
+    dna: [DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
 
   - id: button-group
     ui: ui/components/action-group.md
@@ -320,6 +320,33 @@ roles:
     grammarMayChange: [band paint, separator paint and weight, title weight]
     dna: [DNA-COMMON-PAGE-HEADER-BAND, DNA-COMMON-PAGE-HEADER-INSET, DNA-COMMON-PAGE-HEADER-ONE-H1, DNA-COMMON-PAGE-HEADER-SEPARATOR, DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR, DNA-CORE-PAGE-HEADER-HAIRLINE, DNA-OFFSET-POP-PAGE-HEADER-INK-RULE]
 
+  - id: page
+    ui: ui/components/page-header.md
+    renderers: [Page]
+    vendorParity: [breadcrumbs, tabs, separator]
+    slots: ["header: the page-header slots as data (breadcrumbs, title, description, meta, status, mark, actions, tabs)", children]
+    variants:
+      header: { values: [none, the page header band], chosenBy: app }
+      measure: { values: [reading, product, full], chosenBy: app, equals: the header's content measure }
+    sizes: none
+    states: [ready, skeleton (passed to the header)]
+    grammarMayChange: [the header band's paint (page-header)]
+    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP]
+
+  - id: diagram
+    ui: ui/components/diagram.md
+    renderers: [MermaidDiagram, FlowGraph]
+    vendorParity: [skeleton, alert]
+    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, size, shape, count, href), edges (source, target, label), headers"]
+    variants:
+      height: { values: [sm, md, lg], chosenBy: app from the drawing }
+      nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
+      layout: { values: [radial, layered, manual], chosenBy: app }
+    sizes: none
+    states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph)]
+    grammarMayChange: [frame, node and edge paint through tokens]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN]
+
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
 # only once it has a measure. A gate run for grammar <id> measures `common` plus `<id>`; roles[].dna lists the ids.
@@ -395,6 +422,18 @@ mustKeep:
       law: An lg button or icon button is one equal increment above md, 48px.
       measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"])', metric: height, op: "=", value: 48px }
       owner: control-height-40; contract sizes.increments
+    - id: DNA-COMMON-CONTROL-FILL
+      role: button
+      law: A full-width button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
+      measure:
+        kind: box
+        metric: height
+        op: ">="
+        cases:
+          - { select: '[data-component="Button"][data-width="fill"]:is([data-size="md"],[data-size="control"])', value: 40px }
+          - { select: '[data-component="Button"][data-width="fill"][data-size="sm"]', value: 32px }
+          - { select: '[data-component="Button"][data-width="fill"][data-size="lg"]', value: 48px }
+      owner: control-height-40
     - id: DNA-COMMON-ICON-BUTTON-SQUARE
       role: button
       law: An icon button is as wide as it is tall at its step.
@@ -818,6 +857,68 @@ mustKeep:
       law: Page tabs in the header stand on its separator; the selected tab's underline lies over it.
       measure: { kind: relation, select: '[data-component="PageHeader"] [role="tab"][aria-selected="true"] .tabs__indicator', metric: bottom, op: "=", ref: { within: '[data-component="PageHeader"]', select: '[data-grammar-page-header-separator] > [data-component="Divider"]', metric: bottom } }
       owner: page-header-band; tabs.choose.level:page
+
+    # --- page (ruling page-frame)
+    - id: DNA-COMMON-PAGE-HEADER-FIRST
+      role: page
+      law: A page's header band is its first child, full width, with no gap above it.
+      measure: { kind: relation, select: '[data-component="Page"] > [data-component="PageHeader"]', metric: [left, right, top], op: "=", ref: { within: '[data-component="Page"]', select: self, metric: [left, right, top] } }
+      owner: page-frame
+    - id: DNA-COMMON-PAGE-BODY-EDGES
+      role: page
+      law: The page body is inset by the page inset inline, so its content edges are the header content's edges.
+      measure:
+        kind: style
+        select: '[data-component="Page"] > [data-grammar-page-body]'
+        checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }]
+      owner: page-frame
+    - id: DNA-COMMON-PAGE-BODY-GAP
+      role: page
+      law: The page owns its rhythm, the region step between the band and the body and between the body's sections.
+      measure:
+        kind: style
+        select: ':is([data-component="Page"], [data-component="Page"] > [data-grammar-page-body])'
+        metric: row-gap
+        op: "="
+        value: { token: --grammar-region-gap }
+      owner: page-frame
+    - id: DNA-COMMON-PAGE-BODY-CLIP
+      role: page
+      law: Nothing in the page body reaches across the gutter; the body clips past its content box.
+      measure:
+        kind: style
+        select: '[data-component="Page"] > [data-grammar-page-body]'
+        checks: [{ metric: overflow-x, op: "=", value: clip }, { metric: overflow-clip-margin, op: matches, value: content-box }]
+      owner: page-frame
+
+    # --- diagram (ruling mermaid-diagram)
+    - id: DNA-COMMON-DIAGRAM-LOADING-BOX
+      role: diagram
+      law: A diagram reserves its canvas height in every state, so the loading skeleton and the error take the ready drawing's least box.
+      measure:
+        kind: box
+        metric: height
+        op: ">="
+        cases:
+          - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="sm"] > :first-child', value: 256px }
+          - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="md"] > :first-child', value: 384px }
+          - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="lg"] > :first-child', value: 512px }
+      owner: mermaid-diagram
+    - id: DNA-COMMON-DIAGRAM-NAMED
+      role: diagram
+      law: A drawn diagram is one image named by its label.
+      measure: { kind: a11y, select: '[data-grammar-mermaid-state="ready"] [data-grammar-mermaid-canvas] > [role="img"]', metric: name, op: set }
+      owner: mermaid-diagram
+    - id: DNA-COMMON-DIAGRAM-ERROR-SOURCE
+      role: diagram
+      law: A source the renderer refuses stays in the diagram's region as code under the error.
+      measure: { kind: count, scope: '[data-grammar-mermaid-state="error"]', select: '[data-component="FencedCodeBlock"] code', op: "=", value: 1 }
+      owner: mermaid-diagram
+    - id: DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN
+      role: diagram
+      law: Every labelled FlowGraph edge is repeated in the graph's screen-reader edge list.
+      measure: { kind: count, scope: '[data-component="FlowGraph"]', select: '[data-grammar-flow-edge-fallback] li', op: "=", value: { count: '.react-flow__edge-text', offset: 0 } }
+      owner: mermaid-diagram
   core:
     - id: DNA-CORE-PAGE-HEADER-HAIRLINE
       role: page-header

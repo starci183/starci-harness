@@ -59,7 +59,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | --- | --- |
 | run a command or follow a destination | [button](button.md) |
 | several actions together: a decision with its way out, peer commands on one object | [action-group](action-group.md) |
-| name the page: trail, heading, status, commands, page tabs | [page-header](page-header.md) |
+| frame a route page; name it: trail, heading, status, commands, page tabs | [page-header](page-header.md) |
 | switch which panel or area shows | [tabs](tabs.md) |
 | choose one value inside a form or toolbar | [segmented-control](segmented-control.md) |
 | filter or tag by peer categories; label an outcome; mark a status with a dot | [chip](chip.md) |
@@ -72,3 +72,4 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
 | a region with nothing in it yet, or a failed region | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
+| draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |
