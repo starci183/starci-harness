@@ -10,12 +10,14 @@ import type {
     ConfigSet,
     Decision,
     GoalSet,
+    OwnerRequestRow,
+    OwnerRequestSet,
     Overview,
     Ruling,
     TaskDetail,
     WorkflowDetail,
 } from "@contract"
-import { fixtureAction, fixtureConfig, fixtureInbox, fixtureOverview, fixtureTask, fixtureWorkflow } from "./fixtures"
+import { fixtureAction, fixtureConfig, fixtureInbox, fixtureOverview, fixtureOwnerRequests, fixtureTask, fixtureWorkflow } from "./fixtures"
 
 /* ------------------------------------------------------------------ connection */
 
@@ -140,9 +142,9 @@ export const getConnection = (): Connection | null => current
 /* ------------------------------------------------------------------ fixture timing */
 
 /** The reads a fixtures session can hold or delay, named as in `?hold=`. */
-export type FixtureRead = "overview" | "workflow" | "task" | "inbox" | "config"
+export type FixtureRead = "overview" | "workflow" | "task" | "inbox" | "config" | "ownerRequests"
 
-const FIXTURE_READS: readonly FixtureRead[] = ["overview", "workflow", "task", "inbox", "config"]
+const FIXTURE_READS: readonly FixtureRead[] = ["overview", "workflow", "task", "inbox", "config", "ownerRequests"]
 
 /**
  * `?hold=1` (or `?hold=overview,task`) keeps those fixture reads pending forever; `?delay=<ms>` answers every fixture read
@@ -233,6 +235,10 @@ export const api = {
         isFixturesMode()
             ? Promise.resolve(fixtureAction(`goal ${workflow}`))
             : request("POST", `/workflows/${segment(project)}/${segment(workflow)}/goal`, goal),
+    ownerRequests: (): Promise<OwnerRequestRow[]> =>
+        isFixturesMode() ? fixtureRead("ownerRequests", () => [...fixtureOwnerRequests]) : request("GET", "/owner-requests"),
+    askSupervisor: (set: OwnerRequestSet): Promise<ActionResult> =>
+        isFixturesMode() ? Promise.resolve(fixtureAction(`supervisor ask ${set.project}`)) : request("POST", "/owner-requests", set),
     config: (): Promise<ConfigEntry[]> =>
         isFixturesMode() ? fixtureRead("config", () => [...fixtureConfig]) : request("GET", "/config"),
     setConfig: (set: ConfigSet): Promise<ActionResult> =>
@@ -247,6 +253,7 @@ export type ActionRequest =
     | { readonly kind: "workflow"; readonly project: string; readonly workflow: string; readonly action: WorkflowAction }
     | { readonly kind: "goal"; readonly project: string; readonly workflow: string; readonly text: string }
     | { readonly kind: "config"; readonly set: ConfigSet }
+    | { readonly kind: "ownerRequest"; readonly set: OwnerRequestSet }
 
 export const runAction = (action: ActionRequest): Promise<ActionResult> => {
     switch (action.kind) {
@@ -258,5 +265,7 @@ export const runAction = (action: ActionRequest): Promise<ActionResult> => {
             return api.goal(action.project, action.workflow, { text: action.text })
         case "config":
             return api.setConfig(action.set)
+        case "ownerRequest":
+            return api.askSupervisor(action.set)
     }
 }

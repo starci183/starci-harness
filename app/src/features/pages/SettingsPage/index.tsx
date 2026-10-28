@@ -1,11 +1,10 @@
-import { SectionHeader } from "@starci/grammar/core"
 import { SettingsBlock } from "../../../components/blocks/SettingsBlock"
-import { SETTINGS } from "../../../modules/i18n"
+import { SettingsHeader } from "../../../components/blocks/SettingsBlock/header"
 
-/** Route `/settings` · Cài đặt: the page title, then the settings region. */
+/** Route `/settings` · Cài đặt: the page header band, then the settings region. */
 export const SettingsPage = () => (
     <div className="app-page-stack">
-        <SectionHeader level={1} title={SETTINGS.title} description={SETTINGS.description} />
+        <SettingsHeader />
         <SettingsBlock />
     </div>
 )

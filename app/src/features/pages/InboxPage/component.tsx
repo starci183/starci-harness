@@ -3,6 +3,7 @@ import type { ActionResult } from "@contract"
 import { InboxDetailBlock } from "../../../components/blocks/InboxDetailBlock"
 import { InboxHeaderBlock } from "../../../components/blocks/InboxHeaderBlock"
 import { InboxListBlock } from "../../../components/blocks/InboxListBlock"
+import { OwnerRequestBlock } from "../../../components/blocks/OwnerRequestBlock"
 import type { ResultNotice } from "../../../modules/types"
 
 /** Complete input of InboxPageBase: the selection the two blocks share, and the last ruling sent. */
@@ -23,7 +24,12 @@ export const InboxPageBase = (props: InboxPageBaseProps) => {
             {lastSent === null ? null : <Alert key={lastSent.n} tone="affirmative" title={lastSent.title} description={lastSent.description} />}
             <PrimaryRailLayout
                 primary={<InboxDetailBlock selectedKey={selectedKey} onSent={props.on.sent} />}
-                rail={<InboxListBlock selectedKey={selectedKey} onSelect={props.on.select} />}
+                rail={
+                    <div className="app-stack">
+                        <InboxListBlock selectedKey={selectedKey} onSelect={props.on.select} />
+                        <OwnerRequestBlock />
+                    </div>
+                }
                 railPosition="leading"
                 railWidth="wide"
                 collapsedOrder="rail-first"

@@ -10,6 +10,8 @@
  *   POST /api/inbox/:project/:decision/ruling       Ruling -> ActionResult
  *   POST /api/workflows/:project/:workflow/:action  (pause | resume | stop-graceful | stop-hard) -> ActionResult
  *   POST /api/workflows/:project/:workflow/goal     { text: string } -> ActionResult (a new goal version; the Kernel re-plans)
+ *   GET  /api/owner-requests                        -> OwnerRequestRow[] (newest first, open and closed)
+ *   POST /api/owner-requests                        OwnerRequestSet -> ActionResult (runs `supervisor ask` as the owner)
  *   GET  /api/config                                -> ConfigEntry[]
  *   POST /api/config                                ConfigSet -> ActionResult
  *   GET  /api/events                                text/event-stream of LiveEvent (one `data:` JSON per change)
@@ -203,6 +205,23 @@ export interface Decision {
 export interface Ruling {
     readonly option: string | null
     readonly note: string
+}
+
+/** What the owner hands a project's Supervisor: the project's key (a `ProjectSummary.key`) and the request's words. */
+export interface OwnerRequestSet {
+    readonly project: string
+    readonly text: string
+}
+
+/** One owner request in a project's Supervisor mailbox: open until a Supervisor command answers it, then closed by that command. */
+export interface OwnerRequestRow {
+    readonly id: string
+    readonly project: string
+    readonly text: string
+    readonly at: string
+    readonly status: "open" | "closed"
+    /** The Supervisor command that closed it; null while open. */
+    readonly cmdId: string | null
 }
 
 /** A workflow's next goal text. */
