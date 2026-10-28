@@ -1,0 +1,63 @@
+schema: starci/scenario@1
+id: heavy-project-fair-share
+group: resources
+title: "one project's queued gate never starves another project's small typecheck"
+inject: >-
+  another project already runs heavy.projectSlots heavy commands and has an older command queued behind them (its rows are held
+  by a live process), with a free slot left under the cap; this project's check run then queues its typecheck
+expect: >-
+  the queue is served by age with a per-project cap: the other project's older command is passed over while it runs
+  projectSlots commands and this project waits under its own cap, so this project's typecheck takes the free slot and its
+  check run ends green; the other project's rows are untouched
+pass:
+  - the check run exits 0 although an older command of another project waits
+  - the other project's queued row still waits and its two running rows still run
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+repo:
+  files:
+    package.json: '{"name": "bench-heavy-fair", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    tsconfig.json: '{"compilerOptions": {"strict": true}, "include": ["src"]}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/typescript/bin/tsc: "setTimeout(() => process.exit(0), 500)\n"
+    node_modules/eslint/bin/eslint.js: "process.exit(0)\n"
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - starci: [config, set, liveness.heavy.reserveMb, "0"]
+  - name: no CPU holds work back, whatever else this host runs
+    starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
+  - name: three slots, two per project while another waits
+    starci: [config, set, liveness.heavy.maxSlots, "3"]
+  - starci: [config, set, liveness.heavy.projectSlots, "2"]
+  - git: [commit, -q, -am, "bench: three slots"]
+  - write: { path: src/changed.ts, content: "export const changed = 1\n" }
+  - name: a live process stands in for the other project's commands
+    serve:
+      stub: hold
+      cwd: ${run}
+      as: other
+  - name: the governor's tables exist
+    starci: [host, load]
+  - name: the other project runs two commands and queued a third before this one
+    sql:
+      db: machine
+      exec: >-
+        INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES
+          ('other-1', ${other.token}, 'build', 'npm run build other', '${run}/other-project', 'running', '2020-01-01T00:00:00.000Z'),
+          ('other-2', ${other.token}, 'build', 'npm run build other', '${run}/other-project', 'running', '2020-01-01T00:00:01.000Z'),
+          ('other-3', ${other.token}, 'test', 'jest other', '${run}/other-project', 'waiting', '2020-01-01T00:00:02.000Z')
+  - name: this project's check run takes the free slot
+    starci: [check, run, --base, HEAD]
+    expect: { exit: 0 }
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT group_concat(id || ':' || state, ',') FROM (SELECT id, state FROM heavy_slots WHERE id LIKE 'other-%' ORDER BY id)"
+        equals: ["other-1:running,other-2:running,other-3:waiting"]

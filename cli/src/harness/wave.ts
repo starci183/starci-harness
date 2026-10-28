@@ -1,7 +1,5 @@
 import type { DatabaseSync } from "node:sqlite"
-import { hostname } from "node:os"
 import { join } from "node:path"
-import { pidAlive } from "../shared/exec.js"
 import { git, nulPaths, resolveSha } from "../shared/git.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
@@ -17,6 +15,8 @@ import { loadPolicy } from "./policy.js"
 import { runCheck } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
+import { jobBusy, recordJob, waveJob } from "./jobs.js"
+import type { SettleJob } from "./jobs.js"
 import { settleLockHolder, thisVerifier, withSettleLock } from "./settle.js"
 import type { Verifier } from "./settle.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus, setVerdict, taskCheckout } from "./tasks.js"
@@ -49,6 +49,9 @@ export const splitChecks = (root: string, task: TaskRow, checks: readonly Resolv
     if (loadPolicy(root).quality.verify.tier !== "wave" || (task.workflowId === null && !isSupervisorWorker(task.id))) return { own: checks, wave: [] }
     return { own: checks.filter((check) => !isWaveCheck(check)), wave: checks.filter(isWaveCheck) }
 }
+
+/** Whether a task's own verify runs a tool (`needsInstall` of the checks it keeps): the verify a coordinator's turn starts as a detached job. */
+export const verifyIsHeavy = (root: string, task: TaskRow): boolean => needsInstall(splitChecks(root, task, resolveChecks(task.contract, loadOps())).own)
 
 /**
  * One task of a wave: its row, the heavy checks it left, the files it landed, the base its own diff starts from, and the module
@@ -232,55 +235,11 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
 /** The wave lock of a workflow (a ledger meta row, harness/settle.ts withSettleLock): one wave of it runs at a time on the host. */
 export const waveLockKey = (workflow: string): string => `wave-lock:${workflow}`
 
-/** The job row of a workflow's detached wave (a ledger meta row): who started it and when, until the job takes the wave lock. */
-const waveJobKey = (workflow: string): string => `wave-job:${workflow}`
-
-/** How long a started job may take to reach the wave lock before another caller may start one again. */
-const JOB_START_MS = 120_000
-
-/**
- * Claims the start of a workflow's detached wave job for this process, under BEGIN IMMEDIATE so concurrent callers start one job:
- * undefined when this caller claimed it (it then starts the job and records its pid with recordWaveJob), else why it must not:
- * the wave runs (its lock is held) or a job started moments ago has not reached the lock yet.
- */
-export const claimWaveJob = (db: DatabaseSync, workflow: string): string | undefined => {
-    const running = settleLockHolder(db, waveLockKey(workflow))
-    if (running !== undefined) return waveRunning(workflow, running).message
-    db.exec("BEGIN IMMEDIATE")
-    try {
-        const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(waveJobKey(workflow))
-        const job = row === undefined ? undefined : (JSON.parse(String(row.value)) as { readonly pid: number; readonly host: string; readonly at: string })
-        if (job !== undefined && Date.now() - Date.parse(job.at) < JOB_START_MS && (job.host !== hostname() || pidAlive(job.pid))) {
-            db.exec("COMMIT")
-            return `the wave of workflow ${workflow} was started as a job (pid ${String(job.pid)}) at ${job.at}; its verdict is read on the next step`
-        }
-        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(waveJobKey(workflow), JSON.stringify({ pid: process.pid, host: hostname(), at: now() }))
-        db.exec("COMMIT")
-        return undefined
-    } catch (error: unknown) {
-        db.exec("ROLLBACK")
-        throw error
-    }
-}
-
-/** Records the pid of the job a claim started (or, with null, gives a failed start's claim back). */
-export const recordWaveJob = (db: DatabaseSync, workflow: string, pid: number | null): void => {
-    if (pid === null) {
-        db.prepare("DELETE FROM meta WHERE key = ?").run(waveJobKey(workflow))
-        return
-    }
-    db.prepare("UPDATE meta SET value = json_set(value, '$.pid', ?) WHERE key = ?").run(pid, waveJobKey(workflow))
-    recordEvent(db, "wave-started", workflow, { pid })
-}
+/** The detached wave job of a workflow (harness/jobs.ts), which takes its wave lock once it runs. */
+export const waveJobOf = (workflow: string): SettleJob => waveJob(workflow, waveLockKey(workflow))
 
 /** Whether a wave of the workflow runs or a job to run it is starting: what `workflow wave --wait` waits out. */
-export const waveBusy = (db: DatabaseSync, workflow: string): boolean => {
-    if (settleLockHolder(db, waveLockKey(workflow)) !== undefined) return true
-    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(waveJobKey(workflow))
-    if (row === undefined) return false
-    const job = JSON.parse(String(row.value)) as { readonly pid: number; readonly host: string; readonly at: string }
-    return Date.now() - Date.parse(job.at) < JOB_START_MS && (job.host !== hostname() || pidAlive(job.pid))
-}
+export const waveBusy = (db: DatabaseSync, workflow: string): boolean => jobBusy(db, waveJobOf(workflow)) !== undefined
 
 /** The refusal a caller meets when another process runs the workflow's wave: it starts none of its own and waits for that verdict. */
 export const WAVE_RUNNING = "WAVE_RUNNING"
@@ -300,7 +259,7 @@ const waveRunning = (workflow: string, holder: Verifier | undefined): Refusal =>
  */
 const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, timeoutMs: number): Promise<WaveReport | undefined> => {
     // The lock now stands for the wave; a job row that started it is spent.
-    db.prepare("DELETE FROM meta WHERE key = ?").run(waveJobKey(workflow))
+    recordJob(db, waveJobOf(workflow), null)
     const ids = waveDue(db, workflow)
     const first = ids[0]
     if (first === undefined) return undefined

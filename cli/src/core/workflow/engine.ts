@@ -28,7 +28,10 @@ import { inOrder } from "../../harness/sequential.js"
 import { taskVerifyVerb } from "../task/verify.js"
 import { checkRunVerb } from "../check/run.js"
 import { loadPolicy } from "../../harness/policy.js"
-import { claimWaveJob, recordWaveJob, runWave, WAVE_RUNNING } from "../../harness/wave.js"
+import { runWave, verifyIsHeavy, WAVE_RUNNING, waveJobOf } from "../../harness/wave.js"
+import { claimJob, finalJob, recordJob, verifyJob } from "../../harness/jobs.js"
+import type { SettleJob } from "../../harness/jobs.js"
+import { heavyWaitsRefused } from "../../harness/heavy.js"
 import { startDetached } from "../../shared/exec.js"
 import { fileURLToPath } from "node:url"
 import { tendNeeds } from "../needs/tend.js"
@@ -179,10 +182,18 @@ const recoverOrphans = async (context: VerbContext, snapshot: Snapshot): Promise
     })
 }
 
-/** Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. */
-const settleReported = async (context: VerbContext, snapshot: Snapshot): Promise<StepAction[]> => {
+/**
+ * Settles each reported node whose result is done through `task verify`: green commits its paths, red fails it. In a
+ * coordinator's turn (`heavyWaitsRefused`) a verify that runs a tool (harness/wave.ts verifyIsHeavy) starts as a detached job
+ * instead, so the turn never waits on a heavy-command slot; a later step reads its verdict.
+ */
+const settleReported = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const reported = snapshot.views.flatMap((view) => (view.state === "reported" && view.task !== null ? [{ key: view.key, task: view.task.id }] : []))
     return inOrder(reported, async ({ key, task }): Promise<StepAction> => {
+        if (heavyWaitsRefused() && withLedger(root, (db) => verifyIsHeavy(root, getTask(db, task)))) {
+            const [started] = await startJob(root, verifyJob(task), ["task", "verify", task])
+            return { key, task, action: started?.action ?? "wait", detail: started?.detail ?? "" }
+        }
         try {
             const verified = await taskVerifyVerb.run(context, { task, contract: undefined, record: false, "no-commit": false, recover: false })
             const data = verified.data as { readonly verdict?: string; readonly status?: string; readonly checks?: readonly { readonly name: string; readonly status: string }[] }
@@ -379,12 +390,12 @@ const waveKeys = (snapshot: Snapshot): ReadonlySet<string> =>
  * wave), so a wave covers every task that landed since the last one, a dependent never starts on unjudged work, and a
  * workflow is never done before its last wave. A red wave fails the tasks whose files are red; the Kernel retries them.
  */
-const waveActions = async (root: string, snapshot: Snapshot, detach: boolean): Promise<StepAction[]> => {
+const waveActions = async (root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     if (snapshot.waveDue.length === 0 || snapshot.live > 0 || !DISPATCHING.includes(snapshot.workflow.status)) return []
     const waiting = waveKeys(snapshot)
     const free = snapshot.views.some((view) => view.state === "ready" && !(snapshot.nodes.find((node) => node.key === view.key)?.dependsOn.some((dep) => waiting.has(dep)) ?? false))
     if (free) return []
-    if (detach) return startWaveJob(root, snapshot.workflow.id)
+    if (heavyWaitsRefused()) return startJob(root, waveJobOf(snapshot.workflow.id), ["workflow", "wave", snapshot.workflow.id])
     const timeoutMs = loadPolicy(root).quality.runtime.stepTimeoutSeconds * 1000
     try {
         const wave = await withLedgerAsync(root, (db) => runWave(db, root, snapshot.workflow.id, timeoutMs))
@@ -410,22 +421,22 @@ const waveActions = async (root: string, snapshot: Snapshot, detach: boolean): P
 const selfEntry = (): string => fileURLToPath(new URL("../../main.js", import.meta.url))
 
 /**
- * Starts the workflow's due wave as a detached job (`starci workflow wave <id>`, single-runner under its wave lock) and returns at
- * once, so a coordinator's turn or the Supervisor's tick never waits on heavy work (an install, a lint, a test suite) or on a
- * heavy-command slot. One job per workflow: a caller that finds the wave running, or a job starting, starts none. The job records
- * the verdict in the ledger (wave-verified, the tasks it returns failed), which every later step reads.
+ * Starts a detached settle job (harness/jobs.ts: a wave, a task's verify, a final verify) as `starci <argv>` and returns at once,
+ * so a coordinator's turn or the Supervisor's tick never waits on heavy work (an install, a lint, a test suite) or on a
+ * heavy-command slot. One job at a time: a caller that finds it running, or a job starting, starts none. The job records its
+ * verdict in the ledger, which every later step reads.
  */
-const startWaveJob = async (root: string, workflow: string): Promise<StepAction[]> => {
-    const busy = withLedger(root, (db) => claimWaveJob(db, workflow))
+const startJob = async (root: string, job: SettleJob, argv: readonly string[]): Promise<StepAction[]> => {
+    const busy = withLedger(root, (db) => claimJob(db, job))
     if (busy !== undefined) return [{ key: null, task: null, action: "wait", detail: busy }]
     try {
-        const pid = await startDetached([process.execPath, selfEntry(), "--cwd", root, "workflow", "wave", workflow], root)
-        withLedger(root, (db) => { recordWaveJob(db, workflow, pid) })
-        return [{ key: null, task: null, action: "wait", detail: `wave started as a detached job (pid ${String(pid)}); its verdict is read on the next step` }]
+        const pid = await startDetached([process.execPath, selfEntry(), "--cwd", root, ...argv], root)
+        withLedger(root, (db) => { recordJob(db, job, pid) })
+        return [{ key: null, task: null, action: "wait", detail: `${job.what} started as a detached job (pid ${String(pid)}); its verdict is read on the next step` }]
     } catch (error: unknown) {
-        withLedger(root, (db) => { recordWaveJob(db, workflow, null) })
+        withLedger(root, (db) => { recordJob(db, job, null) })
         const refusal = asRefusal(error)
-        return [{ key: null, task: null, action: "problem", detail: `the wave job did not start (${refusal.code}): ${refusal.message}; the next step starts it again` }]
+        return [{ key: null, task: null, action: "problem", detail: `${job.what} did not start as a job (${refusal.code}): ${refusal.message}; the next step starts it again` }]
     }
 }
 
@@ -503,34 +514,27 @@ const inlineNext = (root: string, snapshot: Snapshot): InlineNext | null => {
 }
 
 /**
- * How a step settles: `detachWave` starts a due wave as a detached job and returns (the Supervisor's tick and `supervisor next`,
- * a Kernel's `kernel next`), so a coordinator never blocks on heavy work; unset, the step runs the wave itself and reports its
- * verdict (`workflow step`, the inline runner).
- */
-export interface SettleOptions {
-    readonly detachWave?: boolean
-}
-
-/**
  * The settling half of a step, which needs no coordinator's turn: reconcile each verifying task whose verifier died (`task
  * verify --recover`, git first), verify every reported task, close the seats of every task whose result is in, remove the Op
  * worktrees of ended tasks, tend the shared needs its tasks wait on, own or resolve (core/needs/tend.ts: park, route, judge the
- * resolver, release), release each hold whose condition is met (harness/holds.ts), and run a due wave, then move the workflow's status. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
+ * resolver, release), release each hold whose condition is met (harness/holds.ts), and run a due wave, then move the workflow's status.
+ * In a coordinator's turn (harness/heavy.ts `refuseHeavyWaits`: `kernel next`, `kernel submit`, `supervisor next`, `supervisor tick`)
+ * a heavy verify and the wave start as detached jobs (`startJob`), so the turn never waits on heavy work. `workflow step` runs it, and `supervisor tick` runs it for every workflow of a project
  * whose Supervisor it acts for, so a filed result is verified and its worker's seat closed whether or not its Kernel takes a turn.
  * It launches nothing itself; the amend a released need runs steps the workflow, whose launches only a caller that may act as the
  * Kernel's terminal makes (launchWaits).
  */
-export const settleWorkflow = async (context: VerbContext, root: string, id: string, options: SettleOptions = {}): Promise<StepAction[]> => {
+export const settleWorkflow = async (context: VerbContext, root: string, id: string): Promise<StepAction[]> => {
     if (!SETTLING.includes(readSnapshot(root, id).workflow.status)) return []
     const actions = [
         ...(await recoverOrphans(context, readSnapshot(root, id))),
-        ...(await settleReported(context, readSnapshot(root, id))),
+        ...(await settleReported(context, root, readSnapshot(root, id))),
         ...(await closeSettledSeats(root, readSnapshot(root, id))),
         ...(await worktreeSweepActions(root, id)),
         ...(await tendNeeds(context, root, id)),
         ...(await releaseHolds(root, { workflow: id })).map((detail): StepAction => ({ key: null, task: null, action: "released", detail })),
     ]
-    actions.push(...(await waveActions(root, readSnapshot(root, id), options.detachWave === true)))
+    actions.push(...(await waveActions(root, readSnapshot(root, id))))
     reconcile(root, id)
     return actions
 }
@@ -542,7 +546,7 @@ export const settleWorkflow = async (context: VerbContext, root: string, id: str
  * the workflow to the status its nodes call for; a stopped workflow's Kernel terminal is closed.
  * This is what a loop, the daemon or an inline chat agent calls.
  */
-export const stepWorkflow = async (context: VerbContext, root: string, id: string, options: SettleOptions = {}): Promise<WorkflowReport> => {
+export const stepWorkflow = async (context: VerbContext, root: string, id: string): Promise<WorkflowReport> => {
     let snapshot = readSnapshot(root, id)
     const { status } = snapshot.workflow
     if (status === "defined") throw new Refusal("WORKFLOW_NOT_STARTED", `workflow ${id} is defined, not started; run starci workflow start ${id}`)
@@ -552,7 +556,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(
             ...(await cancelTasks(context, stale, `workflow ${id}: no node of graph v${String(snapshot.workflow.graphVersion)} carries it`)),
             ...(await checkLiveness(context, root, readSnapshot(root, id))),
-            ...(await settleWorkflow(context, root, id, options)),
+            ...(await settleWorkflow(context, root, id)),
         )
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))
@@ -580,11 +584,21 @@ const redSteps = (data: unknown): string[] => {
  * The final verify of a workflow whose tasks deferred their composition rules (harness/workflow.ts needsFinalVerify): once every
  * node is done and none is live, `check run --workflow` judges every deferred module in full, with no deferral, on the code
  * the workflow's checkout holds; its verdict is recorded for the current graph version, which derivedStatus reads, so the
- * workflow is done only when it is green and a module no task composed blocks it. It runs once per graph version.
+ * workflow is done only when it is green and a module no task composed blocks it. It runs once per graph version; in a coordinator's
+ * turn it starts as a detached job (`workflow wave --final`).
  */
 const finalVerify = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
-    const settled = snapshot.views.every((view) => view.state === "done") && snapshot.live === 0
-    if (!SETTLING.includes(snapshot.workflow.status) || !settled || !needsFinalVerify(snapshot) || currentFinalVerify(snapshot) !== null) return []
+    if (!finalVerifyDue(snapshot)) return []
+    if (heavyWaitsRefused()) return startJob(root, finalJob(snapshot.workflow.id), ["workflow", "wave", snapshot.workflow.id, "--final"])
+    return runFinalVerify(context, root, snapshot)
+}
+
+/** Whether a workflow's final verify is due: every node done, none live, a deferred module to judge, none judged for this graph. */
+export const finalVerifyDue = (snapshot: Snapshot): boolean =>
+    SETTLING.includes(snapshot.workflow.status) && snapshot.views.every((view) => view.state === "done") && snapshot.live === 0 && needsFinalVerify(snapshot) && currentFinalVerify(snapshot) === null
+
+/** Runs a due final verify now and records its verdict for the current graph version (`finalVerify`; the detached job of `workflow wave --final`). */
+export const runFinalVerify = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const checkout = withLedger(root, (db) => workflowWorktreeOf(db, snapshot.workflow.id)) ?? root
     let verdict: "green" | "red"
     let reason: string

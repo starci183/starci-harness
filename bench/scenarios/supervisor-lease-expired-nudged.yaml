@@ -1,0 +1,74 @@
+schema: starci/scenario@1
+id: supervisor-lease-expired-nudged
+group: orca
+title: "a Supervisor idle at its prompt past its lease, with nothing waiting, is reported stalled and nudged back into its loop"
+inject: >-
+  the Supervisor ended its turn ("I'm still looping.") and sits idle at its prompt; it has not run supervisor next for fifty
+  minutes, so its lease expired; no decision or owner request waits on it
+expect: >-
+  `supervisor status` says `stalled (lease expired at ...)`, never alive; the scheduled tick's stall ladder treats an expired
+  lease as a stall even with nothing waiting and types the Supervisor's loop prompt into its terminal once; a second tick inside
+  the grace adds no nudge
+pass:
+  - supervisor status says stalled with the lease's expiry and not alive
+  - exactly one nudge typed into the Supervisor's terminal, recorded as a stall-nudged host event naming the expired lease
+  - no second Supervisor
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: lull
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: lull
+  - name: the Supervisor sits idle at its prompt
+    orca:
+      set:
+        tuiIdle:
+          ${supervisor.terminal}: true
+  - name: its last supervisor next was fifty minutes ago
+    sql:
+      db: machine
+      exec: UPDATE project_supervisors SET lease_until = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-50 minutes') WHERE ended_at IS NULL
+  - name: status says stalled, never alive
+    starci: [supervisor, status]
+    expect:
+      contains: '"liveness": "stalled"'
+  - name: the owner's scheduled tick nudges it
+    starci: [supervisor, tick]
+    expect:
+      contains: "its lease expired at"
+  - name: the next tick inside the grace
+    starci: [supervisor, tick]
+    expect:
+      contains: nudged at
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${supervisor.terminal}
+        count: 1
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind = 'stall-nudged' AND json_extract(data_json, '$.leaseExpired') = 1 AND json_extract(data_json, '$.decision') IS NULL"
+        equals: [1]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM project_supervisors
+        equals: [1]

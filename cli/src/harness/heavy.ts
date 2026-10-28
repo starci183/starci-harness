@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { availableParallelism, constants, cpus, freemem } from "node:os"
-import { basename, join } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
@@ -23,6 +23,8 @@ const heavySchema = z.strictObject({
     maxSlots: z.number().int().positive().optional(),
     maxCpuPercent: z.number().positive().max(100),
     cpuWindowSeconds: z.number().int().positive(),
+    cpuStarveMinutes: z.number().positive(),
+    projectSlots: z.number().int().positive(),
     pollSeconds: z.number().positive(),
     estimateMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
     memoryMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
@@ -31,6 +33,7 @@ const heavySchema = z.strictObject({
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
     bootProofTimeoutSeconds: z.number().int().positive(),
+    scannerCpuPercent: z.number().positive(),
 })
 
 /** The `heavy` block of ops/liveness.yaml: the host's heavy-command slots, the RAM and CPU that admit them, each kind's memory cap and the seat RAM floor. */
@@ -85,9 +88,11 @@ export const slotCap = (rules: HeavyRules, cores: number = availableParallelism(
  * Dynamic admission from RAM and CPU. A command of `kind` is admitted when the CPU average is at or under its ceiling, fewer than
  * the cap run, and (free RAM - reserveMb) covers the estimates of the running commands plus its own; while nothing runs, one is
  * admitted once free RAM covers its own estimate, so a host under its reserve still makes progress. `running` are the kinds
- * running now. Without a kind, `admits` is judged for the smallest estimate (what `host load` reports).
+ * running now. Without a kind, `admits` is judged for the smallest estimate (what `host load` reports). `starved` (the queue
+ * admitted nothing for cpuStarveMinutes, `starvedSince`) lifts the CPU ceiling for one admission: high CPU slows the queue, it
+ * never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, cores?: number): HostLoad & { readonly admits: boolean } => {
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, cores?: number, starved = false): HostLoad & { readonly admits: boolean } => {
     const cap = slotCap(rules, cores)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
@@ -95,14 +100,18 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const committedMb = running.reduce((sum, name) => sum + estimate(name), 0)
     const own = kind === undefined ? Math.min(...Object.values(rules.estimateMb)) : estimate(kind)
     const room = freeMb - rules.reserveMb - committedMb
-    const busy = cpuPercent > rules.maxCpuPercent
+    const hot = cpuPercent > rules.maxCpuPercent
+    const busy = hot && !starved
     const full = running.length >= cap
     const fits = running.length === 0 ? freeMb >= own : room >= own
     const admits = !busy && !full && fits
-    const more = busy ? 0 : Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
+    const fitting = Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
+    // A starved queue under a hot CPU takes one command at a time.
+    const more = busy ? 0 : hot ? Math.min(1, fitting) : fitting
     const admitted = running.length + more
     const reasons = [
-        ...(busy ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%: no new heavy command starts`] : []),
+        ...(busy ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%: no new heavy command starts until the queue admitted nothing for ${String(rules.cpuStarveMinutes)} min, then the oldest fitting one does`] : []),
+        ...(hot && starved ? [`CPU ${String(cpuPercent)}% over ${String(rules.cpuWindowSeconds)} s is above ${String(rules.maxCpuPercent)}%, but the queue admitted nothing for ${String(rules.cpuStarveMinutes)} min: the oldest fitting command starts, one at a time`] : []),
         ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`})`] : []),
         ...(!busy && !full && room < own ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
     ]
@@ -121,7 +130,11 @@ CREATE TABLE IF NOT EXISTS cpu_samples (at_ms INTEGER NOT NULL, idle REAL NOT NU
 CREATE TABLE IF NOT EXISTS seat_holds (
   task TEXT PRIMARY KEY, repo TEXT NOT NULL, since TEXT NOT NULL, last_at TEXT NOT NULL, free_mb INTEGER NOT NULL, floor_mb INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS host_starvation (id INTEGER PRIMARY KEY CHECK (id = 1), since TEXT NOT NULL, ticket TEXT);
+CREATE TABLE IF NOT EXISTS heavy_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `
+
+/** The heavy_meta row holding the epoch ms of the governor's last admission, what the starvation clock runs from. */
+const LAST_ADMIT = "last-admit-ms"
 
 /** This host's CPU time so far, summed over every core. */
 const cpuTimes = (): { readonly idle: number; readonly total: number } => {
@@ -169,12 +182,63 @@ export const cpuPercent = async (rules: HeavyRules): Promise<number> => {
 /** The kinds of the heavy commands running now (live processes only). */
 const runningKinds = (db: DatabaseSync): string[] => db.prepare("SELECT kind FROM heavy_slots WHERE state = 'running'").all().map((row) => String(row.kind))
 
-/** The host's load now, over the commands running now. */
+/**
+ * Whether the queue is starved: commands wait and none was admitted for cpuStarveMinutes, counted from the later of the last
+ * admission and the oldest wait (a queue that formed just now after an idle hour is not starved).
+ */
+const starvedQueue = (db: DatabaseSync, rules: HeavyRules, at: number = Date.now()): boolean => {
+    const oldest = db.prepare("SELECT MIN(at) AS at FROM heavy_slots WHERE state = 'waiting'").get()?.at
+    if (oldest === null || oldest === undefined) return false
+    const last = Number(db.prepare("SELECT value FROM heavy_meta WHERE key = ?").get(LAST_ADMIT)?.value ?? 0)
+    return at - Math.max(last, Date.parse(String(oldest))) >= rules.cpuStarveMinutes * 60_000
+}
+
+/** The host's load now, over the commands running now, with the starvation rule as the queue stands. */
 export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<HostLoad> => {
     const cpu = await cpuPercent(rules)
     heavySlots()
-    const running = withGovernor((db) => runningKinds(db))
-    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running)
+    const { running, starved } = withGovernor((db) => ({ running: runningKinds(db), starved: starvedQueue(db, rules) }))
+    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, undefined, starved)
+}
+
+const repositoryKeys = new Map<string, string>()
+
+/**
+ * The repository a heavy command's folder belongs to, for the per-project fairness cap: the folder holding `.git`, or for a
+ * linked worktree (a `.git` file naming `<main>/.git/worktrees/<name>`) its main checkout; a folder in no repository is its own.
+ */
+export const repositoryKeyOf = (cwd: string): string => {
+    const known = repositoryKeys.get(cwd)
+    if (known !== undefined) return known
+    const walk = (dir: string): string => {
+        const dotGit = join(dir, ".git")
+        if (existsSync(dotGit)) {
+            if (statSync(dotGit).isDirectory()) return dir
+            const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+            return (gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]) ?? dir
+        }
+        const parent = dirname(dir)
+        return parent === dir ? cwd : walk(parent)
+    }
+    const key = resolve(walk(resolve(cwd))).replaceAll("\\", "/").toLowerCase()
+    repositoryKeys.set(cwd, key)
+    return key
+}
+
+/**
+ * The waiting rows in the order the governor serves them: a project with fewer commands running first, then by age (the
+ * oldest wait first); a project already running projectSlots commands while another project waits is passed over.
+ */
+const servingOrder = (rows: readonly { readonly id: string; readonly kind: string; readonly cwd: string; readonly state: string; readonly at: string }[], rules: HeavyRules): { readonly id: string; readonly kind: string }[] => {
+    const runningBy = new Map<string, number>()
+    for (const row of rows) if (row.state === "running") runningBy.set(repositoryKeyOf(row.cwd), (runningBy.get(repositoryKeyOf(row.cwd)) ?? 0) + 1)
+    const waiting = rows.filter((row) => row.state === "waiting").map((row) => ({ ...row, project: repositoryKeyOf(row.cwd) }))
+    const held = (project: string): number => runningBy.get(project) ?? 0
+    // The cap passes a project over only for another that is under it; when every waiting project is at its cap, none is held back.
+    const open = waiting.some((row) => held(row.project) < rules.projectSlots)
+    return waiting
+        .filter((row) => !open || held(row.project) < rules.projectSlots)
+        .sort((a, b) => held(a.project) - held(b.project) || a.at.localeCompare(b.at) || a.id.localeCompare(b.id))
 }
 
 /** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for a slot. */
@@ -206,19 +270,34 @@ export const heavySlots = (): HeavySlot[] =>
     })
 
 /**
- * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last room): admission is judged against
- * the commands running at this instant and the free RAM read now; admitted, the row turns running, else it stays (or becomes)
- * a waiting row. The load it was judged on, and the holders when it waits.
+ * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last room). The
+ * row joins the queue (keeping the time it first waited), and the queue is served in `servingOrder`: the first waiting row that
+ * admission admits now, against the commands running at this instant and the free RAM read now, is the one that may start; this
+ * row turns running only when it is that one. The CPU ceiling holds the whole queue until it is starved (`starvedQueue`), and
+ * then admits the first fitting row alone. The load it was judged on, and the holders when it waits.
  */
 const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, cpu: number): { readonly load: HostLoad; readonly holders: string[] | null } =>
     withGovernor((db) => {
         db.exec(TABLES)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
+        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES (?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, now())
+        const rows = db.prepare("SELECT id, kind, cwd, state, at FROM heavy_slots").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at) }))
         const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
-        const load = admission(rules, Math.floor(freemem() / 1_048_576), cpu, runningKinds(db), slot.kind as HeavyKind)
-        const state = load.admits ? "running" : "waiting"
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, state, at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET state = excluded.state").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, state, now())
-        return { load, holders: state === "running" ? null : running.map((row) => `${String(row.label)} (pid ${String(row.pid)})`) }
+        const kinds = runningKinds(db)
+        const freeMb = Math.floor(freemem() / 1_048_576)
+        const starved = starvedQueue(db, rules)
+        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu, kinds, kind as HeavyKind, undefined, starved)
+        const order = servingOrder(rows, rules)
+        const first = order.find((row) => judge(row.kind).admits)
+        const load = judge(slot.kind)
+        if (first?.id !== slot.id) {
+            const place = order.findIndex((row) => row.id === slot.id)
+            const queued = place < 0 ? "its project runs projectSlots commands while another project waits" : `${String(place)} ahead of it in the queue`
+            return { load: { ...load, reason: `${load.reason}; ${queued}` }, holders: running.map((row) => `${String(row.label)} (pid ${String(row.pid)})`) }
+        }
+        db.prepare("UPDATE heavy_slots SET state = 'running' WHERE id = ?").run(slot.id)
+        db.prepare("INSERT INTO heavy_meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(LAST_ADMIT, String(Date.now()))
+        return { load, holders: null }
     })
 
 const setChild = (id: string, pid: number): void => {
@@ -266,12 +345,30 @@ export const testWorkerArgs = (argv: readonly string[], held: Held): readonly st
     return [...argv, `--maxWorkers=${held.pressure ? "1" : held.rules.testWorkers}`]
 }
 
+/** The refusal a heavy command meets in a coordinator's turn (`refuseHeavyWaits`) when the governor does not admit it at once. */
+export const HEAVY_DEFERRED = "HEAVY_DEFERRED"
+
+let waitsRefused = false
+
+/**
+ * Marks this process as a coordinator's turn (`kernel next`, `kernel submit`, `supervisor next`, `supervisor tick`): its own heavy
+ * commands never queue (`withHeavySlot` refuses HEAVY_DEFERRED instead of waiting), and the workflow step it runs starts every
+ * heavy settle (a verify, a wave, a final verify) as a detached job (`heavyWaitsRefused`, core/workflow/engine.ts).
+ */
+export const refuseHeavyWaits = (): void => {
+    waitsRefused = true
+}
+
+/** Whether this process is a coordinator's turn that never waits in the heavy queue (`refuseHeavyWaits`). */
+export const heavyWaitsRefused = (): boolean => waitsRefused
+
 /**
  * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a slot of the host-wide
  * semaphore in machine.sqlite; nothing the harness spawns that is heavy runs any other way (the heavy-sites audit in
  * cli/scripts holds it). Admission reads free memory and the CPU average (`admission`); a command with no slot is a waiting row
  * (`starci host load` shows the queue), polls every `heavy.pollSeconds`, and its wait is printed on stderr and recorded as a
- * `heavy-wait` host event; waiting never fails the command. The child runs below normal priority, a node tool under the kind's
+ * `heavy-wait` host event; waiting never fails the command, except in a coordinator's turn (`refuseHeavyWaits`), which is refused
+ * HEAVY_DEFERRED at once. The child runs below normal priority, a node tool under the kind's
  * `--max-old-space-size`, and inherits HEAVY_HELD_ENV: a process that inherited it already runs under its parent's slot and
  * takes no second one.
  */
@@ -293,6 +390,10 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         const tried = tryAcquire(slot, rules, await cpuPercent(rules))
         load = tried.load
         if (tried.holders === null) break
+        if (waitsRefused) {
+            release(slot.id)
+            throw new Refusal(HEAVY_DEFERRED, `${label} was not admitted at once (${load.reason}) and a coordinator's turn never waits in the heavy queue; it runs detached or on a later turn`)
+        }
         if (!announced) {
             process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
             announced = true

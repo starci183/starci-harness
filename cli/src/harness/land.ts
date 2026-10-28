@@ -334,6 +334,10 @@ const settleBranch = async (made: OpWorktree): Promise<WorktreeRemoval["branch"]
     if (!(await refExists(made.target, `refs/heads/${made.branch}`))) return "gone"
     const tip = await resolveSha(made.target, `refs/heads/${made.branch}`)
     if (tip !== made.fork && !(await isAncestor(made.target, tip, `refs/heads/${made.targetBranch}`))) return "kept"
+    // Another settler (a detached verify job, a step's sweep) may delete it between the look and the delete: then it is gone.
+    const deleted = await captureGit(["branch", "-D", made.branch], made.target)
+    if (deleted.exitCode === 0) return "deleted"
+    if (!(await refExists(made.target, `refs/heads/${made.branch}`))) return "gone"
     await git(made.target, ["branch", "-D", made.branch])
     return "deleted"
 }

@@ -39,6 +39,7 @@ import { harnessCause } from "../../harness/revive.js"
 import { CHECK_PREMISE, premiseChecks } from "../../harness/check-premise.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
 import { recordHolds } from "../../harness/holds.js"
+import { refuseHeavyWaits } from "../../harness/heavy.js"
 import type { StepAction } from "../workflow/engine.js"
 
 /** The reason a workflow carries while the harness holds it for an unreachable Orca; only this pause is lifted by the driver. */
@@ -588,8 +589,9 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
         binary = probed
         actions.push(...holdForOrca(root, workflowId, null), ...(await drainMail(root, workflowId, binary, context.cwd, undefined)))
     }
-    // A Kernel's turn never waits on a wave: it starts as a detached job and its verdict is read on a later tick.
-    const report = await stepWorkflow(context, root, workflowId, { detachWave: true })
+    // A Kernel's turn never waits on heavy work (refuseHeavyWaits): a heavy verify, the wave and the final verify start as
+    // detached jobs and their verdicts are read on a later tick.
+    const report = await stepWorkflow(context, root, workflowId)
     actions.push(...report.actions)
     if (binary !== null) {
         const after = readSnapshot(root, workflowId)
@@ -613,7 +615,7 @@ const inlineTask = (root: string, workflowId: string): string | null => {
 }
 
 /**
- * `kernel next`: the deterministic driver. An open decision that replans (`REPLANS`: the graph is about to be replaced) is returned
+ * `kernel next`: the deterministic driver, which never waits in the heavy queue (harness/heavy.ts refuseHeavyWaits). An open decision that replans (`REPLANS`: the graph is about to be replaced) is returned
  * at once, before anything dispatches; otherwise every round first ticks (mail, step, fences, stalled Ops, unknown launches), so
  * a decision left open about one task (returned and held, red, a conflict) never stops the other ready tasks from dispatching,
  * then returns the oldest open decision, else waits on the Kernel Run's mailbox (re-reading the ledger
@@ -621,7 +623,8 @@ const inlineTask = (root: string, workflowId: string): string | null => {
  * returns idle naming the task the chat agent works next. Every answer carries the rulings the Supervisor took in the Kernel's
  * place and the Kernel was not told yet (`tellRulings`).
  */
-export const kernelNext =async (context: VerbContext, root: string, workflowId: string, waitSeconds?: number): Promise<KernelNext> => {
+export const kernelNext = async (context: VerbContext, root: string, workflowId: string, waitSeconds?: number): Promise<KernelNext> => {
+    refuseHeavyWaits()
     const rules = loadCoordinatorLiveness()
     const deadline = Date.now() + (waitSeconds ?? rules.nextWaitSeconds) * 1000
     const status = readSnapshot(root, workflowId).workflow.status
@@ -741,13 +744,15 @@ const escalatePoison = (db: DatabaseSync, root: string, command: Command, conten
     })
 
 /**
- * `kernel submit <file>`: one Kernel command. It is admitted first (cmdId dedupe, basedOn compare-and-swap, an `applying` intent
+ * `kernel submit <file>`: one Kernel command, applied without ever waiting in the heavy queue (harness/heavy.ts
+ * refuseHeavyWaits: the step an amend runs starts its heavy settles as detached jobs). It is admitted first (cmdId dedupe, basedOn compare-and-swap, an `applying` intent
  * row), then applied: workflow-change through `workflow amend`; escalation and handoff become a Supervisor decision carrying
  * the ledger row, and a mail wakes the Supervisor. The decisions it answers close with it. A refused command records its content;
  * the poisonRefusals-th refusal of one content escalates to the Supervisor (kind harness), and every later submit of that
  * content is refused at once (COMMAND_POISONED) without being applied.
  */
 export const kernelSubmit = async (context: VerbContext, root: string, file: string): Promise<Submitted> => {
+    refuseHeavyWaits()
     const parsed = readCommand(file, "kernel")
     const { command } = parsed
     const admitted = withLedger(root, (db) => admitCommand(db, "kernel", parsed))

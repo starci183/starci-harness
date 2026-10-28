@@ -62,7 +62,7 @@ settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`h
 check steps by input digest (`harness/check-reuse.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
 `ledgers` (the registry keyed by the git common dir), `provider_health`, `provider_events`, `pool_quota`,
 `pool_concurrency`, `route_picks`, `budgets`, `budget_raises`, `host_events`, `owner_requests`, the heavy-command
-governor's `heavy_slots` and `cpu_samples` (`harness/heavy.ts`), `project_supervisors`, one live
+governor's `heavy_slots`, `cpu_samples` and `heavy_meta` (`harness/heavy.ts`), `project_supervisors`, one live
 Supervisor row per project key (`harness/machine.ts`, `harness/supervisor.ts`), `supervisor_workers`, each `[Worker]` a
 Supervisor dispatched (`harness/project-workers.ts`), and the Telegram channel's
 `telegram_channel`, `telegram_notices` and `telegram_inbound` (`harness/telegram.ts`) with the ticket cards' `telegram_files`,
@@ -179,7 +179,11 @@ scoped check once over the union and each command once per cwd and argv (per tas
 coverage). A red check belongs to the tasks whose landed files its output names (every task that left it when it names
 none): those tasks go `done → failed` with the red rows on their attempt (`wave-returned`), back to the Kernel like any
 red verify, and every task of the wave is judged (`wave-judged`, `wave-verified`). `workflow wave <id>` runs a due wave by
-hand.
+hand, and `workflow wave <id> --final` a due final verify. A coordinator's turn (`kernel next`, `kernel submit`, `supervisor
+next`, `supervisor tick`: `refuseHeavyWaits` of `harness/heavy.ts`) never runs heavy work itself: its step starts the due
+wave, the verify of a reported task whose own checks run a tool (`verifyIsHeavy`) and the final verify as detached jobs
+(`starci workflow wave`, `starci task verify`, `starci workflow wave --final`), one per job row (`harness/jobs.ts`: a job is
+busy while its lock is held or its process lives), and a later step reads their verdicts.
 
 **Install cache.** A clean checkout and an Op worktree never run their own `npm ci` when the shared install exists: `cachedInstall`
 (`harness/install-cache.ts`) keys an install by the lockfile's bytes, Node's version and npm's
@@ -197,10 +201,14 @@ build, `npm ci` or `npm install`, a contract's setup, a uat container) runs thro
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
 it) while it runs, admitted dynamically at every poll: free RAM less a reserve must cover the RAM estimate of every running
 command plus its own, fewer than floor(logical cores / 2) may run, and none starts while the CPU average over a window
-(samples in `cpu_samples`) is above its ceiling; the reserve, estimates, per-kind timeouts, memory caps and seat floor are
+(samples in `cpu_samples`) is above its ceiling until the queue admitted nothing for `cpuStarveMinutes` (`last-admit-ms` in
+`heavy_meta`): then its first command RAM admits starts anyway, one at a time, so a hot CPU slows the queue and never stops
+it. The queue is served by age, a project (the repository of a command's folder, `repositoryKeyOf`) with fewer commands
+running first, and a project running `projectSlots` commands is passed over while another project's command waits under
+its own cap (`servingOrder`). The reserve, estimates, per-kind timeouts, memory caps and seat floor are
 the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
 queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
-fails it. A verify or wave stopped by an install or setup out of time reaches no verdict (VERIFY_INFRA): no try is spent and
+fails it, except in a coordinator's turn, where it is refused `HEAVY_DEFERRED` at once. A verify or wave stopped by an install or setup out of time reaches no verdict (VERIFY_INFRA): no try is spent and
 the task is verified again. Each child runs below normal priority, a node tool under
 its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
 pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
@@ -218,6 +226,9 @@ unmanaged: the CLI alone makes nothing the harness's. When heavy admission or a 
 for more than `heavy.starvedTicketMinutes`, `supervisor tick` opens one `harness-defect` ticket per episode
 (`HOST_STARVED`, `harness/starvation.ts`) naming how long each was held and the top unmanaged holders, for Debug; it is
 never an owner question and the governor's rules do not change for it.
+On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng) and, at `scannerCpuPercent` or more,
+prints the owner's `Add-MpPreference -ExclusionPath` command for the state base and every registered repository, which the
+harness never runs.
 
 **Custody into a live suite.** A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
 the task's command or its own changed spec) reads the keys the suite's world declares (`keys: [...]`) from the app's
@@ -266,7 +277,10 @@ never started its turn, a verify stopped by an install or setup out of time or b
 `land-orphaned`) carries its node no
 more, so the node is ready and its next dispatch retries it at the same try, its last included (`tryAfter` in
 `harness/tasks.ts`, a `task-revived` event), up to `reviveMax` of [ops/liveness.yaml](../ops/liveness.yaml) per node, past
-which its red names the cause. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
+which its red names the cause. A retry past its contract's `budget.tries` is refused `TRIES_EXHAUSTED` (`retryOfNode` in
+`harness/workflow.ts`) until `budget raise <workflow> --task <key> --tries <n>` raises that one node's tries (a `tries-raised`
+event; by its Kernel, the Supervisor or the owner), the route out of a harness-caused exhaustion; a workflow-wide raise
+changes only the workflow's ceiling. Every other retry is the Kernel's amend: the red, check-premise or question decision carries its
 one legal route of [ops/routes.yaml](../ops/routes.yaml), and `kernel submit` refuses `ROUTE_ILLEGAL` for a change off it (`harness/routes.ts`). A failed task whose only reds are command checks its contract wrote, each output stating an
 expectation the otherwise green result contradicts, is a `check-premise` decision carrying each check's command and output
 (`premiseChecks` in `harness/check-premise.ts`), answered only by an edit that sets the task's checks: a worker never
@@ -343,7 +357,8 @@ project's one Supervisor in machine.sqlite (`project_supervisors`, keyed by the 
 launches the router's coordinator member (`orca agent launch --worktree path:<main checkout>`, terminal surface) in the
 project's main checkout with a prompt naming its brief in the project's state folder (rendered from `ops/coordinators/`).
 Its first command, `supervisor attach`, binds its terminal as coordinator of a new Run with a `[Supervisor] <project>`
-task. `supervisor status` reads a project's liveness from Orca (with no `--project`, every live Supervisor's),
+task. `supervisor status` reads a project's liveness from Orca (with no `--project`, every live Supervisor's; one Orca lists
+whose lease expired is `stalled (lease expired at ...)`, never alive),
 `supervisor stop` closes its tab (the agent in it goes with it) and retires its row, and `supervisor ensure` starts one only
 when Orca says it is gone (or replays a launch whose answer was lost), closing the old tab first; the host driver below does
 the same for every project on every tick.
@@ -384,7 +399,8 @@ Orca does not answer, and returns only one decision — `red`, `stale`, `questio
 `escalation-answer`, `shared-need` or `done`, with its evidence and a ledger digest — or `idle` after its wait. `kernel submit <file>`
 applies one command: `workflow-change` (a change file or the whole desired workflow, through `workflow amend`),
 `escalation` {budget, scope, conflict, owner, harness} or `handoff` (a Supervisor decision naming the repository, plus a
-wake-up mail; an `owner` escalation names its `topic` of `OWNER_TOPICS` {scope, money, credentials, legal, product} and may
+wake-up mail, or when Orca refuses the mail the Supervisor's loop prompt typed into its terminal: `mailOrType` of
+`harness/orca/client.ts`, which the Supervisor's mail to a Kernel uses too; an `owner` escalation names its `topic` of `OWNER_TOPICS` {scope, money, credentials, legal, product} and may
 propose a `default` with its `reason`, refused `COMMAND_INVALID` otherwise, in `harness/coordinator-commands.ts`); a command whose content (all but its cmdId, with its change file) was refused `poisonRefusals` times
 escalates to the Supervisor (kind harness), and every later submit of it is refused at once (`COMMAND_POISONED`).
 `supervisor next` sweeps the workflows the Supervisor owns in its project's registered repositories: a Kernel whose lease lapsed with no
@@ -548,7 +564,8 @@ recorded with who gave it and why, releases every waiter and wakes the Superviso
 ticket's, when the Supervisor opened it) with an owner request by the closer naming the ticket, the fix or answer and what it
 released (`wakeOnClose`); every later brief of the workflow lists it under "Answers" (`harness/brief.ts`).
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
-Supervisor decision it rules, never an `owner` or `harness` escalation it waits on; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
+Supervisor decision it rules, never an `owner` or `harness` escalation it waits on, or an owner request, or a Supervisor's
+expired lease alone, its loop stopped; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for
 tui-idle`, or no output in `terminal list` and worker-show and no dispatch heartbeat for `quietMinutes`). It is nudged with its
 role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge, at most `nudgeMax`); a nudge unanswered past
