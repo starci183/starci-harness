@@ -35,6 +35,7 @@ import { appSecretVerb } from "./core/app/secret.js"
 import { appStackVerb } from "./core/app/stack.js"
 import { appSyncVerb } from "./core/app/sync.js"
 import { appUpgradeVerb } from "./core/app/upgrade.js"
+import { projectRetireVerb } from "./core/project/retire.js"
 import { seatListVerb } from "./core/seat/list.js"
 import { seatStartVerb } from "./core/seat/start.js"
 import { seatStopVerb } from "./core/seat/stop.js"
@@ -142,6 +143,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appSyncVerb,
     appUpgradeVerb,
     seatStartVerb,
+    projectRetireVerb,
     seatListVerb,
     seatStopVerb,
     checkLooseningVerb,

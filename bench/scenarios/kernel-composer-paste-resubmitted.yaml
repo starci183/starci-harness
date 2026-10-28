@@ -1,0 +1,107 @@
+schema: starci/scenario@1
+id: kernel-composer-paste-resubmitted
+group: orca
+title: "a Kernel relaunch's dispatch lands pasted in Claude's composer and the Enter is lost: the sweep submits it again and reconciles the Kernel"
+inject: >-
+  the Kernel exits and the Supervisor relaunches it; that worker-start exits 1 with outcome_unknown (turn start unobserved), and
+  the agent's screen shows the brief still pasted in its composer ("[Pasted text #1 +40 lines]")
+expect: >-
+  the Supervisor's sweep reads the unknown launch's terminal, sends one bare Enter and records seat-composer-resubmitted; once the
+  agent prints, the launch is reconciled ready with its dispatch and terminal, with no fence and no third Kernel launch
+pass:
+  - one bare Enter to the Kernel's terminal, one seat-composer-resubmitted event
+  - the seat ends ready; two Kernel launches in all; its dispatch never stopped
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: kc
+        goal: bench workflow kc
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: kc
+  - name: the Kernel exits, and its relaunch's turn start goes unobserved
+    orca:
+      worker:
+        dispatch: kernel
+        state: exited
+      rules:
+        - command: worker-start
+          fault: turn-unobserved
+          match:
+            task-title: '^\[Kernel\]'
+  - name: the Kernel lease and the progress clock lapse
+    sql:
+      db: ledger
+      exec: UPDATE seats SET lease_until = '2020-01-01T00:00:00.000Z' WHERE role = 'kernel'; UPDATE events SET at = '2020-01-01T00:00:00.000Z'
+  - name: supervisor next relaunches the Kernel; Orca answers outcome_unknown
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT handle FROM seats WHERE role = 'kernel' ORDER BY started_at DESC, rowid DESC LIMIT 1
+      as: kdispatch
+  - read:
+      db: ledger
+      query: SELECT terminal FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+      as: kterm
+  - name: the brief sits pasted in Claude's composer, never submitted
+    orca:
+      set:
+        screens:
+          ${kterm}: ["", "> [Pasted text #1 +40 lines]", "", "  ? for shortcuts"]
+        composer:
+          ${kterm}: true
+  - name: the sweep submits it again
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - name: the Kernel printed, so the launch is reconciled
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status, terminal = '${kterm}' FROM seats WHERE role = 'kernel' AND handle = '${kdispatch}'
+        equals: [[ready, 1]]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'seat-composer-resubmitted'"
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: "${kterm}"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        match:
+          dispatch: "${kdispatch}"
+        count: 0

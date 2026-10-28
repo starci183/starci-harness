@@ -206,6 +206,12 @@ const defaults = (command, flags, state) => {
             const key = flags["retry-request"] ?? String(state.calls)
             state.typed = state.typed ?? {}
             if (state.typed[key] === undefined) state.typed[key] = { terminal: flags.terminal, text: flags.text, enter: flags.enter === true }
+            // An Enter submits a prompt the scenario left pasted in the composer (`composer`): the screen clears and the agent prints.
+            if (flags.enter === true && state.composer?.[flags.terminal] === true) {
+                state.composer[flags.terminal] = false
+                state.screens = { ...(state.screens ?? {}), [flags.terminal]: ["working on the dispatch"] }
+                state.lastOutput = { ...(state.lastOutput ?? {}), [flags.terminal]: new Date().toISOString() }
+            }
             return { ok: true, result: { accepted: true, retryRequest: key } }
         }
         case "terminal close":

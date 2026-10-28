@@ -9,11 +9,13 @@ import { GOAL_CHANGE_SCHEMA, recordGoalChange } from "../../harness/goal.js"
 import type { GoalChange } from "../../harness/goal.js"
 import { coordinatorOf, foreignKernelTerminal, launchKernelSeat, startKernel, SUPERVISOR_COORDINATOR } from "../../harness/kernel.js"
 import type { NodeState } from "../../harness/graph.js"
-import { deadOnArrivalFailure, openBlockedPrompts } from "../../harness/launch-failure.js"
+import { deadOnArrivalFailure, openBlockedPrompts, resubmitPendingComposer } from "../../harness/launch-failure.js"
+import { loadRouting } from "../../harness/routing.js"
 import { ledgerPath, now, openLedger } from "../../harness/ledger.js"
 import { expireLeases, inTransaction } from "../../harness/leases.js"
 import { judgeStart, loadLiveness } from "../../harness/liveness.js"
-import { readMachine, textOf, withMachine } from "../../harness/machine.js"
+import { readMachine, recordTerminalList, textOf, withMachine } from "../../harness/machine.js"
+import { reconcileStaleLaunches } from "../../harness/stale-launch.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
 import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerRequests, ownerRequestProjects } from "../../harness/owner-requests.js"
 import type { OwnerRequest } from "../../harness/owner-requests.js"
@@ -170,7 +172,8 @@ const attachedKernel = (seat: SeatRow, dispatchTerminal: string | null, live: Te
  * A Kernel launch's dispatch, judged by `judgeStart` (harness/liveness.ts) with the Kernel's attach as its own proof of life,
  * since Orca keeps a worker whose turn start it could not observe at start_unknown even once the agent runs. `started` is
  * reconciled on the seat (its dispatch, terminal and Orca's state, `ready` for a start Orca never observed; the stall ladder
- * judges it from then on). `quiet` (a live terminal that printed nothing since the launch) is never fenced: it is waited on and,
+ * judges it from then on). While it waits, a dispatch left pasted in the agent's composer is submitted again
+ * (`resubmitPendingComposer`). `quiet` (a live terminal that printed nothing since the launch) is never fenced: it is waited on and,
  * past effectUnknownDeadlineMinutes, escalated to the Supervisor. `gone` and `dead` are fenced, closed launch-failed and
  * relaunched once on the coordinator tier's order, and only once the fence held: nothing is launched beside a live dispatch.
  */
@@ -182,7 +185,12 @@ const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, sea
     const { verdict, states, terminal, printed } = judgeStart({ shown, seat, live, alive: attached }, stall)
     const said = states.join("/") || "unknown"
     if (verdict === "waiting" || verdict === "quiet") withLedger(root, (db) => { holdTerminal(db, seat, terminal); })
-    if (verdict === "waiting" || shown === null) return null
+    if (shown === null) return null
+    if (verdict === "waiting" || verdict === "quiet") {
+        const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting())
+        if (resubmitted !== null) return `${workflow.id}: Kernel launch ${seat.id} ${resubmitted}`
+    }
+    if (verdict === "waiting") return null
     if (verdict === "started") {
         const status = shown.state === null || stall.startUnknownStates.includes(shown.state) || UNKNOWN_STATES.includes(shown.state) ? "ready" : shown.state
         withLedger(root, (db) => { recordSeat(db, seat.id, { status, handle: dispatchId, ...(terminal === null ? {} : { terminal }), facts: { adopted: { dispatchId, states, attached, printed } } }); })
@@ -519,8 +527,9 @@ const blockedPromptLines = (root: string): string[] =>
  * the stall ladder for their Kernels and Ops, and the Supervisor's own seat the stall ladder. Every open blocked-prompt escalation
  * is named on each tick until answered. Every action is an event (project ledger, or host_events for a Supervisor and the tick).
  * Before all of it, the terminal sweep (`sweepTerminals`) closes every harness terminal no open seat or live Supervisor holds and
- * every orphaned one, so an orphaned Supervisor is relaunched in the same pass. `dryRun` reports what that sweep would close and
- * does nothing else.
+ * every orphaned one, so an orphaned Supervisor is relaunched in the same pass; then the full terminal list is recorded for the
+ * pool count (`recordTerminalList`) and every stale unreconciled Kernel launch of any registered ledger with nothing alive is
+ * closed (`reconcileStaleLaunches`). `dryRun` reports what the terminal sweep would close and does nothing else.
  */
 export const supervisorTick = async (context: VerbContext, dryRun = false): Promise<SupervisorTick> => {
     const rules = loadCoordinatorLiveness()
@@ -529,8 +538,15 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
     const closures = terminals.map((one) => `${dryRun ? "would close" : `closed (${one.outcome})`} terminal ${one.handle} "${one.title ?? ""}": ${one.why}`)
     if (dryRun) return { supervisors: [], swept: [], terminals, actions: closures }
     for (const one of terminals) recordHostEvent("terminal-swept", one.handle, one)
+    const inventory = await terminalList(binary, context.cwd).catch(() => null)
+    const stale: string[] = []
+    if (inventory !== null) {
+        recordTerminalList(inventory.handles, inventory.truncated)
+        stale.push(...(await reconcileStaleLaunches(binary, context.cwd, inventory)))
+        for (const line of stale) recordHostEvent("stale-launch-closed", "tick", { line })
+    }
     const { ensured, problems } = await ensureSupervisors(binary, context.cwd)
-    const actions: string[] = [...closures, ...problems]
+    const actions: string[] = [...closures, ...stale, ...problems]
     for (const one of ensured) if (one.action !== "none") actions.push(`${supervisorTitle(one.project.name)} ${one.liveness}: ${one.action}, ${one.detail}`)
     const retired = await retireHostSupervisor(binary, context.cwd).catch((error: unknown) => `host Supervisor not retired (${asRefusal(error).code})`)
     if (retired !== null) actions.push(retired)

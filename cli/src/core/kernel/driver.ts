@@ -8,7 +8,8 @@ import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-li
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
 import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { workflowLanes } from "../../harness/lanes.js"
-import { deadOnArrivalFailure } from "../../harness/launch-failure.js"
+import { deadOnArrivalFailure, resubmitPendingComposer } from "../../harness/launch-failure.js"
+import { loadRouting } from "../../harness/routing.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
@@ -410,7 +411,8 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
 /**
  * A completed launch request whose receipt names a dispatch is judged by that dispatch, never replayed (a replay answers the same
  * receipt forever), through `judgeStart` (harness/liveness.ts): a worker Orca shows started, or whose live terminal printed after
- * the launch, is adopted on the seat (the task runs); one whose listed terminal stayed quiet past stall.startDeadlineMinutes is
+ * the launch, is adopted on the seat (the task runs); while one waits, a dispatch left pasted in its agent's composer is
+ * submitted again (`resubmitPendingComposer`); one whose listed terminal stayed quiet past stall.startDeadlineMinutes is
  * never fenced on that unverifiable start: it waits, and past effectUnknownDeadlineMinutes is a red decision. One that is gone,
  * or never started past the deadline with its terminal no longer listed, was dead on arrival: it is fenced (worker-stop, else
  * worker-abandon), its attempt closes launch-failed (no try spent), its member reports a `stall` to its provider's circuit, and
@@ -423,6 +425,10 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
     const { verdict, states, terminal, printed } = judgeStart({ shown, seat, live, alive: false }, loadStallRules())
     const said = states.join("/") || "unknown"
     if (verdict === "waiting" || verdict === "quiet") withLedger(root, (db) => { holdTerminal(db, seat, terminal); })
+    if (shown !== null && (verdict === "waiting" || verdict === "quiet")) {
+        const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting())
+        if (resubmitted !== null) return { key, task, action: "wait", detail: `dispatch ${dispatchId}: ${resubmitted}` }
+    }
     if (verdict === "started" && shown !== null) {
         const status = shown.state === null || UNKNOWN_STATES.includes(shown.state) || loadStallRules().startUnknownStates.includes(shown.state) ? "ready" : shown.state
         withLedger(root, (db) => { inTransaction(db, () => {

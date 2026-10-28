@@ -193,7 +193,8 @@ limit came with no progress the next relaunch pauses the workflow and escalates 
 never confirmed (`launch-unknown`, or still `starting`) is reconciled, never launched beside: its dispatch (the one the failed
 worker-start named, else request-show's receipt, else a replay of worker-start under the same request id) is adopted when its
 worker started, when the Kernel's own `kernel attach` came through from that dispatch's live terminal, or when that live
-terminal printed after the launch (Orca may keep such a worker at `start_unknown`); a live terminal that stayed quiet is never
+terminal printed after the launch (Orca may keep such a worker at `start_unknown`); while it waits, a dispatch left pasted in the
+agent's composer is submitted again with a bare Enter (routing.yaml `pendingComposer`, for Ops too); a live terminal that stayed quiet is never
 fenced (waited on past `stall.startDeadlineMinutes`, escalated past `effectUnknownDeadlineMinutes`); only a worker Orca reports
 gone, or one never started past the deadline whose terminal Orca no longer lists, is fenced, closed `launch-failed` and
 relaunched once, and only once the fence held (`resolveKernelLaunch` in `core/supervisor/driver.ts`); a live Kernel idle at
@@ -212,7 +213,11 @@ CLI's dist stands it starts its replacement from that build, detached onto its o
 registered ledger or a Supervisor row, or its title `[Op] `, `[Kernel] `, `[Supervisor] ` (or Orca's `worker-task_` inside a
 workflow worktree) — that Orca lists orphaned or that no open seat, open Kernel record or live Supervisor holds (an unrecorded
 one only once quiet past `effectUnknownDeadlineMinutes`), and never touches any other terminal (`--dry-run` reports what it
-would close and does nothing else); then `ensureSupervisors` keeps
+would close and does nothing else); then it records Orca's full terminal list, by which a pool count (`runningWorkers` in
+`harness/machine.ts`) leaves out a seat whose terminal Orca no longer lists, and closes `launch-failed` every Kernel launch of
+any registered ledger still unreconciled past `effectUnknownDeadlineMinutes` with nothing of it alive
+(`harness/stale-launch.ts`), so an abandoned launch stops holding a slot; a ledger `project retire` retired is read by none of
+it; then `ensureSupervisors` keeps
 the Supervisor of every project that owns a running orca workflow, or whose last Supervisor ended by anything but the
 owner's `supervisor stop` (started when Orca says it is gone); then, acting for each attached Supervisor (its terminal as
 `--from`, its lease left to its own calls), it runs the Kernel sweep of that project's repositories with the Ops' stall
