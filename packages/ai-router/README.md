@@ -56,7 +56,7 @@ refused when the file loads, as is any unknown field.
 
 ```yaml
 gateway:
-  port: 8080                     # default 8080
+  port: 8080                     # default 8080; or derive it from the app: appPort: 3001 (+ portOffset, default 1) serves on 3002
   host: 0.0.0.0                  # default 127.0.0.1; 0.0.0.0 in a container
   adminToken: { env: AI_ROUTER_ADMIN_TOKEN }   # absent: the admin API is off
   keyStore: { type: sqlite, path: /data/keys.sqlite }   # or { type: memory }; a relative path is from this file
@@ -179,27 +179,27 @@ import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai"
 const llm = new ChatOpenAI({
     model: "lesson", // a profile, or a pool model such as "gpt-4o-mini"
     apiKey: process.env.STARCI_AI_KEY, // sk-starci-...
-    configuration: { baseURL: "http://ai-router:8080/v1" },
+    configuration: { baseURL: "http://127.0.0.1:3002/v1" },
 })
 const reply = await llm.invoke("Explain closures in one paragraph.")
 for await (const chunk of await llm.stream("Count to five.")) process.stdout.write(String(chunk.content))
 
-const embeddings = new OpenAIEmbeddings({ model: "text-embedding-3-small", apiKey: process.env.STARCI_AI_KEY, configuration: { baseURL: "http://ai-router:8080/v1" } })
+const embeddings = new OpenAIEmbeddings({ model: "text-embedding-3-small", apiKey: process.env.STARCI_AI_KEY, configuration: { baseURL: "http://127.0.0.1:3002/v1" } })
 ```
 
-LangChain (Python): `ChatOpenAI(model="lesson", api_key=..., base_url="http://ai-router:8080/v1")`.
+LangChain (Python): `ChatOpenAI(model="lesson", api_key=..., base_url="http://127.0.0.1:3002/v1")`.
 
 The OpenAI SDK, or any compatible client:
 
 ```ts
 import OpenAI from "openai"
 
-const client = new OpenAI({ apiKey: process.env.STARCI_AI_KEY, baseURL: "http://ai-router:8080/v1" })
+const client = new OpenAI({ apiKey: process.env.STARCI_AI_KEY, baseURL: "http://127.0.0.1:3002/v1" })
 const completion = await client.chat.completions.create({ model: "lesson", messages: [{ role: "user", content: "hi" }] })
 ```
 
 ```sh
-curl http://ai-router:8080/v1/chat/completions -H "Authorization: Bearer $STARCI_AI_KEY" \
+curl http://127.0.0.1:3002/v1/chat/completions -H "Authorization: Bearer $STARCI_AI_KEY" \
   -H "content-type: application/json" -d '{"model":"lesson","stream":true,"messages":[{"role":"user","content":"hi"}]}'
 ```
 
@@ -224,7 +224,7 @@ await gateway.listen(8080, "0.0.0.0") // or mount gateway.handle on an existing 
 ```
 
 In a Nest app, `AiRouterGatewayModule` fronts a registered router (the default one, or `name` for a named one) and
-listens on its own port at bootstrap when `listen` is given, closing at shutdown; the gateway is injected with
+listens on its own port when `listen` is given, closing at shutdown; the gateway is injected with
 `@InjectAiRouterGateway(name?)` (token `AI_ROUTER_GATEWAY`):
 
 ```ts
@@ -232,12 +232,36 @@ listens on its own port at bootstrap when `listen` is given, closing at shutdown
     imports: [
         AiRouterModule.register({ isGlobal: true, ...pool }),
         AiRouterGatewayModule.registerAsync({
-            useFactory: async () => ({ keys: await openSqliteKeyStore("/data/keys.sqlite"), adminToken: () => process.env.AI_ROUTER_ADMIN_TOKEN, listen: { port: 8080 } }),
+            useFactory: async () => ({ keys: await openSqliteKeyStore("/data/keys.sqlite"), adminToken: () => process.env.AI_ROUTER_ADMIN_TOKEN, listen: true }),
         }),
     ],
 })
 export class AppModule {}
 ```
+
+#### The port convention
+
+The gateway's port is derived from the app's, so nobody configures it by hand. The StarCi port convention is
+`basePort + portOffset`: the front end is base+0 (3000), the API is base+1 (3001), and the gateway is the API's port
+plus an offset, 1 by default (3002).
+
+| `listen` | gateway listens on |
+|---|---|
+| `true` | the app's port + 1, on `127.0.0.1` |
+| `{ offset?: n, host?: h }` | the app's port + `n` (default 1, at least 1), on `h` (default `127.0.0.1`) |
+| `{ port: p, host?: h }` | `p`, explicitly; the app's port is not read |
+| absent | nothing; mount `gateway.handle` yourself |
+
+The app's port is the port its HTTP server is actually bound to. Nest bootstraps before `app.listen` binds, so the
+module waits for the server's `listening` event (or reads the address at once when it is already bound) and then
+starts the gateway; a failure to bind the gateway's port (`EADDRINUSE`) goes to the `onError` option, not out of
+`app.listen`. An application with no HTTP server (a standalone context) reads `PORT` instead; with neither, bootstrap
+fails with an `AiRouterError` saying the port is unknown and `listen.port` is the way out. The host is local to the app
+(`127.0.0.1`) and is `0.0.0.0` only when you set it. With `serve`, `gateway.appPort` plus `gateway.portOffset`
+(default 1) does the same; it cannot be combined with `gateway.port`.
+
+A client of an API on 3001 uses `http://127.0.0.1:3002/v1` as its OpenAI base URL: LangChain (below), OpenClaw, or any
+OpenAI-compatible agent, with a virtual `sk-starci-...` key as its API key.
 
 ## Use it in a Nest app
 

@@ -97,6 +97,15 @@ describe("the config file", () => {
         const ok = parseGatewayConfig({ providers: [{ ...provider, keys }], resilience: { authDisableMs: null }, profiles: { p: { model: "m" } }, gateway: { keyStore: { type: "sqlite", path: ":memory:" }, adminToken: { file: "t" } } }, dir)
         assert.deepEqual(ok.gateway.keyStore, { type: "sqlite", path: ":memory:" })
         assert.deepEqual(ok.gateway.adminToken, { file: join(dir, "t") })
+        const withGateway = (gateway: Record<string, unknown>) => ({ providers: [{ ...provider, keys }], gateway })
+        assert.equal(parseGatewayConfig(withGateway({ appPort: 3001 })).gateway.port, 3002)
+        assert.equal(parseGatewayConfig(withGateway({ appPort: 3000, portOffset: 5 })).gateway.port, 3005)
+        assert.equal(parseGatewayConfig(withGateway({ appPort: 3001 })).gateway.host, "127.0.0.1")
+        assert.throws(() => parseGatewayConfig(withGateway({ port: 8080, appPort: 3001 })), refused(/cannot be combined/))
+        assert.throws(() => parseGatewayConfig(withGateway({ portOffset: 1 })), refused(/needs config.gateway.appPort/))
+        assert.throws(() => parseGatewayConfig(withGateway({ appPort: 0 })), refused(/appPort must be a port number/))
+        assert.throws(() => parseGatewayConfig(withGateway({ appPort: 3001, portOffset: 0 })), refused(/portOffset must be/))
+        assert.throws(() => parseGatewayConfig(withGateway({ appPort: 65535 })), refused(/appPort \+ portOffset/))
     })
 
     test("names an unreadable or unparsable file", async () => {

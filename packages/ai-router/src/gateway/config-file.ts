@@ -56,6 +56,8 @@ const FILE: Schema = {
         gateway: {
             fields: {
                 port: "number",
+                appPort: "number",
+                portOffset: "number",
                 host: "string",
                 maxBodyBytes: "number",
                 adminToken: SECRET,
@@ -208,8 +210,14 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd()): 
     const gateway = file.gateway ?? {}
     const store = (gateway.keyStore ?? { type: "memory" }) as { type: "memory" | "sqlite"; path?: string }
     if (store.type === "sqlite" && store.path === undefined) throw configError("config.gateway.keyStore.path is required for a sqlite store")
-    const port = (gateway.port as number | undefined) ?? 8080
-    if (!Number.isInteger(port) || port < 0 || port > 65535) throw configError("config.gateway.port must be a port number")
+    const appPort = gateway.appPort as number | undefined
+    const portOffset = gateway.portOffset as number | undefined
+    if (gateway.port !== undefined && (appPort !== undefined || portOffset !== undefined)) throw configError("config.gateway.port cannot be combined with appPort or portOffset")
+    if (appPort === undefined && portOffset !== undefined) throw configError("config.gateway.portOffset needs config.gateway.appPort")
+    if (appPort !== undefined && (!Number.isInteger(appPort) || appPort < 1 || appPort > 65535)) throw configError("config.gateway.appPort must be a port number")
+    if (portOffset !== undefined && (!Number.isInteger(portOffset) || portOffset < 1)) throw configError("config.gateway.portOffset must be an integer of 1 or more")
+    const port = appPort === undefined ? ((gateway.port as number | undefined) ?? 8080) : appPort + (portOffset ?? 1)
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw configError(appPort === undefined ? "config.gateway.port must be a port number" : "config.gateway.appPort + portOffset must be a port number")
     const maxBodyBytes = (gateway.maxBodyBytes as number | undefined) ?? 4 * 1024 * 1024
     if (!Number.isInteger(maxBodyBytes) || maxBodyBytes <= 0) throw configError("config.gateway.maxBodyBytes must be a positive integer")
     const pool: Record<string, unknown> = { ...file, providers }

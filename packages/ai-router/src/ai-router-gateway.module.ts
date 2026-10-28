@@ -1,5 +1,8 @@
 import { Inject, Module } from "@nestjs/common"
 import type { DynamicModule, Provider } from "@nestjs/common"
+import { HttpAdapterHost } from "@nestjs/core"
+import { gatewayHost, gatewayPort, whenAppPort } from "./ai-router-gateway.listen.ts"
+import type { AppServer } from "./ai-router-gateway.listen.ts"
 import { getAiRouterToken } from "./ai-router.tokens.ts"
 import { createGateway } from "./gateway/gateway.ts"
 import type { AiRouterGateway } from "./gateway/gateway.ts"
@@ -32,15 +35,33 @@ function withGateway(base: DynamicModule, name: string | undefined): DynamicModu
         {
             // Nest calls the lifecycle hooks of every provider instance that has them.
             provide: `${token}:lifecycle`,
-            inject: [token, MODULE_OPTIONS_TOKEN],
-            useFactory: (gateway: AiRouterGateway, options: AiRouterGatewayModuleOptions) => ({
-                async onApplicationBootstrap(): Promise<void> {
-                    if (options.listen !== undefined) await gateway.listen(options.listen.port, options.listen.host)
-                },
-                onApplicationShutdown(): Promise<void> {
-                    return gateway.close()
-                },
-            }),
+            inject: [token, MODULE_OPTIONS_TOKEN, { token: HttpAdapterHost, optional: true }],
+            useFactory: (gateway: AiRouterGateway, options: AiRouterGatewayModuleOptions, host: HttpAdapterHost | undefined) => {
+                let cancel: () => void = () => undefined
+                return {
+                    async onApplicationBootstrap(): Promise<void> {
+                        const listen = options.listen
+                        if (listen === undefined) return
+                        if (listen !== true && listen.port !== undefined) {
+                            await gateway.listen(listen.port, listen.host)
+                            return
+                        }
+                        // The adapter is unset until an application is created over the module (a standalone context has none).
+                        const adapter: HttpAdapterHost["httpAdapter"] | undefined = host?.httpAdapter
+                        const server = adapter?.getHttpServer() as AppServer | undefined
+                        // Bootstrap runs before `app.listen` binds the app, so a port not yet bound is waited for, not awaited.
+                        cancel = whenAppPort(server, process.env, (appPort) => {
+                            gateway.listen(gatewayPort(listen, appPort), gatewayHost(listen)).catch((error: unknown) => {
+                                options.onError?.(error)
+                            })
+                        })
+                    },
+                    onApplicationShutdown(): Promise<void> {
+                        cancel()
+                        return gateway.close()
+                    },
+                }
+            },
         },
     ]
     return { ...base, providers: [...(base.providers ?? []), ...providers], exports: [...(base.exports ?? []), token] }

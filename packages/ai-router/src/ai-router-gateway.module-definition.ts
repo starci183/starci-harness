@@ -1,10 +1,15 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common"
+import type { AiRouterGatewayListen } from "./ai-router-gateway.listen.ts"
 import type { GatewayOptions } from "./gateway/gateway.ts"
 
 /** What the gateway module takes: the gateway's options, and where it listens. */
 export interface AiRouterGatewayModuleOptions extends GatewayOptions {
-    /** Listens on its own port once the application bootstraps, and stops at shutdown; absent, mount `gateway.handle` yourself. */
-    readonly listen?: { readonly port: number; readonly host?: string }
+    /**
+     * Listens on its own port and stops at shutdown; absent, mount `gateway.handle` yourself. `{ port }` is explicit;
+     * `true` or `{ offset?, host? }` is the app's own port plus `offset` (default 1) once the app listens, on `host`
+     * (default 127.0.0.1): an API on 3001 serves its gateway on 3002.
+     */
+    readonly listen?: AiRouterGatewayListen
 }
 
 /** The extras of a registration: its visibility, and the `name` of the `AiRouterModule` registration it fronts (the default router when absent). */
