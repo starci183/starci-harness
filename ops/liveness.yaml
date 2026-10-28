@@ -44,8 +44,10 @@ coordinators:
   # The same refused Kernel command (its content, whatever its cmdId) this many times escalates to the Supervisor (kind
   # harness), and every later submit of it is refused at once.
   poisonRefusals: 3
-  # How long one `next` blocks before it returns idle, and how often it re-reads the ledger while it waits on mail.
-  nextWaitSeconds: 900
+  # How long one `next` blocks before it returns idle, and how often it re-reads the ledger (renewing the caller's lease) while
+  # it waits on mail. The wait stays under the longest a coordinator's shell tool holds a command in the foreground (Claude
+  # Code's Bash: 600 s), so a blocking `next` returns into the same turn; the briefs and loop prompts pass it as `--wait`.
+  nextWaitSeconds: 540
   nextPollSeconds: 30
 
 # Owner feedback (`starci feedback`): an item the owner gave stays open at most this many days; `feedback check` is red past
@@ -54,12 +56,12 @@ feedback:
   openMaxDays: 3
 
 # The stall ladder (orca runner): a seat whose agent sits idle at its prompt while its ledger work is pending. A Supervisor
-# with an open decision it rules (not one awaiting the owner), a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
+# with an open decision it rules (never an owner or harness escalation it waits on), a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
 # failed, lost, launch-unknown), an Op whose task runs with no result filed. Run by `supervisor tick` (Supervisor, Kernels and
 # their Ops), `supervisor next` (Kernels) and `kernel next` (its Ops); judged from Orca's signals only, never a screen.
 stall:
-  # A seat whose last driver call (its lease renewal by attach, next or submit; an Op's last output or heartbeat) is older than
-  # this, with work pending, is asked about.
+  # A seat whose last driver call (its lease renewal by attach, next or submit, which a `next` blocking on its wait renews every
+  # nextPollSeconds; an Op's last output or heartbeat) is older than this, with work pending, is asked about.
   idleMinutes: 3
   # Orca's word that it is idle: `terminal wait --for tui-idle` satisfied within this many ms, or no terminal output and no
   # dispatch heartbeat for quietMinutes. Anything Orca does not answer is not idle.
@@ -67,10 +69,15 @@ stall:
   quietMinutes: 5
   # Remedy 1: one nudge per stall (the role's loop prompt, `terminal send`), at most nudgeMax per seat. Remedy 2: a nudge that
   # brought no driver call within nudgeGraceMinutes, or a seat that stalls again after nudgeMax nudges, is given up: its member
-  # records a `stalled` outcome (the provider circuit takes the kind its Orca failure text names, else `stall`) and a Kernel is
-  # relaunched, an Op fenced (its task fails `stalled`), on another member. Remedy 3: the Kernel relaunch limit escalates.
+  # records a `stalled` outcome (the provider circuit takes the kind its Orca failure text names, else `stall`), an Op is fenced
+  # (its task fails `stalled`) and retried on another member, and a coordinator is relaunched: behind every other member for a
+  # provider kind, on its tier's first member again for a plain `stall`, until that member gave up coordinatorStallMax plain
+  # stalls of the same seat (the project's Supervisor, a workflow's Kernel) within coordinatorStallWindowMinutes; that one
+  # puts it behind and escalates (kind harness). Remedy 3: the Kernel relaunch limit escalates.
   nudgeMax: 2
   nudgeGraceMinutes: 3
+  coordinatorStallMax: 2
+  coordinatorStallWindowMinutes: 60
   # How long `supervisor watch` sleeps between ticks.
   watchSeconds: 60
   # A launch Orca completed whose dispatch's worker shows one of these states (worker or observation) never started its turn;
@@ -78,8 +85,8 @@ stall:
   # spent), a `stall` reported for its member, and the task queued again for another member. A completed request is never replayed.
   startUnknownStates: [start_unknown, turn_start_unobserved]
   startDeadlineMinutes: 10
-  # The loop prompts a nudge types; {workflow}, {launch} and {task} are filled in.
+  # The loop prompts a nudge types; {workflow}, {launch}, {task} and {wait} (coordinators.nextWaitSeconds) are filled in.
   prompts:
-    supervisor: "Continue your loop: run starci supervisor next --json and answer its decision. Never end your turn while the driver is yours."
-    kernel: "Continue your loop: run starci kernel next {workflow} --json (starci kernel attach {workflow} --launch {launch} first if you never attached) and answer its decision. Never end your turn while the driver is yours."
+    supervisor: "Continue your loop: run starci supervisor next --json --wait {wait} in the foreground, answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
+    kernel: "Continue your loop: run starci kernel next {workflow} --json --wait {wait} in the foreground (starci kernel attach {workflow} --launch {launch} first if you never attached), answer its decision, then run it again in the same turn. Never end your turn while the driver is yours."
     op: "Continue task {task}: finish it within its contract and file it with starci task result {task}."

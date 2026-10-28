@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { coordinatorBriefPath, runtimeRoot } from "./ledger.js"
 import { loadOps } from "./ops.js"
 import type { CoordinatorRole } from "./routing.js"
@@ -38,6 +39,7 @@ export const coordinatorBrief = (input: CoordinatorBriefInput): string => {
         agent: input.agent,
         model: input.model,
         cliFile: cli,
+        nextWaitSeconds: String(loadCoordinatorLiveness().nextWaitSeconds),
     }
     const template = readFileSync(join(loadOps().dir, "coordinators", `${role}.md`), "utf8")
     const body = template.replace(/\{([A-Za-z]+)\}/g, (match: string, key: string) => (key in values ? slashed(values[key] ?? "") : match))

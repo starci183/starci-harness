@@ -1,19 +1,21 @@
 schema: starci/scenario@1
 id: supervisor-awaits-owner-not-stalled
 group: orca
-title: "a Supervisor that asked the owner waits at its prompt: not stalled while only an owner escalation is open, stalled once one it rules waits"
+title: "a Supervisor waiting on an owner or a harness escalation is not stalled, sees each once, and is stalled once one it rules waits"
 inject: >-
-  the Kernel escalates a question of kind owner; the Supervisor asked the owner in its terminal and ended its turn (idle at its
-  prompt, no supervisor next for ten minutes) while the owner has not answered; later the Kernel escalates a scope question too,
-  and the Supervisor still does not move
+  the Kernel escalates a question of kind owner and one of kind harness; the Supervisor asked the owner, recorded the harness one
+  for Debug, and ended its turn (idle at its prompt, no supervisor next for ten minutes) while neither is answered; later the
+  Kernel escalates a scope question too, and the Supervisor still does not move
 expect: >-
-  while only the owner escalation is open, the scheduled ticks neither nudge nor replace the Supervisor, and no stalled outcome
-  is recorded; supervisor next returns the scope escalation before the older owner one; once the scope escalation waits, the
-  tick nudges the Supervisor, and after the nudge goes unanswered past the grace it replaces it on another member
+  supervisor next hands the owner and the harness escalations over once each, then answers idle; while only those are open,
+  the scheduled ticks neither nudge nor replace the Supervisor, and no stalled outcome is recorded; supervisor next returns the
+  scope escalation before the older ones; once the scope escalation waits, the tick nudges the Supervisor, and after the nudge
+  goes unanswered past the grace it replaces it, on the same first member of the coordinator tier (a plain stall)
 pass:
-  - no nudge and no replacement while only the owner escalation waits
-  - supervisor next returns the escalation the Supervisor rules before the one awaiting the owner
-  - exactly one nudge, then one replacement, once the scope escalation waits
+  - each escalation awaiting the owner or Debug is handed over once, then next is idle
+  - no nudge and no replacement while only the owner and harness escalations wait
+  - supervisor next returns the escalation the Supervisor rules before the ones awaiting the owner or Debug
+  - exactly one nudge, then one replacement on the same member, once the scope escalation waits
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -52,7 +54,35 @@ steps:
           question: may doc a name the product?
   - seat: kernel:ask
     starci: [kernel, submit, "${run}/esc-owner.yaml"]
-  - name: the Supervisor asked the owner and waits at its prompt
+  - file:
+      path: esc-harness.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-ask-harness-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: harness
+          question: the files-exist preset refuses a path with a dot; is it a harness defect?
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-harness.yaml"]
+  - name: supervisor next hands the owner escalation over once
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: may doc a name the product?
+  - name: then the harness escalation, Debug's, once
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: is it a harness defect?
+  - name: then nothing is left for the Supervisor to rule, so it waits in next
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "idle"'
+  - name: the Supervisor asked the owner, recorded the harness escalation, and waits at its prompt
     orca:
       set:
         tuiIdle:
@@ -135,3 +165,9 @@ steps:
         db: machine
         query: SELECT COUNT(*) FROM project_supervisors
         equals: [2]
+  - name: a plain stall relaunches the Supervisor on the coordinator tier's first member again
+    assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(DISTINCT agent || '/' || model) FROM project_supervisors
+        equals: [1]

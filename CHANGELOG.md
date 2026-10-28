@@ -6,6 +6,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **Coordinators stay on Claude through a stall.** A Supervisor or Kernel the stall ladder gives up on for a plain stall is
+  relaunched on the coordinator tier's first member again; a provider failure kind, or the member's
+  `stall.coordinatorStallMax` plain stalls of the same seat within `stall.coordinatorStallWindowMinutes`, puts it behind,
+  and the repeated stalls raise a `harness` escalation (`coordinatorRelaunch` in `harness/stall.ts`).
+- **The coordinator loop holds in Claude Code.** The briefs and loop prompts run `next --wait <coordinators.nextWaitSeconds>`
+  in the foreground and call it again in the same turn after every result; `nextWaitSeconds` is 540, under Claude Code's
+  600 s foreground limit, and a blocking `supervisor next` renews its lease again before each wait.
+- **`harness` escalations are Debug's.** The Supervisor never asks the owner about one and relays Debug's answer from
+  `supervisor ask`; `supervisor next` hands an `owner` or `harness` escalation over once (`decision-relayed`), so a looping
+  Supervisor waits in `next` instead of receiving it again, and neither kind makes it stalled. Bench:
+  `supervisor-awaits-owner-not-stalled`, `supervisor-stall-relaunch-on-claude`.
+
 ## [1.1.0-alpha.4] - 2026-10-28
 
 Runs `@starci/hfs` 4.9.4 (an exact dependency).

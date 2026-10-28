@@ -189,8 +189,9 @@ progress past its TTL (a relaunch is not progress) is relaunched on Orca's word 
 limit came with no progress the next relaunch pauses the workflow and escalates to the owner instead; a live Kernel idle at
 its prompt meets the stall ladder; it returns the project's oldest `escalation` or `handoff` the Supervisor rules, then the oldest `owner-request` (`supervisor ask` records
 it in the project's mailbox, machine.sqlite `owner_requests`, and mails the Supervisor's Run as `kernel submit` does, `wakeSupervisor` in
-`harness/supervisor.ts`), and only then one awaiting the owner (kind `owner` or `harness`, `awaitsOwner` in
-`harness/coordinator-commands.ts`). `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
+`harness/supervisor.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
+`owner`, which the owner rules, or `harness`, which Debug rules and answers with a `supervisor ask` (`awaitsOwner` in
+`harness/coordinator-commands.ts`). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1) or `stop`,
 and its `answers` close escalations and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
 every open decision of its workflow.
 
@@ -229,14 +230,16 @@ platforms are refused (`supervisor watch` in a terminal serves there). `host sta
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 The **stall ladder** (`harness/stall.ts`, thresholds in ops/liveness.yaml `stall`) reads no screen: a seat with work pending (a
-Supervisor decision it rules, never one awaiting the owner; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
+Supervisor decision it rules, never an `owner` or `harness` escalation it waits on; a Kernel decision or a node its driver acts on; an Op's unfiled running task) and no driver call (lease
 renewal; an Op's output) for `idleMinutes` is stalled when Orca says its agent is idle at its prompt (`terminal wait --for
 tui-idle`, or no output in `terminal list` and worker-show and no dispatch heartbeat for `quietMinutes`). It is nudged with its
 role's loop prompt (`terminal send`, one claimed `stall-nudged` event per nudge, at most `nudgeMax`); a nudge unanswered past
 `nudgeGraceMinutes`, or a stall after the last nudge, gives it up (`stall-gave-up`): its member records a `stalled` outcome and
 its provider circuit the kind worker-show's failure words name by `failureSignals` (capacity, rate, quota, auth), and no circuit at all when they name none (a plain stall is the model's, judged by its outcomes);
-a Kernel is relaunched and a Supervisor replaced with that pool behind every other, an Op fenced and its task failed
-`stalled` for the Kernel to retry. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
+an Op is fenced and its task failed `stalled` for the Kernel to retry, and a Kernel is relaunched and a Supervisor replaced
+with the lineage `coordinatorRelaunch` gives: that pool behind every other for a provider kind, the coordinator tier's first
+member again for a plain stall, until that member gave up `coordinatorStallMax` plain stalls of the same seat within
+`coordinatorStallWindowMinutes`, which puts it behind and raises a `harness` escalation. The Kernel relaunch limit escalates to the owner; a Supervisor replaced that many times
 with the same decision waiting is left for the owner. Nudges and give-ups are never progress.
 
 A command is a `starci/command@1` file (json or yaml): `cmdId`, `kind`, `workflow`, `basedOn` {graph, goal}, `answers`

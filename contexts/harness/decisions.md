@@ -43,6 +43,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
   from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers
   the pick, and no circuit waits for a person ([ops/README.md](../../ops/README.md) "The router").
+- **Coordinators run on Claude.** Supervisors and Kernels take the `coordinator` tier of
+  [ops/routing.yaml](../../ops/routing.yaml) in its listed order, Claude first; a seat the stall ladder gives up on for its
+  own idleness is relaunched on Claude again, and only a provider failure, or the same member's repeated stalls (which also
+  escalate), hands the seat to the next member (`coordinatorRelaunch` in `cli/src/harness/stall.ts`).
+- **Harness problems never wait on the owner.** An escalation of kind `harness` is Debug's: the Supervisor keeps it in the
+  ledger, never asks the owner about it, keeps its other work moving and relays Debug's answer, which arrives as a
+  `supervisor ask` by `debug`; only an `owner` escalation (a product decision, credentials, scope, money) goes to the owner.
+  Neither makes a waiting Supervisor stalled (`awaitsOwner` in `cli/src/harness/coordinator-commands.ts`,
+  [ops/coordinators/supervisor.md](../../ops/coordinators/supervisor.md)).
 - **A failed launch says why.** A launch Orca fails at agent readiness has the agent terminal it created read once,
   before the worker is released, and the seat keeps its last lines; an agent waiting at a host or config prompt is the
   host's to fix, never a provider strike, and goes to the Supervisor as a `harness` escalation (`blockedPrompts` of

@@ -48,7 +48,8 @@ same `pickCoordinator` the seat launch calls (`--simulate <n>` tallies a run of 
    `reservePercent` only while a member below it is left. No reading, a stale one or one past its reset is unknown and kept.
 4. **Lineage.** One contract-red attempt of this task on a pool, or a seat of this lineage (a task's attempts, a
    coordinator's relaunch) that timed out, never started or the stall ladder gave up on, puts that pool's members behind
-   every other.
+   every other; a coordinator's plain stall does so only once it repeats (`coordinatorRelaunch` in
+   `cli/src/harness/stall.ts`, bounds in ops/liveness.yaml `stall`).
 5. **Probe.** A provider whose circuit is half-open (`circuit`: its cooldown ended, or its probe interval passed) takes this
    pick as its one probe; the probe is marked in flight until its launch reports, and a success closes the circuit.
 6. **Score.** Every member left is ordered by expected success over expected cost: the Beta posterior mean of its green

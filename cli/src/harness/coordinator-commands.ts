@@ -27,7 +27,11 @@ export type CommandScope = "kernel" | "supervisor"
 /** The kinds an escalation names (wave principle 5). */
 export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harness"] as const
 
-/** The escalation kinds the owner rules: the Supervisor asks the owner in its terminal and relays the ruling (ops/coordinators/supervisor.md). */
+/**
+ * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, credentials, scope, money; the Supervisor
+ * asks the owner in its terminal) and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`).
+ * The Supervisor relays either ruling (ops/coordinators/supervisor.md).
+ */
 const OWNER_RULED: readonly (typeof ESCALATION_KINDS)[number][] = ["owner", "harness"]
 
 const commandSchema = z.strictObject({
@@ -255,9 +259,9 @@ export const openDecisions = (db: DatabaseSync, scope: CommandScope, workflowId?
     ).map(toDecision)
 
 /**
- * Whether a decision awaits the owner: an escalation whose kind the owner rules. Its Supervisor waits for the owner's answer, so
- * it is no work of the Supervisor's own: `supervisor next` returns it after every decision the Supervisor rules, and it never
- * makes an idle Supervisor stalled.
+ * Whether a decision awaits an answer from outside the Supervisor: an escalation of kind `owner` (the owner rules it) or `harness`
+ * (Debug rules it). Its Supervisor waits for that answer, so it is no work of the Supervisor's own: `supervisor next` hands it
+ * over once, after every decision the Supervisor rules, and it never makes an idle Supervisor stalled.
  */
 export const awaitsOwner = (decision: Decision): boolean => {
     const evidence = decision.evidence
