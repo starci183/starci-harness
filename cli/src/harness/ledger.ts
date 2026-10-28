@@ -405,6 +405,19 @@ export const priorDir = (root: string): string => join(projectDir(root), "prior"
 /** The command file an owner's write through `starci ui` becomes (a ruling by its decision id, a goal by its cmdId), kept in the project's state folder. */
 export const ownerCommandPath = (root: string, name: string): string => join(projectDir(root), "owner-commands", `${name}.json`)
 
+/**
+ * The repository's local package-source record (`starci deps source --local`): which `@starci` packages its installs copy
+ * from a local folder. It sits in the project's state folder, never in the repository, so every worktree and clean-verify
+ * checkout of the repository reads the same one and nothing of it can be committed.
+ */
+export const depsLocalPath = (root: string): string => join(projectDir(root), "deps-local.json")
+
+/** The same record's path without registering anything: undefined when the host registry does not know the repository. */
+export const existingDepsLocalPath = (root: string): string | undefined => {
+    const id = findLedgerId(root)
+    return id === undefined ? undefined : join(dirname(ledgerFile(id)), "deps-local.json")
+}
+
 /** The project's ledger file when the host registry knows it and it exists, else undefined; creates nothing. */
 export const ledgerPath = (root: string): string | undefined => {
     const id = findLedgerId(root)

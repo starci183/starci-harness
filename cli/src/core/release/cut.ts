@@ -4,6 +4,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureGit, git, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
+import { judgePush } from "../deps/push-gate.js"
 import { choosePackage } from "./package-choice.js"
 
 interface CutData {
@@ -50,6 +51,7 @@ export const releaseCutVerb = defineVerb({
         const tag = `v${pkg.version}`
         const dirty = await trackedChanges(root)
         if (dirty.length > 0) throw new Refusal("CUT_DIRTY_TREE", `commit or drop the tracked changes first: ${dirty.slice(0, 5).join(", ")}`)
+        await judgePush(root)
         await captureGit(["fetch", "--quiet", "--tags", remote, "main"], root)
         const commit = await resolveSha(root, "HEAD")
         if (!(await refExists(root, `${remote}/main`)) || !(await isAncestor(root, commit, `${remote}/main`))) {

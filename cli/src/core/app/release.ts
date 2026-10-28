@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { repositoryRoot } from "../../shared/git.js"
+import { judgePush } from "../deps/push-gate.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { FlagSpec } from "../../shared/verb.js"
 import { hfsArgv, QUIET_FLAG, runHfs } from "./hfs.js"
@@ -26,5 +28,9 @@ export const appReleaseVerb = defineVerb({
     roles: ["owner", "release", "supervisor"],
     schema: "starci/app-release@1",
     flags: FLAGS,
-    run: (context, flags) => runHfs(context, "release", hfsArgv(FLAGS, flags, CHOICES), true),
+    run: async (context, flags) => {
+        // An executed gate or push ships the app: its @starci pins must be installable and no local copy may run ahead of npm.
+        if (flags.execute) await judgePush(await repositoryRoot(context.cwd))
+        return runHfs(context, "release", hfsArgv(FLAGS, flags, CHOICES), true)
+    },
 })
