@@ -439,11 +439,6 @@ export const openLedger = (root: string): DatabaseSync => {
         db.prepare("INSERT INTO meta (key, value) VALUES ('ledger_id', ?) ON CONFLICT(key) DO NOTHING").run(id)
         const own = db.prepare("SELECT value FROM meta WHERE key = 'ledger_id'").get()?.value
         if (own !== id) throw new Refusal("LEDGER_MISMATCH", `${file} carries ledger id ${String(own)}, not ${id}; keep the file and fix the registry`)
-        // Whether git folds case here, read once per ledger: path leases compare under it.
-        if (db.prepare("SELECT 1 FROM meta WHERE key = 'ignorecase'").get() === undefined) {
-            const folds = captureGitSync(["config", "--type=bool", "core.ignorecase"], root).stdout === "true"
-            db.prepare("INSERT INTO meta (key, value) VALUES ('ignorecase', ?) ON CONFLICT(key) DO NOTHING").run(folds ? "true" : "false")
-        }
     } catch (error: unknown) {
         db.close()
         throw error

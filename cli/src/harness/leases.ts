@@ -37,11 +37,12 @@ const TERMINAL_SQL = TERMINAL_STATUSES.map((status) => `'${status}'`).join(", ")
 export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)
 
 /**
- * Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment; `.` is the
- * whole repository. With `foldCase` (a repository whose core.ignorecase is true) `Src/A` and `src/a` are one path.
+ * Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment and without
+ * case; `.` is the whole repository. `Src/A` and `src/a` are one path on every host: a product is checked out on Windows and
+ * macOS too, where they are one file, so two tasks never hold them apart even where the filesystem would.
  */
-export const pathsOverlap = (left: string, right: string, foldCase = false): boolean => {
-    const spell = (path: string): string[] => (foldCase ? normaliseRepoPath(path).toLowerCase() : normaliseRepoPath(path)).split("/")
+export const pathsOverlap = (left: string, right: string): boolean => {
+    const spell = (path: string): string[] => normaliseRepoPath(path).toLowerCase().split("/")
     const a = spell(left)
     const b = spell(right)
     if (a[0] === "." || b[0] === ".") return true
@@ -68,9 +69,6 @@ export const inTransaction = <T>(db: DatabaseSync, work: () => T): T => {
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
-
-/** True when the project's repository folds case (core.ignorecase, read once per ledger by openLedger). */
-export const leasesFoldCase = (db: DatabaseSync): boolean => db.prepare("SELECT value FROM meta WHERE key = 'ignorecase'").get()?.value === "true"
 
 // A task that ended but still holds an intent (a reset left to repair) keeps its paths: its tree is not back to HEAD yet.
 const toLease = (row: Record<string, unknown>, at: string): LeaseRow => {
@@ -110,9 +108,8 @@ export const acquireLeases = (db: DatabaseSync, task: TaskRow): LeaseGrant =>
         sweepLeases(db)
         const paths = leasePaths(task)
         const held = listLeases(db).filter((lease) => lease.taskId !== task.id && lease.live)
-        const fold = leasesFoldCase(db)
         for (const path of paths) {
-            const holder = held.find((lease) => pathsOverlap(lease.path, path, fold))
+            const holder = held.find((lease) => pathsOverlap(lease.path, path))
             if (holder !== undefined) {
                 throw new Refusal("LEASE_CONFLICT", `${path} overlaps ${holder.path}, leased by task ${holder.taskId} (${holder.taskStatus}, due ${holder.expiresAt}) until that task ends`)
             }

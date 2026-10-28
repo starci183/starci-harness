@@ -124,7 +124,7 @@ design asks for.
 | [change-touches-running-node](scenarios/change-touches-running-node.yaml) | change | the change edits a task while it runs (redo-live) | automated | pending |  |
 | [change-while-verify-settling](scenarios/change-while-verify-settling.yaml) | change | an amend arrives while a task's verify is settling | automated | pending |  |
 | [kernel-cannot-drop-owner-deliverable](scenarios/kernel-cannot-drop-owner-deliverable.yaml) | change | a Kernel's replan cannot drop a task of the owner's goal; a replacement or the Supervisor's goal-change can | automated | pass | 2026-10-27 |
-| [conflict-lease-case-insensitive](scenarios/conflict-lease-case-insensitive.yaml) | conflict | Docs/A.md and docs/a.md are one file on Windows and macOS: one lease | automated | pass | 2026-10-27 |
+| [conflict-lease-case-insensitive](scenarios/conflict-lease-case-insensitive.yaml) | conflict | Docs/A.md and docs/a.md are one lease on every host, since a checkout on Windows or macOS holds them as one file | automated | pass | 2026-10-27 |
 | [conflict-lease-overlap](scenarios/conflict-lease-overlap.yaml) | conflict | two live tasks over the same path: the second is refused LEASE_CONFLICT | automated | pass | 2026-10-27 |
 | [conflict-scope-blocked](scenarios/conflict-scope-blocked.yaml) | conflict | a worker needing a path outside its scope files blocked, never widens | automated | pass | 2026-10-27 |
 | [conflict-scope-exceeded-escalates](scenarios/conflict-scope-exceeded-escalates.yaml) | conflict | the Kernel needs a path past its scope ceiling: refused SCOPE_EXCEEDED, escalated (kind scope), widened by the Supervisor | automated | pass | 2026-10-27 |
