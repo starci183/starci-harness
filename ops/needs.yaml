@@ -1,0 +1,19 @@
+# Shared needs: the shared roots of an app and the canonical key each one gives a need. cli/src/harness/needs.ts reads this
+# file. A worker that finds a shared capability, package or configuration missing files `starci task result --status blocked
+# --needs <key> [--paths <p>...]`; a reported path that matches a root here makes the need shared (routed to the Supervisor),
+# and the first such path names the need by the root's `key`, so two workers who spell the same need differently land on one
+# key. `$1`, `$2` are the root's `*` segments in order. The key grammar and the routing are cli/README.md "Shared needs".
+schema: starci/needs@1
+sharedRoots:
+  - {glob: "platform/*/**", key: "capability:platform.$1"}
+  - {glob: "be/apps/*/src/*", key: "config:app-root.$1"}
+  - {glob: "fe/apps/*/src/*", key: "config:app-root.$1"}
+  - {glob: "compose.y*ml", key: "config:compose"}
+  - {glob: "docker-compose*.y*ml", key: "config:compose"}
+  - {glob: "**/compose.y*ml", key: "config:compose"}
+  - {glob: "**/docker-compose*.y*ml", key: "config:compose"}
+  - {glob: "package.json", key: "config:root-package"}
+  - {glob: "package-lock.json", key: "config:root-package"}
+  - {glob: "eslint.config.*", key: "config:root-eslint"}
+  - {glob: ".eslintrc*", key: "config:root-eslint"}
+  - {glob: "tsconfig*.json", key: "config:root-tsconfig"}

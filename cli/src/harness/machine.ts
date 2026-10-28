@@ -20,6 +20,8 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  *   terminal Orca no longer lists (`runningWorkers`); one row, replaced on each read.
  * - supervisor_workers: each `[Worker]` seat a project's Supervisor dispatched: the repository whose ledger holds its task, its
  *   worktree, the completion `supervisor next` last handed over, and how the Supervisor ended it (harness/project-workers.ts).
+ * - shared_needs / shared_need_waiters: one row per (project, need key) and one per task waiting on it: its scope, router level,
+ *   state, decision, owner and resolver, and each waiter's report, parking and release (harness/needs.ts).
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -58,6 +60,15 @@ CREATE TABLE IF NOT EXISTS supervisor_workers (
   id TEXT PRIMARY KEY, project TEXT NOT NULL, repo TEXT NOT NULL, task_id TEXT NOT NULL, topic TEXT NOT NULL, worktree TEXT NOT NULL,
   created_at TEXT NOT NULL, handed TEXT, ended_at TEXT, ended_by TEXT);
 CREATE INDEX IF NOT EXISTS supervisor_workers_by_project ON supervisor_workers (project, ended_at, created_at);
+CREATE TABLE IF NOT EXISTS shared_needs (
+  project TEXT NOT NULL, key TEXT NOT NULL, scope TEXT NOT NULL, level TEXT, state TEXT NOT NULL, round INTEGER NOT NULL,
+  decision_json TEXT, owner_json TEXT, resolver_json TEXT, reason TEXT, merged_into TEXT, opened_at TEXT NOT NULL, routed_at TEXT,
+  updated_at TEXT NOT NULL, resolved_at TEXT, PRIMARY KEY (project, key));
+CREATE TABLE IF NOT EXISTS shared_need_waiters (
+  project TEXT NOT NULL, key TEXT NOT NULL, repo TEXT NOT NULL, workflow_id TEXT, task_id TEXT NOT NULL, task_key TEXT,
+  given_key TEXT NOT NULL, rules_json TEXT NOT NULL, paths_json TEXT NOT NULL, note TEXT, reported_at TEXT NOT NULL, parked_at TEXT,
+  released_at TEXT, release_json TEXT, PRIMARY KEY (project, key, repo, task_id));
+CREATE INDEX IF NOT EXISTS shared_need_waiters_by_workflow ON shared_need_waiters (workflow_id, task_key);
 `
 
 /** How long a recorded Orca terminal list stands as evidence for a pool count: older, it proves nothing. */

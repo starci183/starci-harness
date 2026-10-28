@@ -3,6 +3,8 @@ import { requireSupervisor } from "../../harness/supervisor.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 import { dispatchWorker } from "./workers.js"
+import { isPackageNeed } from "../../harness/needs.js"
+import { assertWorkerNeed, recordWorkerNeed } from "../needs/answer.js"
 
 /** Every value of a repeatable list flag, each also split on commas. */
 const listOf = (values: readonly string[]): string[] =>
@@ -32,11 +34,17 @@ export const supervisorDispatchVerb = defineVerb({
         input: { kind: "list", summary: "an input of the label's op as name=value (code: side=be|fe|harness, edition=lite|full|harness)" },
         topic: { kind: "string", summary: "the topic in the worker's title (default the brief's first line)" },
         project: { kind: "string", summary: "any checkout or worktree of the project's repositories (default: the working directory)" },
+        need: { kind: "string", summary: "the shared need this worker owns and resolves (starci needs list); a package need fills --input package" },
     },
     run: async (context, flags) => {
         const project = await projectFrom(context, flags.project)
+        // The need is checked before any worktree is made, so an answer to a need that moved on bounces back with nothing made.
+        const need = flags.need === undefined ? undefined : assertWorkerNeed(project.key, flags.need)
+        const packageInput = need !== undefined && isPackageNeed(need.key) && !flags.input.some((input) => input.startsWith("package=")) ? [`package=${need.key.slice("package:".length)}`] : []
         const seat = await requireSupervisor(await locateOrca(context.cwd), context.cwd, project)
-        const data = await dispatchWorker(context, seat, project, { brief: flags.brief, label: flags.label ?? "code", repo: flags.repo, allow: listOf(flags.allow), inputs: flags.input, topic: flags.topic })
-        return { data, message: [`worker ${data.worker} "${data.title}": task ${data.task} in ${data.repo}, worktree ${data.worktree} on ${data.branch}`, data.detail].join("\n") }
+        const data = await dispatchWorker(context, seat, project, { brief: flags.brief, label: flags.label ?? "code", repo: flags.repo, allow: listOf(flags.allow), inputs: [...flags.input, ...packageInput], topic: flags.topic })
+        const owned = need === undefined ? null : recordWorkerNeed(project.key, need.key, { worker: data.worker, repo: data.repo, task: data.task })
+        const lines = [`worker ${data.worker} "${data.title}": task ${data.task} in ${data.repo}, worktree ${data.worktree} on ${data.branch}`, data.detail, ...(owned === null ? [] : [`owns shared need ${owned.key} (${owned.state})`])]
+        return { data: { ...data, need: owned?.key ?? null }, message: lines.join("\n") }
     },
 })

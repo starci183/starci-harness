@@ -9,16 +9,18 @@ import { scopeSchema } from "./graph.js"
 import { inTransaction, now } from "./ledger.js"
 import { isOwnerRequestId } from "./owner-requests.js"
 import { assertRoute, isRouted, withRoutes } from "./routes.js"
+import { assertNeedAnswer } from "./need-answer.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
 import type { WorkflowRow } from "./workflow.js"
 
 /**
- * The seven commands of the seat tree (wave principle 5). Down: goal, goal-change, stop (Supervisor -> Kernel); the Kernel's own
- * graph: workflow-change; up: escalation and handoff (Kernel -> Supervisor). An Op's `result` is `task result`, not a command file.
+ * The eight commands of the seat tree. Down: goal, goal-change, stop (Supervisor -> Kernel), and need-owner (the Supervisor gives a
+ * shared need to one workflow, or rejects it); the Kernel's own graph: workflow-change (which also names the resolver of a shared
+ * need, or rejects it); up: escalation and handoff (Kernel -> Supervisor). An Op's `result` is `task result`, not a command file.
  */
 export const KERNEL_COMMANDS = ["workflow-change", "escalation", "handoff"] as const
-export const SUPERVISOR_COMMANDS = ["goal", "goal-change", "stop"] as const
+export const SUPERVISOR_COMMANDS = ["goal", "goal-change", "stop", "need-owner"] as const
 
 /** Who submits a command: the Kernel of a workflow, or the Supervisor of its project. */
 export type CommandScope = "kernel" | "supervisor"
@@ -53,6 +55,9 @@ const commandSchema = z.strictObject({
     handoff: z.strictObject({ summary: z.string().min(1) }).optional(),
     mode: z.enum(["graceful", "hard"]).optional(),
     project: z.string().min(1).optional(),
+    // The answer to a shared-need decision (harness/needs.ts): the task that resolves it (a Kernel's workflow-change), or why it
+    // is not shared (either coordinator); a need-owner without either gives the need to its workflow's Kernel.
+    need: z.strictObject({ key: z.string().min(1), resolver: z.string().min(1).optional(), reject: z.string().min(1).optional() }).optional(),
 })
 
 /** A command file as parsed: what it asks, plus the sha256 of its bytes (stored with it). */
@@ -72,6 +77,7 @@ const needs: Readonly<Record<Command["kind"], readonly (keyof Command)[]>> = {
     goal: ["goal"],
     "goal-change": ["goal"],
     stop: [],
+    "need-owner": ["need"],
 }
 
 /** Reads and validates a command file (json or yaml) for a scope: a Kernel submits only its three, the Supervisor only its three. */
@@ -176,6 +182,7 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
         }
         if (scope === "kernel") assertRoute(db, command, file.dir)
+        assertNeedAnswer(db, scope, command, file.dir)
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,
@@ -203,10 +210,13 @@ export const finishCommand = (db: DatabaseSync, scope: CommandScope, command: Co
     })
 
 /** The decision kinds `kernel next` returns. */
-export type KernelDecisionKind = "red" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "done"
+export type KernelDecisionKind = "red" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
 
 /** The decision kinds `supervisor next` returns. */
-export type SupervisorDecisionKind = "escalation" | "handoff"
+export type SupervisorDecisionKind = "escalation" | "handoff" | "shared-need"
+
+/** The decision kind a shared need is routed as, to a Kernel or to the Supervisor (core/needs/tend.ts). */
+export const SHARED_NEED = "shared-need"
 
 /** One decision a coordinator must take: raised by the deterministic driver, answered by a command naming its id. */
 export interface Decision {

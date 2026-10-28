@@ -105,6 +105,12 @@ budget:
 feedback:
   openMaxDays: 3
 
+# Shared needs (both runners, cli/README.md "Shared needs"): a need routed to a coordinator that names no owner (a resolver task,
+# a worker, or a rejection) within this many minutes escalates one level: a Kernel's goes to the Supervisor, the Supervisor's to
+# the owner (a package need to Debug, kind harness). Run by every workflow step, `kernel next` and `supervisor tick`.
+needs:
+  ownerDeadlineMinutes: 30
+
 # The stall ladder (orca runner): a seat whose agent sits idle at its prompt while its ledger work is pending. A Supervisor
 # with an open decision it rules (never an owner or harness escalation it waits on), a Kernel with an open decision or a node its driver acts on (ready, queued, reported, returned,
 # failed, lost, launch-unknown), an Op whose task runs with no result filed. Run by `supervisor tick` (Supervisor, Kernels and

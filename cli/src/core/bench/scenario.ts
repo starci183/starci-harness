@@ -14,6 +14,7 @@ export const GROUPS = [
     "provider",
     "change",
     "conflict",
+    "needs",
     "worker",
     "git",
     "budget",
@@ -64,7 +65,8 @@ const assertSchema = z.strictObject({
     orcaCalls: z
         .strictObject({ command: z.string(), match: z.record(z.string(), z.string()).optional(), count: z.number().int().optional(), min: z.number().int().optional(), max: z.number().int().optional(), distinct: z.string().optional() })
         .optional(),
-    exists: z.strictObject({ path: z.string(), present: z.boolean() }).optional(),
+    /** `contains` also asks a present file for a substring. */
+    exists: z.strictObject({ path: z.string(), present: z.boolean(), contains: z.string().optional() }).optional(),
 })
 
 /** Fixtures a step may write that must never sit in this public repository as text: they are built at run time. */

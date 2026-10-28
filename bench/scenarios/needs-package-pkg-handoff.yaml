@@ -1,0 +1,112 @@
+schema: starci/scenario@1
+id: needs-package-pkg-handoff
+group: needs
+title: an Op blocked on a @starci package files a package need; the Supervisor gives it to a [Worker] package edit, and the waiter is released once its handoff is merged
+inject: "an Op finds @starci/grammar missing a component and files blocked --needs package:@starci/grammar"
+expect: >-
+  the need routes straight to the Supervisor as a package edit (never the owner, never the Kernel); supervisor dispatch --need
+  gives it to a [Worker] with --input package filled; the package edit's pkg handoff is linked to the need, and once that
+  head is merged on harness main the next step resolves the need and retries the waiter from its preserved work
+pass:
+  - the need is routed to the Supervisor with route package, no Kernel decision and no owner escalation
+  - the dispatched worker owns it, its contract's input names the package
+  - the handoff is linked and, once merged on main, resolves the need and releases the waiter
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: boot the project's Supervisor
+    boot: {}
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: screen
+        goal: bench workflow screen
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write the screen doc, which uses a grammar component
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, screen]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      status: blocked
+      output:
+        summary: the grammar has no Stepper
+        files: []
+        rulesApplied: []
+        needs: [{key: "package:@starci/grammar", note: "Stepper is missing from @starci/grammar"}]
+  - starci: [workflow, step, screen]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || level || ':' || scope FROM shared_needs"
+        equals: ["routed:supervisor:package"]
+  - name: no Kernel decision and no owner escalation
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT scope || ':' || kind || ':' || json_extract(evidence_json, '$.route') FROM decisions"
+        equals: ["supervisor:shared-need:package"]
+  - name: supervisor next hands it as a package edit
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: pkg handoff
+  - name: the Supervisor gives it to a worker
+    seat: supervisor
+    starci: [supervisor, dispatch, --need, "package:@starci/grammar", --brief, "add the Stepper to @starci/grammar", --label, docs, --allow, docs/stepper.md]
+    save:
+      task: data.task
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || json_extract(owner_json, '$.kind') || ':' || json_extract(resolver_json, '$.kind') FROM shared_needs"
+        equals: ["resolving:worker:package"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(contract_json, '$.input.extend.package') FROM tasks WHERE id = '${task}'"
+        equals: ["@starci/grammar"]
+  - name: the worker's package edit, on its own branch
+    git: [checkout, -q, -b, pkg/repo-stepper]
+  - write:
+      path: packages/grammar/stepper.md
+      content: "# Stepper\n"
+  - git: [add, packages/grammar/stepper.md]
+  - git: [commit, -q, -m, "grammar: add the Stepper"]
+  - starci: [pkg, handoff, --note, "Stepper for the screen workflow"]
+  - git: [checkout, -q, main]
+  - name: a step before the merge leaves the waiter parked
+    starci: [workflow, step, screen]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT state || ':' || json_extract(resolver_json, '$.handoff.branch') FROM shared_needs"
+        equals: ["resolving:pkg/repo-stepper"]
+  - name: Debug merges the handoff on main
+    git: [merge, -q, --no-ff, -m, "merge the package edit", pkg/repo-stepper]
+  - starci: [workflow, step, screen]
+    expect: {}
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT (SELECT state FROM shared_needs) || ':' || (SELECT json_extract(release_json, '$.by') FROM shared_need_waiters)"
+        equals: ["resolved:resolved"]
+  - name: the waiter runs again
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'a'"
+        equals: [2]

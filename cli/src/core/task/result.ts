@@ -10,6 +10,10 @@ import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harnes
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { parseNeeds, reportNeeds } from "../../harness/needs.js"
+import type { NeedReport } from "../../harness/needs.js"
+import { projectOf } from "../../harness/work.js"
+import { mainCheckout } from "../../shared/git.js"
 
 const RESULT_STATUSES: readonly ResultStatus[] = ["done", "blocked", "mismatch", "failed"]
 
@@ -25,6 +29,25 @@ interface ResultData {
     readonly preserved: Preserved | null
     /** The preserve folder whose reset broke half-way: the task keeps its worktree until `task verify --recover` finishes it. */
     readonly repair: string | null
+    /** The shared needs a blocked result reported, by canonical key (harness/needs.ts). */
+    readonly needs: readonly NeedReport[]
+}
+
+/**
+ * Records a blocked task's needs in the host store as waiters (harness/needs.ts attachWaiter), after its result is filed; the next
+ * step of its workflow parks it and routes the needs (core/needs/tend.ts), and records them again from the result if this fails.
+ */
+const recordNeeds = async (db: DatabaseSync, root: string, taskId: string, needs: readonly NeedReport[]): Promise<string> => {
+    try {
+        const project = await projectOf(root)
+        const task = getTask(db, taskId)
+        const taskKey = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(taskId)?.plan_key
+        const repo = await mainCheckout(root)
+        const attached = reportNeeds(needs, { project: project.key, repo, workflow: task.workflowId, task: taskId, taskKey: typeof taskKey === "string" ? taskKey : null })
+        return `; waits on ${attached.map((one) => `${one.need.key} (${one.opened ? "opened" : `${one.need.state}, ${one.attached ? "joined" : "already waiting"}`})`).join(", ")}`
+    } catch (error: unknown) {
+        return `; needs ${needs.map((need) => need.key).join(", ")} kept in the result, not yet in the host store (${error instanceof Error ? error.message : String(error)}); the next step records them`
+    }
 }
 
 const isResultStatus = (value: string): value is ResultStatus => (RESULT_STATUSES as readonly string[]).includes(value)
@@ -87,11 +110,20 @@ export const taskResultVerb = defineVerb({
         task: { kind: "string", summary: "the task id", required: true, positional: true },
         status: { kind: "string", summary: "done, blocked, mismatch or failed", required: true },
         output: { kind: "string", summary: "the output as json, or @file to read it from a file", required: true },
+        needs: { kind: "list", summary: "blocked on a missing shared thing, never built here: its key, capability:<name>, package:<npm name> or config:<name> (repeatable)" },
+        rule: { kind: "string", summary: "with --needs: the rule id that asks for the missing thing" },
+        paths: { kind: "list", summary: "with --needs: the shared paths it would touch, which name its canonical key (repeatable)" },
+        note: { kind: "string", summary: "with --needs: one line on what is missing" },
     },
     run: async (context, flags) => {
         const status = flags.status
         if (!isResultStatus(status)) throw new Refusal("RESULT_BAD_STATUS", `--status must be one of ${RESULT_STATUSES.join(", ")}, not "${status}"`, EXIT_USAGE)
-        const output = parseOutput(context.cwd, flags.output)
+        const given = parseOutput(context.cwd, flags.output)
+        // A shared need is kept normalized and canonical in the output the ledger holds, so every later step reads one key.
+        const needs = parseNeeds({ needs: flags.needs, rule: flags.rule, paths: flags.paths, note: flags.note }, given)
+        if (needs.length > 0 && status !== "blocked") throw new Refusal("RESULT_NEEDS_NOT_BLOCKED", `a shared need is reported with --status blocked, not ${status}`, EXIT_USAGE)
+        if (needs.length === 0 && (flags.rule !== undefined || flags.paths.length > 0 || flags.note !== undefined)) throw new Refusal("RESULT_NEEDS_MISSING", "--rule, --paths and --note describe a --needs key; name the key", EXIT_USAGE)
+        const output = needs.length === 0 ? given : { ...(typeof given === "object" && given !== null ? given : { value: given }), needs }
         const callerRoot = await repositoryRoot(context.cwd)
         const db = openLedger(callerRoot)
         try {
@@ -120,14 +152,15 @@ export const taskResultVerb = defineVerb({
                 const next = setStatus(db, task.id, status === "failed" ? "failed" : "reported")
                 // A reset that broke keeps a repair intent, and the worktree with it, until --recover finishes it.
                 if (repair !== null) markIntent(db, task.id, "repair", repair)
-                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair }
+                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair, needs }
             })
+            const waiting = needs.length === 0 ? "" : await recordNeeds(db, callerRoot, data.task, needs)
             const worktree = data.taskStatus === "failed" && repair === null ? ((await removeOpWorktree(callerRoot, data.task).catch(() => undefined)) ?? null) : null
             const dir = preserved?.dir ?? null
             const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
             const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
             const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
-            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}`
+            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}`
             return { data, message, ...(repair === null ? {} : { exitCode: 1 }) }
         } finally {
             db.close()
