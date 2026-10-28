@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.3] - 2026-10-28
+
+Runs `@starci/hfs` 4.9.3 (an exact dependency).
+
 ### Changed
 
 - **An app's `starci-harness` is the CLI that judges it.** `starci app` passes @starci/hfs the CLI's own version
