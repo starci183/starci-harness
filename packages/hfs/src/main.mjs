@@ -55,6 +55,11 @@
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
 //                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mjs). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
+//   starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
+//   starci app add <page|layout> <route> [--blocks a,b] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
+//                                            or overlay owner (scaffold/add-fe-page.mjs, add-fe-layout.mjs, add-fe-overlay.mjs).
+//                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
+//                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
 // Every finding names a why code and carries its Vietnamese text. check, lint and explain read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
@@ -97,7 +102,7 @@ export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 
 const DATABASE_VERBS = new Map([['baseline', dbBaselineMain], ['restamp', dbRestampMain], ['plan', dbPlanMain], ['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['reset', dbResetMain]]);
 
 const USAGE = `starci app scaffold <name> [--into <dir>] [--edition full|lite] [--registry-visibility public|private] [--cwd <dir>]
-starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [options] [--cwd <dir>]
+starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|composite|branch|leaf|page|overlay|layout> <name> [options] [--cwd <dir>]
 starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--format text|json] [--sonar <file>]
 starci app codemod button-intent [--write] [--format json|markdown] [--report <file.json|file.md>] [--cwd <dir>]
 starci app sync (--check | --write) [--cwd <dir>]
@@ -136,10 +141,10 @@ starci app hygiene [--cwd <dir>]
 starci app coverage merge --out <lcov> <lcov-or-dir>... [--cwd <dir>]
 `;
 const PER_CODE_LIMIT = 25;
-const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app']);
+const VALUE_FLAGS = new Set(['--base', '--inject', '--into', '--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--coverage-from', '--registry-visibility', '--shapes', '--read', '--app', '--kind', '--blocks']);
 /** Flags that may repeat: their values are collected in order. */
 const LIST_FLAGS = new Set(['--inject']);
-const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring']);
+const BOOL_FLAGS = new Set(['--json', '--fast', '--fe', '--no-types', '--db-types', '--wiring', '--form']);
 
 function coverageArgument(arg, args, opts) {
   const inline = arg.startsWith('--coverage-from=');
@@ -390,10 +395,11 @@ function newMain(opts, { cwd: repoRoot, stdout: out }) {
 function addMain(opts, { cwd: repoRoot, stdout: out }) {
   const [noun, name, ...extra] = opts.positional;
   if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app } });
+  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: opts.fe, noTypes: opts['no-types'], shapes: opts.shapes, read: opts.read, app: opts.app, kind: opts.kind, form: opts.form, blocks: opts.blocks } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
-  out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);
+  // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
+  if (registered.patterns.length || registered.kinds.length) out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);
   return 0;
 }
 

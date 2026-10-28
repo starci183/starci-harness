@@ -10,6 +10,9 @@ Every command runs at the app root. A side is judged with its folder as the root
 ```sh
 starci app scaffold <name> [--into <dir>] [--edition full|lite] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [--fe] [--no-types] [options] [--cwd <dir>]
+starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
+starci app add <page|layout> <route> [--blocks a,b] [--app <fe app>] [--cwd <dir>]
+starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--cwd <dir>]
 starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--format text|json] [--sonar <file>]
 starci app sync (--check | --write) [--cwd <dir>]
 starci app check [--cwd <dir>] [--json] [--fast] [--base <ref>] [--db-types]
@@ -23,6 +26,26 @@ starci app new image [--cwd <dir>]
 starci app secret list|show|set|gen ... [--cwd <dir>]
 starci app hygiene [--cwd <dir>]
 ```
+
+`starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
+and `contexts/ui`, from `templates/fe/units`, with its copy in every catalog; nothing that exists is overwritten.
+
+- `block`: its connected half (one `useQuery<Read>Swr` read folded by `slotOfSwr` and `mapSlot`, its labels and the retry)
+  over its pure half of Grammar parts drawn through `SlotView`, plus `stories/blocks/<Name>.stories.tsx` (one story per drawn
+  shape and the loading twin, paired for the DNA gate). `--shapes a,b,c` adds the `X_SHAPES` inventory, the `XShape` union
+  and the exhaustive switch, and the connected half takes the shape from the read's `status`. The first block writes the
+  app's one copy of the status owners and the shared `status` catalog namespace (FE-ERROR-1).
+- `composite`, `branch`, `leaf`: one file of Grammar parts taking resolved fields. In a front end of two or more apps with
+  the shared ui package these, and `SlotView`, go to that package and its barrel (R91).
+- `page <route>`: `app/[locale]/<route>/{page,loading,error}.tsx`, the server page owner `<Name>Page` drawing one Grammar
+  `Page` (R325) whose header carries the trail and the heading and whose body composes `--blocks` (blocks that take no input;
+  else the page's empty sentence), its loading view `<Name>LoadingPage` (the same page drawn with `isSkeleton`, STATE-8),
+  `<Name>ErrorPage` (the page with one negative Alert), and the stories pairing the page with its loading view.
+- `overlay <name> --kind modal|drawer`: `features/overlays/<Name>Overlay`, a `Dialog` or a trailing `Drawer` whose connected
+  half owns its open state; its decision group puts the way out first and the commit last, in the footer, or with `--form`
+  as the last row of a Form whose fields sit in a one-column `FormGrid`; stories draw it closed and open.
+- `layout <segment>`: `app/[locale]/<segment>/layout.tsx` and `features/layouts/<Name>Layout`, which composes Grammar's
+  `PrimaryRailLayout`: the routed page in its primary region, `--blocks` in its rail. A frame never insets a page.
 
 ## Lite edition
 

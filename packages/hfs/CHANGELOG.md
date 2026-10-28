@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.9.7 - 2026-10-28
+
+- Added: `starci app add block|composite|branch|leaf|page|overlay|layout` writes every front-end unit already in the canon's shape, from `templates/fe/units` (`scaffold/add-fe-unit.mjs`, `add-fe-page.mjs`, `add-fe-overlay.mjs`, `add-fe-layout.mjs`), with its copy in every catalog; nothing that exists is overwritten.
+  - `block <name> [--shapes a,b,c] [--read <read>]`: the connected half folds one `useQuery<Read>Swr` read through `slotOfSwr`/`mapSlot` and takes its shape from the read's `status` (the placeholder's while it loads); the pure half draws through `SlotView`, and with shapes declares `X_SHAPES`, `XShape = (typeof X_SHAPES)[number]` and the exhaustive switch (FE-FUNCTION-7); `stories/blocks/<Name>.stories.tsx` has one story per shape and the loading twin paired by `parameters.dna`. The first block writes the app's one copy of the status owners (`DataSlot`, `SlotLabels`, `slotOfSwr`, `mapSlot`, `loadingSlot`, `useSlotLabels`, `SlotView`) and the shared `status` namespace.
+  - `composite`, `branch`, `leaf`: one file of Grammar parts on resolved fields; in a front end of two or more apps with the shared ui package they, and `SlotView`, go to that package and its barrel (R91), `DataSlot` and `SlotLabels` declared beside `SlotView` and re-exported by `modules/types`.
+  - `page <route> [--blocks a,b]`: the route's `page`, `loading` and `error` files, the server page owner drawing one Grammar `Page` (R325) with the trail and heading in its header and the blocks (or its empty sentence) in its body, its loading view (the same page with `isSkeleton`, STATE-8), its error page (the page with one negative Alert) and the stories pairing the page with its loading view.
+  - `overlay <name> --kind modal|drawer [--form]`: a `Dialog` or trailing `Drawer` owner whose connected half owns its open state; way out first and commit last, in the footer or, with `--form`, as the last row of a Form over a one-column `FormGrid`; stories closed and open.
+  - `layout <segment> [--blocks a,b]`: the segment's layout file and its owner composing `PrimaryRailLayout`, the page in its primary region and the blocks in its rail.
+  - Spec: `src/fe-unit-shape-slot.spec.mjs` adds every kind to a scaffolded full app and lints it with the starci-fe canon and the core Grammar's rules, and type-checks them under the next preset.
+- Changed: `starci app add` prints its `registered patterns` line only for a noun that registers something in hfs.json.
+- Changed: the bundled canon pins name hfs 4.9.7.
+
 ## 4.9.6 - 2026-10-28
 
 - Changed: the bundled canon pins name hfs 4.9.6, the Grammar family 0.15.5 (grammar, eslint-grammar-core, eslint-grammar-offset-pop) and eslint-canon-fe 9.4.5.
