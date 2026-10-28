@@ -20,7 +20,7 @@ import { settleLockHolder, thisVerifier, withSettleLock } from "./settle.js"
 import type { Verifier } from "./settle.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus, setVerdict, taskCheckout } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
-import { waveDue } from "./workflow.js"
+import { getWorkflow, graphOf, waveDue } from "./workflow.js"
 
 /** The `starci check` verbs a scoped check runs: typecheck and lint over the scope of a diff. */
 const SCOPED_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typecheck"])
@@ -49,12 +49,24 @@ export const splitChecks = (root: string, task: TaskRow, checks: readonly Resolv
     return { own: checks.filter((check) => !isWaveCheck(check)), wave: checks.filter(isWaveCheck) }
 }
 
-/** One task of a wave: its row, the heavy checks it left, the files it landed and the base its own diff starts from. */
+/**
+ * One task of a wave: its row, the heavy checks it left, the files it landed, the base its own diff starts from, and the module
+ * paths it answers for as the composer its producers named (core/check/composition.ts: their deferred findings are its own).
+ */
 interface WaveTask {
     readonly task: TaskRow
     readonly checks: readonly ResolvedCheck[]
     readonly files: readonly string[]
     readonly parent: string | null
+    readonly answers: readonly string[]
+}
+
+/** The allowPaths of every node of the task's workflow that names this task (by plan key) as its composer. */
+const answersOf = (db: DatabaseSync, task: TaskRow): string[] => {
+    if (task.workflowId === null) return []
+    const key = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(task.id)?.plan_key
+    if (typeof key !== "string") return []
+    return graphOf(db, task.workflowId, getWorkflow(db, task.workflowId).graphVersion).flatMap((node) => (node.contract.context.composedBy === key ? node.contract.context.allowPaths : []))
 }
 
 /** What a wave verify judged: the tasks, its base and head, the outcomes per task, and the tasks it returned red. */
@@ -97,9 +109,18 @@ const FINDING_LINE = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]*\/[^\s:()]*\.[A-Za
 /** The files a red check's output reports findings in, slash-separated as printed (absolute, or relative to a package). */
 const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap((line) => FINDING_LINE.exec(line)?.slice(1, 2) ?? []))]
 
-/** Whether a task landed the file a finding is printed by: the same repository path, or one printed relative to a package; a task that landed nothing owns what lies under its allowPaths. */
+/** Whether a printed path names this repository file: the same path, absolute, or printed relative to a package. */
+const names = (printed: string, file: string): boolean => printed === file || printed.endsWith(`/${file}`) || file.endsWith(`/${printed}`)
+
+/** Whether a printed path lies under a repository directory (an allowPath). */
+const under = (printed: string, dir: string): boolean => printed.startsWith(`${dir}/`) || printed.includes(`/${dir}/`)
+
+/**
+ * Whether a finding's file is the task's: a file it landed; for a task that landed nothing, a file under its allowPaths; for a
+ * composer, a file under a module it answers for.
+ */
 const lands = (each: WaveTask, printed: string): boolean =>
-    each.files.some((file) => printed === file || printed.endsWith(`/${file}`) || file.endsWith(`/${printed}`) || (each.task.settleCommit === null && (printed.startsWith(`${file}/`) || printed.includes(`/${file}/`))))
+    each.files.some((file) => names(printed, file) || (each.task.settleCommit === null && under(printed, file))) || each.answers.some((dir) => names(printed, dir) || under(printed, dir))
 
 /** Who a red check of the wave belongs to: the tasks it returns, whether the red is proven theirs, and the findings no task of the wave landed. */
 interface Attribution {
@@ -109,7 +130,7 @@ interface Attribution {
 }
 
 /**
- * The tasks a red check of the wave belongs to. A check that reports findings by file belongs to the tasks that landed those files,
+ * The tasks a red check of the wave belongs to. A check that reports findings by file belongs to the tasks whose files they are (lands),
  * whichever task of the wave left the check (a scoped check runs once over the union every landed task shares); a finding in a file
  * no task of the wave landed is a wave error, reported and owned by no task. A check whose output names no file falls back to the
  * tasks whose landed files it mentions, else to every task that shared its run (a red repository gate, a suite that names no
@@ -144,10 +165,10 @@ const waveTasks = async (db: DatabaseSync, checkout: string, ids: readonly strin
     return inOrder(ids, async (id) => {
         const task = getTask(db, id)
         const checks = resolveChecks(task.contract, ops).filter(isWaveCheck)
-        if (task.settleCommit === null) return { task, checks, files: task.contract.context.allowPaths, parent: null }
+        if (task.settleCommit === null) return { task, checks, files: task.contract.context.allowPaths, parent: null, answers: answersOf(db, task) }
         const parent = await resolveSha(checkout, `${task.settleCommit}^`)
         const files = nulPaths(await git(checkout, ["diff", "--name-only", "-z", parent, task.settleCommit]))
-        return { task, checks, files, parent }
+        return { task, checks, files, parent, answers: answersOf(db, task) }
     })
 }
 
