@@ -1,7 +1,9 @@
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, sep } from "node:path"
 import { z } from "zod"
-import { depsLocalPath, existingDepsLocalPath, runtimeRoot } from "../../harness/ledger.js"
+import { depsLocalPath, existingDepsLocalPath, mainCheckoutOf, openExistingLedger, runtimeRoot } from "../../harness/ledger.js"
+import { readMachine } from "../../harness/machine.js"
+import { recordEvent } from "../../harness/tasks.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
@@ -97,8 +99,11 @@ export interface LocalPackage {
     readonly builds: boolean
 }
 
-/** Where the `@starci` package sources live by default: `packages/` of the harness this CLI runs from. */
-export const defaultPackagesRoot = (): string => join(runtimeRoot(), "packages")
+/**
+ * Where the `@starci` package sources live by default: `packages/` of the main checkout of the harness this CLI runs from, never
+ * of one of its worktrees (a package edit worktree ends when Debug lands it; `--from` names one on purpose).
+ */
+export const defaultPackagesRoot = (): string => join(mainCheckoutOf(runtimeRoot()), "packages")
 
 /** The `@starci` packages under `from`, by npm name; DEPS_FROM_MISSING when the folder does not exist. */
 export const localPackages = (from: string): Map<string, LocalPackage> => {
@@ -323,24 +328,93 @@ export interface Reapplied {
  * it stands, without building, so every checkout runs against the same unpublished package.
  */
 export const reapplyLocal = async (source: string, checkout: string): Promise<Reapplied | undefined> => {
-    const record = readRecord(source)
-    if (record === undefined || record.packages.length === 0) return undefined
+    const { packages, healed } = healRecord(source)
+    if (packages.length === 0) return undefined
     try {
         if (!existsSync(join(checkout, "node_modules"))) {
             const run = await withHeavySlot("install", "npm ci", checkout, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], checkout, held.options))
             if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${checkout} failed:\n${tail(run.stdout, run.stderr)}`)
         }
-        const packages = record.packages.map((entry) => {
-            const pkg = localPackages(dirname(entry.folder)).get(entry.name)
-            if (pkg === undefined) throw new Refusal("DEPS_FROM_MISSING", `${entry.folder} no longer holds ${entry.name}`)
-            return pkg
-        })
         const added = await installMissing(checkout, packages)
         const manifests = await manifestFiles(checkout)
         const copied = await inOrder(packages, (pkg) => copyLocal(checkout, manifests, pkg))
         const lines = copied.map((one) => `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${one.warnings.map((warning) => `\n  warning: ${warning}`).join("")}`)
-        return { status: "green", detail: [...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
+        return { status: "green", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), ...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
     } catch (error: unknown) {
-        return { status: "red", detail: `the repository is in local package mode (starci deps source) but its copy failed: ${error instanceof Error ? error.message : String(error)}` }
+        return { status: "red", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), `the repository is in local package mode (starci deps source) but its copy failed: ${error instanceof Error ? error.message : String(error)}`].join("\n") }
     }
 }
+
+/** One record entry whose folder no longer held its package: where it pointed, and the harness folder it now names (null: dropped, npm). */
+export interface Healed {
+    readonly name: string
+    readonly from: string
+    readonly to: string | null
+}
+
+/** The warning line of one healed entry. */
+export const describeHealed = (one: Healed): string =>
+    one.to === null
+        ? `${one.from} no longer holds ${one.name} and the harness's packages/ has no folder for it: dropped from the local record, it resolves from npm`
+        : `${one.from} no longer holds ${one.name}: the local record now names the harness's own ${one.to}`
+
+/** The package a record entry's folder holds, or undefined when the folder is gone or holds another package. */
+const packageAt = (entry: LocalRecord["packages"][number]): LocalPackage | undefined => (existsSync(entry.folder) ? localPackages(dirname(entry.folder)).get(entry.name) : undefined)
+
+/**
+ * The repository's local record with every entry resolved to its package, healed first: an entry whose folder no longer holds
+ * its package (a package edit worktree Debug landed and `worktree gc` removed, a folder deleted by hand) is repointed to the
+ * harness's own `packages/` folder of the same name (`defaultPackagesRoot`), or dropped so the package resolves from npm when
+ * the harness has none; the record is rewritten (cleared once empty) and a `deps-local-healed` event names each change in the
+ * project's ledger. A vanished folder therefore never fails an install, a sync or a launch. Empty in npm mode.
+ */
+export const healRecord = (root: string): { readonly packages: readonly LocalPackage[]; readonly healed: readonly Healed[] } => {
+    const record = readRecord(root)
+    if (record === undefined) return { packages: [], healed: [] }
+    const harness = existsSync(defaultPackagesRoot()) ? localPackages(defaultPackagesRoot()) : new Map<string, LocalPackage>()
+    const healed: Healed[] = []
+    const packages = record.packages.flatMap((entry): LocalPackage[] => {
+        const held = packageAt(entry)
+        if (held !== undefined) return [held]
+        const own = harness.get(entry.name)
+        healed.push({ name: entry.name, from: entry.folder, to: own === undefined ? null : slashed(own.folder) })
+        return own === undefined ? [] : [own]
+    })
+    if (healed.length === 0) return { packages, healed }
+    if (packages.length === 0) clearRecord(root)
+    else writeRecord(root, packages.map((pkg) => ({ name: pkg.name, folder: slashed(pkg.folder) })))
+    const db = openExistingLedger(root)
+    if (db !== undefined) {
+        try {
+            recordEvent(db, "deps-local-healed", null, { healed })
+        } finally {
+            db.close()
+        }
+    }
+    return { packages, healed }
+}
+
+/** What healing one repository's local record did, for a caller that heals every project of the host. */
+export interface HealedRecord {
+    readonly repo: string
+    readonly healed: readonly Healed[]
+}
+
+/**
+ * Heals the local record of every project the host registry lists (`healRecord`): `worktree gc` runs it once it removed a
+ * package edit worktree, so no project keeps naming a folder that is gone. A project whose repository is gone, or whose record is unreadable, is skipped.
+ */
+export const healRecords = (): HealedRecord[] =>
+    readMachine((db) => db.prepare("SELECT repo_root FROM ledgers").all(), [])
+        .map((row) => String(row.repo_root))
+        .filter((repo) => existsSync(join(repo, ".git")))
+        .flatMap((repo): HealedRecord[] => {
+            try {
+                const { healed } = healRecord(repo)
+                return healed.length === 0 ? [] : [{ repo, healed }]
+            } catch (error: unknown) {
+                // An unreadable record is refused where it is used (deps source, a sync); it never stops another project heal.
+                if (error instanceof Refusal) return []
+                throw error
+            }
+        })

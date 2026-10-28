@@ -191,7 +191,7 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
 
 /**
  * The events of a verify that reached no verdict and count toward settleNoVerdictMax. An infrastructure failure (verify-infra: an
- * install or setup out of time, VERIFY_INFRA; verify-deadline: a lock given up at its deadline) is the harness's, not the task's:
+ * install or setup out of time or an install no change explains, VERIFY_INFRA; verify-deadline: a lock given up at its deadline) is the harness's, not the task's:
  * it returns the task to reported like the others but never counts toward awaiting_owner.
  */
 const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused"] as const

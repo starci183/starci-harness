@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, join, resolve } from "node:path"
+import { basename, join, posix, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { captureNpm, captureTool, EXIT_TIMEOUT, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
@@ -23,6 +23,8 @@ import { olderNote, runCheck, strayFiles } from "./run-checks.js"
 import { assertWorktreeHooks } from "./worktree.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
+import { openTicket } from "./tickets.js"
+import { projectOf } from "./work.js"
 
 const LIST_SHOWN = 20
 
@@ -242,18 +244,44 @@ const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => 
     return { ...installed, status: reapplied.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${reapplied.detail}` }
 }
 
-/** The refusal of a verify or wave stopped by the harness's own step (an install or setup out of time): no verdict on the work. */
+/** The refusal of a verify or wave stopped by the harness's own step (an install or setup out of time, an install no change explains): no verdict on the work. */
 export const VERIFY_INFRA = "VERIFY_INFRA"
+
+/** The code of the one harness-defect ticket a red install no landed change explains opens; every repeat lands on it. */
+export const INSTALL_RED_HARNESS = "INSTALL_RED_HARNESS"
+
+/** The files an npm install reads from the tree: only a change to one of them can make the work's install red. */
+const INSTALL_INPUTS: ReadonlySet<string> = new Set(["package.json", "package-lock.json", "npm-shrinkwrap.json", ".npmrc"])
 
 /**
  * Refuses with VERIFY_INFRA when a preparing step failed on the harness, not on the work: the install or a setup command ran
- * out of its budget (exit 124). The caller reaches no verdict: a task verify returns the task to reported with no try spent, a
- * wave fails no task, and the next step verifies again.
+ * out of its budget (exit 124), or the install is red while none of the files the work changed (`changed`) is one an install
+ * reads, so the red comes from what the harness brought to the checkout (its install cache, a local package record). The latter
+ * opens one harness-defect ticket, deduped by INSTALL_RED_HARNESS, for the project of `repo`. The caller reaches no verdict: a
+ * task verify returns the task to reported with no try spent, a wave fails, returns and revives no task, and the next step
+ * verifies again, green once the cause is cleared.
  */
-export const assertNoInfraFailure = (prepared: readonly CheckOutcome[]): void => {
+export const assertNoInfraFailure = async (prepared: readonly CheckOutcome[], changed: readonly string[], repo: string): Promise<void> => {
     const stuck = prepared.find((outcome) => outcome.status === "red" && outcome.exitCode === EXIT_TIMEOUT)
-    if (stuck === undefined) return
-    throw new Refusal(VERIFY_INFRA, `the ${stuck.name} step ran out of time (an infrastructure failure, not the task's): ${stuck.detail.split("\n")[0] ?? ""}`)
+    if (stuck !== undefined) throw new Refusal(VERIFY_INFRA, `the ${stuck.name} step ran out of time (an infrastructure failure, not the task's): ${stuck.detail.split("\n")[0] ?? ""}`)
+    const install = prepared.find((outcome) => outcome.kind === "install" && outcome.status === "red")
+    if (install === undefined || changed.some((file) => INSTALL_INPUTS.has(posix.basename(file)))) return
+    const { ticket } = openTicket({
+        kind: "harness-defect",
+        severity: "blocking",
+        title: "the install of a clean checkout is red although the work changed no file an install reads",
+        evidence: { tail: evidenceTail(install.detail, "") },
+        tried: "the verify reached no verdict and spent no try; every later step verifies again and goes on once the install is green",
+        proposedDefault: null,
+        options: [],
+        project: await projectOf(repo, false),
+        workflow: null,
+        by: "verify",
+        code: INSTALL_RED_HARNESS,
+        module: "cli/src/harness/clean-verify.ts",
+        waiters: [],
+    })
+    throw new Refusal(VERIFY_INFRA, `the install is red although the work changed none of ${[...INSTALL_INPUTS].join(", ")} (an infrastructure failure, not the task's; harness-defect ticket ${ticket.id}): ${install.detail.split("\n")[0] ?? ""}`)
 }
 
 /**
@@ -409,7 +437,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         }
         const checks: CheckOutcome[] = [built.lands, ...(await policyGates(root, dir, built.facts.changed))]
         const prepared = input.install === false ? [] : await prepareCheckout(place, [contract.context.setup ?? []])
-        assertNoInfraFailure(prepared)
+        await assertNoInfraFailure(prepared, built.facts.changed, root)
         checks.push(...prepared)
         if (prepared.every((outcome) => outcome.status === "green")) {
             checks.push(...(await inOrder(input.checks, (check) => checkCandidate(check, { ...input, contract: resolved }, place, built))))

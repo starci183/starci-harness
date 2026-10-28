@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { join, resolve } from "node:path"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
@@ -12,6 +12,8 @@ import {
     clearRecord,
     copyLocal,
     defaultPackagesRoot,
+    describeHealed,
+    healRecord,
     installedNames,
     installMissing,
     installsOf,
@@ -135,11 +137,9 @@ export const depsSourceVerb = defineVerb({
                 })
             }
             // npm's reify (installMissing) puts every @starci package back to its locked version, so every recorded package is copied again after it.
-            const kept = (readRecord(root)?.packages ?? []).filter((entry) => !chosen.some((pkg) => pkg.name === entry.name))
-            const keptPackages = kept.flatMap((entry) => {
-                const pkg = localPackages(dirname(entry.folder)).get(entry.name)
-                return pkg === undefined ? [] : [pkg]
-            })
+            const recorded = healRecord(root)
+            warnings.push(...recorded.healed.map(describeHealed))
+            const keptPackages = recorded.packages.filter((pkg) => !chosen.some((one) => one.name === pkg.name))
             added = await installMissing(root, [...chosen, ...keptPackages])
             const manifests = await manifestFiles(root)
             copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))

@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { git, nulPaths, resolveSha } from "../shared/git.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
-import { assertNoInfraFailure, inCleanCheckout, prepareCheckout } from "./clean-verify.js"
+import { assertNoInfraFailure, inCleanCheckout, prepareCheckout, VERIFY_INFRA } from "./clean-verify.js"
 import { blockOnCustody, CUSTODY_CODES } from "./custody.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -302,8 +302,9 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
             const setups = [...new Map(group.flatMap((each) => each.task.contract.context.setup ?? []).map((command) => [JSON.stringify(command), command])).values()]
             return prepareCheckout({ ...place(null, null), cwd: join(dir, cwd) }, [setups])
         })).flat()
-        // An install or setup out of time is the harness's failure: the wave reaches no verdict and fails no task; it runs again.
-        assertNoInfraFailure(prepared)
+        // An install or setup out of time, or an install red that no landed file explains, is the harness's failure: the wave
+        // reaches no verdict and fails, returns or revives no task; the tasks stay due and the next step runs it again.
+        await assertNoInfraFailure(prepared, [...new Set(tasks.flatMap((each) => each.files))], checkout)
         const ran = new Map<string, CheckOutcome>()
         const outcomes: Record<string, CheckOutcome[]> = {}
         if (prepared.every((outcome) => outcome.status === "green")) {
@@ -335,6 +336,10 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
             }
         }
         return { prepared, outcomes }
+    }).catch((error: unknown) => {
+        // A wave the harness stopped is recorded on the workflow: which tasks it left due, and why.
+        if (asRefusal(error).code === VERIFY_INFRA) recordEvent(db, "wave-infra", workflow, { base, head, tasks: ids, error: asRefusal(error).message })
+        throw error
     })
     for (const [id, refusal] of blocked) blockOnCustody(db, id, "done", refusal)
     const judgedTasks = tasks.filter((each) => !blocked.has(each.task.id))
