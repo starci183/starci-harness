@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
-import { captureNpm, npmVersion } from "../shared/exec.js"
+import { setTimeout as sleep } from "node:timers/promises"
+import { captureNpm, npmVersion, pidAlive } from "../shared/exec.js"
 import type { RunOptions, ToolRun } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import { installCachePath } from "./ledger.js"
@@ -111,18 +112,89 @@ const fromCache = (dir: string, entry: string, materialize: boolean): void => {
 export const cachedInstall = async (dir: string, lockfile: string, options: RunOptions, materialize: boolean): Promise<CachedInstall> => {
     const key = installKey(lockfile)
     const entry = installCachePath(key)
-    if (existsSync(join(entry, LINKS_FILE)) && !existsSync(join(dir, "node_modules"))) {
+    // A checkout that already holds a node_modules (a tracked one) can take nothing from the cache: npm ci runs over it.
+    if (existsSync(join(dir, "node_modules"))) return freshInstall(dir, entry, key, options)
+    return singleFill(dir, entry, key, options, materialize, Date.now() + FILL_WAIT_MS, false)
+}
+
+/** How long a checkout waits for another process's `npm ci` of the same key before it runs its own. */
+const FILL_WAIT_MS = 15 * 60_000
+
+const FILL_POLL_MS = 2_000
+
+/** How old a fill lock may grow before its holder counts as gone even when its pid runs (Windows reuses pids). */
+const FILL_STALE_MS = 30 * 60_000
+
+/** The fill lock of a cache entry: a file the one process running `npm ci` for that key creates exclusively and removes after. */
+const fillLockOf = (entry: string): string => `${entry}.filling`
+
+/** Whether a fill lock's holder still fills: its pid runs and the lock is younger than FILL_STALE_MS; a lock still being written counts as live. */
+const fillHolderAlive = (lock: string): boolean => {
+    const stat = lstatSync(lock, { throwIfNoEntry: false })
+    if (stat === undefined) return false
+    if (Date.now() - stat.mtimeMs > FILL_STALE_MS) return false
+    try {
+        const holder = JSON.parse(readFileSync(lock, "utf8")) as { readonly pid?: unknown }
+        return typeof holder.pid === "number" && pidAlive(holder.pid)
+    } catch {
+        return true
+    }
+}
+
+/** Creates the fill lock exclusively; a lock whose holder is gone is removed and taken once more. True when this process holds it. */
+const takeFill = (lock: string): boolean => {
+    mkdirSync(dirname(lock), { recursive: true })
+    const create = (): boolean => {
         try {
-            fromCache(dir, entry, materialize)
-            return { run: null, key, reused: true, note: `node_modules ${materialize ? "copied" : "linked"} from the install cache ${key} (no npm ci)` }
-        } catch (error: unknown) {
-            unlinkInstallLinks(dir)
-            rmSync(join(dir, "node_modules"), { recursive: true, force: true })
-            const why = error instanceof Error ? error.message : String(error)
-            return { ...(await freshInstall(dir, entry, key, options)), note: `the install cache ${key} could not be used (${why}); npm ci ran` }
+            writeFileSync(lock, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }), { flag: "wx" })
+            return true
+        } catch {
+            return false
         }
     }
-    return freshInstall(dir, entry, key, options)
+    if (create()) return true
+    if (fillHolderAlive(lock)) return false
+    rmSync(lock, { force: true })
+    return create()
+}
+
+/**
+ * One `npm ci` per key at a time across every process of the host: a hit is linked at once; on a miss the process that takes the
+ * key's fill lock runs `npm ci` and caches it, and every other one waits for that entry and links it, so concurrent checkouts of
+ * one lockfile never install side by side. A waiter whose filler died takes the lock over; one that waited FILL_WAIT_MS runs its own.
+ */
+const singleFill = async (dir: string, entry: string, key: string, options: RunOptions, materialize: boolean, deadline: number, waited: boolean): Promise<CachedInstall> => {
+    if (existsSync(join(entry, LINKS_FILE))) return fromEntry(dir, entry, key, options, materialize, waited)
+    const lock = fillLockOf(entry)
+    if (takeFill(lock)) {
+        try {
+            // Filled between the look above and the lock: linked, not installed again.
+            if (existsSync(join(entry, LINKS_FILE))) return await fromEntry(dir, entry, key, options, materialize, waited)
+            return await freshInstall(dir, entry, key, options)
+        } finally {
+            rmSync(lock, { force: true })
+        }
+    }
+    if (Date.now() >= deadline) {
+        const run = await freshInstall(dir, entry, key, options)
+        return { ...run, note: `another process held the install of ${key} past ${String(FILL_WAIT_MS / 60_000)} minutes; ${run.note}` }
+    }
+    await sleep(FILL_POLL_MS)
+    return singleFill(dir, entry, key, options, materialize, deadline, true)
+}
+
+/** Links (or copies) a cache entry into the checkout; an entry that cannot be used falls back to `npm ci`. */
+const fromEntry = async (dir: string, entry: string, key: string, options: RunOptions, materialize: boolean, waited: boolean): Promise<CachedInstall> => {
+    try {
+        fromCache(dir, entry, materialize)
+        const after = waited ? ", after waiting for another process's install of it" : ""
+        return { run: null, key, reused: true, note: `node_modules ${materialize ? "copied" : "linked"} from the install cache ${key}${after} (no npm ci)` }
+    } catch (error: unknown) {
+        unlinkInstallLinks(dir)
+        rmSync(join(dir, "node_modules"), { recursive: true, force: true })
+        const why = error instanceof Error ? error.message : String(error)
+        return { ...(await freshInstall(dir, entry, key, options)), note: `the install cache ${key} could not be used (${why}); npm ci ran` }
+    }
 }
 
 const freshInstall = async (dir: string, entry: string, key: string, options: RunOptions): Promise<CachedInstall> => {
@@ -211,4 +283,22 @@ export const unlinkInstallLinks = (checkout: string, links: readonly string[] = 
         if (stat.isSymbolicLink()) unlinkFolder(modules)
         else if (stat.isDirectory()) for (const name of entriesOf(modules)) unlinkFolder(join(modules, name))
     }
+}
+
+/**
+ * Removes every link anywhere in a throwaway checkout (a clean-verify or wave checkout about to be deleted), link only, never
+ * entering one: the install links unlinkInstallLinks knows, plus any a setup command or a tool made deeper down. Nothing a later
+ * recursive delete of the checkout walks can then lead out of it.
+ */
+export const unlinkCheckoutLinks = (checkout: string): void => {
+    unlinkInstallLinks(checkout)
+    const walk = (at: string): void => {
+        for (const entry of readdirSync(at, { withFileTypes: true })) {
+            const path = join(at, entry.name)
+            // A Dirent reads the entry itself (lstat), so a junction is a link here and is never entered.
+            if (entry.isSymbolicLink()) unlinkFolder(path)
+            else if (entry.isDirectory() && entry.name !== ".git") walk(path)
+        }
+    }
+    if (existsSync(checkout)) walk(checkout)
 }

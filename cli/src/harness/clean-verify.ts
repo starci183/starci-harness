@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto"
-import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, join } from "node:path"
+import { basename, join, resolve } from "node:path"
 import { Refusal } from "../shared/errors.js"
-import { captureNpm, captureTool, headline, pidAlive } from "../shared/exec.js"
+import { captureNpm, captureTool, EXIT_TIMEOUT, headline, pidAlive } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
@@ -14,7 +14,8 @@ import { excludedSpec, notOwn } from "./baseline.js"
 import { rebaseCandidate } from "./land.js"
 import { readRecord, reapplyLocal } from "../core/deps/packages.js"
 import { withHeavySlot } from "./heavy.js"
-import { cachedInstall, isInstalled, unlinkInstallLinks } from "./install-cache.js"
+import { cachedInstall, isInstalled, unlinkCheckoutLinks } from "./install-cache.js"
+import { cleanCheckoutsPath } from "./ledger.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -216,6 +217,20 @@ const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => 
     return { ...installed, status: reapplied.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${reapplied.detail}` }
 }
 
+/** The refusal of a verify or wave stopped by the harness's own step (an install or setup out of time): no verdict on the work. */
+export const VERIFY_INFRA = "VERIFY_INFRA"
+
+/**
+ * Refuses with VERIFY_INFRA when a preparing step failed on the harness, not on the work: the install or a setup command ran
+ * out of its budget (exit 124). The caller reaches no verdict: a task verify returns the task to reported with no try spent, a
+ * wave fails no task, and the next step verifies again.
+ */
+export const assertNoInfraFailure = (prepared: readonly CheckOutcome[]): void => {
+    const stuck = prepared.find((outcome) => outcome.status === "red" && outcome.exitCode === EXIT_TIMEOUT)
+    if (stuck === undefined) return
+    throw new Refusal(VERIFY_INFRA, `the ${stuck.name} step ran out of time (an infrastructure failure, not the task's): ${stuck.detail.split("\n")[0] ?? ""}`)
+}
+
 /**
  * Readies a clean checkout for the checks that run tools: the install, then every contract's setup commands in order; an outcome
  * per step that ran, and nothing after a red one.
@@ -268,8 +283,9 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
 }
 
 const removeWorktree = async (root: string, dir: string): Promise<void> => {
-    // The links an install made are unlinked first, so nothing below removes through one into the cache or a folder it names.
-    unlinkInstallLinks(dir)
+    // Every link the checkout holds (the install's, and any a setup command made) is unlinked first, link only, so neither
+    // git's removal nor the recursive delete below can reach the cache or any folder a link names.
+    unlinkCheckoutLinks(dir)
     await captureGit(["worktree", "remove", "--force", dir], root)
     rmSync(dir, { recursive: true, force: true })
 }
@@ -283,13 +299,28 @@ const verifierPid = (dir: string): number | undefined => {
 export const pruneVerifyWorktrees = async (root: string): Promise<string[]> => {
     const listing = await captureGit(["worktree", "list", "--porcelain"], root)
     const dirs = [...listing.stdout.matchAll(/^worktree (.+)$/gm)].map((match) => (match[1] ?? "").trim()).filter((dir) => basename(dir).startsWith(VERIFY_PREFIX))
-    const pruned = dirs.filter((dir) => {
+    const gone = (dir: string): boolean => {
         const pid = verifierPid(dir)
         return pid === undefined || (pid !== process.pid && !pidAlive(pid))
-    })
+    }
+    const pruned = dirs.filter(gone)
     await inOrder(pruned, (dir) => removeWorktree(root, dir))
     await captureGit(["worktree", "prune"], root)
-    return pruned
+    // A folder git no longer lists (its removal failed half-way, EBUSY) is left behind in the checkouts folder, or in the system
+    // temp folder where earlier builds made checkouts; once its verifier is gone it is removed too, every link in it unlinked first.
+    const listed = new Set(dirs.map((dir) => resolve(dir).toLowerCase()))
+    const strays = [cleanCheckoutsPath(), tmpdir()].flatMap((folder) =>
+        existsSync(folder) ? readdirSync(folder).filter((name) => name.startsWith(VERIFY_PREFIX)).map((name) => join(folder, name)) : [],
+    ).filter((dir) => !listed.has(resolve(dir).toLowerCase()) && gone(dir))
+    for (const dir of strays) {
+        try {
+            unlinkCheckoutLinks(dir)
+            rmSync(dir, { recursive: true, force: true })
+        } catch {
+            // A file Windows still holds: the next prune tries again.
+        }
+    }
+    return [...pruned, ...strays.filter((dir) => !existsSync(dir))]
 }
 
 /**
@@ -353,6 +384,7 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
         }
         const checks: CheckOutcome[] = [built.lands, ...(await policyGates(root, dir, built.facts.changed))]
         const prepared = input.install === false ? [] : await prepareCheckout(place, [contract.context.setup ?? []])
+        assertNoInfraFailure(prepared)
         checks.push(...prepared)
         if (prepared.every((outcome) => outcome.status === "green")) {
             checks.push(...(await inOrder(input.checks, (check) => checkCandidate(check, { ...input, contract: resolved }, place, built))))
@@ -363,11 +395,15 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
 }
 
 /**
- * Runs `work` in a detached clean checkout of `commit` under the temp folder (named for the verifier's pid, so a leftover is
- * pruned once it is gone), and removes the checkout afterwards, its install links unlinked first.
+ * Runs `work` in a detached clean checkout of `commit` under the state base's checkouts folder (ledger.ts cleanCheckoutsPath;
+ * named for the verifier's pid, so a leftover is pruned once it is gone), and removes the checkout when the work ends however it
+ * ends (a verdict, a throw, a deadline), every link in it unlinked first. Git lists the checkout as a detached worktree of the
+ * repository while it lives, so Orca shows it there: it lives only as long as its run.
  */
 export const inCleanCheckout = async <T>(root: string, commit: string, name: string, work: (dir: string) => Promise<T>): Promise<T> => {
-    const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${name}-p${String(process.pid)}-`))
+    const base = cleanCheckoutsPath()
+    mkdirSync(base, { recursive: true })
+    const dir = mkdtempSync(join(base, `${VERIFY_PREFIX}${name}-p${String(process.pid)}-`))
     try {
         await git(root, ["worktree", "add", "--detach", dir, commit])
         return await work(dir)

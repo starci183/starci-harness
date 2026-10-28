@@ -73,9 +73,14 @@ steps:
       task: ${b}
       files:
         src/b.ts: "export const b = 1 // LINT_ERROR\n"
-  - name: kernel next verifies both, then runs the wave
+  - name: kernel next verifies both, then starts the wave as a detached job and returns
     seat: kernel:wave
     starci: [kernel, next, wave, --wait, "0"]
+  - name: the wave's verdict is read once its job ends
+    starci: [workflow, wave, wave, --wait, "120"]
+    expect:
+      exit: 1
+      contains: "red"
   - assert:
       sql:
         db: ledger

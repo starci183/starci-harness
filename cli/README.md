@@ -186,10 +186,13 @@ plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
 `harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
-it) while it runs, admitted by free
-memory and the CPU average over a window (samples in `cpu_samples`), with the limits, memory caps and seat floor in the
-`heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command with no slot waits in the queue, says so on stderr
-and records a `heavy-wait` host event; waiting never fails it. Each child runs below normal priority, a node tool under
+it) while it runs, admitted dynamically at every poll: free RAM less a reserve must cover the RAM estimate of every running
+command plus its own, fewer than floor(logical cores / 2) may run, and none starts while the CPU average over a window
+(samples in `cpu_samples`) is above its ceiling; the reserve, estimates, per-kind timeouts, memory caps and seat floor are
+the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
+queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
+fails it. A verify or wave stopped by an install or setup out of time reaches no verdict (VERIFY_INFRA): no try is spent and
+the task is verified again. Each child runs below normal priority, a node tool under
 its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
 pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
 it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.

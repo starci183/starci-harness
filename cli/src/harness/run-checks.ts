@@ -41,6 +41,8 @@ export interface CheckPlace {
     readonly taskId?: string
     readonly since?: string
     readonly source?: string
+    /** A scoped `starci check` judges only the changed files under the paths it is handed (`--within`): a wave's landed union. */
+    readonly within?: boolean
 }
 
 const PROBE_TIMEOUT_MS = 10_000
@@ -343,8 +345,12 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
     // check run judges as the task: its own changes since its work began, its deferral and its obligations (core/check/scope.ts).
     const asTask = place.taskId === undefined || args[1] !== "run" || withBase.includes("--task") ? withBase : [...withBase, "--task", place.taskId]
-    const withPaths = asTask.includes("--") ? asTask : [...asTask, "--", ...allowPaths]
-    const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withPaths], place.cwd, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
+    const rest = asTask.indexOf("--")
+    const within = place.within !== true || asTask.includes("--within") ? asTask : rest < 0 ? [...asTask, "--within"] : [...asTask.slice(0, rest), "--within", ...asTask.slice(rest)]
+    const withPaths = within.includes("--") ? within : [...within, "--", ...allowPaths]
+    // No timeout on the verb itself: it waits in the heavy queue for each step, and every step it runs carries its own budget
+    // from admission (harness/heavy.ts); a deadline here would count queue time. The verify's lock deadline bounds the whole.
+    const run = await captureTool(process.execPath, [selfEntry(), "--json", "--cwd", place.cwd, ...withPaths], place.cwd, {})
     let envelope: Record<string, unknown>
     try {
         envelope = asRecord(JSON.parse(run.stdout))

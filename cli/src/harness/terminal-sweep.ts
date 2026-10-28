@@ -1,10 +1,11 @@
 import { loadCoordinatorLiveness, olderThan } from "./coordinator-liveness.js"
 import { openLedger } from "./ledger.js"
 import { readMachine, textOf } from "./machine.js"
-import { terminalClose, terminalList } from "./orca/client.js"
+import { terminalClose, terminalList, workerShow } from "./orca/client.js"
 import type { ListedTerminal, OrcaBinary } from "./orca/client.js"
 import { CLOSED_SEAT_STATUSES } from "./seats.js"
 import { inOrder } from "./sequential.js"
+import { recordEvent } from "./tasks.js"
 
 /**
  * The titles the harness gives the terminals it launches (`[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] `, set by `opTitle`,
@@ -65,6 +66,41 @@ const harnessTitled = (terminal: ListedTerminal, worktrees: ReadonlySet<string>)
     return title.startsWith(WORKER_TITLE) && terminal.worktree !== null && worktrees.has(folderKey(terminal.worktree))
 }
 
+/** How far back a closed seat with no recorded terminal is still resolved by its dispatch id. */
+const RESOLVE_WINDOW_MS = 24 * 60 * 60_000
+
+const UNRESOLVED_EVENT = "seat-terminal-unresolved"
+
+/**
+ * Records the terminal of every closed seat that has a dispatch id but no terminal handle (a launch whose terminal was never
+ * read back), asked once of Orca by that dispatch id (`worker-show`), never guessed from a tab title, which an agent may rename
+ * (Codex names its tab after its shell). The handle found is written on the seat, so the sweep holds that tab by its record from
+ * then on; a dispatch Orca names no terminal for is marked and not asked again. Only seats closed within RESOLVE_WINDOW_MS.
+ */
+const resolveSeatTerminals = async (binary: OrcaBinary, cwd: string, repos: readonly string[]): Promise<void> => {
+    const since = new Date(Date.now() - RESOLVE_WINDOW_MS).toISOString()
+    await inOrder(repos, async (repo) => {
+        const db = openLedger(repo)
+        try {
+            const placeholders = CLOSED_SEAT_STATUSES.map(() => "?").join(", ")
+            const seats = db
+                .prepare(`SELECT id, handle FROM seats WHERE terminal IS NULL AND handle IS NOT NULL AND status IN (${placeholders}) AND COALESCE(ended_at, started_at) >= ? AND NOT EXISTS (SELECT 1 FROM events WHERE kind = '${UNRESOLVED_EVENT}' AND subject = seats.id)`)
+                .all(...CLOSED_SEAT_STATUSES, since)
+            await inOrder(seats, async (seat) => {
+                const id = String(seat.id)
+                const dispatch = String(seat.handle)
+                const terminal = await workerShow(binary, dispatch, cwd).then((shown) => shown.terminal).catch(() => undefined)
+                // An Orca that did not answer is asked again on the next tick; one that answered with no terminal is not.
+                if (terminal === undefined) return
+                if (terminal === null) recordEvent(db, UNRESOLVED_EVENT, id, { dispatch })
+                else db.prepare("UPDATE seats SET terminal = ? WHERE id = ? AND terminal IS NULL").run(terminal, id)
+            })
+        } finally {
+            db.close()
+        }
+    })
+}
+
 /** One terminal the sweep closes: its handle and title, why, and what Orca answered (`closed`, `gone`, `error: ...`, or `dry-run`). */
 export interface SweptTerminal {
     readonly handle: string
@@ -92,11 +128,13 @@ const verdict = (terminal: ListedTerminal, records: HarnessRecords, lastOutput: 
 
 /**
  * The terminal sweep of `supervisor tick`: lists Orca's terminals and closes the whole tab of every terminal the harness made that
- * no open seat or live Supervisor holds any more, and of every orphaned one (`verdict`). A terminal the harness did not make is
- * never touched. `dryRun` judges the same and closes nothing. Each closure is returned for the tick's actions.
+ * no open seat or live Supervisor holds any more, and of every orphaned one (`verdict`). A tab is matched by the terminal handle
+ * its seat recorded (or Orca names for the seat's dispatch id, resolveSeatTerminals), whatever its title: an agent renaming its
+ * tab never keeps it open. A terminal the harness did not make is never touched. `dryRun` judges the same and closes nothing. Each closure is returned for the tick's actions.
  */
 export const sweepTerminals = async (binary: OrcaBinary, cwd: string, repos: readonly string[], dryRun: boolean): Promise<SweptTerminal[]> => {
     const inventory = await terminalList(binary, cwd)
+    if (!dryRun) await resolveSeatTerminals(binary, cwd, repos)
     const records = harnessRecords(repos)
     const grace = loadCoordinatorLiveness().effectUnknownDeadlineMinutes
     const doomed = inventory.terminals.flatMap((terminal) => {

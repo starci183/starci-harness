@@ -1,8 +1,11 @@
 import type { DatabaseSync } from "node:sqlite"
+import { hostname } from "node:os"
 import { join } from "node:path"
+import { pidAlive } from "../shared/exec.js"
 import { git, nulPaths, resolveSha } from "../shared/git.js"
+import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
-import { inCleanCheckout, prepareCheckout } from "./clean-verify.js"
+import { assertNoInfraFailure, inCleanCheckout, prepareCheckout } from "./clean-verify.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { opWorktreeOf } from "./land.js"
@@ -13,6 +16,8 @@ import { loadPolicy } from "./policy.js"
 import { runCheck } from "./run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "./run-checks.js"
 import { inOrder } from "./sequential.js"
+import { settleLockHolder, thisVerifier, withSettleLock } from "./settle.js"
+import type { Verifier } from "./settle.js"
 import { getTask, latestAttempt, recordEvent, resultOf, setStatus, setVerdict, taskCheckout } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
 import { waveDue } from "./workflow.js"
@@ -137,23 +142,122 @@ const recordTask = (db: DatabaseSync, workflow: string, each: WaveTask, outcomes
  * once per cwd and argv (per task when it reads the task's result or coverage). A red check is owned by the tasks whose files its
  * output names (every task that left it, when it names none); each owning task turns failed, back to the Kernel with the red
  * check rows on its attempt, and every task of the wave is judged. Undefined when no wave is due.
+ *
+ * Every settling caller (`workflow step`, `kernel next`, `supervisor next`, the `supervisor tick`) may reach a due wave at once:
+ * the first takes the workflow's wave lock (waveLockKey) and runs it on one checkout, removed when it ends; every other caller
+ * is refused with WAVE_RUNNING and starts nothing, and reads the verdict on its next step.
  */
 export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: string, timeoutMs: number): Promise<WaveReport | undefined> => {
-    const ids = waveDue(db, workflow)
-    const first = ids[0]
+    const first = waveDue(db, workflow)[0]
     if (first === undefined) return undefined
     // The wave judges the branch the tasks landed on: an Op task's target checkout (its own worktree is gone once it landed).
     const checkout = opWorktreeOf(db, first)?.target ?? (await taskCheckout(getTask(db, first), callerRoot))
+    const head = await resolveSha(checkout, "HEAD")
+    const key = waveLockKey(workflow)
+    const running = settleLockHolder(db, key)
+    if (running !== undefined) throw waveRunning(workflow, running)
+    // Set once the lock is taken: a SETTLE_BUSY before it means another caller won the lock, one after it is the wave's own.
+    const taken = { held: false }
+    try {
+        return await withSettleLock(db, thisVerifier(`wave:${workflow}@${head.slice(0, 12)}`), 0, key, () => {
+            taken.held = true
+            return judgeWave(db, workflow, checkout, timeoutMs)
+        })
+    } catch (error: unknown) {
+        // Another caller took the lock between the look above and this one: it runs the wave, this one does not.
+        if (!taken.held && asRefusal(error).code === "SETTLE_BUSY") throw waveRunning(workflow, settleLockHolder(db, key))
+        throw error
+    }
+}
+
+/** The wave lock of a workflow (a ledger meta row, harness/settle.ts withSettleLock): one wave of it runs at a time on the host. */
+export const waveLockKey = (workflow: string): string => `wave-lock:${workflow}`
+
+/** The job row of a workflow's detached wave (a ledger meta row): who started it and when, until the job takes the wave lock. */
+const waveJobKey = (workflow: string): string => `wave-job:${workflow}`
+
+/** How long a started job may take to reach the wave lock before another caller may start one again. */
+const JOB_START_MS = 120_000
+
+/**
+ * Claims the start of a workflow's detached wave job for this process, under BEGIN IMMEDIATE so concurrent callers start one job:
+ * undefined when this caller claimed it (it then starts the job and records its pid with recordWaveJob), else why it must not:
+ * the wave runs (its lock is held) or a job started moments ago has not reached the lock yet.
+ */
+export const claimWaveJob = (db: DatabaseSync, workflow: string): string | undefined => {
+    const running = settleLockHolder(db, waveLockKey(workflow))
+    if (running !== undefined) return waveRunning(workflow, running).message
+    db.exec("BEGIN IMMEDIATE")
+    try {
+        const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(waveJobKey(workflow))
+        const job = row === undefined ? undefined : (JSON.parse(String(row.value)) as { readonly pid: number; readonly host: string; readonly at: string })
+        if (job !== undefined && Date.now() - Date.parse(job.at) < JOB_START_MS && (job.host !== hostname() || pidAlive(job.pid))) {
+            db.exec("COMMIT")
+            return `the wave of workflow ${workflow} was started as a job (pid ${String(job.pid)}) at ${job.at}; its verdict is read on the next step`
+        }
+        db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(waveJobKey(workflow), JSON.stringify({ pid: process.pid, host: hostname(), at: now() }))
+        db.exec("COMMIT")
+        return undefined
+    } catch (error: unknown) {
+        db.exec("ROLLBACK")
+        throw error
+    }
+}
+
+/** Records the pid of the job a claim started (or, with null, gives a failed start's claim back). */
+export const recordWaveJob = (db: DatabaseSync, workflow: string, pid: number | null): void => {
+    if (pid === null) {
+        db.prepare("DELETE FROM meta WHERE key = ?").run(waveJobKey(workflow))
+        return
+    }
+    db.prepare("UPDATE meta SET value = json_set(value, '$.pid', ?) WHERE key = ?").run(pid, waveJobKey(workflow))
+    recordEvent(db, "wave-started", workflow, { pid })
+}
+
+/** Whether a wave of the workflow runs or a job to run it is starting: what `workflow wave --wait` waits out. */
+export const waveBusy = (db: DatabaseSync, workflow: string): boolean => {
+    if (settleLockHolder(db, waveLockKey(workflow)) !== undefined) return true
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(waveJobKey(workflow))
+    if (row === undefined) return false
+    const job = JSON.parse(String(row.value)) as { readonly pid: number; readonly host: string; readonly at: string }
+    return Date.now() - Date.parse(job.at) < JOB_START_MS && (job.host !== hostname() || pidAlive(job.pid))
+}
+
+/** The refusal a caller meets when another process runs the workflow's wave: it starts none of its own and waits for that verdict. */
+export const WAVE_RUNNING = "WAVE_RUNNING"
+
+const waveRunning = (workflow: string, holder: Verifier | undefined): Refusal =>
+    new Refusal(
+        WAVE_RUNNING,
+        holder === undefined
+            ? `the wave of workflow ${workflow} is being started by another process; its verdict is read on the next step`
+            : `the wave of workflow ${workflow} runs in pid ${String(holder.pid)} on ${holder.host} since ${holder.at} (${holder.task}); its verdict is read on the next step`,
+    )
+
+/**
+ * The wave itself, run while this process holds the workflow's wave lock. The due tasks and the head are read again under the
+ * lock: a wave another caller finished meanwhile judged its tasks (`wave-judged`), so they are no longer due and its recorded
+ * verdict stands for that head; nothing is run twice.
+ */
+const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, timeoutMs: number): Promise<WaveReport | undefined> => {
+    // The lock now stands for the wave; a job row that started it is spent.
+    db.prepare("DELETE FROM meta WHERE key = ?").run(waveJobKey(workflow))
+    const ids = waveDue(db, workflow)
+    const first = ids[0]
+    if (first === undefined) return undefined
     const tasks = await waveTasks(db, checkout, ids)
     const parents = [...new Set(tasks.flatMap((each) => (each.parent === null ? [] : [each.parent])))]
     const head = await resolveSha(checkout, "HEAD")
     const base = parents.length === 0 ? head : parents.length === 1 ? (parents[0] ?? head) : (await git(checkout, ["merge-base", "--octopus", ...parents])).trim()
     const allowPaths = [...new Set(tasks.flatMap((each) => each.task.contract.context.allowPaths))]
     const union: Contract = { ...tasks[0]?.task.contract ?? getTask(db, first).contract }
-    const scoped: Contract = { ...union, context: { ...union.context, allowPaths } }
+    // A scoped check judges exactly what the tasks landed (`check run --within`): the union of their own diffs, never another
+    // commit that sits in base..head (a merge, or work no task of this wave landed); a landed config file still widens it.
+    const landed = [...new Set(tasks.flatMap((each) => (each.task.settleCommit === null ? [] : each.files)))]
+    const scoped: Contract = { ...union, context: { ...union.context, allowPaths: landed.length === 0 ? allowPaths : landed } }
     // The scope decision is written before any command runs (contexts/authority/wave.md): the diff, its files, the commands, what is skipped.
     const changed = base === head ? [] : nulPaths(await git(checkout, ["diff", "--name-only", "-z", base, head]))
-    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => (check.check.kind === "command" ? [check.check.run].flat().join(" ") : check.check.kind === "starci" ? `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}` : check.name))))]
+    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => (check.check.kind === "command" ? [check.check.run].flat().join(" ") : check.check.kind === "starci" ? `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}${landed.length > 0 ? ` --within -- <${String(landed.length)} landed file(s)>` : ""}` : check.name))))]
     const scope = {
         diff: `${base}..${head}`,
         changed,
@@ -178,6 +282,8 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
             const setups = [...new Map(group.flatMap((each) => each.task.contract.context.setup ?? []).map((command) => [JSON.stringify(command), command])).values()]
             return prepareCheckout({ ...place(null, null), cwd: join(dir, cwd) }, [setups])
         })).flat()
+        // An install or setup out of time is the harness's failure: the wave reaches no verdict and fails no task; it runs again.
+        assertNoInfraFailure(prepared)
         const ran = new Map<string, CheckOutcome>()
         const outcomes: Record<string, CheckOutcome[]> = {}
         if (prepared.every((outcome) => outcome.status === "green")) {
@@ -189,7 +295,7 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
                     // A task that landed nothing proves the tracked files under its own allowPaths: an empty diff (head..head) over them.
                     const landedNothing = each.task.settleCommit === null
                     const scope = check.check.kind === "starci" && !landedNothing ? scoped : each.task.contract
-                    const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir } : place(each.task, each.parent)
+                    const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir, within: !landedNothing && landed.length > 0 } : place(each.task, each.parent)
                     const outcome = await runCheck(check, scope, at)
                     ran.set(key, outcome)
                     return outcome

@@ -193,6 +193,12 @@ export const workspaceBuildCachePath = (key: string): string => join(stateBase()
 /** One shared npm install, kept by its key (lockfile, Node and npm versions; harness/install-cache.ts): `<state base>/cache/installs/<key>`. */
 export const installCachePath = (key: string): string => join(stateBase(), "cache", "installs", key)
 
+/**
+ * The folder every clean-verify and wave checkout is made in: `<state base>/checkouts`, outside every product repository, the
+ * system temp folder and the project folders whose `worktrees/` the collector judges (harness/worktree-gc.ts).
+ */
+export const cleanCheckoutsPath = (): string => join(stateBase(), "checkouts")
+
 /** A coordinator's immutable launch brief, in its project's state folder, outside every product repository. */
 export const coordinatorBriefPath = (role: "supervisor" | "kernel", launchId: string, root: string): string => join(projectDir(root), "briefs", `${role}-${launchId}.md`)
 

@@ -2,14 +2,14 @@ schema: starci/scenario@1
 id: heavy-pressure-narrows-admission
 group: resources
 title: "under memory pressure one heavy command runs at a time, and over the CPU ceiling none starts; host load says why"
-inject: "the heavy rules of an ops/ copy set so the host's free memory is under the low floor, then its CPU over the ceiling"
+inject: "the heavy rules of an ops/ copy set so the host's free memory is under the reserve, then its CPU over the ceiling"
 expect: >-
-  with free memory under heavy.lowFreeMb the governor admits one heavy command: of two check runs at once one waits, both end
-  green, and host load reports one slot admitted and why; with the CPU average above heavy.maxCpuPercent it admits none and
+  with free memory under heavy.reserveMb the governor admits one heavy command while none runs (never none, so the host still
+  makes progress): of two check runs at once one waits, both end green, and host load reports one admitted and why; with the CPU average above heavy.maxCpuPercent it admits none and
   host load says the CPU holds new heavy work
 pass:
   - two check runs at once both exit 0 and one of them waited
-  - host load reports one admitted slot under the low floor
+  - host load reports one admitted under the reserve
   - host load reports no admitted slot over the CPU ceiling
   - no human intervention beyond the injected fault
 automation: automated
@@ -29,15 +29,15 @@ steps:
     write: { path: ops, from: "${ops}" }
   - git: [add, -A]
   - git: [commit, -q, -m, "bench: ops copy"]
-  - name: the low floor is above any host's free memory
-    starci: [config, set, liveness.heavy.lowFreeMb, "100000000"]
+  - name: the reserve is above any host's free memory
+    starci: [config, set, liveness.heavy.reserveMb, "100000000"]
   - name: no CPU holds work back yet, whatever else this host runs
     starci: [config, set, liveness.heavy.maxCpuPercent, "100"]
   - git: [commit, -q, -am, "bench: memory pressure"]
   - write: { path: src/changed.ts, content: "export const changed = 1\n" }
-  - name: host load admits one slot and names the low floor
+  - name: host load admits one and names the reserve
     starci: [host, load]
-    expect: { exit: 0, contains: "is under the low floor" }
+    expect: { exit: 0, contains: "is under the reserve for one more" }
   - starci: [host, load]
     expect: { exit: 0, contains: '"admitted": 1' }
   - name: two check runs at once, one at a time

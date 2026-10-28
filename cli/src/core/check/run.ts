@@ -116,10 +116,11 @@ export const checkRunVerb = defineVerb({
         all: { kind: "boolean", summary: "check every package and scan every file, not only the changed ones" },
         task: { kind: "string", summary: "judge as this task: only the files it changed since its work began, its composition rules deferred to its composer, and the modules it composes judged in full" },
         workflow: { kind: "string", summary: "the workflow's final verify: judge every module whose composition rules a task of it deferred, with no deferral" },
+        within: { kind: "boolean", summary: "judge only the changed files under the given paths, never the rest of the diff (a wave hands the files its tasks landed)" },
         paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },
     },
     run: async (context, flags) => {
-        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths, { ...(flags.task === undefined ? {} : { task: flags.task }), ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }) })
+        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths, { ...(flags.task === undefined ? {} : { task: flags.task }), ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }) }, flags.within)
         const policy = loadPolicy(scope.root)
         const choice = resolveProfile(policy, context.treeRoot)
         const tier = choice.profile.runtime

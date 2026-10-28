@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { join, resolve } from "node:path"
 import { opForkOf } from "../../harness/baseline.js"
 import { briefFiles } from "../../harness/brief.js"
-import { cleanVerify, pruneVerifyWorktrees } from "../../harness/clean-verify.js"
+import { cleanVerify, pruneVerifyWorktrees, VERIFY_INFRA } from "../../harness/clean-verify.js"
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
@@ -184,8 +184,12 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
     return attempt
 }
 
-/** The events of a verify that reached no verdict. */
-const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused", "verify-deadline"] as const
+/**
+ * The events of a verify that reached no verdict and count toward settleNoVerdictMax. An infrastructure failure (verify-infra: an
+ * install or setup out of time, VERIFY_INFRA; verify-deadline: a lock given up at its deadline) is the harness's, not the task's:
+ * it returns the task to reported like the others but never counts toward awaiting_owner.
+ */
+const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused"] as const
 
 /**
  * A verify that reached no verdict (it broke, or HEAD moved under the settle) puts the task back to reported; no try is spent.
@@ -389,7 +393,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
     } catch (error: unknown) {
         assertSettleLockHeld(db, me, verifyLockKey(task.id))
-        if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, "verify-error", error)
+        if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
         const { preserved } = await preserveEnding(db, root, task, attempt.id)
         conflictTask(db, task.id, attempt.id, error, preserved)
         return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files } }
