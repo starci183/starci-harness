@@ -11,6 +11,9 @@
 //   starci app add reactor payment-status --event payment-settled --from payment --service PaymentStatusService=@modules/domain/order
 //   starci app add queue receipt                          modules/queues/receipt: the typed producer
 //   starci app add projection order-summary --connection order
+//   starci app add block handoff-block --shapes prepared,sent,returned   a front-end unit in the shape-slot pattern (add-fe-unit.mjs)
+//   starci app add page handoffs | overlay invite-member --kind modal | layout settings   a route page, overlay or segment layout
+//                                                         (add-fe-page.mjs, add-fe-overlay.mjs, add-fe-layout.mjs)
 //
 // Body placeholders: for each variable `v` of the tree (job, step, event, ...) `@@v@@` is its kebab name, `@@V@@` its PascalCase and
 // `@@vCamel@@` its camelCase, `@@vUpper@@` its UPPER_SNAKE and `@@vSnake@@` its snake_case; the option `--service Class=module` gives `@@service@@` (the class) and `@@serviceModule@@`.
@@ -20,6 +23,10 @@ import { ScaffoldError, pascalOf } from './service.mjs';
 import { addTable, graphqlPlatformFiles } from './add-table.mjs';
 import { addModuleImport, compositionCode, readComposeGroup, writeComposeGroup } from './add-compose.mjs';
 import { addApp } from './add-app.mjs';
+import { FE_UNIT_LAYERS, addFeUnit } from './add-fe-unit.mjs';
+import { addFePage } from './add-fe-page.mjs';
+import { addFeOverlay } from './add-fe-overlay.mjs';
+import { addFeLayout } from './add-fe-layout.mjs';
 import { ensureLiteCli } from './add-cli-lite.mjs';
 import { addLiteWebhookInbox } from './add-inbox-lite.mjs';
 import { planLiteQueue } from './add-queue-lite.mjs';
@@ -30,10 +37,17 @@ import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { registerLiteDomainService, registerLiteExports } from './lite-exports.mjs';
 
+/** The front-end owner nouns besides the component tiers: each one's generator, given the app root, the name and the options. */
+const FE_OWNERS = Object.freeze({
+  page: ({ repoRoot, name, options }) => addFePage({ repoRoot, route: name, options }),
+  overlay: addFeOverlay,
+  layout: ({ repoRoot, name, options }) => addFeLayout({ repoRoot, segment: name, options }),
+});
+
 /**
  * Generates the tree of one noun in the app at `repoRoot` (the folder of hfs.json).
  *
- * @param {{ repoRoot: string, noun: string, name: string, options?: object, now?: () => number }} input - The app root, the noun (job, reactor, queue, projection), the instance name and the options the noun needs.
+ * @param {{ repoRoot: string, noun: string, name: string, options?: object, now?: () => number }} input - The app root, the noun (job, reactor, queue, projection, ..., or a front-end unit: block, composite, branch, leaf, page, overlay, layout), the instance name and the options the noun needs.
  * @returns {{ created: Array<string>, registered: { patterns: Array<string>, kinds: Array<string> } }} The files written (app-root relative) and what hfs.json gained.
  */
 export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }) {
@@ -43,6 +57,11 @@ export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }) 
   }
   if (noun === 'app') {
     const result = addApp({ root: repoRoot, name });
+    return { ...result, registered: { patterns: [], kinds: [] } };
+  }
+  const feOwner = FE_OWNERS[noun];
+  if (feOwner !== undefined || Object.hasOwn(FE_UNIT_LAYERS, noun)) {
+    const result = feOwner === undefined ? addFeUnit({ repoRoot, noun, name, options }) : feOwner({ repoRoot, name, options });
     return { ...result, registered: { patterns: [], kinds: [] } };
   }
   const context = readAddContext({ repoRoot, noun, name, options, now });

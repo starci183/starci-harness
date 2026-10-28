@@ -6,6 +6,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- **`starci app add` takes every front-end unit.** The noun names `page`, `overlay` and `layout` beside `block`,
+  `composite`, `branch` and `leaf`, and the verb hands @starci/hfs `--kind modal|drawer` and `--form` (an overlay) and
+  `--blocks a,b` (the blocks a page or layout composes). What each one writes is @starci/hfs 4.9.7's.
+
 ### Changed
 
 - **Each Op runs in a worktree of its own; path leases are gone.** Every task of a workflow, under `orca` and `inline`, works
