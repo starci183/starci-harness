@@ -14,13 +14,13 @@ interface AppSonarData {
 }
 
 /**
- * `starci app sonar`: the Sonar scope block of an app's sonar-project.properties, derived from the slots of its edition
- * (core/check/sonar-scope.ts). `--write` puts it in place between its markers; `--check` exits 1 when the file's block
+ * `starci app sonar`: the Sonar scope block of an app's sonar-project.properties, derived from the slots of its edition and
+ * the cpd exclusions the design truths of @starci/hfs allow (core/check/sonar-scope.ts), the block the app template renders. `--write` puts it in place between its markers; `--check` exits 1 when the file's block
  * differs or a line outside it sets one of its keys. `check loosening` accepts exactly this block and nothing else.
  */
 export const appSonarVerb = defineVerb({
     path: ["app", "sonar"],
-    summary: "derive the Sonar scope block of sonar-project.properties from the HFS slots of this app's edition; --check fails on drift, --write puts it in place",
+    summary: "derive the Sonar scope block of sonar-project.properties from the HFS slots of this app's edition and the ruled cpd exclusions; --check fails on drift, --write puts it in place",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,

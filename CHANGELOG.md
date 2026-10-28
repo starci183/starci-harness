@@ -6,6 +6,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.2] - 2026-10-28
+
+Version 1.1.0-alpha.1 was published from an earlier commit of this list, on `@starci/hfs` 4.9.0; 1.1.0-alpha.2 carries
+the whole list.
+
 ### Added
 
 - **The app commands.** The CLI carries `starci app scaffold|sync|check|lint|add|new|emit|explain|hygiene|coverage|codemod|ci|db|secret|stack|release|upgrade`,
@@ -55,6 +60,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 - A completed launch request whose agent never started its turn is judged by its dispatch (adopted, or fenced and requeued
   with no try spent), never replayed forever.
+- **The Sonar block carries the ruled cpd exclusion.** `app sonar` derives the `starci:sonar-scope` block with
+  `sonar.cpd.exclusions` beside `sonar.coverage.exclusions`, its entries the `cpd-exclusions` allowances of the design
+  truths of the `@starci/hfs` the CLI runs (ruling message-catalogs-not-duplicate-code), the line the app template renders
+  inside the same block; `check loosening` accepts it there and still refuses a cpd exclusion written outside the block or
+  edited inside it (bench `security-loosening-sonar-block`).
 
 ## [1.0.0-alpha.1] - 2026-10-27
 
@@ -90,5 +100,6 @@ The first published version.
 - Gates: `check run`, `check loosening`, `check secrets`, `check lint`, `check typecheck`, `contexts anatomy --check`,
   and the release verbs `release push`, `release cut`, `release publish` and `release ci-status`.
 
-[Unreleased]: https://github.com/starci183/starci-harness/compare/v1.0.0-alpha.1...HEAD
+[Unreleased]: https://github.com/starci183/starci-harness/compare/v1.1.0-alpha.2...HEAD
+[1.1.0-alpha.2]: https://github.com/starci183/starci-harness/compare/v1.0.0-alpha.1...v1.1.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/starci183/starci-harness/releases/tag/v1.0.0-alpha.1

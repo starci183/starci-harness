@@ -1,5 +1,11 @@
 # Changelog
 
+## 9.4.1 - 2026-10-28
+
+- Fixed: `server-module-marks-server-only` exempts every route-tier file (`fe.route`, `fe.source-root-pinned` and the opt-in `fe.route.callback`), so the auth callback route is no longer told to carry the marker route files need not.
+- Changed: the bundled runtime's `repo-identity.mjs` names a repository by its origin remote (hfs 4.9.2); the fixture copy of the callback route template exports an arrow `GET`.
+- Changed: the bundled canon pins follow release D (Grammar family 0.15.1, hfs 4.9.2, canon-fe 9.4.1, canon-be 3.6.1, starci-harness 1.1.0-alpha.2), so an app installs the released versions without pin drift.
+
 ## 9.4.0 - 2026-10-28
 
 - Changed: the package is TypeScript. `src/**/*.ts` (rules, the shared `lib/` readers and every spec) is strict and builds to `dist/` with the `@starci/tsconfig` `package-esm` preset; `main`, `types` and `exports` point at `dist`, keeping `@starci/eslint-canon-fe/lib/*.mjs` (also `lib/*.js`). The fixture tester is `fixtures/typed/tester.ts`. The bundled runtime is read through the package import `#runtime/*`, typed by `src/types/runtime` until the runtime is built from `@starci/hfs`. Rules are typed against typescript-eslint's rule module; `@typescript-eslint/utils` joins the dependencies. No rule changed behaviour in the conversion.

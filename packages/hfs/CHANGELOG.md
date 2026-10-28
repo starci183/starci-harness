@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.9.2 - 2026-10-28
+
+- Fixed: `repositoryName` (runtime/scripts/hfs/repo-identity.mjs) names a repository by its origin remote, whatever folder holds the clone; the main checkout's folder names it only without an origin. HFS_README_TITLE_INVALID and the stack project name no longer change with the clone folder. Spec: `src/repo-identity.spec.mjs`.
+- Fixed: the rendered `sonar-project.properties` carries `sonar.cpd.exclusions` inside the generated `starci:sonar-scope` block, after `sonar.coverage.exclusions`, and its entries are the `cpd-exclusions` allowances of the bundled design truths (`SONAR_CPD_EXCLUSIONS` reads them; no second list), so `starci check loosening` accepts the rendered line as the block `starci app sonar` derives instead of flagging a ruled exclusion as hand-written. An app moves the line with `starci app sync --write`.
+- Fixed: the fe skeleton passes canon-fe 9.4.1: `SignInForm` takes `{ props: { ..., pending, errorMessage }, on }` (no retired `state`, no `failure` status prop), and the opt-in auth callback's `GET` and `exchangeAuthCode` are arrow consts. Spec: `src/scaffold-template-canon-fe.spec.mjs` scaffolds each edition and lints every fe source with the starci-fe rules.
+- Changed: the bundled canon pins follow release D (Grammar family 0.15.1, hfs 4.9.2, canon-fe 9.4.1, canon-be 3.6.1, starci-harness 1.1.0-alpha.2), so an app installs the released versions without pin drift.
+
 ## 4.9.1 - 2026-10-28
 
 - Changed: the bundled canon pins follow release C (Grammar family 0.15.0, hfs 4.9.1, canon-fe 9.4.0, canon-be 3.6.0, jest-preset 2.4.1, stylelint-canon 2.2.1, tsconfig 2.1.0, prettier-config 1.1.0, and `@starci/ai-router` 0.2.1 pinned), so an app installs the released versions without pin drift.

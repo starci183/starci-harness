@@ -22,6 +22,10 @@ for (const edition of ['full', 'lite']) {
     assert.ok(target, 'the managed Sonar properties are rendered');
     const properties = propertiesOf(target.content);
     assert.equal(properties.get('sonar.cpd.exclusions'), '**/messages/*.messages.ts,**/messages/*.json');
+    const lines = target.content.split('\n');
+    const cpd = lines.indexOf(`sonar.cpd.exclusions=${SONAR_CPD_EXCLUSIONS.join(',')}`);
+    const begin = lines.findIndex(line => line.startsWith('# starci:sonar-scope begin '));
+    assert.ok(begin !== -1 && begin < cpd && cpd < lines.indexOf('# starci:sonar-scope end'), 'the rendered line sits inside the generated block');
     assert.deepEqual([...SONAR_CPD_EXCLUSIONS], ['**/messages/*.messages.ts', '**/messages/*.json']);
     for (const glob of SONAR_CPD_EXCLUSIONS) {
       assert.ok(!properties.get('sonar.exclusions').split(',').includes(glob), `${glob} stays a source`);

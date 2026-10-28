@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.1 - 2026-10-28
+
+- Fixed: `GrammarRoot`'s module is a client module (`"use client"`, kept in `dist/`): it imports `RouterProvider` from react-aria-components, so a server component rendering it broke `next build` ("createContext is not a function"). Versioned together with the Grammar lint families 0.15.1.
+
 ## 0.15.0 - 2026-10-28
 
 - Changed: versioned together with the Grammar lint families 0.15.0 (a minor: `SurfaceCard placement` moves a labelled Core card's label outside unless it is a `panel`), released with the release C pins.

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { parse } from "yaml"
 import { runtimeRoot } from "../../harness/ledger.js"
@@ -212,8 +213,36 @@ export const appFacts = (appRoot: string): AppFacts | undefined => {
     }
 }
 
+/** The design truths of the @starci/hfs this CLI runs `starci app` with: the manifest the app template renders its cpd line from. */
+const DESIGN_TRUTHS = "@starci/hfs/runtime/knowledge/hfs/design-truths.yaml"
+
+/**
+ * `sonar.cpd.exclusions` of an app: every `cpd-exclusions` entry the design truths of @starci/hfs allow (each with its owner
+ * ruling, today message-catalogs-not-duplicate-code), in manifest order, the list the app template renders from the same manifest.
+ */
+export const cpdExclusions = (): string[] => {
+    let file: string
+    try {
+        file = createRequire(import.meta.url).resolve(DESIGN_TRUTHS)
+    } catch {
+        throw new Refusal("HFS_NOT_INSTALLED", `${DESIGN_TRUTHS} does not resolve from the CLI; reinstall starci-harness`)
+    }
+    const parsed: unknown = parse(readFileSync(file, "utf8"))
+    const truths = isRecord(parsed) && Array.isArray(parsed.truths) ? parsed.truths.filter(isRecord) : []
+    const entries = truths
+        .flatMap((truth) => (Array.isArray(truth.allows) ? truth.allows.filter(isRecord) : []))
+        .filter((allow) => allow.list === "cpd-exclusions")
+        .flatMap((allow) => strings(allow.entries) ?? [])
+    return [...new Set(entries)]
+}
+
 /** The generated block of an app, line by line: the begin marker, the derived keys, the end marker. */
-export const sonarBlock = (app: AppFacts): string[] => [SONAR_BEGIN, `sonar.coverage.exclusions=${coverageExclusions(readManifest(), app).join(",")}`, SONAR_END]
+export const sonarBlock = (app: AppFacts): string[] => [
+    SONAR_BEGIN,
+    `sonar.coverage.exclusions=${coverageExclusions(readManifest(), app).join(",")}`,
+    `sonar.cpd.exclusions=${cpdExclusions().join(",")}`,
+    SONAR_END,
+]
 
 /** The keys a block sets. */
 export const blockKeys = (block: readonly string[]): string[] => block.flatMap((line) => (/^[\w.-]+=/.exec(line) === null ? [] : [line.slice(0, line.indexOf("="))]))

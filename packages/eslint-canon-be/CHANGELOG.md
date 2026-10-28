@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.1 - 2026-10-28
+
+- Fixed: the published declarations of `loadHfs` and `starciBeConfig` name the emitted `dist/lib/hfs-view.d.ts`, not the untyped `runtime/scripts/hfs/view.mjs`, so a consumer's typed lint of the managed `be/eslint.config.mjs` no longer reads an error type (`no-unsafe-assignment` at 3:33). The view's shapes live in `src/lib/hfs-view.ts`; the runtime functions are read through `#runtime/*`. Spec: `src/published-declarations.spec.ts`.
+- Changed: the bundled runtime's `repo-identity.mjs` names a repository by its origin remote (hfs 4.9.2).
+- Changed: the bundled canon pins follow release D (Grammar family 0.15.1, hfs 4.9.2, canon-fe 9.4.1, canon-be 3.6.1, starci-harness 1.1.0-alpha.2), so an app installs the released versions without pin drift.
+
 ## 3.6.0 - 2026-10-28
 
 - Changed: the package is TypeScript built to JavaScript. Source and specs live in `src/*.ts` (strict, no `any`, no

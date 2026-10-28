@@ -142,8 +142,6 @@ export const clientNoServerImport = defineRule({
 
 // -- FE-CLIENT-2b ----------------------------------------------------------------------------------
 
-/** The slots whose files are Next route files: server components by construction, so the framework decides, not a marker. */
-const ROUTE_FILE_SLOTS = new Set(["fe.route", "fe.source-root-pinned"])
 
 /** True when a statement is `import "server-only"`: an import with no bindings from the marker package. */
 const isMarkerStatement = (statement: Node | undefined): boolean =>
@@ -199,8 +197,9 @@ export const serverModuleMarksServerOnly = defineRule({
     },
   },
   create(context) {
-    const slot = slotOfFile(context)
-    if (!slot || ROUTE_FILE_SLOTS.has(slot)) return {}
+    // A route-tier file (the routes, the auth callback, the pinned source-root files) is a Next route file: a server component
+    // by construction, so the framework decides, not a marker.
+    if (!slotOfFile(context) || tierOfFile(context) === "route") return {}
     // A block or a page is a server or client COMPONENT, not a server module: whether client code reaches the server through it is
     // the machine's multi-hop question (FE_CLIENT_REACHES_SERVER). The marker belongs to the modules that hold server work.
     if (COMPONENT_TIERS.has(tierOfFile(context))) return {}
