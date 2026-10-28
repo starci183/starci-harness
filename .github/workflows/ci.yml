@@ -12,19 +12,175 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  # What this run checks. A pull request is measured from its base, a push to main from the last main commit whose ci run
+  # succeeded (else its parent), and `starci release affected` turns the diff into the packages to test (each with the siblings
+  # it needs built first), the harness job and the app job. A v* tag on a commit whose ci run on main succeeded reuses that
+  # run (Sonar included): nothing is checked again and publish proceeds. Any other tag, a manual run, or a base that cannot be
+  # read checks everything.
+  plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      reuse: ${{ steps.plan.outputs.reuse }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      packages: ${{ steps.plan.outputs.packages }}
+      harness: ${{ steps.plan.outputs.harness }}
+      app: ${{ steps.plan.outputs.app }}
+      app-build: ${{ steps.plan.outputs.app-build }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # Sonar reads the history to find new code.
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: The base this run is measured from
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1"
+          reuse=false
+          base=""
+          case "$GITHUB_EVENT_NAME:$GITHUB_REF" in
+            pull_request:*)
+              base="$PR_BASE" ;;
+            push:refs/tags/v*)
+              found=$(gh api "$runs&head_sha=$GITHUB_SHA" --jq '.workflow_runs[0].id // empty')
+              if [ -n "$found" ]; then
+                reuse=true
+                echo "ci run $found on main succeeded for $GITHUB_SHA: its checks and Sonar gate stand for this tag"
+              fi ;;
+            push:refs/heads/main)
+              base=$(gh api "$runs" --jq '.workflow_runs[0].head_sha // empty')
+              # No successful run, or one off this history: the parent, and with no parent nothing (everything is checked).
+              if [ -z "$base" ] || ! git merge-base --is-ancestor "$base" HEAD; then
+                base=""
+                if git rev-parse --verify --quiet HEAD~1 > /dev/null; then base=$(git rev-parse HEAD~1); fi
+              fi ;;
+          esac
+          echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Build the CLI
+        if: steps.base.outputs.reuse != 'true'
+        working-directory: cli
+        run: npm ci --no-audit --no-fund && npx tsc -p tsconfig.build.json
+      - name: The affected packages and jobs
+        id: plan
+        env:
+          REUSE: ${{ steps.base.outputs.reuse }}
+          BASE: ${{ steps.base.outputs.base }}
+        run: |
+          set -euo pipefail
+          echo "reuse=$REUSE" >> "$GITHUB_OUTPUT"
+          if [ "$REUSE" = "true" ]; then
+            printf '%s\n' 'matrix={"include":[]}' packages=false harness=false app=false app-build= >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node cli/dist/main.js release affected --base "$BASE" --json > affected.json
+          node -e '
+            const { data } = JSON.parse(require("fs").readFileSync("affected.json", "utf8"))
+            for (const line of data.summary) console.log(line)
+            const lines = [
+              `matrix=${JSON.stringify(data.matrix)}`,
+              `packages=${data.packages.length > 0}`,
+              `harness=${data.harness}`,
+              `app=${data.app}`,
+              `app-build=${data.appBuild.join(" ")}`,
+            ]
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n")
+          '
+
+  # The always-on light gates, one job each, over the whole tree.
+  gates:
+    needs: plan
+    if: needs.plan.outputs.reuse != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gate: anatomy drift (contexts/project/anatomy.md)
+            run: contexts anatomy --check
+          - gate: loosening (policy/loosening.yaml)
+            run: check loosening
+          - gate: secret scan of the whole tree (policy/security.yaml)
+            run: check secrets --all
+          - gate: harness shape (contexts/hfs/harness.yaml)
+            run: check shape
+          - gate: contexts anchors (one place per anchor, no dangling link)
+            run: contexts anchor --check
+          - gate: contexts search index (cli/dist/contexts-search.json matches the tree)
+            run: contexts search --check
+    name: gate (${{ matrix.gate }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Build the CLI
+        working-directory: cli
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: ${{ matrix.gate }}
+        env:
+          GATE: ${{ matrix.run }}
+        # GATE is one of the fixed commands above; word splitting turns it into the verb's arguments.
+        run: node cli/dist/main.js $GATE
+
+  # One job per affected package: its build order (the siblings it needs, then itself) is installed and built, its built
+  # declarations name `.js` only (tsc keeps a source's `.ts` specifier, which a consumer's tsc cannot read; packages/README.md,
+  # build convention), and its specs run.
+  package:
+    needs: plan
+    if: needs.plan.outputs.packages == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    name: package (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install and build ${{ matrix.package }} after the siblings it needs
+        env:
+          BUILD: ${{ matrix.build }}
+        run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
+      - name: Declarations name .js
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          if [ -d "$PACKAGE/dist" ] && grep -rnE "(from |import\()[\"']\.\.?/[^\"']+\.ts[\"']" "$PACKAGE/dist" --include=*.d.ts; then
+            echo "a built declaration imports a .ts specifier"; exit 1
+          fi
+      - name: Test ${{ matrix.package }}
+        working-directory: ${{ matrix.package }}
+        run: npm test
+
+  # The CLI and the trees it reads (cli/, contexts/, ops/, policy/, bench/, or a package the CLI requires changed).
+  harness:
+    needs: plan
+    if: needs.plan.outputs.harness == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
       - name: Install the CLI
         working-directory: cli
-        run: npm ci
+        run: npm ci --no-audit --no-fund
       - name: Typecheck the CLI
         working-directory: cli
         run: npm run typecheck
@@ -34,37 +190,39 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npm run build
-      - name: Anatomy drift (contexts/project/anatomy.md)
-        run: node cli/dist/main.js contexts anatomy --check
-      - name: Loosening gate (policy/loosening.yaml)
-        run: node cli/dist/main.js check loosening
-      - name: Secret scan of the whole tree (policy/security.yaml)
-        run: node cli/dist/main.js check secrets --all
-      - name: Harness shape (contexts/hfs/harness.yaml)
-        run: node cli/dist/main.js check shape
-      - name: Contexts anchors (one place per anchor, no dangling link)
-        run: node cli/dist/main.js contexts anchor --check
-      - name: Contexts search index (cli/dist/contexts-search.json matches the tree)
-        run: node cli/dist/main.js contexts search --check
-      # Specs read sibling packages by relative path and the Grammar lint packages install siblings as file: copies,
-      # which npm packs from the sibling's folder (its dist/ included), so every package is installed and built, in
-      # folder order, before any is tested (packages/README.md, build convention).
-      - name: Install and build packages
-        run: for dir in packages/*/; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
-      # tsc keeps a source's relative `.ts` specifier in the declarations it emits; a consumer's tsc cannot read those, so a
-      # built package's .d.ts names `.js` only (packages/README.md, build convention).
-      - name: Declarations name .js
-        run: |
-          if grep -rnE "(from |import\()[\"']\.\.?/[^\"']+\.ts[\"']" packages/*/dist --include=*.d.ts; then
-            echo "a built declaration imports a .ts specifier"; exit 1
-          fi
-      - name: Test packages
-        run: for dir in packages/*/; do (cd "$dir" && npm test); done
-      # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar (built by its test
-      # above) as a file: copy; its bundles are built by .github/workflows/app.yml.
+      - name: Bench (bench/scenarios, every scenario with steps)
+        run: node cli/dist/main.js bench run --all
+
+  # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar as a file: copy, built first;
+  # its bundles are built by .github/workflows/app.yml.
+  app:
+    needs: plan
+    if: needs.plan.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install and build the packages the app needs
+        env:
+          BUILD: ${{ needs.plan.outputs.app-build }}
+        run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
       - name: Typecheck and build the desktop app
         working-directory: app
         run: npm ci --no-audit --no-fund && npm run build
+
+  # Once per pull request and push to main (and on a tag no main run vouches for): the CLI is analysed for issues and
+  # duplication, never coverage (sonar-project.properties), so it needs nothing the other jobs build.
+  sonar:
+    needs: plan
+    if: needs.plan.outputs.reuse != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Sonar reads the history to find new code.
+          fetch-depth: 0
       - name: Sonar (new-code gate, policy/quality.yaml ci.sonar-new-code)
         uses: SonarSource/sonarqube-scan-action@v5
         env:
@@ -76,8 +234,25 @@ jobs:
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
 
+  # The one required check: green when the plan and every job it needed passed, a job the plan did not need being skipped.
+  ci:
+    needs: [plan, gates, package, harness, app, sonar]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every needed job passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const needs = JSON.parse(process.env.RESULTS)
+            const bad = Object.entries(needs).filter(([job, run]) => job === "plan" ? run.result !== "success" : !["success", "skipped"].includes(run.result))
+            for (const [job, run] of Object.entries(needs)) console.log(`${job}: ${run.result}`)
+            if (bad.length > 0) { console.log(`not green: ${bad.map(([job]) => job).join(", ")}`); process.exit(1) }
+          '
+
   publish:
-    needs: check
+    needs: ci
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

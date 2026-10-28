@@ -167,7 +167,7 @@ slots:
   - id: github.ci
     path: ".github/workflows/ci.yml"
     presence: required
-    holds: the CI that builds the CLI, runs the harness checks and every package's specs, and publishes on a tag
+    holds: the CI that plans the affected packages, runs the gates, those packages' specs, the harness and the app jobs, and publishes on a tag
     rule: CONTRIB-3; CONTRIB-20
   - id: github.workflows
     path: ".github/workflows/*.yml"

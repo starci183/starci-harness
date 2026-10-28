@@ -16,6 +16,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   command whose `answers` name it closes it with its cmdId (`OWNER_REQUEST_UNKNOWN`, `STALE` otherwise). Bench:
   `supervisor-owner-request-to-workflow`, `supervisor-ask-roles`.
 
+- **`release affected --base <sha>`.** The CI plan of a diff: the packages it affects, each with its build order (the
+  siblings it requires, its `file:` dependencies and the siblings its files read by relative path, deps first), and
+  whether the harness job (the CLI and the trees it reads) and the app job run; a change under `.github/` or no base is
+  every node. CI's `plan` job fans those packages out to one job each beside the light gates, the harness, app and Sonar
+  jobs, behind one required `ci` job, and a `v*` tag on a commit whose run on main succeeded reuses that run. Bench:
+  `release-affected-ci-plan`.
+
 ## [1.1.0-alpha.3] - 2026-10-28
 
 Runs `@starci/hfs` 4.9.3 (an exact dependency).

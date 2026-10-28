@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
-import { join, relative, sep } from "node:path"
+import { join, relative, resolve, sep } from "node:path"
 
 /** One npm package of the repository the CLI can check or publish. */
 export interface WorkspacePackage {
@@ -11,6 +11,8 @@ export interface WorkspacePackage {
     readonly scripts: Readonly<Record<string, string>>
     /** The packages it requires once installed, name to spec: its `dependencies` and `peerDependencies`. */
     readonly requires: Readonly<Record<string, string>>
+    /** The folders its `file:` dependencies (of any kind) name, repository-relative: siblings built before it is installed. */
+    readonly fileDependencies: readonly string[]
     readonly hasTsconfig: boolean
     readonly hasEslintConfig: boolean
     /** An npm workspace root: its members carry the code, so the root is not typechecked as one project. */
@@ -39,6 +41,12 @@ const readPackage = (root: string, dir: string): WorkspacePackage | undefined =>
         private: parsed.private === true,
         scripts: stringRecord(parsed.scripts),
         requires: { ...stringRecord(parsed.peerDependencies), ...stringRecord(parsed.dependencies) },
+        fileDependencies: [...new Set(
+            [parsed.dependencies, parsed.devDependencies, parsed.peerDependencies, parsed.optionalDependencies]
+                .flatMap((field) => Object.values(stringRecord(field)))
+                .filter((spec) => spec.startsWith("file:"))
+                .map((spec) => toSlash(relative(root, resolve(dir, spec.slice("file:".length))))),
+        )],
         hasTsconfig: existsSync(join(dir, "tsconfig.json")),
         hasEslintConfig: ESLINT_CONFIGS.some((file) => existsSync(join(dir, file))),
         workspaceRoot: Array.isArray(parsed.workspaces) || isRecord(parsed.workspaces),

@@ -11,6 +11,7 @@ import { checkTypecheckVerb } from "./core/check/typecheck.js"
 import { doctorVerb } from "./core/doctor.js"
 import { explainVerb } from "./core/explain.js"
 import { ciStatusVerb } from "./core/release/ci-status.js"
+import { releaseAffectedVerb } from "./core/release/affected.js"
 import { releaseCutVerb } from "./core/release/cut.js"
 import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
@@ -112,6 +113,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     releasePushVerb,
     releaseCutVerb,
     releasePublishVerb,
+    releaseAffectedVerb,
     ciStatusVerb,
     contractNewVerb,
     contractCheckVerb,
