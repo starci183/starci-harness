@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, relative, sep } from "node:path"
 import { captureGit, git, isAncestor, mainCheckout, nulPaths, samePath } from "../shared/git.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"
@@ -113,9 +113,9 @@ const preserveCheckout = async (root: string, path: string): Promise<string | nu
  * worktree Orca lists, else git, under the folder's busy record in the ledger of `root`) from its own repository's main checkout
  * (a package edit worktree is the harness's), then prunes; its branch stays. A held folder is left busy for a later gc.
  */
-const removeWorktree = async (root: string, entry: Pick<GcEntry, "path" | "kind" | "owner">, viaOrca: boolean, repo?: string): Promise<{ readonly removed: boolean; readonly busy: boolean; readonly detail: string }> => {
+const removeWorktree = async (root: string, entry: Pick<GcEntry, "path" | "kind" | "owner">, viaOrca: boolean, repo?: string, remnant = false): Promise<{ readonly removed: boolean; readonly busy: boolean; readonly detail: string }> => {
     const from = repo ?? (existsSync(join(entry.path, ".git")) ? await mainCheckout(entry.path).catch(() => root) : root)
-    const removal = await removeTracked(root, { path: entry.path, repo: from, owner: entry.owner, kind: entry.kind, viaOrca })
+    const removal = await removeTracked(root, { path: entry.path, repo: from, owner: entry.owner, kind: entry.kind, viaOrca, remnant })
     await captureGit(["worktree", "prune"], from)
     if (removal.removed) return { removed: true, busy: false, detail: `${removal.detail}; its branch keeps its commits` }
     return { removed: false, busy: removal.busy, detail: removal.busy ? removal.detail : `worktree remove failed: ${removal.detail}` }
@@ -139,6 +139,40 @@ const unlistedOpLeftovers = (root: string, listed: readonly Listed[]): GcEntry[]
     } finally {
         db.close()
     }
+}
+
+/** How long an unlisted folder under the state worktrees folder must be untouched to count as a remnant: one git is still making is listed within moments. */
+const REMNANT_QUIET_MS = 10 * 60_000
+
+/** A collector entry, with the repository it is removed from when that is not the collected one, and whether it is a remnant. */
+type Collected = GcEntry & { readonly repo?: string; readonly remnant?: boolean }
+
+/** The entry a collector run reports, without the routing fields it was collected with. */
+const reported = (entry: Collected): GcEntry => ({
+    path: entry.path,
+    kind: entry.kind,
+    owner: entry.owner,
+    due: entry.due,
+    reason: entry.reason,
+    preserved: entry.preserved,
+    removed: entry.removed,
+    detail: entry.detail,
+    ...(entry.busy === undefined ? {} : { busy: entry.busy }),
+})
+
+/**
+ * The folders under a repository's state worktrees folder that git does not list and that hold no `.git`, quiet for
+ * REMNANT_QUIET_MS: a removal that deregistered the worktree but stopped half way (a held folder, a file Windows would not let
+ * git delete). A `<workflow>.ops` folder is a container, never a remnant; a link is never one either.
+ */
+const remnantsUnder = (repo: string, listed: readonly Listed[]): Collected[] => {
+    const state = join(projectDir(repo), "worktrees")
+    if (!existsSync(state)) return []
+    const folders = (at: string): string[] => readdirSync(at, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => join(at, entry.name))
+    return folders(state)
+        .flatMap((folder) => (folder.endsWith(".ops") ? folders(folder) : [folder]))
+        .filter((path) => !existsSync(join(path, ".git")) && !listed.some((entry) => samePath(entry.path, path)) && Date.now() - statSync(path).mtimeMs > REMNANT_QUIET_MS)
+        .map((path) => ({ path, kind: "orphan", owner: null, due: true, reason: "git no longer lists it: a removal stopped half way", preserved: null, removed: false, detail: "", remnant: true }))
 }
 
 /** The busy records of the ledger (harness/worktree-busy.ts) no other entry covers, each due once its backoff ran out. */
@@ -207,10 +241,13 @@ const retiredLeftovers = async (dryRun: boolean): Promise<GcEntry[]> => {
     const found = await inOrder(repos, async (repo): Promise<GcEntry[]> => {
         if (!existsSync(join(repo, ".git"))) return []
         const stateWorktrees = join(projectDir(repo), "worktrees")
-        const left = (await listWorktrees(repo).catch(() => [])).filter((entry) => inside(stateWorktrees, entry.path) !== undefined)
-        if (left.length === 0) return []
-        if (!dryRun) return retireWorktrees(repo)
-        return left.map((entry) => ({ path: entry.path, kind: judge(repo, entry, stateWorktrees)?.kind ?? "orphan", owner: null, due: true, reason: "its project is retired", preserved: null, removed: false, detail: "" }))
+        const listed = await listWorktrees(repo).catch((): Listed[] => [])
+        const left = listed.filter((entry) => inside(stateWorktrees, entry.path) !== undefined)
+        const remnants = remnantsUnder(repo, listed).map((entry) => ({ ...reported(entry), reason: `its project is retired; ${entry.reason}` }))
+        if (dryRun) return [...left.map((entry) => ({ path: entry.path, kind: judge(repo, entry, stateWorktrees)?.kind ?? "orphan", owner: null, due: true, reason: "its project is retired", preserved: null, removed: false, detail: "" })), ...remnants]
+        const removed = left.length === 0 ? [] : await retireWorktrees(repo)
+        const cleared = await inOrder(remnants, async (entry) => ({ ...entry, ...(await removeWorktree(repo, entry, false, repo, true)) }))
+        return [...removed, ...cleared]
     })
     return found.flat()
 }
@@ -233,11 +270,15 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
         ...unlistedOpLeftovers(root, listed),
         ...(await landedPackages()),
     ]
-    const judged: (GcEntry & { readonly repo?: string })[] = [...owned, ...busyLeftovers(root, owned)]
+    const remnants = remnantsUnder(root, listed).filter((remnant) => !owned.some((entry) => samePath(entry.path, remnant.path)))
+    const known: Collected[] = [...owned, ...remnants]
+    const judged: Collected[] = [...known, ...busyLeftovers(root, known)]
     const verify = dryRun ? [] : (await pruneVerifyWorktrees(root)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
     const retired = await retiredLeftovers(dryRun)
-    if (dryRun) return [...judged, ...retired]
-    const done = await inOrder(judged, async ({ repo, ...entry }): Promise<GcEntry> => {
+    if (dryRun) return [...judged.map(reported), ...retired]
+    const done = await inOrder(judged, async (collected): Promise<GcEntry> => {
+        const { repo, remnant } = collected
+        const entry = reported(collected)
         if (!entry.due) return entry
         // A folder left busy waits for its backoff: nothing is preserved again or tried before then.
         const busy = (() => {
@@ -253,7 +294,7 @@ export const worktreeGc = async (root: string, dryRun: boolean): Promise<GcEntry
         const removal =
             entry.kind === "op" && entry.owner !== null
                 ? await removeOpWorktree(root, entry.owner).then((made) => (made === undefined ? removeWorktree(root, entry, true, repo) : { removed: made.removed, busy: made.busy === true, detail: made.detail }))
-                : await removeWorktree(root, entry, entry.kind !== "package", repo)
+                : await removeWorktree(root, entry, entry.kind !== "package" && remnant !== true, repo, remnant === true)
         const db = openExistingLedger(root)
         if (db !== undefined) {
             try {

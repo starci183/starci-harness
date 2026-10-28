@@ -11,7 +11,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - **A held worktree no longer loops or fails a settle.** Removing a harness worktree first closes every Orca terminal whose
   worktree it is (a seat's or a plain shell's; the caller's own aside), since Windows refuses to remove a folder a process works
   in (EBUSY). A folder git emptied and deregistered but whose rmdir was refused is removed as the empty folder it is, instead of
-  `git worktree remove` answering "is not a working tree" on every workflow step. A removal still refused as busy (EBUSY,
+  `git worktree remove` answering "is not a working tree" on every workflow step; one git deregistered but could not empty (a
+  file named `nul`, which Windows' own delete refuses) has its remaining files deleted, links unlinked first and never
+  entered, and the collector finds such remnants under a project's state worktrees folder once they sit quiet for ten
+  minutes. A removal still refused as busy (EBUSY,
   EPERM, EACCES) is recorded `worktree-remove-busy` in the ledger and left: the task settles, the step reports a wait, and
   `worktree gc` retries it with backoff (1 min doubling to 1 h), opening one `harness-defect` ticket at the sixth attempt that
   names the holding process when `handle`, `openfiles` or `lsof` can (`cli/src/harness/worktree-busy.ts`). `worktree gc` also
