@@ -13,7 +13,8 @@
  */
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
-import { declaredHfsView, openHfsView, type HfsView } from "../../runtime/scripts/hfs/view.mjs"
+import { declaredHfsView, openHfsView } from "#runtime/scripts/hfs/view.mjs"
+import type { HfsView } from "./hfs-view.ts"
 import type { Context } from "./rule.ts"
 import { RUNTIME_ROOT as RUNTIME } from "./runtime-root.ts"
 
@@ -28,7 +29,7 @@ export type {
     HfsSpecDouble,
     HfsUnitRole,
     HfsView,
-} from "../../runtime/scripts/hfs/view.mjs"
+} from "./hfs-view.ts"
 
 /**
  * The HFS view of the side whose `eslint.config.mjs` (in be/) calls this.

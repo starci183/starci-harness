@@ -21,6 +21,12 @@
       "default": "./dist/index.js"
     }
   },
+  "imports": {
+    "#runtime/*": {
+      "types": "./src/types/runtime/*",
+      "default": "./runtime/*"
+    }
+  },
   "main": "./dist/index.js",
   "files": [
     "LICENSE",

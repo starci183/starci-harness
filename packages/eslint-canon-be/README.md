@@ -148,7 +148,9 @@ The package is TypeScript: `src/*.ts` (one module per law, `src/lib/` for the sh
 source) builds with `tsc -p tsconfig.build.json` into `dist/`, which is what `exports` and `files` publish, with `runtime/`.
 `npm run typecheck` checks source and specs strictly (no `any`); `npm test` runs the specs straight from the TypeScript
 (`node --test`, Node strips the types), so a spec needs no build. The bundled `runtime/` is untyped JavaScript; the parts
-this package imports are declared in `src/types/runtime/*.d.ts`. `fixtures/` is spec data and stays JavaScript with
+this package imports are declared in `src/types/runtime/`, and the HFS view is imported through `#runtime/*` with its shapes
+in `src/lib/hfs-view.ts`, which is emitted, so the published declarations of `loadHfs` and `starciBeConfig` name no
+untyped runtime file. `fixtures/` is spec data and stays JavaScript with
 `.d.mts` contracts, because the front-end canon and the Grammar lint families import its helpers by path.
 
 ## HFS rules and their why codes

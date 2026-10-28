@@ -1,7 +1,7 @@
 /** The declared contract of ./tester.mjs: the typed RuleTester both canons build, and the fixture HFS view. */
 import type { TSESLint } from "@typescript-eslint/utils"
 import type { RuleTester } from "eslint"
-import type { HfsView } from "../../runtime/scripts/hfs/view.mjs"
+import type { HfsView } from "../../src/lib/hfs-view.ts"
 import type { SideDeclaration } from "../app.mjs"
 
 /** A rule as a canon publishes it. */
