@@ -1,0 +1,69 @@
+schema: starci/scenario@1
+id: release-publish-version-not-bumped
+group: release
+title: the release plan refuses a package whose shipped files changed while its version is already on npm
+inject: >-
+  a scratch repository whose packages/hfs is @starci/hfs 4.9.5 (on npm, published from a commit this history does not
+  hold), then a spec-only change, then a change to a shipped file under the same version, then the version raised
+expect: >-
+  `release publish --base <commit>` (CI's publish job passes its plan's base) leaves a spec-only change alone, refuses
+  RELEASE_VERSION_NOT_BUMPED naming @starci/hfs once a shipped file changed since the base while 4.9.5 is on npm, and
+  plans the package for publication once its version is raised; without --base (Debug's workstation fallback) the plan
+  judges no bump (reads the public registry)
+pass:
+  - a spec-only change under a published version passes
+  - a shipped change under a published version is refused RELEASE_VERSION_NOT_BUMPED, naming the package
+  - the plan without --base does not judge the bump
+  - the raised version is planned for publication, exit 0
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci/hfs","version":"4.9.5"}
+  - write:
+      path: packages/hfs/index.js
+      content: |
+        export const rule = 1
+  - git: [add, -A]
+  - git: [commit, -q, -m, "hfs 4.9.5 as published"]
+  - git: [rev-parse, HEAD]
+    save: { base: stdout }
+  - write:
+      path: packages/hfs/src/rule.spec.mjs
+      content: |
+        // a spec never ships
+  - git: [add, -A]
+  - git: [commit, -q, -m, "a spec only"]
+  - name: a spec-only change keeps the published version
+    starci: [release, publish, --base, "${base}"]
+    expect:
+      exit: 0
+      ok: true
+  - write:
+      path: packages/hfs/index.js
+      content: |
+        export const rule = 2
+  - git: [commit, -q, -am, "a shipped change under 4.9.5"]
+  - name: a shipped change under a version already on npm
+    starci: [release, publish, --base, "${base}"]
+    expect:
+      exit: 1
+      code: RELEASE_VERSION_NOT_BUMPED
+  - name: the workstation plan judges no bump
+    starci: [release, publish]
+    expect:
+      exit: 0
+      ok: true
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci/hfs","version":"4.9.999-bench"}
+  - git: [commit, -q, -am, "raise hfs"]
+  - name: the raised version is due
+    starci: [release, publish, --base, "${base}"]
+    expect:
+      exit: 0
+      ok: true
+      contains: "\"action\": \"publish\""

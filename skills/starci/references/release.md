@@ -55,18 +55,20 @@ starci release publish
 starci release publish --publish
 ```
 
-Without `--publish` it only prints the plan: every package version not yet on npm (`--package <p>` narrows
-it). The plan is judged before anything is published, and CI's publish job runs it with `--tag <tag>`: a due package
-requiring a sibling at another version than the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW`, one requiring a
-private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`, a tag naming no package version `RELEASE_TAG_UNKNOWN` and a tag
-whose versions are all on npm `RELEASE_ALREADY_PUBLISHED`. `--publish` publishes a dependency before its dependent. npm is public and permanent: show the plan and get the owner's OK for exactly those packages and
-versions every time, then publish. It publishes from a clean commit on the remote main and reads each
-version back; `PUBLISH_NOT_CONFIRMED` means the registry does not show it yet.
+On the harness, CI publishes on every push to main (CONTRIBUTING.md CONTRIB-20); run it by hand only as Debug's fallback
+when CI cannot. Without `--publish` it only prints the plan: every package version not yet on npm (`--package <p>`
+narrows it). The plan is judged before anything is published: a due package requiring a sibling at another version than
+the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW`, one requiring a private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`,
+and with `--base <commit>` (CI passes its plan's base) a package changed since then whose version is already on npm is
+`RELEASE_VERSION_NOT_BUMPED`: raise its version and CHANGELOG. `--publish` publishes a dependency before its dependent.
+npm is public and permanent: show the plan and get the owner's OK for exactly those packages and versions every time,
+then publish. It publishes from a clean commit on the remote main and reads each version back; `PUBLISH_NOT_CONFIRMED`
+means the registry does not show it yet.
 
 ## CI gate
 
 `requireCi` in [policy/quality.yaml](../../../policy/quality.yaml) lists the actions that wait for a green CI
-of their commit: today `release.cut`, `release.publish` and `deploy.prod`. They refuse `CI_NOT_GREEN`
+of their commit (`release.cut`, `release.publish`, `deploy.prod`; the file names which apply). They refuse `CI_NOT_GREEN`
 until `release ci-status` of that commit is green. Wait for CI; never route around the gate.
 
 Report the pushed commit, the tag, the published versions and the CI verdict, saying so when CI is still

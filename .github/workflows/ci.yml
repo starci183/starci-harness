@@ -3,7 +3,6 @@ name: ci
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -14,16 +13,14 @@ permissions:
 jobs:
   # What this run checks. A pull request is measured from its base, a push to main from the last main commit whose ci run
   # succeeded (else its parent), and `starci release affected` turns the diff into the packages to test (each with the siblings
-  # it needs built first), the harness job and the app job. A v* tag on a commit whose ci run on main succeeded reuses that
-  # run (Sonar included): nothing is checked again and publish proceeds. Any other tag, a manual run, or a base that cannot be
-  # read checks everything.
+  # it needs built first), the harness job and the app job. A manual run, or a base that cannot be read, checks everything.
   plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
     outputs:
-      reuse: ${{ steps.plan.outputs.reuse }}
+      base: ${{ steps.base.outputs.base }}
       matrix: ${{ steps.plan.outputs.matrix }}
       packages: ${{ steps.plan.outputs.packages }}
       harness: ${{ steps.plan.outputs.harness }}
@@ -46,17 +43,10 @@ jobs:
         run: |
           set -euo pipefail
           runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1"
-          reuse=false
           base=""
           case "$GITHUB_EVENT_NAME:$GITHUB_REF" in
             pull_request:*)
               base="$PR_BASE" ;;
-            push:refs/tags/v*)
-              found=$(gh api "$runs&head_sha=$GITHUB_SHA" --jq '.workflow_runs[0].id // empty')
-              if [ -n "$found" ]; then
-                reuse=true
-                echo "ci run $found on main succeeded for $GITHUB_SHA: its checks and Sonar gate stand for this tag"
-              fi ;;
             push:refs/heads/main)
               base=$(gh api "$runs" --jq '.workflow_runs[0].head_sha // empty')
               # No successful run, or one off this history: the parent, and with no parent nothing (everything is checked).
@@ -65,24 +55,16 @@ jobs:
                 if git rev-parse --verify --quiet HEAD~1 > /dev/null; then base=$(git rev-parse HEAD~1); fi
               fi ;;
           esac
-          echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
           echo "base=$base" >> "$GITHUB_OUTPUT"
       - name: Build the CLI
-        if: steps.base.outputs.reuse != 'true'
         working-directory: cli
         run: npm ci --no-audit --no-fund && npx tsc -p tsconfig.build.json
       - name: The affected packages and jobs
         id: plan
         env:
-          REUSE: ${{ steps.base.outputs.reuse }}
           BASE: ${{ steps.base.outputs.base }}
         run: |
           set -euo pipefail
-          echo "reuse=$REUSE" >> "$GITHUB_OUTPUT"
-          if [ "$REUSE" = "true" ]; then
-            printf '%s\n' 'matrix={"include":[]}' packages=false harness=false app=false app-build= >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           node cli/dist/main.js release affected --base "$BASE" --json > affected.json
           node -e '
             const { data } = JSON.parse(require("fs").readFileSync("affected.json", "utf8"))
@@ -100,7 +82,6 @@ jobs:
   # The always-on light gates, one job each, over the whole tree.
   gates:
     needs: plan
-    if: needs.plan.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -215,11 +196,10 @@ jobs:
         working-directory: app
         run: npm ci --no-audit --no-fund && npm run build
 
-  # Once per pull request and push to main (and on a tag no main run vouches for): the CLI is analysed for issues and
-  # duplication, never coverage (sonar-project.properties), so it needs nothing the other jobs build.
+  # Once per pull request and push to main: the CLI is analysed for issues and duplication, never coverage
+  # (sonar-project.properties), so it needs nothing the other jobs build.
   sonar:
     needs: plan
-    if: needs.plan.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -254,52 +234,71 @@ jobs:
             if (bad.length > 0) { console.log(`not green: ${bad.map(([job]) => job).join(", ")}`); process.exit(1) }
           '
 
+  # The one publishing path (CONTRIBUTING.md CONTRIB-20): on a push to main whose plan affected a package or the CLI, once `ci`
+  # is green, `starci release publish` (cli/src/core/release/publish.ts) judges the plan, then publishes every package under
+  # packages/ and the CLI (starci-harness) whose version is not on npm yet, a dependency before its dependent, with provenance.
+  # A version already on npm is skipped, so a re-run publishes only what is still missing; runs queue, never overlap.
   publish:
-    needs: ci
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [plan, ci]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')
     runs-on: ubuntu-latest
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false
     permissions:
       contents: read
       # npm provenance signs each tarball with this workflow's OIDC identity.
       id-token: write
     steps:
+      # Full history: the plan diffs each affected package from the commit npm recorded for its published version, and the
+      # publish reads that this commit is on origin/main.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
       - name: Install and build the CLI
         working-directory: cli
         run: npm ci --no-audit --no-fund && npm run build
-      # The plan this tag publishes, judged before anything reaches npm (cli/src/core/release/publish.ts): each due package
-      # requires its siblings at their versions at this commit, each on npm or due here, and the tag names a version not on npm.
-      - name: Judge the release plan
-        run: node cli/dist/main.js release publish --tag "$GITHUB_REF_NAME"
-      # Every package under packages/ and then the CLI (starci-harness), so a dependency is on npm before its dependent, are
-      # published with provenance, except a private one and a version already on npm; a prerelease version goes under the
-      # dist-tag it names (1.0.0-alpha.1: alpha).
-      - name: Publish the packages and the CLI whose version is not on npm
+      # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
+      # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings.
+      - name: Judge the plan
+        id: due
         env:
+          BASE: ${{ needs.plan.outputs.base }}
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/publish-plan.json"
+          every="$RUNNER_TEMP/every-package.json"
+          node cli/dist/main.js release publish --base "$BASE" --json > "$plan" || { cat "$plan"; exit 1; }
+          node cli/dist/main.js release affected --json > "$every"
+          PLAN="$plan" EVERY="$every" node -e '
+            const fs = require("fs")
+            const rows = JSON.parse(fs.readFileSync(process.env.PLAN, "utf8")).data.rows
+            const every = JSON.parse(fs.readFileSync(process.env.EVERY, "utf8")).data.packages
+            const due = rows.filter((row) => row.action === "publish")
+            for (const row of rows) console.log(`${row.package}@${row.version}: ${row.action}`)
+            const build = []
+            for (const row of due) for (const dir of every.find((pkg) => pkg.dir === row.dir)?.build ?? []) if (!build.includes(dir)) build.push(dir)
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${due.length}\nbuild=${build.join(" ")}\n`)
+          '
+      # npm publish packs each package through its prepack build, which needs its devDependencies and the siblings it installs.
+      - name: Install and build the due packages after the siblings they need
+        if: steps.due.outputs.build != ''
+        env:
+          BUILD: ${{ steps.due.outputs.build }}
+        run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
+      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed.
+      - name: Publish every version not on npm
+        if: steps.due.outputs.count != '0'
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for dir in packages/*/ cli/; do
-            name=$(node -p "require('./${dir}package.json').name")
-            version=$(node -p "require('./${dir}package.json').version")
-            if [ "$(node -p "require('./${dir}package.json').private === true")" = "true" ]; then
-              echo "$name is private"
-              continue
-            fi
-            if found=$(npm view "$name@$version" version 2>/dev/null) && [ "$found" = "$version" ]; then
-              echo "$name@$version is already on npm"
-              continue
-            fi
-            tag=$(node -p "(/^\d+\.\d+\.\d+-([A-Za-z]+)/.exec('$version') ?? [])[1] ?? 'latest'")
-            (cd "$dir" && npm ci --no-audit --no-fund && npm publish --access public --provenance --tag "$tag")
-            # The registry answers 404 for a few minutes after a publish ("being processed"); wait for it, up to 10 minutes.
-            for attempt in $(seq 1 20); do
-              [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ] && break
-              [ "$attempt" = 20 ] && { echo "$name@$version is not visible on npm after 10 minutes"; exit 1; }
-              sleep 30
-            done
-            echo "published $name@$version ($tag)"
-          done
+          set -euo pipefail
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          node cli/dist/main.js release publish --publish --base "$BASE"
