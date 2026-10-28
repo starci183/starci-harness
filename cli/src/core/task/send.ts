@@ -5,7 +5,7 @@ import { contractProblems, normaliseRepoPath, parseContract, readContract } from
 import type { Contract } from "../../harness/contract.js"
 import { inTransaction, openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
-import { createTask, getTask, recordEvent } from "../../harness/tasks.js"
+import { createTask, getTask, recordEvent, tryAfter } from "../../harness/tasks.js"
 import { worktreeSelector } from "../../harness/orca/client.js"
 import type { TaskRow } from "../../harness/tasks.js"
 import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
@@ -59,7 +59,7 @@ const assertRetry = (db: DatabaseSync, contract: Contract, retryOf: string): voi
         )
     }
     const budget = Math.min(previous.contract.budget.tries, contract.budget.tries)
-    if (previous.tryNo >= budget) {
+    if (tryAfter(db, previous) > budget) {
         throw new Refusal("TRIES_EXHAUSTED", `task ${previous.id} was try ${String(previous.tryNo)} of ${String(budget)}; the try budget is spent, only the Supervisor or the owner raises it`)
     }
 }

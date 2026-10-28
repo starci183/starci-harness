@@ -161,7 +161,17 @@ export const workflowWorktree = (db: DatabaseSync, workflowId: string | undefine
 }
 
 /**
- * Registers a queued task for a fit contract; a retry names the task it retries and gets the next try number. The task's
+ * The try number a retry of `previous` takes: the next one, unless `previous` failed only on a wave red not proven its own (a shared
+ * run that names no file, harness/wave.ts), which, like an infrastructure failure, spends no try: the retry keeps its number.
+ */
+export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => {
+    const row = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(previous.id)
+    const own = row === undefined ? true : (JSON.parse(String(row.data_json)) as { readonly own?: boolean }).own !== false
+    return previous.tryNo + (previous.status === "failed" && !own ? 0 : 1)
+}
+
+/**
+ * Registers a queued task for a fit contract; a retry names the task it retries and gets its try number (tryAfter). The task's
  * worktree is its workflow's, else the one of the task it retries (a retry continues on the code its previous attempt left),
  * else `worktree`, the checkout it was sent from.
  */
@@ -176,7 +186,7 @@ export const createTask = (
     const worktree = workflowWorktree(db, options.workflowId) ?? previous?.worktree ?? options.worktree ?? null
     db.prepare(
         "INSERT INTO tasks (id, workflow_id, label, contract_json, contract_hash, try_no, retry_of, status, created_at, updated_at, worktree) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)",
-    ).run(id, options.workflowId ?? null, contract.label, JSON.stringify(contract), contractHash(contract), (previous?.tryNo ?? 0) + 1, options.retryOf ?? null, at, at, worktree)
+    ).run(id, options.workflowId ?? null, contract.label, JSON.stringify(contract), contractHash(contract), previous === undefined ? 1 : tryAfter(db, previous), options.retryOf ?? null, at, at, worktree)
     recordEvent(db, "task-created", id, { label: contract.label, retryOf: options.retryOf ?? null })
     return getTask(db, id)
 }

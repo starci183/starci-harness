@@ -66,8 +66,13 @@ export interface WaveReport {
     readonly commands: readonly string[]
     readonly tasks: readonly string[]
     readonly prepared: readonly CheckOutcome[]
+    /** Each task's rows as recorded: a red it owns of a check it did not leave is added, a red it does not own is green with a note. */
     readonly outcomes: Readonly<Record<string, readonly CheckOutcome[]>>
     readonly returned: readonly string[]
+    /** The returned tasks whose red is not proven theirs (a shared run that names no file): they spend no try. */
+    readonly free: readonly string[]
+    /** Findings in files no task of the wave landed: the wave's own error, reported, failing no task. */
+    readonly errors: readonly string[]
     readonly verdict: "green" | "red"
 }
 
@@ -83,13 +88,39 @@ const toSlash = (path: string): string => path.replaceAll("\\", "/")
 const printedAs = (file: string): string => file.split("/").slice(-2).join("/")
 
 /**
- * The tasks a red check of the wave belongs to: those whose landed files the check's output names, else, when it names none of
- * them, every task of the wave that left that check (a red repository gate, a build that names no task's file).
+ * A line of a red check's output that leads with the file of a finding: an eslint file header (`<abs path>` or `<path>: error`),
+ * a tsc `<path>(line,col): error`, a jest `FAIL <path>`. A summary line (`red lint ... (config be/eslint.config.mjs)`) leads with
+ * a word, never a path, so a config a step names is no finding.
  */
-const owners = (outcome: CheckOutcome, tasks: readonly WaveTask[]): WaveTask[] => {
+const FINDING_LINE = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]*\/[^\s:()]*\.[A-Za-z]{1,5})(?:$|[\s:(])/
+
+/** The files a red check's output reports findings in, slash-separated as printed (absolute, or relative to a package). */
+const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap((line) => FINDING_LINE.exec(line)?.slice(1, 2) ?? []))]
+
+/** Whether a task landed the file a finding is printed by: the same repository path, or one printed relative to a package; a task that landed nothing owns what lies under its allowPaths. */
+const lands = (each: WaveTask, printed: string): boolean =>
+    each.files.some((file) => printed === file || printed.endsWith(`/${file}`) || file.endsWith(`/${printed}`) || (each.task.settleCommit === null && (printed.startsWith(`${file}/`) || printed.includes(`/${file}/`))))
+
+/** Who a red check of the wave belongs to: the tasks it returns, whether the red is proven theirs, and the findings no task of the wave landed. */
+interface Attribution {
+    readonly owners: readonly WaveTask[]
+    readonly own: boolean
+    readonly unowned: readonly string[]
+}
+
+/**
+ * The tasks a red check of the wave belongs to. A check that reports findings by file belongs to the tasks that landed those files,
+ * whichever task of the wave left the check (a scoped check runs once over the union every landed task shares); a finding in a file
+ * no task of the wave landed is a wave error, reported and owned by no task. A check whose output names no file falls back to the
+ * tasks whose landed files it mentions, else to every task that shared its run (a red repository gate, a suite that names no
+ * file): proven theirs only when one task shared it, else each of them is returned without spending a try.
+ */
+const attribute = (outcome: CheckOutcome, sharing: readonly WaveTask[], tasks: readonly WaveTask[]): Attribution => {
+    const files = findingFiles(outcome.detail)
+    if (files.length > 0) return { owners: tasks.filter((each) => files.some((file) => lands(each, file))), own: true, unowned: files.filter((file) => !tasks.some((each) => lands(each, file))) }
     const detail = toSlash(outcome.detail)
-    const named = tasks.filter((each) => each.files.some((file) => detail.includes(printedAs(file))))
-    return named.length > 0 ? named : [...tasks]
+    const named = sharing.filter((each) => each.files.some((file) => detail.includes(printedAs(file))))
+    return named.length > 0 ? { owners: named, own: true, unowned: [] } : { owners: sharing, own: sharing.length <= 1, unowned: [] }
 }
 
 /**
@@ -120,18 +151,22 @@ const waveTasks = async (db: DatabaseSync, checkout: string, ids: readonly strin
     })
 }
 
-/** Records one task's part of the wave: its check rows on its newest attempt, its judgement, and, red, its return to failed. */
-const recordTask = (db: DatabaseSync, workflow: string, each: WaveTask, outcomes: readonly CheckOutcome[], red: boolean): void => {
+/**
+ * Records one task's part of the wave: its check rows on its newest attempt, its judgement, and, red, its return to failed. A red
+ * not proven the task's own (`own` false) returns it as an infrastructure failure does: no try spent (tasks.ts tryAfter) and no red
+ * verdict on its attempt, so neither the task nor its model pays for another task's red.
+ */
+const recordTask = (db: DatabaseSync, workflow: string, each: WaveTask, outcomes: readonly CheckOutcome[], red: { readonly returned: boolean; readonly own: boolean }): void => {
     const attempt = latestAttempt(db, each.task.id)
     inTransaction(db, () => {
         const insert = db.prepare("INSERT INTO check_runs (task_id, attempt_id, contract_hash, name, runner, status, exit_code, detail, ran_at) VALUES (?, ?, ?, ?, 'harness', ?, ?, ?, ?)")
         const at = now()
         for (const outcome of outcomes) insert.run(each.task.id, attempt?.id ?? null, each.task.contractHash, outcome.name, outcome.status, outcome.exitCode, redactSecrets(outcome.detail), at)
-        recordEvent(db, "wave-judged", each.task.id, { workflow, verdict: red ? "red" : "green", checks: outcomes.map((outcome) => `${outcome.name} ${outcome.status}`) })
-        if (!red) return
-        if (attempt !== undefined) setVerdict(db, attempt.id, "red")
+        recordEvent(db, "wave-judged", each.task.id, { workflow, verdict: red.returned ? "red" : "green", checks: outcomes.map((outcome) => `${outcome.name} ${outcome.status}`) })
+        if (!red.returned) return
+        if (attempt !== undefined && red.own) setVerdict(db, attempt.id, "red")
         setStatus(db, each.task.id, "failed", "done")
-        recordEvent(db, "wave-returned", each.task.id, { workflow, red: outcomes.filter((outcome) => outcome.status === "red").map((outcome) => outcome.name) })
+        recordEvent(db, "wave-returned", each.task.id, { workflow, red: outcomes.filter((outcome) => outcome.status === "red").map((outcome) => outcome.name), own: red.own })
     })
 }
 
@@ -306,21 +341,79 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         }
         return { prepared, outcomes }
     })
-    const redOwners = new Set<string>()
-    const prepRed = judged.prepared.filter((outcome) => outcome.status === "red")
-    if (prepRed.length > 0) for (const each of tasks) redOwners.add(each.task.id)
-    // A red run belongs among the tasks that shared it (one run key): those its output names, else all of them.
+    const judgedWave = attributeWave(tasks, judged.prepared, judged.outcomes)
+    for (const each of tasks) recordTask(db, workflow, each, judgedWave.outcomes[each.task.id] ?? [], { returned: judgedWave.owned.has(each.task.id), own: judgedWave.proven.has(each.task.id) })
+    const returned = tasks.filter((each) => judgedWave.owned.has(each.task.id)).map((each) => each.task.id)
+    const free = returned.filter((id) => !judgedWave.proven.has(id))
+    const errors = judgedWave.errors
+    if (errors.length > 0) recordEvent(db, "wave-foreign-red", workflow, { base, head, tasks: ids, errors })
+    const verdict = returned.length === 0 && errors.length === 0 ? "green" : "red"
+    const prepared = judged.prepared.map((outcome) => `${outcome.name} ${outcome.status}: ${outcome.detail.split("\n")[0] ?? ""}`)
+    recordEvent(db, "wave-verified", workflow, { base, head, tasks: ids, returned, free, errors, verdict, prepared })
+    return { workflow, base, head, changed, commands, tasks: ids, prepared: judged.prepared, outcomes: Object.fromEntries(Object.entries(judgedWave.outcomes).map(([id, rows]) => [id, rows.slice(judged.prepared.length)])), returned, free, errors, verdict }
+}
+
+/** The wave's red mapped onto its tasks: each task's rows to record, the tasks returned, those whose red is proven their own, and the wave errors. */
+interface WaveAttribution {
+    readonly outcomes: Readonly<Record<string, readonly CheckOutcome[]>>
+    readonly owned: ReadonlySet<string>
+    readonly proven: ReadonlySet<string>
+    readonly errors: readonly string[]
+}
+
+/**
+ * Maps every red of the wave onto the tasks whose landed files it names (attribute): only those are returned, a task whose own files
+ * are green is judged green even when the wave is red, and a red owned by a task that did not leave the check is added to that
+ * task's rows. A red the task does not own stays on its rows as green with a note naming it as another's. A finding in a file no
+ * task landed is a wave error: reported, failing no task. A red install or setup is every task's, proven only for a lone task.
+ */
+const attributeWave = (tasks: readonly WaveTask[], prepared: readonly CheckOutcome[], ran: Readonly<Record<string, readonly CheckOutcome[]>>): WaveAttribution => {
+    const owned = new Set<string>()
+    const proven = new Set<string>()
+    const errors: string[] = []
+    // The run keys each task owns a red of, and the reds it owns of checks it did not leave itself.
+    const keys = new Map<string, Set<string>>()
+    const extra = new Map<string, CheckOutcome[]>()
+    const own = (id: string, key: string, isProven: boolean): void => {
+        owned.add(id)
+        if (isProven) proven.add(id)
+        keys.set(id, (keys.get(id) ?? new Set<string>()).add(key))
+    }
+    const PREPARED = "prepared"
+    if (prepared.some((outcome) => outcome.status === "red")) for (const each of tasks) own(each.task.id, PREPARED, tasks.length === 1)
+    // A red run is shared by the tasks of one run key; its findings belong to the tasks that landed their files.
     const sharing = (key: string): WaveTask[] => tasks.filter((each) => each.checks.some((check) => runKey(check, each.task) === key))
+    const seen = new Set<string>()
     for (const each of tasks) {
         each.checks.forEach((check, index) => {
-            const outcome = judged.outcomes[each.task.id]?.[index]
-            if (outcome?.status === "red") for (const owner of owners(outcome, sharing(runKey(check, each.task)))) redOwners.add(owner.task.id)
+            const outcome = ran[each.task.id]?.[index]
+            const key = runKey(check, each.task)
+            if (outcome?.status !== "red" || seen.has(key)) return
+            seen.add(key)
+            const found = attribute(outcome, sharing(key), tasks)
+            for (const owner of found.owners) {
+                own(owner.task.id, key, found.own)
+                if (!owner.checks.some((mine) => runKey(mine, owner.task) === key)) extra.set(owner.task.id, [...(extra.get(owner.task.id) ?? []), outcome])
+            }
+            for (const file of found.unowned) errors.push(`${outcome.name}: a finding in ${file}, a file no task of the wave landed`)
         })
     }
-    for (const each of tasks) recordTask(db, workflow, each, [...judged.prepared, ...(judged.outcomes[each.task.id] ?? [])].map((outcome) => (outcome.status === "red" && !redOwners.has(each.task.id) ? { ...outcome, status: "green", detail: `red, but owned by another task of the wave\n${outcome.detail}` } : outcome)), redOwners.has(each.task.id))
-    const returned = tasks.filter((each) => redOwners.has(each.task.id)).map((each) => each.task.id)
-    const verdict = returned.length === 0 ? "green" : "red"
-    const prepared = judged.prepared.map((outcome) => `${outcome.name} ${outcome.status}: ${outcome.detail.split("\n")[0] ?? ""}`)
-    recordEvent(db, "wave-verified", workflow, { base, head, tasks: ids, returned, verdict, prepared })
-    return { workflow, base, head, changed, commands, tasks: ids, prepared: judged.prepared, outcomes: judged.outcomes, returned, verdict }
+    const notMine = (outcome: CheckOutcome, id: string, key: string): CheckOutcome =>
+        outcome.status !== "red" || keys.get(id)?.has(key) === true
+            ? outcome
+            : { ...outcome, status: "green", detail: `red, but not this task's: its findings lie in files another task landed, or in none a task of the wave landed\n${outcome.detail}` }
+    const outcomes = Object.fromEntries(
+        tasks.map((each) => [
+            each.task.id,
+            [
+                ...prepared.map((outcome) => notMine(outcome, each.task.id, PREPARED)),
+                ...(ran[each.task.id] ?? []).map((outcome, index) => {
+                    const check = each.checks[index]
+                    return check === undefined ? outcome : notMine(outcome, each.task.id, runKey(check, each.task))
+                }),
+                ...(extra.get(each.task.id) ?? []),
+            ],
+        ]),
+    )
+    return { outcomes, owned, proven, errors: [...new Set(errors)] }
 }

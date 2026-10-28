@@ -8,7 +8,7 @@ import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
 import { inTransaction, now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
-import { createTask, getTask, recordEvent } from "./tasks.js"
+import { createTask, getTask, recordEvent, tryAfter } from "./tasks.js"
 import type { ResultStatus, TaskRow, TaskStatus } from "./tasks.js"
 
 /**
@@ -422,7 +422,7 @@ export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode
     const previous = getTask(db, text(row.id))
     if (previous.label !== node.contract.label || pathSet(previous.contract) !== pathSet(node.contract)) return undefined
     const budget = Math.min(previous.contract.budget.tries, node.contract.budget.tries)
-    if (previous.tryNo >= budget) {
+    if (tryAfter(db, previous) > budget) {
         throw new Refusal("TRIES_EXHAUSTED", `${node.key} was try ${String(previous.tryNo)} of ${String(budget)} (task ${previous.id}); the try budget is spent, only the Supervisor or the owner raises it`)
     }
     return previous

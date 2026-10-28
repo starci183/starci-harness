@@ -83,7 +83,8 @@ export const workflowWaveVerb = defineVerb({
                 ...wave.commands.map((command) => `  ran: ${command}`),
                 ...wave.prepared.map((outcome) => `${outcome.status} ${outcome.name}: ${outcome.detail.split("\n")[0] ?? ""}`),
                 ...Object.entries(wave.outcomes).flatMap(([task, outcomes]) => outcomes.map((outcome) => `${outcome.status} ${outcome.name} (${task})`)),
-                ...wave.returned.map((task) => `returned: ${task} failed, back to the Kernel`),
+                ...wave.returned.map((task) => `returned: ${task} failed, back to the Kernel${wave.free.includes(task) ? " (not proven its own: no try spent)" : ""}`),
+                ...wave.errors.map((error) => `wave error, no task failed: ${error}`),
             ]
             return { data, message: lines.join("\n"), exitCode: wave.verdict === "green" ? 0 : 1 }
         } finally {
