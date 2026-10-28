@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Only the newest run of a ref matters: a push supersedes the run still going for the older commit. A publish cut short
+# is safe, since `release publish` is idempotent per version and the newer run publishes whatever is still due.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # What this run checks. A pull request is measured from its base, a push to main from the last main commit whose ci run
   # succeeded (else its parent), and `starci release affected` turns the diff into the packages to test (each with the siblings
