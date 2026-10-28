@@ -20,6 +20,17 @@ This repository is public: it tracks no secret, and CI reads its tokens from Git
 Agents start at [contexts/README.md](contexts/README.md), the load order; the owner's harness decisions and open questions are in
 [contexts/harness/](contexts/harness/decisions.md), and the rules for changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Tải về / Download
+
+The desktop app is on [GitHub Releases](https://github.com/starci183/starci-harness/releases/latest). Pick one file:
+
+- Windows, managed install (all users, deployable by policy): the `.msi`.
+- Windows, per-user install without admin rights: the `-setup.exe`.
+- macOS (Intel and Apple silicon): the `.dmg`.
+
+The builds are unsigned unless signing is configured, so Windows SmartScreen warns on the installer: choose "More info",
+then "Run anyway". Check the file against `SHA256SUMS.txt` on the release.
+
 ## Install
 
 Node 24 and git. Orca is needed only for the `orca` runner; `gh` only for `release ci-status` and `check ci`; a
@@ -121,8 +132,8 @@ app is affected, and the Sonar new-code gate; a change under `.github/`, a manua
 everything. The `ci` job is the one required check, green when every job the plan needed passed. A `v*` tag on a commit
 whose run on main succeeded reuses that run, Sonar included, and checks nothing again; any other tag checks everything. The
 tag then publishes every package under `packages/` and then the CLI (`starci-harness`) whose version is not yet on npm,
-after `starci release publish --tag` accepts the plan ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag or
-a manual run.
+after `starci release publish --tag` accepts the plan ([CONTRIBUTING.md](CONTRIBUTING.md) CONTRIB-20). [.github/workflows/app.yml](.github/workflows/app.yml) builds the desktop app's bundles on an `app-v*` tag (which must equal the
+app's version) and publishes them, with `SHA256SUMS.txt`, on a GitHub Release; a manual run only builds them.
 
 ## License
 

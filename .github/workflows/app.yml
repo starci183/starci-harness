@@ -1,5 +1,7 @@
 # StarCi Harness desktop app: builds the Tauri shell in `app/`.
-# Windows -> .msi + NSIS .exe, macOS -> universal .dmg; the bundles are uploaded as workflow artifacts.
+# Windows -> .msi + NSIS .exe, macOS -> universal .dmg. On an `app-vX.Y.Z` tag the `release` job refuses a tag that
+# differs from the app versions, then publishes the bundles and SHA256SUMS.txt on a GitHub Release (pre-release while 0.x).
+# A manual run builds the bundles as workflow artifacts only.
 # Signing is optional: the builds are unsigned unless these repository secrets exist.
 #   macOS (wired below): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
 #                        APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID (notarization)
@@ -19,7 +21,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version:
+    name: tag matches app version
+    if: startsWith(github.ref, 'refs/tags/app-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the tag with the app versions
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          want="${TAG#app-v}"
+          pkg=$(node -p "require('./app/package.json').version")
+          conf=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
+          if [ "$want" != "$pkg" ] || [ "$want" != "$conf" ]; then
+            echo "::error::tag $TAG wants $want, app/package.json is $pkg, tauri.conf.json is $conf"
+            exit 1
+          fi
+
   build:
+    needs: version
+    if: ${{ !cancelled() && (needs.version.result == 'success' || needs.version.result == 'skipped') }}
     name: build (${{ matrix.name }})
     strategy:
       fail-fast: false
@@ -98,3 +120,58 @@ jobs:
           name: starci-harness-${{ matrix.name }}
           path: ${{ matrix.bundles }}
           if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/app-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: starci-harness-*
+          path: bundles
+
+      - name: Collect bundles and checksums
+        run: |
+          mkdir -p dist
+          find bundles -type f \( -name '*.msi' -o -name '*.exe' -o -name '*.dmg' \) -exec cp {} dist/ \;
+          ls dist | grep -q . || { echo "::error::no bundle was downloaded"; exit 1; }
+          (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Write release notes
+        run: |
+          version="${TAG#app-v}"
+          section=""
+          if [ -f app/CHANGELOG.md ]; then
+            section=$(awk -v v="$version" 'index($0, "## " v) == 1 || index($0, "## [" v "]") == 1 {f=1; next} /^## /{f=0} f' app/CHANGELOG.md)
+          fi
+          {
+            if [ -n "$section" ]; then
+              printf '%s\n' "$section"
+            else
+              echo "StarCi Harness desktop app $version, built from $(git rev-parse --short HEAD)."
+            fi
+            echo
+            echo "Windows: the .msi is the managed install, the .exe is the per-user installer. macOS: the .dmg (universal)."
+            echo "These builds are unsigned unless signing secrets were set: Windows SmartScreen warns on an unsigned installer (More info, then Run anyway), and macOS asks to confirm an unsigned app. Verify a download against SHA256SUMS.txt."
+          } > notes.md
+
+      - name: Create or update the release
+        run: |
+          version="${TAG#app-v}"
+          flags=()
+          case "$version" in 0.*) flags+=(--prerelease) ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "StarCi Harness $version" --notes-file notes.md "${flags[@]}"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --verify-tag --title "StarCi Harness $version" --notes-file notes.md "${flags[@]}"
+          fi
