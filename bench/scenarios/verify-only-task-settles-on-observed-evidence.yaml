@@ -26,6 +26,8 @@ repo:
     README.md: "# bench scratch repository\n"
     package.json: '{"name": "bench-app", "version": "1.0.0"}'
     eslint.config.js: "module.exports = []\n"
+    tsconfig.json: '{"compilerOptions": {}}'
+    node_modules/typescript/bin/tsc: "process.exit(0)\n"
     src/ok.ts: "export const ok = 1\n"
     src/shim.ts: "export const shim = 1 // GRAMMAR_SHIM\n"
     node_modules/eslint/bin/eslint.js: |
