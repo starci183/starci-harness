@@ -1,0 +1,37 @@
+name: Install the CLI on this commit's packages
+description: >-
+  Installs cli/ from its lockfile, which names only sibling versions npm serves, then packs each sibling the CLI requires from
+  its folder here and installs it over the registry copy, so every job runs the CLI on the packages of this commit, published
+  or not (CONTRIBUTING.md CONTRIB-20). Scripts stay off until the caller builds the CLI.
+runs:
+  using: composite
+  steps:
+    - name: npm ci in cli/, then its siblings from this commit
+      shell: bash
+      run: |
+        set -euo pipefail
+        (cd cli && npm ci --ignore-scripts --no-audit --no-fund)
+        packs="$RUNNER_TEMP/cli-siblings"
+        mkdir -p "$packs"
+        dirs=$(node -e '
+          const fs = require("fs")
+          const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
+          const wanted = new Set(Object.keys({ ...cli.dependencies, ...cli.peerDependencies }))
+          for (const dir of fs.readdirSync("packages")) {
+            const file = `packages/${dir}/package.json`
+            if (fs.existsSync(file) && wanted.has(JSON.parse(fs.readFileSync(file, "utf8")).name)) console.log(`packages/${dir}`)
+          }
+        ')
+        for dir in $dirs; do
+          (
+            cd "$dir"
+            if node -e 'const s = require("./package.json").scripts ?? {}; process.exit(s.build || s.prepack ? 0 : 1)'; then
+              npm ci --no-audit --no-fund && npm run build --if-present
+            fi
+            npm pack --pack-destination "$packs" > /dev/null
+            echo "the CLI runs on $dir at $(node -p 'require("./package.json").version')"
+          )
+        done
+        if compgen -G "$packs/*.tgz" > /dev/null; then
+          (cd cli && npm install --no-save --ignore-scripts --no-audit --no-fund "$packs"/*.tgz)
+        fi

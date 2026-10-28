@@ -56,9 +56,11 @@ jobs:
               fi ;;
           esac
           echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
       - name: Build the CLI
         working-directory: cli
-        run: npm ci --no-audit --no-fund && npx tsc -p tsconfig.build.json
+        run: npx tsc -p tsconfig.build.json
       - name: The affected packages and jobs
         id: plan
         env:
@@ -107,9 +109,11 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: cli/package-lock.json
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
       - name: Build the CLI
         working-directory: cli
-        run: npm ci --no-audit --no-fund && npm run build
+        run: npm run build
       - name: ${{ matrix.gate }}
         env:
           GATE: ${{ matrix.run }}
@@ -162,9 +166,8 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - name: Install the CLI
-        working-directory: cli
-        run: npm ci --no-audit --no-fund
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
       - name: Typecheck the CLI
         working-directory: cli
         run: npm run typecheck
@@ -234,10 +237,11 @@ jobs:
             if (bad.length > 0) { console.log(`not green: ${bad.map(([job]) => job).join(", ")}`); process.exit(1) }
           '
 
-  # The one publishing path (CONTRIBUTING.md CONTRIB-20): on a push to main whose plan affected a package or the CLI, once `ci`
-  # is green, `starci release publish` (cli/src/core/release/publish.ts) judges the plan, then publishes every package under
-  # packages/ and the CLI (starci-harness) whose version is not on npm yet, a dependency before its dependent, with provenance.
-  # A version already on npm is skipped, so a re-run publishes only what is still missing; runs queue, never overlap.
+  # The one publishing path (CONTRIBUTING.md CONTRIB-20): on a push to main whose plan affects a package or the CLI, once `ci`
+  # is green, `starci release publish` (cli/src/core/release/publish.ts) judges the plan, then publishes in two phases: every
+  # package under packages/ whose version is not on npm yet, a dependency before its dependent, then the CLI (starci-harness),
+  # its sibling requirements and lockfile moved to the versions just published. With provenance; a version already on npm is
+  # skipped, so a re-run publishes only what is still missing; runs queue, never overlap.
   publish:
     needs: [plan, ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')
@@ -260,11 +264,14 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - name: Install and build the CLI
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
+      - name: Build the CLI
         working-directory: cli
-        run: npm ci --no-audit --no-fund && npm run build
+        run: npm run build
       # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
-      # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings.
+      # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings
+      # (the CLI may require an older sibling npm serves: it is published last, moved to the folder's version).
       - name: Judge the plan
         id: due
         env:

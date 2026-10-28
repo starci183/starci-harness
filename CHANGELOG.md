@@ -14,8 +14,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   dependency first, with provenance; a version already on npm is skipped and runs queue, so a re-run is safe. The `v*`
   tag path and `release publish --tag` (`RELEASE_TAG_UNKNOWN`, `RELEASE_ALREADY_PUBLISHED`) are gone. `--base` refuses
   `RELEASE_VERSION_NOT_BUMPED` for a package whose shipped files changed (specs and test folders aside) since the commit
-  npm recorded for its published version, so a change never ships under an old number. The workflow reads the
-  `NPM_TOKEN` secret (CONTRIB-20). Bench: `release-publish-version-not-bumped`.
+  npm recorded for its published version, so a change never ships under an old number. The CLI is published last: its
+  commit requires each sibling at a version npm serves (`RELEASE_DEPENDENCY_SKEW` otherwise), every CI job installs it with
+  the commit's siblings packed over the registry copies (`.github/actions/cli-install`), and the publish job moves its
+  requirements and lockfile to the siblings it just published. The workflow reads the `NPM_TOKEN` secret (CONTRIB-20).
+  Bench: `release-publish-version-not-bumped`, `release-publish-plan-guard`.
 - **Host secrets come from the harness's secret.env.** One secret loader (`cli/src/harness/secret-env.ts`) reads a named key
   from the process environment, else from `secret.env` at the harness root, and only the keys policy/security.yaml
   `secretKeys` lists (`SECRET_KEY_UNLISTED` otherwise); no output carries a value. The Telegram verbs, the
