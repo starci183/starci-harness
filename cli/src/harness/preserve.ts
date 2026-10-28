@@ -4,11 +4,11 @@ import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { git } from "../shared/git.js"
 import { excludedSpec, notOwn } from "./baseline.js"
-import { leasePaths } from "./leases.js"
 import { projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
 import { recordEvent } from "./tasks.js"
+import { taskPaths } from "./contract.js"
 
 /** What preserving a task's paths saved and put back; `dir` is null when nothing under its allowPaths was dirty. */
 export interface Preserved {
@@ -29,7 +29,7 @@ const fields = (text: string): string[] => text.split("\0").filter((field) => fi
 const chunks = <T>(items: readonly T[]): T[][] => Array.from({ length: Math.ceil(items.length / CHUNK) }, (_, index) => items.slice(index * CHUNK, (index + 1) * CHUNK))
 
 /** The task's allowPaths as pathspecs. */
-const pathspecs = (task: TaskRow): string[] => leasePaths(task).map(literal)
+const pathspecs = (task: TaskRow): string[] => taskPaths(task).map(literal)
 
 /** A folder no earlier preserve of the task used, in the project's state folder: preserved/<task>, then preserved/<task>.2, .3 ... */
 const freshDir = (root: string, taskId: string): string => {
@@ -56,7 +56,7 @@ export const preserveTaskPaths = async (root: string, task: TaskRow, db: Databas
     const owned = pathspecs(task)
     if (owned.length === 0) return { dir: null, patch: null, tracked: [], untracked: [] }
     // Another task's dirt under these paths (harness/baseline.ts notOwn) is neither saved nor reset: it is not this task's work.
-    const specs = [...owned, ...(await notOwn(root, task.id, leasePaths(task))).map(excludedSpec)]
+    const specs = [...owned, ...(await notOwn(root, task.id, taskPaths(task))).map(excludedSpec)]
     const raw = fields(await git(root, ["diff", "--no-renames", "--name-status", "-z", "HEAD", "--", ...specs]))
     const status = Array.from({ length: Math.floor(raw.length / 2) }, (_, index) => ({ kind: raw[index * 2] ?? "", path: raw[index * 2 + 1] ?? "" }))
     const untracked = fields(await git(root, ["ls-files", "--others", "--exclude-standard", "-z", "--", ...specs]))
@@ -76,7 +76,7 @@ export const preserveTaskPaths = async (root: string, task: TaskRow, db: Databas
         mkdirSync(dirname(target), { recursive: true })
         copyFileSync(join(root, file), target)
     }
-    const manifest: Manifest = { task: task.id, base: "HEAD", head: await git(root, ["rev-parse", "HEAD"]), allowPaths: leasePaths(task), tracked: status, untracked, phase: "saved" }
+    const manifest: Manifest = { task: task.id, base: "HEAD", head: await git(root, ["rev-parse", "HEAD"]), allowPaths: taskPaths(task), tracked: status, untracked, phase: "saved" }
     writeManifest(dir, manifest)
     recordEvent(db, "task-preserved", task.id, { dir, patch, tracked: status, untracked })
     await onSaved?.(dir)

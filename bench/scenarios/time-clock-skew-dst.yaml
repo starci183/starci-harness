@@ -3,7 +3,7 @@ id: time-clock-skew-dst
 group: time
 title: the clock jumps (DST, NTP correction) during a run
 inject: system clock set back one hour mid-run
-expect: durations never go negative; budget minutes do not double count; leases unaffected
+expect: durations never go negative; budget minutes do not double count
 pass:
   - budget used minutes monotonic
   - "no step without evidence: every state change in the ledger has its event"

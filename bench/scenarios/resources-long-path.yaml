@@ -3,7 +3,7 @@ id: resources-long-path
 group: resources
 title: a task path beyond 260 characters is done or refused with a code, never half-committed
 inject: allowPaths is a file 300 characters deep
-expect: the task lands (long paths on) or is refused before any lease with a named code
+expect: the task lands (long paths on) or is refused before any task is queued with a named code
 pass:
   - task done and the file in HEAD
   - "no step without evidence: every state change in the ledger has its event"

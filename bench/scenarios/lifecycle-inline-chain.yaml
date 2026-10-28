@@ -7,7 +7,7 @@ expect: each task is queued only when its dependency is done, verified on a clea
 pass:
   - tasks a and b done, workflow done
   - "git log holds exactly one commit per task, each with Starci-Task: <id>"
-  - the worktree is clean
+  - the worktree is clean; each task worked in its own Op worktree, removed once it landed, its branch deleted
   - Orca is never called for an inline workflow
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -116,3 +116,18 @@ steps:
       orcaCalls:
         command: worker-start
         count: 0
+  - name: each task worked in an Op worktree of its own, removed once it landed, its branch deleted
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed' AND json_extract(data_json, '$.branch') = 'deleted'"
+        equals:
+          - 2
+  - assert:
+      exists:
+        path: ${project}/worktrees/chain.ops/${a}
+        present: false
+  - name: no Op branch is left
+    git: [rev-parse, --verify, --quiet, "refs/heads/starci/chain.ops/${b}"]
+    expect:
+      exit: 1

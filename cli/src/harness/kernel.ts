@@ -3,15 +3,14 @@ import { existsSync, mkdirSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
-import { git, refExists } from "../shared/git.js"
+import { git, mainCheckout, refExists, samePath } from "../shared/git.js"
 import { coordinatorBrief } from "./coordinator-brief.js"
 import { coordinatorLaunch } from "./coordinator-launch.js"
 import { BLOCKED_PROMPT, escalateBlockedPrompt } from "./launch-failure.js"
 import type { LaunchFailure } from "./launch-failure.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
-import { now, openLedger, projectDir } from "./ledger.js"
-import { inTransaction } from "./leases.js"
-import { awaitWorktree, closeWorker, dispatchOfFailure, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalOfFailure, terminalRename, workerShow, workerStart } from "./orca/client.js"
+import { inTransaction, now, openLedger, projectDir } from "./ledger.js"
+import { awaitWorktree, closeWorker, dispatchOfFailure, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalOfFailure, terminalRename, workerShow, workerStart, worktreeSetParent } from "./orca/client.js"
 import type { OrcaBinary, WorkerClosed, WorkerStarted, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
@@ -246,6 +245,16 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     )
     await launchKernelSeat(root, cwd, launchId, input, binary)
     notes.push(`launched ${kernelTitle(workflowId)} as ${pick.agent}/${pick.model} in ${worktree}; its first command is starci kernel attach`)
+    // Orca lists the workflow's worktree under the project's main checkout, where its Supervisor runs; each Op's worktree under it.
+    const main = await mainCheckout(root)
+    if (!samePath(main, worktree)) {
+        notes.push(
+            await worktreeSetParent(binary, { worktree, parent: main, displayName: kernelTitle(workflowId) }, cwd).then(
+                () => `listed ${worktree} under ${main} in Orca`,
+                (error: unknown) => `worktree lineage not set in Orca: ${error instanceof Error ? error.message : String(error)}`,
+            ),
+        )
+    }
     const seat = withRecord(root, (db) => getSeat(db, launchId))
     return { kernel: withRecord(root, (db) => getWorkflow(db, workflowId).kernel), seat, worktree, notes }
 }

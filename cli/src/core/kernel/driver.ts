@@ -12,9 +12,8 @@ import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { workflowLanes } from "../../harness/lanes.js"
 import { deadOnArrivalFailure, resubmitPendingComposer } from "../../harness/launch-failure.js"
 import { loadRouting } from "../../harness/routing.js"
-import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
+import { findLedgerId, inTransaction, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
-import { inTransaction, releaseLeases } from "../../harness/leases.js"
 import { inLaunchGrace, judgeStart, loadLiveness } from "../../harness/liveness.js"
 import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
 import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
@@ -23,7 +22,8 @@ import { holdTerminal, isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEA
 import type { SeatRow } from "../../harness/seats.js"
 import { supervisorTerminals, wakeSupervisor } from "../../harness/supervisor.js"
 import { projectOf } from "../../harness/work.js"
-import { getTask, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
+import { getTask, lastEvent, latestAttempt, recordEvent, resultOf, setStatus } from "../../harness/tasks.js"
+import { LAND_CONFLICT, LAND_CONFLICT_EVENT } from "../../harness/land.js"
 import { DISPATCHING, getWorkflow, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -122,6 +122,7 @@ const renewKernel = (root: string, workflowId: string, rules: CoordinatorLivenes
 const TASK_STATES_OPEN_TO_DECIDE: Readonly<Record<string, readonly string[]>> = {
     red: ["failed", "lost", "launch-unknown"],
     question: ["returned"],
+    conflict: ["failed"],
 }
 
 /** Closes open decisions the ledger has moved past (a retried red task, a done workflow that reopened): never left to an LLM to notice. */
@@ -150,25 +151,22 @@ const firstOpen = (root: string, workflowId: string): Decision | undefined =>
 const redChecks = (db: DatabaseSync, taskId: string): unknown[] =>
     db.prepare("SELECT name, detail FROM check_runs WHERE task_id = ? AND status = 'red' ORDER BY id DESC LIMIT 5").all(taskId).map((row) => ({ name: String(row.name), detail: String(row.detail).slice(0, 500) }))
 
-const firstSeen = (db: DatabaseSync, kind: string, subject: string): string => {
-    const row = db.prepare("SELECT at FROM events WHERE kind = ? AND subject = ? ORDER BY id LIMIT 1").get(kind, subject)
-    if (row !== undefined) return String(row.at)
-    recordEvent(db, kind, subject, {})
-    return now()
-}
-
-const LEASE_HOLDER = /leased by task (\S+)/
-
 /** Raises one Kernel decision of the workflow (each fact once); returns its id. */
 type Raise = (kind: KernelDecisionKind, subject: string, evidence: unknown) => string
 
-/** A failed or lost node is red; a node a worker returned (blocked or mismatch) is a question. */
+/**
+ * A failed or lost node is red, unless its verified work did not rebase onto the workflow's head (attempt outcome
+ * `conflict`, harness/land.ts): that is a conflict, whose work is preserved for an amend on the new head; a node a worker
+ * returned (blocked or mismatch) is a question.
+ */
 const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): void => {
     for (const view of snapshot.views) {
         const task = view.task
         if (task === null) continue
-        if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome: latestAttempt(db, task.id)?.outcome ?? null, redChecks: redChecks(db, task.id) })
-        if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its leases" })
+        const outcome = view.state === "failed" ? (latestAttempt(db, task.id)?.outcome ?? null) : null
+        if (outcome === LAND_CONFLICT) raise("conflict", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, conflict: lastEvent(db, LAND_CONFLICT_EVENT, task.id) ?? null })
+        else if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id) })
+        if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its worktree" })
         if (view.state === "returned") {
             const attempt = latestAttempt(db, task.id)
             raise("question", task.id, { key: view.key, why: view.why, result: task.result, output: attempt === undefined ? null : (resultOf(db, attempt.id)?.output ?? null) })
@@ -186,34 +184,18 @@ const raiseStale = (db: DatabaseSync, workflowId: string, nodes: readonly NodeAc
     }
 }
 
-/** A node waiting on another workflow's path lease past conflictMinutes is a conflict. */
-const raiseConflicts = (db: DatabaseSync, workflowId: string, actions: readonly StepAction[], rules: CoordinatorLiveness, raise: Raise): void => {
-    for (const action of actions) {
-        const holder = action.action === "wait" && action.detail.startsWith("LEASE_CONFLICT") ? LEASE_HOLDER.exec(action.detail)?.[1] : undefined
-        if (holder === undefined || action.key === null) continue
-        const holderWorkflow = db.prepare("SELECT workflow_id FROM tasks WHERE id = ?").get(holder)?.workflow_id
-        if (holderWorkflow === undefined || holderWorkflow === null || holderWorkflow === workflowId) continue
-        const subject = `${action.key}:${holder}`
-        if (olderThan(firstSeen(db, "lease-conflict-seen", `${workflowId}:${subject}`), rules.conflictMinutes)) {
-            raise("conflict", subject, { key: action.key, holderTask: holder, holderWorkflow: String(holderWorkflow), detail: action.detail })
-        }
-    }
-}
-
 /**
- * Raises every decision the ledger now calls for (each fact once): a failed, lost or stuck node is red; a node a worker
- * returned (blocked or mismatch) is a question; a node waiting on another workflow's path lease past conflictMinutes is a
- * conflict; a node whose dependency's settled result changed under it (reconcile.ts workflowActions) is stale; a done or
- * stopped workflow is done.
+ * Raises every decision the ledger now calls for (each fact once): a failed, lost or stuck node is red; a node whose work
+ * did not rebase onto the workflow's head is a conflict; a node a worker returned (blocked or mismatch) is a question; a node
+ * whose dependency's settled result changed under it (reconcile.ts workflowActions) is stale; a done or stopped workflow is done.
  */
-const raiseDecisions = (root: string, workflowId: string, actions: readonly StepAction[], nodes: readonly NodeAction[], rules: CoordinatorLiveness): void => {
+const raiseDecisions = (root: string, workflowId: string, nodes: readonly NodeAction[]): void => {
     withLedger(root, (db) => {
         inTransaction(db, () => {
             const snapshot = snapshotOf(db, workflowId)
             const raise: Raise = (kind, subject, evidence) => raiseDecision(db, { scope: "kernel", workflowId, kind, subject, evidence })
             raiseNodeStates(db, snapshot, raise)
             raiseStale(db, workflowId, nodes, raise)
-            raiseConflicts(db, workflowId, actions, rules, raise)
             const { status, graphVersion, reason } = snapshot.workflow
             if (status === "done" || status === "stopped") raise("done", `${status}:g${String(graphVersion)}`, { status, reason })
         })
@@ -325,7 +307,7 @@ const claimBudgetNudge = (db: DatabaseSync, task: string, attemptId: string, dat
  * still runs with no result filed past its contract's budget.minutes, whatever its worker is doing, is asked once to wrap up and
  * file now (the budget prompt, typed into its open seat's terminal); budget.graceMinutes after that ask it is fenced
  * (harness/fence.ts `fenceAttempt`): its seats closed, its dirty allowPaths preserved and reset, the task failed `over-budget` with
- * its try spent and its leases released. A result filed in the grace takes the task out of running, so it is judged as any other.
+ * its try spent; the next workflow step removes its worktree. A result filed in the grace takes the task out of running, so it is judged as any other.
  */
 export const sweepOpBudgets = async (root: string, binary: OrcaBinary, cwd: string, workflowId: string): Promise<StepAction[]> => {
     const rules = loadBudgetLadder()
@@ -363,8 +345,8 @@ export const sweepOpBudgets = async (root: string, binary: OrcaBinary, cwd: stri
             const seats = fenced.seats.map((closing) => `seat ${closing.seat} ${closing.outcome}`).join(", ") || "no open seat"
             if (fenced.status === "held") return { key, task, action: "problem", detail: `over budget, fence held: ${seats}; Orca did not stop its worker, the next sweep tries again` }
             const kept = fenced.preserved === null ? "nothing dirty to preserve" : `work preserved in ${fenced.preserved}`
-            const leases = fenced.repair === null ? `released ${String(fenced.leasesReleased)} lease(s)` : `leases kept under a repair intent (task verify ${task} --recover)`
-            return { key, task, action: "lost", detail: `${step.detail}: ${seats}; ${kept}; task failed (${OVER_BUDGET}); ${leases}` }
+            const repair = fenced.repair === null ? "" : `; its reset is held under a repair intent (task verify ${task} --recover)`
+            return { key, task, action: "lost", detail: `${step.detail}: ${seats}; ${kept}; task failed (${OVER_BUDGET})${repair}` }
         } catch (error: unknown) {
             return { key, task, action: "problem", detail: `over-budget attempt not fenced (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}` }
         }
@@ -423,7 +405,6 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
                     const attempt = latestAttempt(db, task)
                     if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'stalled', ended_at = COALESCE(ended_at, ?) WHERE id = ?").run(now(), attempt.id)
                     setStatus(db, task, "failed")
-                    releaseLeases(db, task)
                     recordEvent(db, "task-stalled", task, { seat: seat.id, kind, why: step.detail, fence })
                     return true
                 }),
@@ -549,7 +530,7 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
     } finally {
         db.close()
     }
-    raiseDecisions(root, workflowId, actions, nodes, rules)
+    raiseDecisions(root, workflowId, nodes)
     return { actions, binary }
 }
 

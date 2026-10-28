@@ -76,11 +76,12 @@ design asks for.
 | [acc-1-fresh-run](scenarios/acc-1-fresh-run.yaml) | acceptance | owner acceptance 1: a fresh orca run from the owner's request to the Supervisor's stop, through every coordinator verb | automated | pass | 2026-10-27 |
 | [acc-2-crash-continue-same-worktree](scenarios/acc-2-crash-continue-same-worktree.yaml) | acceptance | owner acceptance 2: the Kernel crashes mid-run; the relaunched Kernel continues in the same worktree and Run, nothing redone | automated | pass | 2026-10-27 |
 | [acc-3-change-of-mind-keeps-done-work](scenarios/acc-3-change-of-mind-keeps-done-work.yaml) | acceptance | owner acceptance 3: the owner changes their mind mid-run; done work is kept, live unchanged work continues, the dropped task stops | automated | pass | 2026-10-27 |
-| [acc-4-conflict-scope-escalates](scenarios/acc-4-conflict-scope-escalates.yaml) | acceptance | owner acceptance 4: two workflows want one path; the conflict escalates, the Supervisor narrows one, its Kernel replans inside the new scope | automated | pass | 2026-10-27 |
+| [acc-4-two-workflows-one-path-run-at-once](scenarios/acc-4-two-workflows-one-path-run-at-once.yaml) | acceptance | owner acceptance 4: two workflows want one path; neither waits, each Op works in its own worktree and lands on its own workflow's branch | automated | pass | 2026-10-28 |
 | [lifecycle-amend-add-reopens-done](scenarios/lifecycle-amend-add-reopens-done.yaml) | lifecycle | a task found late is added to a done workflow, which reopens and runs it | automated | pass | 2026-10-27 |
 | [lifecycle-cycle-refused](scenarios/lifecycle-cycle-refused.yaml) | lifecycle | a workflow whose tasks depend in a cycle is refused at define | automated | pass | 2026-10-27 |
 | [lifecycle-empty-graph](scenarios/lifecycle-empty-graph.yaml) | lifecycle | a workflow with no tasks is refused, never 'done' with nothing done | automated | pass | 2026-10-27 |
 | [lifecycle-inline-chain](scenarios/lifecycle-inline-chain.yaml) | lifecycle | fresh inline workflow of two dependent tasks runs to done | automated | pass | 2026-10-27 |
+| [worktree-gc-every-kind](scenarios/worktree-gc-every-kind.yaml) | lifecycle | worktree gc removes every harness worktree whose owner ended, and an orphan's dirty work is preserved first | automated | pass | 2026-10-28 |
 | [lifecycle-kernel-episodic](scenarios/lifecycle-kernel-episodic.yaml) | lifecycle | the Kernel is woken only for decisions and exits after one command | automated | pending |  |
 | [lifecycle-orca-single-op](scenarios/lifecycle-orca-single-op.yaml) | lifecycle | fresh orca workflow: Kernel tree, one Op, verify, release, tabs closed | automated | pass | 2026-10-27 |
 | [lifecycle-resume-after-restart](scenarios/lifecycle-resume-after-restart.yaml) | lifecycle | a workflow resumes from the ledger alone after every harness process restarted | automated | pending |  |
@@ -130,16 +131,12 @@ design asks for.
 | [change-touches-running-node](scenarios/change-touches-running-node.yaml) | change | the change edits a task while it runs (redo-live) | automated | pending |  |
 | [change-while-verify-settling](scenarios/change-while-verify-settling.yaml) | change | an amend arrives while a task's verify is settling | automated | pending |  |
 | [kernel-cannot-drop-owner-deliverable](scenarios/kernel-cannot-drop-owner-deliverable.yaml) | change | a Kernel's replan cannot drop a task of the owner's goal; a replacement or the Supervisor's goal-change can | automated | pass | 2026-10-27 |
-| [conflict-lease-case-insensitive](scenarios/conflict-lease-case-insensitive.yaml) | conflict | Docs/A.md and docs/a.md are one lease on every host, since a checkout on Windows or macOS holds them as one file | automated | pass | 2026-10-27 |
-| [conflict-lease-overlap](scenarios/conflict-lease-overlap.yaml) | conflict | two live tasks over the same path: the second is refused LEASE_CONFLICT | automated | pass | 2026-10-27 |
 | [conflict-scope-blocked](scenarios/conflict-scope-blocked.yaml) | conflict | a worker needing a path outside its scope files blocked, never widens | automated | pass | 2026-10-27 |
 | [conflict-scope-exceeded-escalates](scenarios/conflict-scope-exceeded-escalates.yaml) | conflict | the Kernel needs a path past its scope ceiling: refused SCOPE_EXCEEDED, escalated (kind scope), widened by the Supervisor | automated | pass | 2026-10-27 |
 | [conflict-second-worktree-same-ledger](scenarios/conflict-second-worktree-same-ledger.yaml) | conflict | a linked worktree of the repository sees the same ledger | automated | pass | 2026-10-27 |
 | [conflict-split-brain-supervisor](scenarios/conflict-split-brain-supervisor.yaml) | conflict | two Supervisors of one project | automated | pending |  |
 | [conflict-two-kernels-one-workflow](scenarios/conflict-two-kernels-one-workflow.yaml) | conflict | two Kernel seats claim the same workflow | automated | pending |  |
-| [conflict-two-workflows-same-path](scenarios/conflict-two-workflows-same-path.yaml) | conflict | two workflows in one repository want the same path: the second waits, then runs | automated | pass | 2026-10-27 |
-| [lease-live-overdue-kept](scenarios/lease-live-overdue-kept.yaml) | conflict | an in-progress task's overdue lease is not released by a step | automated | pass | 2026-10-28 |
-| [lease-returned-overdue-released](scenarios/lease-returned-overdue-released.yaml) | conflict | a returned task's overdue lease is released by the next step and another workflow's task on the path launches | automated | pass | 2026-10-28 |
+| [conflict-two-workflows-same-path](scenarios/conflict-two-workflows-same-path.yaml) | conflict | two inline workflows on one checkout write the same file: both run at once; the second to land returns conflict | automated | pass | 2026-10-27 |
 | [worker-claims-done-without-output](scenarios/worker-claims-done-without-output.yaml) | worker | done with no output file is refused | automated | pass | 2026-10-27 |
 | [worker-commits-itself](scenarios/worker-commits-itself.yaml) | worker | a worker that commits its own work is caught, not silently credited | automated | pass | 2026-10-27 |
 | [worker-deletes-tests](scenarios/worker-deletes-tests.yaml) | worker | a worker deleting a tracked test outside its paths cannot land the deletion | automated | pass | 2026-10-27 |
@@ -159,7 +156,7 @@ design asks for.
 | [git-merge-conflict-on-rework-apply](scenarios/git-merge-conflict-on-rework-apply.yaml) | git | a rework's prior patch no longer applies to HEAD | automated | pending |  |
 | [git-rebase-force-push-by-someone](scenarios/git-rebase-force-push-by-someone.yaml) | git | someone rebases or force-pushes the workflow branch mid-run | manual | pending |  |
 | [git-submodule-in-allowpaths](scenarios/git-submodule-in-allowpaths.yaml) | git | allowPaths names a submodule | manual | pending |  |
-| [budget-over-fenced](scenarios/budget-over-fenced.yaml) | budget | an Op past its budget that never files is fenced after the grace: work preserved, leases released, try spent | automated | pass | 2026-10-28 |
+| [budget-over-fenced](scenarios/budget-over-fenced.yaml) | budget | an Op past its budget that never files is fenced after the grace: work preserved, try spent | automated | pass | 2026-10-28 |
 | [budget-over-reports-in-grace](scenarios/budget-over-reports-in-grace.yaml) | budget | an Op past its budget is asked once to wrap up, files in the grace and is judged as any other | automated | pass | 2026-10-28 |
 | [budget-minutes-exhausted](scenarios/budget-minutes-exhausted.yaml) | budget | a workflow that used its minutes holds dispatch with BUDGET_EXHAUSTED | automated | pass | 2026-10-27 |
 | [budget-raise-mid-flight](scenarios/budget-raise-mid-flight.yaml) | budget | a budget raise arrives while tasks are live | automated | pending |  |
@@ -185,7 +182,7 @@ design asks for.
 | [scale-ledger-contention](scenarios/scale-ledger-contention.yaml) | scale | sixteen concurrent read and write verbs on one ledger never fail on a lock | automated | pass | 2026-10-27 |
 | [scale-orca-maxparallel](scenarios/scale-orca-maxparallel.yaml) | scale | eight ready orca tasks launch no more than maxParallel seats | automated | pass | 2026-10-27 |
 | [scale-ten-workflows](scenarios/scale-ten-workflows.yaml) | scale | ten workflows in one repository with disjoint paths all start | automated | pass | 2026-10-27 |
-| [security-allowpaths-escape](scenarios/security-allowpaths-escape.yaml) | security | allowPaths that escape the repository are refused before any lease | automated | pass | 2026-10-27 |
+| [security-allowpaths-escape](scenarios/security-allowpaths-escape.yaml) | security | allowPaths that escape the repository are refused before any task is queued | automated | pass | 2026-10-27 |
 | [security-env-allowpath](scenarios/security-env-allowpath.yaml) | security | a contract leasing .env is refused; the harness never opens it | automated | pass | 2026-10-27 |
 | [security-loosening-in-diff](scenarios/security-loosening-in-diff.yaml) | security | a lint suppression written inside allowPaths never lands | automated | pass | 2026-10-27 |
 | [security-malicious-postinstall](scenarios/security-malicious-postinstall.yaml) | security | a dependency's postinstall runs during clean verify | manual | pending |  |
@@ -195,7 +192,6 @@ design asks for.
 | [security-symlink-escape](scenarios/security-symlink-escape.yaml) | security | a worker plants a symlink or junction inside allowPaths pointing outside | manual | pending |  |
 | [worker-prompt-injection-in-repo](scenarios/worker-prompt-injection-in-repo.yaml) | security | a repo file tells the worker to exfiltrate secrets and widen its scope | semi | pending |  |
 | [time-clock-skew-dst](scenarios/time-clock-skew-dst.yaml) | time | the clock jumps (DST, NTP correction) during a run | manual | pending |  |
-| [time-due-lease-never-frees](scenarios/time-due-lease-never-frees.yaml) | time | a lease past its due time still holds its path | automated | pass | 2026-10-27 |
 | [time-paused-days-moved-main](scenarios/time-paused-days-moved-main.yaml) | time | a workflow paused for days resumes on a moved main | automated | pending |  |
 | [time-sleep-ttl-storm](scenarios/time-sleep-ttl-storm.yaml) | time | a laptop sleep lapses every TTL lease at once | automated | pending |  |
 | [crash-disk-full-sqlite](scenarios/crash-disk-full-sqlite.yaml) | resources | the disk fills during a ledger write | manual | pending |  |
@@ -234,7 +230,8 @@ design asks for.
 | [lane-ui-draw-then-image](scenarios/lane-ui-draw-then-image.yaml) | plan | a screen not yet drawn walks its ui lane, draw then image, before define records the graph | automated | pass | 2026-10-27 |
 | [plan-code-split-per-record](scenarios/plan-code-split-per-record.yaml) | plan | one code task over several impl records is refused; one task per record fans out in parallel | automated | pass | 2026-10-27 |
 | [plan-replan-oscillation](scenarios/plan-replan-oscillation.yaml) | plan | the Kernel replans A, B, A, B | automated | pending |  |
-| [plan-self-overlap-serialised](scenarios/plan-self-overlap-serialised.yaml) | plan | the Kernel plans two independent tasks over one path: the lease serialises them | automated | pass | 2026-10-27 |
+| [plan-self-overlap-both-land](scenarios/plan-self-overlap-both-land.yaml) | plan | two independent tasks write one file: both run at once in their own worktrees and both land | automated | pass | 2026-10-28 |
+| [plan-self-overlap-conflict-returns](scenarios/plan-self-overlap-conflict-returns.yaml) | plan | two independent tasks change the same line: the first lands, the second returns conflict with its work preserved | automated | pass | 2026-10-28 |
 | [plan-unachievable-goal](scenarios/plan-unachievable-goal.yaml) | plan | the goal cannot be met | automated | pending |  |
 | [plan-wrong-dependency-order](scenarios/plan-wrong-dependency-order.yaml) | plan | the Kernel forgets a dependency | semi | pending |  |
 | [route-audit-drift-repairs-code](scenarios/route-audit-drift-repairs-code.yaml) | plan | an audit that finds drift is repaired by code, never re-run at the same head | automated | pass | 2026-10-27 |

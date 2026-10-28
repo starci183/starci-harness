@@ -3,12 +3,12 @@ id: verify-red-preserves-and-resets
 group: verify
 title: a red verify preserves the work, resets the paths and commits nothing
 inject: the worker files done but never wrote the file its files-exist check requires; it left a stray draft inside allowPaths
-expect: task verify is red, the task fails naming the red check, the draft is preserved under preserved/<task> and removed from the worktree, the lease is released, the workflow blocks
+expect: task verify is red, the task fails naming the red check, the draft is preserved under preserved/<task> and removed with its Op worktree, the workflow blocks
 pass:
   - task failed, workflow blocked
   - no commit carries the task trailer
   - preserved/<task> exists in the project state
-  - no lease left
+  - its Op worktree removed
   - the worktree is clean
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
@@ -75,7 +75,7 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree') - (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed')
         equals:
           - 0
   - assert:

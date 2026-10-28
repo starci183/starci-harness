@@ -68,6 +68,16 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".
+- **One worktree per Op (`op-worktrees`).** Every task attempt of a workflow, under `orca` and `inline` alike, works in a git
+  worktree of its own cut from the workflow's branch; no path is held while it works, and its verified commit is rebased
+  onto the workflow's head and landed under a short land lock per branch; a textual conflict returns it `conflict` with its
+  work preserved for an amend, never resolved inside the harness (`cli/src/harness/land.ts`, `cli/src/core/task/verify.ts`).
+  In Orca each Op's worktree is listed under its Kernel's and the Kernel's under the main checkout. Owner, 2026-10-28:
+  "phải từng op chạy trên worktree riêng"; "ok chốt vậy sửa lun".
+- **The harness removes what it made (`worktree-cleanup`).** Every worktree the harness creates, in both runners, is removed by
+  the harness when its work ends, its uncommitted work preserved first ([contexts/authority/README.md](../authority/README.md)
+  "Worktrees", `cli/src/harness/worktree-gc.ts`). Owner, 2026-10-28: "xong việc inline và orca gì cũng phải dọn dẹp
+  worktrees"; "op.kernel tạo worktree xong việc phải xóa worktree".
 - **The router alone picks.** Every Op and Kernel is routed by [ops/routing.yaml](../../ops/routing.yaml) from real
   signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
   from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers

@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { openLedger } from "../../harness/ledger.js"
-import { assertLeasesHeld, inTransaction, releaseLeases } from "../../harness/leases.js"
+import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { PreserveIncomplete, preserveTaskPaths } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
+import { removeOpWorktree } from "../../harness/land.js"
 import { fileResult, getTask, latestAttempt, markIntent, openAttempt, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
@@ -23,8 +23,7 @@ interface ResultData {
     readonly taskStatus: TaskStatus
     readonly inline: boolean
     readonly preserved: Preserved | null
-    readonly leasesReleased: number
-    /** The preserve folder whose reset broke half-way: the task holds its leases until `task verify --recover` finishes it. */
+    /** The preserve folder whose reset broke half-way: the task keeps its worktree until `task verify --recover` finishes it. */
     readonly repair: string | null
 }
 
@@ -55,8 +54,8 @@ interface Filing {
 }
 
 /**
- * Refuses a result that cannot be filed now, before anything moves: the task must be running (or queued, worked inline), still
- * hold every lease of its allowPaths (fencing: LEASE_LOST), and its open attempt must have no result yet.
+ * Refuses a result that cannot be filed now, before anything moves: the task must be running (or queued, worked inline) and
+ * its open attempt must have no result yet.
  */
 const filingOf = (db: DatabaseSync, taskId: string): Filing => {
     const task = getTask(db, taskId)
@@ -66,7 +65,6 @@ const filingOf = (db: DatabaseSync, taskId: string): Filing => {
         if (latest !== undefined && resultOf(db, latest.id) !== undefined) throw new Refusal("RESULT_ALREADY_FILED", `task ${task.id} already has a result on ${latest.id}; a result is immutable`)
         throw new Refusal("TASK_NOT_RUNNING", `task ${task.id} is ${task.status}; a result is filed only for a running task`)
     }
-    assertLeasesHeld(db, task)
     if (task.status === "queued") {
         // A queued task reached by its result was worked inline (lite, no seat); an ended attempt (a launch rolled back) is not its own.
         const open = latest?.endedAt === null ? latest : undefined
@@ -97,8 +95,8 @@ export const taskResultVerb = defineVerb({
         const callerRoot = await repositoryRoot(context.cwd)
         const db = openLedger(callerRoot)
         try {
-            // A failed task gives its paths back: its dirty work is saved and reset in the task's own checkout while it still
-            // holds its leases, so no overlapping task can commit it in between. The checks run first, so a refused result resets nothing.
+            // A failed task's dirty work is saved and reset in the task's own checkout before its worktree goes. The checks run
+            // first, so a refused result resets nothing.
             const checked = filingOf(db, flags.task)
             let preserved: Preserved | null = null
             let repair: string | null = null
@@ -120,16 +118,16 @@ export const taskResultVerb = defineVerb({
                 fileResult(db, attempt.id, status, output)
                 // blocked and mismatch are reported too: the Kernel reads the result and decides.
                 const next = setStatus(db, task.id, status === "failed" ? "failed" : "reported")
-                // A reset that broke keeps the paths leased under a repair intent, so no overlapping task takes a half-reset tree.
+                // A reset that broke keeps a repair intent, and the worktree with it, until --recover finishes it.
                 if (repair !== null) markIntent(db, task.id, "repair", repair)
-                const leasesReleased = next.status === "failed" && repair === null ? releaseLeases(db, task.id) : 0
-                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, leasesReleased, repair }
+                return { task: task.id, attempt: attempt.id, status, taskStatus: next.status, inline: filing.inline, preserved, repair }
             })
+            const worktree = data.taskStatus === "failed" && repair === null ? ((await removeOpWorktree(callerRoot, data.task).catch(() => undefined)) ?? null) : null
             const dir = preserved?.dir ?? null
             const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
-            const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: it keeps its leases until starci task verify ${data.task} --recover finishes the reset`
-            const lease = data.leasesReleased > 0 ? `; released ${String(data.leasesReleased)} lease(s)` : ""
-            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${lease}`
+            const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
+            const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}`
             return { data, message, ...(repair === null ? {} : { exitCode: 1 }) }
         } finally {
             db.close()

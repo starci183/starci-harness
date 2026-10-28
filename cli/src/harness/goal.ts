@@ -7,8 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { underPaths } from "./contract.js"
 import { isGeneratedKey, scopeSchema } from "./graph.js"
 import type { PlanNode, Scope, WorkflowHeader } from "./graph.js"
-import { now } from "./ledger.js"
-import { inTransaction } from "./leases.js"
+import { inTransaction, now } from "./ledger.js"
 import { recordEvent } from "./tasks.js"
 
 /** The schema tag of a goal-change file: the Supervisor's (or the owner's) next goal of a workflow. */

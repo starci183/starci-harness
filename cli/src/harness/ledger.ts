@@ -13,10 +13,11 @@ export const LEDGER_VERSION = 9
 export const MACHINE_VERSION = 3
 
 /**
- * The tables of a project ledger: the nine of the task protocol, plus the workflow graph (plan_nodes, edges and
+ * The tables of a project ledger: the eight of the task protocol, plus the workflow graph (plan_nodes, edges and
  * graph_versions, one set per graph version, since version 4). Status rules live in the code's one state machine, not in
  * triggers; the tables only keep facts (contracts, results and recorded graphs are immutable once written). Provider health is host-wide and lives in
- * machine.sqlite since version 3; a ledger from before keeps its unused provider_health table, since a migration never drops.
+ * machine.sqlite since version 3, and a task holds no path lease (a land lock serialises landing, harness/land.ts); a ledger from
+ * before keeps its unused provider_health and leases tables, since a migration never drops.
  */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -38,9 +39,6 @@ CREATE TABLE IF NOT EXISTS check_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT, attempt_id TEXT, contract_hash TEXT NOT NULL,
   name TEXT NOT NULL, runner TEXT NOT NULL, status TEXT NOT NULL, exit_code INTEGER,
   detail TEXT NOT NULL, ran_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS leases (
-  path TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id), token TEXT NOT NULL,
-  expires_at TEXT NOT NULL, PRIMARY KEY (path, task_id));
 CREATE TABLE IF NOT EXISTS seats (
   id TEXT PRIMARY KEY, role TEXT NOT NULL, agent TEXT, handle TEXT, task_id TEXT,
   status TEXT NOT NULL, last_pong_at TEXT, started_at TEXT NOT NULL);
@@ -487,3 +485,20 @@ export const openExistingLedger = (root: string): DatabaseSync | undefined => {
 
 /** The current time as the ledger stores it. */
 export const now = (): string => new Date().toISOString()
+
+/**
+ * Runs `work` atomically. Outside a transaction it takes the write lock up front (BEGIN IMMEDIATE), so a read
+ * followed by a write cannot lose a race to another seat; inside one it nests as a savepoint.
+ */
+export const inTransaction = <T>(db: DatabaseSync, work: () => T): T => {
+    const nested = db.isTransaction
+    db.exec(nested ? "SAVEPOINT starci_tx" : "BEGIN IMMEDIATE")
+    try {
+        const value = work()
+        db.exec(nested ? "RELEASE starci_tx" : "COMMIT")
+        return value
+    } catch (error: unknown) {
+        db.exec(nested ? "ROLLBACK TO starci_tx; RELEASE starci_tx" : "ROLLBACK")
+        throw error
+    }
+}

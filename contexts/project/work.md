@@ -104,8 +104,8 @@ the current limits differ, and only a dated source shows when the design must be
 
 The harness writes a uat record at settle ([cli/src/harness/settle.ts](../../cli/src/harness/settle.ts)): green sets
 `state: done` and `activity: idle` inside the task's harness commit, red sets `activity: blocked` in a Work commit of its
-own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside a
-leased scope (`.starciwork/features/<f>`), held by review.
+own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside an
+allowPaths scope (`.starciwork/features/<f>`), held by review.
 
 ## Lanes
 

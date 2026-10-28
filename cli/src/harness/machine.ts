@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs"
 import { DatabaseSync } from "node:sqlite"
-import { inTransaction } from "./leases.js"
-import { machinePath, openMachine } from "./ledger.js"
+import { inTransaction, machinePath, openMachine } from "./ledger.js"
 import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js"
 
 /**

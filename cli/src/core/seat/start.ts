@@ -3,8 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
 import type { BriefFiles } from "../../harness/brief.js"
-import { now, openLedger } from "../../harness/ledger.js"
-import { assertLeasesHeld, inTransaction, renewLeases } from "../../harness/leases.js"
+import { inTransaction, now, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { recordOutcome } from "../../harness/circuit.js"
 import { BLOCKED_PROMPT, escalateBlockedPrompt, explainLaunchFailure, failureText } from "../../harness/launch-failure.js"
@@ -33,10 +32,12 @@ import {
     workerStart,
     workerStartFlags,
     worktreeSelector,
+    worktreeSetParent,
 } from "../../harness/orca/client.js"
 import type { EffectiveLaunch, OrcaBinary, WorkerClosed, WorkerShown, WorkerStartInput, WorkerStarted } from "../../harness/orca/client.js"
 import { ensureKernel, launchableKernel, opTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { beginWork } from "../../harness/baseline.js"
+import { ensureOpWorktree, opWorktreeOf, opWorktreePlace } from "../../harness/land.js"
 import type { KernelLaunch } from "../../harness/kernel.js"
 import { SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_LAUNCH_UNSETTLED, SEAT_RELEASED, SEAT_STARTING, getSeat, isSeatOpen, noteTab, openSeat, recordSeat, recordSeatLaunch, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
@@ -331,7 +332,7 @@ const settleUnknown = async (at: Launching, launched: LaunchOf<"unknown">): Prom
         recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNKNOWN, facts: { closed, orphaned: true } })
     }
     const next = ours
-        ? `task ${task.id} is effect_unknown and keeps its leases; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
+        ? `task ${task.id} is effect_unknown and keeps its worktree; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
         : `task ${task.id} is ${getTask(db, task.id).status}; seat ${seat.id} is left ${getSeat(db, seat.id).status}`
     throw new Refusal("ORCA_OUTCOME_UNKNOWN", `${launched.error.message}\nthe launch of ${task.id} may or may not have started a worker; unknown is not dead. ${next}`)
 }
@@ -379,6 +380,21 @@ const abandonReady = async (at: Launching, launched: LaunchOf<"ready">, attestat
     throw new Refusal("TASK_LEFT_DURING_LAUNCH", `task ${task.id} became ${getTask(db, task.id).status} while its worker was launching; the worker was closed${closeNote(closed)}`)
 }
 
+/**
+ * Lists an Op's worktree under its Kernel's worktree in Orca (`[Op] <workflow>: <task>`), so the Supervisor, Kernel and Op tree
+ * reads the same in Orca's worktree list as in its Run's task tree. Best effort: a refusal is an event, never a failed launch.
+ */
+const nestOpWorktree = async (db: DatabaseSync, binary: OrcaBinary, task: TaskRow, cwd: string): Promise<void> => {
+    const made = opWorktreeOf(db, task.id)
+    if (made === undefined || task.workflowId === null) return
+    try {
+        await worktreeSetParent(binary, { worktree: made.path, parent: made.target, displayName: `[Op] ${task.workflowId}: ${task.id}` }, cwd)
+        recordEvent(db, "op-worktree-nested", task.id, { worktree: made.path, parent: made.target })
+    } catch (error: unknown) {
+        recordEvent(db, "op-worktree-nest-skipped", task.id, { worktree: made.path, parent: made.target, reason: messageOf(error) })
+    }
+}
+
 /** A worker that launched as asked: the attempt is attested, the seat records the worker and its tab is titled. */
 const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omit<SeatStartData, "seat" | "dispatchId" | "effective" | "attested">): Promise<VerbResult<SeatStartData>> => {
     const { db, binary, cwd, task, seat } = at
@@ -398,6 +414,7 @@ const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omi
     })
     const titled = terminal === null ? "no terminal handle to title" : await terminalRename(binary, terminal, requested.taskTitle, cwd)
     if (titled !== undefined) recordEvent(db, "seat-title-skipped", task.id, { seat: seat.id, reason: titled })
+    await nestOpWorktree(db, binary, task, cwd)
     const data: SeatStartData = { ...base, seat: seatRow, dispatchId: started.dispatchId, effective, attested }
     const model = attested.model ?? `${requested.model ?? "its own model"} (not attested)`
     const under = requested.parent === undefined ? "" : ` under the Kernel task ${requested.parent}`
@@ -447,10 +464,13 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
     const db = openLedger(root)
     try {
         const task = getTask(db, given.task)
-        // One workflow = one worktree: every Op of a workflow launches into the worktree its workflow recorded.
-        const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
-        const options: SeatStartOptions = { ...given, worktree: given.worktree ?? recorded }
         if (task.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${task.id} is ${task.status}; only a queued task gets a seat (an effect_unknown launch resumes with --resume)`)
+        // Every Op of a workflow works in a worktree of its own, cut from the branch of the workflow's worktree (or of the folder
+        // --worktree names), and lands back on it; a task outside a workflow runs where --worktree says, else in this repository.
+        const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
+        const target = given.worktree === undefined ? (recorded ?? root) : worktreeFolder(given.worktree, cwd, root)
+        const opPath = task.workflowId === null || given.coordinator !== undefined ? undefined : given.dryRun === true ? opWorktreePlace(root, task.workflowId, task.id).path : (await ensureOpWorktree(root, task.id, target)).path
+        const options: SeatStartOptions = { ...given, worktree: opPath === undefined ? given.worktree : `path:${opPath.replaceAll("\\", "/")}` }
         const binary = await locateOrca(cwd)
         const kernel = options.coordinator ?? nestingOf(await kernelOf(db, task, binary, options), options)
         if (options.dryRun === true) {
@@ -471,10 +491,8 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         const claim = inTransaction(db, () => {
             const current = getTask(db, options.task)
             if (current.status !== "queued") throw new Refusal("TASK_NOT_QUEUED", `task ${current.id} is ${current.status}; another seat start claimed it first`)
-            assertLeasesHeld(db, current)
             const running = setStatus(db, current.id, "running")
             const attempt = openAttempt(db, current.id, { agent: options.agent, model: options.model, ...(options.pick === undefined ? {} : { pick: options.pick }) })
-            renewLeases(db, current)
             const files = writeBrief(running, ops, root)
             const record = launchRecord(running, files, options, attempt.id, kernel)
             const seat = openSeat(db, { role: "worker", agent: options.agent, model: options.model, taskId: current.id, attemptId: attempt.id, requestId: record.start.retryRequest, launch: record })
@@ -518,14 +536,12 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
             if (!resumable || attempt === undefined) throw new Refusal("SEAT_NOT_RESUMABLE", `task ${task.id} is ${task.status} with ${seat === undefined ? "no open seat" : "seat " + seat.id + " " + seat.status}; only a launch whose outcome is unknown resumes`)
             const parsed = launchRecordSchema.safeParse(seat.launch)
             if (!parsed.success || parsed.data.attempt !== attempt.id) throw new Refusal("SEAT_NOT_RESUMABLE", `seat ${seat.id} carries no launch record of attempt ${attempt.id}; it cannot be replayed`)
-            assertLeasesHeld(db, task)
-            renewLeases(db, task)
             recordEvent(db, "seat-resume", task.id, { seat: seat.id, attempt: attempt.id, request: parsed.data.start.retryRequest })
             const runId = seat.runId ?? parsed.data.run
             return { task, seat, record: parsed.data, runId }
         })
         const recorded = claim.task.workflowId === null ? undefined : workflowWorktreeOf(db, claim.task.workflowId)
-        await beginWork(root, recorded ?? root, claim.task)
+        await beginWork(root, claim.task.worktree ?? recorded ?? root, claim.task)
         const files = writeBrief(claim.task, loadOps(), root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
         const parent = claim.record.start.parent

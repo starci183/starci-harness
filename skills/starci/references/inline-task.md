@@ -16,8 +16,8 @@ starci contract check <file>
 starci task send <file>
 ```
 
-`task send` prints the task id and leases the `allowPaths`; `LEASE_CONFLICT` means a live task holds an
-overlapping path: wait for it or narrow yours, never widen around it.
+`task send` prints the task id. Inside a workflow, `workflow step` names the task's own checkout (its Op worktree, cut from
+the workflow's branch): work and run every command there; the harness removes it once the task settled.
 
 ## 2. Do the work inside allowPaths
 

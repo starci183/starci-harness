@@ -51,6 +51,10 @@ steps:
       files:
         docs/a.md: |
           # a
+  - name: the harness landed the task's commit on the workflow's branch (the checkout it runs on), then died
+    write:
+      path: docs/a.md
+      content: "# a\n"
   - git:
       - add
       - docs/a.md

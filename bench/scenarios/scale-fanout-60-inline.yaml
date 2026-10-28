@@ -3,10 +3,10 @@ id: scale-fanout-60-inline
 group: scale
 title: "sixty independent tasks: inline queues exactly one at a time"
 inject: a workflow of 60 independent docs tasks under the inline runner
-expect: define records 60 nodes; start queues one task and leases only its paths; nothing else holds a lease
+expect: define records 60 nodes; start queues one task and makes only its Op worktree
 pass:
   - 60 plan nodes at graph v1
-  - exactly one ledger task and its one lease after start
+  - exactly one ledger task and its one Op worktree after start
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -646,6 +646,6 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree')
         equals:
           - 1

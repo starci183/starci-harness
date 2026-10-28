@@ -11,7 +11,6 @@ const coordinatorsSchema = z.strictObject({
     supervisorTtlMinutes: z.number().positive(),
     kernelRelaunchMax: z.number().int().positive(),
     effectUnknownDeadlineMinutes: z.number().positive(),
-    conflictMinutes: z.number().nonnegative(),
     poisonRefusals: z.number().int().positive(),
     nextWaitSeconds: z.number().int().positive(),
     nextPollSeconds: z.number().int().positive(),

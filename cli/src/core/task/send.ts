@@ -3,9 +3,7 @@ import { dirname, join, posix, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { contractProblems, normaliseRepoPath, parseContract, readContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
-import { openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
-import { acquireLeases, inTransaction } from "../../harness/leases.js"
-import type { LeaseGrant } from "../../harness/leases.js"
+import { inTransaction, openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { createTask, getTask, recordEvent } from "../../harness/tasks.js"
 import { worktreeSelector } from "../../harness/orca/client.js"
@@ -29,7 +27,6 @@ interface SendData {
     readonly retryOf: string | null
     readonly workflow: string | null
     readonly contract: string
-    readonly leases: LeaseGrant
     readonly root: string
     readonly uat: UatSent | null
     readonly launch: SeatStartData | null
@@ -122,10 +119,10 @@ const assertLaunchAllowed = (agent: string | undefined, model: string | undefine
     }
 }
 
-/** `starci task send <contract>`: registers a fit contract as a queued task and leases its allowPaths; --launch also starts its worker seat. */
+/** `starci task send <contract>`: registers a fit contract as a queued task; --launch also starts its worker seat. */
 export const taskSendVerb = defineVerb({
     path: ["task", "send"],
-    summary: "queue a fit contract (or --uat: one built from a Work flow, in its Work root) as a task and lease its allowPaths; --launch also starts an Orca worker on it; prints the task id",
+    summary: "queue a fit contract (or --uat: one built from a Work flow, in its Work root) as a task; --launch also starts an Orca worker on it; prints the task id",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "supervisor", "owner", "coordinator", "agent"],
@@ -176,13 +173,11 @@ export const taskSendVerb = defineVerb({
             if (workflowId !== undefined && db.prepare("SELECT id FROM workflows WHERE id = ?").get(workflowId) === undefined) {
                 throw new Refusal("WORKFLOW_UNKNOWN", `no workflow ${workflowId} in this project's ledger`)
             }
-            // The task and its leases land together: a lease conflict leaves no queued task behind.
-            const { task, leases } = inTransaction(db, () => {
+            const task = inTransaction(db, () => {
                 if (retryOf !== undefined) assertRetry(db, contract, retryOf)
-                const created = createTask(db, contract, { worktree: checkout, ...(workflowId === undefined ? {} : { workflowId }), ...(retryOf === undefined ? {} : { retryOf }) })
-                return { task: created, leases: acquireLeases(db, created) }
+                return createTask(db, contract, { worktree: checkout, ...(workflowId === undefined ? {} : { workflowId }), ...(retryOf === undefined ? {} : { retryOf }) })
             })
-            sent = { task: task.id, status: task.status, label: task.label, hash: task.contractHash, tryNo: task.tryNo, retryOf: task.retryOf, workflow: task.workflowId, contract: file, leases, root, uat: fromWork?.uat ?? null }
+            sent = { task: task.id, status: task.status, label: task.label, hash: task.contractHash, tryNo: task.tryNo, retryOf: task.retryOf, workflow: task.workflowId, contract: file, root, uat: fromWork?.uat ?? null }
         } finally {
             db.close()
         }

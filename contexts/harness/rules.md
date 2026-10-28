@@ -12,8 +12,9 @@ These hold for every role and every task. A rule with a gate names it; the other
    `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a live owner ruling covers.
 3. **No stash, force or reset in a dirty tree.** Never `git stash`, `reset --hard`, `checkout -- .`, `clean -f`, a
    force push or a branch switch in a checkout that holds someone's uncommitted work. Work in your own worktree.
-4. **Two tools never touch the same files.** Parallel agents, seats or tools write disjoint paths; the harness enforces
-   it for tasks with path leases (`LEASE_CONFLICT`). A defect found outside your paths goes into your report.
+4. **Two tools never touch the same checkout.** Parallel agents, seats or tools each write in a checkout of their own; the
+   harness gives every task of a workflow its own Op worktree and lands it on the workflow's branch through a rebase,
+   returning a textual conflict as `conflict` (`harness/land.ts`). A defect found outside your paths goes into your report.
 5. **Public actions need the owner's approval.** Publishing a package from a workstation (`release publish --publish`),
    deploying, and anything posted outside the repository wait for the owner's yes. Who pushes main, and after which
    checks, is [contexts/authority/](../authority/README.md); on the harness that push publishes, through CI, every package

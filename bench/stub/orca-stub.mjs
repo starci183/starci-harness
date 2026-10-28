@@ -223,6 +223,17 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: {} }
         case "repo add":
             return { ok: true, result: {} }
+        case "worktree show":
+            return { ok: true, result: { worktree: { path: String(flags.worktree ?? "").replace(/^path:/, ""), parentWorktreeId: state.worktreeParents?.[String(flags.worktree)] ?? null } } }
+        case "worktree rm":
+            // The stub keeps no checkout: it forgets the lineage and leaves the folder, which the harness then removes through git.
+            if (state.worktreeParents !== undefined) delete state.worktreeParents[String(flags.worktree)]
+            return { ok: true, result: { removed: true } }
+        case "worktree set":
+            // Orca's worktree lineage: the parent and display name a worktree is listed under.
+            state.worktreeParents = { ...(state.worktreeParents ?? {}), [String(flags.worktree)]: flags["parent-worktree"] ?? null }
+            state.worktreeNames = { ...(state.worktreeNames ?? {}), [String(flags.worktree)]: flags["display-name"] ?? null }
+            return { ok: true, result: {} }
         default:
             return refuse("unknown_command", `the bench stub does not know ${command}`)
     }

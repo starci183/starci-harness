@@ -5,9 +5,8 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { repositoryRoot } from "../shared/git.js"
-import { CONTRACT_SCHEMA, DEFAULT_BUDGET, byCodeUnit, contractHash, contractProblems, contractSchema, parseContract, readContract } from "./contract.js"
+import { byCodeUnit, CONTRACT_SCHEMA, contractHash, contractProblems, contractSchema, DEFAULT_BUDGET, parseContract, pathsOverlap, readContract } from "./contract.js"
 import type { Contract } from "./contract.js"
-import { pathsOverlap } from "./leases.js"
 import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
 import type { Ops } from "./ops.js"
 import { loadRouting } from "./routing.js"
@@ -524,7 +523,7 @@ const overlapNotes = (nodes: readonly PlanNode[], byKey: ReadonlyMap<string, Pla
         for (const right of nodes.slice(index + 1)) {
             if (ancestorsOf(left.key, byKey).has(right.key) || ancestorsOf(right.key, byKey).has(left.key)) continue
             const shared = left.contract.context.allowPaths.filter((path) => right.contract.context.allowPaths.some((other) => pathsOverlap(path, other)))
-            if (shared.length > 0) notes.push(`tasks ${left.key} and ${right.key} have no order between them but share ${shared.join(", ")}: the path lease runs them one after the other`)
+            if (shared.length > 0) notes.push(`tasks ${left.key} and ${right.key} have no order between them but share ${shared.join(", ")}: both run at once in their own worktrees, and a textual conflict returns the second to land as conflict`)
         }
     }
     return notes

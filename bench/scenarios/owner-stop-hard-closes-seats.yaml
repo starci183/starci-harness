@@ -3,10 +3,10 @@ id: owner-stop-hard-closes-seats
 group: owner
 title: "owner stops a running orca workflow hard: tasks cancelled, seats and Kernel closed"
 inject: workflow stop --hard while two seats run
-expect: every live task cancelled, its worker stopped and released, its lease released; the Kernel dispatch is stopped and released and its terminal closed
+expect: every live task cancelled, its worker stopped and released, its Op worktree removed; the Kernel dispatch is stopped and released and its terminal closed
 pass:
   - workflow stopped
-  - no lease
+  - no Op worktree left
   - worker-stop called per seat
   - terminal close called for the Kernel
   - "no step without evidence: every state change in the ledger has its event"
@@ -64,7 +64,7 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: SELECT COUNT(*) FROM leases
+        query: SELECT (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree') - (SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed')
         equals:
           - 0
   - assert:

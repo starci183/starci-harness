@@ -8,7 +8,7 @@ expect: >-
   Kernel attach takes the child Run back with run-use; b's Op, still alive, files its result; the new Kernel's kernel next
   settles it in the same worktree on top of a's commit; a is never redone
 pass:
-  - two Kernel launches, every launch (Kernel and Op) in the one worktree
+  - two Kernel launches, both in the workflow's one worktree; each Op in a worktree of its own
   - one child Run, taken back by run-use
   - a done with one attempt and one commit; b done with one attempt, its commit after a's on the workflow branch
   - the done decision returned to the new Kernel
@@ -69,9 +69,9 @@ steps:
       db: ledger
       query: SELECT kernel_run_id FROM workflows
       as: krun
-  - name: b's Op writes half its work in the worktree
+  - name: b's Op writes half its work in its own worktree
     write:
-      path: ${worktree.crash2}/docs/b.md
+      path: ${project}/worktrees/crash2.ops/${b}/docs/b.md
       content: "# b, half\n"
   - name: the Kernel crashes
     orca:
@@ -113,7 +113,16 @@ steps:
   - assert:
       orcaCalls:
         command: worker-start
+        match:
+          task-title: '^\[Kernel\] crash2$'
         count: 1
+        distinct: worktree
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 2
         distinct: worktree
   - assert:
       orcaCalls:

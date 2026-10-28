@@ -1,3 +1,4 @@
+import { worktreeGc } from "../../harness/worktree-gc.js"
 import { randomUUID } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { resolve } from "node:path"
@@ -5,8 +6,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { CONTRACT_SCHEMA, DEFAULT_BUDGET, contractProblems, parseContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
 import { harnessWorktree } from "../../harness/kernel.js"
-import { openLedger } from "../../harness/ledger.js"
-import { acquireLeases, inTransaction } from "../../harness/leases.js"
+import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import type { Verdict } from "../../harness/liveness.js"
 import { loadOps } from "../../harness/ops.js"
@@ -157,7 +157,7 @@ export const launchQueuedWorkers = async (context: VerbContext, seat: AttachedSu
 /**
  * `supervisor dispatch`: the Supervisor hands one job to a `[Worker]` seat under it. The worker gets its own worktree of the target
  * repository (`<project state>/worktrees/<worker>` on branch `starci/<worker>`, from that checkout's HEAD), a task in that
- * repository's ledger whose contract is the brief on the label's op, the leases of its paths, and a row in machine.sqlite
+ * repository's ledger whose contract is the brief on the label's op, and a row in machine.sqlite
  * `supervisor_workers`; then it launches when the project has a free worker slot, else it waits queued for `supervisor next`.
  */
 export const dispatchWorker = async (context: VerbContext, seat: AttachedSupervisor, project: Project, order: WorkerOrder): Promise<WorkerDispatched> => {
@@ -172,7 +172,6 @@ export const dispatchWorker = async (context: VerbContext, seat: AttachedSupervi
     const task = withLedger(repo, (db) =>
         inTransaction(db, () => {
             const created = createTask(db, contract, { worktree: made.path })
-            acquireLeases(db, created)
             recordEvent(db, "worker-dispatched", created.id, { worker: id, project: project.key, supervisor: seat.id, worktree: made.path, branch: made.branch })
             return created
         }),
@@ -326,12 +325,19 @@ export const acceptWorker = async (context: VerbContext, project: Project, ref: 
     const data = verified.data as { readonly verdict?: string; readonly status?: string }
     const ended: WorkerEnd = data.verdict === "green" ? "accepted" : "red"
     endWorker(worker.id, ended)
-    return { worker: worker.id, task: worker.task_id, ended, branch: branchOf(worker), detail: `verdict ${String(data.verdict)}, task ${String(data.status)}; ${verified.message.split("\n")[0] ?? ""}` }
+    const removed = await removeWorkerTree(worker.repo)
+    return { worker: worker.id, task: worker.task_id, ended, branch: branchOf(worker), detail: `verdict ${String(data.verdict)}, task ${String(data.status)}; ${verified.message.split("\n")[0] ?? ""}${removed}` }
+}
+
+/** Removes the worktrees of the repository whose owner ended, this worker's among them (harness/worktree-gc.ts): its branch keeps its commits. */
+const removeWorkerTree = async (repo: string): Promise<string> => {
+    const removed = (await worktreeGc(repo, false).catch(() => [])).filter((entry) => entry.kind === "worker" && entry.removed)
+    return removed.length === 0 ? "" : `; worktree ${removed.map((entry) => entry.path).join(", ")} removed`
 }
 
 /**
  * `supervisor reject`: ends a worker the Supervisor will not accept. A task still live is cancelled (its seat stopped and released,
- * its tab closed, its dirty paths preserved and reset, its leases freed); an ended task is left as it is.
+ * its tab closed, its dirty paths preserved and reset); an ended task is left as it is. Either way its worktree is removed.
  */
 export const rejectWorker = async (context: VerbContext, project: Project, ref: string, reason: string | undefined): Promise<WorkerEnded> => {
     const worker = findWorker(project, ref)
@@ -341,5 +347,5 @@ export const rejectWorker = async (context: VerbContext, project: Project, ref: 
         ? `task ${worker.task_id} is ${status}`
         : (await taskCancelVerb.run({ ...context, cwd: worker.repo }, { task: worker.task_id, reason: `worker ${worker.id} rejected by the Supervisor${reason === undefined ? "" : `: ${reason}`}` })).message
     endWorker(worker.id, "rejected")
-    return { worker: worker.id, task: worker.task_id, ended: "rejected", branch: branchOf(worker), detail }
+    return { worker: worker.id, task: worker.task_id, ended: "rejected", branch: branchOf(worker), detail: `${detail}${await removeWorkerTree(worker.repo)}` }
 }

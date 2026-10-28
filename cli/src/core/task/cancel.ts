@@ -1,9 +1,10 @@
-import { now, openLedger } from "../../harness/ledger.js"
-import { inTransaction, missingLeases, releaseLeases } from "../../harness/leases.js"
+import { inTransaction, now, openLedger } from "../../harness/ledger.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
+import { removeOpWorktree } from "../../harness/land.js"
+import type { WorktreeRemoval } from "../../harness/land.js"
 import { claimIntent, clearIntent, getTask, noteIntentDir, recordEvent, setStatus, taskCheckout, TRANSITIONS } from "../../harness/tasks.js"
 import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { Refusal } from "../../shared/errors.js"
@@ -17,7 +18,7 @@ interface CancelData {
     readonly reason: string | null
     readonly seats: readonly SeatClosing[]
     readonly preserved: Preserved | null
-    readonly leasesReleased: number
+    readonly worktree: WorktreeRemoval | null
     readonly resumed: boolean
 }
 
@@ -37,7 +38,7 @@ const preserveForCancel = async (db: Parameters<typeof noteIntentDir>[0], root: 
         return { dir: saved, patch: null, tracked: [], untracked: [] }
     } catch (error: unknown) {
         if (!(error instanceof PreserveIncomplete)) throw error
-        throw new Refusal(error.code, `task ${task.id} stays cancelling with its leases: its work is saved in ${error.dir}, but not every path was put back (${error.message}); run task cancel again to finish`)
+        throw new Refusal(error.code, `task ${task.id} stays cancelling: its work is saved in ${error.dir}, but not every path was put back (${error.message}); run task cancel again to finish`)
     }
 }
 
@@ -45,12 +46,11 @@ const preserveForCancel = async (db: Parameters<typeof noteIntentDir>[0], root: 
  * `starci task cancel <task-id>`: claims the `cancelling` intent first (a verify or result arriving later is refused, one that
  * claimed the task first makes the cancel refuse), then stops and releases the task's open seats through Orca, preserves its
  * dirty work under its allowPaths in the task's own checkout and puts those paths back to HEAD, then ends the task as
- * cancelled and frees its leases, in that order, so no worker can still write and no overlapping task can commit the half-done
- * work. A cancel that is refused half-way keeps its intent; running it again resumes from where it stopped.
+ * cancelled and removes its Op worktree, in that order, so no worker can still write and its half-done work is kept. A cancel that is refused half-way keeps its intent; running it again resumes from where it stopped.
  */
 export const taskCancelVerb = defineVerb({
     path: ["task", "cancel"],
-    summary: "cancel a task: claim it, stop its seat, preserve and reset its dirty allowPaths, then release its path leases",
+    summary: "cancel a task: claim it, stop its seat, preserve and reset its dirty allowPaths, then remove its Op worktree",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "supervisor", "owner"],
@@ -73,31 +73,29 @@ export const taskCancelVerb = defineVerb({
             const running = seats.filter((seat) => seat.outcome === "not-stopped")
             if (running.length > 0) {
                 const detail = running.map((seat) => `seat ${seat.seat} (dispatch ${seat.handle ?? "-"}): stop ${seat.closed?.stop ?? "-"}`).join("; ")
-                throw new Refusal("SEAT_NOT_STOPPED", `task ${before.id} stays cancelling with its leases: Orca did not stop its worker, which may still write (${detail}); run task cancel again once Orca answers`)
+                throw new Refusal("SEAT_NOT_STOPPED", `task ${before.id} stays cancelling: Orca did not stop its worker, which may still write (${detail}); run task cancel again once Orca answers`)
             }
             const unknown = seats.filter((seat) => seat.outcome === "launch-unknown")
             if (unknown.length > 0) {
                 throw new Refusal(
                     "SEAT_LAUNCH_UNKNOWN",
-                    `task ${before.id} stays cancelling with its leases: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
+                    `task ${before.id} stays cancelling: the launch of seat ${unknown.map((seat) => seat.seat).join(", ")} named no dispatch, so a worker may run that nobody can stop yet; learn its dispatch with starci seat start ${before.id} --resume, then cancel again`,
                 )
             }
-            // A task that lost a lease must not reset that path: another task may own it now.
-            const lost = missingLeases(db, before)
-            const preserved = lost.length === 0 ? await preserveForCancel(db, root, getTask(db, before.id)) : null
-            const data = inTransaction(db, (): CancelData => {
+            const preserved = await preserveForCancel(db, root, getTask(db, before.id))
+            const ended = inTransaction(db, () => {
                 const task = setStatus(db, before.id, "cancelled")
                 clearIntent(db, task.id)
                 // An attempt still open when its task is cancelled ends here, so no attempt stays open forever.
                 db.prepare("UPDATE attempts SET outcome = 'cancelled', ended_at = ? WHERE task_id = ? AND ended_at IS NULL").run(now(), task.id)
-                const leasesReleased = releaseLeases(db, task.id)
-                recordEvent(db, "task-cancelled", task.id, { from, reason: flags.reason ?? null, seats, preserved: preserved?.dir ?? null, lostLeases: lost, resumed, checkout: root })
-                return { task: task.id, from, status: task.status, reason: flags.reason ?? null, seats, preserved, leasesReleased, resumed }
+                recordEvent(db, "task-cancelled", task.id, { from, reason: flags.reason ?? null, seats, preserved: preserved.dir, resumed, checkout: root })
+                return task
             })
-            const dir = preserved?.dir ?? null
-            const nothingKept = lost.length > 0 ? `; lost leases on ${lost.join(", ")}, nothing reset` : "; nothing dirty to preserve"
-            const kept = dir === null ? nothingKept : `; dirty work preserved in ${dir}`
-            return { data, message: `cancelled ${data.task} (was ${data.from}${resumed ? ", resumed" : ""}); ${seatNote(seats)}${kept}; released ${String(data.leasesReleased)} lease(s)` }
+            const worktree = (await removeOpWorktree(callerRoot, ended.id).catch(() => undefined)) ?? null
+            const data: CancelData = { task: ended.id, from, status: ended.status, reason: flags.reason ?? null, seats, preserved, worktree, resumed }
+            const kept = preserved.dir === null ? "; nothing dirty to preserve" : `; dirty work preserved in ${preserved.dir}`
+            const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+            return { data, message: `cancelled ${data.task} (was ${data.from}${resumed ? ", resumed" : ""}); ${seatNote(seats)}${kept}${removed}` }
         } finally {
             db.close()
         }

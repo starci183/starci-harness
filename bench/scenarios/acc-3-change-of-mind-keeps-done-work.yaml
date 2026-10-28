@@ -5,13 +5,13 @@ title: "owner acceptance 3: the owner changes their mind mid-run; done work is k
 inject: "with a done, b and c running, the Supervisor submits a goal-change (goal v2): c is no longer wanted, d is"
 expect: >-
   kernel next returns the goal-change decision; the Kernel's new desired graph (a and b unchanged, c gone, d new) is reconciled
-  by key: a keeps its commit and its one attempt, b keeps running on its attempt, c is cancelled with its lease released, d is
+  by key: a keeps its commit and its one attempt, b keeps running on its attempt, c is cancelled with its Op worktree removed, d is
   added; b then lands on top of a in the same worktree
 pass:
   - goal_version 2, graph v2 recorded by the Kernel's command answering the goal-change decision
   - a done with one attempt and one commit, never relaunched
   - b's one attempt continues and lands
-  - c cancelled, its lease released; d launched
+  - c cancelled, its Op worktree removed; d launched
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected change
@@ -162,8 +162,8 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: "SELECT COUNT(*) FROM leases WHERE task_id IN (SELECT id FROM tasks WHERE plan_key = 'c')"
-        equals: [0]
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed' AND subject IN (SELECT id FROM tasks WHERE plan_key = 'c')"
+        equals: [1]
   - assert:
       sql:
         db: ledger

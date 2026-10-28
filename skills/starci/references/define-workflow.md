@@ -32,11 +32,11 @@ Split the goal into tasks, one outcome each. Per task decide:
   record a task is over walks its lane ([ops/lanes.yaml](../../../ops/lanes.yaml)): plan a task for each step its evidence
   does not satisfy yet, each behind the step before it, or define refuses `FLOW_INCOMPLETE` and names the missing step.
 - `allowPaths`: literal files or folders, never a glob, never `.` and never the whole `.starciwork`. Inside
-  `.starciwork` lease one scope, for example `.starciwork/features/<f>`.
+  `.starciwork` name one scope, for example `.starciwork/features/<f>`.
 - `checks`: presets from `ops/checks.yaml`. At least one behavioural check (`tests-pass`, `json-required`,
   `result-json`, `probe`, `ci-green` or a command) for every label that requires it. What a task, the
   merged batch and CI each run is [contexts/authority/](../../../contexts/authority/README.md); never ask a task for a suite.
-- `dependsOn`: only real order. Overlapping `allowPaths` without an order are allowed; the lease serializes them.
+- `dependsOn`: only real order. Overlapping `allowPaths` without an order are allowed: both run at once in their own worktrees, the second to land rebases onto the first, and a textual conflict comes back as a `conflict` decision.
 - `difficulty`, and `risk` when the work carries one of the risks `qualification.riskTags` of
   [ops/routing.yaml](../../../ops/routing.yaml) names: a risk-tagged task refuses a member still on probation for its
   label. Nothing in a workflow file names an agent or a model; the router alone picks.

@@ -69,7 +69,7 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    When it asks for `rulesApplied`, name the ids of the rules you applied, each as it appears in a file you read (a heading such as
    `BE-ERROR-1` or a yaml `id: R01`); never cite a rule you did not read.
 3. Prove your own work: run `starci task verify {taskId} --contract {contractFile}` until it is green, within the budget.
-   It judges only what you may have written: files leased by other tasks are not yours. A check on `@result` reads the
+   Your checkout is a worktree of your own, cut from the workflow's branch, that the harness removes once your task settled. A check on `@result` reads the
    output file. Beyond it you run only what tier 1 allows ([contexts/authority/branch.md](../../contexts/authority/branch.md)):
    no tests, build, bench or full suite, and no install of your own; the harness gives your checkout the app's `@starci`
    packages as the app takes them (npm, or local copies under `starci deps source --local`).

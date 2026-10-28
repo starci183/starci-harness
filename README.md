@@ -61,11 +61,13 @@ works" below says what each step guarantees, and `skills/starci/SKILL.md` is the
 
 A task is a contract: its context (where it works, which paths it may write and read), its input (what to do), its
 output keys and its checks, a list a machine can run, with a budget of minutes and tries. Each part is the base its
-label's op file holds ([ops/ops/README.md](ops/ops/README.md)) plus the Kernel's extend. Sending a task leases its
-`allowPaths`, so two live tasks never write the same paths. A worker does the task, dry-replays the contract with
-`starci task verify --contract` until it is green, and files one result: `done`, `blocked` (with the reason),
-`mismatch` (the contract itself is wrong) or `failed`. The harness then replays the checks on a clean checkout of HEAD
-plus the task's paths: green commits those paths, red preserves and resets them. Only that verify settles a task.
+label's op file holds ([ops/ops/README.md](ops/ops/README.md)) plus the Kernel's extend. Each task of a workflow works in a
+git worktree of its own, cut from the workflow's branch, so two live tasks may write the same paths at once. A worker does
+the task, dry-replays the contract with `starci task verify --contract` until it is green, and files one result: `done`,
+`blocked` (with the reason), `mismatch` (the contract itself is wrong) or `failed`. The harness then rebases the task's
+paths onto the workflow branch's head and replays the checks on a clean checkout of that: green lands it on the branch, red
+preserves and resets its paths, and a textual conflict returns the task `conflict` with its work preserved. Only that
+verify settles a task, and the task's worktree is removed once it settled.
 
 A workflow is a graph of such tasks, written by the Kernel (an agent) as a workflow file. The harness validates and
 records it, never invents a task, and dispatches each task once its dependencies are done: under the `orca` runner to
@@ -109,6 +111,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | (top), `check`, `release` | the host and the tree, the local API the desktop app reads (`ui`), the scoped gates, push, tag, publish and CI status |
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
 | `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
+| `worktree` | the harness's own worktrees: `gc` removes those whose owner ended, preserving their uncommitted work first |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
 | `project` | a project's ledger in the host registry: retire an abandoned one so no sweep, tick or pool count reads it |
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
@@ -117,7 +120,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `uat` | a Playwright script in the pinned image of [ops/uat.yaml](ops/uat.yaml) |
 | `app` | one product repository: what a lite app declares, its Sonar scope, and the app commands of `@starci/hfs` (scaffold, sync, check, lint, add, new, emit, explain, hygiene, coverage, codemod, ci, db, secret, stack, release, upgrade), run in-process; a product pins `starci-harness` as its devDependency and its hooks and CI run `npx starci app ...` |
 
-Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`, `lease list`,
+Not built yet: the host daemon (seat liveness, sweeps), `msg`, `debug`, `task wait`,
 `check unit`, `git`, `release notes`, and shell completion.
 
 ## CI

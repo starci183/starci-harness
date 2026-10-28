@@ -1,15 +1,15 @@
 import type { DatabaseSync } from "node:sqlite"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
-import { listLeases } from "../../harness/leases.js"
-import type { LeaseRow } from "../../harness/leases.js"
 import { seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
-import { getTask, listTasks, resultOf } from "../../harness/tasks.js"
+import { getTask, lastEvent, listTasks, resultOf } from "../../harness/tasks.js"
 import type { AttemptRow, ResultRow, TaskRow } from "../../harness/tasks.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { opWorktreeOf } from "../../harness/land.js"
+import type { OpWorktree } from "../../harness/land.js"
 
 /** How many of a task's newest check runs status shows. */
 const CHECK_RUNS_SHOWN = 20
@@ -30,7 +30,8 @@ interface TaskDetail {
     readonly task: TaskRow
     readonly attempts: readonly AttemptRow[]
     readonly result: ResultRow | null
-    readonly leases: readonly LeaseRow[]
+    readonly worktree: OpWorktree | null
+    readonly worktreeRemoved: boolean
     readonly checkRuns: readonly CheckRunRow[]
     readonly seats: readonly SeatRow[]
     readonly preserved: readonly string[]
@@ -105,11 +106,11 @@ const detailOf =(db: DatabaseSync, id: string): TaskDetail => {
     const task = getTask(db, id)
     const attempts = attemptsOf(db, id)
     const filed = attempts.map((attempt) => resultOf(db, attempt.id)).filter((result): result is ResultRow => result !== undefined)
-    return { task, attempts, result: filed.at(-1) ?? null, leases: listLeases(db, id), checkRuns: checkRunsOf(db, id), seats: seatsOfTask(db, id), preserved: preservedOf(db, id) }
+    return { task, attempts, result: filed.at(-1) ?? null, worktree: opWorktreeOf(db, id) ?? null, worktreeRemoved: lastEvent(db, "op-worktree-removed", id) !== undefined, checkRuns: checkRunsOf(db, id), seats: seatsOfTask(db, id), preserved: preservedOf(db, id) }
 }
 
 const describe = (detail: TaskDetail): string => {
-    const { task, attempts, result, leases, checkRuns, seats, preserved } = detail
+    const { task, attempts, result, worktree, worktreeRemoved, checkRuns, seats, preserved } = detail
     const retryNote = task.retryOf === null ? "" : ` (retry of ${task.retryOf})`
     const workflowNote = task.workflowId === null ? "" : `  workflow ${task.workflowId}`
     const lines = [
@@ -121,7 +122,7 @@ const describe = (detail: TaskDetail): string => {
     if (attempts.length > 0) lines.push("", formatTable([["ATTEMPT", "AGENT", "OUTCOME", "VERDICT", "STARTED"], ...attempts.map((attempt) => [attempt.id, attempt.agent ?? "-", attempt.outcome ?? "-", attempt.verdict ?? "-", attempt.startedAt])]))
     if (result !== null) lines.push("", `result: ${result.status} on ${result.attemptId} at ${result.filedAt}`)
     if (seats.length > 0) lines.push("", formatTable([["SEAT", "AGENT", "MODEL", "STATUS", "DISPATCH", "STARTED", "ENDED"], ...seats.map((seat) => [seat.id, seat.agent ?? "-", seat.model ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, seat.endedAt ?? "-"])]))
-    if (leases.length > 0) lines.push("", formatTable([["LEASE", "DUE", "HELD"], ...leases.map((lease) => [lease.path, `${lease.expiresAt}${lease.overdue ? " (overdue)" : ""}`, lease.live ? "yes" : "no"])]))
+    if (worktree !== null) lines.push("", `op worktree: ${worktree.path} on ${worktree.branch}, cut at ${worktree.fork.slice(0, 12)} from ${worktree.targetBranch} (lands there)${worktreeRemoved ? ", removed" : ""}`)
     for (const dir of preserved) lines.push(`preserved: ${dir}`)
     if (checkRuns.length > 0) lines.push("", formatTable([["CHECK", "RUNNER", "STATUS", "RAN"], ...checkRuns.map((run) => [run.name, run.runner, run.status, run.ranAt])]))
     // One verify records all its checks at one time: the red ones of the newest, each with its kept output.
@@ -142,10 +143,10 @@ const summaryOf = (task: TaskRow): TaskSummary => ({
     updatedAt: task.updatedAt,
 })
 
-/** `starci task status [task-id]`: one task with its full contract, attempts, result, leases and checks; or the table of tasks. */
+/** `starci task status [task-id]`: one task with its full contract, attempts, result, Op worktree and checks; or the table of tasks. */
 export const taskStatusVerb = defineVerb({
     path: ["task", "status"],
-    summary: "one task with its contract, attempts, latest result, leases and check runs, and the kept output of the red checks of its newest verify; without an id, the table of tasks",
+    summary: "one task with its contract, attempts, latest result, Op worktree and check runs, and the kept output of the red checks of its newest verify; without an id, the table of tasks",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
