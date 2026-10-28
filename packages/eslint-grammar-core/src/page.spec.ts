@@ -48,7 +48,7 @@ test("R324: a Tabs at the top of a Page body or right after a PageHeader is a pa
   })
 })
 
-test("R325: a page owner draws one Page with nothing beside it and no bare PageHeader or PageContainer", () => {
+test("R325: a page or layout owner draws one Page with nothing beside it and no bare PageHeader or PageContainer", () => {
   slotTester().run("route-page-is-one-page", routePageIsOnePage, {
     valid: [
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><Card /></Page>` },
@@ -57,9 +57,12 @@ test("R325: a page owner draws one Page with nothing beside it and no bare PageH
       { filename: OWNER, code: `export const A = () => <FormProvider value={form}>\n  <Page ${HEADER}><Card /></Page>\n</FormProvider>` },
       // one Page per branch
       { filename: OWNER, code: `export const A = ({ ready }) => ready ? <Page ${HEADER}><Card /></Page> : <Page ${HEADER} isSkeleton><Card /></Page>` },
-      // outside a page owner the parts are not judged by this law
-      { filename: LAYOUT, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>" },
+      // outside a page or layout owner the parts are not judged by this law
       { filename: BLOCK, code: "export const A = () => <PageContainer><Card /></PageContainer>" },
+      // a layout owner that is a pure frame draws no Page and is never missing one
+      { filename: LAYOUT, code: "export const A = ({ children }) => <WorkspaceShell primary={children} />" },
+      // a layout owner draws the one Page of its tabbed segment, the routed page as its body
+      { filename: LAYOUT, code: "export const A = ({ children }) => <Page chrome=\"bleed\" header={{ title, tabs: { label, items } }}><FillViewport>{children}</FillViewport></Page>" },
       // a connected half draws through its own pure half, which owns the Page
       { filename: OWNER_INDEX, code: "import { ConnectionPageBase } from \"./component\"\nexport const A = () => <><ConnectionPageBase /><GuideOverlay /></>" },
       // a segment boundary owner draws its notice
@@ -80,6 +83,10 @@ test("R325: a page owner draws one Page with nothing beside it and no bare PageH
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><G.PageContainer measure="reading"><Card /></G.PageContainer></Page>`, errors: [{ messageId: "part", data: { name: "PageContainer" } }] },
       // no Page at all: a heading and blocks on no frame
       { filename: OWNER, code: "export const A = () => <><Heading level={1}>Home</Heading><SignInForm /></>", errors: [{ messageId: "missing" }] },
+      // a layout owner's Page has nothing beside it: the head goes into its header, never a PageHeader sibling
+      { filename: LAYOUT, code: "export const A = ({ children }) => <><InstanceHeader /><Page header={{ title, tabs }}>{children}</Page></>", errors: [{ messageId: "sibling" }] },
+      { filename: LAYOUT, code: "export const A = ({ children }) => <><Page measure=\"full\"><SectionHeader title={title} /></Page>{children}</>", errors: [{ messageId: "sibling" }] },
+      { filename: LAYOUT, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
       // an element imported from elsewhere is no pure half
       { filename: OWNER_INDEX, code: "import { HomeView } from \"@/components/blocks/HomeView\"\nexport const A = () => <HomeView />", errors: [{ messageId: "missing" }] },
     ],

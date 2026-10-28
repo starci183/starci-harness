@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.8 - 2026-10-29
+
+- Added: `Page` `chrome="bleed"` (default `"standard"`), the app surface of a chat or a split editor: no inline gutter, no block-start or block-end padding, no `overflow: clip`, and the page and its body grow to fill the region, so a `FillViewport` in the body keeps its own bottom inset, never doubled (the fixed bottom navigation's padding skips a bleed page too). Its `header` is optional; a bleed header without a `title` is the trail alone (`{ breadcrumbs }`, type `PageTrailContent`: no heading, no band, no other slot), and a header with a `title` draws the band as in standard. `PageProps` is the union `PageStandardProps | PageBleedProps`, so `header.title` is optional only in bleed. The root carries `data-grammar-page-chrome` and `data-grammar-page-trail`. New types: `PageChrome`, `PageStandardProps`, `PageBleedProps`, `PageTrailContent`.
+- Added: stories `Compositions/Renderers` PageBleedTrail (breadcrumbs only) and PageBleedBand (the band with link tabs).
+- Changed: versioned together with `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.15.8 (R325 reads the layout of a tabbed segment).
+
 ## 0.15.7 - 2026-10-29
 
 - Changed: versioned together with `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.15.7 (R325 reads a page's one `Page` through its root block). No component changed.

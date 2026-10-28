@@ -223,7 +223,8 @@ A page is one route's frame: the page header band (PageHeader's slots, given as 
 body in the page measure and gutter. The page is the single owner of the page inset and the vertical rhythm: the band
 and the body, and the body's sections, sit a region step apart, and the body clips past its content box so nothing in
 it reaches across the gutter. Layout frames place regions and never inset a page. A page without a band starts its
-body one region step down. Skeleton passes to the band; the body's blocks own their loading.
+body one region step down. A bleed page is an app surface: no gutter, no block padding and no clip, its body filling
+the region, under the band or the trail alone. Skeleton passes to the band; the body's blocks own their loading.
 
 ### Diagram
 
