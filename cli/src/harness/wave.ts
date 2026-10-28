@@ -80,10 +80,14 @@ const owners = (outcome: CheckOutcome, tasks: readonly WaveTask[]): WaveTask[] =
     return named.length > 0 ? named : [...tasks]
 }
 
-/** The key a check is run once by across the wave: a scoped check once for every task, a command once per cwd and argv unless it reads the task. */
+/**
+ * The key a check is run once by across the wave: a scoped check once for every task that landed a commit (over their union),
+ * and per task for one that landed nothing (it proves the tracked files under its own allowPaths); a command once per cwd and
+ * argv unless it reads the task.
+ */
 const runKey = (check: ResolvedCheck, task: TaskRow): string => {
     const primitive = check.check
-    if (primitive.kind !== "command") return JSON.stringify(primitive)
+    if (primitive.kind !== "command") return JSON.stringify({ primitive, own: task.settleCommit === null ? task.id : "" })
     const own = primitive.verdict !== undefined || primitive.coverage !== undefined ? task.id : ""
     return JSON.stringify({ cwd: task.contract.context.cwd ?? ".", run: primitive.run, own })
 }
@@ -174,8 +178,11 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
                     const key = runKey(check, each.task)
                     const known = ran.get(key)
                     if (known !== undefined) return { ...known, name: check.name }
-                    const scope = check.check.kind === "starci" ? scoped : each.task.contract
-                    const outcome = await runCheck(check, scope, check.check.kind === "starci" ? { ...place(null, null), cwd: dir } : place(each.task, each.parent))
+                    // A task that landed nothing proves the tracked files under its own allowPaths: an empty diff (head..head) over them.
+                    const landedNothing = each.task.settleCommit === null
+                    const scope = check.check.kind === "starci" && !landedNothing ? scoped : each.task.contract
+                    const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir } : place(each.task, each.parent)
+                    const outcome = await runCheck(check, scope, at)
                     ran.set(key, outcome)
                     return outcome
                 })
@@ -186,10 +193,15 @@ export const runWave = async (db: DatabaseSync, callerRoot: string, workflow: st
     const redOwners = new Set<string>()
     const prepRed = judged.prepared.filter((outcome) => outcome.status === "red")
     if (prepRed.length > 0) for (const each of tasks) redOwners.add(each.task.id)
-    for (const outcome of Object.values(judged.outcomes).flat()) {
-        if (outcome.status === "red") for (const owner of owners(outcome, tasks.filter((each) => (judged.outcomes[each.task.id] ?? []).some((own) => own.name === outcome.name && own.status === "red")))) redOwners.add(owner.task.id)
+    // A red run belongs among the tasks that shared it (one run key): those its output names, else all of them.
+    const sharing = (key: string): WaveTask[] => tasks.filter((each) => each.checks.some((check) => runKey(check, each.task) === key))
+    for (const each of tasks) {
+        each.checks.forEach((check, index) => {
+            const outcome = judged.outcomes[each.task.id]?.[index]
+            if (outcome?.status === "red") for (const owner of owners(outcome, sharing(runKey(check, each.task)))) redOwners.add(owner.task.id)
+        })
     }
-    for (const each of tasks) recordTask(db, workflow, each, [...prepRed, ...(judged.outcomes[each.task.id] ?? [])].map((outcome) => (outcome.status === "red" && !redOwners.has(each.task.id) ? { ...outcome, status: "green", detail: `red, but owned by another task of the wave\n${outcome.detail}` } : outcome)), redOwners.has(each.task.id))
+    for (const each of tasks) recordTask(db, workflow, each, [...judged.prepared, ...(judged.outcomes[each.task.id] ?? [])].map((outcome) => (outcome.status === "red" && !redOwners.has(each.task.id) ? { ...outcome, status: "green", detail: `red, but owned by another task of the wave\n${outcome.detail}` } : outcome)), redOwners.has(each.task.id))
     const returned = tasks.filter((each) => redOwners.has(each.task.id)).map((each) => each.task.id)
     const verdict = returned.length === 0 ? "green" : "red"
     const prepared = judged.prepared.map((outcome) => `${outcome.name} ${outcome.status}: ${outcome.detail.split("\n")[0] ?? ""}`)

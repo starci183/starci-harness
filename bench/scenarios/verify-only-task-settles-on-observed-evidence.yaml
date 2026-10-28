@@ -6,7 +6,8 @@ inject: "three tasks change nothing: one over a clean file, one over a file the 
 expect: >-
   the scoped check of a candidate that changes nothing runs over the tracked files under the task's allowPaths: the clean
   file lints green and the task settles done with no commit, the flagged file lints red naming the rule, and allowPaths
-  that hold no tracked file leave no step to run, which stays red
+  that hold no tracked file leave no step to run, which stays red; in the wave tier the three checks run in the workflow's one
+  wave once the last task landed, each over its own task's allowPaths, and return the two red tasks
 pass:
   - the clean task is done with no settle commit and no Starci-Task commit; its check-run-green ran a lint step over src/ok.ts
   - the flagged task's check-run-green is red and names R321
@@ -81,10 +82,10 @@ steps:
   - name: the empty audit finds nothing to change
     worker:
       task: ${empty}
-  - name: step verifies it red
+  - name: step settles it on its cheap checks; its check-run-green waits for the wave, and the independent flagged task is dispatched
     starci: [workflow, step, audit]
     expect:
-      exit: 1
+      exit: 0
   - read:
       db: ledger
       query: "SELECT id FROM tasks WHERE plan_key = 'flagged'"
