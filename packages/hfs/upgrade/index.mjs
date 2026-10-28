@@ -7,20 +7,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { remember, ensureParent, writeFile, restore } from "./file-state.mjs";
-import { parseYaml } from "../runtime/engine/yaml.mjs";
+import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
 import { loadSlotManifest } from "../runtime/scripts/hfs/slots.mjs";
 import { LOCK_STEP, npmLock } from "../scaffold/app.mjs";
 import { WORLD_MARKER, testWorldFiles } from "../scaffold/test-world.mjs";
 import { loadHfs } from "../sync/index.mjs";
 
-const PACKAGE_ROOT = path.join(import.meta.dirname, "..");
-const PINS_FILE = path.join(
-  PACKAGE_ROOT,
-  "runtime",
-  "knowledge",
-  "hfs",
-  "canon-pins.yaml",
-);
 const FULL_DEV_DEPENDENCIES = Object.freeze([
   "@nestjs/testing",
   "@starci/jest-preset",
@@ -111,7 +103,7 @@ function fullCompletion(root, declaration) {
     (name) => current.devDependencies?.[name] === undefined && current.dependencies?.[name] === undefined,
   );
   if (missing.length) {
-    const pins = parseYaml(fs.readFileSync(PINS_FILE, "utf8")).pins;
+    const pins = bundledPins();
     const added = pinnedPackage(root, pins).devDependencies;
     const devDependencies = Object.fromEntries(
       Object.entries({ ...current.devDependencies, ...Object.fromEntries(missing.map((name) => [name, added[name]])) })

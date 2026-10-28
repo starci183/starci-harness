@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.9.3 - 2026-10-28
+
+- Changed: the bundled canon pins no longer pin the command line. An app's `starci-harness` is judged and scaffolded at the version of the CLI that runs this package: `main(argv, { harness: { version } })` takes it, and `runtime/scripts/hfs/canon-pins.mjs` (`canonPins`, the one reader of `knowledge/hfs/canon-pins.yaml`) adds the `starci-harness` row from it for HFS_CANON_PIN_DRIFT, HFS_CI_MISSING_CANON and the scaffold's root devDependencies. The CLI depends on this package exactly, so a bundled pin of the CLI tied every CLI release to a new hfs and back. Run without a CLI, nothing judges the app's `starci-harness` and `scaffoldApp` refuses HFS_SCAFFOLD_PIN_MISSING before `git init`. Spec: `src/canon-pins.spec.mjs` (also: every `source:` pin at its folder's version, the five runtime copies byte-identical, `contexts/stack/pins.yaml` in step).
+- Changed: the bundled canon pins follow release E (Grammar family 0.15.2, hfs 4.9.3, canon-fe 9.4.2, canon-be 3.6.2, ai-router 0.3.0).
+
 ## 4.9.2 - 2026-10-28
 
 - Fixed: `repositoryName` (runtime/scripts/hfs/repo-identity.mjs) names a repository by its origin remote, whatever folder holds the clone; the main checkout's folder names it only without an origin. HFS_README_TITLE_INVALID and the stack project name no longer change with the clone folder. Spec: `src/repo-identity.spec.mjs`.

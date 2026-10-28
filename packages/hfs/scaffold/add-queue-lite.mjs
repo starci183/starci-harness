@@ -13,7 +13,8 @@ import { materializeDeclaredPlaceholders } from '../runtime/scripts/hfs/sealed-m
 import { REDIS_IMAGE, TEMPLATES_DIR, redisDevScripts, render } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { withSqlIdentifierError } from './add-database-lite.mjs';
-import { bundledPins, jsonText, packageJsonText } from './app.mjs';
+import { jsonText, packageJsonText } from './app.mjs';
+import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { registerLiteExports } from './lite-exports.mjs';
 import { ScaffoldError } from './service.mjs';
 import { YamlBlockEdit } from './yaml-block-edit.mjs';

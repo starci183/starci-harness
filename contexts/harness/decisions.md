@@ -7,7 +7,9 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   the verb definitions, is the one list of commands ([cli/README.md](../../cli/README.md)). It publishes to npm as
   `starci-harness` (bins `starci` and `starci-harness`, [cli/package.json](../../cli/package.json)), so
   `npx starci-harness` runs it where no checkout exists. It carries the app commands too: `starci app` runs
-  `@starci/hfs` in-process, a product pins `starci-harness` as its devDependency, and `@starci/cli` is retired.
+  `@starci/hfs` in-process, a product pins `starci-harness` as its devDependency at the version of the CLI that
+  judges and scaffolds it (the CLI hands @starci/hfs its own version; no bundled pin names the CLI, which depends on
+  @starci/hfs exactly), and `@starci/cli` is retired.
 - **One brief per task.** Every brief is the worker procedure common to all ops followed by the label's op file
   ([ops/ops/README.md](../../ops/ops/README.md)); there is no catalog of op kinds beyond the labels. The Kernel writes each
   contract; a label also routes (its floor and host tools) and its checks are presets of [ops/checks.yaml](../../ops/checks.yaml).

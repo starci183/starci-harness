@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { UsageError } from "../../shared/errors.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
+import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
 export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "explain" | "hygiene" | "lint" | "new" | "release" | "scaffold" | "secret" | "stack" | "sync" | "upgrade"
@@ -79,15 +80,17 @@ const parsed = (text: string): unknown => {
 /**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
  * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
- * carries what it printed. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
+ * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
+ * never a pin bundled in @starci/hfs. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
  */
 export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean): Promise<VerbResult<HfsRunData>> => {
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
     let stdout = ""
     let stderr = ""
+    const harness = { version: packageVersion() }
     const io = context.json
-        ? { cwd: context.cwd, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }

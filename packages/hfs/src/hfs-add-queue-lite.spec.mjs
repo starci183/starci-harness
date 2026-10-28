@@ -11,7 +11,8 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { appSource, bundledPresets, checkTargets, renderTargets } from '../sync/index.mjs';
-import { scaffoldApp, bundledPins } from '../scaffold/app.mjs';
+import { scaffoldApp } from '../scaffold/app.mjs';
+import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { refuseFullAdapterInLite, LiteAdapterRefusal } from '../scaffold/edition-gate.mjs';
 import { YamlBlockEdit } from '../scaffold/yaml-block-edit.mjs';
@@ -26,7 +27,7 @@ function liteApp(t) {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-add-queue-lite-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
   const { root } = scaffoldApp({
-    name: 'demo', into, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
+    name: 'demo', into, harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
     emitTypes: () => 'export type Database = Record<string, never>\n', now: () => new Date(SCAFFOLDED),
   });
   return root;

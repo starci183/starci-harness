@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2 - 2026-10-28
+
+- Changed: versioned together with the Grammar lint families 0.15.2, whose bundled canon pins changed. The Grammar is unchanged.
+
 ## 0.15.1 - 2026-10-28
 
 - Fixed: `GrammarRoot`'s module is a client module (`"use client"`, kept in `dist/`): it imports `RouterProvider` from react-aria-components, so a server component rendering it broke `next build` ("createContext is not a function"). Versioned together with the Grammar lint families 0.15.1.

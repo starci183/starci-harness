@@ -27,7 +27,7 @@ const canonRulesOnly = (config) => config.map((block) => (block.rules === undefi
 
 for (const edition of ['full', 'lite']) {
   test(`every fe file the ${edition} scaffold writes passes the starci-fe canon`, { timeout: 300_000 }, async (t) => {
-    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), edition, authCallback: edition === 'lite',
+    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-template-canon-'), harness: { version: '1.1.0-alpha.3' }, edition, authCallback: edition === 'lite',
       presets: bundledPresets(), lock: lockedOk, initGit: init, emitTypes: () => 'export type Database = Record<string, never>\n' });
     gitAdd(installTypeScript(root));
     const fe = path.join(root, 'fe');

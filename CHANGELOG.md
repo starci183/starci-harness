@@ -6,6 +6,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **An app's `starci-harness` is the CLI that judges it.** `starci app` passes @starci/hfs the CLI's own version
+  (`harness`), which is the `starci-harness` an app is checked (HFS_CANON_PIN_DRIFT, HFS_CI_MISSING_CANON) and
+  scaffolded at; @starci/hfs 4.9.3 and the canon packages bundle no pin of the CLI, so a CLI release no longer needs a
+  new @starci/hfs naming it.
+
+- **`release publish` judges its plan.** A package due for publication that requires a sibling (`dependencies`,
+  `peerDependencies`) at another version than the sibling's folder holds is refused `RELEASE_DEPENDENCY_SKEW`, one
+  requiring a private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`; `--tag <tag>` refuses a tag naming no package version
+  (`RELEASE_TAG_UNKNOWN`) or only versions already on npm (`RELEASE_ALREADY_PUBLISHED`), and `--publish` publishes a
+  dependency before its dependent. CI's publish job runs the plan with the tag before anything reaches npm and publishes
+  the packages before the CLI. Bench: `release-publish-plan-guard`.
+
 ## [1.1.0-alpha.2] - 2026-10-28
 
 Version 1.1.0-alpha.1 was published from an earlier commit of this list, on `@starci/hfs` 4.9.0; 1.1.0-alpha.2 carries

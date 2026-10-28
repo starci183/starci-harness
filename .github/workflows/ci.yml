@@ -90,13 +90,21 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      # The CLI (starci-harness) and every package under packages/ are published with provenance, except a private
-      # one and a version already on npm; a prerelease version goes under the dist-tag it names (1.0.0-alpha.1: alpha).
-      - name: Publish the CLI and the packages whose version is not on npm
+      - name: Install and build the CLI
+        working-directory: cli
+        run: npm ci --no-audit --no-fund && npm run build
+      # The plan this tag publishes, judged before anything reaches npm (cli/src/core/release/publish.ts): each due package
+      # requires its siblings at their versions at this commit, each on npm or due here, and the tag names a version not on npm.
+      - name: Judge the release plan
+        run: node cli/dist/main.js release publish --tag "$GITHUB_REF_NAME"
+      # Every package under packages/ and then the CLI (starci-harness), so a dependency is on npm before its dependent, are
+      # published with provenance, except a private one and a version already on npm; a prerelease version goes under the
+      # dist-tag it names (1.0.0-alpha.1: alpha).
+      - name: Publish the packages and the CLI whose version is not on npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for dir in cli/ packages/*/; do
+          for dir in packages/*/ cli/; do
             name=$(node -p "require('./${dir}package.json').name")
             version=$(node -p "require('./${dir}package.json').version")
             if [ "$(node -p "require('./${dir}package.json').private === true")" = "true" ]; then

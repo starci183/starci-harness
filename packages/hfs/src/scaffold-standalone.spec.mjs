@@ -16,6 +16,8 @@ import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs'
 import { renderRelease } from '../stack/render.mjs';
 import { stackConfigModels } from './helpers/stack-compose.mjs';
 
+/** The CLI that runs the scaffold: its version is the starci-harness the new app pins. */
+const HARNESS = { version: '1.1.0-alpha.3' };
 const BUNDLED = new URL('../runtime/packages/jest-preset/sonar-exclusions.cjs', import.meta.url);
 const tempRoot = (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-scaffold-standalone-'));
@@ -73,7 +75,7 @@ test('a new path is git-initialised with an unborn main before the app files are
     calls.push({ root, options, hadFiles: fs.readdirSync(root).length });
     return init(root, options);
   };
-  const { root, files } = scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit });
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0], { root, options: { branch: 'main' }, hadFiles: 0 });
   assert.equal(fs.readFileSync(path.join(root, '.git', 'HEAD'), 'utf8').trim(), 'ref: refs/heads/main');
@@ -83,14 +85,14 @@ test('a new path is git-initialised with an unborn main before the app files are
 
 test('the full ui package pins react-dom beside react, the peer @heroui/react needs, so a later install never resolves a newer react-dom', (t) => {
   const into = tempRoot(t);
-  const { root } = scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
   const ui = JSON.parse(fs.readFileSync(path.join(root, 'fe', 'packages', 'demo-ui', 'package.json'), 'utf8'));
   assert.ok(ui.dependencies['@heroui/react'], 'the ui package declares @heroui/react');
   assert.equal(ui.dependencies['react-dom'], ui.dependencies.react, 'react-dom is pinned at the react version');
 });
 
 test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persisted data and separate secret grants for production', async (t) => {
-  const { root, files } = scaffoldApp({ name: 'demo', into: tempRoot(t), edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
   const yaml = file => parseYaml(fs.readFileSync(path.join(root, '.starcistacks', ...file.split('/')), 'utf8'));
   const stacks = yaml('application-stacks.yaml');
   const model = yaml('production/infra/swarm/stack.yaml');
@@ -145,7 +147,7 @@ test('the full starter runs PostgreSQL in Docker for dev and in Swarm with persi
 });
 
 test('the lite starter keeps its vector backing in Supabase without a Qdrant declaration, client or container', async (t) => {
-  const { root } = scaffoldApp({ name: 'demo', into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init,
     emitTypes: () => 'export type Database = Record<string, never>\n' });
   const read = file => fs.readFileSync(path.join(root, ...file.split('/')), 'utf8');
   const declaration = JSON.parse(read('hfs.json'));
@@ -167,7 +169,7 @@ test('the lite starter keeps its vector backing in Supabase without a Qdrant dec
 
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {
   for (const edition of ['full', 'lite']) {
-    const { root, files } = scaffoldApp({ name: 'demo', into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init,
+    const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition, presets: bundledPresets(), lock: lockedOk, initGit: init,
       emitTypes: () => 'export type Database = Record<string, never>\n' });
     const composeFiles = files.filter(file => /^\.starcistacks\/[^/]+\/infra\/(?:swarm|compose)\/[^/]+\.ya?ml$/u.test(file));
     assert.ok(composeFiles.length > 0, `${edition} has stack sources`);
@@ -182,7 +184,7 @@ test('a failed git init refuses before any app file is written', (t) => {
   const into = tempRoot(t);
   const initGit = () => ({ ok: false, stderr: 'git: not found' });
   assert.throws(
-    () => scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
+    () => scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
     (error) => error.code === 'HFS_SCAFFOLD_GIT_INIT_FAILED' && /git: not found/.test(error.message),
   );
   assert.equal(fs.existsSync(path.join(into, 'demo', 'hfs.json')), false);
@@ -194,6 +196,22 @@ test('an existing empty unborn main repository is scaffolded without a second gi
   fs.mkdirSync(root);
   assert.equal(init(root, { branch: 'main' }).ok, true);
   const initGit = () => assert.fail('an existing repository must not be initialised again');
-  scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit });
+  scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit });
   assert.ok(fs.existsSync(path.join(root, 'hfs.json')));
+});
+
+test('the root devDependencies pin starci-harness at the version of the CLI that runs the scaffold', (t) => {
+  const { root } = scaffoldApp({ name: 'demo', harness: { version: '9.9.9-alpha.9' }, into: tempRoot(t), edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.equal(pkg.devDependencies['starci-harness'], '9.9.9-alpha.9');
+});
+
+test('without the CLI that runs it the scaffold refuses before git init, since no starci-harness version is known', (t) => {
+  const into = tempRoot(t);
+  const initGit = () => assert.fail('a refused scaffold initialises nothing');
+  assert.throws(
+    () => scaffoldApp({ name: 'demo', into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit }),
+    (error) => error.code === 'HFS_SCAFFOLD_PIN_MISSING' && /starci-harness/.test(error.message),
+  );
+  assert.equal(fs.existsSync(path.join(into, 'demo')), false);
 });

@@ -16,7 +16,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseToml } from 'smol-toml';
-import { parseYaml } from '../runtime/engine/yaml.mjs';
+import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 
 /** The repository-relative path of the generated types (the path of slot `app.supabase.types`). */
 export const dbTypesPath = 'supabase/types/database.types.ts';
@@ -56,7 +56,6 @@ class DbTypesError extends Error {
 }
 
 const spawn = (file, args, options = {}) => spawnSync(file, args, { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024, ...options });
-const PINS_FILE = new URL('../runtime/knowledge/hfs/canon-pins.yaml', import.meta.url);
 
 /**
  * The one spawn: an argument array, a hidden window, a bound buffer, never a shell. Specs inject a fake of the same shape. The
@@ -65,7 +64,7 @@ const PINS_FILE = new URL('../runtime/knowledge/hfs/canon-pins.yaml', import.met
 const withNpxFallback = (run, platform) => (file, args, options = {}) => {
   const first = run(file, args, options);
   if (file !== SUPABASE_CLI || first.error?.code !== 'ENOENT') return first;
-  const version = parseYaml(fs.readFileSync(PINS_FILE, 'utf8'))?.pins?.[SUPABASE_CLI]?.version;
+  const version = bundledPins()[SUPABASE_CLI]?.version;
   if (!version) return first;
   return platform === 'win32'
     ? run('cmd.exe', ['/d', '/s', '/c', 'npx', '--yes', `${SUPABASE_CLI}@${version}`, ...args], options)

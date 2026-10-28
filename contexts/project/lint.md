@@ -61,7 +61,8 @@ Each leaves this list the day a machine checks it.
 - **The `hfs.json` profile key.** Its spelling and default are PROJECT-1 in [README.md](README.md); no check refuses
   a profile under another key.
 - **Pins.** That an app's `@starci/*` and shared dependencies sit at the versions of [stack/pins.yaml](../stack/pins.yaml):
-  no harness gate compares them.
+  no harness gate compares them (`starci app check` compares them with the copy @starci/hfs bundles, and `starci-harness`
+  with the version of the CLI that runs it).
 - **The setup commands of a contract.** That a contract carries them (PROJECT-2 in [README.md](README.md)) is its
   author's duty; the clean verify only shows their absence as a red check, and the project keeps no persistent list
   of them yet.
