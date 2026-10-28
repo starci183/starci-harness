@@ -519,7 +519,8 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
         binary = probed
         actions.push(...holdForOrca(root, workflowId, null), ...(await drainMail(root, workflowId, binary, context.cwd, undefined)))
     }
-    const report = await stepWorkflow(context, root, workflowId)
+    // A Kernel's turn never waits on a wave: it starts as a detached job and its verdict is read on a later tick.
+    const report = await stepWorkflow(context, root, workflowId, { detachWave: true })
     actions.push(...report.actions)
     if (binary !== null) {
         const after = readSnapshot(root, workflowId)

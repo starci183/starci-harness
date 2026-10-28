@@ -345,7 +345,8 @@ const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBina
         }
         // A filed result is verified, a dead verify reclaimed and a settled worker's seat closed without waiting for the Kernel's turn.
         try {
-            lines.push(...(await settleWorkflow({ ...context, cwd: root }, root, workflow.id)).filter((action) => action.action !== "wait").map((action) => `${workflow.id}: ${action.action} ${action.task ?? "-"} ${action.detail}`))
+            // The tick and `supervisor next` never wait on a wave: it starts as a detached job (harness/wave.ts) and they move on.
+            lines.push(...(await settleWorkflow({ ...context, cwd: root }, root, workflow.id, { detachWave: true })).filter((action) => action.action !== "wait").map((action) => `${workflow.id}: ${action.action} ${action.task ?? "-"} ${action.detail}`))
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             lines.push(`${workflow.id}: not settled (${refusal.code}): ${refusal.message.split("\n")[0] ?? ""}`)

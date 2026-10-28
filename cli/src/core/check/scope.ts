@@ -105,8 +105,9 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
  * no package, so nothing runs. Judging as a task, a changed file counts only when the task changed it since its work began, so
  * another task's dirt in a shared checkout neither is judged nor widens the scope, and the tracked files of the modules whose
  * composition the task answers for are judged too; judging a workflow's final verify, the judged files are those modules alone.
+ * With `within`, a changed file counts only under `paths` (a wave hands the files its tasks landed).
  */
-export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}): Promise<Scope> => {
+export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}, within = false): Promise<Scope> => {
     const root = await repositoryRoot(cwd)
     // A task in its Op worktree is judged on its own diff: from the workflow head its worktree was cut from, never from main.
     const fork = baseFlag !== undefined || judging.task === undefined ? undefined : await opForkOf(root, judging.task)
@@ -114,7 +115,8 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     if (!(await refExists(root, base))) throw new Refusal("CHECK_BASE_UNKNOWN", `the base ${base} does not exist here`)
     const packages = listPackages(root)
     if (packages.length === 0) throw new Refusal("CHECK_NO_PACKAGE", `no package.json with a name and version under ${root}`)
-    const diff = await changedFiles(root, base)
+    // `within` (a wave): only the changed files under `paths`, the union of what its tasks landed, never the rest of base..head.
+    const diff = (await changedFiles(root, base)).filter((file) => !within || underPaths(file, paths))
     const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
     const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
     const composition = judging.workflow !== undefined ? workflowComposition(root, judging.workflow) : judging.task === undefined ? NO_COMPOSITION : taskComposition(root, judging.task)

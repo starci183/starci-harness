@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto"
-import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
 import { Refusal } from "../shared/errors.js"
@@ -14,7 +14,8 @@ import { excludedSpec, notOwn } from "./baseline.js"
 import { rebaseCandidate } from "./land.js"
 import { readRecord, reapplyLocal } from "../core/deps/packages.js"
 import { withHeavySlot } from "./heavy.js"
-import { cachedInstall, isInstalled, unlinkInstallLinks } from "./install-cache.js"
+import { cachedInstall, isInstalled, unlinkCheckoutLinks } from "./install-cache.js"
+import { cleanCheckoutsPath } from "./ledger.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -268,8 +269,9 @@ const checkCandidate = async (check: ResolvedCheck, input: CleanVerifyInput, pla
 }
 
 const removeWorktree = async (root: string, dir: string): Promise<void> => {
-    // The links an install made are unlinked first, so nothing below removes through one into the cache or a folder it names.
-    unlinkInstallLinks(dir)
+    // Every link the checkout holds (the install's, and any a setup command made) is unlinked first, link only, so neither
+    // git's removal nor the recursive delete below can reach the cache or any folder a link names.
+    unlinkCheckoutLinks(dir)
     await captureGit(["worktree", "remove", "--force", dir], root)
     rmSync(dir, { recursive: true, force: true })
 }
@@ -363,11 +365,15 @@ export const cleanVerify = async (input: CleanVerifyInput): Promise<CleanVerify>
 }
 
 /**
- * Runs `work` in a detached clean checkout of `commit` under the temp folder (named for the verifier's pid, so a leftover is
- * pruned once it is gone), and removes the checkout afterwards, its install links unlinked first.
+ * Runs `work` in a detached clean checkout of `commit` under the state base's checkouts folder (ledger.ts cleanCheckoutsPath;
+ * named for the verifier's pid, so a leftover is pruned once it is gone), and removes the checkout when the work ends however it
+ * ends (a verdict, a throw, a deadline), every link in it unlinked first. Git lists the checkout as a detached worktree of the
+ * repository while it lives, so Orca shows it there: it lives only as long as its run.
  */
 export const inCleanCheckout = async <T>(root: string, commit: string, name: string, work: (dir: string) => Promise<T>): Promise<T> => {
-    const dir = mkdtempSync(join(tmpdir(), `${VERIFY_PREFIX}${name}-p${String(process.pid)}-`))
+    const base = cleanCheckoutsPath()
+    mkdirSync(base, { recursive: true })
+    const dir = mkdtempSync(join(base, `${VERIFY_PREFIX}${name}-p${String(process.pid)}-`))
     try {
         await git(root, ["worktree", "add", "--detach", dir, commit])
         return await work(dir)
