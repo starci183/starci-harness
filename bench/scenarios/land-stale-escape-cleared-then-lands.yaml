@@ -1,0 +1,86 @@
+schema: starci/scenario@1
+id: land-stale-escape-cleared-then-lands
+group: verify
+title: "a stale copy of a task's file left dirty in the checkout it lands on is preserved, and the task's green commit still lands"
+inject: >-
+  an earlier attempt left docs/a/a.md uncommitted in the checkout the task lands on (the workflow's), and this attempt writes
+  the file properly in its own Op worktree, so a fast-forward of the branch would refuse to overwrite the stale copy
+expect: >-
+  verify is green; under the land lock the stale copy is preserved as the task's work (land-escaped) and put back, then the
+  branch fast-forwards to the task's commit: the task is done with its settle commit, never stuck awaiting the owner on
+  SETTLE_REF_FAILED
+pass:
+  - task done with one commit carrying its trailer
+  - one land-escaped event naming the stale file; the checkout is clean and holds the task's version
+  - no settle-refused or verify-stuck event
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - git: [commit, -q, --allow-empty, -m, "bench: base"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: stale
+        goal: bench workflow stale
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a/a.md
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start
+    starci: [workflow, start, stale]
+    save:
+      a: data.nodes.0.task.id
+  - name: an earlier attempt's copy sits uncommitted in the checkout the task lands on
+    write:
+      path: docs/a/a.md
+      content: |
+        an older draft
+  - name: the worker writes the file in its own Op worktree and files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a/a.md: |
+          doc a
+  - name: step verifies and lands it
+    starci: [workflow, step, stale]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - done
+  - assert:
+      gitLog:
+        grep: "Starci-Task: ${a}"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.untracked[0]') FROM events WHERE kind = 'land-escaped'"
+        equals:
+          - docs/a/a.md
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind IN ('settle-refused', 'verify-stuck')"
+        equals:
+          - 0
+  - assert:
+      exists:
+        path: docs/a/a.md
+        present: true
+        contains: doc a
+  - assert:
+      gitClean: true

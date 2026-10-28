@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { join, resolve } from "node:path"
 import { opForkOf } from "../../harness/baseline.js"
 import { briefFiles } from "../../harness/brief.js"
-import { cleanVerify, pruneVerifyWorktrees, VERIFY_INFRA } from "../../harness/clean-verify.js"
+import { cleanVerify, declaredFiles, pruneVerifyWorktrees, VERIFY_INFRA } from "../../harness/clean-verify.js"
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
@@ -13,6 +13,7 @@ import { loadOps } from "../../harness/ops.js"
 import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
+import { LAND_ORPHANED } from "../../harness/revive.js"
 import { runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
@@ -27,6 +28,7 @@ import { asRefusal, Refusal } from "../../shared/errors.js"
 import { commitWithMessage, repositoryRoot, resolveSha } from "../../shared/git.js"
 import { inOrder } from "../../harness/sequential.js"
 import { needsInstall, splitChecks } from "../../harness/wave.js"
+import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { formatTable } from "../../shared/output.js"
 import { redactSecrets } from "../../shared/secrets.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
@@ -67,7 +69,8 @@ interface TaskVerifyData {
 
 /**
  * What `--recover` did: a task stuck in verifying with no live verifier is reconciled from git (its settle commit landed: done,
- * with `landed`) or put back to reported; a task holding a repair intent has its preserve reset finished (`repaired`).
+ * with `landed`) or put back to reported; a task holding a repair intent has its preserve reset finished (`repaired`); a done
+ * task whose work never landed is failed land-orphaned, its work preserved from the checkout it lands on (`orphaned`).
  */
 interface RecoverData {
     readonly mode: "recover"
@@ -77,6 +80,7 @@ interface RecoverData {
     readonly landed: string | null
     readonly repaired: string | null
     readonly pruned: readonly string[]
+    readonly orphaned?: string | null
 }
 
 type VerifyData = ContractVerifyData | TaskVerifyData | RecoverData
@@ -241,9 +245,12 @@ interface Ending {
     readonly seats: readonly SeatClosing[]
     readonly seatProblem?: string
     readonly repair?: string
+    /** Work found under the task's allowPaths in the checkout it lands on, preserved there and put back (`preserveEscaped`). */
+    readonly escaped?: Preserved
 }
 
 const seatLine = (ending: Ending): string[] => [
+    ...(ending.escaped?.dir == null ? [] : [`escaped: ${[...ending.escaped.tracked, ...ending.escaped.untracked].join(", ")} sat under allowPaths in the checkout it lands on; preserved in ${ending.escaped.dir} as this task's work, and put back`]),
     ...(ending.seats.length === 0 ? [] : ["seats: " + ending.seats.map((seat) => seat.seat + " " + seat.outcome).join(", ")]),
     ...(ending.seatProblem === undefined ? [] : [`warning: the task's seats were not closed (${ending.seatProblem}); close them with starci seat stop <seat>`]),
     ...(ending.repair === undefined ? [] : [`warning: the red work is saved in ${ending.repair} but not every path was put back; starci task verify <task> --recover finishes the reset`]),
@@ -361,6 +368,36 @@ const preserveEnding = async (db: DatabaseSync, root: string, task: TaskRow, att
     }
 }
 
+/** The event a verify records when it found and preserved the task's work in the checkout it lands on. */
+const LAND_ESCAPED = "land-escaped"
+
+/**
+ * Work the task wrote outside its own checkout, into the checkout it lands on (an Op worktree's target): every file dirty there
+ * under the task's allowPaths is saved as the task's work (a `task-preserved` event, the prior work a retry starts from) and put
+ * back, recorded `land-escaped`, so the branch fast-forwards and the target holds no task's work. Every ending runs it: a red or
+ * conflict before the task returns, a green before its commit lands, each under the target's land lock. Null when the task works
+ * in its target or nothing escaped.
+ */
+const preserveEscaped = async (db: DatabaseSync, task: TaskRow, target: LandTarget): Promise<Preserved | null> => {
+    if (target.own) return null
+    const saved = await preserveTaskPaths(target.checkout, task, db)
+    if (saved.dir === null) return null
+    recordEvent(db, LAND_ESCAPED, task.id, { target: target.checkout, branch: target.branch, dir: saved.dir, tracked: saved.tracked, untracked: saved.untracked })
+    return saved
+}
+
+/** The ending's escaped work, when there was some. */
+const escapedOf = (escaped: Preserved | null): Pick<Ending, "escaped"> => (escaped === null ? {} : { escaped })
+
+/** preserveEscaped on a red or conflict ending, under the land lock; a preserve that breaks reaches no verdict. */
+const returnEscaped = async (db: DatabaseSync, task: TaskRow, attemptId: string, target: LandTarget, underLand: <T>(work: () => Promise<T>) => Promise<T>): Promise<Preserved | null> => {
+    try {
+        return await underLand(() => preserveEscaped(db, task, target))
+    } catch (error: unknown) {
+        throw noVerdict(db, task.id, attemptId, "preserve-failed", error)
+    }
+}
+
 /** What one pass of a settling verify reached: an ending, or `moved` when the head moved before its verified commit could land. */
 type Pass = { readonly built: CleanVerify | null; readonly ending: Ending } | "moved"
 
@@ -395,8 +432,9 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         assertSettleLockHeld(db, me, verifyLockKey(task.id))
         if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
         const { preserved } = await preserveEnding(db, root, task, attempt.id)
+        const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
         conflictTask(db, task.id, attempt.id, error, preserved)
-        return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files } }
+        return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files, ...escapedOf(escaped) } }
     }
     // A verify that outlived its deadline lost its lock: it records, preserves and lands nothing (the catch above holds the same fence).
     assertSettleLockHeld(db, me, verifyLockKey(task.id))
@@ -404,22 +442,28 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     recordEvent(db, "task-verified", task.id, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: true, onto: onto ?? null })
     if (built.verdict === "red") {
         const { preserved, repair } = await preserveEnding(db, root, task, attempt.id)
+        const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
         failTask(db, task.id, attempt.id, repair)
         // A uat task's record turns blocked in a Work commit of its own on the target branch, under its land lock.
         const work = await underLand(() => blockWork(target.checkout, task, input.result, built.checks.filter((check) => check.status === "red").map((check) => check.name)))
         if (work !== null) recordEvent(db, "work-written", task.id, work)
-        return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }) } }
+        return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
     }
-    let settlement: Settlement
+    let landed: { readonly settlement: Settlement; readonly escaped: Preserved | null }
     try {
-        settlement = await underLand(() => settle(target, built, task))
+        // The task's work sitting in the target would block its fast-forward: it is preserved first, under the same land lock.
+        landed = await underLand(async () => {
+            const escaped = await preserveEscaped(db, task, target)
+            return { settlement: await settle(target, built, task), escaped }
+        })
     } catch (error: unknown) {
         if (!locked && asRefusal(error).code === "HEAD_MOVED") return "moved"
         throw noVerdict(db, task.id, attempt.id, "settle-refused", error)
     }
+    const { settlement, escaped } = landed
     // The branch moved: from here the task is done whatever else happens (a crash here is reconciled by --recover from git).
     finishTask(db, task.id, attempt.id, settlement, "task-settled", settlement, deferred)
-    return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work } }
+    return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work, ...escapedOf(escaped) } }
 }
 
 /**
@@ -456,6 +500,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             since: task.createdAt,
             result: resultSource(db, root, task, attempt, false),
             timeoutMs: task.contract.budget.minutes * MINUTE_MS,
+            ...(target.own ? {} : { target: target.checkout }),
         }
         const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, conflict: null, seats: [] }
         const noted = (built: CleanVerify | null): CleanVerify | null => (built === null || deferred.length === 0 ? built : { ...built, notes: [...built.notes, `left to the workflow's wave verify: ${deferred.join(", ")}`] })
@@ -516,17 +561,48 @@ const startedFrom = (value: unknown): { readonly verifier: Verifier | null; read
     return { verifier, parent: typeof record.parent === "string" ? record.parent : undefined }
 }
 
+
+/**
+ * `--recover` of a done task whose work never landed: it settled no commit while its result names files under its allowPaths
+ * (a verify before the `lands` check knew that case). Its work sits where the worker wrote it, in the checkout it lands on: it is
+ * preserved there as the task's work and put back under the land lock, and the task is failed `land-orphaned`, a harness cause,
+ * so it returns to ready at the same try and its retry starts from that work. Refused for any other done task.
+ */
+const recoverOrphan = async (db: DatabaseSync, callerRoot: string, task: TaskRow): Promise<VerbResult<VerifyData>> => {
+    const attempt = latestAttempt(db, task.id)
+    const declared = attempt === undefined ? [] : declaredFiles(resultOf(db, attempt.id)?.output, task.contract.context.allowPaths)
+    if (task.settleCommit !== null || declared.length === 0 || attempt === undefined) {
+        throw new Refusal("TASK_NOT_VERIFYING", `task ${task.id} is done${task.settleCommit === null ? " with nothing its result names" : ` at ${task.settleCommit.slice(0, 12)}`}; --recover frees a task stuck in verifying, finishes a preserve reset, or returns a done task whose named files never landed`)
+    }
+    const made = opWorktreeOf(db, task.id)
+    const target: LandTarget = made === undefined ? await landTargetOf(db, task, callerRoot) : { checkout: made.target, branch: made.targetBranch, own: false }
+    const landed = await commitWithMessage(target.checkout, `refs/heads/${target.branch}`, settleMessage(task.contract, task.id), startedFrom(lastEvent(db, "verify-started", task.id)).parent)
+    if (landed !== undefined) throw new Refusal("TASK_LANDED", `task ${task.id}'s settle commit ${landed.slice(0, 12)} is on ${target.branch}; nothing to return`)
+    const me = thisVerifier(task.id)
+    const preserved = await withSettleLock(db, me, MINUTE_MS, landLockKey(target), () => preserveTaskPaths(target.checkout, task, db))
+    inTransaction(db, () => {
+        recordEvent(db, LAND_ORPHANED, task.id, { target: target.checkout, branch: target.branch, declared, dir: preserved.dir, tracked: preserved.tracked, untracked: preserved.untracked })
+        setStatus(db, task.id, "failed", "done")
+        // A workflow that ended on that task did not end: its work is back to do.
+        if (task.workflowId !== null && getWorkflow(db, task.workflowId).status === "done") setWorkflowStatus(db, task.workflowId, "running", null)
+    })
+    const where = preserved.dir === null ? `nothing of it was found in ${target.checkout}` : `${[...preserved.tracked, ...preserved.untracked].join(", ")} preserved from ${target.checkout} in ${preserved.dir}`
+    const data: RecoverData = { mode: "recover", task: task.id, status: "failed", verifier: null, landed: null, repaired: null, pruned: [], orphaned: preserved.dir }
+    return { data, message: `task ${task.id}: done -> failed (land-orphaned: its result names ${declared.join(", ")} but nothing landed on ${target.branch}); ${where}; it returns to ready at the same try and its retry starts from that work` }
+}
+
 /**
  * `--recover`: git is the authority for landed. A task left in verifying whose verifier no longer holds its verifier lock is
  * done when the branch it lands on carries the task's settle commit (message and `Starci-Task:` trailer) after the head the
  * verify started from, and goes back to reported otherwise; either way that verifier's checkout is pruned. A task holding a repair intent has
- * its preserve reset finished.
+ * its preserve reset finished; a done task whose work never landed is returned (`recoverOrphan`).
  */
 const recoverTask = async (cwd: string, taskId: string): Promise<VerbResult<VerifyData>> => {
     const callerRoot = await repositoryRoot(cwd)
     const db = openLedger(callerRoot)
     try {
         const task = getTask(db, taskId)
+        if (task.status === "done" && task.intent === null) return await recoverOrphan(db, callerRoot, task)
         const root = await taskCheckout(task, callerRoot)
         if (task.intent === "repair") return await repairTask(db, root, task)
         if (task.status !== "verifying") throw new Refusal("TASK_NOT_VERIFYING", `task ${taskId} is ${task.status}; --recover only frees a task stuck in verifying or finishes a preserve reset`)
@@ -568,7 +644,7 @@ export const taskVerifyVerb = defineVerb({
         contract: { kind: "string", summary: "dry-replay this contract json file in the working tree instead (no task status change)" },
         record: { kind: "boolean", summary: "with --contract: file every check run in the project's ledger" },
         "no-commit": { kind: "boolean", summary: "verify the task on a clean checkout without settling it or changing its status" },
-        recover: { kind: "boolean", summary: "reconcile a task stuck in verifying (its verifier died) from git: done when its settle commit landed, else reported; or finish a broken preserve reset" },
+        recover: { kind: "boolean", summary: "reconcile a task stuck in verifying (its verifier died) from git: done when its settle commit landed, else reported; finish a broken preserve reset; or return a done task whose named files never landed (land-orphaned, its work preserved)" },
     },
     run: async (context, flags): Promise<VerbResult<VerifyData>> => {
         if (flags.contract !== undefined) return verifyContract(context.cwd, resolve(context.cwd, flags.contract), flags.task, flags.record)

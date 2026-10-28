@@ -21,5 +21,6 @@ checks:
 ---
 Run the suite the input names, once it is set up as the input says, and report what it found. Do not fix what it finds:
 a red suite is a finding, filed `failed` with `verdict: failed` and its findings, not a reason to edit code. The harness
-reruns the same command on the clean checkout; the task is green only when the suite passed and your verdict says so, and
-a verdict that run contradicts is red too.
+reruns the same command on the clean checkout, a jest command scoped to the spec files it names by path (never a
+live-provider suite it does not name), as your dry replay of the contract runs it: run the suite through that replay. The task
+is green only when the suite passed and your verdict says so, and a verdict that run contradicts is red too.

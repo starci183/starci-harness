@@ -22,7 +22,8 @@ export type WorkflowStatus = "defined" | "running" | "blocked" | "paused" | "sto
 
 /**
  * Allowed transitions of a workflow, the one rule every status change goes through (setWorkflowStatus). A paused workflow
- * settles its live tasks but keeps its status until resume or stop; an amend that adds work reopens a done workflow.
+ * settles its live tasks but keeps its status until resume or stop; an amend that adds work, or a done task returned because its
+ * work never landed (`task verify --recover`), reopens a done workflow.
  */
 export const WORKFLOW_TRANSITIONS: Readonly<Record<WorkflowStatus, readonly WorkflowStatus[]>> = {
     defined: ["running", "stopped"],

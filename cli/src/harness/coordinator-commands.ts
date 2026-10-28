@@ -247,7 +247,7 @@ export const finishCommand = (db: DatabaseSync, scope: CommandScope, command: Co
     })
 
 /** The decision kinds `kernel next` returns. */
-export type KernelDecisionKind = "red" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
+export type KernelDecisionKind = "red" | "check-premise" | "stale" | "question" | "conflict" | "goal" | "goal-change" | "escalation-answer" | "shared-need" | "done"
 
 /** The decision kinds `supervisor next` returns. */
 export type SupervisorDecisionKind = "escalation" | "handoff" | "shared-need"

@@ -477,21 +477,67 @@ export const ticketEscalation = (repo: string, project: Project, decision: Decis
     })
 }
 
-/** Files every open escalation of one repository's ledger the Supervisor cannot rule (`ticketEscalation`), as one line each. */
+/** A task the harness left awaiting the owner: a verify that reached no verdict settleNoVerdictMax times (core/task/verify.ts). */
+interface AwaitingTask {
+    readonly id: string
+    readonly workflow: string | null
+    readonly label: string
+    readonly reason: string
+}
+
+/**
+ * Files a task left awaiting the owner as its ticket, once, the task waiting on it: a blocking `verify` defect for Debug's queue
+ * (its verify gave up on a persistent cause it names, which the owner is told on Telegram as every blocking defect is), titled
+ * with the task and that cause. Null for a task that waits on a ticket already.
+ */
+const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask): { readonly ticket: Ticket; readonly outcome: TicketOutcome } | null => {
+    if (readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `task:${task.id}`) !== undefined, false)) return null
+    const flat = `task ${task.id} (${task.label}${task.workflow === null ? "" : `, workflow ${task.workflow}`}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
+    return openTicket({
+        kind: "verify",
+        severity: "blocking",
+        title: flat.length <= 200 ? flat : `${flat.slice(0, 199)}…`,
+        evidence: { task: task.id, ...(task.workflow === null ? {} : { workflow: task.workflow }), question: task.reason },
+        tried: null,
+        proposedDefault: null,
+        options: [],
+        project,
+        workflow: task.workflow,
+        by: "supervisor",
+        seat: process.env.ORCA_TERMINAL_HANDLE ?? null,
+        waiters: [{ repo, subject: `task:${task.id}`, project, workflow: task.workflow }],
+    })
+}
+
+/**
+ * Files every open escalation of one repository's ledger the Supervisor cannot rule (`ticketEscalation`), with or without a topic,
+ * and every task the harness left awaiting the owner (`ticketAwaitingTask`), as one line each.
+ */
 export const ticketEscalations = (repo: string, project: Project): string[] => {
     const db = openExistingLedger(repo)
     if (db === undefined) return []
     let decisions: Decision[]
+    let awaiting: AwaitingTask[]
     try {
         decisions = openDecisions(db, "supervisor")
+        awaiting = db
+            .prepare("SELECT t.id, t.workflow_id, t.label, (SELECT json_extract(e.data_json, '$.reason') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS reason FROM tasks t WHERE t.status = 'awaiting_owner' ORDER BY t.updated_at, t.id")
+            .all()
+            .map((row) => ({ id: String(row.id), workflow: textOf(row.workflow_id), label: String(row.label), reason: textOf(row.reason) ?? "its verify reached no verdict" }))
     } finally {
         db.close()
     }
     const key = repo.replaceAll("\\", "/")
-    return decisions.flatMap((decision) => {
-        const filed = ticketEscalation(key, project, decision)
-        return filed === null ? [] : [`escalation ${decision.id} filed as ticket ${filed.ticket.id} (${filed.ticket.kind}, ${filed.outcome}, seen ${String(filed.ticket.occurrences)} times)`]
-    })
+    return [
+        ...decisions.flatMap((decision) => {
+            const filed = ticketEscalation(key, project, decision)
+            return filed === null ? [] : [`escalation ${decision.id} filed as ticket ${filed.ticket.id} (${filed.ticket.kind}, ${filed.outcome}, seen ${String(filed.ticket.occurrences)} times)`]
+        }),
+        ...awaiting.flatMap((task) => {
+            const filed = ticketAwaitingTask(key, project, task)
+            return filed === null ? [] : [`task ${task.id} awaiting the owner filed as ticket ${filed.ticket.id} (${filed.ticket.kind}, ${filed.outcome}, seen ${String(filed.ticket.occurrences)} times)`]
+        }),
+    ]
 }
 
 /**

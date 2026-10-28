@@ -1,0 +1,142 @@
+schema: starci/scenario@1
+id: kernel-check-premise-amends-checks
+group: orca
+title: "a contract check whose expectation the correct result contradicts reaches the Kernel as check-premise, answered only by amending the checks"
+inject: >-
+  the Kernel's contract asserts, with a `node -e` command check, that the doc still carries the old blocker line, which an earlier
+  fix made obsolete; the Op writes the doc correctly without it, so that check alone is red
+expect: >-
+  kernel next returns a `check-premise` decision (not `red`) carrying the check's command and its output; a plain retry is refused
+  ROUTE_ILLEGAL, and an edit that rewrites the task's checks on route check-premise-amends-checks is applied and runs the task again
+pass:
+  - the decision is check-premise with the check's command and its assertion output, and no red decision is raised
+  - a retry without new checks is refused ROUTE_ILLEGAL
+  - the edit setting new checks answers it and the task runs again
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: premise
+        goal: write doc a without the old blocker line
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+              - check:
+                  kind: command
+                  run: ["node", "-e", "require('node:assert').match(require('node:fs').readFileSync('docs/a.md', 'utf8'), /old blocker/)"]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: premise
+  - seat: kernel:premise
+    starci: [kernel, next, premise, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - worker:
+      task: ${a}
+      files:
+        docs/a.md: "# Doc a\n\nThe blocker is gone.\n"
+  - name: kernel next verifies the task and starts its wave
+    seat: kernel:premise
+    starci: [kernel, next, premise, --wait, "0"]
+    expect: {}
+  - starci: [workflow, wave, premise, --wait, "120"]
+    expect: {}
+  - name: kernel next returns the check-premise decision
+    seat: kernel:premise
+    starci: [kernel, next, premise, --wait, "0"]
+    expect:
+      contains: '"kind": "check-premise"'
+    save:
+      decision: data.decision.id
+      graph: data.digest.graphVersion
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE kind = 'check-premise' AND json_extract(evidence_json, '$.checks[0].name') LIKE 'check-%:command' AND json_extract(evidence_json, '$.checks[0].run') LIKE 'node -e %old blocker%' AND json_extract(evidence_json, '$.checks[0].output') LIKE '%AssertionError%'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM decisions WHERE scope = 'kernel' AND kind = 'red'"
+        equals: [0]
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: premise
+        changes:
+          - op: retry
+            id: a
+  - file:
+      path: cmd-retry.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-premise-retry-1
+        kind: workflow-change
+        workflow: premise
+        basedOn: {graph: ${graph}}
+        answers: [${decision}]
+        route: check-premise-amends-checks
+        change: retry.yaml
+  - name: a plain retry leaves the stale check and is refused
+    seat: kernel:premise
+    starci: [kernel, submit, "${run}/cmd-retry.yaml"]
+    expect:
+      exit: 1
+      code: ROUTE_ILLEGAL
+  - file:
+      path: amend.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: premise
+        reason: the old blocker line was removed by an earlier fix; the check asserted a stale premise
+        changes:
+          - op: edit
+            id: a
+            set:
+              checks:
+                - preset: files-exist
+                  args:
+                    files: [docs/a.md]
+                - check:
+                    kind: command
+                    run: ["node", "-e", "require('node:assert').doesNotMatch(require('node:fs').readFileSync('docs/a.md', 'utf8'), /old blocker/)"]
+  - file:
+      path: cmd-amend.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-premise-amend-1
+        kind: workflow-change
+        workflow: premise
+        basedOn: {graph: ${graph}}
+        answers: [${decision}]
+        route: check-premise-amends-checks
+        change: amend.yaml
+  - name: the edit that amends the checks answers it
+    seat: kernel:premise
+    starci: [kernel, submit, "${run}/cmd-amend.yaml"]
+  - seat: kernel:premise
+    starci: [kernel, next, premise, --wait, "0"]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT answered_by FROM decisions WHERE kind = 'check-premise'"
+        equals: [k-premise-amend-1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM tasks WHERE plan_key = 'a' AND status IN ('queued', 'running')"
+        equals: [1]

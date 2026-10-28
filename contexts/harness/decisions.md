@@ -118,8 +118,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   custody, legal matters and a product choice with no default reach the owner (`OWNER_TOPICS` and `defaultRuling` in
   `cli/src/harness/coordinator-commands.ts`, `ruleDefaults` in `cli/src/core/supervisor/driver.ts`). The tick wakes a Kernel
   whose ready work idles with no live Op and gives it up to the stall ladder past a second threshold (`readyIdle` in
-  `cli/src/core/supervisor/driver.ts`, `stall` of [ops/liveness.yaml](../../ops/liveness.yaml)). A task the harness ended
-  with no red of its own returns to ready at the same try, its last included (`harnessCause` in `cli/src/harness/revive.ts`).
+  `cli/src/core/supervisor/driver.ts`), and wakes a Kernel that leaves a decision or a dead task undecided, escalating it to
+  the Supervisor past a second threshold (`decisionIdle`; both in `stall` of [ops/liveness.yaml](../../ops/liveness.yaml)). A
+  task the harness ended with no red of its own returns to ready at the same try, its last included (`harnessCause` in
+  `cli/src/harness/revive.ts`). Landing is atomic: a green task is on its workflow's branch or returned with its work
+  preserved, never done with its work beside the branch (`lands` in `cli/src/harness/clean-verify.ts`, `preserveEscaped` in
+  `cli/src/core/task/verify.ts`). A check whose premise is stale is the Kernel's to amend, never the worker's
+  (`check-premise`, `cli/src/harness/check-premise.ts`). Every escalation awaiting the owner or Debug, with or without a
+  topic, and every task left awaiting the owner becomes a ticket with its Telegram notice on the next tick or Supervisor next
+  (`ticketEscalations` in `cli/src/harness/tickets.ts`).
   A contract that takes another workflow's branch or landed commit as its source is refused `NEEDS_REQUIRED`: shared needs
   are mandatory across workflows (`cli/src/harness/foreign-source.ts`). Owner, 2026-10-29: the Supervisor and Kernels must
   run on their own.

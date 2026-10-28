@@ -31,6 +31,7 @@ import type { SweptTerminal } from "../../harness/terminal-sweep.js"
 import { projectRepositories, registeredRepositories, slotsOfRepository } from "../../harness/project-workers.js"
 import { recordEvent } from "../../harness/tasks.js"
 import { ticketEscalations } from "../../harness/tickets.js"
+import { tickNotices } from "../../harness/telegram-bridge.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
 import { DISPATCHING, getWorkflow, listWorkflows, setWorkflowStatus, snapshotOf } from "../../harness/workflow.js"
@@ -89,8 +90,11 @@ const relayed = (decision: SupervisorDecision): boolean =>
 /** The event the tick records when it wakes, or gives up, a Kernel whose workflow has ready work and no live Op (`readyIdle`). */
 const READY_IDLE_WOKEN = "ready-idle-woken"
 
+/** The event the tick records when it wakes a Kernel over work nobody decides, or escalates that work to the Supervisor. */
+const DECISION_IDLE = "decision-idle"
+
 /** The events the drivers record about a seat rather than the work: relaunching a Kernel, nudging, waking or giving up a stalled seat, or handing the Supervisor a decision, is not progress. */
-const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED, READY_IDLE_WOKEN]
+const NOT_PROGRESS: readonly string[] = ["kernel-relaunched", "workflow-coordinator", "workflow-worktree", "workflow-kernel", STALL_NUDGED, STALL_GAVE_UP, DECISION_RELAYED, READY_IDLE_WOKEN, DECISION_IDLE]
 
 /** The last time a workflow's work moved (its own events and its tasks', but none a driver records about a seat), the Kernel's progress clock. */
 const lastProgress = (db: DatabaseSync, workflowId: string): string | null => {
@@ -335,6 +339,91 @@ const readyIdle = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow
     return `${workflow.id}: ready work (${named}) with no live Op since ${clock}: Kernel woken`
 }
 
+
+/** One thing a workflow waits on its Kernel for, since `clock`: an open Kernel decision, or a stuck task its last answer held. */
+interface Undecided {
+    readonly item: string
+    readonly clock: string
+    readonly what: string
+}
+
+/** A non-empty ledger text, else null. */
+const textOrNull = (value: unknown): string | null => (typeof value === "string" && value !== "" ? value : null)
+
+/** The later of two ledger times. */
+const later = (a: string, b: string): string => (a > b ? a : b)
+
+/**
+ * What a workflow waits on its Kernel for: each open Kernel decision (since it was raised), and each failed or returned task with
+ * no open decision whose last Kernel decision was answered without moving it (since that answer, or the task's last change), unless
+ * the escalation that answer filed is still open with the Supervisor (that wait is the owner's or Debug's, ticketed already) or
+ * it never had a Kernel decision (parked on a shared need).
+ */
+const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
+    const open = openDecisions(db, "kernel", workflowId)
+    const subjects = new Set(open.map((decision) => decision.subject))
+    const stuck = snapshotOf(db, workflowId).views.flatMap((view): Undecided[] => {
+        const task = view.task
+        if (task === null || (view.state !== "failed" && view.state !== "returned") || subjects.has(task.id)) return []
+        const last = db.prepare("SELECT id, kind, raised_at, answered_at, answered_by FROM decisions WHERE scope = 'kernel' AND workflow_id = ? AND subject = ? ORDER BY raised_at DESC, id DESC LIMIT 1").get(workflowId, task.id)
+        // A task with no Kernel decision at all is parked (on a shared need, whose router decides): not the Kernel's to wake on.
+        if (last === undefined) return []
+        const answeredBy = textOrNull(last.answered_by)
+        if (answeredBy !== null && db.prepare("SELECT 1 FROM decisions WHERE scope = 'supervisor' AND workflow_id = ? AND subject = ? AND answered_at IS NULL").get(workflowId, answeredBy) !== undefined) return []
+        const changed = String(db.prepare("SELECT updated_at FROM tasks WHERE id = ?").get(task.id)?.updated_at ?? "")
+        const decided = textOrNull(last.answered_at) ?? String(last.raised_at)
+        const held = `${String(last.id)} (${String(last.kind)}) answered by ${answeredBy ?? "-"}`
+        return [{ item: `${view.key}:${task.id}`, clock: later(changed, decided), what: `${view.key} (task ${task.id} ${view.state}, ${held})` }]
+    })
+    return [...open.map((decision) => ({ item: decision.id, clock: decision.raisedAt, what: `${decision.id} (${decision.kind} on ${decision.subject})` })), ...stuck]
+}
+
+
+/**
+ * Work nobody decides: a dispatching workflow whose Kernel, alive, leaves an item of `undecided` past stall.decisionIdleMinutes
+ * (counted from the later of the item's clock and the Kernel seat's launch) is woken once per seat and item with
+ * stall.prompts.decisionIdle naming each such item; an item past stall.decisionStallMinutes escalates once to the Supervisor
+ * (kind harness, so its ticket reaches Debug's queue and the owner's chat). Neither relaunches the Kernel.
+ */
+const decisionIdle = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow | undefined): Promise<string[]> => {
+    const { root, binary, cwd, rules } = scope
+    const stall = loadStallRules()
+    if (seat?.handle == null || seat.terminal === null || !DISPATCHING.includes(workflow.status)) return []
+    const terminal = seat.terminal
+    const { items, done } = withLedger(root, (db) => ({
+        items: undecided(db, workflow.id).map((entry) => ({ ...entry, clock: later(entry.clock, seat.startedAt) })),
+        done: db
+            .prepare(`SELECT json_extract(data_json, '$.seat') AS seat, json_extract(data_json, '$.item') AS item, json_extract(data_json, '$.clock') AS clock, json_extract(data_json, '$.step') AS step FROM events WHERE kind = '${DECISION_IDLE}' AND subject = ?`)
+            .all(workflow.id)
+            .map((row) => ({ seat: String(row.seat), key: `${String(row.item)}@${String(row.clock)}`, step: String(row.step) })),
+    }))
+    const lines: string[] = []
+    const stalled = items.filter((entry) => olderThan(entry.clock, stall.decisionStallMinutes) && !done.some((event) => event.step === "escalated" && event.key === `${entry.item}@${entry.clock}`))
+    for (const entry of stalled) {
+        const id = withLedger(root, (db) =>
+            inTransaction(db, () => {
+                recordEvent(db, DECISION_IDLE, workflow.id, { seat: seat.id, item: entry.item, clock: entry.clock, step: "escalated" })
+                return raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `kernel-undecided:${entry.item}@${entry.clock}`, evidence: { project: root, escalation: { kind: "harness", question: `the Kernel of ${workflow.id} (seat ${seat.id}) left ${entry.what} undecided since ${entry.clock}, past ${String(stall.decisionStallMinutes)} min, though it was woken; decide it for the Kernel (a goal-change or stop), relaunch the Kernel, or take it to the owner` } } })
+            }),
+        )
+        lines.push(`${workflow.id}: ${entry.what} undecided past ${String(stall.decisionStallMinutes)} min: escalated to the Supervisor (${id})`)
+    }
+    const due = items.filter((entry) => olderThan(entry.clock, stall.decisionIdleMinutes) && !done.some((event) => event.seat === seat.id && event.step === "woken" && event.key === `${entry.item}@${entry.clock}`))
+    if (due.length === 0) return lines
+    withLedger(root, (db) => {
+        for (const entry of due) recordEvent(db, DECISION_IDLE, workflow.id, { seat: seat.id, item: entry.item, clock: entry.clock, step: "woken" })
+    })
+    const since = due.map((entry) => entry.clock).toSorted((a, b) => a.localeCompare(b))[0] ?? ""
+    const named = due.map((entry) => entry.what).join("; ")
+    const text = promptOf(stall.prompts.decisionIdle, { workflow: workflow.id, tasks: named, since, wait: String(rules.nextWaitSeconds) })
+    try {
+        await terminalSend(binary, { terminal, text, retryRequest: requestIdOf("decision-idle", `${seat.id}\0${due.map((entry) => `${entry.item}@${entry.clock}`).join("\0")}`) }, cwd)
+    } catch (error: unknown) {
+        return [...lines, `${workflow.id}: ${named} undecided; the wake was not delivered (${asRefusal(error).code})`]
+    }
+    return [...lines, `${workflow.id}: ${named} undecided past ${String(stall.decisionIdleMinutes)} min: Kernel woken`]
+}
+
 /** The ready-idle events of one Kernel seat: the clock each was recorded for and its step (woken, gave-up). */
 const eventsOfSeat = (db: DatabaseSync, kind: string, workflowId: string, seatId: string): { readonly clock: string; readonly step: string }[] =>
     db
@@ -449,7 +538,7 @@ const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBina
             lines.push(...opActions.map((action) => `${workflow.id}: ${action.task ?? "-"} ${action.detail}`))
             try {
                 const current = withLedger(root, (db) => ({ workflow: getWorkflow(db, workflow.id), seat: kernelSeatOf(db, workflow.id) }))
-                lines.push((await readyIdle(scope, current.workflow, current.seat)) ?? "")
+                lines.push((await readyIdle(scope, current.workflow, current.seat)) ?? "", ...(await decisionIdle(scope, current.workflow, current.seat)))
             } catch (error: unknown) {
                 lines.push(`${workflow.id}: ready work not judged (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
             }
@@ -515,8 +604,17 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
             actions.push(...(await tendWorkers(context, attached, binary, project)))
         }
         sweepMs = Math.max(sweepMs, Date.now() - swept)
-        // Every escalation the Supervisor cannot rule becomes its ticket: a harness defect for Debug, an owner question for the owner.
-        if (attached !== null) actions.push(...repos.flatMap((repo) => ticketEscalations(repo, project)))
+        // Every escalation the Supervisor cannot rule, and every task left awaiting the owner, becomes its ticket: a defect for
+        // Debug, a question for the owner; the owner's Telegram notices go out in the same round (the claims make it safe beside
+        // a running bridge or tick).
+        if (attached !== null) {
+            const filed = repos.flatMap((repo) => ticketEscalations(repo, project))
+            actions.push(...filed)
+            if (filed.length > 0) {
+                const notices = await tickNotices()
+                if (notices.line !== null) actions.push(notices.line)
+            }
+        }
         const decisions = openSupervisorDecisions(repos).filter((open) => !awaitsOwner(open) || attached === null || !relayed(open))
         const handOver = (decision: SupervisorDecision): SupervisorNext => {
             const digest = withLedger(decision.project, (db) => {

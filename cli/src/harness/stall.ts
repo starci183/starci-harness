@@ -28,7 +28,9 @@ const stallSchema = z.strictObject({
     startDeadlineMinutes: z.number().nonnegative(),
     readyIdleMinutes: z.number().positive(),
     readyStallMinutes: z.number().positive(),
-    prompts: z.strictObject({ supervisor: z.string().min(1), kernel: z.string().min(1), op: z.string().min(1), readyIdle: z.string().min(1) }),
+    decisionIdleMinutes: z.number().positive(),
+    decisionStallMinutes: z.number().positive(),
+    prompts: z.strictObject({ supervisor: z.string().min(1), kernel: z.string().min(1), op: z.string().min(1), readyIdle: z.string().min(1), decisionIdle: z.string().min(1) }),
 })
 
 /** The `stall` block of ops/liveness.yaml: when an agent idle at its prompt counts as stalled, and the ladder's bounds. */

@@ -12,6 +12,32 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Atomic landing.** A worker's brief names its own Op worktree as its repository (it named the workflow's worktree, so
+  workers wrote there and their tasks settled done with nothing landed). `lands` is red when a result names files under
+  allowPaths while the candidate changes none, and every ending of an Op's task preserves whatever sits dirty under its
+  allowPaths in the checkout it lands on as the task's work and puts that checkout back under the land lock (`land-escaped`),
+  so a green task is on its branch or returned with its work preserved, and a stale leaked copy no longer refuses the
+  fast-forward (`SETTLE_REF_FAILED` to awaiting_owner). `task verify --recover` returns a done task whose named files never
+  landed: its work preserved, failed `land-orphaned`, a harness cause that revives it at the same try, its workflow reopened
+  when it had ended done. Bench: `land-escaped-work-returns-preserved`, `land-stale-escape-cleared-then-lands`,
+  `land-orphan-recover-returns-task`.
+- **Test runs scoped to the task's own specs.** A jest command check (tests-pass, suite-verdict) runs the spec files it names
+  by `--runTestsByPath`, which no array option of the script (`--selectProjects e2e`) can swallow; an integration, e2e or
+  contract run naming none runs the task's changed specs, else every spec of its kinds; a live-provider spec (`useSandbox`)
+  runs only when its file or folder is named (`scopedTests` in `cli/src/harness/coverage-scope.ts`). Bench:
+  `verify-e2e-scoped-to-own-specs`.
+- **check-premise decisions.** A failed task whose only reds are command checks its contract wrote, each output stating an
+  expectation the otherwise green result contradicts, reaches the Kernel as `check-premise` with each check's command and
+  output; route `check-premise-amends-checks` takes only an edit that sets the task's checks (`cli/src/harness/check-premise.ts`,
+  ops/coordinators/kernel.md). Bench: `kernel-check-premise-amends-checks`.
+- **Undecided work wakes the Kernel.** The tick types a live Kernel `prompts.decisionIdle` naming each open Kernel decision, and
+  each failed or returned task whose last decision was answered without moving it, past `decisionIdleMinutes`; past
+  `decisionStallMinutes` it escalates the item to the Supervisor (kind harness, ticketed) (`decisionIdle`, `stall` of
+  ops/liveness.yaml). Bench: `supervisor-tick-wakes-kernel-on-undecided`.
+- **Every owner wait is ticketed.** A task left awaiting_owner becomes a blocking `verify` ticket naming its verify's last
+  reason, beside the escalations (with or without a topic) already ticketed, and `supervisor next` sends the owner's Telegram
+  notices in the round that filed them. Bench: `ticket-legacy-owner-escalation-and-awaiting-task`.
+
 - **Ticket cards on Telegram.** Every ticket notice is the one banner `ops/telegram/ticket-banner.png` (generated once with
   Codex's image generation; `banner` of `ops/telegram.yaml`), uploaded once and then reused by its Telegram file id, captioned
   in Vietnamese with the ticket's facts and carrying inline buttons: a defect's details, hand to Debug, the ticket list and a

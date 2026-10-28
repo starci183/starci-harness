@@ -66,6 +66,8 @@ export interface CleanVerifyInput {
     readonly fork?: string
     /** False when none of the checks runs a tool from node_modules (a task whose heavy checks wait for the wave): no install, no setup. */
     readonly install?: boolean
+    /** The checkout the task lands on when it is not the task's own (an Op worktree's target): work found there under allowPaths was written outside the task's checkout. */
+    readonly target?: string
 }
 
 interface Built {
@@ -141,18 +143,36 @@ const foreignCommits = async (root: string, since: string | undefined, parent: s
         .map(([sha = ""]) => sha.trim())
 }
 
-const landsDetail =(changed: readonly string[], missing: readonly string[]): string => {
+const landsDetail = (changed: readonly string[], missing: readonly string[]): string => {
     if (missing.length > 0) return `changed under allowPaths but not in the candidate, so they would never land: ${listed(missing)}`
     if (changed.length === 0) return "nothing changed under allowPaths; nothing lands"
     return `${String(changed.length)} file(s) land: ${listed(changed)}`
 }
 
+/** The files a result's output names (its `files`) under allowPaths, forward slashes; none when it names none. */
+export const declaredFiles = (output: unknown, allowPaths: readonly string[]): string[] => {
+    const files: unknown[] = typeof output === "object" && output !== null && "files" in output && Array.isArray(output.files) ? output.files : []
+    return files
+        .filter((file): file is string => typeof file === "string")
+        .map((file) => file.replaceAll("\\", "/").replace(/^\.\//, ""))
+        .filter((file) => underPaths(file, allowPaths))
+}
+
+/** The files of `checkout` changed against its HEAD or untracked under `allowPaths`, sorted. */
+const dirtyUnder = async (checkout: string, allowPaths: readonly string[]): Promise<string[]> => {
+    const specs = ["--", ...allowPaths.map(literal)]
+    const tracked = nulPaths(await git(checkout, ["diff", "--name-only", "-z", "HEAD", ...specs]))
+    const untracked = nulPaths(await git(checkout, ["ls-files", "--others", "--exclude-standard", "-z", ...specs]))
+    return [...new Set([...tracked, ...untracked])].sort((left, right) => left.localeCompare(right))
+}
+
 /**
  * Commits HEAD plus the task's own work under its allowPaths through a temporary index; the user's index and work tree stay
  * as they are. A dirty file under allowPaths that is not the task's own (harness/baseline.ts notOwn) is left out and named in a note. The `lands` outcome is red when work under allowPaths would not land through the harness: a dirty or untracked
- * file missing from the candidate, or a commit made while the task ran (since its creation) that changed its allowPaths without the
- * harness trailer (a worker that committed itself). A task never settles "done, nothing landed" while its work sits in the
- * tree or in a commit nobody verified.
+ * file missing from the candidate, a commit made while the task ran (since its creation) that changed its allowPaths without the
+ * harness trailer (a worker that committed itself), or a filed result naming files under allowPaths while the candidate changes
+ * none (the work was written outside the task's checkout: into the checkout it lands on, `target`, which the detail names, or
+ * elsewhere). A task never settles "done, nothing landed" while its work sits in a tree or in a commit nobody verified.
  */
 const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
     const { root, contract, message } = input
@@ -175,13 +195,18 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
         const changed = nulPaths(await git(root, ["diff", "--name-only", "-z", parent, candidate]))
         const missing = [...new Set([...unstaged, ...unknown])].filter((file) => underPaths(file, contract.context.allowPaths)).sort((left, right) => left.localeCompare(right))
         const foreign = await foreignCommits(root, input.since, parent, contract.context.allowPaths, input.fork)
+        // A result naming files while the candidate changes none: the work went to another checkout and would settle as nothing.
+        const unlanded = changed.length === 0 && input.result !== undefined && "output" in input.result ? declaredFiles(input.result.output, contract.context.allowPaths) : []
+        const escaped = unlanded.length === 0 || input.target === undefined ? [] : await dirtyUnder(input.target, contract.context.allowPaths)
         const lands: CheckOutcome = {
             name: "lands",
             kind: "files",
-            status: missing.length === 0 && foreign.length === 0 ? "green" : "red",
+            status: missing.length === 0 && foreign.length === 0 && unlanded.length === 0 ? "green" : "red",
             exitCode: null,
             detail: [
                 landsDetail(changed, missing),
+                ...(unlanded.length === 0 ? [] : [`the result names ${listed(unlanded)}, but the task's checkout ${root} changes none of them: the work was written outside it, so nothing of it would land`]),
+                ...(escaped.length === 0 ? [] : [`${listed(escaped)} sit uncommitted under allowPaths in ${input.target ?? ""}, the checkout the task lands on: they are preserved as this task's work and that checkout is put back`]),
                 ...(foreign.length === 0 ? [] : [`committed under allowPaths while the task ran, by someone other than the harness (no Starci-Task trailer), so the harness neither lands nor credits it: ${listed(foreign.map((sha) => sha.slice(0, 12)))}`]),
                 ...plan.notes,
                 ...(others.length === 0 ? [] : [`dirty under allowPaths before the task's work began, not its own, left out: ${listed(others)}`]),
