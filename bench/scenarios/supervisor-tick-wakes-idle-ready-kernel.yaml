@@ -1,0 +1,98 @@
+schema: starci/scenario@1
+id: supervisor-tick-wakes-idle-ready-kernel
+group: orca
+title: "ready work with no live Op wakes its Kernel from the tick, naming the ready tasks, then goes to the stall ladder"
+inject: >-
+  the workflow's task is queued and its Kernel, alive and holding a fresh lease, launches nothing: no Op runs for fifteen
+  minutes, then for thirty
+expect: >-
+  past readyIdleMinutes the tick types the Kernel one prompt naming the ready task, and a second tick in the same idle spell types
+  nothing more; past readyStallMinutes the tick gives the Kernel up as the stall ladder does (a stall-gave-up event, its member's
+  stalled outcome) and relaunches it
+pass:
+  - one ready-idle wake typed into the Kernel's terminal, naming task a, and no second one in the same idle spell
+  - past the second threshold one stall-gave-up and one Kernel relaunch
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: one
+        goal: bench workflow one
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: one
+  - name: a tick right away leaves a Kernel with fresh ready work alone
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'ready-idle-woken'"
+        equals:
+          - 0
+  - &idle
+    name: nothing moved for fifteen minutes
+    sql:
+      db: ledger
+      exec: >-
+        UPDATE events SET at = strftime('%Y-%m-%dT%H:%M:%fZ', at, '-15 minutes');
+        UPDATE seats SET started_at = strftime('%Y-%m-%dT%H:%M:%fZ', started_at, '-15 minutes')
+  - name: the tick wakes the Kernel with the ready task named
+    starci: [supervisor, tick]
+    expect:
+      contains: "Kernel woken"
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${kernel.one.terminal}
+        count: 1
+  - name: a second tick in the same idle spell types nothing more
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: ${kernel.one.terminal}
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.ready[0]') FROM events WHERE kind = 'ready-idle-woken'"
+        equals:
+          - a
+  - *idle
+  - name: past the second threshold the tick gives the Kernel up and relaunches it
+    starci: [supervisor, tick]
+    expect:
+      contains: "relaunched its Kernel"
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'stall-gave-up'"
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'kernel-relaunched'"
+        equals:
+          - 1

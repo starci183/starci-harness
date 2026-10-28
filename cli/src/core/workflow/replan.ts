@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite"
+import { assertOwnSources } from "../../harness/foreign-source.js"
 import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../harness/goal.js"
 import type { Goal } from "../../harness/goal.js"
 import { applyChanges, buildGraph, isGeneratedKey, readPlanSource, uatWalksOf } from "../../harness/graph.js"
@@ -115,7 +116,8 @@ const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["
  * applied to the current graph, or a desired graph (a whole workflow file of the same id and runner) reconciled against it by
  * task key. The header always carries the current goal (only a goal change moves it); the new graph must be fit, inside the
  * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK), walk the lane of every Work record it
- * covers (FLOW_INCOMPLETE) and keep every new attempt within its try
+ * covers (FLOW_INCOMPLETE), take no other workflow's branch or landed commit as a new task's source (NEEDS_REQUIRED) and keep
+ * every new attempt within its try
  * budget. Drops of done tasks add their revert nodes. `unchanged` says it moves nothing.
  */
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace, options: ReplanOptions = {}): Replan => {
@@ -133,6 +135,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
     assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
     assertFlow(workflow.id, built.nodes, { repo: place.repo, db, requires: header.requires ?? [] }, ops)
+    assertOwnSources(db, workflow.id, built.nodes, new Set(snapshot.nodes.map((node) => node.contractHash)))
     const problems: string[] = []
     for (const row of classification) {
         if (!STARTS.has(row.class)) continue

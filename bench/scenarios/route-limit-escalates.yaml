@@ -139,6 +139,7 @@ steps:
         answers: [${red}]
         escalation:
           kind: owner
+          topic: product
           question: the cart audit drifted after five code repairs; how should the cart total sit?
   - name: the owner escalation is applied
     starci: [kernel, submit, "${run}/cmd-escalate.yaml"]

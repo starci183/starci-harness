@@ -6,6 +6,7 @@ import { gitCommonDir, repositoryRoot, samePath } from "../shared/git.js"
 import type { Contract } from "./contract.js"
 import { contractHash, parseContract } from "./contract.js"
 import { now } from "./ledger.js"
+import { harnessCause } from "./revive.js"
 
 /** The states of a task. Transitions are allowed only along TRANSITIONS; the ledger keeps facts, this module keeps the rules. */
 export type TaskStatus = "queued" | "running" | "reported" | "verifying" | "done" | "failed" | "awaiting_owner" | "cancelled" | "effect_unknown"
@@ -161,14 +162,11 @@ export const workflowWorktree = (db: DatabaseSync, workflowId: string | undefine
 }
 
 /**
- * The try number a retry of `previous` takes: the next one, unless `previous` failed only on a wave red not proven its own (a shared
- * run that names no file, harness/wave.ts), which, like an infrastructure failure, spends no try: the retry keeps its number.
+ * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (revive.ts `harnessCause`: a wave
+ * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline), which spends no try: the
+ * retry keeps its number, even past the last try.
  */
-export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => {
-    const row = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(previous.id)
-    const own = row === undefined ? true : (JSON.parse(String(row.data_json)) as { readonly own?: boolean }).own !== false
-    return previous.tryNo + (previous.status === "failed" && !own ? 0 : 1)
-}
+export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => previous.tryNo + (harnessCause(db, previous.id) === null ? 1 : 0)
 
 /**
  * Registers a queued task for a fit contract; a retry names the task it retries and gets its try number (tryAfter). The task's

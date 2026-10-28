@@ -8,6 +8,8 @@ import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
 import { inTransaction, now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
+import { harnessCause, revivableTasks, TASK_REVIVED } from "./revive.js"
+import type { HarnessCause } from "./revive.js"
 import { createTask, getTask, recordEvent, tryAfter } from "./tasks.js"
 import type { ResultStatus, TaskRow, TaskStatus } from "./tasks.js"
 
@@ -77,6 +79,8 @@ export interface WorkflowTask {
     readonly redChecks: string | null
     readonly lost: boolean
     readonly createdAt: string
+    /** Set when the harness, not the task, ended it and it comes back to ready at the same try (harness/revive.ts). */
+    readonly revive: HarnessCause | null
 }
 
 /** One recorded graph version: when, why, and the replan classification that produced it (empty for the first). */
@@ -284,9 +288,9 @@ export const recordKernel = (db: DatabaseSync, id: string, update: KernelUpdate)
     return getWorkflow(db, id)
 }
 
-/** Every ledger task of a workflow, oldest first. */
-export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTask[] =>
-    db
+/** Every ledger task of a workflow, oldest first, each harness-killed one that comes back to ready marked with its cause. */
+export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTask[] => {
+    const rows = db
         .prepare(
             // The newest attempt's result and the harness checks that were red on it, so a blocked reason names what failed.
             "SELECT tasks.*, (SELECT results.status FROM attempts JOIN results ON results.attempt_id = attempts.id WHERE attempts.task_id = tasks.id ORDER BY attempts.seq DESC LIMIT 1) AS result_status, " +
@@ -306,14 +310,21 @@ export const workflowTasks = (db: DatabaseSync, workflowId: string): WorkflowTas
             lost: Number(row.lost) === 1,
             createdAt: text(row.created_at),
         }))
+    const revivable = revivableTasks(db, rows)
+    return rows.map((row) => ({ ...row, revive: revivable.get(row.id) ?? null }))
+}
 
-/** The task carrying each node: the newest task of the node's plan key dispatched for the node's hash. */
+/**
+ * The task carrying each node: the newest task of the node's plan key dispatched for the node's hash. A harness-killed task that
+ * comes back (`revive`) carries nothing, so its node is ready again and the next dispatch retries it at the same try.
+ */
 export const nodeTasks = (nodes: readonly PlanNode[], tasks: readonly WorkflowTask[]): Map<string, NodeTask> => {
     const current = new Map<string, NodeTask>()
     const hashes = new Map(nodes.map((node) => [node.key, node.hash]))
     for (const task of tasks) {
         if (task.key === null || hashes.get(task.key) !== task.hash) continue
-        current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost })
+        if (task.revive !== null) current.delete(task.key)
+        else current.set(task.key, { id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost })
     }
     return current
 }
@@ -414,10 +425,14 @@ const pathSet = (contract: Contract): string => [...new Set(contract.context.all
 
 /**
  * The task a new dispatch of a node retries: the newest failed task of the same plan key doing the same work (label and
- * allowPaths). It gets the next try number; when the try budget of either contract is spent the dispatch is refused.
+ * allowPaths), or a cancelled one the harness ended (revive.ts `harnessCause`). It gets the next try number, or keeps its own
+ * when the harness ended it (tasks.ts `tryAfter`); when the try budget of either contract is spent the dispatch is refused.
  */
 export const retryOfNode = (db: DatabaseSync, workflowId: string, node: PlanNode): TaskRow | undefined => {
-    const row = db.prepare("SELECT id FROM tasks WHERE workflow_id = ? AND plan_key = ? AND status = 'failed' ORDER BY created_at DESC, rowid DESC LIMIT 1").get(workflowId, node.key)
+    const row = db
+        .prepare("SELECT id, status FROM tasks WHERE workflow_id = ? AND plan_key = ? AND status IN ('failed', 'cancelled') ORDER BY created_at DESC, rowid DESC")
+        .all(workflowId, node.key)
+        .find((candidate) => text(candidate.status) === "failed" || harnessCause(db, text(candidate.id)) !== null)
     if (row === undefined) return undefined
     const previous = getTask(db, text(row.id))
     if (previous.label !== node.contract.label || pathSet(previous.contract) !== pathSet(node.contract)) return undefined
@@ -440,11 +455,14 @@ export const createNodeTask = (db: DatabaseSync, workflowId: string, node: PlanN
         if (!DISPATCHING.includes(workflow.status)) throw new Refusal("WORKFLOW_NOT_DISPATCHING", `workflow ${workflowId} is ${workflow.status}; nothing new is dispatched`)
         const planned = db.prepare("SELECT node_hash FROM plan_nodes WHERE workflow_id = ? AND graph_version = ? AND plan_key = ?").get(workflowId, workflow.graphVersion, node.key)
         if (planned === undefined || text(planned.node_hash) !== node.hash) throw new Refusal("WORKFLOW_MOVED", `${node.key} is not in graph version ${String(workflow.graphVersion)} as read; step again`)
-        if (db.prepare("SELECT 1 FROM tasks WHERE workflow_id = ? AND plan_key = ? AND plan_hash = ?").get(workflowId, node.key, node.hash) !== undefined) {
+        // A node's task blocks a second dispatch unless the harness ended it and it comes back (workflowTasks `revive`).
+        if (workflowTasks(db, workflowId).some((task) => task.key === node.key && task.hash === node.hash && task.revive === null)) {
             throw new Refusal("NODE_TAKEN", `${node.key} was dispatched already`)
         }
         const previous = retryOfNode(db, workflowId, node)
+        const cause = previous === undefined ? null : harnessCause(db, previous.id)
         const created = createTask(db, node.contract, { workflowId, ...(previous === undefined ? {} : { retryOf: previous.id }) })
+        if (cause !== null) recordEvent(db, TASK_REVIVED, created.id, { from: previous?.id ?? null, cause, tryNo: created.tryNo })
         // The dependency tasks it runs on: the early cutoff later compares their settled results with the current ones.
         const carrying = nodeTasks(graphOf(db, workflowId, workflow.graphVersion), workflowTasks(db, workflowId))
         const inputs = Object.fromEntries(node.dependsOn.map((dep) => [dep, carrying.get(dep)?.id ?? null]))

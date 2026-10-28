@@ -8,6 +8,19 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- **Coordinators run on their own.** An `owner` escalation names its `topic` (`scope`, `money`, `credentials`, `legal`,
+  `product`) and may propose a `default` with its `reason` (`COMMAND_INVALID` otherwise); the Supervisor's driver (`supervisor
+  next` and `supervisor tick`) decides a `product` choice that carries a default on that default, answers its Kernel with an
+  `escalation-answer` and records the reasoning (`escalation-defaulted`), so only scope, money, credentials, legal matters and a
+  product choice with no default reach the owner and Telegram. The tick wakes a Kernel whose workflow holds ready work with no
+  live Op past `stall.readyIdleMinutes` with a prompt naming the ready tasks, and gives it up to a relaunch past
+  `stall.readyStallMinutes` (`ops/liveness.yaml`). A task the harness ended with no red of its own (a wave red not proven its
+  own, a fenced or lost launch, a verify stopped by infrastructure or its deadline) returns to ready and is dispatched again at
+  the same try, its last included (`task-revived`, at most `reviveMax` per node; past it the Kernel's red names the
+  `harnessCause`). `workflow define` and every replan refuse `NEEDS_REQUIRED` a task whose input names another workflow's
+  branch or landed commit as its source. Bench: `supervisor-defaulted-escalation-decided`,
+  `supervisor-tick-wakes-idle-ready-kernel`, `kernel-harness-killed-task-revived`, `kernel-cross-branch-copy-refused`.
+
 - **Shared needs.** A worker that finds a shared thing missing files `task result --status blocked --needs <key> [--rule]
   [--paths]... [--note]` (or a `needs` list in its output) instead of building it. Keys are `capability:`, `package:` or
   `config:` names, normalized, and a reported path under a shared root of the new `ops/needs.yaml` names the key. One need

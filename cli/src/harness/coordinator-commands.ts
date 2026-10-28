@@ -29,11 +29,47 @@ export type CommandScope = "kernel" | "supervisor"
 export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harness"] as const
 
 /**
- * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, credentials, scope, money; the Supervisor
- * asks the owner in its terminal) and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`).
- * The Supervisor relays either ruling (ops/coordinators/supervisor.md).
+ * What an `owner` escalation asks about. `scope` (a change of the accepted goal), `money` (a price, a real charge), `credentials`
+ * (an account, a key, custody), and `legal` are the owner's whatever default is proposed; a `product` choice inside the goal is
+ * the Supervisor's to decide on the escalation's `default` when it carries one, and the owner's when it carries none.
+ */
+export const OWNER_TOPICS = ["scope", "money", "credentials", "legal", "product"] as const
+
+/** The owner topics no default settles: the owner rules them even when the escalation proposes one. */
+const OWNER_ONLY: readonly (typeof OWNER_TOPICS)[number][] = ["scope", "money", "credentials", "legal"]
+
+/**
+ * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, `OWNER_TOPICS`; the Supervisor asks the owner
+ * in its terminal), except a `product` one carrying a default, which the Supervisor's driver decides on that default
+ * (`defaultRuling`); and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`). The
+ * Supervisor relays either ruling (ops/coordinators/supervisor.md).
  */
 const OWNER_RULED: readonly (typeof ESCALATION_KINDS)[number][] = ["owner", "harness"]
+
+const escalationSchema = z
+    .strictObject({
+        kind: z.enum(ESCALATION_KINDS),
+        question: z.string().min(1),
+        paths: z.array(z.string()).optional(),
+        // An owner escalation's topic, and the answer the Kernel proposes with its reason (the goal's words, or the plan's).
+        topic: z.enum(OWNER_TOPICS).optional(),
+        default: z.string().min(1).optional(),
+        reason: z.string().min(1).optional(),
+    })
+    .superRefine((escalation, context) => {
+        const problem = (message: string): void => {
+            context.addIssue({ code: "custom", message })
+        }
+        if (escalation.kind !== "owner") {
+            if (escalation.topic !== undefined || escalation.default !== undefined || escalation.reason !== undefined) problem(`topic, default and reason belong to an owner escalation; a ${escalation.kind} escalation is ruled by the Supervisor`)
+            return
+        }
+        if (escalation.topic === undefined) problem(`an owner escalation names its topic (${OWNER_TOPICS.join(", ")}); a product choice inside the goal also names the default the goal or the plan implies, with its reason, and the Supervisor decides on it`)
+        if ((escalation.default === undefined) !== (escalation.reason === undefined)) problem("an owner escalation names default and reason together: the answer it proposes and why (the goal's words or the plan's)")
+    })
+
+/** An escalation as a Kernel files it. */
+export type Escalation = z.infer<typeof escalationSchema>
 
 const commandSchema = z.strictObject({
     schema: z.literal("starci/command@1"),
@@ -51,7 +87,7 @@ const commandSchema = z.strictObject({
     change: z.string().min(1).optional(),
     // The legal route (ops/routes.yaml) a workflow-change takes for the red or question decisions it answers (harness/routes.ts).
     route: z.string().min(1).optional(),
-    escalation: z.strictObject({ kind: z.enum(ESCALATION_KINDS), question: z.string().min(1), paths: z.array(z.string()).optional() }).optional(),
+    escalation: escalationSchema.optional(),
     handoff: z.strictObject({ summary: z.string().min(1) }).optional(),
     mode: z.enum(["graceful", "hard"]).optional(),
     project: z.string().min(1).optional(),
@@ -268,16 +304,33 @@ export const openDecisions = (db: DatabaseSync, scope: CommandScope, workflowId?
         : db.prepare("SELECT * FROM decisions WHERE scope = ? AND workflow_id = ? AND answered_at IS NULL ORDER BY raised_at, id").all(scope, workflowId)
     ).map(toDecision)
 
+/** The escalation a decision carries (its evidence's `escalation`), when it is one. */
+export const escalationOf = (decision: Decision): Partial<Escalation> | null => {
+    const evidence = decision.evidence
+    if (decision.kind !== "escalation" || typeof evidence !== "object" || evidence === null || !("escalation" in evidence)) return null
+    const escalation = evidence.escalation
+    return typeof escalation === "object" && escalation !== null ? escalation : null
+}
+
 /**
- * Whether a decision awaits an answer from outside the Supervisor: an escalation of kind `owner` (the owner rules it) or `harness`
- * (Debug rules it). Its Supervisor waits for that answer, so it is no work of the Supervisor's own: `supervisor next` hands it
- * over once, after every decision the Supervisor rules, and it never makes an idle Supervisor stalled.
+ * The ruling the Supervisor's driver takes on an owner escalation without the owner: its proposed `default` with its reason, for
+ * a `product` choice inside the goal. Null for any other decision, and for an owner topic no default settles (`OWNER_ONLY`).
+ */
+export const defaultRuling = (decision: Decision): { readonly ruling: string; readonly reason: string } | null => {
+    const escalation = escalationOf(decision)
+    if (escalation?.kind !== "owner" || escalation.default === undefined || escalation.topic === undefined || OWNER_ONLY.includes(escalation.topic)) return null
+    return { ruling: escalation.default, reason: escalation.reason ?? "" }
+}
+
+/**
+ * Whether a decision awaits an answer from outside the Supervisor: an escalation of kind `owner` the owner rules (every one but a
+ * defaulted product choice, `defaultRuling`) or `harness` (Debug rules it). Its Supervisor waits for that answer, so it is no work
+ * of the Supervisor's own: `supervisor next` hands it over once, after every decision the Supervisor rules, and it never makes an
+ * idle Supervisor stalled.
  */
 export const awaitsOwner = (decision: Decision): boolean => {
-    const evidence = decision.evidence
-    if (decision.kind !== "escalation" || typeof evidence !== "object" || evidence === null || !("escalation" in evidence)) return false
-    const escalation = evidence.escalation
-    return typeof escalation === "object" && escalation !== null && "kind" in escalation && OWNER_RULED.includes(escalation.kind as (typeof OWNER_RULED)[number])
+    const kind = escalationOf(decision)?.kind
+    return kind !== undefined && OWNER_RULED.includes(kind) && defaultRuling(decision) === null
 }
 
 /** One decision by id. */

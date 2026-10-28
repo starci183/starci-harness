@@ -26,7 +26,9 @@ const stallSchema = z.strictObject({
     watchSeconds: z.number().int().positive(),
     startUnknownStates: z.array(z.string().min(1)),
     startDeadlineMinutes: z.number().nonnegative(),
-    prompts: z.strictObject({ supervisor: z.string().min(1), kernel: z.string().min(1), op: z.string().min(1) }),
+    readyIdleMinutes: z.number().positive(),
+    readyStallMinutes: z.number().positive(),
+    prompts: z.strictObject({ supervisor: z.string().min(1), kernel: z.string().min(1), op: z.string().min(1), readyIdle: z.string().min(1) }),
 })
 
 /** The `stall` block of ops/liveness.yaml: when an agent idle at its prompt counts as stalled, and the ladder's bounds. */
@@ -130,7 +132,7 @@ export const claimNudge = (db: DatabaseSync, subject: string, seatId: string, n:
         return true
     })
 
-/** Fills a loop prompt's {workflow}, {task}, {launch} and {wait}. */
+/** Fills a prompt's {workflow}, {task}, {tasks}, {launch}, {since} and {wait}. */
 export const promptOf = (template: string, fill: Readonly<Record<string, string>>): string => template.replaceAll(/\{(\w+)\}/g, (whole, name: string) => fill[name] ?? whole)
 
 /** Types the seat's loop prompt into its terminal once (`terminal send`, replay-safe by its seat and nudge number). */

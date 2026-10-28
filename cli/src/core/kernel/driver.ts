@@ -35,6 +35,7 @@ import { resumeSeat } from "../seat/start.js"
 import { workflowAmendVerb } from "../workflow/amend.js"
 import { readSnapshot, stepWorkflow } from "../workflow/engine.js"
 import { carriesNeeds } from "../../harness/needs.js"
+import { harnessCause } from "../../harness/revive.js"
 import { assertKernelNeed, recordKernelNeed } from "../needs/answer.js"
 import type { StepAction } from "../workflow/engine.js"
 
@@ -167,7 +168,7 @@ const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): vo
         if (task === null) continue
         const outcome = view.state === "failed" ? (latestAttempt(db, task.id)?.outcome ?? null) : null
         if (outcome === LAND_CONFLICT) raise("conflict", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, conflict: lastEvent(db, LAND_CONFLICT_EVENT, task.id) ?? null })
-        else if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id) })
+        else if (view.state === "failed") raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id), harnessCause: harnessCause(db, task.id) })
         if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its worktree" })
         if (view.state === "returned") {
             const attempt = latestAttempt(db, task.id)

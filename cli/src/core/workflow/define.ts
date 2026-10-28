@@ -1,6 +1,7 @@
 import { resolve } from "node:path"
 import { workflowBudgets } from "../../harness/budget.js"
 import type { WorkflowBudget } from "../../harness/budget.js"
+import { assertOwnSources } from "../../harness/foreign-source.js"
 import { assertScope } from "../../harness/goal.js"
 import { buildGraph, planPlace, readPlanSource, uatWalksOf } from "../../harness/graph.js"
 import { assertFlow, flowLines } from "../../harness/lanes.js"
@@ -30,7 +31,8 @@ interface DefineReport {
  * `starci workflow define <file>`: records the Kernel's workflow file as graph version 1. Every contract must be fit, every
  * dependency known and the edges acyclic; the harness never invents a task, it only records the graph it is given. The file's
  * goal (text, acceptance, scope ceiling) is recorded as goal v1, and the graph must fit that ceiling (SCOPE_EXCEEDED) and walk
- * the lane of every Work record it covers (FLOW_INCOMPLETE, harness/lanes.ts). `--check` runs every one of those checks and
+ * the lane of every Work record it covers (FLOW_INCOMPLETE, harness/lanes.ts); a task whose input takes another workflow's branch or
+ * landed commit as its source is refused NEEDS_REQUIRED (harness/foreign-source.ts). `--check` runs every one of those checks and
  * records nothing, so a workflow file can be proven before its project's ledger takes it.
  */
 export const workflowDefineVerb = defineVerb({
@@ -62,6 +64,7 @@ export const workflowDefineVerb = defineVerb({
         const known = openExistingLedger(root)
         const lanes = (() => {
             try {
+                assertOwnSources(known, source.header.id, built.nodes)
                 return flowLines(assertFlow(source.header.id, built.nodes, { repo: root, db: known, requires: source.header.requires ?? [] }, ops))
             } finally {
                 known?.close()
