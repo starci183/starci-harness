@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { writeBrief } from "../../harness/brief.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { openLedger } from "../../harness/ledger.js"
-import { inTransaction } from "../../harness/leases.js"
+import { expireLeases, inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
@@ -32,7 +32,7 @@ import { taskVerifyVerb } from "../task/verify.js"
 export interface StepAction {
     readonly key: string | null
     readonly task: string | null
-    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "closed" | "kernel" | "lost" | "wait" | "problem"
+    readonly action: "verified" | "dispatched" | "launched" | "cancelled" | "closed" | "released" | "kernel" | "lost" | "wait" | "problem"
     readonly detail: string
 }
 
@@ -209,6 +209,18 @@ const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<Step
     return closed.flat()
 }
 
+/**
+ * Frees the overdue leases of tasks returned to the Kernel, in every workflow of the project (a lease blocks other workflows
+ * too), and says so: the amend re-leases the paths when it retries the node. A live task's lease is never freed by time.
+ */
+const expiredLeaseActions = (root: string): StepAction[] =>
+    withLedger(root, (db) => expireLeases(db)).map((lease) => ({
+        key: null,
+        task: lease.taskId,
+        action: "released",
+        detail: `lease on ${lease.paths.join(", ")} released: task ${lease.taskId} came back to the Kernel and its lease was due ${lease.expiresAt}; the amend leases the paths again when it retries the node`,
+    }))
+
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
 export const closeKernelActions = async (context: VerbContext, root: string, snapshot: Snapshot): Promise<StepAction[]> => {
     const { workflow } = snapshot
@@ -384,6 +396,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
             ...(await recoverOrphans(context, readSnapshot(root, id))),
             ...(await settleReported(context, readSnapshot(root, id))),
             ...(await closeSettledSeats(root, readSnapshot(root, id))),
+            ...expiredLeaseActions(root),
         )
         snapshot = reconcile(root, id)
         if (DISPATCHING.includes(snapshot.workflow.status)) actions.push(...(await dispatchReady(context, root, snapshot)))

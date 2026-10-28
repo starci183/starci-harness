@@ -26,7 +26,7 @@ const DEFAULT_INTERVAL_SECONDS = 30
 const MIN_INTERVAL_SECONDS = 1
 
 // Actions that move a task; a wait or a repeated problem is not progress.
-const PROGRESS: ReadonlySet<StepAction["action"]> = new Set(["verified", "dispatched", "launched", "cancelled", "lost"])
+const PROGRESS: ReadonlySet<StepAction["action"]> = new Set(["verified", "dispatched", "launched", "cancelled", "released", "lost"])
 
 /** What a run did: how many ticks, why it ended, every change line it printed, and the last step's report. */
 interface RunData {

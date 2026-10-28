@@ -11,7 +11,7 @@ import { coordinatorOf, foreignKernelTerminal, launchKernelSeat, startKernel, SU
 import type { NodeState } from "../../harness/graph.js"
 import { deadOnArrivalFailure, openBlockedPrompts } from "../../harness/launch-failure.js"
 import { ledgerPath, now, openLedger } from "../../harness/ledger.js"
-import { inTransaction } from "../../harness/leases.js"
+import { expireLeases, inTransaction } from "../../harness/leases.js"
 import { loadLiveness } from "../../harness/liveness.js"
 import { readMachine, textOf, withMachine } from "../../harness/machine.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
@@ -303,6 +303,10 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
     return done.flat()
 }
 
+/** The overdue leases of tasks returned to the Kernel that this tick freed in one repository, as lines (a lease held past its due time blocks other workflows). */
+const expiredLeaseLines = (root: string): string[] =>
+    ledgerPath(root) === undefined ? [] : withLedger(root, (db) => expireLeases(db)).map((lease) => `${lease.taskId}: lease on ${lease.paths.join(", ")} released (task returned to the Kernel, due ${lease.expiresAt})`)
+
 /**
  * The project's open Supervisor decisions in the order `supervisor next` returns them: the ones the Supervisor rules, oldest
  * first, then the ones awaiting the owner (`awaitsOwner`), so an owner's question never holds the others back.
@@ -499,7 +503,7 @@ export const supervisorTick = async (context: VerbContext): Promise<SupervisorTi
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
         lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
-        lines.push(...repos.flatMap(blockedPromptLines))
+        lines.push(...repos.flatMap(blockedPromptLines), ...repos.flatMap(expiredLeaseLines))
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)
