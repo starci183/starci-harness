@@ -1,4 +1,5 @@
 import { loadFeedbackRules, openFeedback } from "../../harness/feedback.js"
+import { tickStarvation } from "../../harness/starvation.js"
 import { tickNotices } from "../../harness/telegram-bridge.js"
 import { ticketHostEscalations } from "../../harness/tickets.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -14,7 +15,9 @@ import { supervisorTick } from "./driver.js"
  * every owner feedback still open (`data.feedback`, overdue past ops/liveness.yaml feedback.openMaxDays), files every escalation
  * a Supervisor cannot rule as its ticket (`data.tickets`, `ticketHostEscalations` in harness/tickets.ts), and, once the owner's
  * Telegram chat is connected, sends the owner the notices due (`data.telegram`, `tickNotices` in harness/telegram-bridge.ts), so
- * they go out with no bridge running. Idempotent; no LLM needs to be awake. `--dry-run` reports what the terminal sweep would close
+ * they go out with no bridge running. When heavy admission or a seat launch has been held past ops/liveness.yaml
+ * heavy.starvedTicketMinutes, it opens one harness-defect ticket per episode naming the top unmanaged holders of memory
+ * (`data.starvation`, harness/starvation.ts). Idempotent; no LLM needs to be awake. `--dry-run` reports what the terminal sweep would close
  * and does nothing else.
  */
 export const supervisorTickVerb = defineVerb({
@@ -33,8 +36,10 @@ export const supervisorTickVerb = defineVerb({
         const feedback = { open: open.open.map((item) => item.id), overdue: open.overdue.map((item) => item.id) }
         const line = feedback.open.length === 0 ? [] : [`owner feedback open: ${feedback.open.map((id) => (feedback.overdue.includes(id) ? id + " (overdue)" : id)).join(", ")}`]
         const tickets = flags["dry-run"] ? [] : await ticketHostEscalations()
+        const starved = flags["dry-run"] ? null : await tickStarvation()
+        const starvedLine = starved?.line == null ? [] : [starved.line]
         const telegram = flags["dry-run"] ? { sweep: null, line: null } : await tickNotices()
         const notices = telegram.line === null ? [] : [telegram.line]
-        return { data: { ...swept, feedback, tickets, telegram: telegram.sweep }, message: [`supervisor tick: swept ${swept.swept.length === 0 ? "nothing" : swept.swept.join(", ")}`, ...swept.actions, ...line, ...tickets, ...notices].join("\n") }
+        return { data: { ...swept, feedback, tickets, starvation: starved, telegram: telegram.sweep }, message: [`supervisor tick: swept ${swept.swept.length === 0 ? "nothing" : swept.swept.join(", ")}`, ...swept.actions, ...line, ...tickets, ...starvedLine, ...notices].join("\n") }
     },
 })

@@ -184,7 +184,10 @@ const seatOf = (run: RunState, seat: string | undefined, label: string): { reado
 const saidOf = (done: ToolRun, envelope: Record<string, unknown> | undefined): string => {
     if (envelope === undefined) return `exit ${String(done.exitCode)} ${done.stdout.slice(0, 300)}`
     const message = typeof envelope.message === "string" ? envelope.message.slice(0, 300) : undefined
-    return `exit ${String(done.exitCode)} ${JSON.stringify({ code: envelope.code, message })}`
+    // A `starci app` verb answers ok with @starci/hfs's own exit and stderr in its data; without them its failure says nothing.
+    const data = typeof envelope.data === "object" && envelope.data !== null ? (envelope.data as Record<string, unknown>) : {}
+    const stderr = message === undefined && typeof data.stderr === "string" && data.stderr !== "" ? data.stderr.slice(0, 300) : undefined
+    return `exit ${String(done.exitCode)} ${JSON.stringify({ code: envelope.code, message, ...(stderr === undefined ? {} : { stderr }) })}`
 }
 
 const starci = async (run: RunState, step: Step, label: string): Promise<void> => {

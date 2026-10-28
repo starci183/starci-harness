@@ -79,8 +79,8 @@ no SQLite database or a damaged one is refused `LEDGER_CORRUPT`, naming the file
 compare-and-swap on the status it read (the loser of a race is refused `TASK_STATUS_RACE`):
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
-failed returns the task to `queued`; a red wave verify returns a `done` task to `failed` (its only way out; it holds
-nothing either way); a verify with no verdict returns it to `reported` with no try spent, until one
+failed returns the task to `queued`; a red wave verify returns a `done` task to `failed`, and a wave whose deferred live
+suite lacks a custody key leaves it `awaiting_owner` (its only ways out; it holds nothing either way); a verify with no verdict returns it to `reported` with no try spent, until one
 result has reached no verdict `settleNoVerdictMax` times ([ops/liveness.yaml](../ops/liveness.yaml)): then the failure is
 persistent and the task ends `awaiting_owner` with the last reason (`noVerdict` in `core/task/verify.ts`). A command
 with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
@@ -205,8 +205,29 @@ the task is verified again. Each child runs below normal priority, a node tool u
 its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
 pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
 it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
-`seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait.
-`host load` prints the load, the slots in use with each child's pid and RSS, and the queue.
+`seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
+records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.
+`workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM
+2.6 GB below seat floor 6 GB (since 21:02Z)"), a verify waiting for a heavy slot ("held: heavy-command slot for test, free
+RAM 2.6 GB below reserve 8 GB (since …)"), a task awaiting the owner with the reason its verify recorded.
+`host load` prints the load, the slots in use with each child's pid and RSS, the queue with how long each command waited
+and why, the seat holds, and who holds the memory (`harness/host-holders.ts`): the top processes by working set, managed
+(a recorded heavy command or seat, a process under one, or one working in the harness's state folder) or unmanaged (other
+node, WSL and Docker, IDEs, agents, the rest), each command line clipped and redacted. Another app's `starci app` run is
+unmanaged: the CLI alone makes nothing the harness's. When heavy admission or a seat launch has been held without a break
+for more than `heavy.starvedTicketMinutes`, `supervisor tick` opens one `harness-defect` ticket per episode
+(`HOST_STARVED`, `harness/starvation.ts`) naming how long each was held and the top unmanaged holders, for Debug; it is
+never an owner question and the governor's rules do not change for it.
+
+**Custody into a live suite.** A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
+the task's command or its own changed spec) reads the keys the suite's world declares (`keys: [...]`) from the app's
+custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets), with the
+@starci/hfs code `app secret materialize` decrypts with, read in the app's main checkout where its age identity lives, and
+hands them to that test run's child environment alone (`harness/custody.ts`): never a file, an argument or a log, and
+every handed value is scrubbed from the run's output before it becomes evidence. A declared key no member holds refuses
+`CUSTODY_KEY_MISSING` ("custody lacks OPENROUTER_API_KEY in dev"), one custody cannot open here `CUSTODY_UNREADABLE`;
+either ends the task `awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred
+tests), never red, its try unspent, and the tick files it as the owner's blocking `question:business` on credentials.
 
 **Result reuse.** `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
 `harness/check-reuse.ts`: the gate, the judged files, the content of the package and the workspace packages it reaches
@@ -516,7 +537,8 @@ answered question answered. `supervisor next` from the Supervisor's terminal, ev
 file each open `owner` escalation `awaitsOwner` holds, with or without a topic, as a `question:business` ticket (its topic,
 its `default` as the proposed default), each `harness` escalation as a blocking `harness-defect` ticket, the escalation
 waiting on it in `ticket_waiters` (`ticketEscalation`), and each task left `awaiting_owner` as a blocking `verify` ticket
-naming its verify's last reason, the task waiting on it (`ticketEscalations`); `supervisor next` sends the owner's Telegram
+naming its verify's last reason (one a custody block left as the owner's `question:business` on credentials), the task
+waiting on it (`ticketEscalations`); `supervisor next` sends the owner's Telegram
 notices in the same round when it filed one (`tickNotices`), as the tick does; the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
 the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--state] [--project]` is Debug's queue, blocking first,
 then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by

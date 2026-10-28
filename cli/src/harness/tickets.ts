@@ -480,27 +480,32 @@ export const ticketEscalation = (repo: string, project: Project, decision: Decis
     })
 }
 
-/** A task the harness left awaiting the owner: a verify that reached no verdict settleNoVerdictMax times (core/task/verify.ts). */
+/**
+ * A task the harness left awaiting the owner: a verify that reached no verdict settleNoVerdictMax times, or one a live suite's
+ * custody stopped (`owner`: a key the owner seals, core/task/verify.ts).
+ */
 interface AwaitingTask {
     readonly id: string
     readonly workflow: string | null
     readonly label: string
     readonly reason: string
+    readonly owner: boolean
 }
 
 /**
  * Files a task left awaiting the owner as its ticket, once, the task waiting on it: a blocking `verify` defect for Debug's queue
  * (its verify gave up on a persistent cause it names, which the owner is told on Telegram as every blocking defect is), titled
- * with the task and that cause. Null for a task that waits on a ticket already.
+ * with the task and that cause; a custody block is the owner's instead, a blocking `question:business` on credentials. Null for a
+ * task that waits on a ticket already.
  */
 const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask): { readonly ticket: Ticket; readonly outcome: TicketOutcome } | null => {
     if (readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `task:${task.id}`) !== undefined, false)) return null
     const flat = `task ${task.id} (${task.label}${task.workflow === null ? "" : `, workflow ${task.workflow}`}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
     return openTicket({
-        kind: "verify",
+        kind: task.owner ? "question:business" : "verify",
         severity: "blocking",
         title: flat.length <= 200 ? flat : `${flat.slice(0, 199)}…`,
-        evidence: { task: task.id, ...(task.workflow === null ? {} : { workflow: task.workflow }), question: task.reason },
+        evidence: { task: task.id, ...(task.workflow === null ? {} : { workflow: task.workflow }), question: task.reason, ...(task.owner ? { topic: "credentials" } : {}) },
         tried: null,
         proposedDefault: null,
         options: [],
@@ -524,9 +529,9 @@ export const ticketEscalations = (repo: string, project: Project): string[] => {
     try {
         decisions = openDecisions(db, "supervisor")
         awaiting = db
-            .prepare("SELECT t.id, t.workflow_id, t.label, (SELECT json_extract(e.data_json, '$.reason') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS reason FROM tasks t WHERE t.status = 'awaiting_owner' ORDER BY t.updated_at, t.id")
+            .prepare("SELECT t.id, t.workflow_id, t.label, (SELECT json_extract(e.data_json, '$.reason') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS reason, (SELECT json_extract(e.data_json, '$.owner') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS owner FROM tasks t WHERE t.status = 'awaiting_owner' ORDER BY t.updated_at, t.id")
             .all()
-            .map((row) => ({ id: String(row.id), workflow: textOf(row.workflow_id), label: String(row.label), reason: textOf(row.reason) ?? "its verify reached no verdict" }))
+            .map((row) => ({ id: String(row.id), workflow: textOf(row.workflow_id), label: String(row.label), reason: textOf(row.reason) ?? "its verify reached no verdict", owner: Number(row.owner ?? 0) === 1 }))
     } finally {
         db.close()
     }

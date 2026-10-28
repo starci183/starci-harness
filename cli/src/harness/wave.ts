@@ -6,6 +6,7 @@ import { git, nulPaths, resolveSha } from "../shared/git.js"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { redactSecrets } from "../shared/secrets.js"
 import { assertNoInfraFailure, inCleanCheckout, prepareCheckout } from "./clean-verify.js"
+import { blockOnCustody, CUSTODY_CODES } from "./custody.js"
 import { resolveChecks } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { opWorktreeOf } from "./land.js"
@@ -197,7 +198,9 @@ const recordTask = (db: DatabaseSync, workflow: string, each: WaveTask, outcomes
  * parents. The install comes from the shared cache, every contract's setup runs once, a scoped check runs once for all, and a command check
  * once per cwd and argv (per task when it reads the task's result or coverage). A red check is owned by the tasks whose files its
  * output names (every task that left it, when it names none); each owning task turns failed, back to the Kernel with the red
- * check rows on its attempt, and every task of the wave is judged. Undefined when no wave is due.
+ * check rows on its attempt, and every task of the wave is judged. A task whose live suite declares a key the app's custody lacks
+ * is not judged: it goes awaiting_owner, owner-gated with no try spent (harness/custody.ts `blockOnCustody`). Undefined when no
+ * wave is due.
  *
  * Every settling caller (`workflow step`, `kernel next`, `supervisor next`, the `supervisor tick`) may reach a due wave at once:
  * the first takes the workflow's wave lock (waveLockKey) and runs it on one checkout, removed when it ends; every other caller
@@ -322,6 +325,8 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         skipped: "every task's cheap checks (lands, secrets, loosening, paths, files, json, cited, cite) ran in its own verify; CI runs the full suite after the push",
     }
     recordEvent(db, "wave-scope", workflow, { tasks: ids, ...scope })
+    // The tasks whose live suite found a key the app's custody lacks (harness/custody.ts): owner-gated, never red, no try spent.
+    const blocked = new Map<string, Refusal>()
     const judged = await inCleanCheckout(checkout, head, `wave-${workflow}`, async (dir) => {
         const place = (task: TaskRow | null, parent: string | null): CheckPlace => ({
             root: dir,
@@ -345,6 +350,8 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         if (prepared.every((outcome) => outcome.status === "green")) {
             for (const each of tasks) {
                 outcomes[each.task.id] = await inOrder(each.checks, async (check) => {
+                    // A task its live suite's custody stopped runs nothing more here: it is the owner's, judged once the key is sealed.
+                    if (blocked.has(each.task.id)) return { name: check.name, kind: check.check.kind, status: "green", exitCode: null, detail: "not run: blocked on custody" }
                     const key = runKey(check, each.task)
                     const known = ran.get(key)
                     if (known !== undefined) return { ...known, name: check.name }
@@ -354,7 +361,15 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
                     // It judges as the wave's tasks (`--wave`): each one's composition deferral and its composers' obligations hold on the union.
                     const wave = landedNothing ? [each.task.id] : tasks.map((one) => one.task.id)
                     const at = check.check.kind === "starci" ? { ...place(null, landedNothing ? head : null), cwd: dir, within: !landedNothing && landed.length > 0, wave } : place(each.task, each.parent)
-                    const outcome = await runCheck(check, scope, at)
+                    let outcome: CheckOutcome
+                    try {
+                        outcome = await runCheck(check, scope, at)
+                    } catch (error: unknown) {
+                        const refusal = asRefusal(error)
+                        if (!CUSTODY_CODES.has(refusal.code)) throw error
+                        blocked.set(each.task.id, refusal)
+                        return { name: check.name, kind: check.check.kind, status: "green", exitCode: null, detail: "not run: blocked on custody" }
+                    }
                     ran.set(key, outcome)
                     return outcome
                 })
@@ -362,8 +377,10 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         }
         return { prepared, outcomes }
     })
-    const judgedWave = attributeWave(tasks, judged.prepared, judged.outcomes)
-    for (const each of tasks) recordTask(db, workflow, each, judgedWave.outcomes[each.task.id] ?? [], { returned: judgedWave.owned.has(each.task.id), own: judgedWave.proven.has(each.task.id) })
+    for (const [id, refusal] of blocked) blockOnCustody(db, id, "done", refusal)
+    const judgedTasks = tasks.filter((each) => !blocked.has(each.task.id))
+    const judgedWave = attributeWave(judgedTasks, judged.prepared, judged.outcomes)
+    for (const each of judgedTasks) recordTask(db, workflow, each, judgedWave.outcomes[each.task.id] ?? [], { returned: judgedWave.owned.has(each.task.id), own: judgedWave.proven.has(each.task.id) })
     const returned = tasks.filter((each) => judgedWave.owned.has(each.task.id)).map((each) => each.task.id)
     const free = returned.filter((id) => !judgedWave.proven.has(id))
     const errors = judgedWave.errors

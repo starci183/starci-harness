@@ -6,6 +6,7 @@ import { briefFiles } from "../../harness/brief.js"
 import { cleanVerify, declaredFiles, pruneVerifyWorktrees, VERIFY_INFRA } from "../../harness/clean-verify.js"
 import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.js"
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
+import { blockOnCustody, CUSTODY_CODES } from "../../harness/custody.js"
 import type { Contract } from "../../harness/contract.js"
 import { inTransaction, now, openExistingLedger, openLedger } from "../../harness/ledger.js"
 import { loadLiveness } from "../../harness/liveness.js"
@@ -430,6 +431,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
     } catch (error: unknown) {
         assertSettleLockHeld(db, me, verifyLockKey(task.id))
+        if (CUSTODY_CODES.has(asRefusal(error).code)) throw blockOnCustody(db, task.id, "verifying", asRefusal(error))
         if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
         const { preserved } = await preserveEnding(db, root, task, attempt.id)
         const escaped = await returnEscaped(db, task, attempt.id, target, underLand)

@@ -1,6 +1,7 @@
 import { existsSync, globSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
+import { Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
@@ -9,6 +10,8 @@ import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { testWorkerArgs, withHeavySlot } from "./heavy.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
+import { CUSTODY_CODES, custodyFor, scrubbed } from "./custody.js"
+import type { Custody } from "./custody.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import type { OutputType } from "./ops.js"
@@ -55,9 +58,21 @@ const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typeche
 
 const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
 
-/** A command check's argv (a test runner, a suite, a build) runs under a host heavy-command slot, a test runner at its worker count (harness/heavy.ts). */
-const heavyCommand = (argv: readonly string[], cwd: string, options: { readonly timeoutMs?: number }): Promise<ToolRun> =>
-    withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, options, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
+/** How a command check runs: its deadline, and the custody keys a live suite's run alone receives (harness/custody.ts). */
+interface CommandOptions {
+    readonly timeoutMs?: number
+    readonly custody?: Custody
+}
+
+/**
+ * A command check's argv (a test runner, a suite, a build) runs under a host heavy-command slot, a test runner at its worker count
+ * (harness/heavy.ts). Custody keys go into its child environment only, and every handed value is scrubbed from what it printed.
+ */
+const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
+    const { custody, ...rest } = options
+    const run = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
+    return custody === undefined ? run : { ...run, stdout: scrubbed(run.stdout, custody.values), stderr: scrubbed(run.stderr, custody.values) }
+}
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
 const selfEntry = (): string => fileURLToPath(new URL("../main.js", import.meta.url))
@@ -319,7 +334,7 @@ const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kin
  * check is green when the worker reported what the run did, passed for exit 0 and failed for any other, so a red suite reported
  * honestly is a finding and a claim the run contradicts is red.
  */
-const runVerdictCommand = async (check: ResolvedCheck, argv: readonly string[], key: string, place: CheckPlace, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+const runVerdictCommand = async (check: ResolvedCheck, argv: readonly string[], key: string, place: CheckPlace, options: CommandOptions): Promise<CheckOutcome> => {
     const run = await heavyCommand(argv, place.cwd, options)
     const observed = run.exitCode === 0 ? "passed" : "failed"
     const document = readJsonDocument(RESULT_FILE, place)
@@ -392,8 +407,10 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
  * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. A command that
  * runs jest (`runsJest`) runs the task's own spec files by path when it names test paths or runs the test world alone
  * (harness/coverage-scope.ts `scopedTests`: never a live-provider spec it did not name), and with `coverage: changed` has its
- * coverage narrowed to the task's changed logic files; the detail opens with the files it ran and judged. Any other command runs
- * as named.
+ * coverage narrowed to the task's changed logic files; the detail opens with the files it ran and judged. When what it runs holds
+ * an opt-in live suite, the keys its world declares come from the app's custody into that run's environment alone
+ * (harness/custody.ts); a key custody lacks refuses CUSTODY_KEY_MISSING out of the check, an owner-gated block, never a red. Any
+ * other command runs as named.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
@@ -405,10 +422,14 @@ const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readon
         const scoped = tests?.argv ?? named
         const scope = primitive.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
         const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
-        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await heavyCommand(argv, place.cwd, options))
-        const lead = [tests?.detail, scope?.detail].filter((line): line is string => line !== undefined)
+        const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root)
+        const given: CommandOptions = custody === undefined ? options : { ...options, custody }
+        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, given) : fromRun(check, await heavyCommand(argv, place.cwd, given))
+        const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
+        // A custody block is the owner's, not the task's red: it leaves the check, and the verify ends awaiting the owner.
+        if (error instanceof Refusal && CUSTODY_CODES.has(error.code)) throw error
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
 }

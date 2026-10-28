@@ -8,11 +8,12 @@ inject: >-
 expect: >-
   the harness passes the spec files as `--runTestsByPath <files>`: a command naming a folder runs the specs under it; a world
   run naming nothing runs every e2e spec but the live one; a command naming a broad folder leaves the live spec out; only a
-  command naming the live spec's own folder runs it (and it fails without its keys)
+  command naming the live spec's own folder selects it, and since the app's custody lacks its key the task ends awaiting the
+  owner with no try spent instead of a red run
 pass:
   - the named folder runs its own spec alone, green
   - the unnamed world run and the broad folder run every spec but the live one, green, naming what they left out
-  - the live folder named runs the live spec, which fails on its undeclared keys
+  - the live folder named selects the live spec, whose key custody lacks, so the task awaits the owner, not red
   - no human intervention beyond the injected fault
 automation: automated
 # The jest stand-in parses like jest's yargs: --selectProjects takes every word after it until the next option, so a path
@@ -140,6 +141,6 @@ steps:
   - assert:
       sql:
         db: ledger
-        query: "SELECT COUNT(*) FROM check_runs WHERE task_id = '${live}' AND name = 'tests-pass' AND detail LIKE '%run by path, the spec files under src/tests/e2e/live: src/tests/e2e/live/live.e2e-spec.ts%' AND detail LIKE '%FAIL src/tests/e2e/live/live.e2e-spec.ts TestWorldError: TEST_WORLD_NOT_DECLARED%'"
+        query: "SELECT t.status || ':' || (SELECT COUNT(*) FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' AND json_extract(e.data_json, '$.reason') LIKE 'custody lacks LIVE_KEY in dev%') FROM tasks t WHERE t.id = '${live}'"
         equals:
-          - 1
+          - "awaiting_owner:1"

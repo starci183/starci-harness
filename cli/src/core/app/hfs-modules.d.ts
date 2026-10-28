@@ -26,3 +26,21 @@ declare module "@starci/hfs/form-bounds" {
     /** The module source of REST_INPUT_BOUNDS from emitted OpenAPI contracts, keyed by service. */
     export function openApiBoundsSource(contracts: Readonly<Record<string, unknown>>): string
 }
+
+// The custody readers `starci app secret materialize` uses, with which a live suite's verify reads its declared keys (harness/custody.ts).
+declare module "@starci/hfs/runtime/scripts/hfs/secret-store.mjs" {
+    /** The sealed member files (`<slug>.enc`) of an environment's secrets folder, sorted; none when the folder is absent. */
+    export function sealedFiles(directory: string): string[]
+    /** The decrypted KEY map of one sealed member, through the sops seam. */
+    export function readMap(file: string, sops: unknown): Readonly<Record<string, string>>
+}
+
+declare module "@starci/hfs/runtime/scripts/hfs/secret-document.mjs" {
+    /** The key names a sealed document holds, its format and recipients, read without decrypting anything. */
+    export function envelopeOf(text: string): { readonly format: string; readonly keys: readonly string[]; readonly recipients: readonly string[] }
+}
+
+declare module "@starci/hfs/runtime/scripts/hfs/secret-sops.mjs" {
+    /** The sops seam of the app at `repoRoot`, with its age identity resolved as `starci app secret` resolves it. */
+    export function defaultSops(env?: NodeJS.ProcessEnv, repoRoot?: string): unknown
+}

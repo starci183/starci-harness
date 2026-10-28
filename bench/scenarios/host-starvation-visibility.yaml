@@ -1,0 +1,115 @@
+schema: starci/scenario@1
+id: host-starvation-visibility
+group: resources
+title: "a seat the RAM floor holds says why in workflow status and host load, and a hold past starvedTicketMinutes opens one harness-defect ticket"
+inject: >-
+  the seat RAM floor of an ops/ copy set above the host's free memory and heavy.starvedTicketMinutes set to a fraction of a
+  minute, then two supervisor ticks, then the floor lowered
+expect: >-
+  the launch is refused SEAT_RAM_LOW and the hold recorded; workflow status names it ("held: free RAM ... below seat floor ...
+  (since ...)") instead of a bare queued; host load lists the seat hold and who holds memory, managed or not; the first tick past
+  the threshold opens one harness-defect ticket HOST_STARVED naming the top unmanaged holders, the second opens nothing more; once
+  the floor admits, the next launch clears the hold
+pass:
+  - workflow status says why the queued task is held
+  - host load names the seat hold and the memory holders
+  - exactly one harness-defect ticket across two ticks, seen once
+  - the hold is cleared once the floor admits
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - name: the context file the docs op reads, from the harness checkout the copy stands in for
+    write: { path: contexts/project/work.md, from: "${ops}/../contexts/project/work.md" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - name: a seat floor above any host's free memory
+    starci: [config, set, liveness.heavy.seatFreeMb, "100000000"]
+  - name: a starvation threshold the run passes within its own steps
+    starci: [config, set, liveness.heavy.starvedTicketMinutes, "0.01"]
+  - git: [commit, -q, -am, "bench: seat floor and starvation threshold"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: ram
+        goal: one doc
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args: { files: [docs/a.md] }
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ram
+  - name: kernel next routes the task but the launch waits for memory
+    seat: kernel:ram
+    starci: [kernel, next, ram, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks"
+        equals: [queued]
+  - name: the hold is recorded with the memory it was judged on
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM seat_holds WHERE floor_mb = 100000000"
+        equals: [1]
+  - name: workflow status says why the task stays queued
+    starci: [workflow, status, ram]
+    expect: { exit: 0, contains: "held: free RAM" }
+  - starci: [workflow, status, ram]
+    expect: { exit: 0, contains: "GB below seat floor " }
+  - starci: [workflow, status, ram]
+    expect: { exit: 0, contains: "GB (since " }
+  - name: host load lists the seat hold and who holds memory
+    starci: [host, load]
+    expect: { exit: 0, contains: '"why": "free RAM' }
+  - starci: [host, load]
+    expect: { exit: 0, contains: '"unmanagedGroups"' }
+  - starci: [host, load]
+    expect: { exit: 0, contains: '"seatHeld": 1' }
+  - name: the first tick past the threshold opens one harness-defect ticket
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM tickets WHERE kind = 'harness-defect' AND title LIKE 'host starved the harness%seat launches held%' AND evidence_json LIKE '%HOST_STARVED%'"
+        equals: [1]
+  - name: the second tick opens nothing more and does not bump it
+    starci: [supervisor, tick]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) || ':' || MAX(occurrences) FROM tickets WHERE kind = 'harness-defect' AND title LIKE 'host starved%'"
+        equals: ["1:1"]
+  - name: no owner question was asked about it
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM tickets WHERE kind LIKE 'question:%' AND title LIKE '%starved%'"
+        equals: [0]
+  - name: the floor drops under the free memory
+    starci: [config, set, liveness.heavy.seatFreeMb, "1"]
+  - name: the next step launches it, which ends the hold
+    seat: kernel:ram
+    starci: [kernel, next, ram, --wait, "0"]
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM seat_holds"
+        equals: [0]
