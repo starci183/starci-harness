@@ -7,8 +7,8 @@ import { after, before, describe, test } from "node:test"
 import { KeyAdmin, KeyAdminError, MemoryKeyStore } from "../src/gateway/keys.ts"
 import type { KeyStore } from "../src/gateway/keys.ts"
 import { openSqliteKeyStore } from "../src/gateway/sqlite-key-store.ts"
-import { ADMIN_TOKEN, chatBody, errorOf, harness, http } from "./gateway-helpers.ts"
-import type { Harness } from "./gateway-helpers.ts"
+import { ADMIN_TOKEN, chatBody, errorOf, harness, http } from "./fixtures/gateway-helpers.ts"
+import type { Harness } from "./fixtures/gateway-helpers.ts"
 
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex")
 

@@ -15,7 +15,7 @@ import type { AiRouterGateway } from "../src/gateway/gateway.ts"
 import { MemoryKeyStore } from "../src/gateway/keys.ts"
 import type { IssuedKey, KeyUsage, VirtualKey } from "../src/gateway/keys.ts"
 import { serveGateway } from "../src/gateway/serve.ts"
-import { chatBody, http } from "./gateway-helpers.ts"
+import { chatBody, http } from "./fixtures/gateway-helpers.ts"
 
 const POOL_YAML = `
 gateway:

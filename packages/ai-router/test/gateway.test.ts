@@ -6,8 +6,8 @@ import { createFakeProvider } from "../src/fake.ts"
 import { createGateway } from "../src/gateway/gateway.ts"
 import { MemoryKeyStore } from "../src/gateway/keys.ts"
 import { createRouter } from "../src/router.ts"
-import { ADMIN_TOKEN, chatBody, errorOf, events, gatewayPool, harness, http, UPSTREAM_SECRET } from "./gateway-helpers.ts"
-import type { Harness } from "./gateway-helpers.ts"
+import { ADMIN_TOKEN, chatBody, errorOf, events, gatewayPool, harness, http, UPSTREAM_SECRET } from "./fixtures/gateway-helpers.ts"
+import type { Harness } from "./fixtures/gateway-helpers.ts"
 
 describe("the OpenAI-compatible routes", () => {
     let h: Harness

@@ -61,3 +61,10 @@ exceptions:
       - "assert.equal(wiring.db[\"primary\"]?.url, \"postgres://postgres:p%40ss%2Fword@127.0.0.1:30100/shop_a1b2c3_primary\")"
       - "assert.equal(wiring.db[\"identity\"]?.url, \"postgres://shop_a1b2c3_identity:s3cr%2Ft@127.0.0.1:30100/shop_a1b2c3_core\")"
     reason: "the wiring spec asserts the URL built from made-up credentials, percent-encoded"
+  - path: packages/ai-router/test/fixtures/gateway-helpers.ts
+    rule: assigned-secret
+    kind: fixture
+    match:
+      - "export const UPSTREAM_SECRET = \"sk-upstream-a-k1-secret\""
+      - "export const ADMIN_TOKEN = \"admin-test-token\""
+    reason: "the gateway specs' made-up upstream key (asserted never to appear in a response) and admin token"
