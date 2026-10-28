@@ -5,6 +5,7 @@ import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { RunOptions, ToolRun } from "../../shared/exec.js"
+import { ownChanges } from "../../harness/baseline.js"
 import { changedFiles, git, nulPaths, refExists, repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { ESLINT_CONFIGS, listPackages, ownerOf } from "../../shared/workspace.js"
@@ -31,6 +32,13 @@ export interface Scope {
     readonly files: readonly string[]
     readonly targets: readonly ScopeTarget[]
     readonly skipped: readonly string[]
+    /** The task the check judges as (`--task`): only what it changed since its work began counts as changed (harness/baseline.ts). */
+    readonly task: string | null
+}
+
+/** Whom a check judges as: a task, whose own changes since its work began are what changed. */
+export interface Judging {
+    readonly task?: string
 }
 
 /** The result of one check step on one package. */
@@ -87,15 +95,18 @@ const trackedUnder = async (root: string, paths: readonly string[]): Promise<str
 /**
  * Decides what to check: every package with --all, else the packages that own a judged file, the changed ones or, when the
  * diff changes nothing, the tracked files under `paths`; an app-wide configuration file widens to all. A diff and paths both empty leave
- * no package, so nothing runs.
+ * no package, so nothing runs. Judging as a task, a changed file counts only when the task changed it since its work began, so
+ * another task's dirt in a shared checkout neither is judged nor widens the scope.
  */
-export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = []): Promise<Scope> => {
+export const resolveScope = async (cwd: string, baseFlag: string | undefined, all: boolean, paths: readonly string[] = [], judging: Judging = {}): Promise<Scope> => {
     const root = await repositoryRoot(cwd)
     const base = baseFlag ?? ((await refExists(root, "origin/main")) ? "origin/main" : "HEAD")
     if (!(await refExists(root, base))) throw new Refusal("CHECK_BASE_UNKNOWN", `the base ${base} does not exist here`)
     const packages = listPackages(root)
     if (packages.length === 0) throw new Refusal("CHECK_NO_PACKAGE", `no package.json with a name and version under ${root}`)
-    const changed = await changedFiles(root, base)
+    const diff = await changedFiles(root, base)
+    const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
+    const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
     const files = changed.length === 0 ? await trackedUnder(root, paths) : changed
     const appWide = appWideFiles()
     const widen = all || files.some((file) => appWide.test(file))
@@ -107,7 +118,7 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
         else owned.set(owner, [...(owned.get(owner) ?? []), file])
     }
     const targets = widen ? packages.map((pkg) => ({ pkg, files: owned.get(pkg) ?? [] })) : [...owned.entries()].map(([pkg, files]) => ({ pkg, files }))
-    return { root, base, all: widen, changed, paths, files, targets, skipped }
+    return { root, base, all: widen, changed, paths, files, targets, skipped, task: judging.task ?? null }
 }
 
 const tail = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
@@ -223,19 +234,28 @@ interface LintGroup {
     readonly paths: readonly string[]
 }
 
-/** ESLint over one group from its config's folder, so the config's file globs and ignores match; a file the config ignores is not linted and is no warning. */
-const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, options: RunOptions): Promise<{ readonly label: string; readonly run: ToolRun | undefined }> => {
+/** What ESLint said over one group: whether it ran, whether it is red, and the output of a red run. */
+interface LintRun {
+    readonly label: string
+    readonly ran: boolean
+    readonly red: boolean
+    readonly output: string
+}
+
+/**
+ * ESLint over one group from its config's folder, so the config's file globs and ignores match; a file the config ignores is not
+ * linted and is no warning.
+ */
+const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, options: RunOptions): Promise<LintRun> => {
     const counted = scope.all ? `whole package linted (${String(group.paths.length)} file(s))` : `${String(group.paths.length)} file(s) linted`
     const label = `config ${toSlash(relative(scope.root, join(group.dir, group.file)))}, ${counted}`
     const eslint = [pkg.dir, group.dir, scope.root].map((dir) => join(dir, "node_modules", "eslint", "bin", "eslint.js")).find((candidate) => existsSync(candidate))
-    if (eslint === undefined) return { label, run: undefined }
-    let last: ToolRun | undefined
+    if (eslint === undefined) return { label, ran: false, red: false, output: "" }
     for (const paths of chunked(group.paths)) {
         const run = await captureTool(process.execPath, [eslint, "--max-warnings=0", "--no-warn-ignored", ...paths], group.dir, options)
-        if (last === undefined || run.exitCode !== 0) last = run
-        if (run.exitCode !== 0) break
+        if (run.exitCode !== 0) return { label, ran: true, red: true, output: tail(run) }
     }
-    return { label, run: last }
+    return { label, ran: true, red: false, output: "" }
 }
 
 /**
@@ -265,15 +285,15 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
         groups.set(config.dir, group)
     }
     const runs = await Promise.all([...groups].map(([dir, group]) => lintGroup(scope, pkg, { dir, ...group }, options)))
-    const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
+    const ran = runs.filter((each) => each.ran)
     if (missing.length === 0 && ran.length === 0) return skipped(pkg, "lint", groups.size === 0 ? "no judged source file under an eslint.config.*" : "eslint is not installed (run npm ci)")
-    const failed = ran.filter((each) => each.run.exitCode !== 0)
+    const failed = ran.filter((each) => each.red)
     const reasons = [
         ...(missing.length === 0 ? [] : [`LINT_CONFIG_MISSING: no eslint.config.* in the folder of ${listedFiles(missing)} or any folder up to the repository root`]),
-        ...runs.map((each) => (each.run === undefined ? `${each.label} skipped: eslint is not installed (run npm ci)` : each.label)),
+        ...runs.map((each) => (each.ran ? each.label : `${each.label} skipped: eslint is not installed (run npm ci)`)),
         ...(outside.length === 0 ? [] : [`${String(outside.length)} unchanged file(s) under no eslint.config.*, not linted: ${listedFiles(outside)}`]),
     ]
-    const output = failed.map((each) => `--- ${each.label}\n${tail(each.run)}`).join("\n")
+    const output = failed.map((each) => `--- ${each.label}\n${each.output}`).join("\n")
     const red = missing.length > 0 || failed.length > 0
     return { package: pkg.name, step: "lint", command: `eslint --max-warnings=0 --no-warn-ignored over ${String(groups.size)} config(s)`, status: red ? "red" : "green", reason: reasons.join("; "), output }
 }

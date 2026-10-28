@@ -98,10 +98,11 @@ export const checkRunVerb = defineVerb({
     flags: {
         base: { kind: "string", summary: "compare against this ref (default origin/main, else HEAD)" },
         all: { kind: "boolean", summary: "check every package and scan every file, not only the changed ones" },
+        task: { kind: "string", summary: "judge as this task: only the files it changed since its work began count as changed" },
         paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },
     },
     run: async (context, flags) => {
-        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths)
+        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths, flags.task === undefined ? {} : { task: flags.task })
         const policy = loadPolicy(scope.root)
         const choice = resolveProfile(policy, context.treeRoot)
         const tier = choice.profile.runtime

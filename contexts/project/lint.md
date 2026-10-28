@@ -9,7 +9,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
 ## Where a check runs
 
 - **Runtime tier**: `starci check run` before a push and `starci task verify` on the clean checkout, scoped to the
-  packages the diff touches (the changed packages below), or every package when the diff touches an app-wide
+  packages the diff touches (the changed packages below); a task's diff is only what it changed since its work began,
+  never another task's uncommitted work in the same checkout (`cli/src/harness/baseline.ts`). It widens to every package when the diff touches an app-wide
   configuration file every side reads (the root paths of the app-root declaration, manifest, lockfile and tool-config
   slots of [hfs/slots.yaml](../hfs/slots.yaml) and any canon tool's config file, `cli/src/core/check/scope.ts`), so each
   side's lint config loads and lints its whole package; a task that changes nothing is judged on the tracked files

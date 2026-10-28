@@ -6,7 +6,7 @@ import { expireLeases, inTransaction } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
 import { askOrca, inLaunchGrace, isPingable, livenessOf, loadLiveness, recordPing } from "../../harness/liveness.js"
 import { closeKernel, workflowWorktreeOf } from "../../harness/kernel.js"
-import { applyPriorWork } from "../../harness/prior.js"
+import { beginWork } from "../../harness/baseline.js"
 import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
@@ -407,7 +407,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
     return reportOf(root, readSnapshot(root, id), actions)
 }
 
-/** Brings an inline task's prior work back before its brief is written (applyPriorWork is a no-op the second time). */
+/** Begins an inline task's work before its brief is written: its baseline, then its prior work (both no-ops the second time). */
 const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void> => {
     if (snapshot.workflow.header.runner !== "inline" || !DISPATCHING.includes(snapshot.workflow.status)) return
     const view = snapshot.views.find((candidate) => (candidate.state === "queued" || candidate.state === "running") && candidate.task !== null)
@@ -415,7 +415,7 @@ const priorWorkOfInline = async (root: string, snapshot: Snapshot): Promise<void
     const id = view.task.id
     const node = snapshot.nodes.find((candidate) => candidate.key === view.key)
     if (node !== undefined) await applyRevert(root, root, snapshot.workflow.id, node, id)
-    await applyPriorWork(root, root, withLedger(root, (db) => getTask(db, id)))
+    await beginWork(root, root, withLedger(root, (db) => getTask(db, id)))
 }
 
 /** The report of a workflow as it stands, with what was done to it. */

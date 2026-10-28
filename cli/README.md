@@ -88,9 +88,12 @@ without case on every host, since a product is also checked out where `Docs/A.md
 token only names the grant.
 
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when
-Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's `allowPaths` and
-replays every check there, never in the worker's environment; what the candidate misses is read against the same
-staged snapshot. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
+Orca cannot confirm the stop), then builds a candidate from a clean checkout of HEAD plus the task's own work under its
+`allowPaths` and replays every check there, never in the worker's environment; what the candidate misses is read against
+the same staged snapshot. A task's own work is what changed since its work began: `beginWork` (`harness/baseline.ts`)
+records the tree of its checkout as its baseline when its seat starts or its inline step hands it out, and a dirty file
+unchanged since then (another task's leftovers in a shared worktree) is left out of its candidate, its `paths-only` stray
+files, the lint and typecheck of its `check run --task`, and its preserve and reset. Every candidate also meets the `lands` check, red when work under its `allowPaths` would not land
 through the harness (a dirty file missing from the candidate, or a commit without the `Starci-Task:` trailer made under
 them while the task ran, as a worker that commits itself leaves), and the `secrets` and `loosening` gates of the
 project's runtime tier ([policy/quality.yaml](../policy/quality.yaml)) on the files it changes, whatever its contract

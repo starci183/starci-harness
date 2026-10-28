@@ -17,6 +17,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   dependency that cannot be built is a red `dep-build` step with `CHECK_WORKSPACE_DEP_BUILD_FAILED` naming it, and the
   steps of the packages that need it are held. `check run` is now `local-write`. Bench: `check-run-workspace-dep-built`,
   `check-run-workspace-dep-build-failed`.
+- **A task is judged only on its own work.** Another task's uncommitted files in a shared workflow worktree failed a
+  task's `paths-only` and reached the lint of its `check-run-green`. When a task's work begins (its seat starts, or the
+  inline step hands it out) `beginWork` records the tree of its checkout as its baseline; a dirty file unchanged since
+  then is not the task's: its candidate, its stray files, `check run --task` (which `task verify` and the dry replay
+  pass) and its preserve and reset leave it be, and it never widens the scope. Bench: `verify-sibling-dirt-not-judged`.
 - **A red check's output is kept and shown.** Every check of a verify keeps the last 200 lines of its tools' output as
   its detail, with every value the secret scan recognises redacted (`redactSecrets`), and `task status <task>` prints the
   detail of the red checks of the newest verify (`checkRuns[].detail` in `--json`). Bench:

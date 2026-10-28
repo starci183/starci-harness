@@ -3,6 +3,7 @@ import { dirname, join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { git } from "../shared/git.js"
+import { excludedSpec, notOwn } from "./baseline.js"
 import { leasePaths } from "./leases.js"
 import { projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
@@ -52,8 +53,10 @@ const freshDir = (root: string, taskId: string): string => {
  * reset never runs ahead of a safe copy. A reset that breaks half-way throws PreserveIncomplete; resetPreserved finishes it.
  */
 export const preserveTaskPaths = async (root: string, task: TaskRow, db: DatabaseSync, onSaved?: (dir: string) => Promise<void> | void): Promise<Preserved> => {
-    const specs = pathspecs(task)
-    if (specs.length === 0) return { dir: null, patch: null, tracked: [], untracked: [] }
+    const owned = pathspecs(task)
+    if (owned.length === 0) return { dir: null, patch: null, tracked: [], untracked: [] }
+    // Another task's dirt under these paths (harness/baseline.ts notOwn) is neither saved nor reset: it is not this task's work.
+    const specs = [...owned, ...(await notOwn(root, task.id, leasePaths(task))).map(excludedSpec)]
     const raw = fields(await git(root, ["diff", "--no-renames", "--name-status", "-z", "HEAD", "--", ...specs]))
     const status = Array.from({ length: Math.floor(raw.length / 2) }, (_, index) => ({ kind: raw[index * 2] ?? "", path: raw[index * 2 + 1] ?? "" }))
     const untracked = fields(await git(root, ["ls-files", "--others", "--exclude-standard", "-z", "--", ...specs]))

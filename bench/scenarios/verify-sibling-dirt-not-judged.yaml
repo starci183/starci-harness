@@ -1,0 +1,121 @@
+schema: starci/scenario@1
+id: verify-sibling-dirt-not-judged
+group: verify
+title: another task's uncommitted work in the shared checkout neither fails a task's paths-only nor reaches its lint, its candidate or its preserve
+inject: "before the task's work begins, another task left an untracked file holding a lint error inside the task's allowPaths and an untracked script outside them"
+expect: >-
+  the task's work begins with a baseline of its checkout; verify judges only what changed since: the candidate leaves the
+  leftover inside allowPaths out (named in lands), paths-only clears the leftover outside allowPaths as there before the
+  task, and check-run-green lints only the task's own file, so the task settles done; the leftovers stay in the checkout,
+  untouched and uncommitted; a later red task neither preserves nor resets them
+pass:
+  - the task is done; its settle commit holds its own file and neither leftover
+  - lands names the leftover inside allowPaths as left out, paths-only names the one outside as there before the task
+  - check-run-green ran its lint green over one file
+  - both leftovers are still in the checkout after a red task's preserve and reset
+  - no human intervention beyond the injected fault
+automation: automated
+# bench/fixtures/lint-findings: the ESLint stand-in reports a file holding LINT_ERROR. The scratch commits are dated in the
+# past: `lands` dates foreign commits to the second.
+env:
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z"
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z"
+steps:
+  - name: the fixture and its tool stand-ins are committed
+    write: { path: ".", from: "${ops}/../bench/fixtures/lint-findings/repo" }
+  - write: { path: node_modules/typescript, from: "${ops}/../bench/fixtures/lint-findings/stand-ins/typescript" }
+  - write: { path: node_modules/eslint, from: "${ops}/../bench/fixtures/lint-findings/stand-ins/eslint" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: the lint fixture"]
+  - name: another task's leftovers sit in the checkout, one inside the allowPaths and one outside
+    write:
+      path: src/smoke.ts
+      content: "export const smoke = 1 // LINT_ERROR\n"
+  - write:
+      path: build-smoke.cjs
+      content: "module.exports = 1\n"
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: own
+        goal: the app counts to two
+        runner: inline
+        tasks:
+          - id: count
+            label: docs
+            summary: make the app count to two
+            allowPaths: [src]
+            checks: [check-run-green]
+          - id: broken
+            label: docs
+            summary: a task whose work fails its checks
+            allowPaths: [src]
+            dependsOn: [count]
+            checks: [check-run-green]
+  - name: define
+    starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start, which begins the task's work with its baseline
+    starci: [workflow, start, own]
+    save:
+      count: data.nodes.0.task.id
+  - name: the worker changes its own file
+    worker:
+      task: ${count}
+      files:
+        src/app.ts: "export const app = 2\n"
+  - name: step verifies it on what it changed alone
+    starci: [workflow, step, own]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${count}'"
+        equals: [done]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT name || ':' || status FROM check_runs WHERE task_id = '${count}' AND name IN ('lands', 'paths-only', 'check-run-green') ORDER BY name"
+        equals: ["check-run-green:green", "lands:green", "paths-only:green"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (instr(detail, 'left out: src/smoke.ts') > 0) FROM check_runs WHERE task_id = '${count}' AND name = 'lands'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (instr(detail, 'there before the task''s work began, not judged: build-smoke.cjs') > 0) FROM check_runs WHERE task_id = '${count}' AND name = 'paths-only'"
+        equals: [1]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (instr(detail, '1 file(s) linted') > 0) FROM check_runs WHERE task_id = '${count}' AND name = 'check-run-green'"
+        equals: [1]
+  - name: the settle commit holds the task's file alone
+    git: [diff, --exit-code, --quiet, "HEAD~1", HEAD, --, src/smoke.ts, build-smoke.cjs]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'broken'"
+      as: broken
+  - name: the next task's work fails its lint
+    worker:
+      task: ${broken}
+      files:
+        src/app.ts: "export const app = 3 // LINT_ERROR\n"
+  - name: its red verify preserves and resets its own work only
+    starci: [workflow, step, own]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${broken}'"
+        equals: [failed]
+  - assert:
+      exists:
+        path: src/smoke.ts
+        present: true
+  - assert:
+      exists:
+        path: build-smoke.cjs
+        present: true
