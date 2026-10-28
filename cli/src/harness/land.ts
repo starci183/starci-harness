@@ -8,6 +8,7 @@ import { readRecord } from "../core/deps/packages.js"
 import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkInstallLinks } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
+import { thisVerifier, withSettleLock } from "./settle.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent, recordTaskWorktree } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
 import { orcaBinarySync, worktreeRemove } from "./orca/client.js"
@@ -113,12 +114,36 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
     return removed.exitCode !== 0 && existsSync(path) ? headline(removed.stderr) || `exit ${String(removed.exitCode)}` : undefined
 }
 
+/** How long a start waits for another process making the same task's Op worktree. */
+const OP_WORKTREE_LOCK_MS = 120_000
+
+/** The lock a task's Op worktree is made under (a ledger row, harness/settle.ts withSettleLock). */
+const opWorktreeLockKey = (taskId: string): string => `op-worktree-lock:${taskId}`
+
+const madeOpWorktree = (root: string, taskId: string): OpWorktree | undefined => {
+    const known = withLedger(root, (db) => opWorktreeOf(db, taskId))
+    return known !== undefined && existsSync(known.path) ? known : undefined
+}
+
 /**
  * The Op worktree of a task: made on its first start, reused after. It is cut from the head of the branch `target` has
  * checked out (the workflow's branch), on a branch of its own, with the product's hooks and the target's install linked in;
- * the task records it as its checkout, so verify, cancel, preserve and a failed result act there.
+ * the task records it as its checkout, so verify, cancel, preserve and a failed result act there. Concurrent starts of one
+ * task (parallel workflow steps) make it one at a time under the task's Op worktree lock: two `git worktree add` of one path
+ * race, and the loser's cleanup deletes the folder the winner is checking out.
  */
 export const ensureOpWorktree = async (root: string, taskId: string, target: string): Promise<OpWorktree> => {
+    const ready = madeOpWorktree(root, taskId)
+    if (ready !== undefined) return ready
+    const db = openLedger(root)
+    try {
+        return await withSettleLock(db, thisVerifier(taskId), OP_WORKTREE_LOCK_MS, opWorktreeLockKey(taskId), () => makeOpWorktree(root, taskId, target))
+    } finally {
+        db.close()
+    }
+}
+
+const makeOpWorktree = async (root: string, taskId: string, target: string): Promise<OpWorktree> => {
     const { task, known } = withLedger(root, (db) => ({ task: getTask(db, taskId), known: opWorktreeOf(db, taskId) }))
     if (known !== undefined && existsSync(known.path)) return known
     if (task.workflowId === null) throw new Refusal("OP_WORKTREE_NO_WORKFLOW", `task ${taskId} belongs to no workflow; it works in the checkout it was sent from`)

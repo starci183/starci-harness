@@ -1,4 +1,5 @@
 import { worktreeGc } from "../../harness/worktree-gc.js"
+import { reconcileLineage } from "../../harness/orca/lineage.js"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
@@ -176,7 +177,8 @@ const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, sea
     const said = states.join("/") || "unknown"
     if (verdict === "waiting" || verdict === "quiet") withLedger(root, (db) => { holdTerminal(db, seat, terminal); })
     if (shown === null) return null
-    if (verdict === "waiting" || verdict === "quiet") {
+    // The paste itself prints, so an unattached Kernel whose dispatch sits in its composer reads as started too.
+    if (verdict === "waiting" || verdict === "quiet" || (verdict === "started" && !attached)) {
         const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting())
         if (resubmitted !== null) return `${workflow.id}: Kernel launch ${seat.id} ${resubmitted}`
     }
@@ -254,6 +256,9 @@ const kernelStall = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatR
     if (!pending || !olderThan(lastCall, stall.idleMinutes)) return null
     const signals = await askIdle(binary, cwd, { terminal: seat.terminal, handle: seat.handle }, inventory, stall)
     if (signals.idle !== true) return null
+    // A prompt still pasted in the composer is submitted, never nudged over.
+    const resubmitted = await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal: seat.terminal }, loadRouting())
+    if (resubmitted !== null) return `${workflow.id}: Kernel idle at its prompt: ${resubmitted}`
     const step = stallStep(lastCall, nudges, stall)
     if (step.kind === "wait") return `${workflow.id}: Kernel idle at its prompt (${signals.evidence.join("; ")}); ${step.detail}`
     if (step.kind === "nudge") {
@@ -566,6 +571,15 @@ const gcLines = async (root: string): Promise<string[]> => {
     }
 }
 
+/** The tick's Orca lineage reconcile of one repository (harness/orca/lineage.ts), as lines: each lineage it set, or Orca refused. */
+const lineageLines = async (root: string, binary: OrcaBinary, cwd: string): Promise<string[]> => {
+    try {
+        return (await reconcileLineage(root, binary, cwd)).map((fix) => `worktree ${fix.path} (${fix.owner}): ${fix.outcome === "set" ? "lineage set, " : ""}${fix.detail}`)
+    } catch (error: unknown) {
+        return [`Orca lineage of ${root} not reconciled (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`]
+    }
+}
+
 const blockedPromptLines = (root: string): string[] =>
     ledgerPath(root) === undefined ? [] : withLedger(root, (db) => openBlockedPrompts(db).map((decision) => `BLOCKED PROMPT (${decision.id}, ${decision.workflowId}): ${questionOf(decision)}`))
 
@@ -612,7 +626,7 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
         lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, seat, true))).flat())
-        lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat())
+        lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat(), ...(await inOrder(repos, (repo) => lineageLines(repo, binary, context.cwd))).flat())
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)

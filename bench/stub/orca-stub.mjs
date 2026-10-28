@@ -9,6 +9,7 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename } from "node:path"
 import { createHash } from "node:crypto"
+import { execFileSync } from "node:child_process"
 
 const self = basename(process.execPath).toLowerCase()
 
@@ -225,6 +226,24 @@ const defaults = (command, flags, state) => {
             return { ok: true, result: {} }
         case "worktree show":
             return { ok: true, result: { worktree: { path: String(flags.worktree ?? "").replace(/^path:/, ""), parentWorktreeId: state.worktreeParents?.[String(flags.worktree)] ?? null } } }
+        case "worktree list": {
+            // Orca lists every git worktree of the repository, each with the parent its lineage names (null at top level).
+            const repo = String(flags.repo ?? "").replace(/^path:/, "")
+            let porcelain = ""
+            try {
+                porcelain = execFileSync("git", ["worktree", "list", "--porcelain"], { cwd: repo, encoding: "utf8" })
+            } catch {
+                return refuse("selector_not_found", `no repository at ${repo}`)
+            }
+            const paths = [...porcelain.matchAll(/^worktree (.+)$/gm)].map((match) => match[1].trim())
+            const worktrees = paths.map((path) => ({ path, parentWorktreeId: state.worktreeParents?.[`path:${path.replaceAll("\\", "/")}`] ?? null }))
+            return { ok: true, result: { worktrees } }
+        }
+        case "project setups":
+            return { ok: true, result: { setups: state.setups ?? [] } }
+        case "project setup-delete":
+            state.setups = (state.setups ?? []).filter((setup) => setup.id !== flags.setup)
+            return { ok: true, result: { deleted: flags.setup } }
         case "worktree rm":
             // The stub keeps no checkout: it forgets the lineage and leaves the folder, which the harness then removes through git.
             if (state.worktreeParents !== undefined) delete state.worktreeParents[String(flags.worktree)]

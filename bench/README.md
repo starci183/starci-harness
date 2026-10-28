@@ -42,14 +42,14 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   fault straight into a ledger (`sql`, the state a killed process or elapsed time leaves behind), serve a long-lived verb
   or a stand-in (`stub`) until the scenario ends (`serve`, saving the `<as>.url` and `<as>.token` its ready line prints) and call it (`http`, with
   `token`, `body`, `stream` for an event stream, and `expect` on status, text and JSON paths), and `assert` on the
-  ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`), the stand-in's call log (`orcaCalls`, `match`
+  ledger (the scratch repository's, or `repo: <name>`'s), git (`in` another checkout such as `${worktree.<workflow>}`; `gitLog` reads `ref`, default HEAD, so a branch whose worktree is gone is still read), the stand-in's call log (`orcaCalls`, `match`
   filtering by flag) or the file system. `when` and `unless` tie a step to a `--fault`.
 - **The Orca stand-in** is `stub/orca-stub.mjs`: the runner copies this node binary to `<state base>/bench/bin/orca` and
   points `STARCI_ORCA_BIN` at it, and the stub, preloaded into it, answers the orca CLI subset the harness calls: `agent
   launch` (a terminal handle, replayed by `--retry-launch`), run-create and run-use (a Run bound to its coordinator
   terminal), task-create, worker-start (refused unless `--from` is the coordinator of `--run` and `--parent` a task of
   it), worker show, stop, release and abandon, request-show, `orchestration check` and `send` (one mailbox per Run or
-  dispatch, deliveries acked), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, and repo add, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
+  dispatch, deliveries acked), terminal create, list (each terminal's title, its last rename, and orphaned flag), close and rename, repo add, worktree show, set, rm and list (each git worktree of `--repo` with the parent its lineage names), project setups (the scripted `setups`) and setup-delete, and the idle signals the stall ladder reads (`terminal wait --for tui-idle`, `terminal show`, the
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,

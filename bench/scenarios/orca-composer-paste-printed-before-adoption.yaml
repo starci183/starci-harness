@@ -1,0 +1,102 @@
+schema: starci/scenario@1
+id: orca-composer-paste-printed-before-adoption
+group: orca
+title: "an Op's dispatch sits pasted mid-line in its composer, and the paste itself printed: it is submitted before the launch is adopted"
+inject: >-
+  worker-start's answer is lost (effect_unknown); Orca keeps the worker at start_unknown; the agent's terminal printed after
+  the launch (the paste drew the composer), and its screen shows the dispatch still pasted after other text on the line
+  ("...[Pasted Content 1700 chars]"), its turn never started
+expect: >-
+  the launch that went unknown is listed under its Kernel's worktree in Orca at once ([Op] <workflow>: <task>); kernel next
+  judges the dispatch started (its terminal printed), reads the screen before adopting it, sends one bare Enter recorded as
+  seat-composer-resubmitted, then adopts it: the task runs on the first dispatch, with no second launch and no fence
+pass:
+  - one [Op] worktree set for the unknown launch
+  - one bare Enter to the Op's terminal, one seat-composer-resubmitted event, and the dispatch adopted
+  - one Op launch, no worker-stop
+  - "no step without evidence: every state change in the ledger has its event"
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: cpp
+        goal: write doc a
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: cpp
+  - name: the Op launch lands, its answer is lost, and Orca never sees its turn start
+    orca:
+      set:
+        newWorkerState: start_unknown
+      rules:
+        - command: worker-start
+          fault: lost-reply
+          match:
+            task-title: '^\[Op\]'
+  - seat: kernel:cpp
+    starci: [kernel, next, cpp, --wait, "0"]
+  - assert:
+      orcaCalls:
+        command: worktree set
+        match:
+          display-name: '^\[Op\] cpp: '
+        count: 1
+  - name: the waiting launch's seat holds its terminal
+    seat: kernel:cpp
+    starci: [kernel, next, cpp, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT terminal FROM seats WHERE role = 'worker' AND terminal IS NOT NULL
+      as: opterm
+  - name: the paste printed, and the dispatch sits after other text on the composer line
+    orca:
+      set:
+        lastOutput:
+          ${opterm}: "2099-01-01T00:00:00.000Z"
+        screens:
+          ${opterm}: ["", "› Read the brief first ...[Pasted Content 1700 chars]", "", "  ⏎ send   ⌃J newline"]
+        composer:
+          ${opterm}: true
+  - name: the reconcile submits it, then adopts the dispatch
+    seat: kernel:cpp
+    starci: [kernel, next, cpp, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals: [running]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT COUNT(*) FROM events WHERE kind = 'seat-composer-resubmitted') || ':' || (SELECT COUNT(*) FROM events WHERE kind = 'seat-adopted')"
+        equals: ["1:1"]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: "${opterm}"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        count: 0

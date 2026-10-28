@@ -14,6 +14,20 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `TYPECHECK_CONFIG_MISSING` on `.starciwork` files, whole-suite coverage thresholds). A tests-pass run that changed no source
   file judges no coverage, and coverage arguments go only to a command that runs jest (`jest`, `npx jest`, or a package
   script that calls jest); any other command, such as `git diff --no-index`, runs as named.
+- **Orca lineage is re-applied on every tick.** An Op whose launch ended unknown is listed under its Kernel's worktree at
+  once, and `supervisor tick` re-applies the lineage of every harness worktree Orca lists without its parent
+  (`harness/orca/lineage.ts`), logging Orca's refusal with its reason (`orca-lineage-refused`). Bench:
+  `orca-lineage-reapplied-on-tick`.
+- **A pasted dispatch is submitted before its launch is adopted.** The paste itself prints, so a dispatch left in the
+  composer read as started and was adopted unsubmitted; the screen is now read first (the marker found anywhere on a row
+  or wrapped over two), and an idle Kernel or Op is resubmitted before it is nudged. Bench:
+  `orca-composer-paste-printed-before-adoption`.
+- **`project retire` cleans up after the project.** It removes every harness worktree of the project (work preserved,
+  branches kept) and detaches the repository from Orca's project list (`orca project setup-delete`) once Orca lists no
+  other worktree of it. Bench: `project-retire-removes-worktrees-detaches-orca`.
+- **Concurrent starts of one task no longer race on its Op worktree.** It is made under a ledger lock per task (bench
+  `orca-duplicate-step-no-double-launch` on Linux). `supervisor-dispatch-worker-report` reads the worker's branch, whose
+  worktree the accept removed (`gitLog` takes `ref`), and `worker-commits-itself` commits in the Op worktree.
 
 - **`starci app add` takes every front-end unit.** The noun names `page`, `overlay` and `layout` beside `block`,
   `composite`, `branch` and `leaf`, and the verb hands @starci/hfs `--kind modal|drawer` and `--form` (an overlay) and

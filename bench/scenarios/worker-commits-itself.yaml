@@ -2,7 +2,7 @@ schema: starci/scenario@1
 id: worker-commits-itself
 group: worker
 title: a worker that commits its own work is caught, not silently credited
-inject: the worker runs git commit on docs/a.md, then files done
+inject: the worker runs git commit on docs/a.md in its own Op worktree, then files done
 expect: the settle notices HEAD moved with a commit that has no Starci-Task trailer over the task's paths and does not mark the task done on it
 pass:
   - task is not done
@@ -42,14 +42,22 @@ steps:
       - self
     save:
       a: data.nodes.0.task.id
+  - read:
+      db: ledger
+      query: SELECT worktree FROM tasks WHERE id = '${a}'
+      as: wt
   - write:
-      path: docs/a.md
+      path: ${wt}/docs/a.md
       content: |
         # a
   - git:
+      - -C
+      - ${wt}
       - add
       - docs/a.md
   - git:
+      - -C
+      - ${wt}
       - commit
       - -q
       - -m
@@ -70,3 +78,9 @@ steps:
         query: SELECT COUNT(*) FROM tasks WHERE status = 'done'
         equals:
           - 0
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT COUNT(*) FROM events WHERE kind = 'task-verified' AND json_array_length(json_extract(data_json, '$.foreign')) > 0
+        equals:
+          - 1

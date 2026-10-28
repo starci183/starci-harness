@@ -439,10 +439,52 @@ export const awaitWorktree = async (binary: OrcaBinary, selector: string, cwd: s
  * worktree each terminal runs in. Waits for Orca to discover a fresh worktree first. Orca owns only this metadata; the git
  * worktrees stay the harness's.
  */
-export const worktreeSetParent = async (binary: OrcaBinary, input: { readonly worktree: string; readonly parent: string; readonly displayName: string }, cwd: string): Promise<void> => {
+export const worktreeSetParent = async (binary: OrcaBinary, input: { readonly worktree: string; readonly parent: string; readonly displayName: string }, cwd: string, discover = true): Promise<void> => {
     const selector = `path:${input.worktree.replaceAll("\\", "/")}`
-    await awaitWorktree(binary, selector, cwd)
+    if (discover) await awaitWorktree(binary, selector, cwd)
     await callOrcaArgv(binary, orcaToolArgv("worktree", "set", { worktree: selector, "parent-worktree": `path:${input.parent.replaceAll("\\", "/")}`, "display-name": input.displayName }), "orca worktree set", z.unknown(), cwd, ORCA_TIMEOUT_MS)
+}
+
+/** One worktree as Orca lists it: its folder and the folder of the parent it is listed under (null at top level). */
+export interface OrcaWorktree {
+    readonly path: string
+    readonly parent: string | null
+}
+
+const WORKTREE_LIST_LIMIT = "1000"
+
+const worktreeListSchema = z.looseObject({ worktrees: z.array(z.looseObject({ path: z.string(), parentWorktreeId: z.string().nullish() })) })
+
+/** The folder an Orca worktree id names (`<repo-id>::<path>`, or a `path:` selector), or the value itself. */
+const folderOfWorktreeId = (id: string): string => {
+    const at = id.indexOf("::")
+    if (at >= 0) return id.slice(at + 2)
+    return id.startsWith("path:") ? id.slice("path:".length) : id
+}
+
+/** `orca worktree list --repo path:<repo>`: every worktree Orca knows of one repository, with the parent its lineage names. */
+export const worktreeList = async (binary: OrcaBinary, repo: string, cwd: string): Promise<OrcaWorktree[]> => {
+    const listed = await callOrcaArgv(binary, orcaToolArgv("worktree", "list", { repo: `path:${repo.replaceAll("\\", "/")}`, limit: WORKTREE_LIST_LIMIT }), "orca worktree list", worktreeListSchema, cwd, ORCA_TIMEOUT_MS)
+    return listed.worktrees.map((row) => ({ path: row.path, parent: row.parentWorktreeId == null ? null : folderOfWorktreeId(row.parentWorktreeId) }))
+}
+
+/** `orca project setups`: where Orca has each project set up on a host (the registered repository of a legacy setup). */
+export interface OrcaSetup {
+    readonly id: string
+    readonly path: string
+}
+
+const setupsSchema = z.looseObject({ setups: z.array(z.looseObject({ id: z.string(), path: z.string() })) })
+
+export const projectSetups = async (binary: OrcaBinary, cwd: string): Promise<OrcaSetup[]> =>
+    (await callOrcaArgv(binary, orcaToolArgv("project", "setups", {}), "orca project setups", setupsSchema, cwd, ORCA_TIMEOUT_MS)).setups.map((row) => ({ id: row.id, path: row.path }))
+
+/**
+ * `orca project setup-delete --setup <id>`: detaches a repository from Orca's project list (a repo-backed setup drops its
+ * registered repo record; the folder and its git stay). Without --force, so Orca refuses while the project has open terminals.
+ */
+export const projectSetupDelete = async (binary: OrcaBinary, setup: string, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("project", "setup-delete", { setup }), "orca project setup-delete", z.unknown(), cwd, SETTLE_TIMEOUT_MS)
 }
 
 /** `orca worktree rm --force`: removes a worktree from Orca's metadata and git together (archive hooks skipped). */

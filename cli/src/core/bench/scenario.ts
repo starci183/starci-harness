@@ -56,8 +56,8 @@ const sqlAssert = z.strictObject({
 
 const assertSchema = z.strictObject({
     sql: sqlAssert.optional(),
-    /** `in` names another repository (a bare remote) relative to the scratch repository; default the scratch repository. */
-    gitLog: z.strictObject({ grep: z.string(), count: z.number().int(), in: z.string().optional() }).optional(),
+    /** `in` names another repository (a bare remote) relative to the scratch repository; default the scratch repository. `ref` is the history read, default HEAD. */
+    gitLog: z.strictObject({ grep: z.string(), count: z.number().int(), in: z.string().optional(), ref: z.string().optional() }).optional(),
     gitClean: z.boolean().optional(),
     gitHas: z.strictObject({ path: z.string(), present: z.boolean(), in: z.string().optional() }).optional(),
     /** `match` keeps only the calls whose named flags each match a regular expression (`task-title: "^\[Op\]"`). */

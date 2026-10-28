@@ -332,6 +332,8 @@ const settleUnknown = async (at: Launching, launched: LaunchOf<"unknown">): Prom
         noteTab(db, seat.id, closed)
         recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNKNOWN, facts: { closed, orphaned: true } })
     }
+    // Unknown is not dead: the worker most often runs, so its worktree is listed under its Kernel's now, not after the adoption.
+    if (ours) await nestOpWorktree(db, binary, task, cwd)
     const next = ours
         ? `task ${task.id} is effect_unknown and keeps its worktree; seat ${seat.id} stays open. Replay the same launch (request ${record.start.retryRequest}) with: starci seat start ${task.id} --resume`
         : `task ${task.id} is ${getTask(db, task.id).status}; seat ${seat.id} is left ${getSeat(db, seat.id).status}`

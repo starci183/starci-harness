@@ -270,7 +270,7 @@ const checkOrcaCalls = (run: RunState, expected: NonNullable<Assertion["orcaCall
 /** The git assertions: commits matching a grep, a clean worktree, a path at HEAD. */
 const checkGit = async (run: RunState, assertion: Assertion, label: string): Promise<void> => {
     if (assertion.gitLog !== undefined) {
-        const log = await git(run, ["log", "--format=%H", `--grep=${expand(run, assertion.gitLog.grep)}`, "--fixed-strings", "HEAD"], assertion.gitLog.in)
+        const log = await git(run, ["log", "--format=%H", `--grep=${expand(run, assertion.gitLog.grep)}`, "--fixed-strings", expand(run, assertion.gitLog.ref ?? "HEAD")], assertion.gitLog.in)
         const count = log.stdout.split("\n").filter((line) => line !== "").length
         if (count !== assertion.gitLog.count) unmet(run, label, `git log --grep ${assertion.gitLog.grep} found ${String(count)} commit(s), expected ${String(assertion.gitLog.count)}`)
     }
