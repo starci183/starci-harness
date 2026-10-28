@@ -18,6 +18,7 @@
  */
 import { buildBeConfig } from "./lib/config.ts"
 import { pluginForEdition } from "./lib/edition.ts"
+import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as ambientIdRecommended, rules as ambientIdRules } from "./ambient-id.ts"
 import { recommended as appCompositionRecommended, rules as appCompositionRules } from "./app-composition.ts"
 import { recommended as asyncDisciplineRecommended, rules as asyncDisciplineRules } from "./async-discipline.ts"
@@ -90,6 +91,7 @@ interface RuleDeclaration {
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
 const CONTRIBUTIONS: Contribution[] = [
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
+    { law: "ai-gateway", rules: aiGatewayRules, recommended: aiGatewayRecommended },
     { law: "ambient-id", rules: ambientIdRules, recommended: ambientIdRecommended },
     { law: "app-composition", rules: appCompositionRules, recommended: appCompositionRecommended },
     { law: "async-discipline", rules: asyncDisciplineRules, recommended: asyncDisciplineRecommended },

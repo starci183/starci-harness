@@ -1,10 +1,12 @@
 /**
  * The rule that holds BE-CONVENTION 1.10-1.14 (R90 `BE_INFRA_OWNER`).
  *
- * Every raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, in-process events) has exactly
- * one owning platform or integration capability, and only files of that capability may import it or reach for it as a
- * global. The table lives in the slot manifest (`ruleParams.be.infraOwners`: specifier -> owners, `[]` for "nowhere"),
- * so the rule holds no library name of its own and the messages and the check read one source.
+ * Every raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, in-process events, model SDKs)
+ * has exactly one owning platform or integration capability, and only files of that capability may import it or reach
+ * for it as a global. The table lives in the slot manifest (`ruleParams.be.infraOwners`: specifier -> owners, `[]` for
+ * "nowhere"), so the rule holds no library name of its own and the messages and the check read one source. A key covers
+ * its subpaths, so a scope key (`@langchain`) covers every package of the scope, and the longest key wins
+ * (`@langchain/langgraph` over `@langchain`).
  *
  * "Owning capability" is asked of the slot view (`ownerOf(filename)`), never of a path pattern. A reference is an
  * import (static, dynamic, `require`, `export ... from`) of the specifier or of a subpath of it, or a value reference to
@@ -57,7 +59,7 @@ export const infraImportOwner: RuleModule = {
         schema: [],
         messages: {
             foreign: "`{{name}}` is owned by {{owners}}. Use that capability's port (injected with its `Inject*()` decorator) instead of the raw library, or move this code into the owner.",
-            nowhere: "`{{name}}` is not used in a back end: its job belongs to a platform port (config through the typed `<c>.config.ts`, events through `eventBus.publish(event, tx)` of `platform/event-bus`, schedules and background jobs through a queue's BullMQ job scheduler of `platform/queue`). Remove it.",
+            nowhere: "`{{name}}` is not used in a back end: its job belongs to another owner's port (config through the typed `<c>.config.ts`, events through `eventBus.publish(event, tx)` of `platform/event-bus`, schedules and background jobs through a queue's BullMQ job scheduler of `platform/queue`, a model call through the LangChain client of `integrations/ai` and the ai-router gateway, an agent loop in the agent runtime). Remove it.",
         },
     },
     create(context) {

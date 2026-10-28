@@ -254,6 +254,25 @@ ruleParams:
       "@socket.io/postgres-adapter": [platform/realtime]   # the stateless socket.io adapter of a scaled lite back end without Redis
       "@socket.io/redis-adapter": [platform/realtime]      # the sharded socket.io adapter of a scaled back end on the declared Redis
       pg: [platform/realtime]                              # the LISTEN connection of the Postgres hub; every other query goes through TypeORM
+      # BE-AI-1, BE-AI-3: every model call goes through the ai-router gateway. Its custody owner registers @starci/ai-router with the
+      # provider keys; the one LangChain integration owns @langchain/*; no provider SDK, openai client or agent framework is imported.
+      "@starci/ai-router": [integrations/ai-gateway]
+      "@starci/ai-router/testing": [integrations/ai-gateway, integrations/ai]   # the fake provider a spec of either side boots the gateway with
+      "@langchain": [integrations/ai]       # a scope key: every @langchain/* package
+      "@langchain/langgraph": []            # an agent loop runs in the agent runtime, never in code
+      "@langchain/community": []            # retrieval reads the app's own persistence through its owner
+      langchain: []                          # createAgent is an agent loop
+      openai: []                             # code calls models through @langchain/openai
+      "@anthropic-ai/sdk": []
+      "@google/genai": []
+      "@google/generative-ai": []
+      "@mistralai/mistralai": []
+      "@openrouter/ai-sdk-provider": []
+      "@ai-sdk": []
+      ai: []
+      cohere-ai: []
+      groq-sdk: []
+      ollama: []
     # R87 BE_CQRS_SHAPE no-event-bus: the in-process event vocabulary the rule refuses. `imports` maps a module
     # specifier to the member names that are an in-process event; `[]` flags the package itself (its emitter packages
     # are the `[]` owners of infraOwners above). `classes` maps a module specifier to the class names that are an
@@ -1892,7 +1911,7 @@ slots:
     tests: unit-beside            # <name>.service.spec.ts beside each <name>.service.ts; plus src/tests/integration/<provider>/ (R112)
     coverage: required
     budget: {indexExports: 80}   # a provider's port surface includes clients, config, options, tokens and errors
-    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INTEGRATION_SPEC_MISSING]
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INTEGRATION_SPEC_MISSING, BE_AI_KEY_CUSTODY, BE_AI_GATEWAY_CLIENT]
   - id: be.integrations.model
     since: 3.1.0
     profiles: [be]
@@ -1902,7 +1921,7 @@ slots:
     tier: integrations
     tests: none
     coverage: required
-    why: an ML or LLM model client is an integration; weights and datasets are never in git
+    why: a self-hosted ML model client is an integration; weights and datasets are never in git, and a language model is called through the ai-router gateway by the integrations/ai LangChain client (BE-AI-1, BE-AI-3)
     rules: [BE_TIER_DIRECTION, BE_INFRA_OWNER, BE_INTEGRATION_SPEC_MISSING]
 
   - id: be.integrations.supabase

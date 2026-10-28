@@ -885,7 +885,7 @@ rules:
       - {kind: eslint-be, id: public-contract-form}
   - id: R90
     code: BE_INFRA_OWNER
-    law: Each raw infrastructure library is imported only by its one owning platform or integration capability, and only integrations call the `HttpClient` port.
+    law: Each raw infrastructure library, model SDKs included, is imported only by its one owning platform or integration capability, and only integrations call the `HttpClient` port.
     failureCodes:
       - BE_INFRA_OWNER
     enforcers:
@@ -2239,6 +2239,20 @@ rules:
       - FE_ROUTE_PAGE_OUTSIDE_PAGE
     enforcers:
       - {kind: eslint-grammar-core, id: route-page-is-one-page}
+  - id: R326
+    code: BE_AI_KEY_CUSTODY
+    law: An upstream model provider key variable is named only inside the ai-router gateway's custody owner `integrations/ai-gateway`; every other file reaches a model through the gateway with a virtual key.
+    failureCodes:
+      - BE_AI_KEY_CUSTODY
+    enforcers:
+      - {kind: eslint-be, id: provider-key-custody}
+  - id: R327
+    code: BE_AI_GATEWAY_CLIENT
+    law: Code builds only the `ChatOpenAI` and `OpenAIEmbeddings` clients of `@langchain/openai`, each with its `configuration.baseURL` read from the integration's options and its `apiKey` revealed from a `Secret`, so every model call goes through the ai-router gateway.
+    failureCodes:
+      - BE_AI_GATEWAY_CLIENT
+    enforcers:
+      - {kind: eslint-be, id: ai-client-through-gateway}
 
 # Owner section. The gaps `starci contexts anatomy --check` takes as pending instead of red: a slot rule code no rule carries
 # (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is

@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.9.11 - 2026-10-29
+
+- Changed: the bundled slot manifest gives the model libraries their owners in `ruleParams.be.infraOwners` (`@starci/ai-router` to `integrations/ai-gateway`, `@langchain/*` to `integrations/ai`; `openai`, `langchain`, `@langchain/langgraph`, `@langchain/community` and the provider SDKs nowhere) and lists R326 and R327 on `be.integrations`; the bundled rule catalog carries R326 `BE_AI_KEY_CUSTODY` and R327 `BE_AI_GATEWAY_CLIENT`; the bundled canon pins name hfs 4.9.11, eslint-canon-be 3.6.8, eslint-canon-fe 9.4.9, the Grammar family 0.15.10 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), and pin `@langchain/core` 1.3.1 and `@langchain/openai` 1.8.0.
+
 ## 4.9.10 - 2026-10-29
 
 - Fixed: the back-end skeleton's `OriginGuard` (`platform/http-security`, BE-AUTH-5) refuses a state-changing request (`POST`, `PUT`, `PATCH`, `DELETE`) that names no usable origin, with `HTTP_SECURITY_ORIGIN_REJECTED` (403). It admitted a request with neither `Origin` nor `Referer`, which a session-cookie mutation must never be. `Referer` stands in only when `Origin` is absent, so a foreign or `null` `Origin` is never rescued by an allowed `Referer`; safe methods are not judged.

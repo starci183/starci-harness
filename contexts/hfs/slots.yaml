@@ -359,6 +359,27 @@ ruleParams:
         - platform/realtime
       pg:
         - platform/realtime
+      "@starci/ai-router":
+        - integrations/ai-gateway
+      "@starci/ai-router/testing":
+        - integrations/ai-gateway
+        - integrations/ai
+      "@langchain":
+        - integrations/ai
+      "@langchain/langgraph": []
+      "@langchain/community": []
+      langchain: []
+      openai: []
+      "@anthropic-ai/sdk": []
+      "@google/genai": []
+      "@google/generative-ai": []
+      "@mistralai/mistralai": []
+      "@openrouter/ai-sdk-provider": []
+      "@ai-sdk": []
+      ai: []
+      cohere-ai: []
+      groq-sdk: []
+      ollama: []
     eventBus:
       imports:
         "@nestjs/cqrs":
@@ -2738,6 +2759,8 @@ slots:
       - BE_ERROR_HOME
       - BE_SECRET_DEFAULT
       - BE_INTEGRATION_SPEC_MISSING
+      - BE_AI_KEY_CUSTODY
+      - BE_AI_GATEWAY_CLIENT
   - id: be.integrations.model
     profiles:
       - be
@@ -2747,7 +2770,8 @@ slots:
     tier: integrations
     tests: none
     coverage: required
-    why: an ML or LLM model client is an integration; weights and datasets are never in git
+    why: a self-hosted ML model client is an integration; weights and datasets are never in git, and a language model
+      is called through the ai-router gateway by the integrations/ai LangChain client (BE-AI-1, BE-AI-3)
     rules:
       - BE_TIER_DIRECTION
       - BE_INFRA_OWNER

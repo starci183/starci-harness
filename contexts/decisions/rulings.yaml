@@ -383,6 +383,11 @@ rulings:
     absorbs: [fe-error-reporter-optional]
 
   # --- app shape, editions and back end
+  - id: be-ai-langchain-gateway
+    date: '2026-10-29'
+    status: live
+    ruling: "Owner, verbatim: \"nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context\" (a model call made straight from code uses LangChain with retrieved context; update .claude too), with the gateway rulings of the same night. Every model call goes through the @starci/ai-router gateway hosted in process by AiRouterGatewayModule on the app's port plus one; clients authenticate with gateway-issued virtual keys (sk-starci-...), and only the gateway's custody owner reads an upstream provider key such as OPENROUTER_API_KEY. Code calls models through LangChain from exactly one integration: ChatOpenAI and OpenAIEmbeddings of @langchain/openai pointed at the gateway base URL from config with a virtual key, with context from a retriever over the app's knowledge filtered by the caller's access lane; a domain task is a chain (prompt template, model, structured output or string parser) and code appends its fixed tails after the answer. Fixed-shape tasks (classify, extract, draft, parse a rule, embed) run in code; open, multi-step, tool-using conversations run in the agent runtime (openclaw), whose tools all go through the single MCP gateway that enforces authority and audit and whose model calls go through the same ai-router gateway with its own virtual key. The runtime never writes business data directly, and code never runs an agent loop."
+    owner: "contexts/code/be/ai.md BE-AI-1 … 6; contexts/hfs/rules.yaml R326, R327, R90; contexts/hfs/slots.yaml ruleParams.be.infraOwners; @starci/eslint-canon-be src/ai-gateway.ts"
   - id: R212/case-10
     date: '2026-10-24'
     status: live

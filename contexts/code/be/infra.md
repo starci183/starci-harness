@@ -11,7 +11,8 @@ temporal.md, retries resilience.md, logging logging.md.
 
 A raw library (the queue and Redis clients, the Postgres driver, socket and LISTEN engines, timers, loggers, date
 libraries, `node:async_hooks`) is imported only by the platform capability the table names; any other package
-dependency outside the framework and pure-library allowlists only by its one provider integration. `@nestjs/config`,
+dependency outside the framework and pure-library allowlists only by its one provider integration; model libraries
+follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). `@nestjs/config`,
 `dotenv`, `@nestjs/schedule` and `@nestjs/event-emitter` are imported nowhere. In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
 
