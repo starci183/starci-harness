@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.4] - 2026-10-28
+
+Runs `@starci/hfs` 4.9.4 (an exact dependency).
+
 ### Added
 
 - **`supervisor ask "<request>"`.** The owner (or Debug relaying the owner's words) hands a request to a project's
@@ -22,6 +26,13 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   every node. CI's `plan` job fans those packages out to one job each beside the light gates, the harness, app and Sonar
   jobs, behind one required `ci` job, and a `v*` tag on a commit whose run on main succeeded reuses that run. Bench:
   `release-affected-ci-plan`.
+
+### Changed
+
+- **Release F.** @starci/hfs 4.9.4 bundles the canon pins of release F (Grammar family 0.15.3, which ships
+  `PageHeader` and the lint `no-hand-rolled-page-header`; hfs 4.9.4, canon-fe 9.4.3, canon-be 3.6.3) and the rule
+  R323, so `starci app` judges and scaffolds an app at those versions. `cli/package-lock.json` is refreshed once
+  @starci/hfs 4.9.4 is on npm (CONTRIB-20: the packages publish first, the CLI on a second tag).
 
 ### Fixed
 
