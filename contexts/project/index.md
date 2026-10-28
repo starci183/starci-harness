@@ -155,7 +155,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/decisions.md](../harness/decisions.md) · 9 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 10 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 2 KB
 - [harness/roles.md](../harness/roles.md) · 4 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 2 KB — These hold for every role and every task.
