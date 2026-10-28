@@ -1,0 +1,89 @@
+schema: starci/scenario@1
+id: terminal-sweep-renamed-tab-closed
+group: orca
+title: "an Op's agent renames its tab; after its seat is released the tick's terminal sweep still closes it, matched by the handle its seat recorded"
+inject: "the Op's tab is renamed to its shell's path (as Codex does), and the close at release is refused once, so the tab outlives its seat"
+expect: >-
+  kernel next verifies the Op and releases its seat; its tab close is refused, so the tab stays open with a title no harness
+  convention matches; the next supervisor tick's terminal sweep finds the tab by the terminal handle the released seat recorded,
+  never by its title, and closes it
+pass:
+  - the Op's seat is released and its first tab close was refused
+  - the tick closes the renamed tab (a second terminal close of that handle, and a terminal-swept host event for it)
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: one
+        goal: bench workflow one
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: one
+  - name: kernel next dispatches
+    seat: kernel:one
+    starci: [kernel, next, one, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - read:
+      db: ledger
+      query: "SELECT terminal FROM seats WHERE task_id = '${a}' AND role = 'worker'"
+      as: tab
+  - name: the agent renames its tab after its shell, and the close at release will be refused once
+    orca:
+      terminal:
+        handle: ${tab}
+        live: true
+        title: 'C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe'
+      rules:
+        - command: terminal close
+          fault: refuse
+          code: bench_refused
+          match:
+            terminal: "^${tab}$"
+  - name: worker files done
+    worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - name: kernel next verifies and releases the seat; its tab close is refused
+    seat: kernel:one
+    starci: [kernel, next, one, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM seats WHERE task_id = '${a}' AND role = 'worker'"
+        equals: [released]
+  - name: the tick sweeps the renamed tab by its recorded handle
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^${tab}$"
+        min: 2
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind = 'terminal-swept' AND subject = '${tab}'"
+        equals: [1]
