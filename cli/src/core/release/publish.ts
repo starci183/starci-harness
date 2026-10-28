@@ -53,8 +53,8 @@ const settledOnRegistry = async (pkg: WorkspacePackage, root: string, deadline: 
 const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], root: string): Promise<string | undefined> => {
     const pkg = packages.find((candidate) => candidate.name === row.package)
     if (pkg === undefined) return undefined
-    // Provenance needs a CI identity (GitHub Actions OIDC); a publish from this machine (owner ruling 2026-10-28) goes without it.
-    const provenance = process.env.GITHUB_ACTIONS === "true" ? [] : ["--provenance=false"]
+    // Provenance needs a CI identity (GitHub Actions OIDC): CI's publish job signs every tarball, Debug's fallback from a workstation goes without it.
+    const provenance = process.env.GITHUB_ACTIONS === "true" ? ["--provenance"] : ["--provenance=false"]
     const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance], pkg.dir)
     if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
     if (!(await settledOnRegistry(pkg, root, Date.now() + REGISTRY_SETTLE_MS))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry ${String(REGISTRY_SETTLE_MS / 1000)} s after publishing`)
@@ -106,17 +106,46 @@ const judgeRequires = (rows: readonly PlanRow[], packages: readonly WorkspacePac
     }
 }
 
+/** Paths of a package folder that never ship: its specs and test folders. */
+const UNSHIPPED = /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:spec|test)\.[cm]?[jt]sx?$/
+
+/** The shipped files of the package folder `dir` that differ between `from` and HEAD; undefined when git cannot diff from `from`. */
+const shippedChanges = async (root: string, from: string, dir: string): Promise<string[] | undefined> => {
+    const diff = await captureGit(["diff", "--name-only", "--no-renames", "-z", from, "HEAD", "--", dir], root)
+    if (diff.exitCode !== 0) return undefined
+    return diff.stdout.split("\0").filter((path) => path !== "" && !UNSHIPPED.test(path.slice(dir.length + 1)))
+}
+
+/** The commit npm recorded for a published version (its `gitHead`), when this repository's history holds it. */
+const publishedFrom = async (row: PlanRow, root: string): Promise<string | undefined> => {
+    const view = await captureNpm(["view", `${row.package}@${row.version}`, "gitHead"], root)
+    const sha = view.stdout.trim()
+    if (view.exitCode !== 0 || !/^[0-9a-f]{40}$/.test(sha)) return undefined
+    return (await isAncestor(root, sha, "HEAD")) ? sha : undefined
+}
+
 /**
- * Refuses a release tag that publishes nothing new: `tag` (refs/tags/ optional) is the `v<version>` `release cut` pushes, so some
- * package carries that version, and at least one that does is not on npm yet. A tag naming no version, or one already published
- * (a CLI version republished), is refused.
+ * Refuses a package whose shipped files changed while its version is already on npm, so a change never ships under an old number.
+ * The packages judged are those changed since `base` (CI's plan base; empty: every package); each is compared with the commit npm
+ * recorded for its published version, else with `base`; a package neither can measure is not judged.
  */
-const judgeTag = (rows: readonly PlanRow[], tag: string): void => {
-    const name = tag.replace(/^refs\/tags\//, "")
-    const named = rows.filter((row) => `v${row.version}` === name && row.action !== "private")
-    if (named.length === 0) throw new Refusal("RELEASE_TAG_UNKNOWN", `${name} names no public package version; a release tag is v<version> of the package it releases (starci release cut)`)
-    if (named.every((row) => row.action === "published")) {
-        throw new Refusal("RELEASE_ALREADY_PUBLISHED", `${name} releases ${named.map((row) => `${row.package}@${row.version}`).join(", ")}, already on npm; raise the version before tagging`)
+const judgeBumped = async (rows: readonly PlanRow[], root: string, base: string): Promise<void> => {
+    const from = base.trim() === "" ? undefined : await resolveSha(root, base.trim()).catch(() => undefined)
+    const stale = await Promise.all(
+        rows
+            .filter((row) => row.action === "published" && row.dir !== ".")
+            .map(async (row): Promise<string | undefined> => {
+                if (from !== undefined && (await shippedChanges(root, from, row.dir))?.length === 0) return undefined
+                const since = (await publishedFrom(row, root)) ?? from
+                if (since === undefined) return undefined
+                const changed = await shippedChanges(root, since, row.dir)
+                if (changed === undefined || changed.length === 0) return undefined
+                return `${row.package}@${row.version} (${row.dir}: ${changed.slice(0, 3).join(", ")}${changed.length > 3 ? ", ..." : ""} changed since ${since.slice(0, 9)})`
+            }),
+    )
+    const named = stale.filter((line): line is string => line !== undefined)
+    if (named.length > 0) {
+        throw new Refusal("RELEASE_VERSION_NOT_BUMPED", `already on npm, yet changed: ${named.join("; ")}; raise each version in its package.json and add its CHANGELOG entry`)
     }
 }
 
@@ -130,8 +159,9 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
 
 /**
  * `starci release publish`: plans which package versions are missing from npm and judges the plan (each due package requires its
- * siblings at their versions here, published or due; `--tag` names a version not on npm yet); with --publish it publishes them, a
- * dependency before its dependent, from a clean commit on the remote main and reads each back. CI's publish job runs the plan first.
+ * siblings at their versions here, published or due; with `--base`, no package changed since it is on npm at its old version); with
+ * --publish it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
+ * publish job runs it on every push to main; from a workstation it is Debug's fallback.
  */
 export const releasePublishVerb = defineVerb({
     path: ["release", "publish"],
@@ -143,7 +173,7 @@ export const releasePublishVerb = defineVerb({
     flags: {
         publish: { kind: "boolean", summary: "perform the plan (default: print it only)" },
         package: { kind: "string", summary: "only this package (its folder or name)" },
-        tag: { kind: "string", summary: "the release tag being published (v<version>): refused unless a package at that version is not on npm yet" },
+        base: { kind: "string", summary: "refuse RELEASE_VERSION_NOT_BUMPED for a package changed since this commit (empty: any package) whose version is on npm" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
@@ -153,7 +183,7 @@ export const releasePublishVerb = defineVerb({
         if (packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${flags.package ?? "this repository"}`)
         const everyRow = await planOf(all, root)
         judgeRequires(everyRow, all)
-        if (flags.tag !== undefined) judgeTag(everyRow, flags.tag)
+        if (flags.base !== undefined) await judgeBumped(everyRow, root, flags.base)
         const rows = everyRow.filter((row) => packages.some((pkg) => pkg.name === row.package))
         const due = publicationOrder(rows.filter((row) => row.action === "publish"), all)
         const published: string[] = []

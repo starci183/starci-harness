@@ -77,6 +77,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
 - **Policy selects; code and canon enforce.** [policy/](../../policy/README.md) picks the gates and configures them; every
   rule lives once, in the CLI or a canon package.
 - **One CI workflow.** [.github/workflows/ci.yml](../../.github/workflows/ci.yml) gates every push and pull request to main
-  and publishes on a `v*` tag ([README.md](../../README.md) "CI"); its tokens live only in GitHub secrets.
+  ([README.md](../../README.md) "CI"); its tokens live only in GitHub secrets.
+- **Coded is usable; publishing is CI's.** Apps consume the harness packages from the harness checkout (`deps source
+  --local`, `cli/src/core/deps/`), so finished code serves both apps before any release. Publishing to npm is separate and
+  automatic: every push to main publishes, once CI is green, each package and CLI version not on npm yet, and refuses a
+  package changed under a version already there (`RELEASE_VERSION_NOT_BUMPED`, `cli/src/core/release/publish.ts`;
+  [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A workstation `release publish --publish` is Debug's fallback.
 - **Open source under MIT.** The harness and every package it publishes are MIT, copyright starci183
-  ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI on a `v*` tag.
+  ([LICENSE](../../LICENSE)); the CLI ships on npm as `starci-harness`, published by CI.

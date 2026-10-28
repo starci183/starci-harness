@@ -67,7 +67,7 @@ Get the owner's OK on the exact artefact before each effect, and reuse it only w
 | `workflow amend` that adds, removes or widens work | the `plan diff` output |
 | `workflow stop`, `task cancel`, `budget raise` | the target and the reason |
 | `config set` | the key and the value |
-| `release push`, `release cut` | the repository, commit and version |
+| `release push`, `release cut` | the repository, commit and version (a harness push publishes the package versions it raises) |
 | `release publish --publish` | every package and version in the plan, each time (npm is public) |
 
 Silence, a question or "handle it" is not an OK. A retry or a contract fix inside an accepted goal is the

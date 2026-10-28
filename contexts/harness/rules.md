@@ -14,9 +14,10 @@ These hold for every role and every task. A rule with a gate names it; the other
    force push or a branch switch in a checkout that holds someone's uncommitted work. Work in your own worktree.
 4. **Two tools never touch the same files.** Parallel agents, seats or tools write disjoint paths; the harness enforces
    it for tasks with path leases (`LEASE_CONFLICT`). A defect found outside your paths goes into your report.
-5. **Public actions need the owner's approval.** Publishing a package (`release publish --publish`), deploying, and
-   anything posted outside the repository wait for the owner's yes. Pushing main after a green scoped check follows
-   [CONTRIBUTING.md](../../CONTRIBUTING.md).
+5. **Public actions need the owner's approval.** Publishing a package from a workstation (`release publish --publish`),
+   deploying, and anything posted outside the repository wait for the owner's yes. Pushing main after a green scoped check
+   follows [CONTRIBUTING.md](../../CONTRIBUTING.md); on the harness that push publishes, through CI, every package version
+   it raised (CONTRIB-20).
 6. **No examples.** The harness ships no example apps and no `examples/` tree. A behaviour is proved by running the
    built CLI against a scratch repository; a package keeps its own specs.
 7. **Machine actions are the harness's.** An agent never installs Playwright or browsers, or runs Docker by hand: a

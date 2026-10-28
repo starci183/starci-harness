@@ -8,8 +8,8 @@ schema: starci/quality-policy@1
 runtime:
   stepTimeoutSeconds: 300
 # Actions that refuse CI_NOT_GREEN unless `starci release ci-status` of their commit is green.
-# Owner ruling 2026-10-28 (fast dev): harness packages publish from this machine as soon as their own build and specs are
-# green; release.publish no longer waits for CI (CI still runs on main after the push).
+# release.publish is not listed: on the harness CI's own publish job runs it after its ci job is green, and Debug's
+# workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
 requireCi: [release.cut, deploy.prod]
 # The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
 defaults:
