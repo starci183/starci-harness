@@ -9,6 +9,8 @@ export interface WorkspacePackage {
     readonly version: string
     readonly private: boolean
     readonly scripts: Readonly<Record<string, string>>
+    /** The packages it requires once installed, name to spec: its `dependencies` and `peerDependencies`. */
+    readonly requires: Readonly<Record<string, string>>
     readonly hasTsconfig: boolean
     readonly hasEslintConfig: boolean
     /** An npm workspace root: its members carry the code, so the root is not typechecked as one project. */
@@ -36,6 +38,7 @@ const readPackage = (root: string, dir: string): WorkspacePackage | undefined =>
         version: parsed.version,
         private: parsed.private === true,
         scripts: stringRecord(parsed.scripts),
+        requires: { ...stringRecord(parsed.peerDependencies), ...stringRecord(parsed.dependencies) },
         hasTsconfig: existsSync(join(dir, "tsconfig.json")),
         hasEslintConfig: ESLINT_CONFIGS.some((file) => existsSync(join(dir, file))),
         workspaceRoot: Array.isArray(parsed.workspaces) || isRecord(parsed.workspaces),

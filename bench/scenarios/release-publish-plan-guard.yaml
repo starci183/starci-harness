@@ -1,0 +1,67 @@
+schema: starci/scenario@1
+id: release-publish-plan-guard
+group: release
+title: the release plan refuses a package published against a sibling it does not ship with, and a tag that republishes
+inject: >-
+  a scratch repository whose cli/ requires its packages/hfs sibling at another version than the sibling's own, then at the
+  sibling's version while the sibling is private, then a tag naming no version and a tag naming a CLI version already on npm
+expect: >-
+  `release publish` (the plan CI's publish job runs before anything reaches npm) refuses RELEASE_DEPENDENCY_SKEW while the
+  due CLI requires another hfs than the folder holds, RELEASE_DEPENDENCY_UNPUBLISHED while that hfs is private, passes
+  once the CLI requires the hfs due in the same run, refuses RELEASE_TAG_UNKNOWN for a tag naming no version and
+  RELEASE_ALREADY_PUBLISHED for a tag whose version is already on npm (starci-harness 1.1.0-alpha.1)
+pass:
+  - the skewed requirement is refused RELEASE_DEPENDENCY_SKEW
+  - a private sibling is refused RELEASE_DEPENDENCY_UNPUBLISHED
+  - the CLI requiring the hfs due in the same run plans both, exit 0
+  - a tag naming no package version is refused RELEASE_TAG_UNKNOWN
+  - a tag whose version is on npm is refused RELEASE_ALREADY_PUBLISHED (reads the public registry)
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci-bench-guard/hfs","version":"2.0.1"}
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-bench-guard-cli","version":"1.0.0","dependencies":{"@starci-bench-guard/hfs":"2.0.0"}}
+  - name: the due CLI requires another hfs than the folder holds
+    starci: [release, publish]
+    expect:
+      exit: 1
+      code: RELEASE_DEPENDENCY_SKEW
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci-bench-guard/hfs","version":"2.0.0","private":true}
+  - name: the hfs it requires is private, never on npm
+    starci: [release, publish]
+    expect:
+      exit: 1
+      code: RELEASE_DEPENDENCY_UNPUBLISHED
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci-bench-guard/hfs","version":"2.0.0"}
+  - name: the CLI requires the hfs due in the same run
+    starci: [release, publish, --tag, v1.0.0]
+    expect:
+      exit: 0
+      ok: true
+      contains: "\"package\": \"@starci-bench-guard/hfs\""
+  - name: a tag naming no package version
+    starci: [release, publish, --tag, v1.0.0-packages]
+    expect:
+      exit: 1
+      code: RELEASE_TAG_UNKNOWN
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-harness","version":"1.1.0-alpha.1","dependencies":{"@starci-bench-guard/hfs":"2.0.0"}}
+  - name: a tag whose CLI version is already on npm
+    starci: [release, publish, --tag, v1.1.0-alpha.1]
+    expect:
+      exit: 1
+      code: RELEASE_ALREADY_PUBLISHED

@@ -190,11 +190,17 @@ block the next push.
 ### CONTRIB-20 Publishing is CI's
 
 Nothing is published from a workstation. A `v*` tag, pushed with the owner's approval, runs the `publish` job of
-[.github/workflows/ci.yml](.github/workflows/ci.yml): it publishes the CLI (`starci-harness`, from `cli/`) and every
-package under `packages/` whose version is not on npm yet, skipping a private one, with npm provenance, under the
-dist-tag a prerelease version names (`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). A release raises
-the version in the package's `package.json` and adds its entry to its CHANGELOG (the CLI's is
-[CHANGELOG.md](CHANGELOG.md)) before the tag.
+[.github/workflows/ci.yml](.github/workflows/ci.yml): `starci release publish --tag <tag>` judges the plan first, then
+the job publishes every package under `packages/` and then the CLI (`starci-harness`, from `cli/`) whose version is not
+on npm yet, skipping a private one, with npm provenance, under the dist-tag a prerelease version names
+(`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). The plan is refused when a due package requires a
+sibling (`dependencies`, `peerDependencies`) at another version than the sibling's folder holds at that commit, or at a
+version that is neither on npm nor due in the same run, and when the tag is not `v<version>` of a package whose version
+is not on npm yet. A release raises the version in the package's `package.json` and adds its entry to its CHANGELOG (the
+CLI's is [CHANGELOG.md](CHANGELOG.md)) before the tag; a package and the sibling version it requires move in one commit.
+`npm ci` reads `cli/package-lock.json` from npm, so a CLI release on a new `@starci/hfs` takes two tags: the first
+publishes the packages (the CLI still on the `@starci/hfs` its lock resolves), the CLI's lockfile is refreshed once
+that version is on npm, and the second tag publishes the CLI.
 
 The job reads one repository secret, `NPM_TOKEN`: an npm granular access token with read and write on the
 `starci-harness` package and the `@starci` scope (or an automation token of the publishing account). The owner adds it

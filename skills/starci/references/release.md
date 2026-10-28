@@ -56,7 +56,10 @@ starci release publish --publish
 ```
 
 Without `--publish` it only prints the plan: every package version not yet on npm (`--package <p>` narrows
-it). npm is public and permanent: show the plan and get the owner's OK for exactly those packages and
+it). The plan is judged before anything is published, and CI's publish job runs it with `--tag <tag>`: a due package
+requiring a sibling at another version than the sibling's folder holds is `RELEASE_DEPENDENCY_SKEW`, one requiring a
+private sibling `RELEASE_DEPENDENCY_UNPUBLISHED`, a tag naming no package version `RELEASE_TAG_UNKNOWN` and a tag
+whose versions are all on npm `RELEASE_ALREADY_PUBLISHED`. `--publish` publishes a dependency before its dependent. npm is public and permanent: show the plan and get the owner's OK for exactly those packages and
 versions every time, then publish. It publishes from a clean commit on the remote main and reads each
 version back; `PUBLISH_NOT_CONFIRMED` means the registry does not show it yet.
 
