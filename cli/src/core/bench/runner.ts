@@ -291,7 +291,14 @@ const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
     if (dispatch === "*" || dispatch === "kernel") for (const entry of launched.filter((candidate) => (candidate.kind === "kernel") === (dispatch === "kernel"))) workers[entry.dispatchId] = state
     else if (dispatch !== undefined) workers[expand(run, dispatch)] = state
     const terminals = { ...(current.terminals as Record<string, boolean> | undefined) }
-    if (step.terminal !== undefined) terminals[expand(run, step.terminal.handle)] = step.terminal.live
+    const titles = { ...(current.titles as Record<string, string> | undefined) }
+    const orphaned = { ...(current.orphaned as Record<string, boolean> | undefined) }
+    if (step.terminal !== undefined) {
+        const handle = expand(run, step.terminal.handle)
+        terminals[handle] = step.terminal.live
+        if (step.terminal.title !== undefined) titles[handle] = expand(run, step.terminal.title)
+        if (step.terminal.orphaned !== undefined) orphaned[handle] = step.terminal.orphaned
+    }
     const mail = { ...(current.mail as Record<string, unknown[]> | undefined) }
     let sent = Number(current.benchMail ?? 0)
     for (const letter of step.mail ?? []) {
@@ -301,7 +308,7 @@ const orcaScript = (run: RunState, step: NonNullable<Step["orca"]>): void => {
             mail[to] = [...(mail[to] ?? []), { id: `bench-msg-${String(sent)}`, type: letter.type, subject: expand(run, letter.subject ?? ""), body: expand(run, letter.body ?? ""), payload: deepExpand(run, letter.payload ?? null), from: letter.from === undefined ? null : expand(run, letter.from) }]
         }
     }
-    writeFileSync(run.orcaState, JSON.stringify({ ...current, ...(deepExpand(run, step.set ?? {}) as Record<string, unknown>), rules, workers, terminals, mail, benchMail: sent }, null, 2))
+    writeFileSync(run.orcaState, JSON.stringify({ ...current, ...(deepExpand(run, step.set ?? {}) as Record<string, unknown>), rules, workers, terminals, titles, orphaned, mail, benchMail: sent }, null, 2))
 }
 
 /** Attaches the workflow's current Kernel seat (in the ledger of repository `repo`) from the terminal Orca gave it (`kernel attach`), saving its identity. */

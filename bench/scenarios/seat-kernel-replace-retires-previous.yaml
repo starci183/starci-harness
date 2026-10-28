@@ -1,0 +1,94 @@
+schema: starci/scenario@1
+id: seat-kernel-replace-retires-previous
+group: lifecycle
+title: "kernel start --replace retires every previous Kernel seat and closes its tab: never two open Kernels"
+inject: >-
+  a running orca workflow whose Kernel is alive, plus a second, older Kernel seat still open beside it (the state a relaunch that
+  fenced only the newest seat left behind); the Supervisor runs kernel start --replace
+expect: >-
+  before the new Kernel launches, both previous Kernel seats are stopped, released and their tabs closed; afterwards exactly one
+  Kernel seat of the workflow is open, and a plain kernel start while it lives is refused KERNEL_RUNNING
+pass:
+  - both previous Kernel seats released
+  - terminal close called once for each previous Kernel terminal
+  - exactly one open Kernel seat after the replace
+  - "a second start without --replace refuses KERNEL_RUNNING and launches nothing"
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: twin
+        goal: bench workflow twin
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: twin
+  - name: an older Kernel seat is still open, its tab alive
+    sql:
+      db: ledger
+      exec: >-
+        INSERT INTO seats (id, role, agent, model, handle, terminal, status, started_at, workflow_id)
+        VALUES ('k-ghost', 'kernel', 'codex', 'gpt', 'dispatch-ghost', 'term-ghost', 'ready', '2020-01-01T00:00:00.000Z', 'twin')
+  - orca:
+      terminal:
+        handle: term-ghost
+        live: true
+        title: "[Kernel] twin"
+  - name: the Supervisor replaces the Kernel
+    seat: supervisor
+    starci: [kernel, start, twin, --replace]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM seats WHERE role = 'kernel' AND id IN ('k-ghost', '${kernel.twin.launch}') ORDER BY id"
+        equals:
+          - released
+          - released
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^term-ghost$"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^${kernel.twin.terminal}$"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM seats WHERE role = 'kernel' AND workflow_id = 'twin' AND status NOT IN ('released', 'launch-failed')"
+        equals:
+          - 1
+  - name: a plain start while the new Kernel lives is refused
+    seat: supervisor
+    starci: [kernel, start, twin]
+    expect:
+      exit: 1
+      code: KERNEL_RUNNING
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Kernel\]'
+        count: 2

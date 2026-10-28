@@ -1,0 +1,130 @@
+schema: starci/scenario@1
+id: supervisor-tick-sweeps-terminals
+group: lifecycle
+title: "supervisor tick closes the tab of a released seat and an orphaned harness tab, and never touches a terminal the harness did not make"
+inject: >-
+  an Op's tab survives its release (Orca refused the close once); after an Orca restart a harness-titled tab is listed orphaned
+  ([Supervisor] ghost, recorded nowhere); the owner has a shell of their own open beside them
+expect: >-
+  supervisor tick --dry-run names both harness tabs and closes nothing; the next supervisor tick closes both with terminal close
+  --tab, reports each closure in its actions and records a terminal-swept host event for each, and leaves the owner's shell, the
+  live Supervisor and the live Kernel alone
+pass:
+  - the dry run closes nothing
+  - the released Op's tab closed by the tick
+  - the orphaned harness tab closed by the tick
+  - the owner's own terminal, the Supervisor's and the Kernel's never closed
+  - two terminal-swept host events
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: sweep
+        goal: bench workflow sweep
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: sweep
+  - name: kernel next dispatches the Op
+    seat: kernel:sweep
+    starci: [kernel, next, sweep, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT id FROM tasks
+      as: a
+  - read:
+      db: ledger
+      query: "SELECT terminal FROM seats WHERE role = 'worker'"
+      as: opTerminal
+  - name: Orca refuses the Op's tab close once
+    orca:
+      rules:
+        - command: terminal close
+          fault: refuse
+          code: busy
+          match:
+            terminal: "^${opTerminal}$"
+  - worker:
+      task: ${a}
+      status: done
+      files:
+        docs/a.md: |
+          # a
+  - name: kernel next verifies and releases the Op
+    seat: kernel:sweep
+    starci: [kernel, next, sweep, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM seats WHERE role = 'worker'"
+        equals:
+          - released
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'seat-tab-left-open'"
+        equals:
+          - 1
+  - name: an orphaned harness tab after an Orca restart
+    orca:
+      terminal:
+        handle: term-orphan
+        live: true
+        title: "[Supervisor] ghost"
+        orphaned: true
+  - name: the owner's own shell
+    orca:
+      terminal:
+        handle: term-mine
+        live: true
+        title: owner shell
+  - name: the dry run
+    starci: [supervisor, tick, --dry-run]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        count: 1
+  - name: the tick sweeps
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^${opTerminal}$"
+        count: 2
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^term-orphan$"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^(term-mine|${supervisor.terminal}|${kernel.sweep.terminal})$"
+        count: 0
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM host_events WHERE kind = 'terminal-swept'"
+        equals:
+          - 2

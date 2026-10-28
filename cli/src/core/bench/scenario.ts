@@ -127,7 +127,8 @@ const stepSchema = z.strictObject({
             set: z.record(z.string(), z.unknown()).optional(),
             worker: z.strictObject({ dispatch: z.string(), state: z.string() }).optional(),
             mail: z.array(z.strictObject({ to: z.string(), type: z.string(), from: z.string().optional(), subject: z.string().optional(), body: z.string().optional(), payload: z.unknown().optional(), count: z.number().int().min(1).max(500).optional() })).optional(),
-            terminal: z.strictObject({ handle: z.string(), live: z.boolean() }).optional(),
+            /** A terminal's presence, and optionally the title and orphaned flag `terminal list` shows for it. */
+            terminal: z.strictObject({ handle: z.string(), live: z.boolean(), title: z.string().optional(), orphaned: z.boolean().optional() }).optional(),
         })
         .optional(),
     sql: z.strictObject({ db: z.enum(["ledger", "machine"]), repo: z.string().optional(), exec: z.string() }).optional(),

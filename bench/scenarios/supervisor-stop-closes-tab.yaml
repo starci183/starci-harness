@@ -1,0 +1,43 @@
+schema: starci/scenario@1
+id: supervisor-stop-closes-tab
+group: lifecycle
+title: "supervisor stop closes the Supervisor's tab and retires its record; nothing of it stays open"
+inject: "the owner stops a project's attached Supervisor"
+expect: >-
+  supervisor stop closes the Supervisor terminal's whole tab (terminal close --tab, the agent in it goes with it), then retires
+  its row as ended by the owner; Orca lists no terminal of it afterwards, and the next tick neither relaunches it nor finds a tab to sweep
+pass:
+  - terminal close called once for the Supervisor's terminal
+  - the Supervisor row ended by the owner
+  - the next supervisor tick launches no Supervisor and closes no terminal
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - name: boot the Supervisor
+    boot: {}
+  - name: the owner stops it
+    starci: [supervisor, stop]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^${supervisor.terminal}$"
+        count: 1
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT ended_by FROM project_supervisors"
+        equals:
+          - owner
+  - name: the next tick
+    starci: [supervisor, tick]
+  - assert:
+      orcaCalls:
+        command: agent launch
+        count: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        count: 1
