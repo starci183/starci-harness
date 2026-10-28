@@ -6,6 +6,7 @@ import { closeWorker, locateOrca, tabLeftOpen, workerShow } from "./orca/client.
 import type { OrcaBinary, WorkerClosed } from "./orca/client.js"
 import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
+import type { LaunchFailure } from "./launch-failure.js"
 
 /** Who a seat is: a worker (an Op), or a workflow's Kernel (one seat row per Kernel launch). A project's Supervisor lives in machine.sqlite. */
 export type SeatRole = "worker" | "kernel" | "supervisor" | "debug"
@@ -70,6 +71,8 @@ export interface SeatRow {
     readonly workflowId: string | null
     /** The TTL lease the seat's own harness calls renew (ops/liveness.yaml seatLeaseMinutes); past it the seat is suspect, never dead. */
     readonly leaseUntil: string | null
+    /** Why its launch certainly failed (harness/launch-failure.ts), recorded on every launch-failed seat; null otherwise. */
+    readonly failure: LaunchFailure | null
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
@@ -79,6 +82,7 @@ const optText = (value: unknown): string | null => (value === null || value === 
 // A ledger opened read-only may predate the version 2 columns; a missing column reads as null.
 const toSeat = (row: Record<string, unknown>): SeatRow => {
     const launch = optText(row.launch_json)
+    const failure = optText(row.failure_json)
     return {
         id: text(row.id),
         role: text(row.role) as SeatRole,
@@ -99,6 +103,7 @@ const toSeat = (row: Record<string, unknown>): SeatRow => {
         endedAt: optText(row.ended_at),
         workflowId: optText(row.workflow_id),
         leaseUntil: optText(row.lease_until),
+        failure: failure === null ? null : (JSON.parse(failure) as LaunchFailure),
     }
 }
 
@@ -179,20 +184,17 @@ export interface SeatUpdate {
     readonly terminal?: string | null
     readonly runId?: string
     readonly facts?: unknown
+    /** Why its launch certainly failed: kept on the seat (failure_json) and in the event's facts. */
+    readonly failure?: LaunchFailure
 }
 
 /** Records what Orca said about a seat; a seat that reaches a closed status gets its end time once. */
 export const recordSeat = (db: DatabaseSync, id: string, update: SeatUpdate): SeatRow => {
     const seat = getSeat(db, id)
     const endedAt = CLOSED_SEAT_STATUSES.includes(update.status) ? now() : null
-    db.prepare("UPDATE seats SET status = ?, handle = COALESCE(?, handle), terminal = COALESCE(?, terminal), run_id = COALESCE(?, run_id), ended_at = COALESCE(ended_at, ?) WHERE id = ?").run(
-        update.status,
-        update.handle ?? null,
-        update.terminal ?? null,
-        update.runId ?? null,
-        endedAt,
-        id,
-    )
+    db.prepare(
+        "UPDATE seats SET status = ?, handle = COALESCE(?, handle), terminal = COALESCE(?, terminal), run_id = COALESCE(?, run_id), failure_json = COALESCE(?, failure_json), ended_at = COALESCE(ended_at, ?) WHERE id = ?",
+    ).run(update.status, update.handle ?? null, update.terminal ?? null, update.runId ?? null, update.failure === undefined ? null : JSON.stringify(update.failure), endedAt, id)
     recordEvent(db, "seat-status", id, {
         from: seat.status,
         to: update.status,
@@ -200,6 +202,7 @@ export const recordSeat = (db: DatabaseSync, id: string, update: SeatUpdate): Se
         ...(update.terminal === undefined || update.terminal === null ? {} : { terminal: update.terminal }),
         ...(update.runId === undefined ? {} : { runId: update.runId }),
         ...(update.facts === undefined ? {} : { facts: update.facts }),
+        ...(update.failure === undefined ? {} : { failure: update.failure }),
     })
     return getSeat(db, id)
 }

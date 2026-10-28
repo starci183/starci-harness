@@ -1,3 +1,5 @@
+import { BLOCKED_PROMPT, failureText } from "../../harness/launch-failure.js"
+import type { LaunchFailure } from "../../harness/launch-failure.js"
 import { ledgerPath, openLedger } from "../../harness/ledger.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import type { SeatLiveness } from "../../harness/liveness.js"
@@ -27,7 +29,12 @@ const liveCell = (live: LiveView | undefined): string => {
     return "error" in live ? `unknown (${live.error.split("\n")[0] ?? ""})` : (live.state ?? "unknown")
 }
 
-const livenessCell = (liveness: SeatLiveness): string => (liveness.quietSeconds > 0 ? `${liveness.verdict} (quiet ${String(liveness.quietSeconds)} s)` : liveness.verdict)
+const failureCell = (failure: LaunchFailure | null): string => {
+    if (failure === null) return "-"
+    return `${failure.kind}${failure.prompt === null ? "" : " (" + failure.prompt + ")"} at ${failure.stage ?? "launch"}: ${failure.error}`
+}
+
+const livenessCell =(liveness: SeatLiveness): string => (liveness.quietSeconds > 0 ? `${liveness.verdict} (quiet ${String(liveness.quietSeconds)} s)` : liveness.verdict)
 
 /** `starci seat list`: the seats of this project's ledger; --live adds what Orca says of each open seat, without recording it. */
 export const seatListVerb = defineVerb({
@@ -69,8 +76,10 @@ export const seatListVerb = defineVerb({
         )
         const data: SeatListData = { ledger, seats }
         if (seats.length === 0) return { data, message: "no seats" }
-        const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", "LIVENESS", "LAST PONG", ...(flags.live ? ["ORCA"] : [])]
-        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.model ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, livenessCell(seat.liveness), seat.lastPongAt ?? "-", ...(flags.live ? [liveCell(seat.live)] : [])])
-        return { data, message: formatTable([header, ...table]) }
+        const header = ["SEAT", "ROLE", "AGENT", "MODEL", "TASK", "STATUS", "DISPATCH", "STARTED", "LIVENESS", "LAST PONG", "FAILURE", ...(flags.live ? ["ORCA"] : [])]
+        const table = seats.map((seat) => [seat.id, seat.role, seat.agent ?? "-", seat.model ?? "-", seat.taskId ?? "-", seat.status, seat.handle ?? "-", seat.startedAt, livenessCell(seat.liveness), seat.lastPongAt ?? "-", failureCell(seat.failure), ...(flags.live ? [liveCell(seat.live)] : [])])
+        // A launch blocked at a prompt is the host's to fix: its screen is printed under the table, not left in a column.
+        const blocked = seats.flatMap((seat) => (seat.failure?.kind === BLOCKED_PROMPT ? [`BLOCKED PROMPT on seat ${seat.id}: ${failureText(seat.failure)}`] : []))
+        return { data, message: [formatTable([header, ...table]), ...blocked].join("\n") }
     },
 })

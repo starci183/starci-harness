@@ -6,7 +6,9 @@ import type { BriefFiles } from "../../harness/brief.js"
 import { now, openLedger } from "../../harness/ledger.js"
 import { assertLeasesHeld, inTransaction, renewLeases } from "../../harness/leases.js"
 import { loadOps } from "../../harness/ops.js"
-import { classifyFailure, recordOutcome } from "../../harness/circuit.js"
+import { recordOutcome } from "../../harness/circuit.js"
+import { BLOCKED_PROMPT, escalateBlockedPrompt, explainLaunchFailure, failureText } from "../../harness/launch-failure.js"
+import type { LaunchFailure } from "../../harness/launch-failure.js"
 import { describeRoute, routeTask, RouteRefusal } from "../../harness/router.js"
 import type { RoutePick } from "../../harness/router.js"
 import { loadRouting, poolOfAgent, providerOfAgent, selectsModel } from "../../harness/routing.js"
@@ -239,6 +241,7 @@ const closeNote = (closed: WorkerClosed | null): string => (closed === null ? ""
 const seatAfterClose = (closed: WorkerClosed | null): string => (closed === null || closed.settled ? SEAT_RELEASED : SEAT_LAUNCH_UNSETTLED)
 
 interface Launching {
+    readonly root: string
     readonly db: DatabaseSync
     readonly binary: OrcaBinary
     readonly cwd: string
@@ -250,19 +253,20 @@ interface Launching {
 }
 
 /**
- * Tells the provider circuit what a launch proved: a ready worker is a success, a certain worker-start failure is classified
- * from Orca's typed error, an unknown outcome is only noted (unknown is never a failure). A failed run-create or a spawn error
- * is the host's, not the provider's. Recording never changes the launch's own result; a failure to record is a ledger event.
+ * Tells the provider circuit what a launch proved: a ready worker is a success, a certain worker-start failure reports the kind
+ * explainLaunchFailure gave it, an unknown outcome is only noted (unknown is never a failure). A failed run-create, a spawn
+ * error and an agent blocked at a prompt are the host's, not the provider's, and report nothing. Recording never changes the
+ * launch's own result; a failure to record is a ledger event.
  */
-const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched: Launched): void => {
+const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched: Launched, failure: LaunchFailure | null): void => {
     try {
         const routing = loadRouting()
         const provider = providerOfAgent(routing, agent)
         const pool = poolOfAgent(routing, agent)
         if (launched.kind === "ready") recordOutcome(provider, { kind: "success", pool })
         else if (launched.kind === "unknown") recordOutcome(provider, { kind: "unknown", detail: launched.error.message })
-        else if (launched.runId !== null && launched.error instanceof OrcaFailure) {
-            recordOutcome(provider, { kind: classifyFailure(routing, `${launched.error.orcaCode ?? ""} ${launched.error.message}`), pool, detail: launched.error.message })
+        else if (launched.runId !== null && launched.error instanceof OrcaFailure && failure !== null && failure.kind !== BLOCKED_PROMPT && failure.kind !== "stall") {
+            recordOutcome(provider, { kind: failure.kind, pool, detail: launched.error.message })
         }
     } catch (error: unknown) {
         recordEvent(db, "provider-outcome-unrecorded", taskId, { agent, launch: launched.kind, error: messageOf(error) })
@@ -271,25 +275,35 @@ const reportLaunch = (db: DatabaseSync, taskId: string, agent: string, launched:
 
 type LaunchOf<Kind extends Launched["kind"]> = Extract<Launched, { readonly kind: Kind }>
 
-/** A launch Orca certainly did not start: the worker is closed, the attempt ends and the task goes back to the queue. */
-const settleFailed = async (at: Launching, launched: LaunchOf<"failed">): Promise<never> => {
+/**
+ * A launch Orca certainly did not start: the worker is closed (after explainLaunchFailure read its screen), the attempt ends, the
+ * seat keeps why, and the task goes back to the queue. An agent blocked at a prompt ends its attempt `blocked-prompt` (no member
+ * outcome) and raises the Supervisor's harness escalation naming the prompt and the worktree.
+ */
+const settleFailed = async (at: Launching, launched: LaunchOf<"failed">, failure: LaunchFailure): Promise<never> => {
     const { db, binary, cwd, task, seat } = at
     const attemptId = launched.record.attempt
+    const blocked = failure.kind === BLOCKED_PROMPT
     const closed = launched.dispatchId === null ? null : await closeWorker(binary, launched.dispatchId, cwd, launched.terminal)
     const ours = inTransaction(db, () => {
-        endAttempt(db, attemptId, "launch-failed")
+        endAttempt(db, attemptId, blocked ? BLOCKED_PROMPT : "launch-failed")
         if (closed !== null) noteTab(db, seat.id, closed)
         recordSeat(db, seat.id, {
             status: closed === null || closed.settled ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNSETTLED,
             ...(launched.dispatchId === null ? {} : { handle: launched.dispatchId }),
             terminal: launched.terminal,
+            failure,
             facts: { error: launched.error.message, cleanup: closed },
         })
-        recordEvent(db, "seat-launch-failed", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, cleanup: closed })
+        recordEvent(db, "seat-launch-failed", task.id, { seat: seat.id, attempt: attemptId, runId: launched.runId, kind: failure.kind, prompt: failure.prompt, cleanup: closed })
+        if (blocked && task.workflowId !== null) {
+            escalateBlockedPrompt(db, { project: at.root, workflowId: task.workflowId, seat: seat.id, worktree: worktreeFolder(launched.record.start.worktree, cwd, at.root), failure })
+        }
         return stillOurs(db, task.id, attemptId)
     })
     const after = ours ? rollBack(db, task.id) : `task ${task.id} is ${getTask(db, task.id).status}`
-    throw new Refusal(launched.error.code, `${launched.error.message}${closeNote(closed)}\nattempt ${attemptId} closed as launch-failed; ${after}`)
+    const escalated = blocked && task.workflowId !== null ? "; the Supervisor has a harness escalation for the prompt" : ""
+    throw new Refusal(launched.error.code, `${failureText(failure)}\n${launched.error.message}${closeNote(closed)}\nattempt ${attemptId} closed as ${blocked ? BLOCKED_PROMPT : "launch-failed"}; ${after}${escalated}`)
 }
 
 /** A launch whose outcome Orca did not tell: the task waits as effect_unknown for a resume, unless it left the attempt meanwhile. */
@@ -389,10 +403,14 @@ const settleReady = async (at: Launching, launched: LaunchOf<"ready">, base: Omi
 const settleLaunch = async (at: Launching, launched: Launched): Promise<VerbResult<SeatStartData>> => {
     const { db, binary } = at
     const { record } = launched
-    reportLaunch(db, at.task.id, record.start.agent, launched)
+    if (launched.kind === "failed") {
+        // The screen is read before settleFailed releases the worker, whose terminal goes with it.
+        const failure = await explainLaunchFailure(binary, launched.error, at.cwd, loadRouting())
+        reportLaunch(db, at.task.id, record.start.agent, launched, failure)
+        return settleFailed(at, launched, failure)
+    }
+    reportLaunch(db, at.task.id, record.start.agent, launched, null)
     switch (launched.kind) {
-        case "failed":
-            return settleFailed(at, launched)
         case "unknown":
             return settleUnknown(at, launched)
         case "ready": {
@@ -460,7 +478,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         await applyPriorWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
         const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)
+        return await settleLaunch({ root, db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)
     } finally {
         db.close()
     }
@@ -503,7 +521,7 @@ export const resumeSeat = async (options: { readonly root: string; readonly cwd:
         const launched = await launch(db, binary, claim.seat, claim.record, claim.runId, root, cwd)
         const parent = claim.record.start.parent
         const kernel = parent === undefined || claim.runId === null || claim.record.start.from === undefined ? null : { terminal: claim.record.start.from, runId: claim.runId, taskId: parent }
-        return await settleLaunch({ db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: true, kernel }, launched)
+        return await settleLaunch({ root, db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: true, kernel }, launched)
     } finally {
         db.close()
     }

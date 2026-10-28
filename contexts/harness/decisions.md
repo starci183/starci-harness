@@ -43,6 +43,10 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   signals: each platform's usage and reset read from Orca, every attempt's outcome per member, qualification earned
   from verdicts, and a provider in trouble probed back on its own. No workflow, task or owner names an agent or steers
   the pick, and no circuit waits for a person ([ops/README.md](../../ops/README.md) "The router").
+- **A failed launch says why.** A launch Orca fails at agent readiness has the agent terminal it created read once,
+  before the worker is released, and the seat keeps its last lines; an agent waiting at a host or config prompt is the
+  host's to fix, never a provider strike, and goes to the Supervisor as a `harness` escalation (`blockedPrompts` of
+  [ops/routing.yaml](../../ops/routing.yaml), `cli/src/harness/launch-failure.ts`).
 - **One door to the settings.** Each harness setting stays in the ops/ yaml that owns it, with no config file of its own;
   `starci config list|get|set` reads and changes them, and `set` writes only a value the file's own loaders accept
   (`cli/src/harness/settings.ts`).

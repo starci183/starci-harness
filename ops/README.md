@@ -12,7 +12,7 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | [lanes.yaml](lanes.yaml) | the standard build flow: the lane of steps each Work record family walks, what satisfies a step, what makes it optional and what holds it | `lanes.ts` (`FLOW_INCOMPLETE` at define and replan, the Kernel's planning digest) |
 | [routes.yaml](routes.yaml) | the bounded repair routes of a red or question decision: what may repair what, and how many times | `routes.ts` (decision evidence, `ROUTE_ILLEGAL` at `kernel submit`) |
 | [checks.yaml](checks.yaml) | the check presets an op or a contract names, each expanding into one primitive check | `contract.ts`, `run-checks.ts` |
-| [routing.yaml](routing.yaml) | tiers, pools, host probes, balance, quota, usage, the provider circuit and its probe, failure signals, outcomes, qualification, scoring, pool concurrency, workflow budgets: every number of the router | `router.ts`, `circuit.ts`, `usage.ts`, `outcomes.ts`, `pools.ts`, `budget.ts` |
+| [routing.yaml](routing.yaml) | tiers, pools, host probes, balance, quota, usage, the provider circuit and its probe, failure signals, blocked prompts, outcomes, qualification, scoring, pool concurrency, workflow budgets: every number of the router | `router.ts`, `circuit.ts`, `launch-failure.ts`, `usage.ts`, `outcomes.ts`, `pools.ts`, `budget.ts` |
 | [liveness.yaml](liveness.yaml) | seat liveness thresholds and Orca's words for a gone worker (the `orca` runner) | `liveness.ts` |
 | [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
@@ -23,8 +23,9 @@ failure accounting use the numbers of `routing.yaml`; it never restates them.
 ## The router
 
 The router alone picks every Op and Kernel: no workflow or task names an agent, a model or a preference, and a task gives it
-only its label, difficulty and `risk` tags. `starci route explain` prints every step for a label, a difficulty and risk
-tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` implements them.
+only its label, difficulty and `risk` tags; a Supervisor or Kernel seat gives its role as its label. `starci route explain`
+prints every step for a label, a difficulty and risk tags, or for a coordinator label (`supervisor`, `kernel`) through the
+same `pickCoordinator` the seat launch calls (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` implements them.
 
 0. **Signals.** A recorded pick first reads Orca's account usage when the last reading is older than `usage.refreshMinutes`
    (`harness/usage.ts`: every window of `usage.windows` per pool, the most-used one as the pool's quota with its reset; an
@@ -32,7 +33,7 @@ tags (`--simulate <n>` tallies a run of picks); `cli/src/harness/router.ts` impl
    gives no Codex reading; a platform with no source, Devin among them, is unknown and judged by its outcomes) and records every ended attempt of every
    registered ledger per member and label (`harness/outcomes.ts`: green or red verdict, timeout, lost, stalled, launch
    failure, mismatch, minutes), with every coordinator seat the stall ladder gave up on (stalled, under its role as label). `starci provider sync` does both at once; `provider report` records one outcome or reading by hand.
-1. **Tier.** `labelTiers[label]` when the label is named there, else `difficultyTier` of the higher of the task's
+1. **Tier.** `coordinators[role]` for a coordinator seat, `labelTiers[label]` when the label is named there, else `difficultyTier` of the higher of the task's
    difficulty and the label's floor. A lineage that reaches `escalateAfterReds` contract-red attempts moves one step up
    `tierOrder`; an infrastructure failure keeps the tier.
 2. **Hard filter.** A member of the tier is dropped when its pool does not take the label, when a host tool the label
@@ -70,6 +71,7 @@ verdicts say otherwise, and anything else is probation.
 | class | what happens | bound |
 |---|---|---|
 | provider-unavailable (rate, quota, capacity, auth) | the provider's circuit opens for its kind (`circuit`), the task is re-picked on another pool; no try is spent; the circuit closes on its own through its half-open probe or an ok usage reading | the circuit's cooldowns and probe backoff |
+| blocked-prompt | an agent that never became ready because it waits at a host or config prompt (`blockedPrompts`): the seat keeps the prompt and the screen, the provider takes no strike, the task is re-picked with that pool behind every other and no try spent, and the Supervisor gets a `harness` escalation naming the prompt and the worktree, which `supervisor tick` names on every pass | until the Supervisor answers the escalation |
 | worker-lost | Orca's explicit word that the worker is gone makes the seat `worker-lost` and the task `effect_unknown`; it is cancelled and retried on another pool | 2, then the Supervisor |
 | worker-hung | Orca answers but the worker printed nothing for `activeStaleMinutes`; handled as worker-lost | 2, then the Supervisor |
 | contract-red | `task verify` is red; the Kernel takes the decision's legal route ([routes.yaml](routes.yaml)), and a retry carries the red checks and goes to another member | the route's limit, then the owner through the Supervisor |

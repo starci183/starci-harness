@@ -73,6 +73,7 @@ const routingSchema = z.object({
         probeLeaseMinutes: minutes,
     }),
     failureSignals: kindRecord(z.array(z.string().min(1))),
+    blockedPrompts: z.object({ screenLines: z.number().int().positive(), prompts: z.record(z.string().min(1), z.array(z.string().min(1)).min(1)) }),
     outcomes: z.object({ windowDays: z.number().positive() }),
     qualification: z.object({
         standard: levelSchema,
@@ -91,6 +92,10 @@ const routingSchema = z.object({
     budgets: z.object({ workflow: z.object({ minutes: z.number().int().positive(), tries: z.number().int().positive() }) }),
     workflowParallel: z.number().int().positive(),
 })
+
+/** The coordinator seat a label names (a key of routing.yaml coordinators), or undefined for a worker label. */
+export const coordinatorRoleOf = (routing: Routing, label: string): CoordinatorRole | undefined =>
+    Object.keys(routing.coordinators).find((role): role is CoordinatorRole => role === label)
 
 /** ops/routing.yaml, validated: tiers, pools, quota, usage, circuit, outcomes, qualification, scoring, concurrency and budgets. */
 export type Routing = z.infer<typeof routingSchema>
@@ -126,8 +131,10 @@ const compiles = (pattern: string): boolean => {
     }
 }
 
-const signalProblems = (routing: Routing): string[] =>
-    Object.entries(routing.failureSignals).flatMap(([kind, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `failureSignals.${kind} has an invalid pattern: ${pattern}`))
+const signalProblems = (routing: Routing): string[] => [
+    ...Object.entries(routing.failureSignals).flatMap(([kind, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `failureSignals.${kind} has an invalid pattern: ${pattern}`)),
+    ...Object.entries(routing.blockedPrompts.prompts).flatMap(([name, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `blockedPrompts.prompts.${name} has an invalid pattern: ${pattern}`)),
+]
 
 const loaded = new Map<string, Routing>()
 

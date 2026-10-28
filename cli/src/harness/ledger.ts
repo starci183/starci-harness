@@ -7,7 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { captureGitSync } from "../shared/git.js"
 
 /** The ledger schema version this build writes. */
-export const LEDGER_VERSION = 8
+export const LEDGER_VERSION = 9
 
 /** The additive host schema version: 3 keys the Supervisors by project (`project_supervisors`). */
 export const MACHINE_VERSION = 3
@@ -110,6 +110,8 @@ const ADDED_COLUMNS: readonly { readonly table: string; readonly column: string;
     { table: "seats", column: "lease_until", type: "TEXT", since: 8 },
     // One workflow = one worktree: the checkout every Op, verify and relaunched Kernel of the workflow uses.
     { table: "workflows", column: "worktree", type: "TEXT", since: 8 },
+    // Version 9: why a seat's launch failed (harness/launch-failure.ts), kept on the seat for seat list and the tick.
+    { table: "seats", column: "failure_json", type: "TEXT", since: 9 },
 ]
 
 const missingColumns = (db: DatabaseSync): typeof ADDED_COLUMNS => {

@@ -1,0 +1,147 @@
+schema: starci/scenario@1
+id: seat-launch-blocked-prompt
+group: provider
+title: "an Op's agent never becomes ready because Claude Code waits at a dialog: blocked-prompt, no provider strike, a harness escalation"
+inject: >-
+  worker-start fails at agent_readiness with lastError timeout, naming the agent terminal it created; that terminal's screen
+  holds Claude Code's "Allow external CLAUDE.md file imports?" dialog
+expect: >-
+  the harness reads the terminal once before releasing the worker, records the seat's failure as blocked-prompt
+  (external-import) with the screen's last lines, closes the attempt blocked-prompt (no try), strikes no provider, requeues the
+  task, raises one harness escalation for the Supervisor naming the prompt and the worktree, and supervisor tick and seat list
+  name it loudly
+pass:
+  - the agent terminal is read once with orca terminal read, and closed after the release
+  - "the seat's failure is blocked-prompt (external-import) at agent_readiness with the dialog on its screen"
+  - the attempt ends blocked-prompt and the task is queued again
+  - no provider strike or circuit event is recorded
+  - one open supervisor escalation of kind harness names the prompt and the worktree
+  - supervisor tick prints BLOCKED PROMPT and seat list carries the seat's failure
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: blk
+        goal: bench workflow blk
+        runner: orca
+        maxParallel: 1
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - name: boot the tree
+    boot:
+      file: ${run}/wf.yaml
+      workflow: blk
+  - name: the Op's worker-start times out at readiness, its agent terminal showing the external-import dialog
+    orca:
+      terminal: {handle: term-blocked, live: true}
+      set:
+        screens:
+          term-blocked:
+            - "╭──────────────────────────────────────────────────────────╮"
+            - "│ Allow external CLAUDE.md file imports?                   │"
+            - "│                                                          │"
+            - "│ This project's CLAUDE.md imports files outside the       │"
+            - "│ current working directory.                               │"
+            - "│                                                          │"
+            - "│ ❯ 1. Yes, allow external imports                         │"
+            - "│   2. No, disable external imports                        │"
+            - "╰──────────────────────────────────────────────────────────╯"
+            - ""
+            - "   Enter to confirm · Esc to cancel"
+            - ""
+            - ""
+      rules:
+        - command: worker-start
+          match:
+            task-title: '^\[Op\]'
+          fault: reply
+          exit: 1
+          times: 1
+          reply:
+            ok: false
+            result:
+              dispatchId: dispatch-blocked
+              state: failed
+              stage: agent_readiness
+              failedStage: agent_readiness
+              lastError: timeout
+              effects:
+                - {kind: worktree, action: reused, id: "repo::wt"}
+                - {kind: terminal, role: agent, action: created, id: term-blocked, surface: visible}
+              residualResources:
+                - {kind: terminal, role: agent, action: created, id: term-blocked, surface: visible}
+  - name: kernel next dispatches; the launch fails blocked at the prompt
+    seat: kernel:blk
+    starci: [kernel, next, blk, --wait, "0"]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals:
+          - queued
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(failure_json, '$.kind') || ':' || json_extract(failure_json, '$.prompt') || ':' || json_extract(failure_json, '$.stage') || ':' || json_extract(failure_json, '$.terminal') FROM seats WHERE role = 'worker'"
+        equals:
+          - blocked-prompt:external-import:agent_readiness:term-blocked
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM seats, json_each(seats.failure_json, '$.screen') AS line WHERE seats.role = 'worker' AND line.value LIKE '%Allow external CLAUDE.md file imports?%'"
+        equals:
+          - 1
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT outcome FROM attempts
+        equals:
+          - blocked-prompt
+  - name: no provider strike, circuit or failure event
+    assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM provider_events WHERE kind IN ('strike', 'circuit-open', 'failure-while-open', 'probe-failed')"
+        equals:
+          - 0
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(evidence_json, '$.escalation.kind') || ':' || (instr(json_extract(evidence_json, '$.escalation.question'), 'external-import prompt in worktree') > 0) FROM decisions WHERE scope = 'supervisor' AND kind = 'escalation' AND subject LIKE 'blocked-prompt:external-import:%' AND answered_at IS NULL"
+        equals:
+          - harness:1
+  - assert:
+      orcaCalls:
+        command: terminal read
+        match:
+          terminal: '^term-blocked$'
+        count: 1
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: '^term-blocked$'
+        count: 1
+  - name: the tick names the prompt loudly
+    starci: [supervisor, tick]
+    expect:
+      contains: "BLOCKED PROMPT"
+  - name: seat list carries the blocked seat's failure (its text prints the screen under the table)
+    starci: [seat, list]
+    expect:
+      contains: "\"prompt\": \"external-import\""

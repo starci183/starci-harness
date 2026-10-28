@@ -140,7 +140,11 @@ moves.
 Orca's `run-create` and `worker-start` run under retry-request ids derived from the attempt. The brief, the contract
 copy and the worker's output file live in the project's state folder, and the spec only points at the brief (the
 Windows argv cap). The effective agent and model are attested from `worker-show`; a mismatch closes the worker and
-requeues the task. An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
+requeues the task. A certain failure is explained before the worker is released (`explainLaunchFailure` in
+`harness/launch-failure.ts`, for an Op's and a Kernel's launch alike): at Orca's `agent_readiness` stage the agent terminal
+its receipt names is read once, a screen at one of `blockedPrompts` ([ops/routing.yaml](../ops/routing.yaml)) is a
+`blocked-prompt`, anything else takes its `failureSignals` kind; the seat keeps the explanation (`seats.failure_json`,
+shown by `seat list`). An unknown outcome leaves the task `effect_unknown` with its leases and seat open, and
 `seat start <task> --resume` replays the same requests.
 
 **Seats as a tree.** `[Supervisor] <project>` (one per project, [state.md](../contexts/harness/state.md) "How a project is
@@ -253,5 +257,5 @@ Op; the router's steps are [ops/README.md](../ops/README.md)'s) and
 [ops/liveness.yaml](../ops/liveness.yaml) (thresholds, the Orca answers that prove a worker gone — anything else is
 unknown, never dead — the `coordinators` block: seat lease, Kernel and Supervisor TTLs, relaunch limit,
 effect-unknown deadline, conflict wait, poisoned-command refusals, and how long `next` waits — and the `stall` block of the
-stall ladder and the host driver). `starci route explain` prints a pick step by step,
-`--coordinator supervisor|kernel` for a coordinator's.
+stall ladder and the host driver). `starci route explain --label <label>` prints a pick step by step; a
+label naming a coordinator (`supervisor`, `kernel`) explains that seat's pick through `pickCoordinator`.

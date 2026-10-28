@@ -90,7 +90,8 @@ quota: {reservePercent: 90, exhaustedPercent: 100, maxAgeMinutes: 1440}
 usage: {refreshMinutes: 10, windows: [session, weekly, monthly]}
 
 # Provider circuit: a failure of a kind opens the provider for its cooldown once it has `strikes` of that kind in a row
-# (1 when not named). A launch reports rate, quota, capacity, auth or launch; a seat the stall ladder (ops/liveness.yaml
+# (1 when not named). A launch reports rate, quota, capacity, auth or launch, and nothing when it is blocked at a prompt
+# (blockedPrompts: the host's problem, not the provider's); a seat the stall ladder (ops/liveness.yaml
 # `stall`) gives up on reports the kind its Orca failure text names, else `stall`. An open within reopenWindowMinutes of
 # the last one waits reopenFactor times longer, capped at capMinutes but never below the kind's own cooldown. A quota failure that names its reset waits for the reset.
 # Half-open: an open provider is due one probe when its cooldown ends, or probeEveryMinutes after it opened (each failed probe
@@ -108,12 +109,25 @@ circuit:
 
 # Typed launch errors, and the failure fields Orca's worker-show gives for a stalled seat (agentWait, error, exit reason), are
 # read for these signals (case-insensitive regular expressions); a certain launch failure with none of them is a `launch`
-# failure, a stalled seat with none a `stall`. Nothing else is read: no terminal screen is scraped.
+# failure, a stalled seat with none a `stall`. The one terminal screen read is blockedPrompts' below.
 failureSignals:
   rate: ["rate.?limit", "too many requests", "\b429\b"]
   quota: ["quota", "usage limit", "credit", "out of tokens", "billing"]
   capacity: ["overloaded", "capacity", "\b529\b", "\b503\b"]
   auth: ["unauthori[sz]ed", "\b401\b", "forbidden", "not logged in", "login expired", "invalid api key"]
+
+# A launch Orca failed at its agent_readiness stage has its agent terminal (the one its receipt says it created) read once,
+# before the worker is released: the last `screenLines` non-empty lines become the seat's failure facts and the launch error.
+# A screen matching a prompt here (first name wins, case-insensitive) is a `blocked-prompt` failure: the agent waits at a host
+# or config dialog, so its provider takes no strike, and the Supervisor gets a `harness` escalation naming the prompt and the
+# worktree. Any other readiness failure is classified by failureSignals.
+blockedPrompts:
+  screenLines: 20
+  prompts:
+    external-import: ["allow external claude\\.md file imports"]
+    trust: ["do you trust the files in this folder", "trust this folder"]
+    login: ["please (log|sign) ?in", "select login method", "run /login", "not logged in"]
+    confirmation: ["do you want to"]
 
 # Every ended attempt of every registered ledger is recorded per member and label (green or red verdict, timeout, lost,
 # stalled, launch failure, mismatch, minutes), and every coordinator seat the stall ladder gave up on (stalled); the evidence of the last windowDays qualifies and scores a member.
