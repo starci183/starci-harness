@@ -16,7 +16,7 @@ import { runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
-import { blockWork, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock, workLine } from "../../harness/settle.js"
+import { assertSettleLockHeld, blockWork, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock, workLine } from "../../harness/settle.js"
 import { LAND_CONFLICT, LAND_CONFLICT_EVENT, LandConflict, landLockKey, landTargetOf, opWorktreeOf, removeOpWorktree } from "../../harness/land.js"
 import type { LandTarget, WorktreeRemoval } from "../../harness/land.js"
 import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
@@ -170,7 +170,7 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
         )
     }
     if (task.status === "verifying") {
-        throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is verifying already; once no verifier holds the settle lock the next workflow step recovers it (by hand: starci task verify ${task.id} --recover)`)
+        throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is verifying already; once no verifier holds its verifier lock the next workflow step or supervisor tick recovers it (by hand: starci task verify ${task.id} --recover)`)
     }
     if (task.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${task.id} is ${task.status}; only a reported task is verified and settled`)
     const result = resultOf(db, attempt.id)
@@ -181,7 +181,7 @@ const verifiable = (db: DatabaseSync, task: TaskRow, commit: boolean): AttemptRo
 }
 
 /** The events of a verify that reached no verdict. */
-const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused"] as const
+const NO_VERDICT_KINDS = ["verify-error", "preserve-failed", "settle-refused", "verify-deadline"] as const
 
 /**
  * A verify that reached no verdict (it broke, or HEAD moved under the settle) puts the task back to reported; no try is spent.
@@ -208,6 +208,19 @@ const noVerdict = (db: DatabaseSync, taskId: string, attemptId: string, kind: st
         refusal.code,
         `${refusal.message}\ntask ${taskId} reached no verdict ${String(ends)} times in a row: it is awaiting_owner, its work left in the work tree; fix the cause and send a retry (starci task send <contract> --retry-of ${taskId})`,
     )
+}
+
+/**
+ * A settling verify whose lock gave up at its deadline (VERIFY_DEADLINE, harness/settle.ts) reached no verdict: its task goes
+ * back to reported, unless another verifier or --recover moved it first.
+ */
+const deadlined = async <T>(db: DatabaseSync, taskId: string, attemptId: string, run: () => Promise<T>): Promise<T> => {
+    try {
+        return await run()
+    } catch (error: unknown) {
+        if (asRefusal(error).code === "VERIFY_DEADLINE" && getTask(db, taskId).status === "verifying") throw noVerdict(db, taskId, attemptId, "verify-deadline", error)
+        throw error
+    }
 }
 
 /** How a settling verify ended the task: what it settled or preserved, the files that did not rebase, and which seats it closed. */
@@ -371,11 +384,14 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     try {
         built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
     } catch (error: unknown) {
+        assertSettleLockHeld(db, me, verifyLockKey(task.id))
         if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, "verify-error", error)
         const { preserved } = await preserveEnding(db, root, task, attempt.id)
         conflictTask(db, task.id, attempt.id, error, preserved)
         return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files } }
     }
+    // A verify that outlived its deadline lost its lock: it records, preserves and lands nothing (the catch above holds the same fence).
+    assertSettleLockHeld(db, me, verifyLockKey(task.id))
     recordRuns(db, task.id, attempt.id, task.contractHash, built.checks)
     recordEvent(db, "task-verified", task.id, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: true, onto: onto ?? null })
     if (built.verdict === "red") {
@@ -444,7 +460,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
         }
         const frozen = await freezeWorker(root, taskId)
         const me = thisVerifier(taskId)
-        const settled = await withSettleLock(db, me, MINUTE_MS, verifyLockKey(taskId), async (): Promise<Exclude<Pass, "moved">> => {
+        const settled = await deadlined(db, taskId, attempt.id, () => withSettleLock(db, me, MINUTE_MS, verifyLockKey(taskId), async (): Promise<Exclude<Pass, "moved">> => {
             const fresh = getTask(db, taskId)
             if (fresh.status !== "reported") throw new Refusal("TASK_NOT_VERIFIABLE", `task ${taskId} is ${fresh.status} now; another verify took it while this one waited`)
             // The claim, by compare-and-swap, before any git side effect; the parent lets --recover find a landing.
@@ -457,7 +473,7 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             const second = await withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, landLockKey(target), () => settlePass(at, true))
             if (second === "moved") throw noVerdict(db, taskId, attempt.id, "settle-refused", new Refusal("HEAD_MOVED", `${target.branch} moved under its land lock`))
             return second
-        })
+        }))
         // The task ended; its worker has nothing left to do. Closing talks to Orca, so it runs outside every lock and transaction.
         const closing = await closeSeatsOfTask(root, taskId).then(
             (seats): Pick<Ending, "seats" | "seatProblem"> => ({ seats }),

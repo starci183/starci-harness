@@ -136,10 +136,15 @@ worktree is removed. A verify holds its task's verifier lock throughout, and the
 overwrite a local edit, a task in the checkout it lands on by moving the ref. Verifies of one workflow run side by side;
 when another task landed between a verify's rebase and its landing, it verifies again on the new head under the land
 lock, so each lands on the head the previous one left. A lock's holder stamps a heartbeat, so a dead holder whose pid
-Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`). Git is the authority
-for landed: a task left verifying by a verifier that no longer holds its verifier lock (dead, or its beat stale) is
-reconciled by `task verify --recover`, which every `workflow step` (and so `kernel next`) runs on such a task before it
-settles: done when the branch it lands on carries the settle commit (its message and `Starci-Task:` trailer after the head
+Windows reused is taken over once the beat goes stale (`withSettleLock` in `harness/settle.ts`), and holds a lock at most
+`verifyDeadlineMinutes` ([ops/liveness.yaml](../ops/liveness.yaml)): at the deadline the holder gives it up itself
+(`VERIFY_DEADLINE`, no verdict, back to reported, and work that resumes later lands nothing), and a holder still listed
+past it counts as gone though it beats. A tool run ends at most a few seconds after its process exited or was killed even
+when a grandchild keeps its output pipes open (`shared/exec.ts`). Git is the authority for landed: a task left verifying
+by a verifier that no longer holds its verifier lock (dead, its beat stale, or past the deadline) is reconciled by `task
+verify --recover`, which the settling half of every `workflow step` (`settleWorkflow`, so `kernel next`) runs on such a
+task before it settles, and which `supervisor tick` and `supervisor next` run for every workflow the Supervisor
+coordinates, so a filed result is verified and its worker's seat closed with no Kernel turn: done when the branch it lands on carries the settle commit (its message and `Starci-Task:` trailer after the head
 the verify started from), else back to `reported`, which the same step verifies. Git runs through one runner (`captureGit` in
 `shared/git.ts`) with `core.quotePath` off and `core.longpaths` on, and every path listing the harness parses is
 NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.

@@ -11,6 +11,9 @@ const MAX_BUFFER = 64 * 1024 * 1024
 /** The exit code a run gets when its timeout killed it (the coreutils `timeout` convention). */
 export const EXIT_TIMEOUT = 124
 
+/** How long a run waits for its output pipes to close once its process exited or was killed. */
+const PIPE_GRACE_MS = 5000
+
 /** The captured output of one finished tool run. */
 export interface ToolOutput {
     readonly stdout: string
@@ -142,10 +145,24 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             }
         })
         child.on("close", finish)
+        // `close` waits for the output pipes too, which a grandchild that outlives the process (a detached daemon a postinstall
+        // or a build started) can hold open forever: once the process itself exited, the run ends at most PIPE_GRACE_MS later.
+        child.on("exit", (code: number | null) => {
+            setTimeout(() => {
+                if (done) return
+                child.stdout.destroy()
+                child.stderr.destroy()
+                finish(code)
+            }, PIPE_GRACE_MS).unref()
+        })
         if (options.timeoutMs !== undefined) {
             timer = setTimeout(() => {
                 timedOut = true
                 killTree(child)
+                // A tree the kill could not reach keeps its pipes: the run ends anyway once the grace passes.
+                setTimeout(() => {
+                    finish(null)
+                }, PIPE_GRACE_MS).unref()
             }, options.timeoutMs)
         }
     })

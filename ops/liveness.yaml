@@ -22,6 +22,10 @@ goneErrors: [dispatch_not_found]
 # Settle liveness (both runners): a verify that reaches no verdict returns its task to reported for free, but once one result
 # has reached no verdict this many times the failure is persistent and the task ends awaiting_owner with the last reason.
 settleNoVerdictMax: 3
+# A verify holds its verifier lock (and a land lock) at most this long (cli/src/harness/settle.ts): past it the holder gives it up
+# and its task reaches no verdict, and a holder still listed past it (hung in-process, its heartbeat beating) counts as gone, so
+# the next `workflow step`, `kernel next` or `supervisor tick` reconciles its task (`task verify --recover`) and verifies it again.
+verifyDeadlineMinutes: 20
 
 # Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build, npm ci or
 # install, a uat container. Each takes one slot of a machine-wide semaphore in machine.sqlite (cli/src/harness/heavy.ts) for as

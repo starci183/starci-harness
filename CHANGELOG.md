@@ -63,6 +63,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   waits while free RAM is under the seat floor (`SEAT_RAM_LOW`). New: `host load`, and `check heavy-sites`, a CI gate
   red for a spawn site outside the governor. Bench: `heavy-third-command-waits`, `heavy-pressure-narrows-admission`,
   `seat-launch-waits-on-ram`.
+- **A filed result is verified with no Kernel turn, and a hung verify is reclaimed.** `supervisor tick` and `supervisor
+  next` run the settling half of a workflow step (`settleWorkflow`: recover, verify, close seats, wave) for every workflow
+  the Supervisor coordinates; a reported task's worker seat is released and its tab closed. A verify holds its verifier lock
+  at most `verifyDeadlineMinutes` (ops/liveness.yaml): it gives the lock up itself at the deadline, and a holder past it counts
+  as gone, so `--recover` takes its task over. A tool run whose process exited ends within seconds even when a grandchild
+  holds its output pipes. Bench: `verify-hung-holder-reclaimed`, `orca-tick-verifies-reported`.
 - **Green rows are reused.** `check run` keys each typecheck and lint step by the digest of its inputs and reuses a green
   row of the project ledger instead of rerunning it, in a wave, Debug's scoped round and before a push. Bench:
   `check-run-green-row-reused`.

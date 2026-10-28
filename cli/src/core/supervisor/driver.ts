@@ -36,6 +36,7 @@ import type { WorkflowRow } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import type { VerbContext } from "../../shared/verb.js"
+import { settleWorkflow } from "../workflow/engine.js"
 import { inOrder } from "../../harness/sequential.js"
 import { digestOf, RELAUNCH_LIMIT, sweepOpBudgets, sweepOpStalls } from "../kernel/driver.js"
 import type { Digest } from "../kernel/driver.js"
@@ -312,7 +313,8 @@ const adoptFromHost = async (scope: SweepScope, workflow: WorkflowRow, seat: Sea
  * (or silent past its TTL) is relaunched; a live one idle at its prompt with work pending meets the stall ladder. `ops` also runs
  * each owned workflow's Op budget ladder and Op stall ladder (the host driver's sweep, which needs no Kernel to be awake).
  */
-const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules: CoordinatorLiveness, acting: AttachedSupervisor, ops: boolean): Promise<string[]> => {
+const sweepKernels = async (context: VerbContext, root: string, binary: OrcaBinary, rules: CoordinatorLiveness, acting: AttachedSupervisor, ops: boolean): Promise<string[]> => {
+    const { cwd } = context
     const owned = withLedger(root, (db) =>
         listWorkflows(db)
             .filter((workflow) => isCoordinated(workflow) && coordinatorOf(db, workflow.id) === SUPERVISOR_COORDINATOR)
@@ -335,6 +337,13 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
         } catch (error: unknown) {
             const refusal = asRefusal(error)
             lines.push(`${workflow.id}: Kernel not relaunched (${refusal.code}): ${refusal.message.split("\n")[0] ?? ""}`)
+        }
+        // A filed result is verified, a dead verify reclaimed and a settled worker's seat closed without waiting for the Kernel's turn.
+        try {
+            lines.push(...(await settleWorkflow({ ...context, cwd: root }, root, workflow.id)).filter((action) => action.action !== "wait").map((action) => `${workflow.id}: ${action.action} ${action.task ?? "-"} ${action.detail}`))
+        } catch (error: unknown) {
+            const refusal = asRefusal(error)
+            lines.push(`${workflow.id}: not settled (${refusal.code}): ${refusal.message.split("\n")[0] ?? ""}`)
         }
         if (ops && workflow.status !== "paused") {
             const opActions = [...(await sweepOpBudgets(root, binary, cwd, workflow.id)), ...(await sweepOpStalls(root, binary, cwd, workflow.id, live))]
@@ -396,7 +405,7 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
         if (attached !== null && binary !== null) {
-            actions.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, attached, false))).flat())
+            actions.push(...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, attached, false))).flat())
             actions.push(...(await tendWorkers(context, attached, binary, project)))
         }
         sweepMs = Math.max(sweepMs, Date.now() - swept)
@@ -602,7 +611,7 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
         swept.push(one.project.name)
         const lines: string[] = []
         const { repos, problems: unresolved } = await projectRepositories(one.project)
-        lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, seat, true))).flat())
+        lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, seat, true))).flat())
         lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat())
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
