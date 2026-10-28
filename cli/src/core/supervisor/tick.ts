@@ -18,7 +18,7 @@ export const supervisorTickVerb = defineVerb({
     path: ["supervisor", "tick"],
     summary: "one host-driver pass: close finished and orphaned harness terminals, ensure every project's Supervisor, sweep each one's Kernels and their Ops, nudge or relaunch stalled agents (for a scheduled task)",
     editions: BOTH_EDITIONS,
-    effect: "host",
+    effect: "remote",
     roles: ["owner", "supervisor"],
     schema: "starci/supervisor-tick@1",
     flags: {
