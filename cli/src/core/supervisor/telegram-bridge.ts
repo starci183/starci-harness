@@ -9,11 +9,11 @@ const ACTIONS = ["run", "status"] as const
 
 /**
  * `starci supervisor telegram-bridge <run|status>`: the owner's Telegram channel as a host service (ops/host.yaml
- * `telegram-bridge`). `run` holds the host's one bridge seat and loops: send every notice due (an `owner` escalation,
- * an owner request taken up, a workflow that ended; once each, within ops/telegram.yaml's budget), then long-poll the bot and
- * record each message of the owner's chat that answers a notice (a reply to it, `/answer <decision-id> <text>`) or asks
- * (`/ask <project> <text>`) as an owner request, as `supervisor ask` does, which wakes that project's Supervisor. A message of any
- * other chat is ignored and logged by its chat id. `--once` runs one cycle without waiting. `status` reads the seat's beat.
+ * `telegram-bridge`). `run` holds the host's one bridge seat and loops: send every notice due (the kinds ops/telegram.yaml
+ * `notices` lists, once each, within its budget), then long-poll the bot and answer the owner's chat: a question answered (a
+ * reply, a button, `/answer <ticket> <text>`), `/status`, `/tickets`, or any other message recorded as an owner request
+ * (`/ask <project> <text>`), as `supervisor ask` does, which wakes that project's Supervisor. A message of any other chat is
+ * ignored and logged by its chat id. `--once` runs one cycle without waiting. `status` reads the seat's beat.
  */
 export const supervisorTelegramBridgeVerb = defineVerb({
     path: ["supervisor", "telegram-bridge"],

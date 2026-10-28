@@ -17,7 +17,7 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | [needs.yaml](needs.yaml) | the shared roots of an app and the canonical need key each one gives a reported path | `needs.ts` (the key and scope of a shared need, cli/README.md "Shared needs") |
 | [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
-| [telegram.yaml](telegram.yaml) | the owner's Telegram channel: the token variable's name, the API, the bridge's poll and liveness, the notice budget | `telegram.ts`, `telegram-bridge.ts` |
+| [telegram.yaml](telegram.yaml) | the owner's Telegram channel: the token variable's name, the API, the bridge's poll and liveness, the notice budget, which notice kinds go out and the question reminder | `telegram.ts`, `telegram-bridge.ts` |
 
 A label's floor and host tools live in its op file and nowhere else. The prose below explains how the router and the
 failure accounting use the numbers of `routing.yaml`; it never restates them.

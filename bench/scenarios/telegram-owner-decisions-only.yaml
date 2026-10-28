@@ -1,0 +1,159 @@
+schema: starci/scenario@1
+id: telegram-owner-decisions-only
+group: messaging
+title: "the owner's Telegram carries only what needs his decision: a harness defect and a blocked workflow send nothing, an owner question one card, reminded at most once a day, and /status answers on demand"
+inject: >-
+  the owner connects the channel with ops/telegram.yaml as shipped (notices: question); a Kernel escalates kind harness and
+  kind owner; the tick runs twice; the question's card is made a day old; the tick runs twice more; the workflow is set blocked
+  and the tick runs; the owner sends /status
+expect: >-
+  the tick files both escalations as tickets and sends the question's card alone; a second tick within the day sends nothing;
+  once the card is a day old the tick sends one reminder, a reply carrying the question's buttons, and the next tick none; a
+  blocked workflow sends nothing; /status answers with one message naming the blocked workflow and its reason and the question
+  awaiting the owner
+pass:
+  - a harness-defect ticket sends nothing
+  - an owner question sends one card
+  - a repeat within the day sends nothing; one reminder after the day, then none
+  - a workflow-blocked event sends nothing
+  - /status answers with the workflows' summary
+  - no actor overstepping its role
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - file:
+      path: esc-harness.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-only-harness-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: harness
+          question: "task verify refuses CHECK_SCOPE_EMPTY from cli/src/harness/run-checks.ts"
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-harness.yaml"]
+  - file:
+      path: esc-owner.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-only-owner-1
+        kind: escalation
+        workflow: ask
+        basedOn: {graph: 1}
+        escalation:
+          kind: owner
+          topic: money
+          question: may the plan charge the card on file?
+  - seat: kernel:ask
+    starci: [kernel, submit, "${run}/esc-owner.yaml"]
+  - name: the tick files both and sends the question's card alone
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: ":ask"
+  - read:
+      db: machine
+      query: "SELECT id FROM tickets WHERE kind = 'question:business'"
+      as: question
+  - assert:
+      sql:
+        db: machine
+        query: SELECT kind || ':' || state FROM tickets ORDER BY kind
+        equals: ["harness-defect:open", "question:business:open"]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: may the plan charge the card on file?
+        equals:
+          data.count: 2
+          data.messages.1.keyboard.0: "tk:r:${question}"
+  - name: a repeat within the day sends nothing
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "\"sent\": []"
+  - name: the question's card went out a day ago
+    sql:
+      db: machine
+      exec: >-
+        UPDATE telegram_channel SET connected_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-26 hours');
+        UPDATE telegram_notices SET sent_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-25 hours') WHERE key = 'ticket:${question}:ask'
+  - name: the tick reminds the owner once
+    env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "ticket:${question}:remind:1"
+  - env: *tg
+    starci: [supervisor, tick]
+    expect:
+      contains: "\"sent\": []"
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "Nhắc: câu hỏi ${question}"
+        equals:
+          data.count: 3
+          data.messages.2.keyboard.0: "tk:r:${question}"
+  - name: the workflow is blocked
+    sql:
+      db: ledger
+      exec: "UPDATE workflows SET status = 'blocked', reason = 'a: task t-0 try 3: its verify was red on check-run-green', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = 'ask'"
+  - name: the owner asks for the status
+    http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /status}
+  - name: the bridge's sweep sends nothing about the blocked workflow, and it answers /status
+    env: *tg
+    starci: [supervisor, telegram-bridge, run, --once]
+    expect:
+      contains: "\"outcome\": \"status\""
+  - assert:
+      sql:
+        db: machine
+        query: SELECT key FROM telegram_notices ORDER BY at
+        equals: ["ticket:${question}:ask", "ticket:${question}:remind:1"]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "ask blocked: a: task t-0 try 3"
+        equals:
+          data.count: 4
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "Câu hỏi chờ trả lời: 1"

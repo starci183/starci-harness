@@ -1,0 +1,110 @@
+schema: starci/scenario@1
+id: telegram-workflow-notice-once-per-state
+group: messaging
+title: "with workflow notices switched on, a blocked workflow is noticed once per state and reason, however often its Kernel amends it"
+inject: >-
+  an ops/ copy whose telegram.yaml notices add workflow; the workflow is set blocked, a notice sweep runs; its goal version is bumped
+  three times with the same reason (a Kernel amending it every minute), a notice sweep running after each; then its reason changes.
+  The regression of 2026-10-29, when "workflow lesson-ai is blocked" went out at 2:59, 3:00 and 3:02 with the same text since
+  the notice key held the goal and graph versions (workflowNoticeKey in cli/src/harness/telegram-bridge.ts)
+expect: >-
+  the first sweep sends one workflow notice; the sweeps after each amend with the same reason send nothing; a new reason is a new
+  state and sends one more
+pass:
+  - one notice for the blocked state, none for the amends that keep its reason
+  - one more for a new reason
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  TELEGRAM_BOT_TOKEN: ""
+  STARCI_TELEGRAM_API: http://127.0.0.1:9
+steps:
+  - name: an ops/ copy with workflow notices switched on, read by the Telegram steps alone
+    write: { path: ops, from: "${ops}" }
+  - env: {STARCI_OPS_DIR: "${repo}/ops"}
+    starci: [config, set, telegram.notices, '["question","workflow"]']
+    expect:
+      contains: "telegram.notices"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy with workflow notices"]
+  - serve:
+      stub: telegram
+      as: tg
+  - http:
+      method: POST
+      url: ${tg.url}/__update
+      body: {chat: 7001, text: /start}
+  - env: &tg
+      TELEGRAM_BOT_TOKEN: ${tg.token}
+      STARCI_TELEGRAM_API: ${tg.url}
+      STARCI_OPS_DIR: ${repo}/ops
+    starci: [connect, telegram, discover-chat]
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: ask
+        goal: write doc a
+        runner: orca
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: ask
+  - name: the workflow is blocked
+    sql:
+      db: ledger
+      exec: "UPDATE workflows SET status = 'blocked', reason = 'a: task t-0 try 3: its verify was red', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = 'ask'"
+  - name: the sweep notices it once
+    env: *tg
+    starci: [connect, telegram, notify]
+    expect:
+      contains: "workflow:"
+  - name: the Kernel amends it, the reason unchanged
+    sql:
+      db: ledger
+      exec: "UPDATE workflows SET goal_version = goal_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+1 second') WHERE id = 'ask'"
+  - env: *tg
+    starci: [connect, telegram, notify]
+    expect:
+      contains: "\"sent\": []"
+  - sql:
+      db: ledger
+      exec: "UPDATE workflows SET goal_version = goal_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+2 seconds') WHERE id = 'ask'"
+  - env: *tg
+    starci: [connect, telegram, notify]
+    expect:
+      contains: "\"sent\": []"
+  - sql:
+      db: ledger
+      exec: "UPDATE workflows SET goal_version = goal_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+3 seconds') WHERE id = 'ask'"
+  - env: *tg
+    starci: [connect, telegram, notify]
+    expect:
+      contains: "\"sent\": []"
+  - name: a new reason is a new state
+    sql:
+      db: ledger
+      exec: "UPDATE workflows SET reason = 'b: task t-1 try 1: its verify was red', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+4 seconds') WHERE id = 'ask'"
+  - env: *tg
+    starci: [connect, telegram, notify]
+    expect:
+      contains: "workflow:"
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT COUNT(*) FROM telegram_notices WHERE kind = 'workflow'"
+        equals: [2]
+  - http:
+      url: ${tg.url}/__sent
+      expect:
+        contains: "workflow ask is blocked: a: task t-0 try 3"
+        equals:
+          data.count: 3

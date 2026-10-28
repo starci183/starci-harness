@@ -10,6 +10,12 @@ import { locateOps } from "./ops.js"
 import { lookupSecret, secretHome } from "./secret-env.js"
 import type { SecretSource } from "./secret-env.js"
 
+/** The kinds of notice the channel can send; ops/telegram.yaml `notices` says what each is and lists the ones that go out. */
+export const NOTICE_KINDS = ["question", "defect", "request", "workflow"] as const
+
+/** A kind of notice. */
+export type NoticeKind = (typeof NOTICE_KINDS)[number]
+
 const configSchema = z.strictObject({
     schema: z.literal("starci/telegram@1"),
     tokenVariable: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
@@ -24,6 +30,8 @@ const configSchema = z.strictObject({
     banner: z.string().regex(/\.png$/),
     commitUrl: z.string().includes("{sha}"),
     muteMinutes: z.number().int().positive(),
+    notices: z.array(z.enum(NOTICE_KINDS)).refine((kinds) => new Set(kinds).size === kinds.length, "notices lists a kind twice"),
+    reminderHours: z.number().int().positive(),
 })
 
 /** ops/telegram.yaml, validated: the owner's Telegram channel. */

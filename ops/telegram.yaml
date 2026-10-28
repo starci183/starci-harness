@@ -15,7 +15,8 @@ sendPerMinute: 6
 sendTries: 3
 # A notice carries at most this many characters of a question or a reason.
 questionChars: 700
-# A ticket below blocking severity (harness-internal noise) is noticed only once it was seen more than this many times.
+# A defect ticket below blocking severity (harness-internal noise) is noticed, when `defect` is on, only once it was seen more
+# than this many times.
 ticketOccurrences: 5
 # The one decorative banner every ticket notice is sent with (generated once with Codex's image generation), relative to ops/;
 # uploaded once, then sent by the file id Telegram keeps it under. The ticket's facts are the caption and the buttons.
@@ -24,3 +25,11 @@ banner: telegram/ticket-banner.png
 commitUrl: https://github.com/starci183/starci-harness/commit/{sha}
 # How long the "Tắt tiếng 1h" button holds back the defect notices.
 muteMinutes: 60
+# The kinds of notice that go out (owner ruling 2026-10-29: only what needs the owner's decision). `question` is a question
+# ticket awaiting his answer, sent once as its card, with its reminder; `defect` a defect ticket opened, reopened or closed;
+# `request` an owner request a Supervisor took up; `workflow` a workflow done, blocked or stopped. The kinds left out stay on
+# /tickets, /status, the harness UI and the monitor's report.
+notices: [question]
+# A question still open this many hours after its card was sent is reminded once, a reply to the card, then again after as
+# many more hours.
+reminderHours: 24

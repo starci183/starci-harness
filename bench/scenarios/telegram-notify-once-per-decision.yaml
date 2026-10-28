@@ -1,7 +1,7 @@
 schema: starci/scenario@1
 id: telegram-notify-once-per-decision
 group: messaging
-title: "an escalation the Supervisor cannot rule reaches the owner's Telegram chat once, as its ticket, by the tick, however many sweeps and bridge cycles run"
+title: "an owner escalation the Supervisor cannot rule reaches the owner's Telegram chat once, as its ticket, by the tick, however many sweeps and bridge cycles run; a harness escalation is ticketed for Debug and sends nothing"
 inject: >-
   the owner messages the bot and connects the channel; a Kernel escalates a question of kind owner (no default) and one of kind
   harness; the scheduled tick runs (no bridge running), then the notice sweep by hand and a bridge cycle, all against the
@@ -9,13 +9,13 @@ inject: >-
 expect: >-
   discover-chat stores the one chat that wrote to the bot and greets it; the tick files each escalation as its ticket, a
   question:business ticket for the owner and a blocking harness-defect ticket for Debug, each waiting on its escalation, and
-  sends one notice for each: the question with its ticket id and how to answer, and the defect saying Debug works it; the later
-  sweep and the bridge cycle send nothing more; each notice row is sent once with the message id the owner replies to
+  sends the question alone (ops/telegram.yaml notices holds question only), with its ticket id and how to answer; the later
+  sweep and the bridge cycle send nothing more; the notice row is sent once with the message id the owner replies to
 pass:
-  - one greeting and exactly two notices in the chat, sent by the tick
-  - "the question notice carries the question, the ticket id and /answer; the defect notice names Debug"
+  - one greeting and exactly one notice in the chat, sent by the tick
+  - the question notice carries the question, the ticket id and /answer; nothing is sent about the defect
   - two tickets opened by the supervisor, each with its escalation waiting
-  - two telegram_notices rows, sent once
+  - one telegram_notices row, sent once
   - no actor overstepping its role
 automation: automated
 env:
@@ -103,24 +103,20 @@ steps:
         db: machine
         query: "SELECT kind || ':' || severity || ':' || state || ':' || opened_by || ':' || (SELECT COUNT(*) FROM ticket_waiters w WHERE w.ticket_id = tickets.id AND w.subject LIKE 'decision:d-%' AND w.released_at IS NULL) FROM tickets ORDER BY kind"
         equals: ["harness-defect:blocking:open:supervisor:1", "question:business:blocking:open:supervisor:1"]
-  - name: the chat holds the greeting and two notices
+  - name: the chat holds the greeting and the question alone
     http:
       url: ${tg.url}/__sent
       expect:
         contains: may doc a name the product?
         equals:
-          data.count: 3
+          data.count: 2
           data.messages.1.chat_id: "7001"
   - http:
       url: ${tg.url}/__sent
       expect:
         contains: /answer tk-
-  - http:
-      url: ${tg.url}/__sent
-      expect:
-        contains: Claude Debug xử lý
   - assert:
       sql:
         db: machine
-        query: SELECT kind || ':' || status || ':' || tries || ':' || (message_id IS NOT NULL) FROM telegram_notices
-        equals: ["ticket:sent:1:1", "ticket:sent:1:1"]
+        query: SELECT (key LIKE '%:ask') || ':' || kind || ':' || status || ':' || tries || ':' || (message_id IS NOT NULL) FROM telegram_notices
+        equals: ["1:ticket:sent:1:1"]

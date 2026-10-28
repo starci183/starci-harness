@@ -1,17 +1,17 @@
 schema: starci/scenario@1
 id: ticket-legacy-owner-escalation-and-awaiting-task
 group: owner
-title: "an owner escalation with no topic and a task left awaiting the owner each become a ticket, with the owner's Telegram notice, on the Supervisor's next"
+title: "an owner escalation with no topic and a task left awaiting the owner each become a ticket on the Supervisor's next, the question with the owner's Telegram notice"
 inject: >-
   the ledger holds an owner escalation filed before escalations named a topic, and a task whose verify reached no verdict three
   times (awaiting_owner, verify-stuck); no ticket and no notice exist for either
 expect: >-
   supervisor next files the escalation as a blocking question:business ticket and the awaiting task as a blocking verify ticket
-  (each waiting on it), and sends the owner's Telegram notices in the same round: the question asked, the defect noticed; a
-  second next files nothing again
+  (each waiting on it), and sends the owner's Telegram notice in the same round: the question asked, the defect left to Debug's
+  queue; a second next files nothing again
 pass:
   - one question:business ticket waiting on the topicless escalation, one verify ticket waiting on the task
-  - both notices sent to the owner's chat by supervisor next
+  - the question's notice alone sent to the owner's chat by supervisor next
   - a second supervisor next files no second ticket
   - no human intervention beyond the injected fault
 automation: automated
@@ -78,8 +78,13 @@ steps:
   - assert:
       sql:
         db: machine
-        query: "SELECT COUNT(*) FROM telegram_notices WHERE kind = 'ticket' AND status = 'sent'"
-        equals: [2]
+        query: "SELECT COUNT(*) FROM telegram_notices WHERE kind = 'ticket' AND status = 'sent' AND key LIKE '%:ask'"
+        equals: [1]
+  - assert:
+      sql:
+        db: machine
+        query: SELECT COUNT(*) FROM telegram_notices
+        equals: [1]
   - http:
       url: ${tg.url}/__sent
       expect:
