@@ -1,18 +1,22 @@
 schema: starci/scenario@1
 id: release-publish-plan-guard
 group: release
-title: the release plan refuses a package published against a sibling it does not ship with
+title: the release plan refuses a package published against a sibling it does not ship with, and holds the CLI on a published sibling
 inject: >-
-  a scratch repository whose cli/ requires its packages/hfs sibling at another version than the sibling's own, then at the
-  sibling's version while the sibling is private
+  a scratch repository whose packages/lint requires its packages/hfs sibling at another version than the sibling's own, then at
+  the sibling's version while the sibling is private; then a cli/ that requires an older @starci/hfs npm serves while the
+  folder holds an unpublished one, and then that unpublished folder version
 expect: >-
-  `release publish` (the plan CI's publish job judges before anything reaches npm) refuses RELEASE_DEPENDENCY_SKEW while
-  the due CLI requires another hfs than the folder holds, RELEASE_DEPENDENCY_UNPUBLISHED while that hfs is private, and
-  passes once the CLI requires the hfs due in the same run
+  `release publish` (the plan CI's publish job judges before anything reaches npm) refuses RELEASE_DEPENDENCY_SKEW while the
+  due lint requires another hfs than the folder holds, RELEASE_DEPENDENCY_UNPUBLISHED while that hfs is private, and passes
+  once lint requires the hfs due in the same run; the held CLI passes on an older hfs npm serves (CI moves it after the
+  packages are published) and is refused RELEASE_DEPENDENCY_SKEW on an hfs npm does not serve (reads the public registry)
 pass:
   - the skewed requirement is refused RELEASE_DEPENDENCY_SKEW
   - a private sibling is refused RELEASE_DEPENDENCY_UNPUBLISHED
-  - the CLI requiring the hfs due in the same run plans both, exit 0
+  - lint requiring the hfs due in the same run plans both, exit 0
+  - the CLI on an older published hfs while a newer one is due plans both, exit 0
+  - the CLI on an hfs npm does not serve is refused RELEASE_DEPENDENCY_SKEW
   - no human intervention beyond the injected fault
 automation: automated
 steps:
@@ -21,10 +25,10 @@ steps:
       content: |
         {"name":"@starci-bench-guard/hfs","version":"2.0.1"}
   - write:
-      path: cli/package.json
+      path: packages/lint/package.json
       content: |
-        {"name":"starci-bench-guard-cli","version":"1.0.0","dependencies":{"@starci-bench-guard/hfs":"2.0.0"}}
-  - name: the due CLI requires another hfs than the folder holds
+        {"name":"@starci-bench-guard/lint","version":"1.0.0","dependencies":{"@starci-bench-guard/hfs":"2.0.0"}}
+  - name: the due lint requires another hfs than the folder holds
     starci: [release, publish]
     expect:
       exit: 1
@@ -42,9 +46,33 @@ steps:
       path: packages/hfs/package.json
       content: |
         {"name":"@starci-bench-guard/hfs","version":"2.0.0"}
-  - name: the CLI requires the hfs due in the same run
+  - name: lint requires the hfs due in the same run
     starci: [release, publish]
     expect:
       exit: 0
       ok: true
       contains: "\"package\": \"@starci-bench-guard/hfs\""
+  - remove: packages/lint
+  - write:
+      path: packages/hfs/package.json
+      content: |
+        {"name":"@starci/hfs","version":"4.9.999-bench"}
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-bench-guard-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.9.5"}}
+  - name: the held CLI stays on an older hfs npm serves while a newer one is due
+    starci: [release, publish]
+    expect:
+      exit: 0
+      ok: true
+      contains: "\"package\": \"starci-bench-guard-cli\""
+  - write:
+      path: cli/package.json
+      content: |
+        {"name":"starci-bench-guard-cli","version":"1.0.0","dependencies":{"@starci/hfs":"4.9.999-bench"}}
+  - name: the held CLI on an hfs npm does not serve
+    starci: [release, publish]
+    expect:
+      exit: 1
+      code: RELEASE_DEPENDENCY_SKEW
