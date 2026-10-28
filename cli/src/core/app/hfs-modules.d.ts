@@ -1,11 +1,13 @@
 // The typed surface of the two @starci/hfs entries the CLI loads; the package ships JavaScript only.
 
 declare module "@starci/hfs" {
-    /** What `main` writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
+    /** What `main` reads, writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
     interface HfsIo {
         readonly cwd: string
         /** The CLI that runs @starci/hfs: its version is the starci-harness an app is judged and scaffolded at. */
         readonly harness: { readonly version: string }
+        /** Replaces the process stdin of a verb that reads one (`secret set`): the value it returns stays in memory. */
+        readonly stdin?: (() => string) | undefined
         readonly stdout: (text: string) => void
         readonly stderr: (text: string) => void
     }
