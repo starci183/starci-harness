@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.5 - 2026-10-28
+
+- Changed: versioned together with Grammar 0.15.5; `@starci/eslint-grammar-core` 0.15.5 is the peer dependency, and the bundled canon pins name the Grammar family 0.15.5. No rule changes.
+
 ## 0.15.4 - 2026-10-28
 
 - Changed: versioned together with Grammar 0.15.4; `@starci/eslint-grammar-core` 0.15.4 is the peer dependency, so Offset Pop apps inherit `page-tabs-in-header` and `route-page-is-one-page`, and the bundled canon pins follow release G (Grammar family 0.15.4, hfs 4.9.5, canon-fe 9.4.4, canon-be 3.6.4, ai-router 0.3.0).

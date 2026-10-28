@@ -2,6 +2,7 @@
 
 ## 9.4.5 - 2026-10-28
 
+- Changed: the bundled canon pins name the Grammar family 0.15.5 (grammar, eslint-grammar-core, eslint-grammar-offset-pop). No rule changed by it.
 - Changed: `starci-fe/nested-control-variant` (FE_NESTED_VARIANT) covers Grammar's `CopyField`: its layer variant follows the surface context, so a static `variant` is refused like every other field's.
 
 ## 9.4.4 - 2026-10-28

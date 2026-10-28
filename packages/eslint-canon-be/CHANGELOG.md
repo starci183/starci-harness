@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed: the bundled canon pins name the Grammar family 0.15.5 (grammar, eslint-grammar-core, eslint-grammar-offset-pop). No rule changed.
 - Changed: the bundled rule catalog states R225 with the app pre-push hook's dependency push gate (`starci deps check`). No rule changed.
 
 ## 3.6.4 - 2026-10-28

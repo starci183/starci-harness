@@ -11,8 +11,8 @@ pins:
   '@starci/grammar': {version: 0.15.5, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.6.4, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.4.5, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.15.4, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.15.4, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/eslint-grammar-core': {version: 0.15.5, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.15.5, group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.2.1, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.0, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}

@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.15.5 - 2026-10-28
 
+- Changed: versioned together with Grammar 0.15.5 (the family equality spec); `@starci/eslint-canon-fe` 9.4.5 is the peer dependency; the bundled canon pins name the Grammar family 0.15.5. No lint rule changed.
 - Changed: the bundled rule catalog states R225 with the app pre-push hook's dependency push gate (`starci deps check`). No lint rule changed.
 
 ## 0.15.4 - 2026-10-28
