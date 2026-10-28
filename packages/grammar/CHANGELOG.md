@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.6 - 2026-10-28
+
+- Added: link tabs. A `TabItem` takes `href`; a tab with one renders as a link and navigates through the `GrammarRoot` router (`navigate`, `useHref`) or the browser. `TabsProps.selectedKey` is optional: link tabs without it select the tab whose `href` is the current path, else the longest `href` the path lies under, else the first tab, and follow history moves; a press moves the indicator ahead of the route change. A server page can therefore pass `Page` `header.tabs` (or `PageHeader` `tabs`) as plain data with no `onSelect`. Controlled tabs (`selectedKey`, `onSelect`) are unchanged.
+- Added: `Button` `form` (commands only, beside `type`): the `id` of the form the button submits or resets from outside it, so a `Drawer` or `Dialog` footer commit submits the form in the overlay's body.
+- Added: story `Compositions/Renderers` PageHeaderLinkTabs (the tab of the current path is selected and is an anchor).
+
 ## 0.15.5 - 2026-10-28
 
 - Fixed: `Alert appearance="soft"` now applies its tone's soft tint at half strength and removes the surface shadow, as documented by `AlertAppearance` and the 2026-10-11 ruling. The default surface appearance and Alert anatomy are unchanged.

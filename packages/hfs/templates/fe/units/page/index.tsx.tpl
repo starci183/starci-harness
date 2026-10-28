@@ -18,7 +18,7 @@ const copyOf = async (isSkeleton: boolean): Promise<{{Name}}BaseProps["props"]> 
         breadcrumbLabel: t("breadcrumb"),
         homeLabel: t("home"),
         homeHref: APP_ROUTES.home,
-{{emptyResolved}}        isSkeleton,
+{{emptyResolved}}{{tabsResolved}}        isSkeleton,
     }
 }
 

@@ -11,7 +11,7 @@ Every command runs at the app root. A side is judged with its folder as the root
 starci app scaffold <name> [--into <dir>] [--edition full|lite] [--cwd <dir>]
 starci app add <api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app> <name> [--fe] [--no-types] [options] [--cwd <dir>]
 starci app add <block|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
-starci app add <page|layout> <route> [--blocks a,b] [--app <fe app>] [--cwd <dir>]
+starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b] [--app <fe app>] [--cwd <dir>]
 starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--cwd <dir>]
 starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--format text|json] [--sonar <file>]
 starci app sync (--check | --write) [--cwd <dir>]
@@ -39,11 +39,12 @@ and `contexts/ui`, from `templates/fe/units`, with its copy in every catalog; no
   the shared ui package these, and `SlotView`, go to that package and its barrel (R91).
 - `page <route>`: `app/[locale]/<route>/{page,loading,error}.tsx`, the server page owner `<Name>Page` drawing one Grammar
   `Page` (R325) whose header carries the trail and the heading and whose body composes `--blocks` (blocks that take no input;
-  else the page's empty sentence), its loading view `<Name>LoadingPage` (the same page drawn with `isSkeleton`, STATE-8),
+  else the page's empty sentence) and, with `--tabs a,b`, the page tabs in its header as link tabs (the first tab the route, each
+  other one its sub-route `<route>/<tab>`, the selected tab the current path's), its loading view `<Name>LoadingPage` (the same page drawn with `isSkeleton`, STATE-8),
   `<Name>ErrorPage` (the page with one negative Alert), and the stories pairing the page with its loading view.
 - `overlay <name> --kind modal|drawer`: `features/overlays/<Name>Overlay`, a `Dialog` or a trailing `Drawer` whose connected
-  half owns its open state; its decision group puts the way out first and the commit last, in the footer, or with `--form`
-  as the last row of a Form whose fields sit in a one-column `FormGrid`; stories draw it closed and open.
+  half owns its open state; its decision group puts the way out first and the commit last, always in the footer; with `--form`
+  the body holds a Form with an `id` over a one-column `FormGrid` and the footer's commit submits it by `form="<id>"`; stories draw it closed and open.
 - `layout <segment>`: `app/[locale]/<segment>/layout.tsx` and `features/layouts/<Name>Layout`, which composes Grammar's
   `PrimaryRailLayout`: the routed page in its primary region, `--blocks` in its rail. A frame never insets a page.
 

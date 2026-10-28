@@ -53,9 +53,13 @@ FE-BOUNDARY-1).
 </SlotView>
 ```
 
-Owners, one copy each: `DataSlot` and `SlotLabels` in `modules/types`, `slotOfSwr`/`mapSlot`/`loadingSlot` in
-`hooks/slot/slot.shared.ts`, `useSlotLabels` in `hooks/slot`, the view in `components/composites/SlotView`, a region's
-placeholder beside the pure half that draws it. The look of each notice and skeleton is the grammar's.
+Owners, one copy each: `slotOfSwr`/`mapSlot`/`loadingSlot` in `hooks/slot/slot.shared.ts`, `useSlotLabels` in
+`hooks/slot`, a region's placeholder beside the pure half that draws it. The view and its types have one home per front
+end: in a front end of one app, `SlotView` is the app's `components/composites/SlotView` and `DataSlot` and
+`SlotLabels` are declared in `modules/types`; in a front end of two or more apps with the shared ui package
+(`fe/packages/<project>-ui`), `SlotView` is that package's composite, exported by its barrel, `DataSlot` and
+`SlotLabels` are declared beside it, and each app's `modules/types` re-exports them, so the apps never hold a second
+copy (R91 `monorepo-tier-belongs-to-its-side`). The look of each notice and skeleton is the grammar's.
 
 Why: a region that draws its own loading, error or empty branch is one more variant somebody has to draw, and a
 skeleton that is not the ready tree jumps when the data lands.

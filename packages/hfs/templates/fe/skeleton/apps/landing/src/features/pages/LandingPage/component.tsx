@@ -1,4 +1,4 @@
-import { Button, Heading, Text } from "@starci/grammar/common"
+import { Button, Page } from "@starci/grammar/common"
 
 /** Props for {@link LandingPageBase}. */
 export type LandingPageBaseProps = {
@@ -12,13 +12,14 @@ export type LandingPageBaseProps = {
     }
 }
 
-/** Draw the public front door: the welcome, one sentence about the product and the way into the product app. */
+/**
+ * Draw the public front door as one Grammar Page (R325): the welcome heads the band with one sentence about the product
+ * under it, and the body holds the way into the product app.
+ */
 export const LandingPageBase = (props: LandingPageBaseProps) => (
-    <>
-        <Heading level={1}>{props.props.title}</Heading>
-        <Text tone="muted">{props.props.lede}</Text>
+    <Page header={{ title: props.props.title, description: props.props.lede }}>
         <Button href={props.props.appHref} intent="commit">
             {props.props.openApp}
         </Button>
-    </>
+    </Page>
 )

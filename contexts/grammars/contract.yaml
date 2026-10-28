@@ -152,7 +152,7 @@ roles:
     ui: ui/components/tabs.md
     renderers: [Tabs]
     vendorParity: [tabs]
-    slots: ["items: label, leading", panels]
+    slots: ["items: label, leading, href", panels]
     variants:
       variant: { values: [primary, secondary], meaning: { primary: "region tabs: pill segment, inside a painted surface", secondary: "page tabs: underline, outside a painted surface" }, chosenBy: context }
       inset: { values: [page, none], chosenBy: app }

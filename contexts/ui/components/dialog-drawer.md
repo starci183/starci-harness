@@ -28,7 +28,9 @@ Width by content: a form-sized dialog for one task; a drawer for the panel task.
 
 ## States
 Focus enters, stays inside, returns to the opener on close; Escape and an explicit close path exist (FOCUS-3).
-Batch options live in one closed disclosure card below the main task (LAYOUT-1). The footer is a decision group.
+Batch options live in one closed disclosure card below the main task (LAYOUT-1). The footer is a decision group, also
+when the body holds a form: the form carries an `id` and the footer's commit is a `Button` with `type="submit"` and
+`form` naming it, so the decision stays in the footer and never moves into the body.
 
 ## Owner split
 - **Grammar owns:** anatomy (heading, body, footer, close), backdrop, focus trap, portal into the grammar root, sizes.

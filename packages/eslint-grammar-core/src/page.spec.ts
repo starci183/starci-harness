@@ -10,6 +10,8 @@ import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { pageTabsInHeader, recommended, routePageIsOnePage, rules } from "./page.ts"
 
 const OWNER = at("apps/web/src/features/pages/ConnectionPage/component.tsx")
+const OWNER_INDEX = at("apps/web/src/features/pages/ConnectionPage/index.tsx")
+const BOUNDARY = at("apps/web/src/features/pages/AppNotFoundPage/index.tsx")
 const LAYOUT = at("apps/web/src/features/layouts/Workspace/component.tsx")
 const BLOCK = at("apps/web/src/components/blocks/ConnectionTabs/component.tsx")
 const SCRIPT = at("scripts/build.tsx")
@@ -58,12 +60,22 @@ test("R325: a page owner draws one Page with nothing beside it and no bare PageH
       // outside a page owner the parts are not judged by this law
       { filename: LAYOUT, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>" },
       { filename: BLOCK, code: "export const A = () => <PageContainer><Card /></PageContainer>" },
+      // a connected half draws through its own pure half, which owns the Page
+      { filename: OWNER_INDEX, code: "import { ConnectionPageBase } from \"./component\"\nexport const A = () => <><ConnectionPageBase /><GuideOverlay /></>" },
+      // a segment boundary owner draws its notice
+      { filename: BOUNDARY, code: "export const A = () => <NotFoundNotice title={title} />" },
+      // a page owner file with no JSX is not judged
+      { filename: OWNER, code: "export const copy = { title: \"Main account\" }" },
     ],
     invalid: [
       { filename: OWNER, code: `export const A = () => <><Banner /><Page ${HEADER}><Card /></Page></>`, errors: [{ messageId: "sibling" }] },
       { filename: OWNER, code: `export const A = () => <div><Page ${HEADER}><Card /></Page>{footer}</div>`, errors: [{ messageId: "sibling" }] },
       { filename: OWNER, code: "export const A = () => <><PageHeader title=\"Main account\" /><PageContainer><Card /></PageContainer></>", errors: [{ messageId: "part", data: { name: "PageHeader" } }, { messageId: "part", data: { name: "PageContainer" } }] },
       { filename: OWNER, code: `export const A = () => <Page ${HEADER}><G.PageContainer measure="reading"><Card /></G.PageContainer></Page>`, errors: [{ messageId: "part", data: { name: "PageContainer" } }] },
+      // no Page at all: a heading and blocks on no frame
+      { filename: OWNER, code: "export const A = () => <><Heading level={1}>Home</Heading><SignInForm /></>", errors: [{ messageId: "missing" }] },
+      // an element imported from elsewhere is no pure half
+      { filename: OWNER_INDEX, code: "import { HomeView } from \"@/components/blocks/HomeView\"\nexport const A = () => <HomeView />", errors: [{ messageId: "missing" }] },
     ],
   })
 })

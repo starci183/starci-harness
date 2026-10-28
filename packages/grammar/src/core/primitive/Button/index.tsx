@@ -64,14 +64,20 @@ type DestinationButton = {
     readonly onFollow?: () => void
     readonly onPress?: never
     readonly type?: never
+    readonly form?: never
 }
 
-/** A same-document command. It renders the vendor button and may submit or reset a form. */
+/** A same-document command. It renders the vendor button and may submit or reset a form, its own or the one `form` names. */
 type CommandButton = {
     /** Controlled toggle state. Keep the action label unchanged between pressed and unpressed. */
     readonly "aria-pressed"?: boolean
     readonly onPress?: () => void
     readonly type?: ButtonType
+    /**
+     * The `id` of the form this button submits or resets from outside it: a `Drawer` or `Modal` footer button with
+     * `type="submit"` and `form` naming the form in the overlay's body.
+     */
+    readonly form?: string
     readonly href?: never
     readonly target?: never
     readonly rel?: never
@@ -169,7 +175,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         )
     }
 
-    const { onPress, type = "button" } = props
+    const { onPress, type = "button", form } = props
     return (
         <HeroButton
             data-tier="atom"
@@ -180,6 +186,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-loading={isSkeleton ? "true" : "false"}
             data-action-pending={isPending ? "true" : "false"}
             type={type}
+            {...(form === undefined ? {} : { form })}
             variant={VARIANTS[variant]}
             size={SIZES[size]}
             isDisabled={unavailable}

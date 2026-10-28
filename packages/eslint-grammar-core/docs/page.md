@@ -31,7 +31,7 @@ A `Tabs` element that is the first element child of a `Page`, or the next elemen
 
 ## `starci-grammar/route-page-is-one-page`
 
-In a page owner (`fe.feature`, kind `pages`), a `Page` with an element sibling in its parent is a finding, and so is any `PageHeader` or `PageContainer`: both are Page's own parts. A `Page` alone in a fragment or a provider, and one `Page` per branch of a conditional, are legal. Files outside a page owner are not judged.
+In a page owner (`fe.feature`, kind `pages`), a `Page` with an element sibling in its parent is a finding, and so is any `PageHeader` or `PageContainer`: both are Page's own parts. A page owner file that draws JSX but no `Page`, and draws no element imported from its own pure half (`./component`), is a finding too, reported on its first element: the page has no frame at all. A `Page` alone in a fragment or a provider, and one `Page` per branch of a conditional, are legal. Files outside a page owner are not judged, and the segment boundary owners of FE-BOUNDARY-1 (`*ErrorPage`, `*LoadingPage`, `*NotFoundPage`) are not judged for a missing `Page`: an app-level boundary stands in for whichever page failed or waits and draws its notice.
 
 **Invalid** (`src/features/pages/ConnectionPage/component.tsx`)
 
@@ -39,6 +39,15 @@ In a page owner (`fe.feature`, kind `pages`), a `Page` with an element sibling i
 <>
   <PageHeader title="Main account" />
   <PageContainer><WebhookCard /></PageContainer>
+</>
+```
+
+**Invalid** (`src/features/pages/HomePage/component.tsx`)
+
+```tsx
+<>
+  <Heading level={1}>Home</Heading>
+  <SignInForm />
 </>
 ```
 

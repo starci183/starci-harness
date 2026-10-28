@@ -45,11 +45,11 @@ export const why: Record<string, WhyEntry> = {
   "page-tabs-in-header": {
     code: "FE_PAGE_TABS_OUTSIDE_HEADER",
     en: "A page tab bar in `<file>` is a Tabs at the top of the Page body or right after a PageHeader, outside the header band.",
-    fix: "Pass the tabs as Page header.tabs (or PageHeader tabs): { label, items, selectedKey, onSelect }.",
+    fix: "Pass the tabs as Page header.tabs (or PageHeader tabs): { label, items, selectedKey, onSelect }, or link tabs whose items carry an href each.",
   },
   "route-page-is-one-page": {
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE",
-    en: "The page owner `<file>` draws something beside its Page, or a bare PageHeader or PageContainer.",
+    en: "The page owner `<file>` draws something beside its Page, a bare PageHeader or PageContainer, or no Page at all.",
     fix: "Draw one Page: the band as its header, everything else in its body, the measure as its measure.",
   },
   "no-shell-bottom-tabs": {

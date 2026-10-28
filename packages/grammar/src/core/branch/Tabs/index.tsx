@@ -16,15 +16,23 @@ export type TabItem = {
     readonly id: string
     readonly label: string
     readonly leading?: ReactNode
+    /**
+     * The route this tab opens. A tab with `href` is a link tab: it renders an anchor, navigates through the
+     * `GrammarRoot` router (`navigate`, `useHref`) or the browser, and needs no `onSelect`, so a server page can pass
+     * its page tabs as plain data. The selected link tab follows the current path unless `selectedKey` is given.
+     */
+    readonly href?: string
 }
 
 /**
- * Business-neutral controlled peer tabs with the shared horizontal frame owning overflow,
- * scroll shadows and the directional controls.
+ * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
+ * controls. Controlled tabs pass `selectedKey` and `onSelect`; link tabs pass an `href` on every item and the selected
+ * tab is the one whose `href` matches the current path (the exact path, else the longest `href` the path lies under).
  */
 export type TabsProps = {
     readonly label: string
-    readonly selectedKey: string
+    /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
+    readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
     readonly onSelect?: (key: string) => void
     readonly panelId?: (key: string) => string
@@ -46,12 +54,56 @@ export type TabsProps = {
     readonly scrollNextLabel?: string
 }
 
+/** A path without its trailing slash, the root kept as `/`. */
+const trimPath = (path: string): string => (path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path)
+
+/**
+ * The link tab the current path selects: the item whose `href` path is the current path, else the one with the
+ * longest `href` path the current path lies under, else none.
+ */
+const tabKeyFromPath = (items: ReadonlyArray<TabItem>, pathname: string, base: string): string | undefined => {
+    const current = trimPath(pathname)
+    let best: { readonly id: string; readonly length: number } | undefined
+    for (const item of items) {
+        if (item.href === undefined) continue
+        const path = trimPath(new URL(item.href, base).pathname)
+        if (path === current) return item.id
+        const under = path === "/" ? current.startsWith("/") : current.startsWith(`${path}/`)
+        if (under && (best === undefined || path.length > best.length)) best = { id: item.id, length: path.length }
+    }
+    return best?.id
+}
+
+/** The current location's path, read on the client and kept current across history moves. */
+const useLocationPath = (enabled: boolean): readonly [string | undefined, (path: string) => void] => {
+    const [path, setPath] = useState<string | undefined>(undefined)
+    useEffect(() => {
+        if (!enabled) return
+        const read = () => setPath(window.location.pathname)
+        read()
+        window.addEventListener("popstate", read)
+        return () => window.removeEventListener("popstate", read)
+    }, [enabled])
+    return [path, setPath]
+}
+
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
 export const Tabs = (props: TabsProps) => {
     const nested = useSurfaceNesting()
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     useEffect(() => setIsClientReady(true), [])
+    const isLinkTabs = props.items.some((item) => item.href !== undefined)
+    const [locationPath, setLocationPath] = useLocationPath(isLinkTabs && props.selectedKey === undefined)
+    // A path no link tab owns falls back to the first tab, so link tabs stay controlled from their first render.
+    const selectedKey = props.selectedKey
+        ?? (isLinkTabs && locationPath !== undefined ? tabKeyFromPath(props.items, locationPath, window.location.href) ?? props.items[0]?.id : undefined)
+    const select = (key: string) => {
+        const href = props.items.find((item) => item.id === key)?.href
+        // A link tab navigates on its own; selecting it ahead of the route change keeps the indicator on the press.
+        if (href !== undefined && props.selectedKey === undefined) setLocationPath(new URL(href, window.location.href).pathname)
+        props.onSelect?.(key)
+    }
     useLayoutEffect(() => {
         const frame = frameRef.current
         const panelId = props.panelId
@@ -84,7 +136,7 @@ export const Tabs = (props: TabsProps) => {
                 else tab.setAttribute("aria-controls", original)
             })
         }
-    }, [isClientReady, props.items, props.panelId, props.selectedKey])
+    }, [isClientReady, props.items, props.panelId, selectedKey])
 
     // The vendor indicator fills its tab and animates width. A label edit resizes the selected tab, so the
     // indicator follows at once: the frame disables that width transition for the commit that changed a label.
@@ -116,8 +168,8 @@ export const Tabs = (props: TabsProps) => {
     return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
         <HeroTabs
             variant={vendorVariant}
-            selectedKey={props.selectedKey}
-            onSelectionChange={(key) => props.onSelect?.(String(key))}
+            {...(selectedKey === undefined ? {} : { selectedKey })}
+            onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
@@ -130,6 +182,7 @@ export const Tabs = (props: TabsProps) => {
                     <HeroTabs.Tab
                         key={item.id}
                         id={item.id}
+                        {...(item.href === undefined ? {} : { href: item.href })}
                         aria-label={item.label}
                         data-contract="PADDING-3"
                     >
