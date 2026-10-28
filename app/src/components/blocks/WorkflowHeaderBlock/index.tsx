@@ -80,7 +80,7 @@ export const WorkflowHeaderBlock = (props: WorkflowHeaderBlockProps) => {
                 isPending,
                 result,
                 labels: {
-                    trail: { label: WORKFLOW.breadcrumbs, overview: NAV.overview, project: props.project, workflow: props.workflow },
+                    trail: { label: WORKFLOW.breadcrumbs, project: props.project, workflows: NAV.workflows },
                     reason: WORKFLOW.reason,
                     changeGoal: WORKFLOW.changeGoal,
                     changeGoalHint: WORKFLOW.changeGoalHint(detail?.goal.version ?? 0),
