@@ -62,7 +62,7 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   Each Telegram scenario empties both variables at its top, and every run's `STARCI_SECRET_ENV` is `<run>/secret.env` (absent
   until a `file` step writes it), so a host token never reaches the real Telegram. `expect.lacks` fails a verb step whose
   output carries a value.
-- **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression) are
+- **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression, a page embedding a font larger than the scan bound, with or without a planted key) are
   built by the runner at run time (`write.generated`); the run's key is `${generatedKey}` in a step's text, so a scenario can pin its line.
 
 A `FAIL` on main is a finding against the harness, not against the bench: the scenario states the behaviour the owner's
@@ -112,7 +112,6 @@ design asks for.
 | [orca-repo-unknown-registered](scenarios/orca-repo-unknown-registered.yaml) | orca | Orca does not know the repository: repo add, then the launch retries once | automated | pass | 2026-10-27 |
 | [orca-slow-reply](scenarios/orca-slow-reply.yaml) | orca | Orca answers slower than the process deadline | automated | pending |  |
 | [orca-worker-exited](scenarios/orca-worker-exited.yaml) | orca | Orca reports the worker exited: the task becomes effect_unknown (lost), never silently running | automated | pass | 2026-10-27 |
-| [orca-worker-idle-forever](scenarios/orca-worker-idle-forever.yaml) | orca | an Op sits idle past its budget minutes | automated | pending |  |
 | [supervisor-idle-after-turn](scenarios/supervisor-idle-after-turn.yaml) | orca | the Supervisor ended its turn with an escalation waiting and its Kernel died: the scheduled tick drives the sweep and nudges it | automated | pass | 2026-10-27 |
 | [provider-all-down](scenarios/provider-all-down.yaml) | provider | every provider is down: dispatch holds with a named reason, no launch, no busy loop | automated | pass | 2026-10-27 |
 | [provider-auth-revoked](scenarios/provider-auth-revoked.yaml) | provider | a provider's auth is revoked (org disabled): its circuit opens and the router routes around it | automated | pass | 2026-10-27 |
@@ -160,6 +159,8 @@ design asks for.
 | [git-merge-conflict-on-rework-apply](scenarios/git-merge-conflict-on-rework-apply.yaml) | git | a rework's prior patch no longer applies to HEAD | automated | pending |  |
 | [git-rebase-force-push-by-someone](scenarios/git-rebase-force-push-by-someone.yaml) | git | someone rebases or force-pushes the workflow branch mid-run | manual | pending |  |
 | [git-submodule-in-allowpaths](scenarios/git-submodule-in-allowpaths.yaml) | git | allowPaths names a submodule | manual | pending |  |
+| [budget-over-fenced](scenarios/budget-over-fenced.yaml) | budget | an Op past its budget that never files is fenced after the grace: work preserved, leases released, try spent | automated | pass | 2026-10-28 |
+| [budget-over-reports-in-grace](scenarios/budget-over-reports-in-grace.yaml) | budget | an Op past its budget is asked once to wrap up, files in the grace and is judged as any other | automated | pass | 2026-10-28 |
 | [budget-minutes-exhausted](scenarios/budget-minutes-exhausted.yaml) | budget | a workflow that used its minutes holds dispatch with BUDGET_EXHAUSTED | automated | pass | 2026-10-27 |
 | [budget-raise-mid-flight](scenarios/budget-raise-mid-flight.yaml) | budget | a budget raise arrives while tasks are live | automated | pending |  |
 | [budget-tries-exhausted-then-raised](scenarios/budget-tries-exhausted-then-raised.yaml) | budget | a workflow out of tries holds dispatch until a raise, then resumes | automated | pass | 2026-10-27 |
@@ -188,6 +189,7 @@ design asks for.
 | [security-env-allowpath](scenarios/security-env-allowpath.yaml) | security | a contract leasing .env is refused; the harness never opens it | automated | pass | 2026-10-27 |
 | [security-loosening-in-diff](scenarios/security-loosening-in-diff.yaml) | security | a lint suppression written inside allowPaths never lands | automated | pass | 2026-10-27 |
 | [security-malicious-postinstall](scenarios/security-malicious-postinstall.yaml) | security | a dependency's postinstall runs during clean verify | manual | pending |  |
+| [security-secret-font-data-uri](scenarios/security-secret-font-data-uri.yaml) | security | a page that embeds a font as a base64 data URI is content, not a secret; a key planted in the same page is still caught | automated | pass | 2026-10-28 |
 | [security-secret-in-diff](scenarios/security-secret-in-diff.yaml) | security | a credential written inside allowPaths never lands in a harness commit | automated | pass | 2026-10-27 |
 | [security-secret-in-result-output](scenarios/security-secret-in-result-output.yaml) | security | a worker puts a credential into its result output | automated | pending |  |
 | [security-symlink-escape](scenarios/security-symlink-escape.yaml) | security | a worker plants a symlink or junction inside allowPaths pointing outside | manual | pending |  |

@@ -47,7 +47,7 @@ const EVENTS_SHOWN = 50
 const ATTENTION: ReadonlySet<string> = new Set([
     "decision-raised",
     "command-failed",
-    "task-timeout",
+    "task-over-budget",
     "task-stalled",
     "worker-lost",
     "verify-stuck",

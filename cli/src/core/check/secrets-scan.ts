@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path"
 import { parse } from "yaml"
 import { envelopesAllowed, neverRead } from "../../harness/policy.js"
 import type { Policy } from "../../harness/policy.js"
-import { lineFindings, scanDiff } from "../../shared/secrets.js"
+import { judgedText, lineFindings, scanDiff } from "../../shared/secrets.js"
 import type { SecretFinding, SecretHit } from "../../shared/secrets.js"
 import { applyExceptions, coverageLabel } from "./exceptions.js"
 import type { Coverage, StaleEntry } from "./exceptions.js"
@@ -94,7 +94,8 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
             unread += 1
             continue
         }
-        const read = readTreeFile(root, file, maxBytes)
+        // A sops envelope is judged whole; any other file is bounded by the text the rules judge, its embedded content payloads set aside.
+        const read = readTreeFile(root, file, maxBytes, file.endsWith(".enc") ? undefined : judgedText)
         if ("unread" in read) {
             if (read.unread === "too-large") unjudged.push(file)
             unread += 1
@@ -114,5 +115,5 @@ export const describeSecrets = (report: SecretReport): string[] => [
     ...report.findings.map((finding) => `${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
     ...report.excepted.map((finding) => `excepted ${coverageLabel(finding)}: ${finding.file}${lineSuffix(finding.line)} ${finding.pattern}`),
     ...report.stale.map((entry) => `EXCEPTION_STALE: ${entry.path} ${entry.rule} (${entry.kind}) match[${String(entry.index)}] covers no finding; remove it from policy/security.yaml`),
-    ...report.unjudged.map((file) => `unjudged: ${file} is larger than scan.maxFileBytes; the scan cannot read it`),
+    ...report.unjudged.map((file) => `unjudged: ${file} is larger than scan.maxFileBytes with its embedded font, image and media payloads set aside; the scan cannot read it`),
 ]

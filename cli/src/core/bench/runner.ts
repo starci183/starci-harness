@@ -12,7 +12,7 @@ import { captureTool, startServing } from "../../shared/exec.js"
 import { captureGit, samePath } from "../../shared/git.js"
 import type { Serving, ToolRun } from "../../shared/exec.js"
 import { benchRoot, runnable } from "./scenario.js"
-import type { Assertion, Scenario, Step } from "./scenario.js"
+import type { Assertion, GENERATED, Scenario, Step } from "./scenario.js"
 
 /** The verdict of one scenario run: pass, fail (an assertion did not hold), error (the bench itself broke) or pending (not automated). */
 export type Verdict = "pass" | "fail" | "error" | "pending"
@@ -101,10 +101,26 @@ const inRepo = (run: RunState, path: string): string => {
     return isAbsolute(expanded) ? expanded : join(run.repo, expanded)
 }
 
-// A fixture that must never be text in this public repository: a provider-shaped credential and a lint suppression, built here.
-// The run's credential is one key (`${generatedKey}` in a step's text), so a scenario can name the line it sits on.
-const generated = (run: RunState, kind: "secret" | "loosening"): string => {
+/** Bytes of the generated page's embedded font: more than policy/loosening.yaml scan.maxFileBytes once base64-encoded. */
+const FONT_BYTES = 1_200_000
+
+/**
+ * A page that embeds a font as a base64 `data:font/woff2` URI larger than the scan bound, whose payload spells a provider-shaped
+ * key the way base64 can; `secret` plants the run's key in a tag of the page as well.
+ */
+const fontPage = (run: RunState, secret: boolean): string => {
+    const font = Buffer.alloc(FONT_BYTES)
+    for (let index = 0; index < FONT_BYTES; index += 1) font[index] = (index * 131 + (index >> 7)) & 0xff
+    const payload = `${run.key}+/${font.toString("base64")}`
+    const planted = secret ? `<meta name="aws" content="${run.key}">\n` : ""
+    return `<!doctype html>\n<html><head>\n<style>@font-face { font-family: "Bench Sans"; src: url(data:font/woff2;base64,${payload}) format("woff2"); }</style>\n${planted}</head><body>direction</body></html>\n`
+}
+
+// A fixture that must never be text in this public repository: a provider-shaped credential, a lint suppression and a page
+// embedding a font, built here. The run's credential is one key (`${generatedKey}` in a step's text), so a scenario can name the line it sits on.
+const generated = (run: RunState, kind: (typeof GENERATED)[number]): string => {
     if (kind === "secret") return `const awsKey = "${run.key}"\n`
+    if (kind === "font-page" || kind === "font-page-secret") return fontPage(run, kind === "font-page-secret")
     return `// ${["eslint", "disable"].join("-")}-next-line\nexport const value = 1\n`
 }
 

@@ -33,10 +33,11 @@ export const TERMINAL_STATUSES: readonly TaskStatus[] = (Object.keys(TRANSITIONS
 
 /**
  * An intent a command claims on a task before its first git or Orca side effect, so a concurrent command refuses instead of
- * racing it and a crash leaves a trace recovery reads: `cancelling` while a cancel stops seats and preserves work, `repair`
- * while a preserve saved the work but could not finish putting the paths back (`task verify --recover` finishes it).
+ * racing it and a crash leaves a trace recovery reads: `cancelling` while a cancel stops seats and preserves work, `fencing`
+ * while the budget ladder does the same to a running attempt past its budget and grace (harness/fence.ts), `repair` while a
+ * preserve saved the work but could not finish putting the paths back (`task verify --recover` finishes it).
  */
-export type TaskIntent = "cancelling" | "repair"
+export type TaskIntent = "cancelling" | "fencing" | "repair"
 
 /** What an intent records: who claimed it, from which status, and the preserve folder once one was written. */
 export interface IntentData {
@@ -46,9 +47,10 @@ export interface IntentData {
     readonly dir: string | null
 }
 
-/** The transitions an intent still lets through: a cancel may end the task, a lost worker may still be observed. */
+/** The transitions an intent still lets through: a cancel may end the task, a fence may fail it, a lost worker may still be observed. */
 const INTENT_ALLOWS: Readonly<Record<TaskIntent, readonly TaskStatus[]>> = {
     cancelling: ["cancelled", "effect_unknown", "queued"],
+    fencing: ["failed"],
     repair: [],
 }
 

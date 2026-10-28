@@ -37,7 +37,7 @@ import { asRefusal, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { inOrder } from "../../harness/sequential.js"
-import { digestOf, RELAUNCH_LIMIT, sweepOpStalls } from "../kernel/driver.js"
+import { digestOf, RELAUNCH_LIMIT, sweepOpBudgets, sweepOpStalls } from "../kernel/driver.js"
 import type { Digest } from "../kernel/driver.js"
 import { workflowStopVerb } from "../workflow/stop.js"
 import { nextWorkerEvent, tendWorkers } from "./workers.js"
@@ -310,7 +310,7 @@ const adoptFromHost = async (scope: SweepScope, workflow: WorkflowRow, seat: Sea
  * workflow nobody gave a Supervisor, or one still driven from a Kernel terminal another session adopted (Orca does not report it
  * gone), is never touched. A workflow a host Supervisor launched is adopted first (`adoptFromHost`). A Kernel Orca reports gone
  * (or silent past its TTL) is relaunched; a live one idle at its prompt with work pending meets the stall ladder. `ops` also runs
- * each owned workflow's Op stall ladder (the host driver's sweep, which needs no Kernel to be awake).
+ * each owned workflow's Op budget ladder and Op stall ladder (the host driver's sweep, which needs no Kernel to be awake).
  */
 const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules: CoordinatorLiveness, acting: AttachedSupervisor, ops: boolean): Promise<string[]> => {
     const owned = withLedger(root, (db) =>
@@ -336,7 +336,10 @@ const sweepKernels = async (root: string, binary: OrcaBinary, cwd: string, rules
             const refusal = asRefusal(error)
             lines.push(`${workflow.id}: Kernel not relaunched (${refusal.code}): ${refusal.message.split("\n")[0] ?? ""}`)
         }
-        if (ops && workflow.status !== "paused") lines.push(...(await sweepOpStalls(root, binary, cwd, workflow.id, live)).map((action) => `${workflow.id}: ${action.task ?? "-"} ${action.detail}`))
+        if (ops && workflow.status !== "paused") {
+            const opActions = [...(await sweepOpBudgets(root, binary, cwd, workflow.id)), ...(await sweepOpStalls(root, binary, cwd, workflow.id, live))]
+            lines.push(...opActions.map((action) => `${workflow.id}: ${action.task ?? "-"} ${action.detail}`))
+        }
         return lines.filter((line) => line !== "")
     })
     return done.flat()

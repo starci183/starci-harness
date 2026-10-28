@@ -1,7 +1,7 @@
 # Seat liveness (orca runner only): how long a seat may be quiet before the harness says so, and which Orca answers are its
-# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; owner feedback; and the stall ladder. Read
-# by `seat ping`, `workflow step`, `task verify`, the coordinator drivers, `feedback check` and `supervisor tick`; nothing here
-# is restated in code.
+# explicit word that a worker is gone; settle liveness; the coordinators' mechanics; the budget ladder; owner feedback; and the
+# stall ladder. Read by `seat ping`, `workflow step`, `task verify`, the coordinator drivers, the lease grant, `feedback check`
+# and `supervisor tick`; nothing here is restated in code.
 # Unknown is never dead: an Orca that does not answer, or answers anything not listed below, proves nothing about the worker.
 schema: starci/liveness@1
 
@@ -49,6 +49,15 @@ coordinators:
   # Code's Bash: 600 s), so a blocking `next` returns into the same turn; the briefs and loop prompts pass it as `--wait`.
   nextWaitSeconds: 540
   nextPollSeconds: 30
+
+# The budget ladder (orca runner): an Op whose attempt has run past its contract's budget.minutes with no result filed is asked
+# once to wrap up and file now (the prompt below, `terminal send`); graceMinutes after that ask it is fenced: its seat closed
+# (worker-stop, release, tab), its dirty allowPaths preserved and reset as a red verify does, the task failed `over-budget` with
+# its try spent, and its leases released. A result filed in the grace is judged as any other. A task's leases fall due at its
+# budget plus graceMinutes. Run by `supervisor tick` and `kernel next`.
+budget:
+  graceMinutes: 15
+  prompt: "Task {task} has used its budget of {minutes} min. Wrap up now: stop new work, file your result with starci task result {task} (done if the contract is met, else failed or blocked naming what is left) within {grace} min, or the task is fenced and its work set aside."
 
 # Owner feedback (`starci feedback`): an item the owner gave stays open at most this many days; `feedback check` is red past
 # it, and `supervisor tick` lists every open item.

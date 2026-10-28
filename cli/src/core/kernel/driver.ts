@@ -6,6 +6,8 @@ import { admitCommand, answerDecision, finishCommand, goalVersionOf, openDecisio
 import type { Command, CommandRow, Decision, KernelDecisionKind } from "../../harness/coordinator-commands.js"
 import { loadCoordinatorLiveness, olderThan } from "../../harness/coordinator-liveness.js"
 import type { CoordinatorLiveness } from "../../harness/coordinator-liveness.js"
+import { BUDGET_NUDGED, budgetStep, loadBudgetLadder, OVER_BUDGET } from "../../harness/budget-ladder.js"
+import { fenceAttempt } from "../../harness/fence.js"
 import { kernelTitle, workflowWorktreeOf } from "../../harness/kernel.js"
 import { workflowLanes } from "../../harness/lanes.js"
 import { deadOnArrivalFailure, resubmitPendingComposer } from "../../harness/launch-failure.js"
@@ -13,8 +15,8 @@ import { loadRouting } from "../../harness/routing.js"
 import { findLedgerId, now, openLedger } from "../../harness/ledger.js"
 import { readMachine, textOf } from "../../harness/machine.js"
 import { inTransaction, releaseLeases } from "../../harness/leases.js"
-import { inLaunchGrace, judgeStart, livenessOf, loadLiveness } from "../../harness/liveness.js"
-import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
+import { inLaunchGrace, judgeStart, loadLiveness } from "../../harness/liveness.js"
+import { closeWorker, locateOrca, mailCheck, OrcaFailure, requestIdOf, requestShow, terminalList, terminalSend, UNKNOWN_STATES, workerAbandon, workerShow } from "../../harness/orca/client.js"
 import type { MailMessage, OrcaBinary, TerminalInventory } from "../../harness/orca/client.js"
 import { askIdle, claimNudge, loadStallRules, nudgesOf, promptOf, reportStalled, sendNudge, STALL_GAVE_UP, stallKindOf, stallStep } from "../../harness/stall.js"
 import { holdTerminal, isSeatOpen, kernelSeatOf, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED, seatsOfTask } from "../../harness/seats.js"
@@ -306,44 +308,68 @@ const drainMail = async (root: string, workflowId: string, binary: OrcaBinary, c
     return actions
 }
 
+/** The time a running attempt was asked to wrap up at its budget, from the ladder's budget-nudged event; null before it was asked. */
+const budgetNudgeOf = (db: DatabaseSync, attemptId: string): string | null =>
+    textOf(db.prepare(`SELECT at FROM events WHERE kind = '${BUDGET_NUDGED}' AND json_extract(data_json, '$.attempt') = ? ORDER BY id LIMIT 1`).get(attemptId)?.at) ?? null
+
+/** Claims the one wrap-up ask of an attempt before it is sent, in one transaction, so two drivers sweeping at once never type it twice. */
+const claimBudgetNudge = (db: DatabaseSync, task: string, attemptId: string, data: Readonly<Record<string, unknown>>): boolean =>
+    inTransaction(db, () => {
+        if (budgetNudgeOf(db, attemptId) !== null) return false
+        recordEvent(db, BUDGET_NUDGED, task, { ...data, attempt: attemptId })
+        return true
+    })
+
 /**
- * Fences a worker Orca reports idle (no terminal output at its last pong) past its task's budget.minutes: worker-stop, else
- * worker-abandon; the task fails with outcome `timeout` and frees its leases. Orca's report is the evidence; no report, no fence.
+ * The budget ladder for a workflow's Ops (harness/budget-ladder.ts, the `budget` block of ops/liveness.yaml): an attempt whose task
+ * still runs with no result filed past its contract's budget.minutes, whatever its worker is doing, is asked once to wrap up and
+ * file now (the budget prompt, typed into its open seat's terminal); budget.graceMinutes after that ask it is fenced
+ * (harness/fence.ts `fenceAttempt`): its seats closed, its dirty allowPaths preserved and reset, the task failed `over-budget` with
+ * its try spent and its leases released. A result filed in the grace takes the task out of running, so it is judged as any other.
  */
-const fenceIdle = async (root: string, binary: OrcaBinary, cwd: string, snapshot: Snapshot): Promise<StepAction[]> => {
-    const rules = loadLiveness()
+export const sweepOpBudgets = async (root: string, binary: OrcaBinary, cwd: string, workflowId: string): Promise<StepAction[]> => {
+    const rules = loadBudgetLadder()
+    const snapshot = readSnapshot(root, workflowId)
     const targets = withLedger(root, (db) =>
         snapshot.views.flatMap((view) => {
             if (view.state !== "running" || view.task === null) return []
             const task = getTask(db, view.task.id)
-            return seatsOfTask(db, task.id)
-                .filter((seat) => seat.role === "worker" && isSeatOpen(seat) && seat.handle !== null)
-                .flatMap((seat) => {
-                    const idle = livenessOf(seat, rules).idleSeconds
-                    return idle !== null && idle >= task.contract.budget.minutes * 60 ? [{ key: view.key, task: task.id, seat, idle, budget: task.contract.budget.minutes }] : []
-                })
+            const attempt = latestAttempt(db, task.id)
+            if (task.status !== "running" || attempt?.endedAt !== null) return []
+            const seat = seatsOfTask(db, task.id).find((candidate) => candidate.role === "worker" && isSeatOpen(candidate)) ?? null
+            const minutes = task.contract.budget.minutes
+            return [{ key: view.key, task: task.id, attempt: attempt.id, minutes, seat, step: budgetStep(attempt.startedAt, minutes, budgetNudgeOf(db, attempt.id), rules) }]
         }),
     )
-    return inOrder(targets, async ({ key, task, seat, idle, budget }): Promise<StepAction> => {
-        const handle = seat.handle ?? ""
+    const done = await inOrder(targets, async ({ key, task, attempt, minutes, seat, step }): Promise<StepAction | null> => {
+        if (step.kind === "within") return null
+        if (step.kind === "grace") return { key, task, action: "wait", detail: `over its budget of ${String(minutes)} min: ${step.detail}` }
+        if (step.kind === "nudge") {
+            const terminal = seat?.terminal ?? null
+            if (!withLedger(root, (db) => claimBudgetNudge(db, task, attempt, { seat: seat?.id ?? null, minutes, delivered: terminal !== null }))) return null
+            const asked = `over its budget of ${String(minutes)} min: asked to wrap up and file within ${String(rules.graceMinutes)} min`
+            if (terminal === null) return { key, task, action: "wait", detail: `${asked}; no open seat terminal to type it into` }
+            const text = promptOf(rules.prompt, { task, minutes: String(minutes), grace: String(rules.graceMinutes) })
+            try {
+                await terminalSend(binary, { terminal, text, retryRequest: requestIdOf("budget-nudge", attempt) }, cwd)
+            } catch (error: unknown) {
+                return { key, task, action: "problem", detail: `${asked}; the ask was not delivered (${asRefusal(error).code})` }
+            }
+            return { key, task, action: "wait", detail: asked }
+        }
         try {
-            const closed = await closeWorker(binary, handle, cwd, seat.terminal)
-            const fence = closed.stopped ? `stopped (${closed.stop}), release ${closed.release}` : `abandoned (${await workerAbandon(binary, handle, cwd, requestIdOf("timeout-abandon", seat.id))})`
-            withLedger(root, (db) => { inTransaction(db, () => {
-                    recordSeat(db, seat.id, { status: closed.settled ? SEAT_RELEASED : SEAT_STOPPED, facts: { timeout: { idleSeconds: idle, budgetMinutes: budget }, closed } })
-                    if (getTask(db, task).status !== "running") return
-                    const attempt = latestAttempt(db, task)
-                    if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'timeout', ended_at = COALESCE(ended_at, ?) WHERE id = ?").run(now(), attempt.id)
-                    setStatus(db, task, "failed")
-                    releaseLeases(db, task)
-                    recordEvent(db, "task-timeout", task, { seat: seat.id, idleSeconds: idle, budgetMinutes: budget, fence })
-                }); },
-            )
-            return { key, task, action: "lost", detail: `worker idle ${String(idle)} s past budget ${String(budget)} min: ${fence}; task failed (timeout)` }
+            const fenced = await fenceAttempt(root, task, OVER_BUDGET, { attempt, budgetMinutes: minutes, graceMinutes: rules.graceMinutes, why: step.detail })
+            if (fenced.status === "not-running") return null
+            const seats = fenced.seats.map((closing) => `seat ${closing.seat} ${closing.outcome}`).join(", ") || "no open seat"
+            if (fenced.status === "held") return { key, task, action: "problem", detail: `over budget, fence held: ${seats}; Orca did not stop its worker, the next sweep tries again` }
+            const kept = fenced.preserved === null ? "nothing dirty to preserve" : `work preserved in ${fenced.preserved}`
+            const leases = fenced.repair === null ? `released ${String(fenced.leasesReleased)} lease(s)` : `leases kept under a repair intent (task verify ${task} --recover)`
+            return { key, task, action: "lost", detail: `${step.detail}: ${seats}; ${kept}; task failed (${OVER_BUDGET}); ${leases}` }
         } catch (error: unknown) {
-            return { key, task, action: "problem", detail: `idle worker not fenced (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}` }
+            return { key, task, action: "problem", detail: `over-budget attempt not fenced (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}` }
         }
     })
+    return done.filter((action) => action !== null)
 }
 
 /**
@@ -498,7 +524,7 @@ const resolveUnknown = async (root: string, binary: OrcaBinary, cwd: string, sna
     })
 }
 
-/** One deterministic tick: Orca probe and hold, mailbox, the dispatch step, idle fencing, the Ops' stall ladder and unknown launches. */
+/** One deterministic tick: Orca probe and hold, mailbox, the dispatch step, the Ops' budget ladder, their stall ladder and unknown launches. */
 const tick = async (context: VerbContext, root: string, workflowId: string, rules: CoordinatorLiveness): Promise<{ readonly actions: StepAction[]; readonly binary: OrcaBinary | null }> => {
     const runner = readSnapshot(root, workflowId).workflow.header.runner
     const actions: StepAction[] = []
@@ -514,7 +540,7 @@ const tick = async (context: VerbContext, root: string, workflowId: string, rule
     if (binary !== null) {
         const after = readSnapshot(root, workflowId)
         const inventory = await terminalList(binary, context.cwd).catch(() => null)
-        actions.push(...(await fenceIdle(root, binary, context.cwd, after)), ...(await sweepOpStalls(root, binary, context.cwd, workflowId, inventory)), ...(await resolveUnknown(root, binary, context.cwd, after, rules)))
+        actions.push(...(await sweepOpBudgets(root, binary, context.cwd, workflowId)), ...(await sweepOpStalls(root, binary, context.cwd, workflowId, inventory)), ...(await resolveUnknown(root, binary, context.cwd, after, rules)))
     }
     const db = openLedger(root)
     let nodes: NodeAction[]
