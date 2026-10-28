@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.6.7 - 2026-10-29
+
+- Changed: the bundled canon pins name hfs 4.9.10, eslint-canon-be 3.6.7, eslint-canon-fe 9.4.8, eslint-grammar-core 0.15.9 and eslint-grammar-offset-pop 0.15.9. No rule changed.
+
 ## 3.6.6 - 2026-10-29
 
 - Changed: the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6. No rule changed.

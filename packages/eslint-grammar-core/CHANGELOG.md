@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.9 - 2026-10-29
+
+- Changed: `@starci/eslint-canon-fe` 9.4.8 is the peer dependency; the bundled canon pins name hfs 4.9.10, eslint-canon-be 3.6.7, eslint-canon-fe 9.4.8, eslint-grammar-core 0.15.9 and eslint-grammar-offset-pop 0.15.9. No rule changed.
+
 ## 0.15.8 - 2026-10-29
 
 - Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling `page-frame` as rewritten: a route segment `layout` whose owner (`fe.feature`, kind `layouts`), its pure half or its one root block draws a `Page` whose `header` carries `tabs` is the one `Page` of every route under it. The rule finds the route `page` files that mount a page owner, walks up through the `layout` files of their segments and resolves each layout's owner one level deep. A page owner every route of which is so framed is not judged `missing`; one that draws a `Page` (or a root block that draws one) under such a layout is `twice`, and the message names the layout. A layout whose `Page` carries no `tabs` frames no segment.

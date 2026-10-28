@@ -1,14 +1,22 @@
-import { SetMetadata } from "@nestjs/common"
+import { SetMetadata, applyDecorators } from "@nestjs/common"
 import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
+import { ServerToServer } from "@modules/platform/http-security"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
+import { PublicReason } from "./identity.contracts"
 import type { PublicMetadata } from "./identity.contracts"
 
 /** Metadata key of `@Public`. */
 export const PUBLIC_KEY = "domain.identity.public"
 
-/** Opens a door to anonymous callers, stating why; every other door needs a credential or a signed-in caller. */
-export const Public = (metadata: PublicMetadata): ReturnType<typeof SetMetadata> => SetMetadata(PUBLIC_KEY, metadata)
+/**
+ * Opens a door to anonymous callers, stating why; every other door needs a credential or a signed-in caller. A
+ * signed webhook proves its caller by its signature, so it owes no browser origin.
+ */
+export const Public = (metadata: PublicMetadata): DoorDecorator =>
+    metadata.reason === PublicReason.SignedWebhook
+        ? applyDecorators(SetMetadata(PUBLIC_KEY, metadata), ServerToServer())
+        : applyDecorators(SetMetadata(PUBLIC_KEY, metadata))
 
 /** Metadata key of `@Credential`. */
 export const CREDENTIAL_KEY: unique symbol = Symbol("domain.identity.credential")
@@ -20,6 +28,9 @@ export const CREDENTIAL_AUTHENTICATOR: unique symbol = Symbol("domain.identity.c
 export const InjectCredentialAuthenticator = (): TypedParameterDecorator<CredentialAuthenticator> =>
     injector<CredentialAuthenticator>(CREDENTIAL_AUTHENTICATOR)
 
-/** Marks a door authenticated by its own credential; `CredentialGuard` authenticates it and `AuthGuard` admits it. */
-export const Credential = (metadata: CredentialMetadata): ReturnType<typeof SetMetadata> =>
-    SetMetadata(CREDENTIAL_KEY, metadata)
+/**
+ * Marks a door authenticated by its own credential; `CredentialGuard` authenticates it and `AuthGuard` admits it. The
+ * credential travels in a header no browser attaches by itself, so the door owes no browser origin.
+ */
+export const Credential = (metadata: CredentialMetadata): DoorDecorator =>
+    applyDecorators(SetMetadata(CREDENTIAL_KEY, metadata), ServerToServer())

@@ -1,10 +1,12 @@
-import { Injectable, SetMetadata } from "@nestjs/common"
+import { Injectable, SetMetadata, applyDecorators } from "@nestjs/common"
 import type { CanActivate, ExecutionContext } from "@nestjs/common"
 import type { Reflector } from "@nestjs/core"
+import type { Response } from "express"
 import type { EntityManager } from "typeorm"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { InjectReflector } from "@modules/platform/composition"
+import type { DoorDecorator } from "@modules/platform/composition"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { requestOf } from "./execution-request.mapper"
@@ -21,12 +23,34 @@ export enum RateTier {
     Strict = "strict",
 }
 
+/** What a door answers when its caller is over the limit, when that is not the 429 error body. */
+export interface RateLimitExceeded {
+    /** A same-site path the door's own contract answers with a 303 (an OAuth callback's error redirect). */
+    readonly redirect: string
+}
+
 const RATE_TIER_KEY = "platform.http-security.rate-tier"
+const RATE_EXCEEDED_KEY = "platform.http-security.rate-exceeded"
 /** The longest window key the table stores: the tier, a colon and the caller address. */
 const KEY_MAX = 128
 
-/** Marks a door with a rate limit tier other than the default. */
-export const RateLimit = (tier: RateTier): ReturnType<typeof SetMetadata> => SetMetadata(RATE_TIER_KEY, tier)
+/** A same-site path: one leading slash, never a protocol-relative `//` or `/\` that leaves the site. */
+const isSameSitePath = (location: string): boolean =>
+    location.startsWith("/") && !location.startsWith("//") && !location.startsWith("/\\")
+
+/**
+ * Marks a door with a rate limit tier other than the default. A door whose contract answers only redirects (an OAuth
+ * callback) names its error redirect in `exceeded`, and a caller over the limit gets that 303 instead of a 429 body.
+ */
+export const RateLimit = (tier: RateTier, exceeded?: RateLimitExceeded): DoorDecorator => {
+    if (exceeded === undefined) return applyDecorators(SetMetadata(RATE_TIER_KEY, tier))
+    if (!isSameSitePath(exceeded.redirect))
+        throw new HttpSecurityError({
+            code: HttpSecurityErrorCode.RequestInvalid,
+            params: { fields: "RATE_LIMIT_REDIRECT" },
+        })
+    return applyDecorators(SetMetadata(RATE_TIER_KEY, tier), SetMetadata(RATE_EXCEEDED_KEY, exceeded))
+}
 
 @Injectable()
 /**
@@ -42,13 +66,14 @@ export class RateLimitGuard implements CanActivate {
         @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
     ) {}
 
-    /** Counts the request and refuses it when the caller is over the limit of the door tier. */
+    /**
+     * Counts the request and refuses it when the caller is over the limit of the door tier. A door that declares its
+     * exceeded redirect has the 303 written here; the refusal still travels, and the errors filter leaves the sent
+     * response as it is.
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const tier =
-            this.reflector.getAllAndOverride<RateTier | undefined>(RATE_TIER_KEY, [
-                context.getHandler(),
-                context.getClass(),
-            ]) ?? RateTier.Default
+        const targets = [context.getHandler(), context.getClass()]
+        const tier = this.reflector.getAllAndOverride<RateTier | undefined>(RATE_TIER_KEY, targets) ?? RateTier.Default
         const limit =
             tier === RateTier.Strict ? this.options.rateLimit.strictLimit : this.options.rateLimit.defaultLimit
         const now = this.clock.now()
@@ -57,7 +82,10 @@ export class RateLimitGuard implements CanActivate {
         const rows: Array<RateWindowRow> = await this.entityManager.query(HIT_RATE_WINDOW, [key, now, resetAt])
         const hits = rows[0]?.hits ?? Number.POSITIVE_INFINITY
         if (hits === 1) await this.entityManager.query(PRUNE_RATE_WINDOWS, [now])
-        if (hits > limit) throw new HttpSecurityError({ code: HttpSecurityErrorCode.RateLimited })
-        return true
+        if (hits <= limit) return true
+        const exceeded = this.reflector.getAllAndOverride<RateLimitExceeded | undefined>(RATE_EXCEEDED_KEY, targets)
+        if (exceeded !== undefined && context.getType() === "http")
+            context.switchToHttp().getResponse<Response>().redirect(303, exceeded.redirect)
+        throw new HttpSecurityError({ code: HttpSecurityErrorCode.RateLimited })
     }
 }
