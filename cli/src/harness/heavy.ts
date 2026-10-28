@@ -30,6 +30,7 @@ const heavySchema = z.strictObject({
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
+    bootProofTimeoutSeconds: z.number().int().positive(),
 })
 
 /** The `heavy` block of ops/liveness.yaml: the host's heavy-command slots, the RAM and CPU that admit them, each kind's memory cap and the seat RAM floor. */
@@ -230,6 +231,16 @@ const release = (id: string): void => {
         db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(id)
     })
 }
+
+/**
+ * The limits @starci/hfs reads from its environment, from their one owner here: the heap of the ESLint child an app lint or app check spawns
+ * (`memoryMb.eslint`, as STARCI_ESLINT_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
+ * STARCI_BOOT_PROOF_TIMEOUT_MS).
+ */
+export const hfsLimitsEnv = (rules: HeavyRules = loadHeavyRules()): Readonly<Record<string, string>> => ({
+    STARCI_ESLINT_HEAP_MB: String(rules.memoryMb.eslint),
+    STARCI_BOOT_PROOF_TIMEOUT_MS: String(rules.bootProofTimeoutSeconds * 1000),
+})
 
 /** The `--max-old-space-size` a node tool of this kind runs under, added to whatever NODE_OPTIONS it inherits. */
 const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"]): string => {

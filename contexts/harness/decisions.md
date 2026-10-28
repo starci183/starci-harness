@@ -77,6 +77,16 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `release push`, and CI is the critic; a red CI opens the next fix and blocks nobody
   ([contexts/authority/ci.md](../authority/ci.md), [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-18, CONTRIB-19). Owner,
   2026-10-28: "tối ưu hóa thời gian làm việc tránh thủ tục rườm rà".
+- **An urgent release needs no CI; its safety floor is never skipped (`urgent-release`).** `starci app release push --urgent
+  --reason "<text>"` ships an app after its fast local checks alone (app check, typecheck, lint of the files changed since the
+  previous release tag, unit; a green row already recorded for the commit is reused), tags and pushes, and writes an URGENT
+  record naming the role, the reason, each check's verdict and the commit (`packages/hfs/release/urgent.mjs`). That record
+  satisfies `requireCi` for `deploy.prod` and `release.cut` when the caller passes `--urgent` (`cli/src/core/check/ci.ts`); the
+  deploy's safety floor still runs and refuses with its own code when a step fails: a fresh encrypted database backup whose
+  receipt is verified and which a test decrypt opens, migrate preview then execute, the readiness verify and the automatic
+  rollback (`packages/hfs/stack/urgent-floor.mjs`). `starci app release gate --backfill <tag>` later runs the full gate on the
+  same commit: green promotes the record to a normal L4 with no re-release, red opens a `verify` ticket and changes nothing on
+  prod (`packages/hfs/release/gate.mjs`). Owner, 2026-10-29: "deploy gấp không cần ci cd gì hết!!!! cái này là tính năng nha".
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".

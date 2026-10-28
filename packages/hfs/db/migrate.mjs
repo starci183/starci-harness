@@ -386,7 +386,7 @@ function applyPlan(session, plan) {
  * `starci app db migrate`. options: { execute, linked, urlEnv }. Dry run reads the remote history once and prints the plan; --execute (with
  * STARCI_DB_ARMED=1) applies it. Already baseline + forward: `nothing to do`, no mutating call, ok.
  */
-async function migrateDatabase(ctx, decl, options = {}) {
+export async function migrateDatabase(ctx, decl, options = {}) {
   if (options.nativeTarget) boundSupabaseLauncher(ctx.cwd);
   const model = buildModel(ctx.cwd, decl);
   const session = { ctx, model, target: resolveTarget(ctx, decl, options) };

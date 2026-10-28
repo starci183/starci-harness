@@ -49,7 +49,7 @@ function remoteTagObject(ctx, remote, tag) {
   return listed.map((line) => line.split('\t')).find((parts) => parts[1] === wanted)?.[0] ?? '';
 }
 
-function branchRefs(ctx, { head, remote, branch }, red) {
+export function branchRefs(ctx, { head, remote, branch }, red) {
   const tip = remoteTip(ctx, remote, branch);
   if (tip === null || isAncestor(ctx, tip, head)) return { refs: tip === head ? [] : [`${head}:refs/heads/${branch}`], tip };
   if (isAncestor(ctx, head, tip)) return { refs: [], tip };
@@ -57,14 +57,14 @@ function branchRefs(ctx, { head, remote, branch }, red) {
   return { refs: [], tip };
 }
 
-function tagRefs(ctx, { remote, tag }, red) {
+export function tagRefs(ctx, { remote, tag }, red) {
   const object = remoteTagObject(ctx, remote, tag);
   if (object === '') return [`refs/tags/${tag}`];
   if (object !== git(ctx, ['rev-parse', `refs/tags/${tag}`]).stdout) red.push(`tag ${tag} exists on ${remote} as a different object`);
   return [];
 }
 
-function probe(ctx, remote, refs, red) {
+export function probe(ctx, remote, refs, red) {
   const run = git(ctx, ['push', '--dry-run', '--atomic', remote, ...refs], { allowFail: true });
   const verdict = `${run.stderr}\n${run.stdout}`.split('\n').filter((line) => VERDICT.test(line)).slice(0, 4);
   if (run.code !== 0) red.push('the pre-push hook refuses this push as things stand');
@@ -73,7 +73,7 @@ function probe(ctx, remote, refs, red) {
 
 const NAME_RULE = '^[A-Za-z0-9._/-]+$';
 
-function assertNames(remote, branch) {
+export function assertNames(remote, branch) {
   if (!refName(remote)) throw refusal('RELEASE_USAGE', `--remote ${remote} must match ${NAME_RULE}`);
   if (!refName(branch)) throw refusal('RELEASE_USAGE', `the default branch ${branch} must match ${NAME_RULE}`);
 }

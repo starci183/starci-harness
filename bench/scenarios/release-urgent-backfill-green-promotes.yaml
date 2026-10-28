@@ -1,0 +1,52 @@
+schema: starci/scenario@1
+id: release-urgent-backfill-green-promotes
+group: release
+title: "a green back-fill promotes the urgent release to a normal L4 release on the same tag, with no re-release and no push"
+inject: "an app released with release push --urgent; later its full gate is run with release gate --backfill on the same tag"
+expect: >-
+  the back-fill runs every gate of the release on the urgent release's own commit; green writes the L4 record that names the urgent
+  record it was promoted from, marks the urgent record promoted, and neither tags nor pushes again; a second back-fill finds it
+  promoted and runs nothing
+pass:
+  - the back-fill exits 0 and reports the release promoted
+  - the L4 record of the commit exists and names its promotion from the urgent record
+  - the urgent record says promoted
+  - the remote still holds one v1.0.0 and one commit
+  - a second back-fill runs nothing
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    package.json: '{"name": "bench-backfill", "version": "1.0.0", "private": true}'
+    ok.mjs: "process.exit(0)\n"
+    .starcistacks/application-stacks.yaml: |
+      schema: starci/application-stacks@1
+      release:
+        gates:
+          - {name: app-check, command: [node, ok.mjs]}
+          - {name: typecheck, command: [node, ok.mjs]}
+          - {name: lint, command: [node, ok.mjs]}
+          - {name: test, command: [node, ok.mjs]}
+          - {name: build, command: [node, ok.mjs]}
+      services:
+        audit: {mode: disabled}
+steps:
+  - git: [init, -q, --bare, -b, main, "${run}/remote.git"]
+  - git: [remote, add, origin, "${run}/remote.git"]
+  - name: the urgent release
+    starci: [app, release, push, --urgent, --reason, "hotfix before the morning", --execute]
+    expect: { exit: 0, contains: '"pushed": true' }
+    save:
+      head: data.output.head
+  - name: the back-fill runs the full gate on the same tag and promotes it
+    starci: [app, release, gate, --backfill, v1.0.0, --execute]
+    expect: { exit: 0, contains: '"promoted": true' }
+  - assert:
+      exists: { path: ".git/starci-release/${head}.l4.json", present: true, contains: '"promotedFrom"' }
+  - assert:
+      exists: { path: ".git/starci-release/${head}.urgent.json", present: true, contains: '"state": "promoted"' }
+  - assert:
+      gitLog: { grep: "bench: scratch repository", count: 1, in: "${run}/remote.git", ref: v1.0.0 }
+  - name: a promoted release is not judged twice
+    starci: [app, release, gate, --backfill, v1.0.0, --execute]
+    expect: { exit: 0, contains: '"executed": false' }

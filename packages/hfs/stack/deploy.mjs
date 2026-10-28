@@ -2,6 +2,8 @@
 // deploy: render, provision, store the release record, pre-pull, `docker stack deploy`, converge, post-deploy tasks (deploy.postDeploy, when declared), verify, accept, prune. A failure at or
 // after the stack deploy redeploys the previous accepted release from its STORED bytes; a failure before it leaves the services untouched.
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
+// An urgent deploy (`urgent`, owner ruling urgent-release 2026-10-29) runs the safety floor of urgent-floor.mjs first (fresh verified encrypted
+// backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails.
 //
 // `deps` are the collaborators, all factories or functions with the signature of their module, defaulting to lazy dynamic imports so this
 // module never needs render.mjs / provision.mjs / remote.mjs at load time (the specs inject stubs):
@@ -21,6 +23,7 @@ import { postDeployStack } from './post-deploy.mjs';
 import { pruneStack } from './prune.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { createReleaseStore } from './release-store.mjs';
+import { urgentDeploy } from './urgent-floor.mjs';
 import { verifyStack } from './verify.mjs';
 
 /** Loads `file` (relative to this module). Split out so a spec can load a real sibling module through `lazy`. */
@@ -39,7 +42,10 @@ export const DEFAULT_DEPS = Object.freeze({
   pruneStack,
   releaseStore: createReleaseStore,
   ssh: lazy('./remote.mjs', 'ownerSshRunner'),
+  floor: {},
 });
+
+const fileSha256 = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 const IMAGE_LINE = /^[ \t]+image:[ \t]*(\S+)[ \t]*$/gmu;
 const QUOTE = /^["']|["']$/gu;
@@ -212,7 +218,7 @@ async function deployExecute(ctx, config, options, d, out, cleanups) {
 }
 
 /**
- * Deploys a release: `options` = { images, sourceSha, execute, out, timeoutSeconds, retrySeconds, skipPublic, sshCmd }.
+ * Deploys a release: `options` = { images, sourceSha, execute, out, timeoutSeconds, retrySeconds, skipPublic, sshCmd, urgent, dbUrlEnv, backupOut }.
  * skipPublic (the first deploy into a shared ingress, whose public routes exist only after `ingress publish`): the verification checks only what runs
  * inside the stack, and the release stays PENDING (stored and deployed, pointer not moved) until `acceptRelease` has verified it in full.
  * Returns { ok, lines, data: { releaseId, previous, steps: [{ step, ok }], rolledBack } }.
@@ -224,15 +230,26 @@ export async function deployRelease(ctx, config, options = {}, deps = {}) {
   const out = options.out ?? made;
   const cleanups = [];
   try {
-    const rendered = await d.renderRelease(ctx, config, renderOptions(options, out, null));
-    const { releaseId } = inspectRendered(out, config);
-    if (options.execute !== true) {
+    // The local render and its inspection: a release that cannot render is refused before anything remote happens.
+    const render = async () => {
+      const rendered = await d.renderRelease(ctx, config, renderOptions(options, out, null));
+      return { rendered, releaseId: inspectRendered(out, config).releaseId };
+    };
+    const dryRun = async () => {
+      const { rendered, releaseId } = await render();
       const post = config.postDeploy.length > 0 ? ` post-deploy tasks (${config.postDeploy.join(', ')}),` : '';
       const plan = options.skipPublic
         ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept`
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted`;
       return { ok: true, lines: [...(rendered.lines ?? []), plan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
+    };
+    if (options.urgent === true) {
+      return await urgentDeploy(ctx, config, options, {
+        render, dryRun, openStore: () => openStore(ctx, config, options, d, cleanups), deployExecute: () => deployExecute(ctx, config, options, d, out, cleanups), sha256: fileSha256,
+      }, d.floor);
     }
+    if (options.execute !== true) return await dryRun();
+    await render();
     return await deployExecute(ctx, config, options, d, out, cleanups);
   } finally {
     cleanups.forEach((close) => close());

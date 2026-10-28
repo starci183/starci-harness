@@ -33,7 +33,7 @@ const changelogSection = (text: string, version: string): string | undefined => 
 /** `starci release cut`: tags a commit that is already on the remote main with the package version and its CHANGELOG notes; it runs no suite. */
 export const releaseCutVerb = defineVerb({
     path: ["release", "cut"],
-    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI when policy requires it",
+    summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI (or, with --urgent, the commit's urgent record) when policy requires it",
     editions: ["lite", "full"],
     effect: "remote",
     roles: ["owner", "release", "debug"],
@@ -42,6 +42,7 @@ export const releaseCutVerb = defineVerb({
         package: { kind: "string", summary: "the package whose version is released (default: the root package, or the only package)" },
         remote: { kind: "string", summary: "the remote (default origin)" },
         "dry-run": { kind: "boolean", summary: "run every judgement but do not tag or push" },
+        urgent: { kind: "boolean", summary: "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI, by the owner's ruling of 2026-10-29" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
@@ -62,7 +63,7 @@ export const releaseCutVerb = defineVerb({
         if (changelogPath === undefined) throw new Refusal("CUT_NO_CHANGELOG", `add a CHANGELOG.md with a "## ${pkg.version}" section`)
         const notes = changelogSection(readFileSync(changelogPath, "utf8"), pkg.version)
         if (notes === undefined) throw new Refusal("CUT_NO_NOTES", `${changelogPath} has no "## ${pkg.version}" section`)
-        const ci = await requireCiGreen(context, root, "release.cut", commit)
+        const ci = await requireCiGreen(context, root, "release.cut", commit, { urgent: flags.urgent })
         if (!dryRun) {
             await git(root, ["tag", "-a", tag, commit, "-m", notes])
             await git(root, ["push", remote, `refs/tags/${tag}`])

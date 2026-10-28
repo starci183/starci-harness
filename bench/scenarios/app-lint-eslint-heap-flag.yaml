@@ -1,0 +1,37 @@
+schema: starci/scenario@1
+id: app-lint-eslint-heap-flag
+group: verify
+title: "ESLint runs on the heap ops/liveness.yaml gives it, the one owner of the number"
+inject: "an ESLint stand-in that reports the node heap flags it was started with, linted through the governor"
+expect: >-
+  the scoped lint starts ESLint under its heavy slot with --max-old-space-size of the eslint memory of ops/liveness.yaml (8192), and an
+  ops/ copy that changes that memory changes the flag, so no second copy of the number exists
+pass:
+  - the lint output names --max-old-space-size=8192
+  - after config set liveness.heavy.memoryMb.eslint 6144 it names --max-old-space-size=6144
+  - no human intervention beyond the injected fault
+automation: automated
+env:
+  STARCI_OPS_DIR: ${repo}/ops
+repo:
+  files:
+    package.json: '{"name": "bench-heap", "version": "1.0.0", "private": true}'
+    hfs.json: '{"hfs": 3, "kind": "app", "policy": "lib", "sides": {"fe": {"grammar": "core"}}}'
+    eslint.config.js: "module.exports = []\n"
+    src/index.ts: "export const index = 1\n"
+    node_modules/eslint/bin/eslint.js: |
+      console.log("heap flags: " + (process.env.NODE_OPTIONS ?? "") + " " + process.execArgv.join(" "))
+      process.exit(1)
+steps:
+  - name: copy ops/ into the scratch repository
+    write: { path: ops, from: "${ops}" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: ops copy"]
+  - write: { path: src/index.ts, content: "export const index = 2\n" }
+  - name: ESLint starts on the eslint memory of ops/liveness.yaml
+    starci: [check, lint, --base, HEAD]
+    expect: { exit: 1, contains: "--max-old-space-size=8192" }
+  - name: the one owner changes, the flag follows
+    starci: [config, set, liveness.heavy.memoryMb.eslint, "6144"]
+  - starci: [check, lint, --base, HEAD]
+    expect: { exit: 1, contains: "--max-old-space-size=6144" }

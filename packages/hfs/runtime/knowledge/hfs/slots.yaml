@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.7.0
+version: 3.8.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -45,6 +45,8 @@ versioning:
 # 2026-10-24: lite may serve SSE, and SSE is the default door for one-way push), and lets fe.modules.api hold the SSE stream operations (sse/).
 # 3.7.0 is a minor (alpha.31): it ADDS the optional app.scripts.integration slot (scripts/integration/*.mjs, the product test-support scripts that only the integration harness runs) and the optional fe.transport.stream slot, the fetch reader of server-sent-events streams (the stream half of the
 # transport client layer), and lets fe.hooks.swr hold the SWR subscription hooks (api/sse/subscriptions/useSubscribe<X>Swr.ts, one useSWRSubscription per stream operation).
+# 3.8.0 is a minor (urgent release, 2026-10-29): it ADDS the optional fe.dev-server-generated slot (apps/*/AGENTS.md, which `next dev` rewrites) and the
+# slot field rewrittenBy, so the release gate's clean-tree check passes over an untracked file a declared dev server writes, and over nothing else.
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -56,6 +58,8 @@ versioning:
 #               A slot is optional in the sense of the requirements list when its presence is not required.
 #   tracked     tracked (committed) | ignored (may exist, must be gitignored) | external (must not exist in the tree;
 #               goesTo says where it lives).
+#   rewrittenBy on an ignored file slot: the dev server that writes the file into the working tree while it runs (`next dev`). The
+#               release gate's clean-tree check (release/gate.mjs dirtyPaths) passes over an untracked file such a slot owns, and only it.
 #   tier        node of the import direction matrix (tiers below); none = takes no part in import checks;
 #               inherit = the tier of the enclosing owner.
 #   owner       true when every directory matching the slot is an owner: the unit cross-owner imports and cycles use.
@@ -1155,6 +1159,16 @@ slots:
     tier: none
     tests: none
     why: produced by `npm run codegen` (prebuild and pretypecheck); never committed
+  - id: fe.dev-server-generated
+    since: 3.8.0
+    profiles: [fe]
+    path: "apps/*/AGENTS.md"
+    presence: optional
+    tracked: ignored
+    rewrittenBy: next dev
+    tier: none
+    tests: none
+    why: the agent notes `next dev` writes at a Next app's root each time it starts; never committed, and never a dirty tree for the release gate
 
   # ----- never in the working tree: caches, scratch, agent output ----------------------------------------
   - id: repo.tool-cache

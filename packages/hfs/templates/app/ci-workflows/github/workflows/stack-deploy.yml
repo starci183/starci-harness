@@ -8,7 +8,8 @@
 # The environment input names a protected GitHub environment (required reviewers) that holds:
 #   vars    VPS_HOST, VPS_USER (the swarm manager); a variable named in deploy.passEnv, when the stack interpolates one
 #   secrets SOPS_AGE_KEY (the age identity of .sops.yaml), VPS_SSH_KEY (CI-only deploy key), VPS_KNOWN_HOSTS (pinned host keys)
-# Nothing else is a secret: images are pushed with the workflow token. Dispatch inputs reach scripts only through env.
+# Nothing else is a secret: images are pushed with the workflow token, which also reads the CI verdict of the tag's commit a production deploy
+# waits for (requireCi deploy.prod). Dispatch inputs reach scripts only through env.
 name: deploy stack
 
 on:
@@ -48,6 +49,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     env:
       STACK_ENVIRONMENT: ${{ inputs.environment }}
     steps:{{stackGuard}}
@@ -88,6 +90,7 @@ jobs:
       - name: deploy the release
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/starci-data
+          GH_TOKEN: ${{ github.token }}
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}{{stackImageEnv}}{{stackPassEnv}}
         run: |
           npx --no-install starci app stack deploy --env "$STACK_ENVIRONMENT" \{{stackImageArgs}}

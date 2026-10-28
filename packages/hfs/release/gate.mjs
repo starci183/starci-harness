@@ -8,9 +8,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
+import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
 import { firstLine, lines, tool } from '../stack/context.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import { produceLintReports } from './lint-report.mjs';
+import { URGENT_RULING, l4Path, readUrgent, recordRow, writeUrgent } from './records.mjs';
 import { sonarQualityGate } from './sonar-quality-gate.mjs';
 
 export const RELEASE_CODE = 'RELEASE_CONFIG_INVALID';
@@ -175,7 +177,22 @@ export function annotatedOnHead(ctx, prefix) {
 /** Every tag on HEAD whose name ends in a version, annotated or not, under any prefix: a release commit carries exactly one. */
 const versionTagsOnHead = (ctx) => lines(git(ctx, ['tag', '--points-at', 'HEAD']).stdout).filter((name) => /[0-9]+[.][0-9]+[.][0-9]+$/u.test(name));
 
-const dirtyPaths = (ctx) => lines(git(ctx, ['status', '--porcelain', '--untracked-files=normal']).stdout);
+/** The rewrittenBy predicate of the app's slots: true for a path a dev server writes (hfs slots `rewrittenBy`); without a readable hfs.json, for none. */
+function rewrittenByDevServer(root) {
+  let hfs;
+  try { hfs = openHfs({ repoRoot: root }); } catch { return () => false; }
+  return (file) => typeof hfs.slotOf(file)?.rewrittenBy === 'string';
+}
+
+/**
+ * The paths that make the tree dirty: every changed tracked path and every untracked one, except an untracked file the app's slots declare a dev
+ * server rewrites (`rewrittenBy`, e.g. the AGENTS.md `next dev` writes): that one is known generated output, never a change of the release.
+ */
+export function dirtyPaths(ctx) {
+  const rewritten = rewrittenByDevServer(ctx.cwd);
+  return lines(git(ctx, ['status', '--porcelain', '--untracked-files=all']).stdout)
+    .filter((line) => !(line.startsWith('?? ') && rewritten(line.slice(3).replace(/^"|"$/gu, ''))));
+}
 
 /** Tag names that exist locally or on the remote. */
 function takenTags(ctx, prefix, remote) {
@@ -243,7 +260,7 @@ async function sonarAvailability(ctx, gate) {
 }
 
 /** An unreachable Sonar host stays a red row with a real log and no scan invocation. */
-async function runAvailableGate(ctx, gate, options) {
+export async function runAvailableGate(ctx, gate, options) {
   const availability = await sonarAvailability(ctx, gate);
   const log = path.join(options.dir, `${gate.name}.log`);
   if (!availability) {
@@ -274,12 +291,12 @@ async function judgeQualityGate(ctx, gate, row) {
   return { ...row, pass: verdict.pass, detail: verdict.detail, seconds: row.seconds + Math.round((ctx.now() - started) / 1000), logSha256: sha256(row.log) };
 }
 
-const withoutCredentials = (values, credentialNames) => {
+export const withoutCredentials = (values, credentialNames) => {
   const selected = new Set(credentialNames);
   return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => !selected.has(key.toUpperCase())));
 };
 
-function runGate(ctx, gate, { dir, platform, credentialNames, preface = '' }) {
+export function runGate(ctx, gate, { dir, platform, credentialNames, preface = '' }) {
   const log = path.join(dir, `${gate.name}.log`);
   const started = ctx.now();
   const [command, args] = launch(gate.command, platform);
@@ -323,7 +340,7 @@ function tagLine({ tag, state }) {
 }
 
 /** Everything that can be known without running a gate: the facts, the red preconditions and the lines that describe them. */
-function inspect(ctx, config, options) {
+export function inspect(ctx, config, options) {
   const head = git(ctx, ['rev-parse', 'HEAD']).stdout;
   const branch = git(ctx, ['rev-parse', '--abbrev-ref', 'HEAD'], { allowFail: true }).stdout;
   const out = [`checkout       ${ctx.cwd}`, `HEAD           ${head} (${branch})`];
@@ -354,18 +371,19 @@ function planLines(config, facts, dir, recordPath) {
   return out;
 }
 
-function assertUnmoved(ctx, head) {
+export function assertUnmoved(ctx, head) {
   const now = git(ctx, ['rev-parse', 'HEAD']).stdout;
   if (now !== head) throw failure('RELEASE_HEAD_MOVED', `HEAD moved during the gates (${head.slice(0, 10)} -> ${now.slice(0, 10)}). No record.`);
   const dirty = dirtyPaths(ctx);
   if (dirty.length > 0) throw failure('RELEASE_TREE_DIRTY', `the gates left ${dirty.length} changed or untracked path(s) (first: ${dirty[0].slice(0, 100)}): generated files differ from HEAD. Commit or ignore them properly, then rerun. No record.`);
 }
 
-function writeRecord(ctx, { head, tag, results, recordPath, requireCi }) {
+function writeRecord(ctx, { head, tag, results, recordPath, requireCi, promotedFrom = null }) {
   const record = {
     schema: 'starci-app-l4-record/1', head, tag, createdAt: new Date(ctx.now()).toISOString(), producedBy: 'starci app release gate',
     note: 'Every gate passed on a clean HEAD; every entry links its log and sha256.',
     ci: requireCi === true ? { required: true, note: 'starci app release push waits for the candidate CI of this sha (release.requireCi=true)' } : { required: false, note: CI_NOT_REQUIRED },
+    ...(promotedFrom ? { promotedFrom } : {}),
     gates: results,
   };
   fs.mkdirSync(path.dirname(recordPath), { recursive: true });
@@ -381,17 +399,48 @@ async function runAll(ctx, config, options) {
   return config.gates.reduce(async (pending, gate) => {
     const results = await pending;
     if (results.some((result) => !result.pass) && !(gate.teardownOf && results.some((result) => result.name === gate.teardownOf))) return results;
-    return [...results, await runAvailableGate(ctx, gate, options)];
+    const result = await runAvailableGate(ctx, gate, options);
+    recordRow(options.common, options.head, result);
+    return [...results, result];
   }, Promise.resolve([]));
 }
 
-function summaryOf(result) {
+export function summaryOf(result) {
   return `${result.pass ? 'PASS' : 'FAIL'} ${result.name} (${result.detail}, ${result.seconds}s) log ${result.log}`;
 }
 
 /**
+ * The urgent release a back-fill judges: `tag` must name HEAD (the back-fill runs on the very commit that shipped, never a re-release) and HEAD must
+ * carry an urgent record of that tag. Returns the record; refuses otherwise.
+ */
+function backfillTarget(ctx, common, tag, head) {
+  if (!refName(tag)) throw refusal('RELEASE_USAGE', `--backfill ${tag} is not a tag name`);
+  const resolved = git(ctx, ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`], { allowFail: true });
+  if (resolved.code !== 0 || resolved.stdout === '') throw refusal('RELEASE_BACKFILL_TAG_UNKNOWN', `no tag ${tag} in this repository`);
+  if (resolved.stdout !== head) throw refusal('RELEASE_BACKFILL_NOT_ON_TAG', `${tag} is ${resolved.stdout.slice(0, 10)} but HEAD is ${head.slice(0, 10)}: run the back-fill in a clean checkout of the tag (git worktree add --detach <dir> ${tag}), so the full gate judges exactly what shipped`);
+  const urgent = readUrgent(common, head);
+  if (!urgent || urgent.tag !== tag) throw refusal('RELEASE_BACKFILL_NOT_URGENT', `${tag} has no urgent record on ${head.slice(0, 10)}: only a release pushed with release push --urgent is back-filled`);
+  return urgent;
+}
+
+/** A red back-fill: the urgent record keeps the verdict and the fix ticket (kind verify) the harness opened; nothing on the remote or on prod changes. */
+function backfillRed(ctx, { common, urgent, failed, openTicket }) {
+  const names = failed.map((item) => item.name);
+  const title = `RELEASE_BACKFILL_RED: the back-fill of urgent release ${urgent.tag} (${urgent.head.slice(0, 12)}) is red at ${names.join(', ')}`;
+  const tail = failed.map((item) => `${item.name}: ${item.detail} (log ${item.log})`).join('\n');
+  const ticket = typeof openTicket === 'function' ? openTicket({ title, tail, code: 'RELEASE_BACKFILL_RED', tag: urgent.tag, head: urgent.head }) : null;
+  writeUrgent(common, { ...urgent, backfill: { state: 'red', at: new Date(ctx.now()).toISOString(), failed: names, ticket: ticket ?? null } });
+  const said = ticket
+    ? `back-fill red: fix ticket ${ticket} opened (kind verify); ${urgent.tag} stays an urgent release and nothing on the remote or on prod changed`
+    : `back-fill red: no ticket queue in this run (run it through the starci CLI to open one); ${urgent.tag} stays an urgent release and nothing on the remote or on prod changed`;
+  return { said, ticket: ticket ?? null };
+}
+
+/**
  * `starci app release gate`: dry run prints the preconditions, the gate list, the head and the tag; --execute runs every gate and, only if required gates pass,
- * writes the L4 record and creates the annotated tag. options: { execute, sonar, source, tagPrefix, platform }.
+ * writes the L4 record and creates the annotated tag. options: { execute, sonar, source, tagPrefix, platform, backfill, openTicket }.
+ * With `backfill` (a tag pushed by `release push --urgent`, checked out at HEAD) the same full gate judges that commit: green writes its L4 record
+ * (promotedFrom the urgent record) and marks the urgent record promoted, with no new tag and no push; red opens a fix ticket through `openTicket`.
  */
 export async function releaseGate(ctx, config, options = {}) {
   // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares it (and when --sonar asks for it); a missing token is a refusal, never a skip.
@@ -402,18 +451,29 @@ export async function releaseGate(ctx, config, options = {}) {
   // the gate no longer refuses over the latest default-branch run.
   const facts = inspect(ctx, config, options);
   const common = releaseDir(ctx);
-  const recordPath = path.join(common, `${facts.head}.l4.json`);
+  const urgent = options.backfill === undefined ? null : backfillTarget(ctx, common, options.backfill, facts.head);
+  const recordPath = l4Path(common, facts.head);
   const dir = path.join(common, facts.head.slice(0, 12));
   const plan = [...facts.out, ...planLines(config, facts, dir, recordPath)];
-  const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name) };
+  if (urgent) plan.push(`back-fill      urgent release ${urgent.tag} (${URGENT_RULING}): green promotes it to this L4 record with no new tag and no push; red opens a fix ticket and changes nothing on prod`);
+  const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name), ...(urgent ? { backfill: urgent.tag } : {}) };
+  if (urgent?.backfill?.state === 'promoted') return { ok: true, lines: [...plan, `back-fill already promoted ${urgent.tag} to ${urgent.backfill.l4}. Nothing to do.`], data: { ...base, red: [], executed: false, promoted: true } };
   if (facts.red.length > 0) return { ok: false, lines: [...plan, ...facts.red.map((item) => `RED: ${item}`), 'nothing was run.'], data: { ...base, red: facts.red, executed: false } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
-  const results = await runAll(ctx, config, { dir, platform: options.platform ?? process.platform, credentialNames });
+  const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames });
   const report = results.map(summaryOf);
   const failed = results.filter((result) => !result.pass);
+  if (failed.length > 0 && urgent) {
+    const { said, ticket } = backfillRed(ctx, { common, urgent, failed, openTicket: options.openTicket });
+    return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record.`, said], data: { ...base, executed: true, results, promoted: false, ticket } };
+  }
   if (failed.length > 0) return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record, no tag.`], data: { ...base, executed: true, results } };
   assertUnmoved(ctx, facts.head);
-  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi });
+  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi, promotedFrom: urgent ? { record: `${facts.head}.urgent.json`, reason: urgent.reason, role: urgent.role, at: urgent.createdAt } : null });
+  if (urgent) {
+    writeUrgent(common, { ...urgent, backfill: { state: 'promoted', at: new Date(ctx.now()).toISOString(), l4: recordPath } });
+    return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, `back-fill green: urgent release ${urgent.tag} is promoted to a normal L4 release (no re-release, no push)`], data: { ...base, executed: true, results, promoted: true } };
+  }
   const created = facts.chosen.state !== 'on-head';
   if (created) git(ctx, ['tag', '-a', facts.chosen.tag, '-m', `release ${facts.chosen.tag}: required gates passed on ${facts.head.slice(0, 12)} (L4 record ${path.basename(recordPath)})`, facts.head]);
   const tagged = created ? `annotated tag ${facts.chosen.tag} created on ${facts.head.slice(0, 10)}` : `annotated tag ${facts.chosen.tag} already on ${facts.head.slice(0, 10)}`;
