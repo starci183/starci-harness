@@ -15,8 +15,9 @@ Choice `page-header.choose.head`: what heads the content. The first row that app
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| page | the top of a route page | `Page` with `header` (the PageHeader slots as data) and the page's `measure`; the page's content is its children. A page owner draws nothing beside the `Page` and never a `PageHeader` or `PageContainer` of its own; a layout frame never draws a page head | lint `starci-grammar/route-page-is-one-page`, `starci-grammar/no-hand-rolled-page-header`; `DNA-COMMON-PAGE-HEADER-FIRST`, `DNA-COMMON-PAGE-HEADER-ONE-H1` |
-| no-band | the top of a route page with nothing to head (a sign-in card, a landing hero) | `Page` without `header`: the body starts one region step down | `DNA-COMMON-PAGE-BODY-GAP` |
+| auth | a sign-in, sign-up, password or auth callback page, mounted only under the auth route group `(auth)` whose own layout draws the auth frame | no `Page`: the auth frame is the page frame, and the page draws its card into it | lint `starci-grammar/route-page-is-one-page` |
+| page | the top of a route page | exactly one `Page` with `header` (the PageHeader slots as data) and the page's `measure`; the page's content is its children. The page owner draws it, its pure half does, or, when client data builds the header a server owner may not, the one connected block the owner renders as its root does, the owner's content passed as that block's children (one level: a block it relays to does not count). Nothing sits beside the `Page`, no second `Page` sits inside it, and the page owner never draws a `PageHeader` or `PageContainer` of its own; a workbench is such a page; a layout frame never draws a page head. A page owner that draws no UI (it only redirects, calls `notFound()` or returns null) draws no `Page` | lint `starci-grammar/route-page-is-one-page`, `starci-grammar/no-hand-rolled-page-header`; `DNA-COMMON-PAGE-HEADER-FIRST`, `DNA-COMMON-PAGE-HEADER-ONE-H1` |
+| no-band | the top of a route page with nothing to head (a landing hero) | `Page` without `header`: the body starts one region step down | `DNA-COMMON-PAGE-BODY-GAP` |
 | region | a region inside the page, under the page heading | `SectionHeader` at the level the outline needs | judgement |
 | card | one subject's own face | the card's label (`card.choose.role`) | `DNA-COMMON-CARD-LABEL-HEADING` |
 

@@ -2234,7 +2234,7 @@ rules:
       - {kind: eslint-grammar-core, id: page-tabs-in-header}
   - id: R325
     code: FE_ROUTE_PAGE_OUTSIDE_PAGE
-    law: A page owner draws one Grammar Page with nothing beside it; a sibling of the Page, or a bare PageHeader or PageContainer in the page owner, re-decides the inset and rhythm Page owns.
+    law: A route draws exactly one Grammar Page, drawn by its page owner, the owner's pure half or the one connected block the owner renders as its root, with nothing beside it and no second Page; a page owner that draws no UI, or is mounted only under the (auth) route group whose layout frames it, needs none; a bare PageHeader or PageContainer in the page owner re-decides the inset and rhythm Page owns.
     failureCodes:
       - FE_ROUTE_PAGE_OUTSIDE_PAGE
     enforcers:
