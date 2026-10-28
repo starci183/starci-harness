@@ -176,14 +176,18 @@ const judgeRequires = async (rows: readonly PlanRow[], packages: readonly Worksp
     }
 }
 
-/** Paths of a package folder that never ship: its specs and test folders. */
-const UNSHIPPED = /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:spec|test)\.[cm]?[jt]sx?$/
+/** A path of a package folder under one of its test folders, which never ship. */
+const TEST_FOLDER = /(?:^|\/)(?:test|tests|__tests__)\//
+/** A spec or test file of a package folder, which never ships. */
+const SPEC_FILE = /\.(?:spec|test)\.[cm]?[jt]sx?$/
+/** Whether a path of a package folder never ships: its specs and test folders. */
+const unshipped = (path: string): boolean => TEST_FOLDER.test(path) || SPEC_FILE.test(path)
 
 /** The shipped files of the package folder `dir` that differ between `from` and HEAD; undefined when git cannot diff from `from`. */
 const shippedChanges = async (root: string, from: string, dir: string): Promise<string[] | undefined> => {
     const diff = await captureGit(["diff", "--name-only", "--no-renames", "-z", from, "HEAD", "--", dir], root)
     if (diff.exitCode !== 0) return undefined
-    return diff.stdout.split("\0").filter((path) => path !== "" && !UNSHIPPED.test(path.slice(dir.length + 1)))
+    return diff.stdout.split("\0").filter((path) => path !== "" && !unshipped(path.slice(dir.length + 1)))
 }
 
 /** The commit npm recorded for a published version (its `gitHead`), when this repository's history holds it. */
