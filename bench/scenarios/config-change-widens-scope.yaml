@@ -55,4 +55,4 @@ steps:
     starci: [check, run, --base, HEAD]
     expect:
       exit: 0
-      contains: '"command": "eslint --max-warnings=0 ."'
+      contains: 'config fe/eslint.config.js, whole package linted'

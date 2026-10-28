@@ -5,6 +5,7 @@ import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
 import { changedFiles } from "../shared/git.js"
 import { judgeCites } from "./cite.js"
+import { changedCoverageScope, withCoverageArgs } from "./coverage-scope.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
 import { now, openExistingLedger } from "./ledger.js"
@@ -328,13 +329,19 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     return { name: check.name, kind: check.check.kind, status: run.exitCode === 0 && ran.length > 0 ? "green" : "red", exitCode: run.exitCode, detail: lines.join("\n") }
 }
 
-/** Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. */
-const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
+/**
+ * Runs a command check: its argv (a list, or a string split at blanks), held to its verdict key when it names one. With
+ * `coverage: changed` a jest run's coverage is narrowed to the task's changed logic files (harness/coverage-scope.ts), and the
+ * detail opens with the files it judged.
+ */
+const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
-    const argv = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
+    const named = Array.isArray(primitive.run) ? primitive.run : primitive.run.split(/\s+/).filter((part) => part !== "")
     try {
-        if (primitive.verdict !== undefined) return await runVerdictCommand(check, argv, primitive.verdict, place, options)
-        return fromRun(check, await captureCommand(argv, place.cwd, options))
+        const scope = primitive.coverage === "changed" ? await changedCoverageScope(place, allowPaths) : undefined
+        const argv = scope === undefined ? named : withCoverageArgs(named, scope)
+        const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, options) : fromRun(check, await captureCommand(argv, place.cwd, options))
+        return scope === undefined ? judged : { ...judged, detail: `${scope.detail}\n${judged.detail}` }
     } catch (error: unknown) {
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
@@ -351,7 +358,7 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return fromRun(check, await captureTool(process.execPath, [selfEntry(), "--cwd", place.cwd, ...primitive.args], place.cwd, options))
         }
         case "command":
-            return runCommandCheck({ ...check, check: primitive }, place, options)
+            return runCommandCheck({ ...check, check: primitive }, place, contract.context.allowPaths, options)
         case "files":
             return runFilesCheck({ ...check, check: primitive }, contract, place)
         case "json":

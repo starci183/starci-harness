@@ -26,13 +26,16 @@ presets:
     check:
       kind: files
       onlyAllowPaths: true
+  # A jest run's coverage is narrowed to the changed logic files under allowPaths (coverage: changed), so the app's own
+  # thresholds hold what the task changed while its whole measured scope stays CI's.
   tests-pass:
-    summary: the harness runs the named tests (or the tests related to the change) on the clean checkout and they pass
+    summary: the harness runs the named tests (or the tests related to the change) on the clean checkout and they pass, with the coverage of every changed logic file at the app's thresholds
     behavioural: true
     args: [command]
     check:
       kind: command
       run: "{command}"
+      coverage: changed
   # A verify task reports a suite; the harness reruns it on the clean checkout and the result's verdict must agree with the exit.
   suite-verdict:
     summary: the harness reruns the suite on the clean checkout and the result's verdict agrees with its exit (0 passed, else failed)
