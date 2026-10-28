@@ -40,7 +40,8 @@ same `pickCoordinator` the seat launch calls (`--simulate <n>` tallies a run of 
 2. **Hard filter.** A member of the tier is dropped when its pool does not take the label, when a host tool the label
    needs has a probe that fails on this host, when this task's lineage has two contract-red attempts on its pool, when
    its provider's circuit is open and its probe is not due (or already in flight), when its pool is at its cap
-   (`maxParallel`, lowered by the pool's concurrency backoff), or when its provider authored the dependency work of a label
+   (`maxParallel`, lowered by the pool's concurrency backoff; a worker pick counts the pool's `coordinatorReserve` as taken,
+   and a coordinator pick takes a reserved slot whatever the workers hold), or when its provider authored the dependency work of a label
    the task's op names in `independentOf` (a `review` never reads its own provider's code); when that alone empties the
    tier, the task looks one tier up. A task whose `risk` names one of `qualification.riskTags`
    also drops a member below `qualification.riskMinimum` for the label, and never probes; when that alone empties the

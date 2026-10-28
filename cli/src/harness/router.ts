@@ -12,7 +12,7 @@ import type { MemberEvidence } from "./outcomes.js"
 import { poolConcurrency } from "./pools.js"
 import type { PoolConcurrency } from "./pools.js"
 import { difficultyRank, loadRouting, parseDifficulty, providerOfAgent, QUALIFICATIONS } from "./routing.js"
-import type { CoordinatorRole, Difficulty, MemberSpec, Qualification, Routing } from "./routing.js"
+import type { CoordinatorRole, Difficulty, MemberSpec, PoolSpec, Qualification, Routing } from "./routing.js"
 import { getTask } from "./tasks.js"
 import { paceOf, refreshUsage } from "./usage.js"
 
@@ -128,6 +128,7 @@ interface Candidate {
     readonly circuit: CircuitState
     readonly concurrency: PoolConcurrency
     readonly running: number
+    readonly coordinators: number
     readonly runningMember: number
     readonly quota: QuotaReading
     readonly pace: number | null
@@ -200,6 +201,7 @@ const gatherFacts = (input: RouteInput, at: string): Facts => {
                         circuit: readCircuit(db, provider, at),
                         concurrency: poolConcurrency(db, routing, pool),
                         running: running.byAgent.get(member.agent) ?? 0,
+                        coordinators: running.coordinatorsByAgent.get(member.agent) ?? 0,
                         runningMember: running.byMember.get(memberId(member)) ?? 0,
                         quota: readQuota(db, routing, pool, at),
                         pace: paceOf(db, routing, pool, at),
@@ -256,6 +258,24 @@ const circuitReason = (candidate: Candidate, facts: Facts, highRisk: boolean): s
     return highRisk ? `provider ${candidate.provider} circuit half-open (${kind}); a high-risk task is never a probe` : null
 }
 
+/**
+ * Why a pool has no slot for this pick, or null. The limit is maxParallel under the AIMD cap; `coordinatorReserve` of it is held
+ * for coordinator seats: a coordinator pick takes a slot while its seats hold fewer than the reserve, whatever the workers hold,
+ * else while the pool is under its limit; a worker pick counts the reserve as taken (or the coordinators, when they hold more).
+ */
+const capacityReason = (candidate: Candidate, pool: PoolSpec, coordinator: boolean): string | null => {
+    const limit = Math.min(pool.maxParallel, candidate.concurrency.cap)
+    const reserve = Math.min(pool.coordinatorReserve, limit)
+    const workers = candidate.running - candidate.coordinators
+    const caps = `maxParallel ${String(pool.maxParallel)}, AIMD cap ${String(candidate.concurrency.cap)}, coordinatorReserve ${String(reserve)}`
+    if (coordinator) {
+        if (candidate.coordinators < reserve || candidate.running < limit) return null
+        return `pool ${candidate.pool} full: ${String(candidate.running)} running of ${String(limit)}, ${String(candidate.coordinators)} coordinators past the reserve (${caps})`
+    }
+    const taken = workers + Math.max(candidate.coordinators, reserve)
+    return taken < limit ? null : `pool ${candidate.pool} full for workers: ${String(workers)} workers and ${String(Math.max(candidate.coordinators, reserve))} coordinator slots of ${String(limit)} (${caps})`
+}
+
 /** Why a member fails the hard filter (pool role, tools, lineage exclusion, circuit, capacity, qualification), or null when it passes. */
 const hardReason = (candidate: Candidate, input: RouteInput, facts: Facts, tier: string, highRisk: boolean, redsByPool: ReadonlyMap<string, number>): { readonly step: string; readonly reason: string } | null => {
     const pool = facts.routing.pools[candidate.pool]
@@ -271,8 +291,8 @@ const hardReason = (candidate: Candidate, input: RouteInput, facts: Facts, tier:
     if (input.authors?.includes(candidate.provider) === true) return fail(`provider ${candidate.provider} authored the work this ${input.label} task reads`, "independence")
     const circuit = circuitReason(candidate, facts, highRisk)
     if (circuit !== null) return fail(circuit)
-    const limit = Math.min(pool.maxParallel, candidate.concurrency.cap)
-    if (candidate.running >= limit) return fail(`pool ${candidate.pool} full: ${String(candidate.running)} running of ${String(limit)} (maxParallel ${String(pool.maxParallel)}, AIMD cap ${String(candidate.concurrency.cap)})`)
+    const capacity = capacityReason(candidate, pool, input.coordinator !== undefined)
+    if (capacity !== null) return fail(capacity)
     const minimum = facts.routing.qualification.riskMinimum
     const qualification = qualificationIn(facts, input, candidate, tier)
     if (highRisk && QUALIFICATIONS.indexOf(qualification) < QUALIFICATIONS.indexOf(minimum)) return fail(`${qualification} for ${input.label}; a high-risk task needs ${minimum}`, "qualification")

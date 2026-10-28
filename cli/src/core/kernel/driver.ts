@@ -134,6 +134,9 @@ const supersede = (db: DatabaseSync, snapshot: Snapshot): void => {
     }
 }
 
+/** The decisions whose answer replaces the workflow's plan: nothing dispatches on the old graph while one is open. */
+const REPLANS: ReadonlySet<string> = new Set(["goal", "goal-change", "escalation-answer"])
+
 const firstOpen = (root: string, workflowId: string): Decision | undefined =>
     withLedger(root, (db) =>
         inTransaction(db, () => {
@@ -530,8 +533,10 @@ const inlineTask = (root: string, workflowId: string): string | null => {
 }
 
 /**
- * `kernel next`: the deterministic driver. It returns at once an open decision; otherwise it ticks (mail, step, fences, stalled Ops, unknown
- * launches) and returns the first decision the ledger calls for, else waits on the Kernel Run's mailbox (re-reading the ledger
+ * `kernel next`: the deterministic driver. An open decision that replans (`REPLANS`: the graph is about to be replaced) is returned
+ * at once, before anything dispatches; otherwise every round first ticks (mail, step, fences, stalled Ops, unknown launches), so
+ * a decision left open about one task (returned and held, red, a conflict) never stops the other ready tasks from dispatching,
+ * then returns the oldest open decision, else waits on the Kernel Run's mailbox (re-reading the ledger
  * every nextPollSeconds) until nextWaitSeconds pass and returns idle. An inline workflow never waits: with no decision it
  * returns idle naming the task the chat agent works next.
  */
@@ -553,7 +558,7 @@ export const kernelNext = async (context: VerbContext, root: string, workflowId:
     const round = async (): Promise<KernelNext> => {
         renewKernel(root, workflowId, rules)
         const pending = firstOpen(root, workflowId)
-        if (pending !== undefined) return answer(pending, null)
+        if (pending !== undefined && REPLANS.has(pending.kind)) return answer(pending, null)
         const ticked = await tick(context, root, workflowId, rules)
         actions.push(...ticked.actions)
         const raised = firstOpen(root, workflowId)

@@ -1,6 +1,6 @@
 import { basename } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
-import { registeredRepositories } from "../core/supervisor/driver.js"
+import { registeredRepositories } from "./project-workers.js"
 import { asRefusal } from "../shared/errors.js"
 import { openDecisions } from "./coordinator-commands.js"
 import type { Decision } from "./coordinator-commands.js"

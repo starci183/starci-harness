@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { admitCommand, answerDecision, awaitsOwner, finishCommand, getDecision, goalVersionOf, ledgerAnswers, openDecisions, raiseDecision, readCommand } from "../../harness/coordinator-commands.js"
@@ -14,7 +13,7 @@ import { loadRouting } from "../../harness/routing.js"
 import { ledgerPath, now, openLedger } from "../../harness/ledger.js"
 import { expireLeases, inTransaction } from "../../harness/leases.js"
 import { judgeStart, loadLiveness } from "../../harness/liveness.js"
-import { readMachine, recordTerminalList, textOf, withMachine } from "../../harness/machine.js"
+import { readMachine, recordTerminalList, withMachine } from "../../harness/machine.js"
 import { reconcileStaleLaunches } from "../../harness/stale-launch.js"
 import { recordSeatOutcome } from "../../harness/outcomes.js"
 import { assertOwnerRequests, closeOwnerRequests, isOwnerRequestId, openOwnerRequests, ownerRequestProjects } from "../../harness/owner-requests.js"
@@ -28,6 +27,7 @@ import { ensureSupervisor, hostSupervisors, inSupervisorTerminal, isAttached, ke
 import type { AttachedSupervisor, SupervisorEnsured } from "../../harness/supervisor.js"
 import { sweepTerminals } from "../../harness/terminal-sweep.js"
 import type { SweptTerminal } from "../../harness/terminal-sweep.js"
+import { projectRepositories, registeredRepositories } from "../../harness/project-workers.js"
 import { recordEvent } from "../../harness/tasks.js"
 import { projectOf } from "../../harness/work.js"
 import type { Project } from "../../harness/work.js"
@@ -40,17 +40,20 @@ import { inOrder } from "../../harness/sequential.js"
 import { digestOf, RELAUNCH_LIMIT, sweepOpStalls } from "../kernel/driver.js"
 import type { Digest } from "../kernel/driver.js"
 import { workflowStopVerb } from "../workflow/stop.js"
+import { nextWorkerEvent, tendWorkers } from "./workers.js"
+import type { WorkerView } from "./workers.js"
 
 /** A Supervisor decision with the project it lives in. */
 export interface SupervisorDecision extends Decision {
     readonly project: string
 }
 
-/** What `supervisor next` returns: one decision (escalation or handoff) with its workflow digest, one owner request, or idle. */
+/** What `supervisor next` returns: one decision (escalation or handoff) with its workflow digest, one worker's completion, one owner request, or idle. */
 export interface SupervisorNext {
-    readonly kind: "escalation" | "handoff" | "owner-request" | "idle"
+    readonly kind: "escalation" | "handoff" | "worker" | "owner-request" | "idle"
     readonly decision: SupervisorDecision | null
     readonly digest: Digest | null
+    readonly worker: WorkerView | null
     readonly request: OwnerRequest | null
     readonly actions: readonly string[]
 }
@@ -65,26 +68,6 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 }
 
 const sleep = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
-
-/** The repositories whose ledgers the host registry lists and that exist. */
-export const registeredRepositories = (): string[] =>
-    readMachine((db) => db.prepare("SELECT repo_root, file FROM ledgers WHERE state != 'retired'").all(), [])
-        .filter((row) => existsSync(textOf(row.file) ?? "") && existsSync(textOf(row.repo_root) ?? ""))
-        .map((row) => textOf(row.repo_root) ?? "")
-
-/** The registered repositories of one project (`projectOf` each: the Work root and its sides); a repository whose binding is unfit is reported, never swept. */
-export const projectRepositories = async (project: Project): Promise<{ readonly repos: readonly string[]; readonly problems: readonly string[] }> => {
-    const repos: string[] = []
-    const problems: string[] = []
-    await inOrder(registeredRepositories(), async (repo) => {
-        try {
-            if ((await projectOf(repo)).key === project.key) repos.push(repo)
-        } catch (error: unknown) {
-            problems.push(`${repo}: no project (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`)
-        }
-    })
-    return { repos, problems }
-}
 
 /** A project given by `--project <path>`, else the project of the working directory. */
 export const projectFrom = async (context: VerbContext, project: string | undefined, mint = true): Promise<Project> => projectOf(project === undefined ? context.cwd : resolve(context.cwd, project), mint)
@@ -376,8 +359,9 @@ const openSupervisorDecisions = (repos: readonly string[]): SupervisorDecision[]
  * `supervisor next`: a Supervisor's own driver, for one project. From its terminal it sweeps the workflows it owns in every
  * repository of its project (a Kernel with a lapsed lease and no progress past kernelTtlMinutes is relaunched on Orca's word, a
  * live one idle at its prompt with work pending meets the stall ladder; a launch Orca never confirmed is reconciled through
- * Orca (`resolveKernelLaunch`); too many relaunches pause and escalate), then returns the project's next open escalation or handoff it rules
- * (`openSupervisorDecisions`), else its oldest owner request (`supervisor ask`), else one awaiting the owner or Debug its Supervisor was not handed yet, else waits
+ * Orca (`resolveKernelLaunch`); too many relaunches pause and escalate) and tends its `[Worker]` seats (`tendWorkers`), then
+ * returns the project's next open escalation or handoff it rules (`openSupervisorDecisions`), else a worker's completion not
+ * handed yet (`nextWorkerEvent`), else its oldest owner request (`supervisor ask`), else one awaiting the owner or Debug its Supervisor was not handed yet, else waits
  * on its Run's mailbox until nextWaitSeconds pass and returns idle. From anywhere else the decisions are only read; `supervisor
  * tick` sweeps for it.
  */
@@ -404,24 +388,37 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         }
     }
     // One round: sweep, then answer the oldest decision, or wait for mail and go round again until the deadline.
+    // The longest sweep a round took: the wait stops early by it, so the last round's sweep still ends by the deadline and `next`
+    // returns inside the caller's shell timeout instead of being killed there with nothing printed.
+    let sweepMs = 0
     const round = async (delivery: string | undefined): Promise<SupervisorNext> => {
+        const swept = Date.now()
         if (attached !== null) renewSupervisorLease(attached.id)
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
-        if (attached !== null && binary !== null) actions.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, attached, false))).flat())
+        if (attached !== null && binary !== null) {
+            actions.push(...(await inOrder(repos, (repo) => sweepKernels(repo, binary, context.cwd, rules, attached, false))).flat())
+            actions.push(...(await tendWorkers(context, attached, binary, project)))
+        }
+        sweepMs = Math.max(sweepMs, Date.now() - swept)
         const decisions = openSupervisorDecisions(repos).filter((open) => !awaitsOwner(open) || attached === null || !relayed(open))
-        const request = openOwnerRequests(project.key)[0]
-        const decision = decisions.find((open) => request === undefined || !awaitsOwner(open))
-        if (decision !== undefined) {
+        const handOver = (decision: SupervisorDecision): SupervisorNext => {
             const digest = withLedger(decision.project, (db) => {
                 if (attached !== null && awaitsOwner(decision)) recordEvent(db, DECISION_RELAYED, decision.workflowId, { id: decision.id, supervisor: attached.id })
                 return digestOf(db, decision.workflowId)
             })
-            return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, request: null, actions }
+            return { kind: decision.kind === "handoff" ? "handoff" : "escalation", decision, digest, worker: null, request: null, actions }
         }
-        if (request !== undefined) return { kind: "owner-request", decision: null, digest: null, request, actions }
-        const left = deadline - Date.now()
-        if (left <= 0) return { kind: "idle", decision: null, digest: null, request: null, actions }
+        const ruled = decisions.find((open) => !awaitsOwner(open))
+        if (ruled !== undefined) return handOver(ruled)
+        const worker = nextWorkerEvent(project, attached !== null)
+        if (worker !== null) return { kind: "worker", decision: null, digest: null, worker, request: null, actions }
+        const request = openOwnerRequests(project.key)[0]
+        if (request !== undefined) return { kind: "owner-request", decision: null, digest: null, worker: null, request, actions }
+        const relay = decisions.find(awaitsOwner)
+        if (relay !== undefined) return handOver(relay)
+        const left = deadline - Date.now() - sweepMs
+        if (left <= 0) return { kind: "idle", decision: null, digest: null, worker: null, request: null, actions }
         // The sweep may have taken a while: the wait is a driver call too, so the lease is renewed as it starts.
         if (attached !== null) renewSupervisorLease(attached.id)
         return round(await awaitMail(delivery, Math.min(rules.nextPollSeconds * 1000, left)))

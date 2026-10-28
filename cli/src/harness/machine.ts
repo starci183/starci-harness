@@ -19,6 +19,8 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  *   (harness/owner-requests.ts).
  * - orca_terminals: the newest full Orca terminal list a tick read (handles, when), so a pool count can leave out a seat whose
  *   terminal Orca no longer lists (`runningWorkers`); one row, replaced on each read.
+ * - supervisor_workers: each `[Worker]` seat a project's Supervisor dispatched: the repository whose ledger holds its task, its
+ *   worktree, the completion `supervisor next` last handed over, and how the Supervisor ended it (harness/project-workers.ts).
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -53,6 +55,10 @@ CREATE TABLE IF NOT EXISTS budget_raises (
   minutes_by INTEGER NOT NULL, tries_by INTEGER NOT NULL, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orca_terminals (
   id INTEGER PRIMARY KEY CHECK (id = 1), at TEXT NOT NULL, handles_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS supervisor_workers (
+  id TEXT PRIMARY KEY, project TEXT NOT NULL, repo TEXT NOT NULL, task_id TEXT NOT NULL, topic TEXT NOT NULL, worktree TEXT NOT NULL,
+  created_at TEXT NOT NULL, handed TEXT, ended_at TEXT, ended_by TEXT);
+CREATE INDEX IF NOT EXISTS supervisor_workers_by_project ON supervisor_workers (project, ended_at, created_at);
 `
 
 /** How long a recorded Orca terminal list stands as evidence for a pool count: older, it proves nothing. */
@@ -64,8 +70,14 @@ export const recordTerminalList = (handles: ReadonlySet<string>, truncated: bool
     withMachine((db) => db.prepare("INSERT INTO orca_terminals (id, at, handles_json) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET at = excluded.at, handles_json = excluded.handles_json").run(new Date().toISOString(), JSON.stringify([...handles])))
 }
 
+/** A full Orca terminal list as recorded: when it was read and the handles it listed. */
+export interface ListedTerminals {
+    readonly at: string
+    readonly handles: ReadonlySet<string>
+}
+
 /** The recorded full terminal list while it is fresh, else null (no evidence of any absence). */
-const listedTerminals = (): { readonly at: string; readonly handles: ReadonlySet<string> } | null => {
+export const listedTerminals = (): ListedTerminals | null => {
     const row = readMachine((db) => db.prepare("SELECT at, handles_json FROM orca_terminals WHERE id = 1").get(), undefined)
     if (row === undefined || Date.now() - Date.parse(String(row.at)) > TERMINAL_LIST_FRESH_MS) return null
     const handles: unknown = JSON.parse(String(row.handles_json))
@@ -101,10 +113,23 @@ export const recordProviderEvent = (db: DatabaseSync, provider: string, kind: st
 export interface RunningWorkers {
     readonly byMember: ReadonlyMap<string, number>
     readonly byAgent: ReadonlyMap<string, number>
+    /** The coordinator seats (Supervisors and Kernels) among them, per agent. */
+    readonly coordinatorsByAgent: ReadonlyMap<string, number>
 }
 
 // A seat that is stopped, lost or closed runs no worker; anything else (starting, ready, launch-unknown, ...) may hold a slot.
 const NOT_RUNNING: ReadonlySet<string> = new Set([...CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST])
+
+/**
+ * True while a ledger seat row may hold a slot: not ended, not stopped, lost or closed, and not a seat whose terminal the fresh
+ * full Orca terminal list `listed` (younger than the seat's start) no longer holds; a seat with no terminal still holds one. The
+ * pool count (`runningWorkers`) and the project count (`projectSlots`) both judge by it.
+ */
+export const holdsSlot = (row: Record<string, unknown>, listed: ListedTerminals | null): boolean => {
+    if (NOT_RUNNING.has(textOf(row.status) ?? "") || textOf(row.ended_at) !== null) return false
+    const terminal = textOf(row.terminal)
+    return listed === null || terminal === null || Date.parse(textOf(row.started_at) ?? "") >= Date.parse(listed.at) || listed.handles.has(terminal)
+}
 
 /**
  * Counts the open worker seats of every ledger the host registry lists (retired ones aside), read-only: a pool's slots are
@@ -115,10 +140,12 @@ const NOT_RUNNING: ReadonlySet<string> = new Set([...CLOSED_SEAT_STATUSES, SEAT_
 export const runningWorkers = (): RunningWorkers => {
     const byMember = new Map<string, number>()
     const byAgent = new Map<string, number>()
-    const count = (agent: string, model: string | null): void => {
+    const coordinatorsByAgent = new Map<string, number>()
+    const count = (agent: string, model: string | null, coordinator: boolean): void => {
         const member = `${agent}/${model ?? "?"}`
         byMember.set(member, (byMember.get(member) ?? 0) + 1)
         byAgent.set(agent, (byAgent.get(agent) ?? 0) + 1)
+        if (coordinator) coordinatorsByAgent.set(agent, (coordinatorsByAgent.get(agent) ?? 0) + 1)
     }
     // Every project's live Supervisor, and the host Supervisor a version-2 store may still run until it is retired.
     const supervisors = readMachine((db) => {
@@ -127,7 +154,7 @@ export const runningWorkers = (): RunningWorkers => {
     }, [])
     for (const seat of supervisors) {
         const agent = textOf(seat.agent)
-        if (agent !== null) count(agent, textOf(seat.model))
+        if (agent !== null) count(agent, textOf(seat.model), true)
     }
     const files = readMachine((db) => db.prepare("SELECT file FROM ledgers WHERE state != 'retired'").all().map((row) => textOf(row.file) ?? ""), [])
     const listed = listedTerminals()
@@ -137,12 +164,8 @@ export const runningWorkers = (): RunningWorkers => {
         try {
             ledger = new DatabaseSync(file, { readOnly: true, timeout: 5000 })
             for (const row of ledger.prepare("SELECT * FROM seats WHERE role IN ('worker', 'kernel')").all()) {
-                const status = textOf(row.status) ?? ""
                 const agent = textOf(row.agent)
-                if (NOT_RUNNING.has(status) || agent === null || textOf(row.ended_at) !== null) continue
-                const terminal = textOf(row.terminal)
-                if (listed !== null && terminal !== null && Date.parse(textOf(row.started_at) ?? "") < Date.parse(listed.at) && !listed.handles.has(terminal)) continue
-                count(agent, textOf(row.model))
+                if (agent !== null && holdsSlot(row, listed)) count(agent, textOf(row.model), textOf(row.role) === "kernel")
             }
         } catch {
             // A ledger that cannot be opened or read now (locked, damaged) is not counted; the next pick reads it again.
@@ -150,5 +173,5 @@ export const runningWorkers = (): RunningWorkers => {
             ledger?.close()
         }
     }
-    return { byMember, byAgent }
+    return { byMember, byAgent, coordinatorsByAgent }
 }

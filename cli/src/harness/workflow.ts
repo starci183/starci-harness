@@ -8,7 +8,7 @@ import { recordFirstGoal } from "./goal.js"
 import { loadRouting } from "./routing.js"
 import { now } from "./ledger.js"
 import { SEAT_WORKER_LOST } from "./seats.js"
-import { acquireLeases, inTransaction } from "./leases.js"
+import { acquireLeases, inTransaction, listLeases, pathsOverlap } from "./leases.js"
 import type { LeaseGrant } from "./leases.js"
 import { createTask, getTask, recordEvent } from "./tasks.js"
 import type { ResultStatus, TaskRow, TaskStatus } from "./tasks.js"
@@ -355,12 +355,32 @@ const finalVerifyOf = (db: DatabaseSync, id: string): FinalVerify | null => {
     return { graphVersion: Number(data.graphVersion), verdict: data.verdict === "green" ? "green" : "red", reason: "reason" in data ? text(data.reason) : "" }
 }
 
+/**
+ * The why of a ready node whose paths another live task holds: dispatch takes it once that lease frees (a lease conflict is a
+ * wait), so the view names the path, the holder and the holder's workflow instead of reading as dispatchable.
+ */
+const leaseWaits = (db: DatabaseSync, nodes: readonly PlanNode[], views: readonly NodeView[]): NodeView[] => {
+    const held = listLeases(db).filter((lease) => lease.live)
+    return views.map((view) => {
+        const node = view.state === "ready" ? nodes.find((candidate) => candidate.key === view.key) : undefined
+        if (node === undefined || held.length === 0) return view
+        for (const path of node.contract.context.allowPaths) {
+            const holder = held.find((lease) => pathsOverlap(lease.path, path))
+            if (holder === undefined) continue
+            const owner = db.prepare("SELECT workflow_id, plan_key FROM tasks WHERE id = ?").get(holder.taskId)
+            const of = owner?.workflow_id === null || owner?.workflow_id === undefined ? "" : ` of ${text(owner.workflow_id)}/${text(owner.plan_key)}`
+            return { ...view, why: `every dependency is done; waits for the lease on ${path}: task ${holder.taskId}${of} (${holder.taskStatus}) holds ${holder.path}` }
+        }
+        return view
+    })
+}
+
 /** Reads a workflow's current graph and the state of each node. */
 export const snapshotOf = (db: DatabaseSync, id: string): Snapshot => {
     const workflow = getWorkflow(db, id)
     const nodes = graphOf(db, id, workflow.graphVersion)
     const tasks = workflowTasks(db, id)
-    return { workflow, nodes, views: viewNodes(nodes, nodeTasks(nodes, tasks)), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
+    return { workflow, nodes, views: leaseWaits(db, nodes, viewNodes(nodes, nodeTasks(nodes, tasks))), tasks, live: tasks.filter(isLiveTask).length, finalVerify: finalVerifyOf(db, id) }
 }
 
 /**

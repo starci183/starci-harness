@@ -45,9 +45,13 @@ tiers:
 # One pool per agent: one provider quota window with real parallel slots. `labels` are the work it may take, `tools` what
 # its agent can use. A label's host tool that has a probe below must also answer on this host.
 pools:
+  # coordinatorReserve: the slots of maxParallel held for coordinator seats (Supervisors and Kernels). A worker pick sees
+  # maxParallel minus it; a coordinator pick takes a reserved slot whatever the workers hold, so a pool full of workers never
+  # pushes a coordinator onto another provider. Claude holds a project's Supervisor and its Kernels (`coordinators` above).
   claude:
     provider: claude
     maxParallel: 6
+    coordinatorReserve: 4
     labels: [code, test, draw, audit, review, verify, uat, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
   # Only Codex takes image work: image generation runs on GPT-6.1 Sol alone (labelTiers keeps image on the high tier).
@@ -174,6 +178,12 @@ concurrency: {floor: 2, decreaseCooldownMinutes: 2, quietMinutes: 15, increaseSt
 # The most Ops one orca workflow runs at once (its fan-out), and its default; a workflow file's maxParallel asks for fewer, never more, and
 # ready tasks past it wait for a free slot (engine.ts queueReady).
 workflowParallel: 10
+
+# The most worker seats one project runs at once: its Kernels' Ops across all of its workflows and the [Worker] seats its
+# Supervisor dispatched (`supervisor dispatch`), wherever they work. A launch past it waits queued and starts once a seat of the
+# project is released (engine.ts launchTask, core/supervisor/workers.ts); it is never refused and never routed elsewhere for
+# it. The pools' maxParallel still binds every launch.
+projectMaxWorkers: 10
 
 # Per-workflow ceilings; only the owner or the Supervisor raises one (budget raise).
 budgets:

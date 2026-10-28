@@ -1,0 +1,98 @@
+schema: starci/scenario@1
+id: supervisor-dispatch-worker-report
+group: worker
+title: "the Supervisor hands a job to a [Worker] seat under it; supervisor next returns the worker's report, accept settles it on the worker's branch"
+inject: "nothing: the Supervisor dispatches one docs job instead of doing it, the worker writes its file and reports done"
+expect: >-
+  supervisor dispatch makes the worker's own worktree on branch starci/<worker>, queues a task whose contract is the brief on
+  the docs op, and launches it through Orca under the Supervisor (its Run, its task as parent, its terminal as sender), titled
+  `[Worker] <project>: <topic>` and routed by the docs label's worker tier, never the coordinator tier; the worker files done;
+  supervisor next closes the worker's seat and returns its report once as kind worker; supervisor accept verifies it green, which
+  commits the file on the worker's branch and not on main, and ends the worker accepted
+pass:
+  - one [Worker] worker-start into the Supervisor's Run with the Supervisor's task as parent
+  - the worker's seat released before the accept, its task done after it
+  - one settle commit on starci/<worker>, none on main
+  - supervisor next hands the report once, then is idle
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+automation: automated
+steps:
+  - name: boot the project's Supervisor
+    boot: {}
+  - name: the Supervisor dispatches the job to a worker
+    seat: supervisor
+    starci: [supervisor, dispatch, --brief, "write the bench note", --label, docs, --allow, docs/note.md]
+    expect:
+      contains: routed
+    save:
+      worker: data.worker
+      task: data.task
+      branch: data.branch
+      wt: data.worktree
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Worker\] .+: write the bench note$'
+          run: "^${supervisor.run}$"
+          from: "^${supervisor.terminal}$"
+        count: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT t.status || ':' || (t.workflow_id IS NULL) || ':' || json_extract(a.pick_json, '$.tier') FROM tasks t JOIN attempts a ON a.task_id = t.id WHERE t.id = '${task}'"
+        equals: ["running:1:low"]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT project IS NOT NULL AND ended_at IS NULL FROM supervisor_workers WHERE id = '${worker}'"
+        equals: [1]
+  - name: the worker writes its file and reports done
+    worker:
+      task: ${task}
+      files:
+        docs/note.md: "# Bench note\n\nWritten by a worker.\n"
+  - name: supervisor next returns the worker's report
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"completion": "reported:done"'
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM seats WHERE task_id = '${task}'"
+        equals: [released]
+  - name: the report is handed once
+    seat: supervisor
+    starci: [supervisor, next, --wait, "0"]
+    expect:
+      contains: '"kind": "idle"'
+  - name: the Supervisor accepts the worker
+    seat: supervisor
+    starci: [supervisor, accept, "${worker}"]
+    expect:
+      contains: accepted
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${task}'"
+        equals: [done]
+  - assert:
+      sql:
+        db: machine
+        query: "SELECT ended_by FROM supervisor_workers WHERE id = '${worker}'"
+        equals: [accepted]
+  - assert:
+      gitLog:
+        grep: "${task}"
+        count: 0
+  - assert:
+      gitLog:
+        grep: "${task}"
+        count: 1
+        in: "${wt}"
+  - assert:
+      gitHas:
+        path: docs/note.md
+        present: false

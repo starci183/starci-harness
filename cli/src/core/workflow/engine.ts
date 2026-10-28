@@ -11,6 +11,7 @@ import { priorWorkOf, revertCommits } from "../../harness/reconcile.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { closeSeatsOfTask, isSeatOpen, SEAT_STOPPED, SEAT_WORKER_LOST, seatsOfTask } from "../../harness/seats.js"
 import type { SeatRow } from "../../harness/seats.js"
+import { slotsOfRepository } from "../../harness/project-workers.js"
 import { getTask, recordEvent } from "../../harness/tasks.js"
 import { assertWorkflowBudget } from "../../harness/budget.js"
 import { describeRoute, lineageOf, pickRoute, RouteRefusal } from "../../harness/router.js"
@@ -265,7 +266,13 @@ const applyRevert = async (root: string, checkout: string, workflowId: string, n
     return detail
 }
 
+/**
+ * Launches one queued node task: first the project's worker cap (routing.yaml projectMaxWorkers, counted with the Supervisor's
+ * workers), then the router's pick. A full project or a refused route is a wait: the task stays queued for a later step.
+ */
 const launchTask = async (context: VerbContext, root: string, workflow: WorkflowRow, node: PlanNode, task: string): Promise<StepAction> => {
+    const slots = await slotsOfRepository(root)
+    if (slots.running >= slots.cap) return { key: node.key, task, action: "wait", detail: `project ${slots.project.name} runs ${String(slots.running)} of its ${String(slots.cap)} worker seats (projectMaxWorkers); the task stays queued until one is released` }
     const chosen = launchOf(root, node, task)
     if (chosen instanceof Refusal) return { key: node.key, task, action: "wait", detail: `no route (${chosen.code}): ${chosen.message}; the task stays queued` }
     try {

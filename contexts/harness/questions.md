@@ -6,9 +6,8 @@
 2. **`pattern` verbs:** their own group, or inside `app`?
 3. **Placing a feature across running workflows.** Should the Supervisor place it by a path-ownership map kept as data,
    amending only the workflows that own the touched paths, with the model deciding only what the map cannot place?
-4. **Who pushes.** A worker never pushes, yet `release push` is a core verb of both editions (roles today: owner,
-   release, coordinator, lead). Does pushing stay a core verb a role may be granted, or move to the Supervisor, and
-   then how does a lite chat agent (role `agent`) push?
+4. **Who pushes in a lite app.** Under Orca, Debug alone merges and pushes ([decisions.md](decisions.md)), and no worker,
+   Kernel or Supervisor does. How does a lite chat agent (role `agent`), which has no Debug beside it, push?
 5. **Secret scan reach.** The scan carries the provider shapes, forbidden paths and the quoted keyword assignment, not
    the unquoted dotenv form, SQL role passwords or badge-token exemptions. Add them, or accept the gap?
 6. **Replan owner gate.** When a replan drops or redoes more than a threshold, should the Kernel hold it for the

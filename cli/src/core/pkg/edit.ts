@@ -7,7 +7,7 @@ import { captureGit, git, gitCommonDir, mainCheckout } from "../../shared/git.js
 import { callerRole } from "../../shared/role.js"
 
 /**
- * A package edit: an app session, a Supervisor or a worker the Kernel assigns may fix or extend a `@starci` package while
+ * A package edit: an app session, or a worker its Kernel or Supervisor assigns, may fix or extend a `@starci` package while
  * its app runs on local sources. It edits on its own harness branch `pkg/<app>-<topic>`, in a worktree under the harness's
  * `.claude/worktrees/` (never the harness main checkout), cut from harness `main` (`starci pkg branch`); the app takes the
  * packages from there (`starci deps source --local --from <worktree>/packages`); and the editor records the branch for

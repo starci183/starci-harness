@@ -118,7 +118,7 @@ export const ensureWorkflowWorktree = async (root: string, workflowId: string): 
 }
 
 /** Where a workflow's worktree is and how it came to be: the branch the harness made it on, whether this call created it. */
-interface WorktreeMade {
+export interface WorktreeMade {
     readonly path: string
     readonly branch: string | null
     readonly created: boolean
@@ -134,10 +134,13 @@ const namedWorktree = (root: string, workflowId: string, given: string): Worktre
     return { path, branch: null, created: false }
 }
 
-/** The harness's own worktree of a workflow, `<project state>/worktrees/<workflow>` on branch `starci/<workflow>`, added when missing. */
-const harnessWorktree = async (root: string, workflowId: string): Promise<WorktreeMade> => {
-    const path = join(projectDir(root), "worktrees", workflowId)
-    const branch = `starci/${workflowId}`
+/**
+ * The harness's own worktree of a workflow or a Supervisor's `[Worker]`, `<project state>/worktrees/<name>` on branch
+ * `starci/<name>`, added from HEAD when missing.
+ */
+export const harnessWorktree = async (root: string, name: string): Promise<WorktreeMade> => {
+    const path = join(projectDir(root), "worktrees", name)
+    const branch = `starci/${name}`
     if (existsSync(path)) return { path, branch, created: false }
     mkdirSync(dirname(path), { recursive: true })
     const args = (await refExists(root, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"]

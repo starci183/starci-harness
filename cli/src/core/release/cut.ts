@@ -36,7 +36,7 @@ export const releaseCutVerb = defineVerb({
     summary: "tag a commit already on the remote main as v<version> with its CHANGELOG notes and push the tag alone; it runs no suite and waits for a green CI when policy requires it",
     editions: ["lite", "full"],
     effect: "remote",
-    roles: ["owner", "release"],
+    roles: ["owner", "release", "debug"],
     schema: "starci/release-cut@1",
     flags: {
         package: { kind: "string", summary: "the package whose version is released (default: the root package, or the only package)" },
