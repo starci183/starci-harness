@@ -1,7 +1,7 @@
 {
   "name": "@starci/ai-router",
-  "version": "0.2.1",
-  "description": "A NestJS module that routes OpenAI-compatible calls across a pool of keys, models and providers: AiRouterModule.register and an injectable AiRouterService for chat, stream and embeddings, with health-aware selection, circuit breakers, rate-limit awareness, retries onto another key, model fallback and redacted telemetry.",
+  "version": "0.3.0",
+  "description": "A router for OpenAI-compatible calls across a pool of keys, models and providers: an OpenAI-compatible gateway with virtual keys, quotas and usage (the ai-router bin), a NestJS module (AiRouterModule, AiRouterService, AiRouterGatewayModule), and createRouter for plain Node, with health-aware selection, circuit breakers, rate-limit awareness, failover, model fallback and redacted telemetry.",
   "keywords": [
     "ai",
     "llm",
@@ -14,7 +14,11 @@
     "circuit-breaker",
     "rate-limit",
     "streaming",
-    "nestjs"
+    "nestjs",
+    "gateway",
+    "proxy",
+    "virtual-keys",
+    "langchain"
   ],
   "license": "MIT",
   "author": "starci183",
@@ -35,6 +39,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./gateway": {
+      "types": "./dist/gateway/index.d.ts",
+      "default": "./dist/gateway/index.js"
+    },
+    "./cli": {
+      "types": "./dist/gateway/cli.d.ts",
+      "default": "./dist/gateway/cli.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
@@ -79,5 +91,19 @@
     "rxjs": "7.8.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": "true"
+    },
+    "@nestjs/core": {
+      "optional": "true"
+    },
+    "reflect-metadata": {
+      "optional": "true"
+    }
   }
 }

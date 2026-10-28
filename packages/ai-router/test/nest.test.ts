@@ -4,6 +4,8 @@ import { Module } from "@nestjs/common"
 import type { DynamicModule } from "@nestjs/common"
 import { Test } from "@nestjs/testing"
 import type { TestingModule } from "@nestjs/testing"
+import * as cli from "../src/gateway/cli.ts"
+import * as gateway from "../src/gateway/index.ts"
 import * as root from "../src/index.ts"
 import { AI_ROUTER, AiRouterError, AiRouterModule, AiRouterService, getAiRouterServiceToken, getAiRouterToken, InjectAiRouter, InjectAiRouterService } from "../src/index.ts"
 import type { AiRouter, AiRouterModuleOptions, PoolConfig, RouterEvents } from "../src/index.ts"
@@ -245,9 +247,18 @@ describe("AiRouterTestingModule", () => {
 })
 
 describe("the package entries", () => {
-    test("the root exports the Nest API and nothing of the engine", () => {
-        const names = ["AI_ROUTER", "AiRouterError", "AiRouterModule", "AiRouterService", "InjectAiRouter", "InjectAiRouterService", "getAiRouterServiceToken", "getAiRouterToken"]
-        assert.deepEqual(Object.keys(root).sort(), names.sort())
+    test("the gateway entry exports the Nest-free router, gateway and key stores", () => {
+        const names = ["AiRouterError", "KEY_STORE_SCHEMA", "KeyAdmin", "KeyAdminError", "MemoryKeyStore", "createGateway", "createRouter", "loadGatewayConfig", "openKeyStore", "openSqliteKeyStore", "parseGatewayConfig", "serveGateway"]
+        assert.deepEqual(Object.keys(gateway).sort(), names.sort())
+    })
+
+    test("the cli entry exports the command runner only", () => {
+        assert.deepEqual(Object.keys(cli), ["main"])
+    })
+
+    test("the root exports the Nest API plus everything of the gateway entry", () => {
+        const nest = ["AI_ROUTER", "AI_ROUTER_GATEWAY", "AiRouterGatewayModule", "AiRouterModule", "AiRouterService", "InjectAiRouter", "InjectAiRouterGateway", "InjectAiRouterService", "getAiRouterGatewayToken", "getAiRouterServiceToken", "getAiRouterToken"]
+        assert.deepEqual(Object.keys(root).sort(), [...nest, ...Object.keys(gateway)].sort())
     })
 
     test("the testing entry exports the fake provider and the testing module", () => {
