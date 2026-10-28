@@ -347,13 +347,17 @@ interface Undecided {
     readonly what: string
 }
 
+/** A non-empty ledger text, else null. */
+const textOrNull = (value: unknown): string | null => (typeof value === "string" && value !== "" ? value : null)
+
 /** The later of two ledger times. */
 const later = (a: string, b: string): string => (a > b ? a : b)
 
 /**
  * What a workflow waits on its Kernel for: each open Kernel decision (since it was raised), and each failed or returned task with
  * no open decision whose last Kernel decision was answered without moving it (since that answer, or the task's last change), unless
- * the escalation that answer filed is still open with the Supervisor: that wait is the owner's or Debug's, ticketed already.
+ * the escalation that answer filed is still open with the Supervisor (that wait is the owner's or Debug's, ticketed already) or
+ * it never had a Kernel decision (parked on a shared need).
  */
 const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
     const open = openDecisions(db, "kernel", workflowId)
@@ -362,17 +366,18 @@ const undecided = (db: DatabaseSync, workflowId: string): Undecided[] => {
         const task = view.task
         if (task === null || (view.state !== "failed" && view.state !== "returned") || subjects.has(task.id)) return []
         const last = db.prepare("SELECT id, kind, raised_at, answered_at, answered_by FROM decisions WHERE scope = 'kernel' AND workflow_id = ? AND subject = ? ORDER BY raised_at DESC, id DESC LIMIT 1").get(workflowId, task.id)
-        const answeredBy = last === undefined ? null : textOrNull(last.answered_by)
+        // A task with no Kernel decision at all is parked (on a shared need, whose router decides): not the Kernel's to wake on.
+        if (last === undefined) return []
+        const answeredBy = textOrNull(last.answered_by)
         if (answeredBy !== null && db.prepare("SELECT 1 FROM decisions WHERE scope = 'supervisor' AND workflow_id = ? AND subject = ? AND answered_at IS NULL").get(workflowId, answeredBy) !== undefined) return []
         const changed = String(db.prepare("SELECT updated_at FROM tasks WHERE id = ?").get(task.id)?.updated_at ?? "")
-        const decided = last === undefined ? "" : (textOrNull(last.answered_at) ?? String(last.raised_at))
-        const held = last === undefined ? "no decision" : `${String(last.id)} (${String(last.kind)}) answered by ${answeredBy ?? "-"}`
+        const decided = textOrNull(last.answered_at) ?? String(last.raised_at)
+        const held = `${String(last.id)} (${String(last.kind)}) answered by ${answeredBy ?? "-"}`
         return [{ item: `${view.key}:${task.id}`, clock: later(changed, decided), what: `${view.key} (task ${task.id} ${view.state}, ${held})` }]
     })
     return [...open.map((decision) => ({ item: decision.id, clock: decision.raisedAt, what: `${decision.id} (${decision.kind} on ${decision.subject})` })), ...stuck]
 }
 
-const textOrNull = (value: unknown): string | null => (typeof value === "string" && value !== "" ? value : null)
 
 /**
  * Work nobody decides: a dispatching workflow whose Kernel, alive, leaves an item of `undecided` past stall.decisionIdleMinutes
