@@ -56,7 +56,7 @@ src/
 every path. A project ledger (`runtime.sqlite`) holds `workflows`; `plan_nodes`, `edges` and `graph_versions` (each
 graph version's nodes with contract hash, node hash, routing hints and retry round, and why the version was recorded);
 `tasks`; `attempts` (one per dispatch, with the router's pick record); `results` (immutable, one per attempt);
-`check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees a path);
+`check_runs`; `leases` (path prefixes held until the task ends, with a fencing token; a due time never frees the path of a task that may still write, but a task returned to the Kernel (blocked, mismatch, awaiting the owner) loses its lease once it is due: `workflow step`, `supervisor tick` and any lease request drop it and record `leases-expired`, and the amend leases the paths again);
 `seats`; `messages`; `events` (append-only); `prior_work`, which indexes by workflow, plan key, contract hash,
 attempt, kind and sha256 every attempt's work (the preserved patch of a cancelled or red one, the committed diff of a
 settled one) kept in the project's never-pruned `prior/<sha256>.patch` store (`harness/prior.ts`); and `meta`. The host's `machine.sqlite` holds only host-wide state:
@@ -82,8 +82,8 @@ verify or result arriving later is refused `TASK_INTENT_HELD`; a cancel refused 
 again), `repair` when a preserve saved the work but could not put every path back (a held file on Windows); a task
 with an intent keeps its leases, and `task verify --recover` finishes the reset from the preserve's `manifest.json`.
 Each task records its checkout (its workflow's worktree, else the one it was sent from; a retry keeps its previous
-task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases fold case when
-the repository's `core.ignorecase` is true; the fence is the lease row read beside the status swap, and a grant's
+task's), and verify, cancel and a failed result act there whatever checkout the caller is in. Leases compare paths
+without case on every host, since a product is also checked out where `Docs/A.md` and `docs/a.md` are one file; the fence is the lease row read beside the status swap, and a grant's
 token only names the grant.
 
 **Settling.** `task verify` first stops the task's worker seats (refused `VERIFY_WORKER_LIVE`, nothing changed, when

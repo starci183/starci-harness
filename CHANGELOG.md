@@ -6,6 +6,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+- **A returned task no longer holds its lease past its due time.** A task that came back to the Kernel (blocked, mismatch,
+  awaiting the owner) has no worker left to write, so once its lease is due `workflow step`, `supervisor tick` and every
+  lease request drop it and record `leases-expired`; a task that may still write keeps its lease however overdue. Bench:
+  `lease-returned-overdue-released`, `lease-live-overdue-kept`.
+
 ## [1.1.0-alpha.4] - 2026-10-28
 
 Runs `@starci/hfs` 4.9.4 (an exact dependency).

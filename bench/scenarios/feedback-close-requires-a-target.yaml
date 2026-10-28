@@ -3,6 +3,7 @@ id: feedback-close-requires-a-target
 group: owner
 title: owner feedback is recorded verbatim in the host ledger, closes only on a target that resolves, and goes red when it stays open too long
 inject: >-
+  a fixture checkout (STARCI_FEEDBACK_REPO, the scratch repository) with one commit under packages/grammar, cli and app each;
   owner feedback added, then closed on targets that do not resolve (a sha of no commit, a commit outside the kind's folder, a rule
   that does not exist, an anchor and a scenario that do not exist, a kind that is no kind), then on one target of each kind that
   does; an item given weeks ago left open
@@ -22,7 +23,27 @@ pass:
   - the scratch repository stays clean
   - no human intervention beyond the injected fault
 automation: automated
+env:
+  STARCI_FEEDBACK_REPO: ${repo}
 steps:
+  - name: a grammar commit in the fixture checkout
+    write: { path: packages/grammar/src/status-dot.ts, content: "export const statusDot = \"dot\"\n" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "grammar: StatusDot anatomy"]
+  - git: [rev-parse, HEAD]
+    save: { grammarCommit: stdout }
+  - name: a cli commit
+    write: { path: cli/src/main.ts, content: "export const main = 1\n" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "cli: entry"]
+  - git: [rev-parse, HEAD]
+    save: { cliCommit: stdout }
+  - name: an app commit
+    write: { path: app/src/chip.tsx, content: "export const chip = \"Active\"\n" }
+  - git: [add, -A]
+  - git: [commit, -q, -m, "app: chip status words"]
+  - git: [rev-parse, HEAD]
+    save: { appCommit: stdout }
   - name: record one feedback
     starci: [feedback, add, "Chip label must start uppercase", --on, "2026-10-27"]
     expect: { exit: 0, contains: '"id": "fb-2026-10-27-1"' }
@@ -44,7 +65,7 @@ steps:
     starci: [feedback, close, fb-2026-10-27-1, --kind, grammar, --target, "0000000deadbeef"]
     expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
   - name: an app commit given as a grammar commit touches nothing under packages/grammar
-    starci: [feedback, close, fb-2026-10-27-1, --kind, grammar, --target, cb0c8c65]
+    starci: [feedback, close, fb-2026-10-27-1, --kind, grammar, --target, "${appCommit}"]
     expect: { exit: 1, code: FEEDBACK_TARGET_UNRESOLVED }
   - name: a rule that does not exist
     starci: [feedback, close, fb-2026-10-27-1, --kind, rule, --target, R99999]
@@ -76,17 +97,17 @@ steps:
   - starci: [feedback, add, "grammar target", --on, "2026-10-27"]
     expect: { exit: 0, contains: '"id": "fb-2026-10-27-2"' }
   - name: a grammar commit touching packages/grammar closes it
-    starci: [feedback, close, fb-2026-10-27-2, --kind, grammar, --target, 0032ad8e]
+    starci: [feedback, close, fb-2026-10-27-2, --kind, grammar, --target, "${grammarCommit}"]
     expect: { exit: 0, contains: "under packages/grammar/" }
   - starci: [feedback, add, "cli target", --on, "2026-10-27"]
     expect: { exit: 0 }
   - name: a cli commit touching cli/ closes it
-    starci: [feedback, close, fb-2026-10-27-3, --kind, cli, --target, 496fdfe5]
+    starci: [feedback, close, fb-2026-10-27-3, --kind, cli, --target, "${cliCommit}"]
     expect: { exit: 0, contains: "under cli/" }
   - starci: [feedback, add, "app target", --on, "2026-10-27"]
     expect: { exit: 0 }
   - name: an app commit touching app/ closes it
-    starci: [feedback, close, fb-2026-10-27-4, --kind, app, --target, cb0c8c65]
+    starci: [feedback, close, fb-2026-10-27-4, --kind, app, --target, "${appCommit}"]
     expect: { exit: 0, contains: "under app/" }
   - starci: [feedback, add, "context target", --on, "2026-10-27"]
     expect: { exit: 0 }

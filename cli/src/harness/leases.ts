@@ -10,8 +10,10 @@ import { recordEvent, TERMINAL_STATUSES } from "./tasks.js"
 export const LEASE_GRACE_MINUTES = 15
 
 /**
- * One path lease: a task holds a repository path (and everything below it) until the task ends. `expiresAt` only says when
- * the task was due (`overdue` once passed); time alone never frees a path, because a task that is still running may still write.
+ * One path lease: a task holds a repository path (and everything below it) until the task ends. `expiresAt` says when the
+ * task was due (`overdue` once passed). Time alone never frees the path of a task that may still write (queued, running,
+ * verifying, effect_unknown); a task returned to the Kernel has no worker left to write, so its lease lapses at `expiresAt`
+ * (`expireLeases`) and the next `workflow step`, `supervisor tick` or lease request frees it.
  */
 export interface LeaseRow {
     readonly path: string
@@ -37,11 +39,12 @@ const TERMINAL_SQL = TERMINAL_STATUSES.map((status) => `'${status}'`).join(", ")
 export const isTerminal = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status)
 
 /**
- * Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment; `.` is the
- * whole repository. With `foldCase` (a repository whose core.ignorecase is true) `Src/A` and `src/a` are one path.
+ * Two leased paths overlap when one equals the other or is a directory prefix of it, compared segment by segment and without
+ * case; `.` is the whole repository. `Src/A` and `src/a` are one path on every host: a product is checked out on Windows and
+ * macOS too, where they are one file, so two tasks never hold them apart even where the filesystem would.
  */
-export const pathsOverlap = (left: string, right: string, foldCase = false): boolean => {
-    const spell = (path: string): string[] => (foldCase ? normaliseRepoPath(path).toLowerCase() : normaliseRepoPath(path)).split("/")
+export const pathsOverlap = (left: string, right: string): boolean => {
+    const spell = (path: string): string[] => normaliseRepoPath(path).toLowerCase().split("/")
     const a = spell(left)
     const b = spell(right)
     if (a[0] === "." || b[0] === ".") return true
@@ -69,9 +72,6 @@ export const inTransaction = <T>(db: DatabaseSync, work: () => T): T => {
 
 const text = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value))
 
-/** True when the project's repository folds case (core.ignorecase, read once per ledger by openLedger). */
-export const leasesFoldCase = (db: DatabaseSync): boolean => db.prepare("SELECT value FROM meta WHERE key = 'ignorecase'").get()?.value === "true"
-
 // A task that ended but still holds an intent (a reset left to repair) keeps its paths: its tree is not back to HEAD yet.
 const toLease = (row: Record<string, unknown>, at: string): LeaseRow => {
     const taskStatus = text(row.status) as TaskStatus
@@ -88,6 +88,41 @@ export const sweepLeases = (db: DatabaseSync): number => {
     return count
 }
 
+/** True for a task returned to the Kernel: awaiting the owner, or reported with a result that is not done (blocked or mismatch). Its worker has nothing left to do. */
+const RETURNED_SQL =
+    "(tasks.status = 'awaiting_owner' OR (tasks.status = 'reported' AND COALESCE((SELECT results.status FROM attempts JOIN results ON results.attempt_id = attempts.id WHERE attempts.task_id = tasks.id ORDER BY attempts.seq DESC LIMIT 1), 'done') <> 'done'))"
+
+/** One task whose leases `expireLeases` dropped. */
+export interface ExpiredLeases {
+    readonly taskId: string
+    readonly paths: readonly string[]
+    readonly expiresAt: string
+}
+
+/**
+ * Drops the leases of tasks returned to the Kernel once they are past their due time, and records `leases-expired` per task.
+ * A live lease of a task that may still write (queued, running, verifying, effect_unknown, or reported done and awaiting its
+ * verify) is never touched, nor is a task holding an intent; the Kernel's amend re-leases the paths when it retries the node.
+ */
+export const expireLeases = (db: DatabaseSync): ExpiredLeases[] =>
+    inTransaction(db, () => {
+        const at = now()
+        const rows = db.prepare(`SELECT leases.path, leases.task_id, leases.expires_at FROM leases JOIN tasks ON tasks.id = leases.task_id WHERE tasks.intent IS NULL AND leases.expires_at <= ? AND ${RETURNED_SQL} ORDER BY leases.task_id, leases.path`).all(at)
+        const byTask = new Map<string, { paths: string[]; expiresAt: string }>()
+        for (const row of rows) {
+            const entry = byTask.get(text(row.task_id)) ?? { paths: [], expiresAt: text(row.expires_at) }
+            entry.paths.push(text(row.path))
+            byTask.set(text(row.task_id), entry)
+        }
+        const expired: ExpiredLeases[] = []
+        for (const [taskId, entry] of byTask) {
+            for (const path of entry.paths) db.prepare("DELETE FROM leases WHERE task_id = ? AND path = ?").run(taskId, path)
+            recordEvent(db, "leases-expired", taskId, { paths: entry.paths, expiresAt: entry.expiresAt })
+            expired.push({ taskId, paths: entry.paths, expiresAt: entry.expiresAt })
+        }
+        return expired
+    })
+
 /** Every lease row, or those of one task, with whether it still holds; a pure read that sweeps nothing. */
 export const listLeases = (db: DatabaseSync, taskId?: string): LeaseRow[] => {
     const at = now()
@@ -103,16 +138,16 @@ export const leasePaths = (task: TaskRow): string[] => [...new Set(task.contract
 
 /**
  * Takes one lease per allowPath of the task, all or nothing: a path that overlaps a lease of another live task
- * refuses the whole grant with LEASE_CONFLICT, however overdue that lease is. Leases of ended tasks are swept first.
+ * refuses the whole grant with LEASE_CONFLICT, however overdue that lease is, unless its task was returned to the Kernel. Leases of ended tasks are swept and overdue leases of returned tasks expire first.
  */
 export const acquireLeases = (db: DatabaseSync, task: TaskRow): LeaseGrant =>
     inTransaction(db, () => {
         sweepLeases(db)
+        expireLeases(db)
         const paths = leasePaths(task)
         const held = listLeases(db).filter((lease) => lease.taskId !== task.id && lease.live)
-        const fold = leasesFoldCase(db)
         for (const path of paths) {
-            const holder = held.find((lease) => pathsOverlap(lease.path, path, fold))
+            const holder = held.find((lease) => pathsOverlap(lease.path, path))
             if (holder !== undefined) {
                 throw new Refusal("LEASE_CONFLICT", `${path} overlaps ${holder.path}, leased by task ${holder.taskId} (${holder.taskStatus}, due ${holder.expiresAt}) until that task ends`)
             }

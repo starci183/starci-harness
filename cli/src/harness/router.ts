@@ -504,11 +504,13 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     const probe = funded.find((candidate) => candidate.circuit.open && candidate.circuit.probe === "due")
     record.probe = probe === undefined ? null : `${probe.provider} (${probe.circuit.failureKind ?? "?"}, ${String(probe.circuit.failedProbes)} failed probes)`
 
-    // 5. Score, exploring by Thompson sampling within its share; 6. balance.
-    const ordered = scoreStep(stage, input, facts, funded, demoted)
-    const balanced = probe === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
+    // 5. Score, exploring by Thompson sampling within its share; 6. balance. A coordinator seat takes its tier's members in
+    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when Claude is out), so it
+    // is neither scored, explored nor balanced.
+    const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : [...funded.filter((candidate) => !demoted.includes(candidate)), ...demoted]
+    const balanced = probe === undefined && input.coordinator === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
     const chosen = probe ?? balanced ?? ordered[0]
-    let by = record.explore?.exploring === true ? "explore" : "score"
+    let by = input.coordinator !== undefined ? "order" : record.explore?.exploring === true ? "explore" : "score"
     if (balanced !== undefined) by = "balance"
     if (probe !== undefined) by = "probe"
     if (chosen === undefined) return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${record.tier} is left`, record)

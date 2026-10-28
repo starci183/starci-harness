@@ -53,9 +53,6 @@ export const samePath = (left: string, right: string): boolean => {
     return spell(left) === spell(right)
 }
 
-/** True when git compares paths of this repository without case (core.ignorecase), as on Windows and macOS by default. */
-export const ignoresCase = async (cwd: string): Promise<boolean> => (await captureGit(["config", "--type=bool", "core.ignorecase"], cwd)).stdout === "true"
-
 /** The newest commit reachable from `head` (after `since`, when given) whose message is exactly `message`; undefined when none. */
 export const commitWithMessage = async (cwd: string, head: string, message: string, since?: string): Promise<string | undefined> => {
     const range = since === undefined ? head : `${since}..${head}`

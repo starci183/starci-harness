@@ -10,7 +10,9 @@ difficultyTier: {easy: low, medium: medium, hard: high, insane: frontier}
 # A label named here takes that tier whatever its difficulty.
 labelTiers: {image: high}
 # Coordinator seats use these tiers and the same pool, provider, quota, qualification and scoring rules as Ops.
-coordinators: {supervisor: high, kernel: high}
+# Owner ruling 2026-10-28: Supervisors and Kernels run on Claude Opus. The `coordinator` tier is taken in its listed order
+# (never scored, explored or balanced), so Codex takes a coordinator seat only while Claude is filtered out (circuit, quota).
+coordinators: {supervisor: coordinator, kernel: coordinator}
 # Lowest first: a second contract-red in a task's lineage raises the tier one step along this order.
 tierOrder: [low, medium, high, frontier]
 escalateAfterReds: 2
@@ -20,6 +22,9 @@ escalateAfterReds: 2
 # SWE-2 Max, Codex GPT-6 Luna); hard work (high, frontier) runs its strongest (Claude Opus, Codex GPT-6.1 Sol). A Claude or
 # Codex member's effort follows its tier (low, medium, high, max at frontier); the launch passes it to Orca with the model.
 tiers:
+  coordinator:
+    - {agent: claude, model: claude-opus-5-5, effort: high}
+    - {agent: codex, model: gpt-6.1-sol, effort: high}
   frontier:
     - {agent: claude, model: claude-opus-5-5, effort: max}
     - {agent: codex, model: gpt-6.1-sol, effort: max}
