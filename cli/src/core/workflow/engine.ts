@@ -232,7 +232,13 @@ const closeSettledSeats = async (root: string, snapshot: Snapshot): Promise<Step
  * net behind the removal a verify, a cancel and a failed result do at once, for a task a fence, a stall or a crash ended.
  */
 const worktreeSweepActions = async (root: string, workflowId: string): Promise<StepAction[]> =>
-    (await sweepOpWorktrees(root, workflowId)).map((removal) => ({ key: null, task: removal.task, action: removal.removed ? "released" : "problem", detail: `worktree ${removal.path} ${removal.removed ? "removed" : "left"}: ${removal.detail}` }))
+    (await sweepOpWorktrees(root, workflowId)).map((removal) => ({ key: null, task: removal.task, action: removalAction(removal), detail: `worktree ${removal.path} ${removal.removed ? "removed" : "left"}: ${removal.detail}` }))
+
+/** A removed worktree is released; one left busy waits for worktree gc's retry (no problem of the step); any other left one is a problem. */
+const removalAction = (removal: { readonly removed: boolean; readonly busy?: boolean }): StepAction["action"] => {
+    if (removal.removed) return "released"
+    return removal.busy === true ? "wait" : "problem"
+}
 
 /**
  * Once a workflow is done or stopped (and its Kernel closed), the worktree collector removes its worktree and any Op worktree
@@ -243,7 +249,7 @@ const endedWorktreeActions = async (root: string, snapshot: Snapshot): Promise<S
     const entries = await worktreeGc(root, false).catch((error: unknown) => [{ path: "-", removed: false, due: true, kind: "workflow", reason: asRefusal(error).message, preserved: null }])
     return entries
         .filter((entry) => entry.due && entry.kind !== "package")
-        .map((entry) => ({ key: null, task: null, action: entry.removed ? "released" : "problem", detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`}` }))
+        .map((entry) => ({ key: null, task: null, action: removalAction(entry), detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`}` }))
 }
 
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */

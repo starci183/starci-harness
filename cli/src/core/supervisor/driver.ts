@@ -766,7 +766,7 @@ const questionOf = (decision: Decision): string => {
 /** The tick's worktree collector of one repository (harness/worktree-gc.ts), as lines: each worktree it removed or could not. */
 const gcLines = async (root: string): Promise<string[]> => {
     try {
-        return (await worktreeGc(root, false)).filter((entry) => entry.due).map((entry) => `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`}`)
+        return (await worktreeGc(root, false)).filter((entry) => entry.due).map((entry) => `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : entry.busy === true ? "left busy" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`}`)
     } catch (error: unknown) {
         return [`worktree gc of ${root} not run (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`]
     }

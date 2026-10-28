@@ -1,17 +1,18 @@
-import { existsSync, mkdirSync, symlinkSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, rmdirSync, rmSync, symlinkSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
-import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha } from "../shared/git.js"
+import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha, samePath } from "../shared/git.js"
 import { readRecord } from "../core/deps/packages.js"
-import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkInstallLinks } from "./install-cache.js"
+import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkCheckoutLinks, unlinkInstallLinks } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
 import { thisVerifier, withSettleLock } from "./settle.js"
 import { getTask, isTerminal, lastEvent, listTasks, recordEvent, recordTaskWorktree } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
-import { orcaBinarySync, worktreeRemove } from "./orca/client.js"
+import { closeWorktreeTerminals, orcaBinarySync, worktreeRemove } from "./orca/client.js"
+import { busyDue, busyRecordOf, clearBusy, isBusyFailure, recordBusy } from "./worktree-busy.js"
 import { getWorkflow } from "./workflow.js"
 import { materialiseHooks } from "./worktree.js"
 
@@ -97,21 +98,107 @@ const linkInstall = (target: string, worktree: string): string[] => {
     })
 }
 
+/** How one worktree folder's removal ended: removed (or gone already), or left with what refused it and whether that reads as busy. */
+export interface FolderRemoval {
+    readonly removed: boolean
+    readonly busy: boolean
+    readonly detail: string
+    /** The Orca terminals closed because their worktree was this folder. */
+    readonly terminals: readonly string[]
+}
+
+/** How long a removal waits after closing a worktree's terminals, for their shells to exit. */
+const TERMINAL_EXIT_MS = 2_000
+
+const pause = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+
+const reason = (error: unknown): string => (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""
+
+/** True when git still lists `path` as a worktree of `repo`. */
+const gitLists = async (repo: string, path: string): Promise<boolean> => {
+    const listed = await captureGit(["worktree", "list", "--porcelain"], repo)
+    return [...listed.stdout.matchAll(/^worktree (.+)$/gm)].some((match) => samePath((match[1] ?? "").trim(), path))
+}
+
 /**
- * Removes one harness worktree, install links first (link only). An orca run's worktree goes through `orca worktree rm`, so
- * Orca's worktree list and git stay in step; git removes it when Orca is not used, cannot be reached, or left the folder.
- * Undefined when it is gone, else git's complaint.
+ * Removes one harness worktree. The Orca terminals whose worktree it is are closed first (any terminal, not only a seat's: a
+ * process working in the folder keeps Windows from removing it, and a removed worktree's terminals mean nothing), then its
+ * install links are unlinked (link only). An orca run's worktree goes through `orca worktree rm`, so Orca's worktree list and
+ * git stay in step; git removes it when Orca is not used, cannot be reached, or left the folder. A folder git emptied and no
+ * longer lists (its rmdir was refused) is removed as the one empty folder it is. A folder git no longer lists that holds no
+ * `.git` but still holds files (one Windows would not let git delete, such as a file named `nul`) is deleted with every link
+ * in it unlinked first, never entered, when this call deregistered it or `remnant` says it is a harness folder left half
+ * removed.
  */
-export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: boolean, links: readonly string[] = []): Promise<string | undefined> => {
-    if (!existsSync(path)) return undefined
+export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: boolean, links: readonly string[] = [], remnant = false): Promise<FolderRemoval> => {
+    if (!existsSync(path)) return { removed: true, busy: false, detail: "gone already", terminals: [] }
+    const binary = orcaBinarySync()
+    const terminals = binary === undefined ? [] : await closeWorktreeTerminals(binary, path, repo).catch(() => [])
+    // A closed tab's shell takes a moment to exit and let go of its working folder.
+    if (terminals.length > 0) await pause(TERMINAL_EXIT_MS)
     unlinkInstallLinks(path, links)
-    if (viaOrca) {
-        const binary = orcaBinarySync()
-        if (binary !== undefined) await worktreeRemove(binary, path, repo).catch(() => undefined)
+    const refusals: string[] = []
+    const listedAtStart = await gitLists(repo, path)
+    if (viaOrca && binary !== undefined) await worktreeRemove(binary, path, repo).catch((error: unknown) => refusals.push(`orca: ${reason(error)}`))
+    if (existsSync(path) && (await gitLists(repo, path))) {
+        const removed = await captureGit(["worktree", "remove", "--force", path], repo)
+        if (removed.exitCode !== 0) refusals.push(`git: ${headline(removed.stderr) || `exit ${String(removed.exitCode)}`}`)
     }
-    if (!existsSync(path)) return undefined
-    const removed = await captureGit(["worktree", "remove", "--force", path], repo)
-    return removed.exitCode !== 0 && existsSync(path) ? headline(removed.stderr) || `exit ${String(removed.exitCode)}` : undefined
+    if (existsSync(path) && !(await gitLists(repo, path))) {
+        try {
+            if (readdirSync(path).length === 0) rmdirSync(path)
+            else if ((remnant || listedAtStart) && !existsSync(join(path, ".git"))) {
+                unlinkCheckoutLinks(path)
+                rmSync(path, { recursive: true, force: true })
+            } else refusals.push("git no longer lists it, and the folder still holds files")
+        } catch (error: unknown) {
+            refusals.push(`rmdir: ${reason(error)}`)
+        }
+    }
+    if (!existsSync(path)) return { removed: true, busy: false, detail: "removed", terminals }
+    const detail = refusals.join("; ") || "the folder stayed"
+    return { removed: false, busy: isBusyFailure(detail), detail, terminals }
+}
+
+/** One harness worktree to remove under the busy record: its folder, the repository it is removed from, its owner and kind. */
+export interface TrackedWorktree {
+    readonly path: string
+    readonly repo: string
+    readonly owner: string | null
+    readonly kind: string
+    readonly viaOrca: boolean
+    readonly links?: readonly string[]
+    /** True for a harness folder git no longer lists that a removal left half done: its remaining files may be deleted. */
+    readonly remnant?: boolean
+}
+
+/** How a tracked removal ended: removed, left (busy, retried by `worktree gc` from `retryAt`), or left for another reason. */
+export interface TrackedRemoval {
+    readonly removed: boolean
+    readonly busy: boolean
+    readonly detail: string
+    readonly retryAt: string | null
+}
+
+/**
+ * Removes a harness worktree (removeWorktreeFolder) with its busy record in the ledger of `root` (harness/worktree-busy.ts): a
+ * folder whose earlier removal was refused as busy is not tried again before its backoff runs out; a busy refusal now, or any
+ * refusal of a folder already busy, records the next attempt; a removal that succeeds ends the record. Never throws for a
+ * refused removal, so no settle waits on or fails over a held folder.
+ */
+export const removeTracked = async (root: string, worktree: TrackedWorktree): Promise<TrackedRemoval> => {
+    const pending = withLedger(root, (db) => busyRecordOf(db, worktree.path))
+    if (pending !== undefined && !busyDue(pending) && existsSync(worktree.path)) {
+        return { removed: false, busy: true, detail: `left busy (attempt ${String(pending.attempt)}: ${pending.detail}); worktree gc retries it from ${pending.nextAt}`, retryAt: pending.nextAt }
+    }
+    const removal = await removeWorktreeFolder(worktree.repo, worktree.path, worktree.viaOrca, worktree.links ?? [], worktree.remnant === true || pending !== undefined)
+    if (removal.removed) {
+        if (pending !== undefined) withLedger(root, (db) => { clearBusy(db, worktree.path, removal.detail) })
+        return { removed: true, busy: false, detail: removal.terminals.length === 0 ? removal.detail : `${removal.detail} after closing its terminals ${removal.terminals.join(", ")}`, retryAt: null }
+    }
+    if (!removal.busy && pending === undefined) return { removed: false, busy: false, detail: removal.detail, retryAt: null }
+    const record = await recordBusy(root, { path: worktree.path, repo: worktree.repo, owner: worktree.owner, kind: worktree.kind, detail: removal.detail, terminals: removal.terminals })
+    return { removed: false, busy: true, detail: `left busy (attempt ${String(record.attempt)}: ${removal.detail}); worktree gc retries it from ${record.nextAt}`, retryAt: record.nextAt }
 }
 
 /** How long a start waits for another process making the same task's Op worktree. */
@@ -212,13 +299,15 @@ export interface WorktreeRemoval {
     readonly removed: boolean
     readonly branch: "deleted" | "kept" | "gone"
     readonly detail: string
+    /** True when the folder was left busy for `worktree gc` to retry (harness/worktree-busy.ts). */
+    readonly busy?: boolean
 }
 
 /**
- * Removes a settled task's Op worktree by code: its install links are unlinked first (plain unlinks, never a recursive delete
- * through a link), then `git worktree remove --force`, then its branch is deleted once its tip is on the target branch (it
- * landed, or carries nothing); a branch holding commits that never landed is kept and named. Undefined when the task has no
- * Op worktree or it was removed already.
+ * Removes a settled task's Op worktree by code (removeTracked: its Orca terminals closed, its install links unlinked as links,
+ * then Orca and git), then deletes its branch once its tip is on the target branch (it landed, or carries nothing); a branch
+ * holding commits that never landed is kept and named. A folder the host holds is left busy for `worktree gc` to retry and never
+ * fails the caller. Undefined when the task has no Op worktree or it was removed already.
  */
 export const removeOpWorktree = async (root: string, taskId: string): Promise<WorktreeRemoval | undefined> => {
     const { made, gone, orca } = withLedger(root, (db) => {
@@ -227,9 +316,10 @@ export const removeOpWorktree = async (root: string, taskId: string): Promise<Wo
         return { made: opWorktreeOf(db, taskId), gone: lastEvent(db, REMOVED_EVENT, taskId) !== undefined, orca: runner === "orca" }
     })
     if (made === undefined || gone) return undefined
-    const failed = await removeWorktreeFolder(made.target, made.path, orca, made.links)
-    if (failed !== undefined) {
-        const detail = `worktree remove failed (${failed}); the next workflow step tries again`
+    const removal = await removeTracked(root, { path: made.path, repo: made.target, owner: taskId, kind: "op", viaOrca: orca, links: made.links, remnant: true })
+    if (!removal.removed) {
+        if (removal.busy) return { task: taskId, path: made.path, removed: false, branch: "kept", detail: removal.detail, busy: true }
+        const detail = `worktree remove failed (${removal.detail}); the next workflow step tries again`
         withLedger(root, (db) => { recordEvent(db, "op-worktree-left", taskId, { path: made.path, detail }) })
         return { task: taskId, path: made.path, removed: false, branch: "kept", detail }
     }
@@ -257,7 +347,14 @@ export const sweepOpWorktrees = async (root: string, workflowId?: string): Promi
     const due = withLedger(root, (db) =>
         listTasks(db, workflowId)
             .filter((task) => isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null)
-            .filter((task) => opWorktreeOf(db, task.id) !== undefined && lastEvent(db, REMOVED_EVENT, task.id) === undefined)
+            .filter((task) => lastEvent(db, REMOVED_EVENT, task.id) === undefined)
+            .filter((task) => {
+                const made = opWorktreeOf(db, task.id)
+                if (made === undefined) return false
+                // A folder left busy waits for its backoff; worktree gc retries it then, so a step neither retries nor reports it.
+                const busy = busyRecordOf(db, made.path)
+                return busy === undefined || busyDue(busy)
+            })
             .map((task) => task.id),
     )
     const removed = await inOrder(due, (taskId) => removeOpWorktree(root, taskId))

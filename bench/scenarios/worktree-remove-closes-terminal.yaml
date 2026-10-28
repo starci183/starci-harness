@@ -1,0 +1,83 @@
+schema: starci/scenario@1
+id: worktree-remove-closes-terminal
+group: lifecycle
+title: "removing an Op worktree first closes every Orca terminal working in it, so the folder is not held"
+inject: >-
+  a plain shell terminal (not a seat) open in an inline task's Op worktree, its process working in the folder, when the task is
+  cancelled
+expect: >-
+  task cancel lists Orca's terminals, closes the tab of the one whose worktree is the Op worktree, and then removes the worktree;
+  nothing is left busy
+pass:
+  - the cancel succeeds
+  - the shell's terminal is closed through orca terminal close
+  - the Op worktree is gone right after the cancel
+  - no busy removal is recorded
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - write:
+      path: docs/base.md
+      content: "base\n"
+  - git: [add, -A]
+  - git: [commit, -q, -m, "bench: base"]
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: shell
+        goal: bench workflow shell
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths:
+              - docs/a.md
+            checks:
+              - preset: files-exist
+                args:
+                  files:
+                    - docs/a.md
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - name: start makes the inline task's Op worktree
+    starci: [workflow, start, shell]
+    save:
+      a: data.nodes.0.task.id
+  - name: a shell works in the Op worktree
+    serve:
+      stub: hold
+      cwd: ${project}/worktrees/shell.ops/${a}
+      as: shell
+  - name: Orca lists it as a plain terminal of that worktree
+    orca:
+      terminal:
+        handle: term-shell-1
+        live: true
+        title: Terminal 1
+        worktree: ${project}/worktrees/shell.ops/${a}
+        holder:
+          url: ${shell.url}
+          pid: ${shell.token}
+  - name: the cancel closes the shell and removes the worktree
+    starci: [task, cancel, "${a}", --reason, bench]
+  - assert:
+      orcaCalls:
+        command: terminal close
+        match:
+          terminal: "^term-shell-1$"
+        count: 1
+  - assert:
+      exists:
+        path: ${project}/worktrees/shell.ops/${a}
+        present: false
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'worktree-remove-busy'"
+        equals: [0]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT status FROM tasks WHERE id = '${a}'"
+        equals: [cancelled]

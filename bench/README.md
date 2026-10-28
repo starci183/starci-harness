@@ -54,7 +54,11 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
   outcome unknown, lost reply, a worker-start whose turn start went unobserved, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
-  (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not), mail a seat sent. No real Orca is ever launched.
+  (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not, the worktree `terminal list` names for it, and a served
+  `hold` stand-in as its process, which `terminal close` ends), mail a seat sent. No real Orca is ever launched.
+- **The folder holder** is `stub/hold-stub.mjs`, served by `serve: {stub: hold, cwd: <folder>}`: a process that keeps its
+  working folder from being removed, as a shell left open in a worktree does (its working directory on Windows, a read-only
+  parent elsewhere). It prints `stub hold: <url> token <pid>`; `POST <url>/__exit` or a SIGTERM lets go and ends it.
 - **The Telegram stand-in** is `stub/telegram-stub.mjs`, served by `serve: {stub: telegram}`: a fake Bot API on 127.0.0.1
   that accepts only the token it mints for the run (`${<as>.token}`) and answers getMe, getUpdates and sendMessage. A
   scenario points the CLI at it per step (`TELEGRAM_BOT_TOKEN` and `STARCI_TELEGRAM_API` in `env`), plays whoever writes to
