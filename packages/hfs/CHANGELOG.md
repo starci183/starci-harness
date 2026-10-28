@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: the app pre-push hook runs `node node_modules/starci-harness/dist/main.js deps check` after the bundled push gate (under `set -e`), so a push whose committed @starci pins npm cannot install, or whose local package copies run ahead of npm, is refused; RT_HOOK_SHAPE (R225) requires the call. Spec: `src/pre-push-hook.spec.mjs`.
+
 ## 4.9.5 - 2026-10-28
 
 - Added: the bundled rule catalog carries R324 (`FE_PAGE_TABS_OUTSIDE_HEADER`, `page-tabs-in-header`) and R325 (`FE_ROUTE_PAGE_OUTSIDE_PAGE`, `route-page-is-one-page`), both enforced by `@starci/eslint-grammar-core`, and their failure-code guidance.

@@ -366,7 +366,15 @@ export const terminalSend = async (binary: OrcaBinary, input: { readonly termina
     await callOrcaArgv(binary, orcaToolArgv("terminal", "send", { terminal: input.terminal, text: input.text, enter: true, "retry-request": input.retryRequest }), "orca terminal send", z.unknown(), cwd, ORCA_TIMEOUT_MS)
 }
 
-const terminalReadSchema = z.looseObject({ terminal: z.looseObject({ tail: z.array(z.string()) }) })
+/**
+ * `orca terminal send --enter --retry-request <id>`: a bare Enter, which submits whatever the agent's composer holds (a dispatch
+ * pasted whose Enter was lost). The request id makes a replay after a lost answer one Enter, never two.
+ */
+export const terminalSubmit = async (binary: OrcaBinary, input: { readonly terminal: string; readonly retryRequest: string }, cwd: string): Promise<void> => {
+    await callOrcaArgv(binary, orcaToolArgv("terminal", "send", { terminal: input.terminal, enter: true, "retry-request": input.retryRequest }), "orca terminal send", z.unknown(), cwd, ORCA_TIMEOUT_MS)
+}
+
+const terminalReadSchema =z.looseObject({ terminal: z.looseObject({ tail: z.array(z.string()) }) })
 
 /**
  * `orca terminal read --screen --limit <rows>`: the last rows a terminal renders now, asked once on request and never in a loop;

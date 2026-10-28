@@ -8,6 +8,8 @@ import { inTransaction } from "./leases.js"
 import { now, openMachine } from "./ledger.js"
 import { textOf } from "./machine.js"
 import { locateOps } from "./ops.js"
+import { lookupSecret, secretHome } from "./secret-env.js"
+import type { SecretSource } from "./secret-env.js"
 
 const configSchema = z.strictObject({
     schema: z.literal("starci/telegram@1"),
@@ -41,14 +43,8 @@ export const loadTelegram = (dir: string = locateOps()): TelegramConfig => {
     return parsed.data
 }
 
-/** True when the token variable is set in this process's environment; its value is never returned. */
-export const tokenPresent = (config: TelegramConfig): boolean => (process.env[config.tokenVariable] ?? "").trim() !== ""
-
-/** Where the owner sets the token: the user environment, since the harness never opens a secret file (policy/security.yaml neverRead). */
-export const tokenHome = (config: TelegramConfig): string =>
-    `the user environment variable ${config.tokenVariable} (Windows: HKCU\\Environment, set once with PowerShell: ` +
-    `$t = Read-Host -AsSecureString 'Telegram bot token'; [Environment]::SetEnvironmentVariable('${config.tokenVariable}', [Net.NetworkCredential]::new('', $t).Password, 'User') ` +
-    `then open a new terminal; elsewhere export it from the login profile). The harness never opens secret.env or any .env file (policy/security.yaml neverRead)`
+/** Where the bot token comes from (the environment or secret.env), or null when neither sets it; the value is never returned. */
+export const tokenSource = (config: TelegramConfig): SecretSource | null => lookupSecret(config.tokenVariable)?.source ?? null
 
 /** A ready Bot API client: the config, the API base and the token, which only `call` uses and every message redacts. */
 export interface TelegramBot {
@@ -60,12 +56,13 @@ export interface TelegramBot {
 const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optional(), description: z.string().optional(), error_code: z.number().optional() })
 
 /**
- * The Bot API client of this host, refused TELEGRAM_NOT_CONFIGURED (naming the variable and where the owner sets it) when the
- * token variable is unset. The token goes only into the request URL; every error text has it replaced before it is shown.
+ * The Bot API client of this host, the token read by the secret loader (harness/secret-env.ts), refused TELEGRAM_NOT_CONFIGURED
+ * (naming the key and where the owner sets it) when neither the environment nor secret.env sets it. The token goes only into
+ * the request URL; every error text has it replaced before it is shown.
  */
 export const telegramBot = (config: TelegramConfig = loadTelegram()): TelegramBot => {
-    const token = (process.env[config.tokenVariable] ?? "").trim()
-    if (token === "") throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${config.tokenVariable} is not set; the owner sets the bot token in ${tokenHome(config)}`)
+    const token = lookupSecret(config.tokenVariable)?.value
+    if (token === undefined) throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${config.tokenVariable} is not set; ${secretHome(config.tokenVariable)}`)
     const override = process.env[TELEGRAM_API_ENV]
     const api = (override === undefined || override === "" ? config.apiBase : override).replace(/\/+$/, "")
     const redact = (text: string): string => text.replaceAll(token, "<token>")

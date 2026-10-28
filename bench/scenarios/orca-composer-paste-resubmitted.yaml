@@ -1,0 +1,96 @@
+schema: starci/scenario@1
+id: orca-composer-paste-resubmitted
+group: orca
+title: "an Op's dispatch lands pasted in its agent's composer and the Enter is lost: the reconcile submits it again and the task runs"
+inject: >-
+  worker-start's answer is lost (effect_unknown); Orca keeps the worker at start_unknown; the agent's screen shows the dispatch
+  still pasted in its composer ("[Pasted Content 1447 chars]"), its turn never started
+expect: >-
+  kernel next reads the waiting launch's terminal, sees the pasted dispatch and sends one bare Enter (terminal send --enter) under
+  a request id of its own, recorded as seat-composer-resubmitted; once the agent prints, the dispatch is adopted and the task runs,
+  with no second launch and no fence
+pass:
+  - one bare Enter to the Op's terminal, one seat-composer-resubmitted event
+  - the task runs on the first dispatch; one Op launch, no worker-stop
+  - "no step without evidence: every state change in the ledger has its event"
+  - no actor overstepping its role
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      content: |
+        schema: starci/workflow@1
+        id: cp
+        goal: write doc a
+        runner: orca
+        maxParallel: 2
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a.md]
+            checks:
+              - preset: files-exist
+                args:
+                  files: [docs/a.md]
+  - boot:
+      file: ${run}/wf.yaml
+      workflow: cp
+  - name: the Op launch lands, its answer is lost, and Orca never sees its turn start
+    orca:
+      set:
+        newWorkerState: start_unknown
+      rules:
+        - command: worker-start
+          fault: lost-reply
+          match:
+            task-title: '^\[Op\]'
+  - seat: kernel:cp
+    starci: [kernel, next, cp, --wait, "0"]
+  - name: the waiting launch's seat holds its terminal
+    seat: kernel:cp
+    starci: [kernel, next, cp, --wait, "0"]
+  - read:
+      db: ledger
+      query: SELECT terminal FROM seats WHERE role = 'worker' AND terminal IS NOT NULL
+      as: opterm
+  - name: the dispatch sits pasted in the composer, never submitted
+    orca:
+      set:
+        screens:
+          ${opterm}: ["", "› [Pasted Content 1447 chars]", "", "  ⏎ send   ⌃J newline"]
+        composer:
+          ${opterm}: true
+  - name: the reconcile submits it again
+    seat: kernel:cp
+    starci: [kernel, next, cp, --wait, "0"]
+  - name: the agent printed, so the dispatch is adopted
+    seat: kernel:cp
+    starci: [kernel, next, cp, --wait, "0"]
+  - assert:
+      sql:
+        db: ledger
+        query: SELECT status FROM tasks
+        equals: [running]
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM events WHERE kind = 'seat-composer-resubmitted'"
+        equals: [1]
+  - assert:
+      orcaCalls:
+        command: terminal send
+        match:
+          terminal: "${opterm}"
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-start
+        match:
+          task-title: '^\[Op\]'
+        count: 1
+  - assert:
+      orcaCalls:
+        command: worker-stop
+        count: 0

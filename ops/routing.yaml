@@ -134,6 +134,14 @@ blockedPrompts:
     login: ["please (log|sign) ?in", "select login method", "run /login", "not logged in"]
     confirmation: ["do you want to"]
 
+# A launch whose turn start Orca did not observe (worker start_unknown, seat launch-unknown) may have its dispatch pasted into
+# the agent's composer with the Enter lost. While such a launch is reconciled, its terminal's last blockedPrompts.screenLines
+# lines are read; a screen matching one of these patterns (case-insensitive) gets a bare Enter (`terminal send --enter`), at
+# most resubmitMax times per seat, before the launch can be given up.
+pendingComposer:
+  resubmitMax: 2
+  patterns: ["\\[Pasted Content \\d+ chars\\]", "\\[Pasted text #\\d+"]
+
 # Every ended attempt of every registered ledger is recorded per member and label (green or red verdict, timeout, lost,
 # stalled, launch failure, mismatch, minutes), and every coordinator seat the stall ladder gave up on (stalled); the evidence of the last windowDays qualifies and scores a member.
 outcomes: {windowDays: 14}

@@ -1,0 +1,77 @@
+schema: starci/scenario@1
+id: pkg-edit-branch-handoff
+group: release
+title: an app session edits a @starci package on its own harness branch, links it, hands it to Debug, and cannot push it
+inject: >-
+  a scratch harness repository (repo harness) holding packages/tsconfig; the app session cuts a package edit branch, commits
+  a change, links the app to the branch's packages, hands the branch off as urgent, then tries to push it
+expect: >-
+  pkg branch creates pkg/<app>-strict-imports in its own worktree under the harness's .claude/worktrees and installs the push
+  guard; deps source --local --from <worktree>/packages copies the edited package into the app; pkg handoff --urgent records
+  the branch and head for Debug and --list shows it first; a git push of the branch and release push from it are both
+  refused PKG_EDIT_PUSH_REFUSED (reads the public registry for the app's npm install)
+pass:
+  - the edit branch and its worktree are created from harness main
+  - the app links the edited package from the branch's worktree
+  - the handoff is recorded urgent for Debug
+  - pushing the branch is refused by the hook and by release push
+  - no human intervention beyond the injected fault
+automation: automated
+repo:
+  files:
+    README.md: "# bench deps app\n"
+    .npmrc: "legacy-peer-deps=true\n"
+    hfs.json: '{"hfs": 3, "kind": "app", "edition": "lite", "policy": "lib"}'
+    package.json: '{"name": "bench-deps-app", "version": "1.0.0", "private": true, "devDependencies": {"@starci/tsconfig": "2.1.0"}}'
+    package-lock.json: '{"name": "bench-deps-app", "version": "1.0.0", "lockfileVersion": 3, "requires": true, "packages": {"": {"name": "bench-deps-app", "version": "1.0.0", "devDependencies": {"@starci/tsconfig": "2.1.0"}}, "node_modules/@starci/tsconfig": {"version": "2.1.0", "resolved": "https://registry.npmjs.org/@starci/tsconfig/-/tsconfig-2.1.0.tgz", "integrity": "sha512-8nAgp5BdEWrQVFVWhvLh3ucU9Jfu7JhY5V9m1daLkRehQSmNsHVlAQ+2BuvtQHfomfbtybFT4/IwZCnsxp4Wiw==", "dev": true, "license": "MIT", "peerDependencies": {"typescript": ">=5.0.0"}}}}'
+    .gitignore: "node_modules/\n"
+repos:
+  harness:
+    files:
+      .gitignore: ".claude/\n"
+      packages/tsconfig/package.json: '{"name": "@starci/tsconfig", "version": "2.1.0", "files": ["base.json"]}'
+      packages/tsconfig/base.json: '{"compilerOptions": {"strict": true}}'
+steps:
+  - name: the app session cuts a package edit branch
+    starci: [pkg, branch, strict-imports, --harness, "${repo.harness}"]
+    expect:
+      exit: 0
+      contains: "\"created\": true"
+    save:
+      branch: data.branch
+      worktree: data.worktree
+  - write:
+      path: ${worktree}/packages/tsconfig/base.json
+      content: '{"compilerOptions": {"strict": true, "verbatimModuleSyntax": true}}'
+  - git: [-C, "${worktree}", commit, -q, -am, "tsconfig: verbatim module syntax"]
+  - name: the app links the edited package from the branch's worktree
+    starci: [deps, source, --local, --from, "${worktree}/packages", --prebuilt]
+    expect:
+      exit: 0
+      contains: "\"targets\": ["
+  - assert:
+      exists:
+        path: node_modules/@starci/tsconfig/.starci-local.json
+        present: true
+  - name: the editor hands the branch to Debug as urgent
+    starci: [pkg, handoff, --urgent, --note, a deploy waits on strict imports]
+    cwd: ${worktree}
+    expect:
+      exit: 0
+      contains: "\"urgent\": true"
+  - name: Debug's queue lists it first
+    starci: [pkg, handoff, --list]
+    expect:
+      exit: 0
+      contains: "\"branch\": \"pkg/repo-strict-imports\""
+  - git: [init, -q, --bare, "${run}/harness-remote.git"]
+  - name: a git push of the edit branch is refused by the guard
+    git: [-C, "${worktree}", push, "${run}/harness-remote.git", HEAD]
+    expect:
+      exit: 1
+  - name: release push from the edit branch is refused
+    starci: [release, push, --dry-run]
+    cwd: ${worktree}
+    expect:
+      exit: 1
+      code: PKG_EDIT_PUSH_REFUSED

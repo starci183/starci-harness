@@ -1,4 +1,7 @@
 {{header}}
 # Push gate: fast-forward main with a clean secret scan, annotated v* tags, and bounded ref input.
-# The bundled gate owns the policy; backups and lane refs use the same policy as the runtime.
+# The bundled gate owns the policy; backups and lane refs use the same policy as the runtime. Then the harness refuses a
+# committed @starci pin npm cannot install, or a local package copy ahead of npm (starci deps check).
+set -e
 node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"
+node node_modules/starci-harness/dist/main.js deps check

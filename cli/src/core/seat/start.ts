@@ -45,6 +45,7 @@ import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { getWorkflow } from "../../harness/workflow.js"
 import { asRefusal, EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
+import { reapplyLocal } from "../deps/packages.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
@@ -476,6 +477,10 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
             return { task: running, seat, record, files }
         })
         await beginWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
+        // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
+        // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
+        const synced = await reapplyLocal(root, worktreeFolder(options.worktree, cwd, root))
+        if (synced !== undefined) recordEvent(db, synced.status === "green" ? "deps-local-synced" : "deps-local-sync-failed", claim.task.id, { detail: synced.detail })
         const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
         return await settleLaunch({ root, db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)

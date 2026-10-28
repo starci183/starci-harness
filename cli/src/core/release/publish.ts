@@ -1,6 +1,7 @@
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
-import { captureGit, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { captureGit, currentBranch, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { assertMayPushBranch } from "../pkg/edit.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
@@ -146,6 +147,7 @@ export const releasePublishVerb = defineVerb({
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
+        if (flags.publish) assertMayPushBranch(await currentBranch(root))
         const all = listPackages(root)
         const packages = all.filter((pkg) => flags.package === undefined || pkg.relativeDir === flags.package || pkg.name === flags.package)
         if (packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${flags.package ?? "this repository"}`)

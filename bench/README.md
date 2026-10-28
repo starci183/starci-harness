@@ -53,13 +53,15 @@ expectation, and writes `result.json` there and a line in `<state base>/bench/re
   terminal list's lastOutputAt, worker-show's heartbeat and agentWait, and `terminal send`, which keeps each typed prompt). It
   dedupes by retry-request like Orca,
   logs every call, and replays the faults a scenario scripts, optionally only for calls whose flags `match` (refuse,
-  outcome unknown, lost reply, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
+  outcome unknown, lost reply, a worker-start whose turn start went unobserved, slow, garbage, crash, a changed reply shape), and the states it sets: a worker that exited
   (`dispatch: "*"` every Op, `kernel` every Kernel), a terminal gone or one of its own (with a title, orphaned or not), mail a seat sent. No real Orca is ever launched.
 - **The Telegram stand-in** is `stub/telegram-stub.mjs`, served by `serve: {stub: telegram}`: a fake Bot API on 127.0.0.1
   that accepts only the token it mints for the run (`${<as>.token}`) and answers getMe, getUpdates and sendMessage. A
   scenario points the CLI at it per step (`TELEGRAM_BOT_TOKEN` and `STARCI_TELEGRAM_API` in `env`), plays whoever writes to
   the bot with `POST <url>/__update {chat, text, replyTo?, type?}`, and reads what the bot sent with `GET <url>/__sent`.
-  Each Telegram scenario empties both variables at its top, so a host token never reaches the real Telegram.
+  Each Telegram scenario empties both variables at its top, and every run's `STARCI_SECRET_ENV` is `<run>/secret.env` (absent
+  until a `file` step writes it), so a host token never reaches the real Telegram. `expect.lacks` fails a verb step whose
+  output carries a value.
 - **Fixtures that must not be text in this public repository** (a provider-shaped key, an inline lint suppression) are
   built by the runner at run time (`write.generated`); the run's key is `${generatedKey}` in a step's text, so a scenario can pin its line.
 

@@ -110,6 +110,7 @@ a folder outside any StarCi tree show every verb. The groups:
 | `contract`, `task` | one task: write and judge its contract, send, file the result, verify, cancel |
 | `workflow`, `plan` | a graph of tasks: define, run, step, pause, amend, stop; show and diff its versions |
 | `seat`, `route`, `provider`, `budget` | the `orca` runner: worker seats, the router, provider circuits, workflow budgets |
+| `project` | a project's ledger in the host registry: retire an abandoned one so no sweep, tick or pool count reads it |
 | `config` | the harness settings: list, get and set a key of the ops/ yaml that owns it, validated before it is written |
 | `host` | the services of [ops/host.yaml](ops/host.yaml) this machine runs for the harness: status, up, install, uninstall |
 | `connect` | the owner's outside channel, Telegram ([ops/telegram.yaml](ops/telegram.yaml)): store the owner's chat, report it, send the notices due; `supervisor telegram-bridge` runs it as a host service |

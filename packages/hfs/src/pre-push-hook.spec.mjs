@@ -63,6 +63,13 @@ test('annotated v tags can name any commit; lightweight tags and tag deletions r
   }
 });
 
+test('a push the bundled gate allows is still refused when the dependency push gate refuses', t => {
+  const repo = repository(t, HOOK, { depsExit: 1 });
+  const result = push(repo, [ref('refs/heads/main', repo.head, repo.older)]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DEPS_PIN_UNPUBLISHED/);
+});
+
 test('backups retain their push and delete behavior; another allowed ref cannot hide a main refusal', t => {
   const repo = fixture(t);
   for (const sha of [repo.head, ZERO]) assert.equal(push(repo, [ref('refs/backup/lane', sha)]).status, 0);

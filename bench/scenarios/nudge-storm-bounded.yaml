@@ -7,11 +7,12 @@ inject: >-
   supervisor ticks run back to back each round, and five more run after the relaunch
 expect: >-
   the ticks of a round claim one nudge between them (one terminal send per round, the claim is a transaction); after nudgeMax answered nudges the next stall gives
-  the seat up (stall kind, no failure words from Orca) and relaunches the Kernel on another pool; the ticks after it type nothing
+  the seat up (stall kind, no failure words from Orca) and relaunches the Kernel on the coordinator tier's first member again
+  (a plain stall changes no route); the ticks after it type nothing
   more, so the whole run stays at nudgeMax prompts and two Kernel launches
 pass:
   - two nudges in all, one per stall, whatever the number of ticks
-  - one relaunch after the second stall, on another pool, with a stalled outcome and a stall strike for the first
+  - one relaunch after the second stall, on the same member, with a stalled outcome and no provider strike
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -97,7 +98,7 @@ steps:
       sql:
         db: ledger
         query: SELECT COUNT(DISTINCT agent) FROM seats WHERE role = 'kernel'
-        equals: [2]
+        equals: [1]
   - assert:
       sql:
         db: machine

@@ -11,7 +11,6 @@ import { readMachine, withMachine } from "./machine.js"
 import { agentLaunch, isSelectorNotFound, launchOperationOf, locateOrca, mailSend, OrcaFailure, repoAdd, requestIdOf, runCreate, taskCreate, terminalClose, terminalList, terminalRename } from "./orca/client.js"
 import type { AgentLaunchInput, MailSend, OrcaBinary } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
-import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
 import type { Project } from "./work.js"
 
@@ -165,7 +164,7 @@ const sendLaunch = async (binary: OrcaBinary, cwd: string, seat: { readonly id: 
  * folder. A second start while one is alive refuses SUPERVISOR_RUNNING; an unknown launch keeps its reservation (and the
  * operation id to replay) instead of launching twice.
  */
-export const startSupervisor = async (binary: OrcaBinary, cwd: string, project: Project, stalled: readonly RouteMember[] = []): Promise<SupervisorRecord> => {
+export const startSupervisor = async (binary: OrcaBinary, cwd: string, project: Project): Promise<SupervisorRecord> => {
     const status = await supervisorStatus(binary, cwd, project)
     const previous = status.supervisor
     if (previous !== null && status.liveness !== "gone") throw new Refusal("SUPERVISOR_RUNNING", `the Supervisor of project ${project.name} is ${status.liveness}; starci supervisor status, or stop it first`)
@@ -174,7 +173,7 @@ export const startSupervisor = async (binary: OrcaBinary, cwd: string, project: 
         if (previous.terminal !== null) await terminalClose(binary, previous.terminal, cwd).catch(() => "gone")
         retire(previous.id, "gone")
     }
-    const pick = pickCoordinator("supervisor", { stalled })
+    const pick = pickCoordinator("supervisor")
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const id = randomUUID()
     const prompt = coordinatorBrief({ role: "supervisor", root: project.root, project: project.name, launchId: id, agent: pick.agent, model: pick.model })

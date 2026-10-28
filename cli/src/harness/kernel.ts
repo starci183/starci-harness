@@ -11,12 +11,11 @@ import type { LaunchFailure } from "./launch-failure.js"
 import { loadCoordinatorLiveness } from "./coordinator-liveness.js"
 import { now, openLedger, projectDir } from "./ledger.js"
 import { inTransaction } from "./leases.js"
-import { awaitWorktree, closeWorker, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalRename, workerShow, workerStart } from "./orca/client.js"
+import { awaitWorktree, closeWorker, dispatchOfFailure, isSelectorNotFound, LAUNCH_TIMEOUT_MS, OrcaFailure, repoAdd, repositoryOfSelector, requestIdOf, runCreate, runUse, taskCreate, terminalClose, terminalList, terminalOfFailure, terminalRename, workerShow, workerStart } from "./orca/client.js"
 import type { OrcaBinary, WorkerClosed, WorkerStarted, WorkerStartInput } from "./orca/client.js"
 import { describeRoute, pickCoordinator, RouteRefusal } from "./router.js"
-import type { RouteMember } from "./router.js"
 import { loadRouting, selectsModel } from "./routing.js"
-import { getSeat, kernelSeatOf, kernelSeatsOf, noteTab, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
+import { getSeat, kernelSeatOf, kernelSeatsOf, launchUnreconciled, noteTab, openKernelSeat, recordSeat, renewSeatLease, SEAT_LAUNCH_FAILED, SEAT_LAUNCH_UNKNOWN, SEAT_RELEASED, SEAT_STOPPED } from "./seats.js"
 import type { SeatRow } from "./seats.js"
 import { requireSupervisor } from "./supervisor.js"
 import type { AttachedSupervisor } from "./supervisor.js"
@@ -160,12 +159,11 @@ export const ensureKernel = async (root: string, cwd: string, workflowId: string
 
 /**
  * How a Kernel start runs: `replace` fences a Kernel Orca still shows, `acting` is the attached Supervisor the host driver acts
- * for (else the caller must be its terminal), `stalled` the members whose seats of this workflow the stall ladder gave up on.
+ * for (else the caller must be its terminal).
  */
 export interface KernelStartOptions {
     readonly replace?: boolean
     readonly acting?: AttachedSupervisor
-    readonly stalled?: readonly RouteMember[]
 }
 
 const retiredStatus = (closed: WorkerClosed, current: string): string => {
@@ -174,12 +172,13 @@ const retiredStatus = (closed: WorkerClosed, current: string): string => {
 }
 
 /**
- * Retires a Kernel seat that is still open before a start launches another: refused while Orca shows it alive (unless `replace`),
- * else stopped, released and its tab closed. A seat Orca does not settle refuses the start, so a workflow never holds two open
+ * Retires a Kernel seat that is still open before a start launches another: refused while its launch is not reconciled (no
+ * dispatch, or its outcome unknown: the Supervisor's sweep resolves it) and while Orca shows it alive (unless `replace`), else
+ * stopped, released and its tab closed. A seat Orca does not settle refuses the start, so a workflow never holds two open
  * Kernel seats; a repeated start finishes the release.
  */
 const retireOpenSeat = async (root: string, cwd: string, seat: SeatRow, binary: OrcaBinary, replace: boolean): Promise<string> => {
-    if (seat.handle === null) throw new Refusal("KERNEL_STARTING", `Kernel seat ${seat.id} has a launch whose outcome is not known yet (request ${seat.requestId ?? "-"}); supervisor next resolves it through Orca`)
+    if (seat.handle === null || launchUnreconciled(seat)) throw new Refusal("KERNEL_STARTING", `Kernel seat ${seat.id} has a launch whose outcome is not known yet (request ${seat.requestId ?? "-"}); supervisor next resolves it through Orca`)
     if (!replace) {
         const shown = await workerShow(binary, seat.handle, cwd).catch(() => null)
         const gone = shown !== null && ["exited", "failed", "stopped", "released", "abandoned"].some((state) => state === shown.state || state === shown.observed)
@@ -218,7 +217,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     for (const [index, seat] of open.entries()) notes.push(await retireOpenSeat(root, cwd, seat, binary, options.replace === true || index > 0))
     if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open.length === 0) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
-    const pick = pickCoordinator("kernel", { stalled: options.stalled ?? [] })
+    const pick = pickCoordinator("kernel")
     if (pick instanceof RouteRefusal) throw new Refusal(pick.code, describeRoute(pick).join("; "))
     const launchId = `k-${randomUUID().slice(0, 8)}`
     const spec = coordinatorBrief({ role: "kernel", root, workflowId, launchId, agent: pick.agent, model: pick.model, worktree })
@@ -248,7 +247,11 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     return { kernel: withRecord(root, (db) => getWorkflow(db, workflowId).kernel), seat, worktree, notes }
 }
 
-/** Sends (or replays, under the same request id) a reserved Kernel seat's worker-start and records what Orca answered. */
+/**
+ * Sends (or replays, under the same request id) a reserved Kernel seat's worker-start and records what Orca answered: a ready
+ * worker's dispatch and terminal, else the seat closed launch-failed (a typed refusal) or kept launch-unknown with the dispatch and
+ * agent terminal the failed receipt names, which the Supervisor's sweep reconciles (`supervisor/driver.ts` resolveKernelLaunch).
+ */
 export const launchKernelSeat = async (root: string, cwd: string, seatId: string, input: WorkerStartInput, binary: OrcaBinary): Promise<SeatRow> => {
     const explained: { failure?: LaunchFailure } = {}
     try {
@@ -269,8 +272,10 @@ export const launchKernelSeat = async (root: string, cwd: string, seatId: string
     } catch (error: unknown) {
         const status = error instanceof OrcaFailure && error.effect === "none" ? SEAT_LAUNCH_FAILED : SEAT_LAUNCH_UNKNOWN
         const { failure } = explained
+        const dispatchId = error instanceof OrcaFailure ? dispatchOfFailure(error) : undefined
+        const terminal = error instanceof OrcaFailure ? (terminalOfFailure(error) ?? null) : null
         withRecord(root, (db) => {
-            const seat = recordSeat(db, seatId, { status, ...(failure === undefined ? {} : { failure }), facts: { error: error instanceof Error ? error.message : String(error) } })
+            const seat = recordSeat(db, seatId, { status, ...(dispatchId === undefined ? {} : { handle: dispatchId }), terminal, ...(failure === undefined ? {} : { failure }), facts: { error: error instanceof Error ? error.message : String(error) } })
             if (failure?.kind === BLOCKED_PROMPT && seat.workflowId !== null) {
                 escalateBlockedPrompt(db, { project: root, workflowId: seat.workflowId, seat: seatId, worktree: input.worktree.replace(/^path:/, ""), failure })
             }

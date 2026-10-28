@@ -26,7 +26,7 @@ export interface RouteMember {
  * What the router needs to pick: the label, an optional measured difficulty (a name or 1..4; the label's floor raises it), the
  * 1-based attempt number in the task's lineage, the contract-red attempts so far (their members, or just their count) and the
  * task's risk tags (any of routing.yaml qualification.riskTags makes it high-risk), and the members of its lineage the stall ladder
- * gave up on (a task's stalled attempts, a coordinator's stalled seat being relaunched).
+ * gave up on (a task's stalled attempts; a coordinator has no lineage).
  */
 export interface RouteInput {
     readonly label: string
@@ -495,7 +495,8 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
         return new RouteRefusal("TOKENS_OUT", `every member of tier ${record.tier} is out of quota${resetAt === null ? "" : "; the earliest reset is " + resetAt}: ${droppedText(record, "quota")}`, record, resetAt)
     }
 
-    // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind every other member.
+    // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind
+    // every other member of a task's tier (a coordinator's keeps its listed order, step 5).
     const stalledPools = new Set((input.stalled ?? []).map((member) => member.agent))
     const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1 || stalledPools.has(candidate.pool))
     stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red or a stall: ${demoted.map((candidate) => candidate.id).join(", ")}`)
@@ -505,9 +506,10 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     record.probe = probe === undefined ? null : `${probe.provider} (${probe.circuit.failureKind ?? "?"}, ${String(probe.circuit.failedProbes)} failed probes)`
 
     // 5. Score, exploring by Thompson sampling within its share; 6. balance. A coordinator seat takes its tier's members in
-    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when Claude is out), so it
-    // is neither scored, explored nor balanced.
-    const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : [...funded.filter((candidate) => !demoted.includes(candidate)), ...demoted]
+    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when the hard filter or quota
+    // took Claude out, its circuit open), so it is neither scored, explored, balanced nor reordered by its lineage: a relaunch
+    // after a failed or stalled coordinator launch stays on that order, and the failure reaches it only through the circuit.
+    const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : funded
     const balanced = probe === undefined && input.coordinator === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
     const chosen = probe ?? balanced ?? ordered[0]
     let by = input.coordinator !== undefined ? "order" : record.explore?.exploring === true ? "explore" : "score"
@@ -559,12 +561,12 @@ export const pickRoute = (input: RouteInput, options: { readonly record?: boolea
     return pick
 }
 
-/** The router input of a coordinator seat: its role is its label, its tier routing.yaml coordinators.<role>, its lineage the stalled seats being relaunched. */
-export const coordinatorInput = (role: CoordinatorRole, stalled?: readonly RouteMember[]): RouteInput => ({ label: role, coordinator: role, attempt: 1, stalled })
+/** The router input of a coordinator seat: its role is its label and its tier routing.yaml coordinators.<role>, taken in listed order with no lineage. */
+export const coordinatorInput = (role: CoordinatorRole): RouteInput => ({ label: role, coordinator: role, attempt: 1 })
 
 /** Routes a coordinator through the shared circuit, capacity, quota, probe, scoring and balance pipeline. */
-export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean; readonly stalled?: readonly RouteMember[] } = {}): RoutePick | RouteRefusal =>
-    pickRoute(coordinatorInput(role, options.stalled), { record: options.record ?? true })
+export const pickCoordinator = (role: CoordinatorRole, options: { readonly record?: boolean } = {}): RoutePick | RouteRefusal =>
+    pickRoute(coordinatorInput(role), { record: options.record ?? true })
 
 /** What `simulateRoute` counted over its picks: each member's picks, how many explored and probed, and the refusals. */
 export interface RouteSimulation {

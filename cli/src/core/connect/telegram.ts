@@ -1,5 +1,6 @@
 import { advanceOffset, chatsOf, sweepNotices } from "../../harness/telegram-bridge.js"
-import { bridgeLiveness, channelCounts, connectedChannel, getUpdates, loadTelegram, readChannel, sendMessage, storeChat, telegramBot, tokenHome, tokenPresent, withChannelStore } from "../../harness/telegram.js"
+import { bridgeLiveness, channelCounts, connectedChannel, getUpdates, loadTelegram, readChannel, sendMessage, storeChat, telegramBot, tokenSource, withChannelStore } from "../../harness/telegram.js"
+import { secretHome } from "../../harness/secret-env.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
@@ -13,8 +14,8 @@ const CONNECTED = "StarCi is connected: questions for you arrive here. Reply to 
  * `starci connect telegram <discover-chat|status|notify>`: the owner's Telegram channel. `discover-chat` reads the bot's updates
  * once and stores the chat that wrote to it (the owner sends the bot a message first; `--chat` picks one of several) in the host
  * store, never in a repository; facts older than that moment are never sent. `status` reports the channel without calling
- * Telegram; `notify` sends every fact due once (the bridge does it every cycle). The bot token is read by name from the
- * environment (ops/telegram.yaml tokenVariable) and refused TELEGRAM_NOT_CONFIGURED when unset.
+ * Telegram; `notify` sends every fact due once (the bridge does it every cycle). The bot token (ops/telegram.yaml tokenVariable)
+ * is read by the secret loader, from the environment or secret.env, and refused TELEGRAM_NOT_CONFIGURED when neither sets it.
  */
 export const connectTelegramVerb = defineVerb({
     path: ["connect", "telegram"],
@@ -33,10 +34,10 @@ export const connectTelegramVerb = defineVerb({
         const config = loadTelegram()
         if (action === "status") {
             const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))
-            const configured = tokenPresent(config)
+            const source = tokenSource(config)
             const bridge = bridgeLiveness(channel, config)
-            const data = { variable: config.tokenVariable, configured, chat: channel.chatId === null ? null : { id: channel.chatId, name: channel.chatName, connectedAt: channel.connectedAt }, bridge, ...counts }
-            const token = configured ? `${config.tokenVariable} set` : `${config.tokenVariable} not set (the owner sets it in ${tokenHome(config)})`
+            const data = { variable: config.tokenVariable, configured: source !== null, source, chat: channel.chatId === null ? null : { id: channel.chatId, name: channel.chatName, connectedAt: channel.connectedAt }, bridge, ...counts }
+            const token = source === null ? `${config.tokenVariable} not set (${secretHome(config.tokenVariable)})` : `${config.tokenVariable} set (${source})`
             const chat = channel.chatId === null ? "no owner chat (connect telegram discover-chat)" : `owner chat ${channel.chatName ?? channel.chatId} since ${channel.connectedAt ?? "-"}`
             return { data, message: `telegram: ${token}; ${chat}; bridge ${bridge}; notices ${JSON.stringify(counts.notices)}; replies ${String(counts.inbound.owner)} from the owner, ${String(counts.inbound.ignored)} ignored` }
         }

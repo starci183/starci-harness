@@ -74,6 +74,7 @@ const routingSchema = z.object({
     }),
     failureSignals: kindRecord(z.array(z.string().min(1))),
     blockedPrompts: z.object({ screenLines: z.number().int().positive(), prompts: z.record(z.string().min(1), z.array(z.string().min(1)).min(1)) }),
+    pendingComposer: z.object({ resubmitMax: z.number().int().positive(), patterns: z.array(z.string().min(1)).min(1) }),
     outcomes: z.object({ windowDays: z.number().positive() }),
     qualification: z.object({
         standard: levelSchema,
@@ -137,6 +138,7 @@ const compiles = (pattern: string): boolean => {
 const signalProblems = (routing: Routing): string[] => [
     ...Object.entries(routing.failureSignals).flatMap(([kind, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `failureSignals.${kind} has an invalid pattern: ${pattern}`)),
     ...Object.entries(routing.blockedPrompts.prompts).flatMap(([name, patterns]) => patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `blockedPrompts.prompts.${name} has an invalid pattern: ${pattern}`)),
+    ...routing.pendingComposer.patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `pendingComposer.patterns has an invalid pattern: ${pattern}`),
 ]
 
 const loaded = new Map<string, Routing>()

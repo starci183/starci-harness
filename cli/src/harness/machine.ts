@@ -17,6 +17,8 @@ import { CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST } from "./seats.js
  * - host_events: what the host driver (`supervisor tick`) did to the Supervisor seats (nudges, give-ups), append-only.
  * - owner_requests: each project's mailbox of owner requests (`supervisor ask`), closed by the Supervisor command answering one
  *   (harness/owner-requests.ts).
+ * - orca_terminals: the newest full Orca terminal list a tick read (handles, when), so a pool count can leave out a seat whose
+ *   terminal Orca no longer lists (`runningWorkers`); one row, replaced on each read.
  */
 const TABLES = `
 CREATE TABLE IF NOT EXISTS provider_events (
@@ -49,7 +51,26 @@ CREATE INDEX IF NOT EXISTS open_owner_requests ON owner_requests (project, close
 CREATE TABLE IF NOT EXISTS budget_raises (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ledger_id TEXT NOT NULL, workflow_id TEXT NOT NULL, by TEXT NOT NULL, reason TEXT NOT NULL,
   minutes_by INTEGER NOT NULL, tries_by INTEGER NOT NULL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS orca_terminals (
+  id INTEGER PRIMARY KEY CHECK (id = 1), at TEXT NOT NULL, handles_json TEXT NOT NULL);
 `
+
+/** How long a recorded Orca terminal list stands as evidence for a pool count: older, it proves nothing. */
+const TERMINAL_LIST_FRESH_MS = 10 * 60_000
+
+/** Records Orca's terminal list (only a full one: a truncated list proves no absence) for the pool count. */
+export const recordTerminalList = (handles: ReadonlySet<string>, truncated: boolean): void => {
+    if (truncated) return
+    withMachine((db) => db.prepare("INSERT INTO orca_terminals (id, at, handles_json) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET at = excluded.at, handles_json = excluded.handles_json").run(new Date().toISOString(), JSON.stringify([...handles])))
+}
+
+/** The recorded full terminal list while it is fresh, else null (no evidence of any absence). */
+const listedTerminals = (): { readonly at: string; readonly handles: ReadonlySet<string> } | null => {
+    const row = readMachine((db) => db.prepare("SELECT at, handles_json FROM orca_terminals WHERE id = 1").get(), undefined)
+    if (row === undefined || Date.now() - Date.parse(String(row.at)) > TERMINAL_LIST_FRESH_MS) return null
+    const handles: unknown = JSON.parse(String(row.handles_json))
+    return { at: String(row.at), handles: new Set(Array.isArray(handles) ? handles.map(String) : []) }
+}
 
 /** Runs `work` on the host store with the P2 tables in place, atomically (BEGIN IMMEDIATE), and closes it. */
 export const withMachine = <T>(work: (db: DatabaseSync) => T): T => {
@@ -86,8 +107,10 @@ export interface RunningWorkers {
 const NOT_RUNNING: ReadonlySet<string> = new Set([...CLOSED_SEAT_STATUSES, SEAT_STOPPED, SEAT_WORKER_LOST])
 
 /**
- * Counts the open worker seats of every ledger the host registry lists, read-only: a pool's slots are host-wide, so the
- * capacity and balance steps must see every project. A ledger that cannot be read is skipped, never created.
+ * Counts the open worker seats of every ledger the host registry lists (retired ones aside), read-only: a pool's slots are
+ * host-wide, so the capacity and balance steps must see every project. A seat whose terminal the last full Orca terminal list
+ * (recorded by `supervisor tick`, fresh for TERMINAL_LIST_FRESH_MS) no longer holds runs nothing and is not counted; a seat
+ * with no terminal at all is counted until a reconcile closes it. A ledger that cannot be read is skipped, never created.
  */
 export const runningWorkers = (): RunningWorkers => {
     const byMember = new Map<string, number>()
@@ -107,6 +130,7 @@ export const runningWorkers = (): RunningWorkers => {
         if (agent !== null) count(agent, textOf(seat.model))
     }
     const files = readMachine((db) => db.prepare("SELECT file FROM ledgers WHERE state != 'retired'").all().map((row) => textOf(row.file) ?? ""), [])
+    const listed = listedTerminals()
     for (const file of files) {
         if (file === "" || !existsSync(file)) continue
         let ledger: DatabaseSync | undefined
@@ -116,6 +140,8 @@ export const runningWorkers = (): RunningWorkers => {
                 const status = textOf(row.status) ?? ""
                 const agent = textOf(row.agent)
                 if (NOT_RUNNING.has(status) || agent === null || textOf(row.ended_at) !== null) continue
+                const terminal = textOf(row.terminal)
+                if (listed !== null && terminal !== null && Date.parse(textOf(row.started_at) ?? "") < Date.parse(listed.at) && !listed.handles.has(terminal)) continue
                 count(agent, textOf(row.model))
             }
         } catch {
