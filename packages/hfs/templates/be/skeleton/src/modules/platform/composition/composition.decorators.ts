@@ -8,6 +8,9 @@ export type TypedParameterDecorator<T> = ParameterDecorator & {
     readonly __injects?: T
 }
 
+/** A decorator a door carries on its method or its class; one built from several metadata decorators is typed with it. */
+export type DoorDecorator = MethodDecorator & ClassDecorator
+
 /** Builds the parameter decorator that injects `token`, typed with the value it injects. Every `Inject<Thing>()` is built with it. */
 export const injector = <T>(token: InjectionToken): TypedParameterDecorator<T> => Inject(token)
 

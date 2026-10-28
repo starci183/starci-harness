@@ -533,6 +533,16 @@ rulings:
     ruling: "The slot rule codes in covers name checks hfs/rules.yaml has no rule for yet; each stays pending in the rule catalog's owner section, not red, until a rule with a built enforcer carries it, and no code joins the list without a new ruling."
     owner: "contexts/hfs/rules.yaml (pending); cli/src/core/contexts/anatomy-gate.ts"
     covers: [BE_E2E_FLOW, FE_DATA_FRESHNESS, FE_SIZE_BUDGET, HFS_AGENT_DATA_TRACKED, HFS_CI_E2E_AUTOMATIC, HFS_IDENTITY_CUSTODY, HFS_SCRIPT_ONE_OFF]
+  - id: origin-required-for-state-change
+    date: '2026-10-29'
+    status: live
+    ruling: "A state-changing request with no usable Origin is refused; Referer stands in only when Origin is absent; a signed webhook or a header-credential door, which proves its caller itself, is the only exemption."
+    owner: "contexts/code/be/api-auth.md BE-AUTH-5; @starci/hfs templates/be/skeleton platform/http-security origin.guard.ts"
+  - id: rate-limit-redirect-outcome
+    date: '2026-10-29'
+    status: live
+    ruling: "A redirect-only door over its rate limit answers its own error redirect (303), declared on @RateLimit, never a 429 body."
+    owner: "contexts/code/be/api-auth.md BE-AUTH-4; @starci/hfs templates/be/skeleton platform/http-security rate-limit.guard.ts"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

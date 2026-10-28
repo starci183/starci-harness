@@ -56,9 +56,14 @@ its capability error) validates every DTO. Each property carries its class-valid
 a bounded format such as `@IsUUID`), an enum `@IsEnum`/`@IsIn`, an array `@ArrayMaxSize`, a nested object
 `@ValidateNested()` with `@Type`, a number `@Min`/`@Max`. Each operation is its own typed field or route: no `unknown`
 body, generic `execute` field or `switch (input.operation)`. Auth handshakes and signed webhooks carry
-`@RateLimit(RateTier.Strict)`; the rate counter lives in a store every replica shares.
+`@RateLimit(RateTier.Strict)`; the rate counter lives in a store every replica shares. A door whose contract answers
+only redirects (an OAuth callback) names its error redirect on the same decorator,
+`@RateLimit(RateTier.Strict, { redirect: "/sign-in?auth=error" })`: a caller over the limit gets that 303 instead of a
+429 body. The redirect is a path on the app's own origin (one leading `/`), refused when the decorator is applied
+otherwise; the guard writes it and the errors filter leaves the sent response alone.
 
-Why: unbounded input and unthrottled doors are the cheapest denial-of-service and brute-force paths.
+Why: unbounded input and unthrottled doors are the cheapest denial-of-service and brute-force paths, and a
+redirect-only door answered with a JSON 429 leaves the browser on an API error page its contract never names.
 
 ```ts
 /** The opaque cursor returned by the preceding page, or null for the first page. */
@@ -70,6 +75,24 @@ after: string | null = null
 ```
 
 Enforced by: `input-bounded`, `auth-door-strict-rate-tier`, `no-untyped-body` (R42, R41).
+
+## BE-AUTH-5 A state-changing request proves its origin
+
+`OriginGuard` is the CSRF defence. A `POST`, `PUT`, `PATCH` or `DELETE` is admitted only when its `Origin` header is one
+of the exact allowed origins (BE-AUTH-7); when `Origin` is absent, the origin of its `Referer` stands in. A request
+naming neither, a `null` or foreign `Origin`, or an unparsable or foreign `Referer` is refused
+`HTTP_SECURITY_ORIGIN_REJECTED` (403); a foreign `Origin` is never rescued by an allowed `Referer`. `GET`, `HEAD` and
+`OPTIONS` are not judged. A server-to-server door owes no origin because it proves its caller on every request: the
+`ServerToServer` marker of `platform/http-security`, which `@Public({ reason: PublicReason.SignedWebhook })` (the
+signature is verified first, BE-WEBHOOK-2) and `@Credential({ kind })` (a header credential `CredentialGuard`
+authenticates) apply. A door never carries the marker on its own.
+
+Why: a session cookie rides on every request a browser sends, so a request without an origin cannot be told from a
+forged one; only a caller that proves itself without the cookie can do without it.
+
+Enforced by: the unit spec of `OriginGuard`; `webhook-scope` and `webhook-verify-first` (R182, R183) keep the
+SignedWebhook reason on doors that verify first. A door applying `ServerToServer` directly is held by review (open gap:
+no lint refuses it yet).
 
 ## BE-AUTH-6 Lists page by opaque cursor
 

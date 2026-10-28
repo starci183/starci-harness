@@ -1,6 +1,6 @@
 import "reflect-metadata"
 import type { ExecutionContext, Type } from "@nestjs/common"
-import type { Request } from "express"
+import type { Request, Response } from "express"
 import { Reflector } from "@nestjs/core"
 import { Test } from "@nestjs/testing"
 import { FakeClock, mock, mockEntityManager } from "@starci/jest-preset"
@@ -12,6 +12,7 @@ import { HTTP_SECURITY_OPTIONS } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"
 import { HIT_RATE_WINDOW, PRUNE_RATE_WINDOWS } from "./persistence/rate-limit.sql"
 import { RateLimit, RateLimitGuard, RateTier } from "./rate-limit.guard"
+import type { RateLimitExceeded } from "./rate-limit.guard"
 
 const AT = "2026-02-03T04:05:06.000Z"
 const RESET_AT = "2026-02-03T04:06:06.000Z"
@@ -21,9 +22,11 @@ const options: HttpSecurityOptions = {
     webhooks: {},
 }
 
-const build = async (entityManager: MockEntityManager, tier?: RateTier) => {
+const build = async (entityManager: MockEntityManager, tier?: RateTier, exceeded?: RateLimitExceeded) => {
     const reflector = mock<Reflector>()
-    reflector.getAllAndOverride.mockReturnValue(tier)
+    reflector.getAllAndOverride.mockImplementation((key: unknown) =>
+        key === "platform.http-security.rate-exceeded" ? exceeded : tier,
+    )
     const moduleRef = await Test.createTestingModule({
         providers: [
             RateLimitGuard,
@@ -37,10 +40,17 @@ const build = async (entityManager: MockEntityManager, tier?: RateTier) => {
 }
 
 /** An execution context of one POST from `ip` on the door; the handler and the class carry the tier metadata. */
-const contextOf = (ip: string | undefined, handler = () => undefined, door: Type<unknown> = class Door {}) => {
+const contextOf = (
+    ip: string | undefined,
+    handler = () => undefined,
+    door: Type<unknown> = class Door {},
+    response = mock<Response>(),
+) => {
     const http = mock<ReturnType<ExecutionContext["switchToHttp"]>>()
     http.getRequest.mockImplementation(() => mock<Request>({ headers: {}, method: "POST", ip }))
+    http.getResponse.mockReturnValue(response)
     const context = mock<ExecutionContext>()
+    context.getType.mockReturnValue("http")
     context.switchToHttp.mockReturnValue(http)
     context.getHandler.mockReturnValue(handler)
     context.getClass.mockReturnValue(door)
@@ -66,6 +76,23 @@ describe("RateLimit", () => {
             new Date(RESET_AT),
         ])
     })
+
+    it("marks a redirect-only door with its exceeded redirect beside the tier", () => {
+        class Door {}
+        RateLimit(RateTier.Strict, { redirect: "/sign-in?auth=error" })(Door)
+
+        expect(Reflect.getMetadata("platform.http-security.rate-tier", Door)).toBe(RateTier.Strict)
+        expect(Reflect.getMetadata("platform.http-security.rate-exceeded", Door)).toEqual({
+            redirect: "/sign-in?auth=error",
+        })
+    })
+
+    it.each(["https://foreign.test/sign-in", "//foreign.test/sign-in", "/\\foreign.test", "sign-in"])(
+        "refuses an exceeded redirect %s that is not a same-site path",
+        (redirect) => {
+            expect(() => RateLimit(RateTier.Strict, { redirect })).toThrow(HttpSecurityErrorCode.RequestInvalid)
+        },
+    )
 })
 
 describe("RateLimitGuard", () => {
@@ -133,5 +160,54 @@ describe("RateLimitGuard", () => {
         await expect(guard.canActivate(contextOf("127.0.0.1"))).rejects.toMatchObject({
             code: HttpSecurityErrorCode.RateLimited,
         })
+    })
+})
+
+describe("RateLimitGuard on a redirect-only door", () => {
+    const EXCEEDED: RateLimitExceeded = { redirect: "/sign-in?auth=error" }
+
+    /** A response whose redirect is a plain double, so the spec reads the call without the deprecated overload. */
+    const responseOf = () => {
+        const redirect = jest.fn()
+        return { response: mock<Response>({ redirect }), redirect }
+    }
+
+    it("answers the door's own 303 when the caller is over the limit, and still refuses", async () => {
+        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+        const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
+        const { response, redirect } = responseOf()
+
+        await expect(
+            guard.canActivate(contextOf("127.0.0.1", () => undefined, class Door {}, response)),
+        ).rejects.toMatchObject({ code: HttpSecurityErrorCode.RateLimited })
+        expect(redirect).toHaveBeenCalledWith(303, "/sign-in?auth=error")
+    })
+
+    it("writes no redirect while the caller is under the limit", async () => {
+        const entityManager = mockEntityManager({
+            query: [
+                [HIT_RATE_WINDOW, [{ hits: 1 }]],
+                [PRUNE_RATE_WINDOWS, []],
+            ],
+        })
+        const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
+        const { response, redirect } = responseOf()
+
+        await expect(guard.canActivate(contextOf("127.0.0.1", () => undefined, class Door {}, response))).resolves.toBe(
+            true,
+        )
+        expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it("refuses a GraphQL operation over the limit without writing a redirect", async () => {
+        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+        const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
+        const { response, redirect } = responseOf()
+        const context = contextOf("127.0.0.1", () => undefined, class Door {}, response)
+        context.getType.mockReturnValue("graphql")
+        context.getArgs.mockReturnValue([{}, {}, { req: mock<Request>({ headers: {}, ip: "127.0.0.1" }) }, {}])
+
+        await expect(guard.canActivate(context)).rejects.toMatchObject({ code: HttpSecurityErrorCode.RateLimited })
+        expect(redirect).not.toHaveBeenCalled()
     })
 })

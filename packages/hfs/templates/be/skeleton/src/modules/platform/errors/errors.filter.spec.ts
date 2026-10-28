@@ -37,7 +37,7 @@ describe("ErrorsFilter", () => {
         const { filter, errors, requestLocale } = await build()
         const failure = new Error("note missing")
         const request = mock<Request>({ headers: { "accept-language": "en-US,en;q=0.9" } })
-        const response = mock<Response>()
+        const response = mock<Response>({ headersSent: false })
         response.status.mockReturnValue(response)
         const http = mock<ReturnType<ArgumentsHost["switchToHttp"]>>()
         http.getRequest.mockReturnValue(request)
@@ -65,5 +65,19 @@ describe("ErrorsFilter", () => {
             message: "The note was not found",
             params: { noteId: "note-1" },
         })
+    })
+
+    it("leaves a response a guard already sent as it is", async () => {
+        const { filter, errors } = await build()
+        const response = mock<Response>({ headersSent: true })
+        const http = mock<ReturnType<ArgumentsHost["switchToHttp"]>>()
+        http.getResponse.mockReturnValue(response)
+        const host = mock<ArgumentsHost>()
+        host.switchToHttp.mockReturnValue(http)
+
+        expect(filter.catch(new Error("rate limited"), host)).toBeUndefined()
+
+        expect(errors.describe).not.toHaveBeenCalled()
+        expect(response.status).not.toHaveBeenCalled()
     })
 })

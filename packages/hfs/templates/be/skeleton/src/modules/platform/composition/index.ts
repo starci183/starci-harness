@@ -1,2 +1,2 @@
 export { InjectReflector, injector } from "./composition.decorators"
-export type { TypedParameterDecorator } from "./composition.decorators"
+export type { DoorDecorator, TypedParameterDecorator } from "./composition.decorators"

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.9 - 2026-10-29
+
+- Changed: `@starci/eslint-grammar-core` 0.15.9 is the peer dependency; the bundled canon pins name hfs 4.9.10, eslint-canon-be 3.6.7, eslint-canon-fe 9.4.8, eslint-grammar-core 0.15.9 and eslint-grammar-offset-pop 0.15.9. No rule changed.
+
 ## 0.15.8 - 2026-10-29
 
 - Changed: versioned together with Grammar 0.15.8; `@starci/eslint-grammar-core` 0.15.8 is the peer dependency, so Offset Pop apps inherit R325's segment layout `Page` and the layout owner checks; the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6.
