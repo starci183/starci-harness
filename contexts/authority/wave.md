@@ -28,4 +28,6 @@ the reach is everything.
 
 A row whose inputs did not change since it was green is reused, never rerun: Debug landing a workflow reuses its
 Kernel's green rows, and a push reuses the round it follows. After a red, repair the red files and rerun only the red
-rows and the rows that depend on them. A green round goes to main at once ([ci.md](ci.md)).
+rows and the rows that depend on them. A red belongs to the tasks that landed the files its findings name (a composer also
+answers for the modules deferred to it), whichever task left the check; a task whose own files are green stays green, a finding in a file no task of the round landed is the round's
+error and fails no task, and a task returned on a shared red that names no file spends no try (`cli/src/harness/wave.ts`). A green round goes to main at once ([ci.md](ci.md)).

@@ -2,7 +2,7 @@ schema: starci/scenario@1
 id: verify-check-run-output-in-task-status
 group: verify
 title: the output of a red check run step is kept as the task's evidence, secrets redacted, and task status shows it
-inject: "a task's check-run-green turns red on a clean checkout because a workspace dependency's build fails, and the failing build prints a credential-shaped value"
+inject: "a task breaks the source of a workspace dependency it changes, so its check-run-green turns red on a clean checkout because that dependency's build fails, and the failing build prints a credential-shaped value"
 expect: >-
   task verify runs the scoped check run on the clean checkout; the dependency's build fails, so the check is red; the
   check's detail, with the tail of every red step's output, is kept in the ledger with every credential the secret scan
@@ -16,8 +16,9 @@ pass:
   - no human intervention beyond the injected fault
 automation: automated
 # bench/fixtures/workspace-dist-only: the dependency's build script exits 1 when its source holds BUILD_ERROR. The run's
-# credential-shaped value is ${generatedKey}, printed by the broken build through the source line it echoes. The scratch
-# commits are dated in the past: `lands` dates foreign commits to the second.
+# credential-shaped value is ${generatedKey}, printed by the broken build through the source line it echoes. The task lands
+# the broken source itself: a wave returns a red only to the task that landed the file it names (cli/src/harness/wave.ts).
+# The scratch commits are dated in the past: `lands` dates foreign commits to the second.
 env:
   GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z"
   GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z"
@@ -26,10 +27,18 @@ steps:
     write: { path: ".", from: "${ops}/../bench/fixtures/workspace-dist-only/repo" }
   - write: { path: node_modules/typescript, from: "${ops}/../bench/fixtures/workspace-dist-only/stand-ins/typescript" }
   - write: { path: node_modules/eslint, from: "${ops}/../bench/fixtures/workspace-dist-only/stand-ins/eslint" }
-  - name: the dependency's build is broken at HEAD and prints a credential-shaped value
+  - name: the dependency's build prints a credential-shaped value when its source is broken
     write:
       path: packages/ui/build.mjs
-      content: "console.error(\"src/index.ts(1,14): error TS2322: BUILD_ERROR breaks the ui build near ${generatedKey}\")\nprocess.exit(1)\n"
+      content: |
+        import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+        if (readFileSync("src/index.ts", "utf8").includes("BUILD_ERROR")) {
+            console.error("src/index.ts(1,14): error TS2322: BUILD_ERROR breaks the ui build near ${generatedKey}")
+            process.exit(1)
+        }
+        mkdirSync("dist", { recursive: true })
+        writeFileSync("dist/index.js", 'export const greeting = "hello"\n')
+        writeFileSync("dist/index.d.ts", "export declare const greeting: string\n")
   - git: [add, -A]
   - git: [commit, -q, -m, "bench: the workspace fixture with a broken dependency build"]
   - file:
@@ -43,7 +52,7 @@ steps:
           - id: page
             label: docs
             summary: make the web page greet loudly
-            allowPaths: [apps/web/src/page.ts]
+            allowPaths: [apps/web/src/page.ts, packages/ui/src/index.ts]
             checks: [check-run-green]
   - name: define
     starci: [workflow, define, "${run}/wf.yaml"]
@@ -51,10 +60,11 @@ steps:
     starci: [workflow, start, web]
     save:
       page: data.nodes.0.task.id
-  - name: the worker changes the page
+  - name: the worker changes the page and breaks the dependency's source
     worker:
       task: ${page}
       files:
+        packages/ui/src/index.ts: "export const greeting = \"hello\" // BUILD_ERROR\n"
         apps/web/src/page.ts: "import { greeting } from \"@bench/ui\"\nexport const page = greeting + \"!\"\n"
   - name: step verifies it red on the clean checkout
     starci: [workflow, step, web]

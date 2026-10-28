@@ -370,7 +370,11 @@ const waveActions = async (root: string, snapshot: Snapshot, detach: boolean): P
         const red = (id: string): string[] => (wave.outcomes[id] ?? []).filter((outcome) => outcome.status === "red").map((outcome) => outcome.name)
         return [
             { key: null, task: null, action: "verified", detail: `wave ${wave.verdict} over ${String(wave.tasks.length)} task(s), ${wave.base.slice(0, 12)}..${wave.head.slice(0, 12)}` },
-            ...wave.returned.map((id): StepAction => ({ key: keyOf(id), task: id, action: "verified", detail: `wave red: ${red(id).join(", ") || wave.prepared.map((outcome) => outcome.name).join(", ")}; task failed, back to the Kernel (starci task status ${id})` })),
+            ...wave.returned.map((id): StepAction => {
+                const spent = wave.free.includes(id) ? "; the red is not proven its own, so no try is spent" : ""
+                return { key: keyOf(id), task: id, action: "verified", detail: `wave red: ${red(id).join(", ") || wave.prepared.map((outcome) => outcome.name).join(", ")}; task failed, back to the Kernel${spent} (starci task status ${id})` }
+            }),
+            ...wave.errors.map((error): StepAction => ({ key: null, task: null, action: "problem", detail: `wave error, no task failed: ${error}` })),
         ]
     } catch (error: unknown) {
         const refusal = asRefusal(error)
