@@ -6,7 +6,8 @@ interface VersionData {
     readonly node: string
 }
 
-const packageVersion = (): string => {
+/** The version of this CLI package (cli/package.json), "unknown" when it cannot be read. */
+export const packageVersion = (): string => {
     const parsed: unknown = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"))
     if (typeof parsed === "object" && parsed !== null && "version" in parsed && typeof parsed.version === "string") return parsed.version
     return "unknown"

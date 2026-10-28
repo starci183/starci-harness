@@ -4,6 +4,8 @@ declare module "@starci/hfs" {
     /** What `main` writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
     interface HfsIo {
         readonly cwd: string
+        /** The CLI that runs @starci/hfs: its version is the starci-harness an app is judged and scaffolded at. */
+        readonly harness: { readonly version: string }
         readonly stdout: (text: string) => void
         readonly stderr: (text: string) => void
     }
