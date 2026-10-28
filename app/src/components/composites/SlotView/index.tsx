@@ -1,4 +1,4 @@
-import { EmptyNotice } from "@starci/grammar/core"
+import { EmptyNotice, PageContainer } from "@starci/grammar/core"
 import type { ReactNode } from "react"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 
@@ -14,6 +14,8 @@ export interface SlotViewProps<T> {
     readonly onRetry?: () => void
     /** An answer that holds nothing reads as empty, as an empty list does. */
     readonly isEmpty?: (items: T) => boolean
+    /** The region heads the page, so its notice (the ready tree draws its own header) sits in the page body's gutter. */
+    readonly isFramed?: boolean
     readonly children: (items: T, isSkeleton: boolean) => ReactNode
 }
 
@@ -25,21 +27,29 @@ const isEmptyList = (items: unknown): boolean => Array.isArray(items) && items.l
  */
 export const SlotView = <T,>(props: SlotViewProps<T>) => {
     const { slot, labels } = props
+    const frame = (notice: ReactNode): ReactNode =>
+        props.isFramed === true ? (
+            <PageContainer measure="full" className="app-page-body">
+                {notice}
+            </PageContainer>
+        ) : (
+            notice
+        )
     if (slot.isLoading === true) return <>{props.children(props.placeholder, true)}</>
-    if (slot.isForbidden === true) return props.forbidden === "hide" ? null : <EmptyNotice message={labels.forbidden} />
+    if (slot.isForbidden === true) return props.forbidden === "hide" ? null : frame(<EmptyNotice message={labels.forbidden} />)
     if (slot.isError === true) {
-        return (
+        return frame(
             <EmptyNotice
                 message={labels.error}
                 actionLabel={labels.retry}
                 actionVariant="secondary"
                 {...(props.onRetry === undefined ? {} : { onAction: props.onRetry })}
-            />
+            />,
         )
     }
     const items = slot.items
     if (items === undefined || isEmptyList(items) || props.isEmpty?.(items) === true) {
-        return <EmptyNotice message={labels.empty} {...(labels.emptyHint === undefined ? {} : { description: labels.emptyHint })} />
+        return frame(<EmptyNotice message={labels.empty} {...(labels.emptyHint === undefined ? {} : { description: labels.emptyHint })} />)
     }
     return <>{props.children(items, false)}</>
 }

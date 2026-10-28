@@ -25,7 +25,7 @@ body,
     min-height: 100%;
 }
 
-/* The routed page: a full-width column; a header band sits flush at its top, the body below it in the Grammar inset. */
+/* The routed page: a full-width column; the PageHeader sits flush at its top, the body below it in the Grammar inset. */
 .app-page {
     display: flex;
     flex-direction: column;
@@ -37,13 +37,9 @@ body,
     padding-block: var(--grammar-page-inset);
 }
 
-/* The page header band: the surface over the canvas, with the same horizontal gutter as the body; the Divider under it runs full width. */
-.app-page-band {
-    background: var(--starci-core-surface);
-}
-
-.app-page-band-inner {
-    padding-block: var(--grammar-page-inset);
+/* Alerts under the page header: the body's gutter, no extra space above (the header's own space follows it). */
+.app-page-notices {
+    padding-block-start: var(--grammar-page-inset);
 }
 
 /* One page: header, then its sections. */

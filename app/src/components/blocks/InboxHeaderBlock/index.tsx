@@ -12,7 +12,7 @@ export const InboxHeaderBlock = () => {
         <InboxHeaderBlockBase
             props={{
                 count: mapSlot(slotOfQuery(query), (decisions: readonly Decision[]) => decisions.length),
-                labels: { title: INBOX.title, description: INBOX.description, slot: slotLabels(INBOX.empty) },
+                labels: { title: INBOX.title, description: INBOX.description, count: INBOX.count, slot: slotLabels(INBOX.empty) },
             }}
             on={{ retry: () => void query.refetch() }}
         />

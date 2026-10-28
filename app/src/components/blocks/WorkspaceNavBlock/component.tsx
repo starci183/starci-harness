@@ -22,7 +22,6 @@ export interface ProjectNavView {
 export interface WorkspaceNavBlockLabels {
     readonly landmark: string
     readonly product: string
-    readonly edition: string
     readonly overview: string
     readonly workflows: string
     readonly inbox: string
@@ -38,6 +37,8 @@ export interface WorkspaceNavBlockBaseProps {
         readonly presentation: "rail" | "drawer"
         readonly selectedKey: string
         readonly logoSrc: string
+        /** The CLI's own version, shown under the product name once the overview answers. */
+        readonly version: string | null
         /** Known once the overview answers; navigation itself never waits for it. */
         readonly projects: readonly ProjectNavView[]
         readonly openDecisions: number
@@ -88,7 +89,7 @@ export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
                 presentation={props.props.presentation}
                 groups={groups}
                 selectedKey={props.props.selectedKey}
-                header={<IdentityLockup title={labels.product} subtitle={labels.edition} logoSrc={props.props.logoSrc} onPress={props.on.home} />}
+                header={<IdentityLockup title={labels.product} {...(props.props.version === null ? {} : { subtitle: props.props.version })} logoSrc={props.props.logoSrc} onPress={props.on.home} />}
                 footer={
                     <SlotView slot={props.props.status} placeholder={STATUS_PLACEHOLDER} labels={labels.slot} forbidden="hide" onRetry={props.on.retry}>
                         {(status, isSkeleton) => (

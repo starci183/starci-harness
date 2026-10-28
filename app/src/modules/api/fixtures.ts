@@ -161,7 +161,7 @@ export const fixtureOverview: Overview = {
         },
         { at: at("12:34"), project: "nivo-lite", text: "d-c11 escalation owner: publish core cohort 0.12.15", attention: true },
     ],
-    host: { watch: true, tick: 51, lastTickAt: at("12:44") },
+    host: { version: "0.1.0", watch: true, tick: 51, lastTickAt: at("12:44") },
 }
 
 const node = (

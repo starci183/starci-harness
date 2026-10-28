@@ -7,7 +7,7 @@ const meta = {
     title: "InboxHeaderBlock",
     component: InboxHeaderBlockBase,
     args: {
-        props: { count: ready(2), labels: { title: INBOX.title, description: INBOX.description, slot: slotLabels(INBOX.empty) } },
+        props: { count: ready(2), labels: { title: INBOX.title, description: INBOX.description, count: INBOX.count, slot: slotLabels(INBOX.empty) } },
         on: { retry: noop },
     },
 } satisfies Meta<typeof InboxHeaderBlockBase>

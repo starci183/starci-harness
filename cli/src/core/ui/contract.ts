@@ -97,7 +97,7 @@ export interface Overview {
     readonly providers: readonly ProviderStatus[]
     readonly workflows: readonly WorkflowRow[]
     readonly events: readonly EventRow[]
-    readonly host: { readonly watch: boolean; readonly tick: number; readonly lastTickAt: string | null }
+    readonly host: { readonly version: string; readonly watch: boolean; readonly tick: number; readonly lastTickAt: string | null }
 }
 
 /** One node of a workflow graph. */
