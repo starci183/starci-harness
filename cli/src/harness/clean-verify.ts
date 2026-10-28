@@ -9,6 +9,7 @@ import { captureGit, git, nulPaths, resolveSha } from "../shared/git.js"
 import { locateTree } from "../shared/tree.js"
 import { describeSecrets, scanSecrets } from "../core/check/secrets-scan.js"
 import { describeLoosening, scanLoosening } from "../core/check/loosening-scan.js"
+import { reapplyLocal } from "../core/deps/packages.js"
 import { underPaths } from "./contract.js"
 import { loadPolicy, resolveProfile } from "./policy.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -181,12 +182,20 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
 
 const tail = (stdout: string, stderr: string): string => [stdout, stderr].filter((text) => text !== "").join("\n").split("\n").slice(-DETAIL_LINES).join("\n")
 
-/** `npm ci` where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none. */
+/**
+ * `npm ci` where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none.
+ * When the repository is in local package mode (`starci deps source --local`), the same local copies are applied after it,
+ * so the candidate runs against the package the work tree runs against (`reapplyLocal`).
+ */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")))
     if (dir === undefined) return undefined
     const run = await captureNpm(["ci", "--no-audit", "--no-fund"], dir, place.timeoutMs === undefined ? {} : { timeoutMs: place.timeoutMs })
-    return { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: tail(run.stdout, run.stderr) }
+    const installed: CheckOutcome = { name: "install", kind: "install", status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, detail: tail(run.stdout, run.stderr) }
+    if (installed.status === "red") return installed
+    const local = await reapplyLocal(place.source ?? place.root, dir)
+    if (local === undefined) return installed
+    return { ...installed, status: local.status, detail: `${installed.detail}\nlocal package sources (starci deps source):\n${local.detail}` }
 }
 
 /** Runs the contract's setup commands in cwd (npm through the running Node), one outcome for all; undefined when none. */

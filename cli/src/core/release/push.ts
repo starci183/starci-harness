@@ -1,4 +1,6 @@
 import { loadPolicy } from "../../harness/policy.js"
+import { judgePush } from "../deps/push-gate.js"
+import { assertMayPushBranch } from "../pkg/edit.js"
 import { exceptSecrets } from "../check/secrets-scan.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, currentBranch, git, nulPaths, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
@@ -42,9 +44,12 @@ export const releasePushVerb = defineVerb({
         const remote = flags.remote ?? "origin"
         const branch = flags.branch ?? "main"
         const dryRun = flags["dry-run"]
+        assertMayPushBranch(branch)
+        assertMayPushBranch(await currentBranch(root))
         if ((await currentBranch(root)) !== branch) throw new Refusal("PUSH_NOT_ON_BRANCH", `check out ${branch} first; only ${branch} is pushed`)
         const dirty = await trackedChanges(root)
         if (dirty.length > 0) throw new Refusal("PUSH_DIRTY_TREE", `commit or drop the tracked changes first: ${dirty.slice(0, 5).join(", ")}`)
+        await judgePush(root)
         await captureGit(["fetch", "--quiet", remote, branch], root)
         const remoteRef = `${remote}/${branch}`
         const head = await resolveSha(root, "HEAD")
