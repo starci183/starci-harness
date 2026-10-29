@@ -331,7 +331,8 @@ takes over (`assertDeliverables` in `harness/goal.ts`): only the first replan af
 and every replan are refused `TASK_NOT_SPLIT` while one task of a `perRecord` label works several Work records
 ([ops/ops/README.md](../ops/ops/README.md)), and `FLOW_INCOMPLETE` while a Work record a task is over has a step of its lane
 ([ops/lanes.yaml](../ops/lanes.yaml)) that is neither satisfied by evidence nor carried by a task of its label over it,
-in the lane's order (`assertFlow` in `harness/lanes.ts`); `kernel next` digests each record's lane as `lanes`. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
+in the lane's order (`assertFlow` in `harness/lanes.ts`), judged on the workflow branch's head (its worktree, `flowCheckoutOf`)
+where its records are written, whichever checkout asks; `kernel next` digests each record's lane, read on the same tree, as `lanes`. Each key is classified keep, continue, stale (a dependency's result changed: the Kernel accepts or retries it,
 nothing is cancelled), rework (done and its contract changed: a new attempt from its previous commit with the contract
 diff), redo-live (live and changed: cancelled through task cancel, relaunched from its preserved patch), redo, add or
 drop (live: cancelled; done: a generated `revert.<key>` node undoes the commits it landed, verified like any task,
@@ -402,8 +403,9 @@ checks and judges it as the transport of work the source already settled: its fi
 it, `composerOf` in `harness/graph.ts`) composes it, consuming what the commits export, so the composition rules on the relayed
 files defer to that waiter, whose check and the workflow's final verify judge them in full; a context file its checkout lacks
 (a Work record of the source's, on the source's branch alone) is read, by its brief and its read trace, at the last relayed
-commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit is
-the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
+commit as data (`relayHeadOf`), never copied onto the branch; and a finding its relayed files already held at that commit (the
+same rule, file and message, whichever ESLint report printed it: a deferral's json findings print their message as the stylish
+report does, `judgeDeferred` in `core/check/composition.ts`) is the source's baseline, judged there and kept as `baseline-findings` evidence, wherever `check run` judges them (as the node,
 its composer or the final verify), a composition rule excepted (`core/check/relay-baseline.ts`). Every waiter of the need in
 that workflow depends on it and stays parked with its work kept, spending no try, until it lands; the add is a `need-relay-conflict` event naming the node and the files, and the node's landing a `need-relayed` event
 naming it. Like a revert node, a relay node's key and contract are the harness's own (no file adds or edits one), it is outside

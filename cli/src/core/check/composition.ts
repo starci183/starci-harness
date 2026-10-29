@@ -100,6 +100,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 const toSlash = (path: string): string => path.split(sep).join("/")
 
+/**
+ * A finding's message as ESLint's default (stylish) report prints it, its one closing period dropped: a line rendered from the
+ * json report reads as the same finding as the stylish line of a run with no deferral, so a base run (base-findings.ts findingKeys)
+ * that printed it stylish holds it.
+ */
+const stylishMessage = (message: unknown): string => String(message).replace(/([^ ])\.$/u, "$1")
+
 /** What one ESLint run says once a deferral is applied: the findings that still count, as lines, and how many were deferred. */
 export interface DeferredJudgement {
     readonly remaining: readonly string[]
@@ -126,7 +133,7 @@ export const judgeDeferred = (run: ToolRun, root: string, deferral: Deferral): D
         const own = underPaths(file, deferral.paths)
         for (const message of (Array.isArray(result.messages) ? result.messages : []).filter(isRecord)) {
             if (own && isDeferredRule(deferral, message.ruleId)) deferred += 1
-            else remaining.push(`${file}:${String(Number(message.line ?? 0))}:${String(Number(message.column ?? 0))} ${message.severity === 2 ? "error" : "warning"} ${String(message.message)} ${String(message.ruleId)}`)
+            else remaining.push(`${file}:${String(Number(message.line ?? 0))}:${String(Number(message.column ?? 0))} ${message.severity === 2 ? "error" : "warning"} ${stylishMessage(message.message)} ${String(message.ruleId)}`)
         }
     }
     if (run.exitCode !== 0 && remaining.length === 0 && deferred === 0) remaining.push(`eslint exited ${String(run.exitCode)} with no finding: ${run.stderr.trim()}`)

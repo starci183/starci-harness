@@ -5,7 +5,7 @@ import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../ha
 import type { Goal } from "../../harness/goal.js"
 import { applyChanges, buildGraph, isGeneratedKey, readPlanSource, uatWalksOf } from "../../harness/graph.js"
 import type { Classified, PlanNode, PlanPlace, PlanSource, PlanTask, WorkflowHeader } from "../../harness/graph.js"
-import { assertFlow } from "../../harness/lanes.js"
+import { assertFlow, flowCheckoutOf } from "../../harness/lanes.js"
 import type { Ops } from "../../harness/ops.js"
 import { carryHashes, classifyReplan, freshRounds, readResults, revertRows } from "../../harness/reconcile.js"
 import type { Results } from "../../harness/reconcile.js"
@@ -161,7 +161,8 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     assertScope(workflow.id, built.nodes, goal)
     const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
     assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
-    assertFlow(workflow.id, built.nodes, { repo: place.repo, db, requires: header.requires ?? [] }, ops)
+    // The lanes are judged on the workflow branch's head (its worktree), where its records are written, whatever checkout asked.
+    assertFlow(workflow.id, built.nodes, { repo: flowCheckoutOf(db, workflow.id) ?? place.repo, db, requires: header.requires ?? [] }, ops)
     assertOwnSources(db, workflow.id, built.nodes, new Set(snapshot.nodes.map((node) => contractHash(node.contract))))
     const problems: string[] = []
     for (const row of classification) {

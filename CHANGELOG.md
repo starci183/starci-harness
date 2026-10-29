@@ -8,6 +8,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A relay node's own lint holds a finding its source already held, whichever ESLint report printed it.** A check that
+  defers composition rules reads ESLint's json report, where a canon message keeps its closing period; the run at the relayed
+  source's head has no deferral and reads the stylish report, which drops it, so the two keys never met and the finding was
+  charged to the relay node. `judgeDeferred` (`core/check/composition.ts`) prints a json finding's message as the stylish report
+  does. starci-next-app's `relay.capability-domain.entitlement.r4` (t-aec4712a) was red on `BE_PUBLIC_CONTRACT_FORM` in
+  `entitlement.service.ts`, byte-identical to its source 759c46a, and its worker asked its Kernel what to do. Bench:
+  `needs-relay-baseline-message-form`.
+- **A replan judges the lanes on the workflow branch's head.** `buildReplan` read the Work records in the checkout the amend
+  was asked from: the Supervisor's submit and the shared-need tender ask from the main checkout, where records written on the
+  workflow's branch are absent, so every replan of starci-next-app's lesson-ai was refused `FLOW_INCOMPLETE` for its lessons
+  records while the Kernel's digest showed them satisfied. The replan, the Kernel's `lanes` digest and `starci ui`'s graph
+  read one tree, the workflow's worktree (`flowCheckoutOf` in `harness/lanes.ts`). Bench: `flow-replan-reads-branch-records`.
 - **An admitted contract is never refused for a context that grew under it.** The op's context budget is judged when a
   contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it). Its
   verify, settle, relaunch and a resend or retry of the same contract hash keep the budget it passed then (`isAdmitted` in
