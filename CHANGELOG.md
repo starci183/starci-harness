@@ -6,6 +6,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.8] - 2026-10-29
+
 ### Fixed
 
 - **A live suite's verify is no longer settled red by a worker that ran it without custody.** The `verify` worker of
@@ -20,11 +22,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   the wave alike), and a key custody lacks ends it `awaiting_owner` on the credentials question. The verify op, the worker
   procedure and SHARED-TEST-2 say a `useSandbox` suite runs only through that verb. Bench: `verify-worker-custody-recheck`,
   `test-live-custody`.
-
-## [1.1.0-alpha.8] - 2026-10-29
-
-### Fixed
-
+- **`verify-host-held-no-try` holds on an idle CI runner.** It serves the busy stand-in, as the CPU-starve scenarios do, because an idle runner reads 0% CPU, under even a 0.0001 ceiling.
 - **A workflow change is never blocked by a done node's context growing.** A replan measured every node's contract against the
   context files as they are now, so a canon file that grew put a done task past its op's budget (subscription-premium's
   `deps-grammar` at 24022 of 24000 tokens) and refused every change to the workflow `WORKFLOW_INVALID`. `buildGraph` now judges

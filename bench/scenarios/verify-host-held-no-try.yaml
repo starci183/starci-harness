@@ -40,6 +40,8 @@ steps:
   - name: a verify deadline shorter than the queue wait, which never counts against it
     starci: [config, set, liveness.verifyDeadlineMinutes, "0.5"]
   - git: [commit, -q, -am, "bench: a host that admits nothing"]
+  - name: another program keeps a core busy, so even an idle runner reads above the ceiling (CPU rounds to whole percent)
+    serve: { stub: busy, as: burner }
   - name: boot the project's Supervisor, whose terminal launches the owner's tasks
     boot: {}
   - file:
