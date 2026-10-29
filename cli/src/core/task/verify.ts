@@ -8,6 +8,8 @@ import type { CleanVerify, CleanVerifyInput } from "../../harness/clean-verify.j
 import { contractHash, contractProblems, readContract, resolveChecks } from "../../harness/contract.js"
 import { blockOnCustody, CUSTODY_CODES } from "../../harness/custody.js"
 import type { Contract } from "../../harness/contract.js"
+import { enablePatterns, patternsOfFindings, patternsOfPaths } from "../../harness/hfs-patterns.js"
+import type { PatternNeed, PatternsEnabled } from "../../harness/hfs-patterns.js"
 import { inTransaction, now, openExistingLedger, openLedger } from "../../harness/ledger.js"
 import { loadLiveness } from "../../harness/liveness.js"
 import { loadOps } from "../../harness/ops.js"
@@ -15,7 +17,7 @@ import type { Ops } from "../../harness/ops.js"
 import { PreserveIncomplete, preserveTaskPaths, resetPreserved } from "../../harness/preserve.js"
 import type { Preserved } from "../../harness/preserve.js"
 import { LAND_ORPHANED } from "../../harness/revive.js"
-import { runCheck } from "../../harness/run-checks.js"
+import { recordBaselineFindings, runCheck } from "../../harness/run-checks.js"
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
@@ -399,6 +401,22 @@ const returnEscaped = async (db: DatabaseSync, task: TaskRow, attemptId: string,
     }
 }
 
+/**
+ * Declares the opt-in patterns `needs` names on the branch a workflow task lands on (harness/hfs-patterns.ts); a task outside a
+ * workflow, working in the checkout it lands on, gets none: the harness edits hfs.json only on a workflow's branch.
+ */
+const declarePatterns = async (at: Settling, why: string, needs: readonly PatternNeed[]): Promise<PatternsEnabled> => {
+    const workflow = at.task.workflowId
+    if (workflow === null || at.target.own || needs.length === 0) return { commit: null, added: [], refused: null }
+    return enablePatterns({ db: at.db, checkout: at.target.checkout, branch: at.target.branch, workflow, task: at.task.id, why }, needs)
+}
+
+/** The files a task's filed result names, for the patterns its verify declares first. */
+const resultFiles = (output: unknown): string[] => {
+    const files = typeof output === "object" && output !== null ? (output as { readonly files?: unknown }).files : undefined
+    return Array.isArray(files) ? files.filter((file): file is string => typeof file === "string") : []
+}
+
 /** What one pass of a settling verify reached: an ending, or `moved` when the head moved before its verified commit could land. */
 type Pass = { readonly built: CleanVerify | null; readonly ending: Ending } | "moved"
 
@@ -441,7 +459,14 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     // A verify that outlived its deadline lost its lock: it records, preserves and lands nothing (the catch above holds the same fence).
     assertSettleLockHeld(db, me, verifyLockKey(task.id))
     recordRuns(db, task.id, attempt.id, task.contractHash, built.checks)
+    recordBaselineFindings(db, task.id, built.checks)
     recordEvent(db, "task-verified", task.id, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: true, onto: onto ?? null })
+    // A red that names an opt-in slot of an undeclared pattern is the harness's to remedy: it declares the pattern on the branch and
+    // the caller verifies again on the new head, under the land lock, so the task spends no try on it.
+    if (built.verdict === "red" && !locked) {
+        const reds = built.checks.filter((check) => check.status === "red").map((check) => check.detail)
+        if ((await declarePatterns(at, "verify-red", await patternsOfFindings(reds))).commit !== null) return "moved"
+    }
     if (built.verdict === "red") {
         const { preserved, repair } = await preserveEnding(db, root, task, attempt.id)
         const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
@@ -522,6 +547,8 @@ const verifyTask = async (cwd: string, taskId: string, commit: boolean): Promise
             setStatus(db, taskId, "verifying", "reported")
             recordEvent(db, "verify-started", taskId, { ...me, parent: await resolveSha(target.checkout, `refs/heads/${target.branch}`), checkout: root, target: target.checkout, branch: target.branch })
             const at: Settling = { db, root, task: fresh, attempt, input, target, me, unsettled, deferred }
+            const paths = [...fresh.contract.context.allowPaths, ...resultFiles(resultOf(db, attempt.id)?.output)]
+            await declarePatterns(at, "verify", await patternsOfPaths(target.checkout, paths))
             const first = await settlePass(at, false)
             if (first !== "moved") return first
             recordEvent(db, "verify-head-moved", taskId, { branch: target.branch })

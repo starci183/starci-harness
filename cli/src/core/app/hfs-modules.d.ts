@@ -1,4 +1,4 @@
-// The typed surface of the two @starci/hfs entries the CLI loads; the package ships JavaScript only.
+// The typed surface of the @starci/hfs entries the CLI loads; the package ships JavaScript only.
 
 declare module "@starci/hfs" {
     /** What `main` reads, writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
@@ -43,4 +43,22 @@ declare module "@starci/hfs/runtime/scripts/hfs/secret-document.mjs" {
 declare module "@starci/hfs/runtime/scripts/hfs/secret-sops.mjs" {
     /** The sops seam of the app at `repoRoot`, with its age identity resolved as `starci app secret` resolves it. */
     export function defaultSops(env?: NodeJS.ProcessEnv, repoRoot?: string): unknown
+}
+
+// The slot reader opt-in pattern ownership uses (harness/hfs-patterns.ts): the manifest, and the slot owning one app-relative path.
+declare module "@starci/hfs/runtime/scripts/hfs/slots.mjs" {
+    /** One slot of the manifest, as far as the CLI reads it. */
+    interface ManifestSlot {
+        readonly id: string
+        readonly presence?: string
+        readonly pattern?: string
+        readonly profiles?: readonly string[]
+    }
+    /** The slot manifest @starci/hfs ships (knowledge/hfs/slots.yaml), validated. */
+    export function loadSlotManifest(): { readonly slots: readonly ManifestSlot[] }
+}
+
+declare module "@starci/hfs/runtime/scripts/hfs/check.mjs" {
+    /** Which slot owns one path relative to the app root at `repoRoot`, judged against that app's hfs.json. */
+    export function explainPath(input: { readonly repoRoot: string; readonly input: string; readonly manifest?: unknown }): { readonly status: string; readonly slot?: string }
 }

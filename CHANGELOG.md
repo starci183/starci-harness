@@ -60,6 +60,23 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   key sealed empty is `CUSTODY_KEY_MISSING`; a failed run that still reports a key custody holds as `TEST_WORLD_NOT_DECLARED`
   is `VERIFY_INFRA` (no verdict, no try) with one `harness-defect` ticket deduped by `CUSTODY_KEY_NOT_HANDED`. Bench:
   `verify-live-suite-custody-const`.
+- **An opt-in slot no task may enable is enabled by the harness** (ticket tk-3ea0b331b3df: be-purchase's webhook doors red
+  `HFS_SLOT_NOT_ENABLED`, since only the app-root `hfs.json`, which no task writes, switches on `sides.be.patterns`). The harness
+  reads which slots a task's paths lie in through @starci/hfs's classifier and declares each missing pattern itself: before the
+  task's Op worktree is cut, before its verify, and when a red of its verify or wave names an `HFS_SLOT_NOT_ENABLED` slot, after
+  which the verify or wave runs again on the new head and no try is spent. The declaration is an additive edit of that one list
+  (every other byte of `hfs.json` kept, proved by parsing), a commit of its own on the workflow's branch under its land lock
+  (`Starci-Harness: hfs-pattern`), an `hfs-pattern-enabled` event and a resolved shared need `config:hfs.<side>.patterns.<name>`
+  whose later declarations on other branches are its relays; no task's diff carries `hfs.json`, so none is judged app-wide for it
+  (`cli/src/harness/hfs-patterns.ts`, `cli/src/shared/json-edit.ts`). `contract check` names the patterns a contract needs.
+- **Findings already on the branch fail no task when a config change widens the check** (ticket tk-25adb43e8e76, owner ruling
+  r-b910f07221cf: hfs-webhooks-pattern's one-line hfs.json edit was red on BE_PUBLIC_CONTRACT_FORM, HFS_UNUSED_EXPORT and
+  route-page-is-one-page findings already at its base). `starci check run`, widened to whole packages by an app-wide configuration
+  file, runs the same tier at its base in a clean checkout and judges each red typecheck, lint or canon step by its findings,
+  keyed by rule, file and message with line numbers dropped: a step whose findings the base already holds turns green and they are
+  recorded as `baseline-findings` evidence (data.baseline, a `baseline-findings` ledger event of the task), and only a new finding
+  stays red (`cli/src/core/check/base-findings.ts`). Bench: `verify-hfs-pattern-declared-by-harness`,
+  `verify-widened-check-judged-against-base` (fault `new-finding`).
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

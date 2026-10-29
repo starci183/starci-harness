@@ -2,6 +2,8 @@ import { canonOf, loadPolicy, resolveProfile } from "../../harness/policy.js"
 import type { Policy, RuntimeGate } from "../../harness/policy.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { baseCwd, judgeAgainstBase, judgedAgainstBase } from "./base-findings.js"
+import type { BaseJudgement } from "./base-findings.js"
 import { canonPackage } from "./canon.js"
 import type { CanonByTool } from "./canon.js"
 import { describeLoosening, scanLoosening } from "./loosening-scan.js"
@@ -14,6 +16,7 @@ import type { DependencyBuilds } from "./workspace-deps.js"
 import { inOrder } from "../../harness/sequential.js"
 import { checkDigest, greenRow, recordGreen } from "../../harness/check-reuse.js"
 import { listPackages } from "../../shared/workspace.js"
+import { locateTree } from "../../shared/tree.js"
 
 /** The verdict of one repository gate: it judges the tree (loosening) or the judged files (secrets), not one package. */
 interface GateResult {
@@ -32,6 +35,8 @@ interface RunData {
     readonly verdict: "green" | "red"
     readonly gates: readonly GateResult[]
     readonly steps: readonly StepResult[]
+    /** The findings of a widened run that were already at its base (base-findings.ts): evidence, never this change's red. */
+    readonly baseline: BaseJudgement | null
 }
 
 /** The repository gates, run once per check; the package gates run once per package of the scope. */
@@ -100,6 +105,31 @@ const findingSuffix = (gate: GateResult): string => (gate.findings === 0 ? "" : 
 /** A red repository gate as a step, so a verify that reads only steps still shows why it is red. */
 const asStep = (gate: GateResult): StepResult => ({ package: "(repository)", step: gate.gate, command: `starci check ${gate.gate}`, status: gate.status, reason: "", output: gate.output })
 
+/** The flags of `check run` a tier run reads. */
+interface TierFlags {
+    readonly base?: string | undefined
+    readonly all: boolean
+    readonly task?: string | undefined
+    readonly workflow?: string | undefined
+    readonly within: boolean
+    readonly wave?: string | undefined
+    readonly paths: readonly string[]
+}
+
+/** One run of the profile's runtime tier from `cwd`: the scope, the repository gates, then each package step. */
+const runTier = async (cwd: string, treeRoot: string | undefined, flags: TierFlags) => {
+    const scope = await resolveScope(cwd, flags.base, flags.all, flags.paths, { ...(flags.task === undefined ? {} : { task: flags.task }), ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }), ...(flags.wave === undefined ? {} : { wave: flags.wave.split(",").filter((id) => id !== "") }) }, flags.within)
+    const policy = loadPolicy(scope.root)
+    const choice = resolveProfile(policy, treeRoot)
+    const tier = choice.profile.runtime
+    const canon = canonOf(policy, choice.profile)
+    const options = { timeoutMs: policy.quality.runtime.stepTimeoutSeconds * 1000 }
+    const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)), (gate) => repositoryGate(gate, scope, policy, choice.name, flags.all))
+    const builds = tier.some((gate) => IMPORT_GATES.has(gate)) ? await buildWorkspaceDependencies(scope, options) : NO_BUILDS
+    const gated = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, builds, options))), (step) => step())
+    return { scope, policy, choice, tier, canon, gates, steps: [...builds.steps, ...gated] }
+}
+
 /**
  * `starci check run`: the runtime tier of the project's profile (policy/quality.yaml) over the scope decided from the diff, or the
  * given paths when it changes nothing; before typecheck and lint it prepares the scope's workspace dependencies (workspace-deps.ts).
@@ -121,16 +151,18 @@ export const checkRunVerb = defineVerb({
         paths: { kind: "rest", summary: "when the diff changes nothing, judge the tracked files under these repository paths instead (what a task that changes nothing proves)" },
     },
     run: async (context, flags) => {
-        const scope = await resolveScope(context.cwd, flags.base, flags.all, flags.paths, { ...(flags.task === undefined ? {} : { task: flags.task }), ...(flags.workflow === undefined ? {} : { workflow: flags.workflow }), ...(flags.wave === undefined ? {} : { wave: flags.wave.split(",").filter((id) => id !== "") }) }, flags.within)
-        const policy = loadPolicy(scope.root)
-        const choice = resolveProfile(policy, context.treeRoot)
-        const tier = choice.profile.runtime
-        const canon = canonOf(policy, choice.profile)
-        const options = { timeoutMs: policy.quality.runtime.stepTimeoutSeconds * 1000 }
-        const gates = await inOrder(tier.filter((name) => REPOSITORY_GATES.has(name)), (gate) => repositoryGate(gate, scope, policy, choice.name, flags.all))
-        const builds = tier.some((gate) => IMPORT_GATES.has(gate)) ? await buildWorkspaceDependencies(scope, options) : NO_BUILDS
-        const gated = await inOrder(scope.targets.flatMap((target) => tier.flatMap((gate) => packageStep(gate, scope, target, canon, builds, options))), (step) => step())
-        const steps = [...builds.steps, ...gated]
+        const ran = await runTier(context.cwd, context.treeRoot, flags)
+        const { scope, choice, tier, canon, policy, gates } = ran
+        // A run an app-wide configuration file widened (never --all) is judged against the same run at its base: findings already
+        // there are the base's, kept as baseline-findings evidence, and only new ones are red (base-findings.ts).
+        const widened = scope.all && !flags.all && judgedAgainstBase(ran.steps)
+        const based = widened
+            ? await judgeAgainstBase(scope.root, scope.base, ran.steps, async (dir) => {
+                  const cwd = baseCwd(scope.root, context.cwd, dir)
+                  return (await runTier(cwd, locateTree(cwd).root, { all: true, within: false, paths: [] })).steps
+              })
+            : undefined
+        const steps = based?.steps ?? ran.steps
         const red = [...gates, ...steps].some((result) => result.status === "red")
         const verdict = red ? "red" : "green"
         const data: RunData = {
@@ -142,12 +174,14 @@ export const checkRunVerb = defineVerb({
             verdict,
             gates,
             steps: [...steps, ...gates.filter((gate) => gate.status === "red").map(asStep)],
+            baseline: based === undefined || based.judgement.steps.length === 0 ? null : based.judgement,
         }
         const message = [
             `profile: ${choice.name} (${choice.source}); runtime tier: ${tier.join(", ")}; CI tier after the push: ${choice.profile.ci.join(", ") || "none"}`,
             describeScope(scope),
             ...gates.map((gate) => `${gate.status.padEnd(7)} ${gate.gate.padEnd(9)} (repository)${findingSuffix(gate)}`),
             ...steps.map(describeStep),
+            ...(data.baseline === null ? [] : data.baseline.steps.map((each) => [`baseline-findings ${each.package} ${each.step}, already at ${based?.judgement.base.slice(0, 12) ?? ""}:`, ...each.findings.map((key) => `  ${key}`)].join("\n"))),
             `verdict: ${verdict}`,
             ...gates.filter((gate) => gate.status === "red").map((gate) => `--- ${gate.gate}\n${gate.output}`),
             ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),

@@ -1,6 +1,9 @@
 import { resolve } from "node:path"
 import { contextTokens, contractHash, contractProblems, readContract, resolveChecks, resolveContract } from "../../harness/contract.js"
+import { patternsOfPaths, undeclaredPatterns } from "../../harness/hfs-patterns.js"
+import type { PatternNeed } from "../../harness/hfs-patterns.js"
 import { loadOps } from "../../harness/ops.js"
+import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 
 interface ContractCheckData {
@@ -13,12 +16,15 @@ interface ContractCheckData {
     readonly context: readonly { readonly entry: string; readonly source: string; readonly shared: boolean }[]
     readonly contextTokens: { readonly tokens: number; readonly budget: number | null; readonly unmeasured: readonly string[] } | null
     readonly output: readonly { readonly key: string; readonly type: string; readonly source: string }[]
+    /** The opt-in hfs.json patterns its allowPaths need that the app does not declare yet: the harness declares them on the workflow's branch before the task starts. */
+    readonly patterns: readonly PatternNeed[]
 }
 
 /**
  * `starci contract check <file>`: is this contract fit to send: schema, known label and presets, concrete allowPaths, every item
  * of its op's base kept and none loosened, its harness context files present and within the op's token budget, and a
- * behavioural (harness-observed, T0 or T1) check where the op needs one.
+ * behavioural (harness-observed, T0 or T1) check where the op needs one. It also names the opt-in hfs.json patterns its allowPaths
+ * need that the app does not declare yet, which the harness declares itself (harness/hfs-patterns.ts): never a reason to unfit it.
  */
 export const contractCheckVerb = defineVerb({
     path: ["contract", "check"],
@@ -30,7 +36,7 @@ export const contractCheckVerb = defineVerb({
     flags: {
         file: { kind: "string", summary: "the contract json file", required: true, positional: true },
     },
-    run: (context, flags) => {
+    run: async (context, flags) => {
         const file = resolve(context.cwd, flags.file)
         const ops = loadOps()
         const contract = readContract(file)
@@ -41,7 +47,9 @@ export const contractCheckVerb = defineVerb({
         const measured = resolved === undefined ? undefined : contextTokens(resolved, ops, context.cwd)
         const tokens = resolved === undefined || measured === undefined ? null : { tokens: measured.tokens, budget: resolved.op.context.budget ?? null, unmeasured: measured.unmeasured }
         const output = (resolved?.output ?? []).map((item) => ({ key: item.key, type: item.spec.type, source: item.source }))
-        const data: ContractCheckData = { file, hash: contractHash(contract), label: contract.label, fit: problems.length === 0, problems, checks, context: files, contextTokens: tokens, output }
+        const root = await repositoryRoot(context.cwd).catch(() => undefined)
+        const patterns = root === undefined ? [] : undeclaredPatterns(root, await patternsOfPaths(root, contract.context.allowPaths))
+        const data: ContractCheckData = { file, hash: contractHash(contract), label: contract.label, fit: problems.length === 0, problems, checks, context: files, contextTokens: tokens, output, patterns }
         const problemLines = problems.map((problem) => `- ${problem}`).join("\n")
         const limit = tokens?.budget ?? null
         const budget = limit === null ? "" : ` of ${String(limit)}`

@@ -80,7 +80,8 @@ mechanism; the rule in its last column owns the code and the proof.
 | must history rebuild the state? | current-state tables, with an audit row where one is needed | never here: event sourcing is not a mechanism of this standard, and adopting it is an owner ruling | BE-PERSISTENCE-1 |
 | can old and new code run side by side? | migrations as the only schema authority and contracts that only add, expanded before they contract | a backfill is needed, which runs as a fenced job | BE-PERSISTENCE-1, 2, 15; BE-JOBS-2 |
 
-A mechanism that needs a pattern is legal only when `sides.be.patterns` declares it; each topic names its pattern.
+A mechanism that needs a pattern is legal only when `sides.be.patterns` declares it; each topic names its pattern, and the
+harness declares it for the slots a workflow task's paths lie in, since no task writes `hfs.json`.
 
 Why: every mechanism adds state, failure modes and proof; one taken for its name rather than an invariant is cost
 with no guarantee, and one missing where an invariant needs it is a race no serial test shows.

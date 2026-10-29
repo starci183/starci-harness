@@ -5,6 +5,7 @@ import { Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
 import { captureGit, currentBranch, git, isAncestor, refExists, resolveSha, samePath } from "../shared/git.js"
 import { readRecord } from "../core/deps/packages.js"
+import { enablePatterns, patternsOfPaths } from "./hfs-patterns.js"
 import { linkCachedInstall, lockfileFolders, modulesFolders, unlinkCheckoutLinks, unlinkInstallLinks } from "./install-cache.js"
 import { openLedger, projectDir } from "./ledger.js"
 import { inOrder } from "./sequential.js"
@@ -85,7 +86,7 @@ export const opWorktreePlace = (root: string, workflowId: string, taskId: string
  * a symlink elsewhere). A repository in local package mode (`starci deps source --local`) always links the target's folder, so
  * its local `@starci` copies reach the Op. Returns the folders made, relative to the worktree.
  */
-const linkInstall = (target: string, worktree: string): string[] => {
+export const linkInstall = (target: string, worktree: string): string[] => {
     const local = (readRecord(target)?.packages.length ?? 0) > 0
     const folders = new Set([...modulesFolders(target), ...lockfileFolders(worktree).map((folder) => (folder === "." ? "node_modules" : `${folder}/node_modules`))])
     return [...folders].flatMap((folder) => {
@@ -237,6 +238,17 @@ const makeOpWorktree = async (root: string, taskId: string, target: string): Pro
     const targetBranch = await currentBranch(target)
     if (targetBranch === undefined) throw new Refusal("HEAD_DETACHED", `${target} is on a detached HEAD; an Op is cut from, and lands on, the branch its workflow has checked out`)
     const { path, branch } = opWorktreePlace(root, task.workflowId, taskId)
+    // The opt-in patterns the task's allowPaths need are declared on the branch first, so the Op is cut from a head that holds them.
+    const workflowId = task.workflowId
+    const needs = await patternsOfPaths(target, task.contract.context.allowPaths)
+    if (needs.length > 0) {
+        const db = openLedger(root)
+        try {
+            await enablePatterns({ db, checkout: target, branch: targetBranch, workflow: workflowId, task: taskId, why: "op-start" }, needs)
+        } finally {
+            db.close()
+        }
+    }
     const fork = await resolveSha(target, `refs/heads/${targetBranch}`)
     mkdirSync(dirname(path), { recursive: true })
     const args = (await refExists(target, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, fork]
