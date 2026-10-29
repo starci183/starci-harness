@@ -11,6 +11,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - `starci app stack deploy --urgent --first-start --db-service <service>`: the first start of a self-hosted database the release
   starts itself (owner ruling `urgent-first-start`, @starci/hfs 4.11.15): the floor proves the database empty instead of backing it
   up and migrates it inside its container before converge.
+- `starci app release push --urgent --lint-baseline <tag>`: the lint of an urgent release judged against a release tag's findings
+  (owner ruling `urgent-lint-baseline`): only a finding new since the tag is red.
 
 ### Fixed
 

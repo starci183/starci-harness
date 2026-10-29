@@ -11,6 +11,7 @@ import { firstLine } from '../stack/context.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
 import { assertUnmoved, git, inspect, releaseDir, runGate, summaryOf } from './gate.mjs';
 import { assertNames, branchRefs, probe, tagRefs } from './push.mjs';
+import { baselineLint } from './lint-baseline.mjs';
 import { URGENT_RULING, URGENT_SCHEMA, greenRow, recordRow, writeUrgent } from './records.mjs';
 
 /** The fast local checks of an urgent release, by gate name, in the order they run. */
@@ -46,11 +47,19 @@ function changedLint(ctx, gate, prefix) {
   return { gate: { ...gate, command: ['npx', 'starci', 'app', 'lint', '--changed', ...files] }, note: `${files.length} file(s) changed since ${since}` };
 }
 
-/** The urgent checks this app declares, from its release gates; a lint row is narrowed to the changed files. */
-function urgentGates(ctx, config, prefix) {
+/**
+ * The urgent checks this app declares, from its release gates; a lint row is narrowed to the changed files, or, with `lintBaseline` (a release
+ * tag), judged whole against that tag's findings (lint-baseline.mjs), which only the managed lint can be.
+ */
+function urgentGates(ctx, config, prefix, lintBaseline) {
   const declared = URGENT_CHECKS.map((name) => config.gates.find((gate) => gate.name === name)).filter(Boolean);
   if (declared.length === 0) throw refusal('RELEASE_URGENT_NO_CHECKS', `the release gates declare none of ${URGENT_CHECKS.join(', ')}: an urgent release still runs its fast local checks`);
-  return declared.map((gate) => (gate.name === 'lint' ? { name: gate.name, ...changedLint(ctx, gate, prefix) } : { name: gate.name, gate, note: null }));
+  return declared.map((gate) => {
+    if (gate.name !== 'lint') return { name: gate.name, gate, note: null };
+    if (lintBaseline === undefined) return { name: gate.name, ...changedLint(ctx, gate, prefix) };
+    if (gate.command.join(' ') !== MANAGED_LINT) throw refusal('RELEASE_URGENT_LINT_BASELINE_UNMANAGED', `--lint-baseline judges the managed lint (${MANAGED_LINT}), and this app's lint gate runs ${gate.command.join(' ')}`);
+    return { name: gate.name, gate, baseline: lintBaseline, note: `the whole app, judged against ${lintBaseline}: only a finding new since it is red (owner ruling urgent-lint-baseline)` };
+  });
 }
 
 /** Runs (or reuses) each check in order and stops at the first red one. Returns the rows of the record. */
@@ -60,6 +69,12 @@ function runChecks(ctx, checks, { common, head, dir, platform }) {
   for (const check of checks) {
     if (!check.gate) {
       rows.push({ name: check.name, command: null, pass: true, reused: false, detail: check.note, log: null, logSha256: null });
+      continue;
+    }
+    if (check.baseline !== undefined) {
+      const row = baselineLint(ctx, check.gate, { tag: check.baseline, dir, platform });
+      rows.push({ ...row, reused: false, note: check.note });
+      if (!row.pass) break;
       continue;
     }
     const command = check.gate.command.join(' ');
@@ -97,7 +112,7 @@ export async function releaseUrgentPush(ctx, config, options = {}) {
   const { head, chosen } = facts;
   const common = releaseDir(ctx);
   const dir = path.join(common, head.slice(0, 12));
-  const checks = urgentGates(ctx, config, config.tagPrefix);
+  const checks = urgentGates(ctx, config, config.tagPrefix, options.lintBaseline);
   const out = [...facts.out, `urgent         ${URGENT_RULING}`, `reason         ${reason}`, `role           ${role}`, ...planOf(checks)];
   const data = { head, tag: chosen.tag, remote, branch, urgent: true, reason, role, checks: [], pushed: false };
   if (facts.red.length > 0) return { ok: false, lines: [...out, ...facts.red.map((item) => `RED: ${item}`), 'nothing run, nothing pushed.'], data: { ...data, red: facts.red } };

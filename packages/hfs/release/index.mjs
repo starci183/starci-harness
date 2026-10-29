@@ -1,7 +1,7 @@
 // index.mjs - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
 // parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
 //   starci app release gate [--execute] [--sonar] [--source <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
-//   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
+//   starci app release push [--execute] [--remote <name>] [--urgent --reason <text> [--lint-baseline <tag>]] [--json]
 // `harness` of the app IO ({ version, role, openTicket }) is what the starci CLI hands in: the caller's role an urgent record names and the ticket
 // queue a red back-fill files into.
 // Every action is a dry run unless --execute is given. A refusal is a StackError (exit 2); a failed step returns ok false (exit 1).
@@ -95,11 +95,12 @@ const ACTIONS = {
     }),
   },
   push: {
-    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason'] },
+    spec: { boolean: ['--execute', '--json', '--urgent'], value: ['--remote', '--reason', '--lint-baseline'] },
     run: (ctx, flags, harness) => {
       if (flags.reason !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--reason belongs to an urgent release (--urgent)');
+      if (flags['lint-baseline'] !== undefined && flags.urgent !== true) throw refusal('RELEASE_USAGE', '--lint-baseline belongs to an urgent release (--urgent)');
       const config = loadReleaseConfig(ctx.cwd);
-      if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, role: harness?.role ?? ctx.env.STARCI_ROLE });
+      if (flags.urgent === true) return releaseUrgentPush(ctx, config, { execute: flags.execute === true, remote: flags.remote, reason: flags.reason, lintBaseline: flags['lint-baseline'], role: harness?.role ?? ctx.env.STARCI_ROLE });
       return releasePush(ctx, config, { execute: flags.execute === true, remote: flags.remote });
     },
   },

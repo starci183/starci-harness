@@ -20,6 +20,7 @@ const FLAGS = {
     remote: { kind: "string", summary: "push: remote name (default origin)" },
     urgent: { kind: "boolean", summary: "push: the urgent path (owner ruling 2026-10-29): the fast local checks only, then tag, push and the URGENT record; needs --reason" },
     reason: { kind: "string", summary: "push --urgent: why the release cannot wait for CI and the full gate, one line the urgent record keeps" },
+    "lint-baseline": { kind: "string", summary: "push --urgent: a release tag whose lint findings are the accepted backlog (owner ruling urgent-lint-baseline): the whole app is linted at HEAD and at the tag, and only a finding new since the tag is red" },
     ...QUIET_FLAG,
 } as const satisfies Readonly<Record<string, FlagSpec>>
 

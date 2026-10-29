@@ -95,6 +95,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   migrate preview then execute (db/bootstrap.sql first) inside the database's own container, between the stack deploy and
   converge; the record, the rollback target, the readiness verify and the automatic rollback hold, and a database that is not
   empty is refused (`STACK_FIRST_START_NOT_EMPTY`) for the plain floor.
+  Its lint baseline (`urgent-lint-baseline`, owner 2026-10-29: "Thêm lint baseline"): `release push --urgent --lint-baseline <tag>`
+  lints the whole app at HEAD and at that release tag (a throwaway worktree borrowing HEAD's installs) and is red only on a finding
+  the tag did not have (engine, rule, file and message; a left-over on engine, rule and message for a moved file); the record keeps
+  both counts and both reports, and the back-fill's full gate is unchanged, so the backlog stays red there
+  (`packages/hfs/release/lint-baseline.mjs`).
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the
   Supervisor's workers and an app session. Owner, 2026-10-28: "bộ author phải áp dụng dc cho cả inline mode lẫn orca mode".
