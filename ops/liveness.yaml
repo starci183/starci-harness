@@ -59,7 +59,8 @@ reviveMax: 3
 # When admission or seat launch has been held for more than starvedTicketMinutes without a break, `supervisor tick` opens one
 # harness-defect ticket naming the top unmanaged holders, once per episode; these rules do not change for it.
 # maxSlots (optional) caps the count below floor(logical cores / 2). A typecheck and a typed lint of a large app's back end outgrow
-# node's default heap (4 GB), so the memoryMb of tsc and eslint is above it and each estimate matches its heap; the eslint memory is also the
+# node's default heap (4 GB), so the memoryMb of tsc and eslint is above it; that memoryMb is a ceiling, and each estimate is what one run typically
+# holds (a whole typed back end peaks near 4 GB), so several checks fit at once; the eslint memory is also the
 # heap of the ESLint child an app lint or app check spawns. bootProofTimeoutSeconds
 # is the budget of the lite boot proof's worker, counted from its spawn: one timeout is retried, a second is BOOT_PROOF_TIMEOUT, not a failure.
 # @starci/hfs reads both through the environment the CLI sets (cli/src/harness/heavy.ts hfsLimitsEnv).
@@ -76,8 +77,8 @@ heavy:
   projectSlots: 2
   pollSeconds: 2
   estimateMb:
-    tsc: 8192
-    eslint: 8192
+    tsc: 3072
+    eslint: 4096
     test: 2048
     build: 3072
     install: 1500

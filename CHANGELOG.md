@@ -10,6 +10,9 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **Several typed checks run at once again.** alpha.12 set the tsc and eslint `estimateMb` to their 8 GB heap ceiling, so with the
+  8 GB reserve one eslint filled the host's room and 16 waited 30 min behind a run holding 0.7 GB. The estimates are what one run
+  holds (tsc 3072, eslint 4096); `memoryMb` stays the 8192 heap ceiling.
 - **The host's heavy queue no longer runs down a task's budget.** The budget ladder's clocks (the ask at `budget.minutes`
   and the fence `budget.graceMinutes` later) leave out the wall clock a task's heavy commands waited in the queue: those its
   verifies ran, tagged with the task by `withHeavyBound` (a baseline checkout included), and those run in its own checkout
