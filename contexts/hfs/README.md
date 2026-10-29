@@ -30,6 +30,7 @@ backing services and its grammar). No product content lives here; product record
 | `presence` | `required`, `optional`, `opt-in` (legal only when `hfs.json` declares it), `forbidden`; `litePresence` overrides it under lite |
 | `tracked` | `tracked`, `ignored` (must be git-ignored) or `external` (must not exist; `goesTo` says where it lives) |
 | `tier`, `owner`, `entries` | the node in the direction matrix; whether each matching directory is an owner; extra entry files besides `index.ts` |
+| `role`, `importedBy` | the one part a file slot plays that a rule reads (`entity-registry`: the lite `PRIMARY_ENTITIES` list); the side-relative patterns of the only files that import it by deep path |
 | `requires`, `allows`, `forbids`, `minInstances`, `requiredInstances` | what an instance must, may and must not hold |
 | `tests`, `coverage` | `unit-beside`, `e2e` or `none`; whether the logic roles of the subtree are measured |
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |

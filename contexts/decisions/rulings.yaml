@@ -392,7 +392,7 @@ rulings:
     date: '2026-10-29'
     status: live
     ruling: "Owner, verbatim: \"big refactor đi … không viết raw sql như thế theo starci-academy-be\". Lite persistence maps its tables with TypeORM entities in each owning capability (persistence/entities/<table>.entity.ts, explicit column names and types, timestamptz, no eager, lazy or cascade relation, no GraphQL or validator decorator) and reads and writes through the injected EntityManager and createQueryBuilder(Entity, alias) with named parameters, the shape of full and starci-academy-be; domain and feature code writes no raw SQL, and a database function TypeORM cannot express goes through the typed helpers of platform/database restricted to a listed set. db/migrations stays the only DDL and synchronize stays false."
-    owner: "contexts/code/be/persistence.md BE-PERSISTENCE-1, -2, -3; contexts/hfs/rules.yaml R334; contexts/hfs/slots.yaml (be.persistence lite overlay, ruleParams.be.dbFunctions); @starci/eslint-canon-be src/no-raw-sql.ts"
+    owner: "contexts/code/be/persistence.md BE-PERSISTENCE-1, -2, -3; contexts/hfs/rules.yaml R334; contexts/hfs/slots.yaml (be.persistence lite overlay, be.platform.database.entities, ruleParams.be.dbFunctions); @starci/eslint-canon-be src/no-raw-sql.ts, runtime/scripts/hfs/architecture/entity-registry.mjs"
   - id: be-ai-langchain-gateway
     date: '2026-10-29'
     status: live

@@ -1,4 +1,5 @@
 import { byCodeUnit } from '../../lib/list.mjs';
+import { registryListImport } from './entity-registry.mjs';
 
 /**
  * HFS checks 1 and 2 (knowledge/hfs/slots.yaml `tiers`):
@@ -8,6 +9,7 @@ import { byCodeUnit } from '../../lib/list.mjs';
  *      kind (slot field `trigger`: api, webhooks, realtime, saga, reactors, jobs, cli) importing a feature of another is
  *      BE_KIND_ISOLATION, whose fix is the event bus,
  *      an app never imports another app (BE_SERVICE_ISOLATION / FE_APP_ISOLATION), and a component layer imports only the layers after it;
+ *      the entity registry naming a capability's `<c>Entities` from its public entry is the one platform-to-domain edge (entity-registry.mjs);
  *   2. owner cycles: a strongly connected component of the owner graph, type-only imports included (ARCH_OWNER_CYCLE),
  *      reported with the cycle path and the import that closes each hop.
  * Importing inside one owner is always allowed; the public-entry rule stays with owners.mjs (ARCH_OWNER_EXPORT_BYPASS).
@@ -138,6 +140,7 @@ function inspectTierEdge(graph, edge, tierRule, counts, violations, coverage) {
     return;
   }
   coverage.edgesChecked += 1;
+  if (verdict.reason === 'tierDirection' && registryListImport(graph.resolver, edge)) return;
   reportReasonedTierViolation(graph, edge, verdict, tierRule, counts, violations);
 }
 

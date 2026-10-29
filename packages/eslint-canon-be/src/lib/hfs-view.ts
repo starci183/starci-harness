@@ -53,6 +53,10 @@ export interface HfsSlot {
     readonly trigger?: string
     readonly coverage?: string
     readonly allows?: readonly string[]
+    /** The one special part a file slot plays that a rule reads: `entity-registry` (persistence.md BE-PERSISTENCE-3). */
+    readonly role?: string
+    /** The side-relative path patterns of the only files that may import this file by deep path. */
+    readonly importedBy?: readonly string[]
 }
 
 /** A unit-tested role (`ruleParams.be.unitRoles`). */

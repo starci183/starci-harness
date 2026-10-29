@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.5.1 - 2026-10-29
+
+- Changed: the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry; the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12. No front-end rule changed.
+
 ## 9.5.0 - 2026-10-29
 
 - Changed: `modules/auth` is the session issuer's client. `fetch-only-in-api-client` admits axios in `modules/auth/auth-door.ts` and refuses a door call whose readable path names no `/auth/` door; `no-shared-transport-state` judges `modules/auth` and admits only `modules/auth/token-store.ts`; the machine `transport-owner` admits the auth door. `fe-stack-import` no longer carves Supabase into `modules/auth`: the fe-stack catalog forbids `@supabase/supabase-js`, `@supabase/ssr` and `@supabase/auth-js` everywhere and lists `fe.modules.auth` as a home of axios.

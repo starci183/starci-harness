@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.9.0
+version: 3.10.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -50,6 +50,8 @@ versioning:
 # transport client layer), and lets fe.hooks.swr hold the SWR subscription hooks (api/sse/subscriptions/useSubscribe<X>Swr.ts, one useSWRSubscription per stream operation).
 # 3.8.0 is a minor (urgent release, 2026-10-29): it ADDS the optional fe.dev-server-generated slot (apps/*/AGENTS.md, which `next dev` rewrites) and the
 # slot field rewrittenBy, so the release gate's clean-tree check passes over an untracked file a declared dev server writes, and over nothing else.
+# 3.10.0 is a minor (2026-10-29): it ADDS the lite be.platform.database.entities slot, the entity registry (slot fields role and importedBy), so the
+# tier matrix and the public-entry rules admit exactly its <c>Entities imports and its deep importers (persistence.md BE-PERSISTENCE-3).
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -72,6 +74,10 @@ versioning:
 #   outcomeHome true on a file slot: the one file that declares the repository's Outcome union. A repository holds exactly one such
 #               file (modules/api/outcome.ts, the api package's outcome.ts, or modules/db/outcome.ts of a lite app),
 #               and no other file declares an Outcome union (one-outcome-union, FE_TRANSPORT_OWNER).
+#   role        on a file slot: the one part it plays that a rule reads. entity-registry = the lite PRIMARY_ENTITIES list
+#               (be.platform.database.entities): the one platform file that imports capability <c>Entities, imported by deep path
+#               only from the files importedBy names (architecture/entity-registry.mjs).
+#   importedBy  on a slot with a role: the side-relative path patterns of the only files that import its file by deep path.
 #   requires    files or directories that must exist inside each instance; <var> is replaced by the bound name,
 #               a leading / means repository root; a trailing / means directory.
 #   requiredInstances  variable -> names that must exist as instances (config, logging ... of platform).
@@ -1725,6 +1731,21 @@ slots:
     coverage: required
     budget: {indexExports: 60}
     rules: [BE_TIER_DIRECTION, ARCH_OWNER_CYCLE, BE_MODULE_SHAPE]
+  - id: be.platform.database.entities
+    since: 3.10.0
+    profiles: [be]
+    editions: [lite]
+    editionWhy: "lite registers the one PRIMARY_ENTITIES list on its single primary connection; full registers each capability's <c>Entities per connection from persistence/connection.ts."
+    path: "src/modules/platform/database/entities.ts"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    role: entity-registry
+    importedBy: ["apps/*/src/compose/*.ts", "apps/*/src/app.module.ts", "src/tests/world/**"]
+    tests: none
+    coverage: none
+    why: "the entity registry (persistence.md BE-PERSISTENCE-3): it lists every capability's <c>Entities array by name, no glob, as PRIMARY_ENTITIES, the one list the primary connection maps, and exports nothing else. It is the one platform file that imports domain and platform capabilities, each import naming only that capability's <c>Entities from its index.ts (BE_TIER_DIRECTION, ARCH_OWNER_EXPORT_BYPASS); DatabaseModule and the platform/database index never import it, and only the files importedBy names (app composition and the test world) import it, by the deep path @modules/platform/database/entities (BE_PUBLIC_SURFACE), since database.module, this list and the capability indexes would otherwise form a cycle that fails at boot"
+    rules: [BE_TIER_DIRECTION, BE_PUBLIC_SURFACE, BE_SCHEMA_OWNER]
   - id: be.platform.logging
     since: 3.5.0
     profiles: [be]

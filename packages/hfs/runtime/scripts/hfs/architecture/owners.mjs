@@ -4,6 +4,7 @@ import { relativePath, workspaceExportSources } from './typescript.mjs';
 import { sourceLocation } from '../../lib/ts-ast.mjs';
 import { globExpression } from '../../lib/glob.mjs';
 import { posixPath } from '../../lib/path-key.mjs';
+import { registryImporter, registrySlot } from './entity-registry.mjs';
 
 function absolute(root, relative) {
   return canonical(path.resolve(root, ...relative.split('/')));
@@ -68,6 +69,15 @@ function arrangesSchema(config, from, to) {
     && resolver.classifyPath(relativePath(config.root, to)).slot === 'be.persistence';
 }
 
+/**
+ * The entity registry (slot role entity-registry, entity-registry.mjs) is imported by deep path, and only from the files its slot's
+ * `importedBy` names: app composition and the test world. Any other importer goes through the owner's entry, which never exports it.
+ */
+function importsRegistry(config, from, to) {
+  const slot = registrySlot(config.hfs, relativePath(config.root, to));
+  return slot !== null && registryImporter(config.hfs, slot, relativePath(config.root, from));
+}
+
 function publicEntryViolations(config, context, owners, sourceFiles) {
   const violations = [];
   for (const owner of owners) {
@@ -104,6 +114,7 @@ function ownerImportViolations(config, context, owners) {
       const bypass = privateOwnerChain(context, owners, edge);
       if (!bypass) continue;
       if (arrangesSchema(config, from, bypass.chain.at(-1))) continue;
+      if (bypass.chain.length === 2 && importsRegistry(config, from, bypass.chain.at(-1))) continue;
       violations.push({
         ruleId: 'ARCH_OWNER_EXPORT_BYPASS',
         path: relativePath(config.root, from),

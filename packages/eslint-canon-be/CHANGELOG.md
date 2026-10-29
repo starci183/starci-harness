@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.1 - 2026-10-29
+
+- Changed: the entity registry (persistence.md BE-PERSISTENCE-3, Debug ruling on lite-persistence-typeorm-entities): the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry. `import-owner-entry` (R30) admits the deep path `@modules/platform/database/entities` from the same importers only. Spec: `src/entity-registry.spec.ts`.
+- Changed: the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12.
+
 ## 3.7.0 - 2026-10-29
 
 - Added: the `auth-passport` law (contexts/code/be/api-auth.md BE-AUTH-2): `own-jwks-only` (R329 `BE_AUTH_JWT_OWN_JWKS`) refuses `createRemoteJWKSet`, `decodeJwt` and `decodeProtectedHeader` of jose anywhere and `jwtVerify` outside `integrations/passport`; `refresh-token-cookie-only` (R330 `BE_AUTH_REFRESH_COOKIE`) refuses a `refreshToken`/`refresh_token` property or member and a refresh cookie set or cleared outside `integrations/passport`.

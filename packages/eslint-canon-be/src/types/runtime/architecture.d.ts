@@ -41,3 +41,10 @@ declare module "*/runtime/scripts/hfs/architecture/feature-shape.mjs" {
         readonly violations: readonly { readonly ruleId: string; readonly message?: string }[]
     }
 }
+
+declare module "*/runtime/scripts/hfs/architecture/entity-registry.mjs" {
+    /** The slot role of the entity registry, the one file that lists every capability's `<c>Entities` as `PRIMARY_ENTITIES`. */
+    export const ENTITY_REGISTRY_ROLE: string
+    /** Whether `file` (side-relative) is one of the importers the registry slot admits by deep path (`importedBy`). */
+    export function registryImporter(resolver: object | null, slot: { readonly importedBy?: readonly string[] }, file: string): boolean
+}
