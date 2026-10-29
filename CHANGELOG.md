@@ -27,6 +27,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **A live suite whose keys sit in a `const` gets them from custody** (starci-next-app `ai-router-live` burned three tries
+  on TEST_WORLD_NOT_DECLARED while custody held OPENROUTER_API_KEY). `declaredKeys` (`cli/src/harness/custody.ts`) reads
+  each `useSandbox(...)` call's `keys` with the TypeScript compiler: a literal array, or a `const` of the spec or of a
+  relative module it imports (`as const`, a type annotation or `ReadonlyArray` alike), spreads included, never an object
+  element (`{ alias, resolve }`). A declaration it cannot reduce to string literals refuses `CUSTODY_KEYS_UNRESOLVED` naming
+  `spec:line` before the suite runs, the task awaiting the owner with no try spent and one deduped `harness-defect` ticket; a
+  key sealed empty is `CUSTODY_KEY_MISSING`; a failed run that still reports a key custody holds as `TEST_WORLD_NOT_DECLARED`
+  is `VERIFY_INFRA` (no verdict, no try) with one `harness-defect` ticket deduped by `CUSTODY_KEY_NOT_HANDED`. Bench:
+  `verify-live-suite-custody-const`.
 - **A hot CPU slows the heavy queue and never freezes it** (monitor report 5: 0 admissions for 2 h 33 with 23.7 GB free). Once
   the queue admitted nothing for `heavy.cpuStarveMinutes`, its first command RAM admits starts despite the CPU ceiling, one at a
   time. The queue is served by age, a project with fewer commands running first, and a project running `heavy.projectSlots`

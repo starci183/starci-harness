@@ -482,7 +482,7 @@ export const ticketEscalation = (repo: string, project: Project, decision: Decis
 
 /**
  * A task the harness left awaiting the owner: a verify that reached no verdict settleNoVerdictMax times, or one a live suite's
- * custody stopped (`owner`: a key the owner seals, core/task/verify.ts).
+ * custody stopped (`owner`: a key the owner seals; `module`: a block the harness owns, by its code, harness/custody.ts).
  */
 interface AwaitingTask {
     readonly id: string
@@ -490,19 +490,22 @@ interface AwaitingTask {
     readonly label: string
     readonly reason: string
     readonly owner: boolean
+    readonly code: string | null
+    readonly module: string | null
 }
 
 /**
  * Files a task left awaiting the owner as its ticket, once, the task waiting on it: a blocking `verify` defect for Debug's queue
  * (its verify gave up on a persistent cause it names, which the owner is told on Telegram as every blocking defect is), titled
- * with the task and that cause; a custody block is the owner's instead, a blocking `question:business` on credentials. Null for a
- * task that waits on a ticket already.
+ * with the task and that cause; a custody block is the owner's instead, a blocking `question:business` on credentials, unless the
+ * block names the harness module that owns it: then one blocking `harness-defect` per code and module, every such task waiting
+ * on it. Null for a task that waits on a ticket already.
  */
 const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask): { readonly ticket: Ticket; readonly outcome: TicketOutcome } | null => {
     if (readMachine((db) => db.prepare("SELECT 1 FROM ticket_waiters WHERE repo = ? AND subject = ?").get(repo, `task:${task.id}`) !== undefined, false)) return null
     const flat = `task ${task.id} (${task.label}${task.workflow === null ? "" : `, workflow ${task.workflow}`}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
     return openTicket({
-        kind: task.owner ? "question:business" : "verify",
+        kind: task.owner ? "question:business" : task.module !== null ? "harness-defect" : "verify",
         severity: "blocking",
         title: flat.length <= 200 ? flat : `${flat.slice(0, 199)}…`,
         evidence: { task: task.id, ...(task.workflow === null ? {} : { workflow: task.workflow }), question: task.reason, ...(task.owner ? { topic: "credentials" } : {}) },
@@ -513,6 +516,7 @@ const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask):
         workflow: task.workflow,
         by: "supervisor",
         seat: process.env.ORCA_TERMINAL_HANDLE ?? null,
+        ...(task.module === null ? {} : { module: task.module, ...(task.code === null ? {} : { code: task.code }) }),
         waiters: [{ repo, subject: `task:${task.id}`, project, workflow: task.workflow }],
     })
 }
@@ -529,9 +533,9 @@ export const ticketEscalations = (repo: string, project: Project): string[] => {
     try {
         decisions = openDecisions(db, "supervisor")
         awaiting = db
-            .prepare("SELECT t.id, t.workflow_id, t.label, (SELECT json_extract(e.data_json, '$.reason') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS reason, (SELECT json_extract(e.data_json, '$.owner') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS owner FROM tasks t WHERE t.status = 'awaiting_owner' ORDER BY t.updated_at, t.id")
+            .prepare("SELECT t.id, t.workflow_id, t.label, (SELECT json_extract(e.data_json, '$.reason') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS reason, (SELECT json_extract(e.data_json, '$.owner') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS owner, (SELECT json_extract(e.data_json, '$.code') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS code, (SELECT json_extract(e.data_json, '$.module') FROM events e WHERE e.subject = t.id AND e.kind = 'verify-stuck' ORDER BY e.id DESC LIMIT 1) AS module FROM tasks t WHERE t.status = 'awaiting_owner' ORDER BY t.updated_at, t.id")
             .all()
-            .map((row) => ({ id: String(row.id), workflow: textOf(row.workflow_id), label: String(row.label), reason: textOf(row.reason) ?? "its verify reached no verdict", owner: Number(row.owner ?? 0) === 1 }))
+            .map((row) => ({ id: String(row.id), workflow: textOf(row.workflow_id), label: String(row.label), reason: textOf(row.reason) ?? "its verify reached no verdict", owner: Number(row.owner ?? 0) === 1, code: textOf(row.code), module: textOf(row.module) }))
     } finally {
         db.close()
     }

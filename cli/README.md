@@ -80,7 +80,7 @@ compare-and-swap on the status it read (the loser of a race is refused `TASK_STA
 `queued → running → reported → verifying → done | failed | awaiting_owner | cancelled`, plus `effect_unknown` (a
 launch Orca could not confirm or deny, or a running task whose worker Orca reported gone). A launch that certainly
 failed returns the task to `queued`; a red wave verify returns a `done` task to `failed`, and a wave whose deferred live
-suite lacks a custody key leaves it `awaiting_owner` (its only ways out; it holds nothing either way); a verify with no verdict returns it to `reported` with no try spent, until one
+suite lacks a custody key, or declares keys the harness cannot read, leaves it `awaiting_owner` (its only ways out; it holds nothing either way); a verify with no verdict returns it to `reported` with no try spent, until one
 result has reached no verdict `settleNoVerdictMax` times ([ops/liveness.yaml](../ops/liveness.yaml)): then the failure is
 persistent and the task ends `awaiting_owner` with the last reason (`noVerdict` in `core/task/verify.ts`). A command
 with side effects claims an intent on the task first: `cancelling` before a cancel stops seats or resets paths (a
@@ -234,14 +234,22 @@ prints the owner's `Add-MpPreference -ExclusionPath` command for the state base 
 harness never runs.
 
 **Custody into a live suite.** A command check whose scoped jest run holds an opt-in live suite (`useSandbox`, named by
-the task's command or its own changed spec) reads the keys the suite's world declares (`keys: [...]`) from the app's
+the task's command or its own changed spec) reads the keys the suite's world declares from the app's
 custody, the sealed members of `.starcistacks/<env>/secrets` (`dev`, else the one environment that has secrets), with the
 @starci/hfs code `app secret materialize` decrypts with, read in the app's main checkout where its age identity lives, and
 hands them to that test run's child environment alone (`harness/custody.ts`): never a file, an argument or a log, and
-every handed value is scrubbed from the run's output before it becomes evidence. A declared key no member holds refuses
-`CUSTODY_KEY_MISSING` ("custody lacks OPENROUTER_API_KEY in dev"), one custody cannot open here `CUSTODY_UNREADABLE`;
-either ends the task `awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred
-tests), never red, its try unspent, and the tick files it as the owner's blocking `question:business` on credentials.
+every handed value is scrubbed from the run's output before it becomes evidence. The keys are read from each
+`useSandbox(...)` call's options with the TypeScript compiler (the app's, else the CLI's): a literal array of strings, or
+a `const` holding one in the spec or in a relative module it imports it from (`as const`, a type annotation or
+`ReadonlyArray` alike), spreads included; an object element (`{ alias, resolve }`, a pool key the spec resolves itself)
+is no custody name. A declared key no member holds, or holds empty, refuses `CUSTODY_KEY_MISSING` ("custody lacks
+OPENROUTER_API_KEY in dev"), one custody cannot open here `CUSTODY_UNREADABLE`, and a call whose keys reduce to anything
+but string literals `CUSTODY_KEYS_UNRESOLVED` naming its `spec:line`, before the suite runs; each ends the task
+`awaiting_owner` (from `verifying` in its verify, from `done` in the wave that runs its deferred tests), never red, its
+try unspent, and the tick files it as the owner's blocking `question:business` on credentials, an unresolved declaration
+as one blocking `harness-defect` (code `CUSTODY_KEYS_UNRESOLVED`) every such task waits on. A failed test run that still
+reports a key custody holds as `TEST_WORLD_NOT_DECLARED` is the harness's failure, not the task's: `VERIFY_INFRA`, no
+verdict and no try, and one blocking `harness-defect` ticket deduped by `CUSTODY_KEY_NOT_HANDED` (`assertKeysHanded`).
 
 **Result reuse.** `check run` keys each typecheck and lint step by the digest of its inputs (`checkDigest` in
 `harness/check-reuse.ts`: the gate, the judged files, the content of the package and the workspace packages it reaches
@@ -560,7 +568,8 @@ answered question answered. `supervisor next` from the Supervisor's terminal, ev
 file each open `owner` escalation `awaitsOwner` holds, with or without a topic, as a `question:business` ticket (its topic,
 its `default` as the proposed default), each `harness` escalation as a blocking `harness-defect` ticket, the escalation
 waiting on it in `ticket_waiters` (`ticketEscalation`), and each task left `awaiting_owner` as a blocking `verify` ticket
-naming its verify's last reason (one a custody block left as the owner's `question:business` on credentials), the task
+naming its verify's last reason (one a custody block left as the owner's `question:business` on credentials, or as the
+`harness-defect` of the harness module it names), the task
 waiting on it (`ticketEscalations`); `supervisor next` sends the owner's Telegram
 notices in the same round when it filed one (`tickNotices`), as the tick does; the Supervisor files anything else with `ticket open` (roles supervisor, owner, debug:
 the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--state] [--project]` is Debug's queue, blocking first,

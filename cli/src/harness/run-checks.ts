@@ -9,8 +9,9 @@ import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
 import { testWorkerArgs, withHeavySlot } from "./heavy.js"
+import { VERIFY_INFRA } from "./clean-verify.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
-import { CUSTODY_CODES, custodyFor, scrubbed } from "./custody.js"
+import { assertKeysHanded, CUSTODY_CODES, custodyFor, scrubbed } from "./custody.js"
 import type { Custody } from "./custody.js"
 import { RESULT_FILE, isRuleId, ruleIdsIn, underPaths, workNamesIn } from "./contract.js"
 import type { Contract, ResolvedCheck } from "./contract.js"
@@ -58,20 +59,28 @@ const SCOPED_CHECK_VERBS: ReadonlySet<string> = new Set(["run", "lint", "typeche
 
 const tailOf = (run: ToolRun): string => evidenceTail(run.stdout, run.stderr)
 
-/** How a command check runs: its deadline, and the custody keys a live suite's run alone receives (harness/custody.ts). */
+/**
+ * How a command check runs: its deadline, the custody keys a live suite's run alone receives, and for a test run the work tree
+ * whose custody a failed run's undeclared keys are checked against (`keysOf`, harness/custody.ts).
+ */
 interface CommandOptions {
     readonly timeoutMs?: number
     readonly custody?: Custody
+    readonly keysOf?: string
 }
 
 /**
  * A command check's argv (a test runner, a suite, a build) runs under a host heavy-command slot, a test runner at its worker count
- * (harness/heavy.ts). Custody keys go into its child environment only, and every handed value is scrubbed from what it printed.
+ * (harness/heavy.ts). Custody keys go into its child environment only, and every handed value is scrubbed from what it printed. A
+ * failed test run that reports a key custody holds as not declared refuses VERIFY_INFRA (`assertKeysHanded`): no verdict, no try.
  */
 const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
-    const { custody, ...rest } = options
-    const run = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
-    return custody === undefined ? run : { ...run, stdout: scrubbed(run.stdout, custody.values), stderr: scrubbed(run.stderr, custody.values) }
+    const { custody, keysOf, ...rest } = options
+    const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, (held) => captureCommand(testWorkerArgs(argv, held), cwd, held.options))
+    const run = custody === undefined ? ran : { ...ran, stdout: scrubbed(ran.stdout, custody.values), stderr: scrubbed(ran.stderr, custody.values) }
+    if (run.exitCode !== 0 && keysOf !== undefined) await assertKeysHanded(`${run.stdout}
+${run.stderr}`, keysOf)
+    return run
 }
 
 /** This CLI's own entry, so a `starci` check runs the same build that verifies. */
@@ -409,8 +418,9 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
  * (harness/coverage-scope.ts `scopedTests`: never a live-provider spec it did not name), and with `coverage: changed` has its
  * coverage narrowed to the task's changed logic files; the detail opens with the files it ran and judged. When what it runs holds
  * an opt-in live suite, the keys its world declares come from the app's custody into that run's environment alone
- * (harness/custody.ts); a key custody lacks refuses CUSTODY_KEY_MISSING out of the check, an owner-gated block, never a red. Any
- * other command runs as named.
+ * (harness/custody.ts); a key custody lacks, or a declaration it cannot read, refuses out of the check (CUSTODY_CODES), a
+ * block awaiting the owner, never a red, and a run reporting a key custody holds as undeclared refuses VERIFY_INFRA. Any other
+ * command runs as named.
  */
 const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readonly kind: "command" } }, place: CheckPlace, allowPaths: readonly string[], options: { readonly timeoutMs?: number }): Promise<CheckOutcome> => {
     const primitive = check.check
@@ -422,14 +432,14 @@ const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readon
         const scoped = tests?.argv ?? named
         const scope = primitive.coverage === "changed" && jest ? await changedCoverageScope(place, allowPaths) : undefined
         const argv = scope === undefined ? scoped : withCoverageArgs(scoped, scope)
-        const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root)
-        const given: CommandOptions = custody === undefined ? options : { ...options, custody }
+        const custody = tests === undefined || tests.live.length === 0 ? undefined : await custodyFor(tests.live, place.source ?? place.root, place.root)
+        const given: CommandOptions = { ...options, ...(custody === undefined ? {} : { custody }), ...(jest ? { keysOf: place.source ?? place.root } : {}) }
         const judged = primitive.verdict !== undefined ? await runVerdictCommand(check, argv, primitive.verdict, place, given) : fromRun(check, await heavyCommand(argv, place.cwd, given))
         const lead = [tests?.detail, scope?.detail, custody?.detail].filter((line): line is string => line !== undefined)
         return lead.length === 0 ? judged : { ...judged, detail: `${lead.join("\n")}\n${judged.detail}` }
     } catch (error: unknown) {
-        // A custody block is the owner's, not the task's red: it leaves the check, and the verify ends awaiting the owner.
-        if (error instanceof Refusal && CUSTODY_CODES.has(error.code)) throw error
+        // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict.
+        if (error instanceof Refusal && (CUSTODY_CODES.has(error.code) || error.code === VERIFY_INFRA)) throw error
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
 }
