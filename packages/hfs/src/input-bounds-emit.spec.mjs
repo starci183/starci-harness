@@ -354,3 +354,11 @@ ${OUTPUT}`);
   assert.deepEqual(argumentsOf(fields.name), {maxLength:input.properties.name.maxLength});
   assert.deepEqual(argumentsOf(fields.nick), {maxLength:input.properties.nick.maxLength});
 });
+
+test('the write pass (outDir is repoRoot) writes the snapshots in place, with no database types step left', t => {
+  const { root } = workerFixture(t);
+  const emitted = emitContracts({ repoRoot: root, declaration: { apps: [{ name: 'api', kind: 'api' }] } });
+  assert.ok(emitted.written.includes('contracts/api/schema.graphql'), JSON.stringify(emitted));
+  assert.ok(fs.existsSync(path.join(root, 'contracts/api/schema.graphql')));
+  assert.equal('types' in emitted, false);
+});

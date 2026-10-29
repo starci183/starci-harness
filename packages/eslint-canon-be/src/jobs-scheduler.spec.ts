@@ -28,7 +28,7 @@ declare const advisoryXactLock: (tx: unknown, key: string) => Promise<void>
 declare const callDbFunction: (tx: unknown, name: string, args: unknown[]) => Promise<unknown[]>
 export const fire = async (tx: unknown, registry: SchedulerRegistry) => {
     await advisoryXactLock(tx, "tick:digest")
-    await callDbFunction(tx, "job_tick_claim", ["digest", "2026-02-03T04:05"])
+    await callDbFunction(tx, "public.job_tick_claim", ["digest", "2026-02-03T04:05"])
     return [registry, CronJob]
 }`
 
@@ -55,7 +55,9 @@ test("jobs-scheduler-owner: the tick scheduler of platform/jobs alone schedules,
             { filename: JOBS_MODULE, code: `import { Interval, ScheduleModule } from "@nestjs/schedule"\nexport { Interval, ScheduleModule }`, errors: [{ messageId: "decorator" }] },
             // the tick service enqueues only under the lock and the minute claim
             { filename: TICKS, code: FENCED.replace(`    await advisoryXactLock(tx, "tick:digest")\n`, ""), errors: [{ messageId: "fence" }] },
-            { filename: TICKS, code: FENCED.replace(`"job_tick_claim"`, `"job_claim"`), errors: [{ messageId: "fence" }] },
+            { filename: TICKS, code: FENCED.replace(`"public.job_tick_claim"`, `"public.job_claim"`), errors: [{ messageId: "fence" }] },
+            // the claim names the function as no-raw-sql lists it, schema-qualified
+            { filename: TICKS, code: FENCED.replace(`"public.job_tick_claim"`, `"job_tick_claim"`), errors: [{ messageId: "fence" }] },
         ],
     })
 })

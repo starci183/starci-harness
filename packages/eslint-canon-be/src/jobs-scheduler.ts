@@ -6,7 +6,7 @@
  *     `platform/jobs` that hold the scheduler (`job-tick.service.ts`, its spec, and `jobs.module.ts`, which composes
  *     `ScheduleModule.forRoot()`), refuses the `Cron`, `Interval` and `Timeout` decorators of `@nestjs/schedule` everywhere (a
  *     decorated method fires on every replica), and refuses a `job-tick.service.ts` that does not call both `advisoryXactLock`
- *     and `callDbFunction(..., "job_tick_claim", ...)`: the lock serialises the replicas and the minute claim lets one enqueue.
+ *     and `callDbFunction(..., "public.job_tick_claim", ...)`: the lock serialises the replicas and the minute claim lets one enqueue.
  *
  * `infra-import-owner` (R90) holds the coarser half from the same table (`ruleParams.be.infraOwners` gives both libraries to
  * `platform/jobs`); this rule names the files and the fence.
@@ -27,8 +27,8 @@ const SCHEDULER_FILES = new Set(["job-tick.service.ts", "job-tick.service.spec.t
 const TICK_SERVICE = "job-tick.service.ts"
 /** The decorators that would fire once per replica. */
 const REPLICA_DECORATORS = new Set(["Cron", "Interval", "Timeout"])
-/** The database function that claims a tick's minute. */
-const TICK_CLAIM = "job_tick_claim"
+/** The database function that claims a tick's minute, schema-qualified as no-raw-sql lists every database function. */
+const TICK_CLAIM = "public.job_tick_claim"
 
 /** True when a module specifier is a scheduler library or a subpath of one. */
 const isSchedulerLibrary = (specifier: string): boolean =>
@@ -43,7 +43,7 @@ export const jobsSchedulerOwner: RuleModule = {
         messages: {
             owner: "`{{library}}` is imported outside the tick scheduler of platform/jobs (job-tick.service.ts, jobs.module.ts). Declare the tick in JOB_TICKS of platform/jobs/job-ticks.contracts.ts instead.",
             decorator: "`@{{name}}` of @nestjs/schedule fires once per replica. Declare the tick in JOB_TICKS of platform/jobs/job-ticks.contracts.ts; JobTickService fires it once per minute for the deployment.",
-            fence: "JobTickService must take `advisoryXactLock(tx, \"tick:<name>\")` and claim the minute with `callDbFunction(tx, \"job_tick_claim\", ...)` before it writes the outbox, or every replica enqueues the tick.",
+            fence: "JobTickService must take `advisoryXactLock(tx, \"tick:<name>\")` and claim the minute with `callDbFunction(tx, \"public.job_tick_claim\", ...)` before it writes the outbox, or every replica enqueues the tick.",
         },
     },
     create(context) {
