@@ -45,7 +45,7 @@ export function dbAppRoot(cwd, opts) {
 }
 
 /** A refusal that lists every offending file with the rule it broke, one distinct `<file>: <reason>` line each. */
-const offendersError = (heading, offenders) => new DbVerbError(`${heading}:\n${[...new Set(offenders)].map((line) => `  ${line}`).join('\n')}`);
+export const offendersError = (heading, offenders) => new DbVerbError(`${heading}:\n${[...new Set(offenders)].map((line) => `  ${line}`).join('\n')}`);
 
 /** One rule finding as an offender line: its file, its message and its code. */
 const findingLine = (item) => `${item.message.startsWith(item.path) ? item.message : `${item.path}: ${item.message}`} (${item.code})`;

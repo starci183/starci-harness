@@ -460,6 +460,24 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
+  test(`app db plan ${edition}: dynamic blocks refuse naming every EXECUTE by file and line, before querying the database`, () => {
+    const later = `${migrations}/${second}_later.sql`;
+    const root = fixture(edition, {
+      [old]: "select 1;\n-- é widens the byte offsets past the character offsets\ndo $x$\nbegin\n  execute format('select %s', 1);\n  perform 1;\n  execute 'select 2';\nend\n$x$;\n",
+      [later]: "do $$begin execute 'select 3'; end$$;\n",
+    });
+    const ports = io(root);
+    assert.equal(dbPlanMain([], ports.ports), 2);
+    assert.deepEqual(ports.calls, []);
+    assert.equal(ports.err.join(''), [
+      'starci app db plan: dynamic migration blocks cannot prove database inventory:',
+      `  ${old}:5: EXECUTE builds its SQL at run time`,
+      `  ${old}:7: EXECUTE builds its SQL at run time`,
+      `  ${later}:1: EXECUTE builds its SQL at run time`,
+      '',
+    ].join('\n'));
+  });
+
   test(`app db plan ${edition}: inert and conditional declarations refuse before querying the database`, () => {
     for (const sql of ["create view public.inert as select pgmq.create('events');", "explain select pgmq.create('events');", "select pgmq.create('events') where false;", "do $$begin if false then perform pgmq.create('events'); end if; end$$;"]) {
       const root = fixture(edition, { [old]: sql });

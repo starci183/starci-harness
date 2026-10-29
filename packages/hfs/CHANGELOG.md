@@ -4,7 +4,8 @@
 
 - Fixed: `starci app db baseline --squash` reaches a loopback source (`127.0.0.1`, `localhost`, `[::1]`, as the app's own dev database on `127.0.0.1:54322`) on a Linux Docker engine. The scratch container reached it only as `host.docker.internal`, which a Linux engine maps to its bridge gateway, where a port published on 127.0.0.1 refuses the connection; Docker Desktop alone forwarded it. `sourceTarget` (`runtime/scripts/hfs/db-squash.mjs`) now keeps the first route psql connects on: the scratch container through `host.docker.internal`, else a one-shot container of the same image on the host's network; when neither connects the verb refuses with each route's psql failure. Every client tool runs where its target's route says (`exec`, `targetRunner`).
 - Changed: a failed history read of the squash source names the psql failure (password and URL withheld) instead of "database command failed; inspect psql privately".
-- Spec: `src/hfs-db-squash.spec.mjs`: its source, published on 127.0.0.1 only, is the loopback route CI's Linux engine proves; a source no route reaches is refused.
+- Changed: `starci app db plan` (and `baseline`, which runs it) refuses a dynamic migration block naming every `EXECUTE` of every active migration as `<file>:<line>` under "dynamic migration blocks cannot prove database inventory", instead of the bare heading at the first one (`repositoryState`, `runtime/scripts/hfs/db-plan-verb.mjs`; the line is the DO body's opening quote plus the statement's body line).
+- Spec: `src/hfs-db-squash.spec.mjs`: its source, published on 127.0.0.1 only, is the loopback route CI's Linux engine proves; a source no route reaches is refused. `src/hfs-database-baseline.spec.mjs`: two EXECUTEs in one block after a multi-byte comment and one in a second migration are named by file and line, with no database query.
 
 ## 4.11.6 - 2026-10-29
 

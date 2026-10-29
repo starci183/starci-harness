@@ -5,7 +5,7 @@ import { sha256 } from '../../engine/digest.mjs';
 import pg from 'libpg-query';
 import { invocationDir } from '../lib/roots.mjs';
 import { sqlStringParts, walkSqlAst as walk, sqlParser, sqlCallArgument as argument, sqlStringLiteral as literal } from '../lib/sql-ast.mjs';
-import { DbVerbError, dbOptions, dbAppRoot, dbSqlFiles, runDbPostgres, dbFailure } from './db-baseline-verb.mjs';
+import { DbVerbError, dbOptions, dbAppRoot, dbSqlFiles, runDbPostgres, dbFailure, offendersError } from './db-baseline-verb.mjs';
 
 await pg.loadModule();
 
@@ -75,6 +75,7 @@ function conditionalBlock(item) {
     && !(key === 'PLpgSQL_stmt_return' && item[key].lineno === undefined));
 }
 
+/** Inventories one DO block; returns the body-relative line of each EXECUTE, whose SQL is built at run time and so never inventoried. */
 function inventoryDo(state, node) {
   const option = (key) => (node.args ?? []).find((item) => item.DefElem?.defname === key)?.DefElem?.arg?.String?.sval;
   if (option('language') && option('language') !== 'plpgsql') throw new DbVerbError('database plan requires statically readable migration blocks');
@@ -85,29 +86,40 @@ function inventoryDo(state, node) {
   try { tree = pg.parsePlPgSQLSync(`create function starci_plan_probe() returns void language plpgsql as ${delimiter}${body}${delimiter};`); }
   catch { throw new DbVerbError('migration block could not be inventoried safely'); }
   const statements = [];
+  const dynamic = [];
   let conditional = false;
   walk(tree, (item) => {
     conditional ||= conditionalBlock(item);
-    if (item.PLpgSQL_stmt_dynexecute) throw new DbVerbError('dynamic migration blocks cannot prove database inventory');
+    if (item.PLpgSQL_stmt_dynexecute) dynamic.push(item.PLpgSQL_stmt_dynexecute.lineno);
     if (item.PLpgSQL_expr?.parseMode === 0) statements.push(parseSql(item.PLpgSQL_expr.query));
   });
   if (conditional && statements.some((statement) => ownershipCalls(statement).length)) throw new DbVerbError('conditional migration blocks cannot prove database inventory');
   for (const statement of statements) inventoryTree(state, statement);
+  return dynamic;
 }
+
+/** The 1-based line of `text` at libpg_query's byte offset `location`. */
+const lineAt = (text, location) => Buffer.from(text).subarray(0, location).toString().split('\n').length;
 
 function repositoryState(root) {
   const migrations = dbSqlFiles(root);
   const state = { migrations: new Map(migrations.map((entry) => [entry.stamp, null])), cron: new Map(), queues: new Map() };
   if (state.migrations.size !== migrations.length) throw new DbVerbError('active migrations must have unique versions');
+  // Every EXECUTE of every active migration is named (file:line) before the refusal.
+  const dynamic = [];
   for (const entry of migrations) {
-    const tree = parseSql(fs.readFileSync(path.join(root, entry.file), 'utf8'));
+    const text = fs.readFileSync(path.join(root, entry.file), 'utf8');
+    const tree = parseSql(text);
     for (const statement of tree.stmts ?? []) {
       // Creating a function does not execute its body. Inert SQL strings never declare remote state.
       if (statement.stmt.CreateFunctionStmt) continue;
-      if (statement.stmt.DoStmt) inventoryDo(state, statement.stmt.DoStmt);
-      else inventoryTree(state, statement.stmt);
+      if (!statement.stmt.DoStmt) { inventoryTree(state, statement.stmt); continue; }
+      // The body opens on the line of its quote (the `as` DefElem), so a body line maps to that line plus its offset.
+      const opening = lineAt(text, statement.stmt.DoStmt.args?.find((item) => item.DefElem?.defname === 'as')?.DefElem?.location ?? statement.stmt_location ?? 0);
+      for (const line of inventoryDo(state, statement.stmt.DoStmt)) dynamic.push(`${entry.file}:${opening + line - 1}: EXECUTE builds its SQL at run time`);
     }
   }
+  if (dynamic.length) throw offendersError('dynamic migration blocks cannot prove database inventory', dynamic);
   return state;
 }
 
