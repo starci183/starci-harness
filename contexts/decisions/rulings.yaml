@@ -589,6 +589,11 @@ rulings:
     status: live
     ruling: "A redirect-only door over its rate limit answers its own error redirect (303), declared on @RateLimit, never a 429 body."
     owner: "contexts/code/be/api-auth.md BE-AUTH-4; @starci/hfs templates/be/skeleton platform/http-security rate-limit.guard.ts"
+  - id: cross-capability-reads-via-owner
+    date: '2026-10-29'
+    status: live
+    ruling: "The capability that owns a table stays its only reader and writer. Another capability reads that data through the owner's read service or through a projection the reader owns, never by querying, joining or mapping the owner's table. R86 sql-owner refuses a write to another capability's table and a read across contexts; a same-context read of another capability's table is held by review."
+    owner: "contexts/code/be/persistence.md BE-PERSISTENCE-9"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `pending` marks a name that still exists in published code until the follow-up lands.

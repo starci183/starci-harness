@@ -153,16 +153,22 @@ database a service queries.
 
 Enforced by: `one-connection-per-database`, `connection-map` (R84).
 
-## BE-PERSISTENCE-9 SQL touches only its owner's tables, and every list is bounded
+## BE-PERSISTENCE-9 A capability touches only its own tables, and every list is bounded
 
-A statement writes only its capability's tables. A multi-row `SELECT` carries `LIMIT` (a literal bound or a clamped
-parameter) unless it filters on a unique key or only aggregates; bounds are the `platform/database` constants. A read
-never runs once per loop element: read the keys at once (`id = ANY($2::uuid[])`) and look them up.
+The capability that owns a table (BE-PERSISTENCE-3) is the only one that writes or reads it, by a statement or through its
+entity. Another capability reads that data through the owner's read service, a method of the owner's domain service that
+takes the caller's manager when the read must share its transaction (BE-PERSISTENCE-10), or through a projection the reader
+owns (BE-PROJECTIONS-1); never by a statement, a join or an entity call on the owner's table. A multi-row `SELECT` carries
+`LIMIT` (a literal bound or a clamped parameter) unless it filters on a unique key or only aggregates; bounds are the
+`platform/database` constants. A read never runs once per loop element: read the keys at once (`id = ANY($2::uuid[])`)
+and look them up.
 
-Why: a statement that writes another owner's table breaks ownership silently, and an unbounded read turns a growing
-table into an outage.
+Why: a read of another owner's table couples the reader to a schema it does not review, so the owner can no longer change
+it alone; a write breaks ownership silently; an unbounded read turns a growing table into an outage.
 
-Enforced by: `sql-owner`, `query-needs-limit`, `no-query-in-loop` (R86, R69, R77).
+Enforced by: `sql-owner` (R86) refuses a statement that writes another capability's table or reads a table of another
+context; `query-needs-limit`, `no-query-in-loop` (R69, R77). A same-context read of another capability's table, by a
+statement or an entity call, is held by review.
 
 ## BE-PERSISTENCE-10 The domain service opens the transaction and hands the manager down
 
