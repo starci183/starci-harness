@@ -10,6 +10,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Fixed
 
+- **The CLI runs @starci/hfs 4.11.0** (official postgres image, platform/jobs scheduler, db baseline archive), moved once npm served it.
 - **A relay node's own lint holds a finding its source already held, whichever ESLint report printed it.** A check that
   defers composition rules reads ESLint's json report, where a canon message keeps its closing period; the run at the relayed
   source's head has no deferral and reads the stylish report, which drops it, so the two keys never met and the finding was
