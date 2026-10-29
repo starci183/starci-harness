@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS events (
   subject TEXT, data_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS prior_work (
   workflow_id TEXT NOT NULL, plan_key TEXT NOT NULL, contract_hash TEXT NOT NULL, attempt_id TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('preserved', 'committed')), sha256 TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id),
+  kind TEXT NOT NULL CHECK (kind IN ('preserved')), sha256 TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id),
   base TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (workflow_id, plan_key, contract_hash, attempt_id, kind, sha256));
 CREATE TABLE IF NOT EXISTS commands (
@@ -435,8 +435,9 @@ export const projectDir = (root: string): string => {
 }
 
 /**
- * The project's prior-work store, `prior/<sha256>.patch` of its state folder: every attempt's work (a preserved or a committed
- * patch) named by the sha256 of its bytes and indexed in the ledger's prior_work table. Nothing deletes from it.
+ * The project's prior-work store, `prior/<sha256>.patch` of its state folder: the one patch a key keeps for its next attempt
+ * (a KEEP or a REPAIR settle, harness/prior.ts), named by the sha256 of its bytes and indexed in the ledger's prior_work table;
+ * the settle of that attempt deletes it.
  */
 export const priorDir = (root: string): string => join(projectDir(root), "prior")
 

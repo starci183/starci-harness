@@ -1,0 +1,118 @@
+schema: starci/scenario@1
+id: op-settle-red-discards
+group: verify
+title: "a red attempt of the Op's own doing waits for its Kernel, whose retry without a settle DISCARDs it: worktree, branch and preserve gone, nothing kept"
+inject: the Op files done with a stray draft but never writes the file its check asks for
+expect: >-
+  the verify is red and preserves the draft, but the Op worktree and its branch stay until the Kernel decides; the Kernel answers
+  the red decision with a retry that names no settle, which is DISCARD: the preserve folder, the worktree and the branch go, no
+  prior_work row is written, and the retry starts from nothing
+pass:
+  - after the red verify the worktree and the preserve folder are still there and nothing is settled
+  - the Kernel's retry settles the attempt discard (by kernel)
+  - the preserve folder, the Op worktree and its branch are gone, and the store holds no patch
+  - the retry's launch applies nothing and its checkout has no draft
+  - no human intervention beyond the injected fault
+automation: automated
+steps:
+  - file:
+      path: wf.yaml
+      yaml:
+        schema: starci/workflow@1
+        id: dsc
+        goal: bench workflow discard
+        runner: inline
+        tasks:
+          - id: a
+            label: docs
+            summary: write doc a
+            allowPaths: [docs/a]
+            checks:
+              - preset: files-exist
+                args: {files: [docs/a/final.md]}
+  - starci: [workflow, define, "${run}/wf.yaml"]
+  - starci: [workflow, start, dsc]
+    save:
+      a: data.nodes.0.task.id
+  - worker:
+      task: ${a}
+      files:
+        docs/a/draft.md: "draft\n"
+  - starci: [workflow, step, dsc]
+    expect: {exit: 1}
+  - name: nothing is removed before the decision
+    assert:
+      sql:
+        db: ledger
+        query: "SELECT (SELECT status FROM tasks WHERE id = '${a}') || ':' || (SELECT COUNT(*) FROM events WHERE kind IN ('op-settled', 'op-worktree-removed') AND subject = '${a}')"
+        equals: ["failed:0"]
+  - assert:
+      exists:
+        path: ${project}/worktrees/dsc.ops/${a}
+        present: true
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}/untracked/docs/a/draft.md
+        present: true
+  - starci: [kernel, next, dsc, --wait, "0"]
+    expect:
+      contains: '"kind": "red"'
+    save:
+      red: data.decision.id
+      graph: data.digest.graphVersion
+  - file:
+      path: retry.yaml
+      yaml:
+        schema: starci/workflow-change@1
+        workflow: dsc
+        changes:
+          - {op: retry, id: a}
+  - file:
+      path: cmd.yaml
+      content: |
+        schema: starci/command@1
+        cmdId: k-dsc-retry-1
+        kind: workflow-change
+        workflow: dsc
+        basedOn: {graph: ${graph}}
+        answers: [${red}]
+        route: rejected-retries
+        change: retry.yaml
+  - starci: [kernel, submit, "${run}/cmd.yaml"]
+  - starci: [workflow, step, dsc]
+    expect: {}
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.decision') || ':' || json_extract(data_json, '$.by') FROM events WHERE kind = 'op-settled' AND subject = '${a}'"
+        equals: ["discard:kernel"]
+  - assert:
+      exists:
+        path: ${project}/preserved/${a}
+        present: false
+  - assert:
+      exists:
+        path: ${project}/worktrees/dsc.ops/${a}
+        present: false
+  - name: its branch is gone, though it never landed
+    git: [rev-parse, --verify, --quiet, "refs/heads/starci/dsc.ops/${a}"]
+    expect:
+      exit: 1
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT COUNT(*) FROM prior_work"
+        equals: [0]
+  - read:
+      db: ledger
+      query: "SELECT id FROM tasks WHERE plan_key = 'a' AND id <> '${a}'"
+      as: a2
+  - assert:
+      sql:
+        db: ledger
+        query: "SELECT json_extract(data_json, '$.outcome') FROM events WHERE kind = 'prior-applied' AND subject = '${a2}' ORDER BY id DESC LIMIT 1"
+        equals: [none]
+  - assert:
+      exists:
+        path: ${project}/worktrees/dsc.ops/${a2}/docs/a/draft.md
+        present: false

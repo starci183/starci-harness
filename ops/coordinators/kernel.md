@@ -48,6 +48,15 @@ past `decisionStallMinutes` is handed to the Supervisor, who rules it in your pl
 spent, or an escalation to the owner or Debug). `kernel next` tells you each such ruling once, on your next turn (its
 `rulings`, a line "ruled by the Supervisor in your place"): plan on from the graph it left, never undo it.
 
+Every ended attempt of an Op is settled before anything of it is removed (`{runtimeRoot}/cli/README.md` "Settling an
+attempt"). A green verify is its MERGE: it lands, and its worktree and branch go. A stop the harness caused, or an Op parked
+on a shared need, is KEPT by the harness: one patch, which the next attempt of its key starts from. A red, question,
+check-premise or conflict of the task's own is yours to settle, with `settle` on the command that answers its decision:
+`discard` (the default when you name none) keeps nothing, and the retry starts from the branch alone; `repair` keeps its one
+patch for exactly one repair attempt, which starts from it and spends a try like any retry. Name `repair` only when the next
+attempt should fix this work rather than redo it; its worktree, branch and preserved work stay until you answer, and go once
+you have. A hold settles nothing.
+
 | decision | what you submit |
 |---|---|
 | `goal` | your plan: a whole workflow file as a `workflow-change` (`change: <file>`), every task built from what your workflow's branch holds, never copying another workflow's landed code (a task whose input names another workflow's branch or a commit it landed is refused `NEEDS_REQUIRED`: the Op reports the missing shared thing with `--needs` and its one owner builds it), walking each Work record's lane: the digest's `lanes` show every step satisfied, carried or missing, and you plan only the missing ones (`FLOW_INCOMPLETE` otherwise), cut one task per record so independent records run in parallel (at most `workflowParallel` of ops/routing.yaml at once; the harness queues the rest; `TASK_NOT_SPLIT` otherwise); a task that writes a module another task wires in names that task in `composedBy` (its key, the composer depending on it), so the module's composition rules are judged on the composer and on the workflow's final verify instead of turning the module's task red; no task writes the app's `hfs.json` for an opt-in slot: the harness declares the pattern a task's paths need on your branch itself (`{runtimeRoot}/cli/README.md` "Opt-in patterns") |
@@ -55,7 +64,7 @@ spent, or an escalation to the owner or Debug). `kernel next` tells you each suc
 | `check-premise` (a task filed done and every check of its verify was green except command checks your contract wrote, whose output states an expectation the result contradicts: the evidence's `checks` give each check's command and output) | judge the premise, never the Op: when the expectation is stale (a fact the harness or an earlier task changed, a value the goal no longer asks for), the route `check-premise-amends-checks`: a `workflow-change` that `edit`s the task with `set.checks` rewritten to what the goal asks now, so its retry is judged on true checks and the Op cannot change them itself; when the expectation still holds, the work is wrong: an `edit` whose `set.checks` keeps the check and whose `set.details` names what the Op must change |
 | `question` (an Op returned blocked or mismatch: its question, or a harness-looking red, and the default it proposes) | answer it from the goal, the specs and the canon by its legal route the same way, the Op's default when it holds (an audit that finds the direction itself wanting is redrawn); when none of them answers it, never guess: an `escalation` carrying the Op's question and default, of kind `owner` (topic and default as below), `harness` for a red that is the harness's, or `scope` when the answer is outside your scope ceiling. The Supervisor answers or files it as a ticket; its answer comes back to you, and every later brief of the workflow carries it |
 | `shared-need` (Ops of this workflow reported one missing shared thing with `--needs`; they are parked, their work kept; `{runtimeRoot}/cli/README.md` "Shared needs") | one owner: a `workflow-change` whose `need` is `{key: <the decision's need>, resolver: <task key, or a list of them>}`, the task that builds it (add it in the change, or name one your graph holds; never a waiter of it), or `{key, reject: <why it is not shared>}`, which sends the waiters back to their Ops; or an `escalation` when it is not yours to own. You never retry the waiters: they are released, from their kept work, once the resolver lands and its commits are on your branch. When they do not apply, your graph gains a `relay.<need>.r<round>` node the waiters depend on: it is yours like any task (its reds and retries are your decisions), but its contract is the harness's, so never edit it, and removing it hands the conflict to the Supervisor. A need that names its paths under a shared root, or that another workflow also reports, goes to the Supervisor instead; a need you leave unanswered past its deadline climbs to it on its own. `starci needs merge <into> <from>` folds two spellings of one need |
-| `conflict` (an Op's verified work did not rebase onto the workflow's head; its work is preserved) | a `workflow-change` retrying the task, whose new attempt starts on the new head from the preserved work; or an `escalation` of kind `conflict` when another workflow keeps writing the same paths |
+| `conflict` (an Op's verified work did not rebase onto the workflow's head; its work is preserved until you settle it) | a `workflow-change` retrying the task with `settle: repair`, whose new attempt starts on the new head from that work (with no settle it starts from the head alone); or an `escalation` of kind `conflict` when another workflow keeps writing the same paths |
 | `stale` (a dependency's result changed) | keep (answers only) or redo (`workflow-change` retry) |
 | `goal-change`, `escalation-answer` | the new desired graph, the whole workflow file, as a `workflow-change`: done work is kept by the reconcile |
 | `done` | a `handoff` with the outcome, the evidence (the wave round of `{runtimeRoot}/contexts/authority/wave.md` on the worktree, its scope decision first) and what remains |
@@ -73,6 +82,7 @@ basedOn: {graph: 3}
 answers: [d-0123456789ab]
 route: rejected-retries
 change: retry-api.yaml
+settle: repair      # or discard, the default: how the red attempt it answers is settled
 ```
 
 ## Mail

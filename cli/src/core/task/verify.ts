@@ -332,7 +332,7 @@ const seatLine = (ending: Ending): string[] => [
 
 /** How the verdict landed: settled with a commit, settled with nothing to commit, left unsettled, or checked only. */
 const landedNote = (settlement: Settlement | null, commit: boolean, preserved: Preserved | null, conflict: readonly string[] | null): string => {
-    if (conflict !== null) return `conflict: ${conflict.join(", ") || "the work"} does not rebase onto the branch's head; its work is preserved in ${preserved?.dir ?? "nothing (it was clean)"} for an amend on the new head`
+    if (conflict !== null) return `conflict: ${conflict.join(", ") || "the work"} does not rebase onto the branch's head; its work is preserved in ${preserved?.dir ?? "nothing (it was clean)"} until its Kernel settles it (repair keeps it for the amend on the new head, discard drops it)`
     if (settlement !== null) return settlement.committed ? `settled: ${settlement.branch} -> ${settlement.commit.slice(0, 12)}` : "settled: the task changed nothing, no commit"
     if (!commit) return "checked only (--no-commit): nothing settled"
     const work = preserved?.dir == null ? "nothing of the task was dirty" : `its work was preserved in ${preserved.dir} and its paths reset`

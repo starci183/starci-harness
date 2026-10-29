@@ -184,12 +184,17 @@ export const hostHeldAttempt = (db: DatabaseSync, taskId: string): boolean => {
     return held !== undefined
 }
 
+/** The event a cancel records when the task's worktree was already gone: it is discarded with nothing to keep, and spends no try. */
+export const TASK_DISCARDED = "task-discarded"
+
 /**
  * The try number a retry of `previous` takes: the next one, unless the harness ended `previous` (revive.ts `harnessCause`: a wave
- * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline) or the host held it
- * (`hostHeldAttempt`), which spends no try: the retry keeps its number, even past the last try.
+ * red not proven its own, a fenced or lost launch, a verify stopped by infrastructure or its deadline), the host held it
+ * (`hostHeldAttempt`), or it was discarded because its worktree was gone (`TASK_DISCARDED`), which spends no try: the retry
+ * keeps its number, even past the last try.
  */
-export const tryAfter = (db: DatabaseSync, previous: TaskRow): number => previous.tryNo + (harnessCause(db, previous.id) === null && !hostHeldAttempt(db, previous.id) ? 1 : 0)
+export const tryAfter = (db: DatabaseSync, previous: TaskRow): number =>
+    previous.tryNo + (harnessCause(db, previous.id) === null && !hostHeldAttempt(db, previous.id) && lastEvent(db, TASK_DISCARDED, previous.id) === undefined ? 1 : 0)
 
 /**
  * Registers a queued task for a fit contract; a retry names the task it retries and gets its try number (tryAfter). The task's

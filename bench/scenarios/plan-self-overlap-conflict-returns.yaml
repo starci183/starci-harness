@@ -6,13 +6,13 @@ inject: tasks a and b both rewrite the first line of docs/shared.md, no dependsO
 expect: >-
   both run at once in their own Op worktrees; the first to verify lands; the second does not rebase onto the new head, so no
   check runs on it: its work is preserved, its attempt ends conflict, the task fails without a red verdict, and the Kernel gets a
-  conflict decision to amend on the new head; nothing resolves the conflict by itself, and both Op worktrees are removed
+  conflict decision to amend on the new head; nothing resolves the conflict by itself; the landed Op's worktree is removed, the conflicted one waits for its Kernel's settle
 pass:
   - one task done, one failed with attempt outcome conflict and no verdict
   - one commit on the workflow branch, carrying the first task's line only
   - the second task's work preserved (its land-conflict event names the folder and the file)
   - a conflict decision is open for the second task
-  - both Op worktrees removed
+  - the landed Op's worktree removed; the conflicted one kept until its Kernel settles it
   - "no step without evidence: every state change in the ledger has its event"
   - no actor overstepping its role
   - no human intervention beyond the injected fault
@@ -112,8 +112,8 @@ steps:
         db: ledger
         query: "SELECT COUNT(*) FROM events WHERE kind = 'op-worktree-removed'"
         equals:
-          - 2
+          - 1
   - assert:
       exists:
         path: ${project}/worktrees/clash.ops/${loser}
-        present: false
+        present: true

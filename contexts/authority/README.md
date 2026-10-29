@@ -40,8 +40,9 @@ removes one by hand or keeps one alive past its owner. Before removal its uncomm
 preserves it (a patch and its untracked files, in the project's `preserved/`), then it is reaped: every Orca terminal
 whose worktree it is is closed, its install links are unlinked as links (never a recursive delete through one, never
 `robocopy /MIR`), Orca forgets it, and the processes the harness started in it or that work inside it are ended and seen
-gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes; a
-branch with commits that never landed is kept. A folder the host still holds (EBUSY, EPERM) is left busy with its holder
+gone (by pid, never by name, never the caller or Orca: `cli/src/harness/reap.ts`); then it is removed and git prunes. An
+Op's worktree waits for its attempt's settle (MERGE, DISCARD, or a KEEP or REPAIR whose one patch is saved first) and goes
+with its branch ([cli/README.md](../../cli/README.md) "Settling an attempt"); any other branch is kept. A folder the host still holds (EBUSY, EPERM) is left busy with its holder
 recorded and never fails or blocks the settle that asked for it: the collector reaps and retries it with backoff and
 tickets it for Debug at the cap (`cli/src/harness/worktree-busy.ts`).
 

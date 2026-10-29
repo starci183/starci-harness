@@ -52,12 +52,16 @@ export interface HoldingCommand {
 /** The decisions on a task a workflow-change answers without a change or a need: the tasks it holds where they stand. */
 const answeredOnTasks = (db: DatabaseSync, command: HoldingCommand): { readonly id: string | null; readonly task: string }[] => {
     if (command.kind !== "workflow-change" || command.change !== undefined || command.need !== undefined) return []
-    return (command.answers ?? []).flatMap((id) => {
+    return decidedTasks(db, command.answers ?? [])
+}
+
+/** The Kernel decisions on a task among `answers` (a red, question, check-premise or conflict), each with its task. */
+export const decidedTasks = (db: DatabaseSync, answers: readonly string[]): { readonly id: string; readonly task: string }[] =>
+    answers.flatMap((id) => {
         const row = db.prepare("SELECT kind, subject FROM decisions WHERE id = ? AND scope = 'kernel'").get(id)
         const subject = textOf(row?.subject) ?? ""
         return row !== undefined && HELD_KINDS.includes(String(row.kind)) && subject.startsWith("t-") ? [{ id, task: subject }] : []
     })
-}
 
 /**
  * Every task a hold keeps where it stands: those whose decisions the command answers, and the current task of each plan key

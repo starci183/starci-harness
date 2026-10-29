@@ -1,20 +1,46 @@
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { isAbsolute, join, relative } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { asRefusal, Refusal } from "../shared/errors.js"
 import { headline } from "../shared/exec.js"
-import { captureGit, git, gitSucceeds } from "../shared/git.js"
+import { captureGit, git, gitSucceeds, refExists, resolveSha } from "../shared/git.js"
 import type { Contract } from "./contract.js"
-import { now, openExistingLedger, openLedger, priorDir } from "./ledger.js"
+import { taskPaths } from "./contract.js"
+import { KERNEL_SETTLES } from "./coordinator-commands.js"
+import type { KernelSettle } from "./coordinator-commands.js"
+import { inTransaction, now, openExistingLedger, openLedger, priorDir, projectDir } from "./ledger.js"
+import { opWorktreeOf } from "./land.js"
+import { readMachine } from "./machine.js"
+import { harnessCause } from "./revive.js"
 import { inOrder } from "./sequential.js"
 import type { TaskRow } from "./tasks.js"
-import { getTask, lastEvent, latestAttempt, recordEvent, resultOf } from "./tasks.js"
-import { taskPaths } from "./contract.js"
+import { getTask, hostHeldAttempt, isTerminal, lastEvent, latestAttempt, recordEvent, resultOf } from "./tasks.js"
 
-/** How an attempt's work was kept: the dirty work of a cancelled or red attempt (preserved), or the diff of a settled one (committed). */
-export type PriorKind = "preserved" | "committed"
+/**
+ * How an ended attempt of a task is settled (owner decision `op-settle-merge-or-discard`): `merge`, its green verify landed it;
+ * `discard`, nothing of it is kept; `repair`, its Kernel's decision that the next attempt repairs this work, which keeps one
+ * patch for that one attempt; `keep`, a stop the harness caused or a waiter parked on a shared need, which keeps one patch for
+ * the attempt that continues it.
+ */
+export type SettleDecision = "merge" | "discard" | "repair" | "keep"
+
+/** Why a task's attempt is settled the way it is, and who decided it. */
+export interface SettleDue {
+    readonly decision: SettleDecision
+    readonly by: "harness" | "kernel"
+    readonly cause: string
+}
+
+/** The event that records how a task's ended attempt was settled; the task's status at that moment is in it. */
+export const OP_SETTLED = "op-settled"
+
+/** The event a Kernel command records on each task whose decision it answers: the settle the Kernel named (discard by default). */
+export const SETTLE_RULED = "op-settle-ruled"
+
+/** The event recorded for each stored patch dropped from the prior-work store. */
+export const PRIOR_DROPPED = "prior-dropped"
 
 /** One stored patch of an earlier attempt, as the ledger's prior_work table indexes it; `file` is its place in the store. */
 export interface PriorPatch {
@@ -22,7 +48,6 @@ export interface PriorPatch {
     readonly planKey: string
     readonly contractHash: string
     readonly attemptId: string
-    readonly kind: PriorKind
     readonly sha256: string
     readonly taskId: string
     readonly base: string
@@ -31,12 +56,11 @@ export interface PriorPatch {
     readonly file: string
 }
 
-/** What the launch-time apply did with the newest prior patch of a task's key. */
+/** What the launch-time apply did with the patch kept for a task's key. */
 export interface PriorApplied {
     readonly outcome: "applied" | "conflicted" | "none"
     readonly patch: string | null
     readonly sha256: string | null
-    readonly kind: PriorKind | null
     readonly fromTask: string | null
     readonly detail: string
 }
@@ -48,6 +72,9 @@ export interface PriorKey {
 }
 
 const APPLIED_EVENT = "prior-applied"
+
+// Every stored patch is the work an attempt preserved (with the commits its Op branch carried); the table's kind says so.
+const STORED_KIND = "preserved"
 
 const literal = (path: string): string => `:(top,literal)${path}`
 
@@ -90,7 +117,6 @@ const toPatch = (root: string, row: Record<string, unknown>): PriorPatch => {
         planKey: text(row.plan_key),
         contractHash: text(row.contract_hash),
         attemptId: text(row.attempt_id),
-        kind: text(row.kind) as PriorKind,
         sha256,
         taskId: text(row.task_id),
         base: text(row.base),
@@ -100,16 +126,17 @@ const toPatch = (root: string, row: Record<string, unknown>): PriorPatch => {
     }
 }
 
-/** The stored patches of a task's key, from every other task of it, newest attempt first. */
-export const priorPatches = (root: string, db: DatabaseSync, task: TaskRow): PriorPatch[] => {
-    const key = priorKey(db, task)
-    return db
+/** Every stored patch of a key, newest attempt first. */
+const keyRows = (root: string, db: DatabaseSync, key: PriorKey): PriorPatch[] =>
+    db
         .prepare(
-            "SELECT prior_work.* FROM prior_work JOIN tasks ON tasks.id = prior_work.task_id WHERE prior_work.workflow_id = ? AND prior_work.plan_key = ? AND prior_work.task_id <> ? ORDER BY tasks.created_at DESC, tasks.rowid DESC, prior_work.attempt_id DESC, prior_work.created_at DESC",
+            "SELECT prior_work.* FROM prior_work JOIN tasks ON tasks.id = prior_work.task_id WHERE prior_work.workflow_id = ? AND prior_work.plan_key = ? ORDER BY tasks.created_at DESC, tasks.rowid DESC, prior_work.attempt_id DESC, prior_work.created_at DESC",
         )
-        .all(key.workflowId, key.planKey, task.id)
+        .all(key.workflowId, key.planKey)
         .map((row) => toPatch(root, row))
-}
+
+/** The patch kept for a task's key by another task of it (at most one: settleWork keeps one per key). */
+export const priorPatches = (root: string, db: DatabaseSync, task: TaskRow): PriorPatch[] => keyRows(root, db, priorKey(db, task)).filter((row) => row.taskId !== task.id)
 
 /** Runs git with a temporary index, refusing on a non-zero exit. */
 const indexed = async (cwd: string, index: string, args: readonly string[]): Promise<string> => {
@@ -142,14 +169,7 @@ const diffInto = async (cwd: string, from: string, to: string, specs: readonly s
     await git(cwd, ["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--binary", "--full-index", "--src-prefix=a/", "--dst-prefix=b/", `--output=${out}`, from, to, "--", ...specs])
 }
 
-/** The attempt of a task that was running at `at` (its newest attempt when `at` is not given); '' when it had none. */
-const attemptAt = (db: DatabaseSync, taskId: string, at?: string): string => {
-    if (at === undefined) return latestAttempt(db, taskId)?.id ?? ""
-    const row = db.prepare("SELECT id FROM attempts WHERE task_id = ? AND started_at <= ? ORDER BY seq DESC LIMIT 1").get(taskId, at)
-    return row === undefined ? (latestAttempt(db, taskId)?.id ?? "") : text(row.id)
-}
-
-/** The row already stored for a source of a task, if any: a source is stored once however often it is collected. */
+/** The row already stored for a source of a task, if any: a source is stored once however often it is kept. */
 const storedFrom = (root: string, db: DatabaseSync, taskId: string, source: string): PriorPatch | undefined => {
     const row = db.prepare("SELECT * FROM prior_work WHERE task_id = ? AND source = ?").get(taskId, source)
     return row === undefined ? undefined : toPatch(root, row)
@@ -157,9 +177,9 @@ const storedFrom = (root: string, db: DatabaseSync, taskId: string, source: stri
 
 /**
  * Files the patch in `out` under its sha256 (written once, by rename, so a reader never sees half a file) and indexes it by
- * (workflow, plan key, contract hash, attempt, kind, sha256). Idempotent; an empty patch stores nothing.
+ * (workflow, plan key, contract hash, attempt, sha256). Idempotent; an empty patch stores nothing.
  */
-const fileStored = (root: string, db: DatabaseSync, task: TaskRow, out: string, entry: { readonly attemptId: string; readonly kind: PriorKind; readonly base: string; readonly source: string }): PriorPatch | undefined => {
+const fileStored = (root: string, db: DatabaseSync, task: TaskRow, out: string, entry: { readonly base: string; readonly source: string }): PriorPatch | undefined => {
     if (!existsSync(out) || statSync(out).size === 0) return undefined
     const sha256 = createHash("sha256").update(readFileSync(out)).digest("hex")
     const dir = priorDir(root)
@@ -170,7 +190,7 @@ const fileStored = (root: string, db: DatabaseSync, task: TaskRow, out: string, 
     const key = priorKey(db, task)
     db.prepare(
         "INSERT INTO prior_work (workflow_id, plan_key, contract_hash, attempt_id, kind, sha256, task_id, base, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
-    ).run(key.workflowId, key.planKey, task.contractHash, entry.attemptId, entry.kind, sha256, task.id, entry.base, entry.source, now())
+    ).run(key.workflowId, key.planKey, task.contractHash, latestAttempt(db, task.id)?.id ?? "", STORED_KIND, sha256, task.id, entry.base, entry.source, now())
     return storedFrom(root, db, task.id, entry.source)
 }
 
@@ -183,86 +203,222 @@ const readManifest = (dir: string): { readonly head: string; readonly untracked:
     return { head, untracked: Array.isArray(untracked) ? untracked.filter((item): item is string => typeof item === "string") : [] }
 }
 
-/**
- * Stores the work a preserve kept in `dir` (preserved/<task>[.n]: changes.patch, untracked/ and manifest.json) as one patch
- * against the preserve's head: the tracked changes and the untracked files alike, so one `git apply` brings all of it back.
- * The attempt is the one running at `at` (the preserve's time), else the task's newest. Idempotent per folder.
- */
-export const storePreserved = async (root: string, db: DatabaseSync, task: TaskRow, dir: string, at?: string): Promise<PriorPatch | undefined> => {
-    const known = storedFrom(root, db, task.id, dir)
-    if (known !== undefined) return known
-    const manifest = readManifest(dir)
-    const changes = join(dir, "changes.patch")
-    const files = manifest.untracked.map((path) => ({ path, file: join(dir, "untracked", path) })).filter((item) => existsSync(item.file))
-    const tree = await treeOf(root, manifest.head, existsSync(changes) ? changes : null, files)
-    const out = storeScratch(root)
-    try {
-        await diffInto(root, manifest.head, tree, specsOf(task), out)
-        return fileStored(root, db, task, out, { attemptId: attemptAt(db, task.id, at), kind: "preserved", base: manifest.head, source: dir })
-    } finally {
-        rmSync(out, { force: true })
-    }
+/** True when `dir` lies inside the project's preserved/ folder, the only place a settle deletes a preserve from. */
+const underPreserved = (root: string, dir: string): boolean => {
+    const rel = relative(join(projectDir(root), "preserved"), dir)
+    return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel)
 }
 
-/**
- * Stores the work a settle committed for a task: the diff of `commit` against its first parent, limited to the task's
- * allowPaths. The attempt is the task's green one, else its newest. Idempotent per commit.
- */
-export const storeCommitted = async (root: string, db: DatabaseSync, task: TaskRow, commit: string): Promise<PriorPatch | undefined> => {
-    const sha = (await git(root, ["rev-parse", `${commit}^{commit}`])).trim()
-    const known = storedFrom(root, db, task.id, sha)
-    if (known !== undefined) return known
-    const base = (await git(root, ["rev-parse", `${sha}^1`])).trim()
-    const green = db.prepare("SELECT id FROM attempts WHERE task_id = ? AND verdict = 'green' ORDER BY seq DESC LIMIT 1").get(task.id)
-    const out = storeScratch(root)
-    try {
-        await diffInto(root, base, sha, specsOf(task), out)
-        return fileStored(root, db, task, out, { attemptId: green === undefined ? attemptAt(db, task.id) : text(green.id), kind: "committed", base, source: sha })
-    } finally {
-        rmSync(out, { force: true })
-    }
-}
-
-/** The commit a settle landed for a done task, found by its `Starci-Task` trailer on the local branches; Work-only commits are skipped. */
-const settledCommit = async (root: string, taskId: string): Promise<string | undefined> => {
-    const log = await git(root, ["log", "--branches", "-F", `--grep=Starci-Task: ${taskId}`, "--format=%H %s"])
-    return log
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line !== "")
-        .find((line) => !line.slice(41).startsWith("work: "))
-        ?.slice(0, 40)
-}
-
-/**
- * Collects into the store every earlier attempt of the task's key that is not there yet: each preserve the ledger recorded
- * (`task-preserved` events) and the settle commit of a done task. Never throws for one source: a source it cannot read is an
- * event, and the rest is still collected. Returns the key's stored patches, newest first.
- */
-export const collectPriorWork = async (root: string, db: DatabaseSync, task: TaskRow): Promise<PriorPatch[]> => {
-    const ids = priorTaskIds(db, task, priorKey(db, task))
-    await inOrder(ids, async (id) => {
-        const prior = getTask(db, id)
-        const preserves = db.prepare("SELECT at, data_json FROM events WHERE kind = 'task-preserved' AND subject = ? ORDER BY id").all(id)
-        await inOrder(preserves, async (event) => {
-            const data: unknown = JSON.parse(text(event.data_json))
-            const dir = typeof data === "object" && data !== null && "dir" in data && typeof data.dir === "string" ? data.dir : undefined
-            if (dir === undefined || !existsSync(join(dir, "manifest.json"))) return
-            try {
-                await storePreserved(root, db, prior, dir, text(event.at))
-            } catch (error: unknown) {
-                recordEvent(db, "prior-store-failed", id, { source: dir, error: asRefusal(error).message })
-            }
+/** The preserve folders a task's ending wrote (its `task-preserved` events) that are still on disk, oldest first. */
+const stagedOf = (root: string, db: DatabaseSync, taskId: string): string[] =>
+    db
+        .prepare("SELECT data_json FROM events WHERE kind = 'task-preserved' AND subject = ? ORDER BY id")
+        .all(taskId)
+        .map((row) => {
+            const data: unknown = JSON.parse(text(row.data_json))
+            return typeof data === "object" && data !== null && "dir" in data && typeof data.dir === "string" ? data.dir : ""
         })
-        if (prior.status !== "done") return
+        .filter((dir) => dir !== "" && existsSync(join(dir, "manifest.json")) && underPreserved(root, dir))
+
+/**
+ * The one patch a keep or a repair stores for the next attempt of a task's key: the newest work its ending preserved, diffed from
+ * the fork of its Op worktree when it was preserved there (so commits its Op branch carried come too), else from the preserve's
+ * own head; with no preserve, the commits its Op branch carries past its fork. Limited to the task's allowPaths. Undefined when
+ * the attempt left nothing.
+ */
+const keepPatch = async (root: string, db: DatabaseSync, task: TaskRow): Promise<PriorPatch | undefined> => {
+    const made = opWorktreeOf(db, task.id)
+    const ref = made === undefined ? undefined : `refs/heads/${made.branch}`
+    const tip = made === undefined || ref === undefined || !(await refExists(made.target, ref)) ? undefined : await resolveSha(made.target, ref)
+    const dir = stagedOf(root, db, task.id).at(-1)
+    const out = storeScratch(root)
+    try {
+        if (dir !== undefined) {
+            const manifest = readManifest(dir)
+            const changes = join(dir, "changes.patch")
+            const files = manifest.untracked.map((path) => ({ path, file: join(dir, "untracked", path) })).filter((item) => existsSync(item.file))
+            const tree = await treeOf(root, manifest.head, existsSync(changes) ? changes : null, files)
+            const base = made !== undefined && tip === manifest.head ? made.fork : manifest.head
+            await diffInto(root, base, tree, specsOf(task), out)
+            return fileStored(root, db, task, out, { base, source: dir })
+        }
+        if (made === undefined || tip === undefined || tip === made.fork) return undefined
+        await diffInto(root, made.fork, tip, specsOf(task), out)
+        return fileStored(root, db, task, out, { base: made.fork, source: tip })
+    } finally {
+        rmSync(out, { force: true })
+    }
+}
+
+/** Drops stored patches from the store: each row goes with a `prior-dropped` event, and its file once no row names it. */
+const dropRows = (db: DatabaseSync, rows: readonly PriorPatch[], reason: string): string[] => {
+    for (const row of rows) {
+        db.prepare("DELETE FROM prior_work WHERE workflow_id = ? AND plan_key = ? AND attempt_id = ? AND sha256 = ? AND task_id = ?").run(row.workflowId, row.planKey, row.attemptId, row.sha256, row.taskId)
+        recordEvent(db, PRIOR_DROPPED, row.taskId, { workflowId: row.workflowId, planKey: row.planKey, sha256: row.sha256, reason })
+        if (db.prepare("SELECT 1 FROM prior_work WHERE sha256 = ?").get(row.sha256) === undefined) rmSync(row.file, { force: true })
+    }
+    return rows.map((row) => row.sha256)
+}
+
+/** The parked waiters of shared needs: a task with a waiter row in the host store (harness/needs.ts). */
+const parkedOnNeed = (taskId: string): boolean => readMachine((machine) => machine.prepare("SELECT 1 FROM shared_need_waiters WHERE task_id = ? LIMIT 1").get(taskId) !== undefined, false)
+
+/**
+ * The harness cause that owes an ended task's work a continuation, or null: the owner's custody hold (awaiting_owner), a cause
+ * revive.ts `harnessCause` names (a fenced or lost launch, a verify stopped by infrastructure or its deadline, a wave red not its
+ * own, a done task whose work never landed), a verify the host held, or a waiter parked on a shared need.
+ */
+const harnessKept = (db: DatabaseSync, task: TaskRow): string | null => {
+    if (task.status === "awaiting_owner") return "custody"
+    const cause = harnessCause(db, task.id)
+    if (cause !== null) return cause
+    if (hostHeldAttempt(db, task.id)) return "host-held"
+    return parkedOnNeed(task.id) ? "waiter" : null
+}
+
+/** The settle a Kernel command named on the task (`SETTLE_RULED`), if one did. */
+const ruledOf = (db: DatabaseSync, taskId: string): KernelSettle | undefined => {
+    const data = lastEvent(db, SETTLE_RULED, taskId)
+    const decision = typeof data === "object" && data !== null && "decision" in data ? data.decision : undefined
+    return KERNEL_SETTLES.find((one) => one === decision)
+}
+
+/** Records the settle a Kernel command names on a task whose decision it answers (discard unless it names repair). */
+export const recordRuledSettle = (db: DatabaseSync, taskId: string, decision: KernelSettle, cmdId: string): void => {
+    recordEvent(db, SETTLE_RULED, taskId, { decision, cmdId })
+}
+
+/** True when a task of the key was created after `task`: the key went on without a settle named for it. */
+const laterOfKey = (db: DatabaseSync, task: TaskRow): boolean => {
+    const key = priorKey(db, task)
+    if (key.planKey.startsWith("task:")) return db.prepare("SELECT 1 FROM tasks WHERE retry_of = ?").get(task.id) !== undefined
+    return (
+        db
+            .prepare("SELECT 1 FROM tasks WHERE COALESCE(workflow_id, '') = ? AND plan_key = ? AND id <> ? AND (created_at > ? OR (created_at = ? AND rowid > (SELECT rowid FROM tasks WHERE id = ?)))")
+            .get(key.workflowId, key.planKey, task.id, task.createdAt, task.createdAt, task.id) !== undefined
+    )
+}
+
+/** True when a workflow ended or is ending, so no Kernel decision on its tasks is still to come. */
+const workflowEnded = (db: DatabaseSync, workflowId: string): boolean => ["done", "stopped", "stopping"].includes(text(db.prepare("SELECT status FROM workflows WHERE id = ?").get(workflowId)?.status))
+
+/** The settle already recorded for the task in its current status, if any (a done task a wave or a recover failed settles again). */
+const settledOf = (db: DatabaseSync, task: TaskRow): SettleDecision | undefined => {
+    const data = lastEvent(db, OP_SETTLED, task.id)
+    if (typeof data !== "object" || data === null || !("decision" in data) || !("status" in data) || data.status !== task.status) return undefined
+    const decision = data.decision
+    return (["merge", "discard", "repair", "keep"] as const).find((one) => one === decision)
+}
+
+/**
+ * How a task's ended attempt settles now, or null while it waits for its Kernel's decision (or has not ended, or holds an
+ * intent): done is MERGE (its green verify landed it); a harness cause that owes it a continuation (`harnessKept`) is KEEP; else
+ * the settle its Kernel named answering its decision (`SETTLE_RULED`: DISCARD or REPAIR); a task with no Kernel (outside a
+ * workflow) or cancelled is DISCARD; a failed one whose Kernel answered nothing is DISCARD once its workflow ended or its key
+ * went on to a later task.
+ */
+export const settleDue = (db: DatabaseSync, task: TaskRow): SettleDue | null => {
+    if (task.intent !== null) return null
+    if (task.status === "done") return { decision: "merge", by: "harness", cause: "verify-green" }
+    if (!isTerminal(task.status)) return null
+    const kept = harnessKept(db, task)
+    if (kept !== null) return { decision: "keep", by: "harness", cause: kept }
+    const ruled = ruledOf(db, task.id)
+    if (ruled !== undefined) return { decision: ruled, by: "kernel", cause: "ruled" }
+    if (task.workflowId === null) return { decision: "discard", by: "harness", cause: "no-kernel" }
+    if (task.status === "cancelled") return { decision: "discard", by: "harness", cause: "cancelled" }
+    if (workflowEnded(db, task.workflowId) || laterOfKey(db, task)) return { decision: "discard", by: "harness", cause: "unanswered" }
+    return null
+}
+
+/** True while a task's ended attempt waits for its Kernel's settle: nothing of it, its worktree and branch included, is removed yet. */
+export const settlePending = (db: DatabaseSync, task: TaskRow): boolean => settledOf(db, task) === undefined && settleDue(db, task) === null
+
+/**
+ * Settles one ended attempt: a keep or a repair stores its one patch (`keepPatch`) and drops every other patch of its key; a merge
+ * or a discard drops every patch of its key (the attempt that applied it settled); a keep or a repair that left nothing new keeps
+ * what its key holds. Every preserve folder its ending wrote is deleted, so no partial work stays beside the store. Recorded
+ * `op-settled` with the task's status.
+ */
+const settleWork = async (root: string, db: DatabaseSync, task: TaskRow, due: SettleDue): Promise<SettleDecision> => {
+    const keeps = due.decision === "keep" || due.decision === "repair"
+    const kept = keeps ? await keepPatch(root, db, task) : undefined
+    const rows = keyRows(root, db, priorKey(db, task))
+    const stale = kept === undefined ? (keeps ? [] : rows) : rows.filter((row) => row.sha256 !== kept.sha256 || row.taskId !== kept.taskId)
+    inTransaction(db, () => {
+        const dropped = dropRows(db, stale, `task ${task.id} settled ${due.decision}`)
+        recordEvent(db, OP_SETTLED, task.id, { ...due, status: task.status, kept: kept?.sha256 ?? null, dropped })
+    })
+    for (const dir of stagedOf(root, db, task.id)) rmSync(dir, { force: true, recursive: true, maxRetries: 5, retryDelay: 200 })
+    return due.decision
+}
+
+/**
+ * Settles a task's ended attempt once its decision is due (`settleDue`) and returns it; its earlier settle when it has one in its
+ * status; null while it waits for its Kernel. Its Op worktree and branch are removed only after this (harness/land.ts).
+ */
+export const settleTask = async (root: string, taskId: string): Promise<SettleDecision | null> => {
+    const db = openLedger(root)
+    try {
+        const task = getTask(db, taskId)
+        const known = settledOf(db, task)
+        if (known !== undefined) return known
+        const due = settleDue(db, task)
+        return due === null ? null : await settleWork(root, db, task, due)
+    } finally {
+        db.close()
+    }
+}
+
+/** Settles every earlier task of the key whose decision is due, oldest first, so the patch it keeps is in the store. */
+const settleEarlier = async (root: string, db: DatabaseSync, task: TaskRow): Promise<void> => {
+    await inOrder(priorTaskIds(db, task, priorKey(db, task)), async (id) => {
+        const earlier = getTask(db, id)
+        if (settledOf(db, earlier) !== undefined) return
+        const due = settleDue(db, earlier)
+        if (due === null) return
         try {
-            const commit = await settledCommit(root, id)
-            if (commit !== undefined) await storeCommitted(root, db, prior, commit)
+            await settleWork(root, db, earlier, due)
         } catch (error: unknown) {
-            recordEvent(db, "prior-store-failed", id, { source: "settle commit", error: asRefusal(error).message })
+            recordEvent(db, "prior-store-failed", id, { decision: due.decision, error: asRefusal(error).message })
         }
     })
-    return priorPatches(root, db, task)
+}
+
+/**
+ * Drops from the store every patch that is not one kept patch per key (gc's migration of a store written before settles): a row
+ * whose task's settle did not keep it, or, unsettled, whose task no harness cause owes a continuation, and every row but the
+ * newest of its key. Each dropped row is a `prior-dropped` event. Returns how many went.
+ */
+export const pruneUnkeptPrior = (root: string): number => {
+    const db = openExistingLedger(root)
+    if (db === undefined) return 0
+    try {
+        if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'prior_work'").get() === undefined) return 0
+        const rows = db
+            .prepare("SELECT prior_work.* FROM prior_work JOIN tasks ON tasks.id = prior_work.task_id ORDER BY tasks.created_at DESC, tasks.rowid DESC, prior_work.attempt_id DESC, prior_work.created_at DESC")
+            .all()
+            .map((row) => ({ row: toPatch(root, row), kind: text(row.kind) }))
+        const seen = new Set<string>()
+        const unkept: PriorPatch[] = []
+        const older: PriorPatch[] = []
+        for (const { row, kind } of rows) {
+            const settled = lastEvent(db, OP_SETTLED, row.taskId)
+            const keptBySettle = typeof settled === "object" && settled !== null && "kept" in settled && settled.kept === row.sha256
+            const kept = settled === undefined ? kind === STORED_KIND && harnessKept(db, getTask(db, row.taskId)) !== null : keptBySettle
+            const key = `${row.workflowId}\0${row.planKey}`
+            if (!kept) unkept.push(row)
+            else if (seen.has(key)) older.push(row)
+            else seen.add(key)
+        }
+        inTransaction(db, () => {
+            dropRows(db, unkept, "gc: not a kept kind (a harness-caused stop, a parked waiter or a repair)")
+            dropRows(db, older, "gc: an older patch of a key that keeps its newest")
+        })
+        return unkept.length + older.length
+    } finally {
+        db.close()
+    }
 }
 
 /** The repository paths a patch touches, from git's own parse of it. */
@@ -284,9 +440,9 @@ const restorePaths = async (cwd: string, paths: readonly string[]): Promise<void
     })
 }
 
-/** Applies the newest patch to a clean checkout; the caller records the answer. */
+/** Applies the kept patch to a clean checkout; the caller records the answer. */
 const applyNewest = async (worktree: string, task: TaskRow, newest: PriorPatch): Promise<PriorApplied> => {
-    const from = { patch: newest.file, sha256: newest.sha256, kind: newest.kind, fromTask: newest.taskId }
+    const from = { patch: newest.file, sha256: newest.sha256, fromTask: newest.taskId }
     const specs = specsOf(task)
     const top = (await git(worktree, ["rev-parse", "--show-toplevel"])).trim()
     const filtered = scratchFile(".patch")
@@ -314,22 +470,24 @@ const applyNewest = async (worktree: string, task: TaskRow, newest: PriorPatch):
 }
 
 /**
- * The launch-time apply: before a worker starts, brings the newest prior patch of the task's key (collected into the store
- * first) back onto the worker's checkout `worktree` with `git apply --3way`, limited to the task's allowPaths. A patch that
- * does not apply cleanly leaves no conflict markers: the checkout is put back and the brief points at the patch instead.
- * Records a `prior-applied` event the brief reads, so call it before the brief is written (or write the brief again after).
+ * The launch-time apply: before a worker starts, settles every earlier task of its key whose decision is due (so a keep or a
+ * repair has stored its patch), then brings the one patch kept for the key back onto the worker's checkout `worktree` with
+ * `git apply --3way`, limited to the task's allowPaths. A patch that does not apply cleanly leaves no conflict markers: the
+ * checkout is put back and the brief points at the patch instead. The patch stays in the store until this attempt settles
+ * (`settleWork`). Records a `prior-applied` event the brief reads, so call it before the brief is written (or write it again after).
  */
 export const applyPriorWork = async (root: string, worktree: string, task: TaskRow): Promise<PriorApplied> => {
     const db = openLedger(root)
     try {
-        const newest = (await collectPriorWork(root, db, task))[0]
+        await settleEarlier(root, db, task)
+        const newest = priorPatches(root, db, task)[0]
         let applied: PriorApplied
-        if (newest === undefined) applied = { outcome: "none", patch: null, sha256: null, kind: null, fromTask: null, detail: "no earlier attempt of this key left work" }
+        if (newest === undefined) applied = { outcome: "none", patch: null, sha256: null, fromTask: null, detail: "no earlier attempt of this key kept work" }
         else {
             try {
                 applied = await applyNewest(worktree, task, newest)
             } catch (error: unknown) {
-                applied = { outcome: "conflicted", patch: newest.file, sha256: newest.sha256, kind: newest.kind, fromTask: newest.taskId, detail: asRefusal(error).message }
+                applied = { outcome: "conflicted", patch: newest.file, sha256: newest.sha256, fromTask: newest.taskId, detail: asRefusal(error).message }
             }
         }
         recordEvent(db, APPLIED_EVENT, task.id, applied)
@@ -378,8 +536,8 @@ const asApplied = (value: unknown): PriorApplied | undefined => {
 
 /** One line on the prior patch: applied at launch, or where to read it when it did not apply. */
 const patchLine = (task: TaskRow, newest: PriorPatch | undefined, applied: PriorApplied | undefined): string => {
-    if (newest === undefined) return "Prior patch: none; the earlier attempts left no stored change."
-    const where = `${slashed(newest.file)} (${newest.kind}, task ${newest.taskId}, against ${newest.base.slice(0, 12)})`
+    if (newest === undefined) return "Prior patch: none; no earlier attempt of this work was kept."
+    const where = `${slashed(newest.file)} (kept by task ${newest.taskId}, against ${newest.base.slice(0, 12)})`
     if (applied?.sha256 === newest.sha256 && applied.outcome === "applied") return `Prior patch: applied to your checkout at launch: ${where}. ${applied.detail}. Start from it: review it against the contract above and keep what holds.`
     if (applied?.sha256 === newest.sha256 && applied.outcome === "none") return `Prior patch: ${where}; ${applied.detail}, so nothing was applied.`
     const why = applied?.sha256 === newest.sha256 ? ` (${applied.detail})` : ` (the launch of task ${task.id} did not apply it)`
@@ -418,7 +576,9 @@ export const priorWorkSection = (root: string, task: TaskRow): string | undefine
         const stored = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'prior_work'").get() === undefined ? [] : priorPatches(root, db, task)
         const changes = contractChanges(previous.contract, task.contract)
         const lines = [
-            `This task repeats ${String(ids.length)} earlier task(s) of the same work (${ids.join(", ")}). Start from their work; never redo it blindly.`,
+            stored.length === 0
+                ? `This task repeats ${String(ids.length)} earlier task(s) of the same work (${ids.join(", ")}), which kept no work: they were discarded, so start from the branch and learn from why the last one ended.`
+                : `This task repeats ${String(ids.length)} earlier task(s) of the same work (${ids.join(", ")}), whose one kept patch is yours to continue. Start from it; never redo it blindly.`,
             changes.length === 0 ? "Contract, previous -> this: unchanged." : `Contract, previous (${previous.id}) -> this:\n\n${changes.map((change) => "- " + change).join("\n")}`,
             resultLines(db, previous).join("\n"),
             patchLine(task, stored[0], asApplied(lastEvent(db, APPLIED_EVENT, task.id))),

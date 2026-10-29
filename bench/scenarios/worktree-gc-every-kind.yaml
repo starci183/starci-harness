@@ -81,6 +81,10 @@ steps:
   - sql:
       db: ledger
       exec: "UPDATE tasks SET status = 'failed' WHERE id = '${b}'"
+  - name: its Kernel settled it discard before the crash, so gc may remove it (an unsettled attempt keeps its worktree)
+    sql:
+      db: ledger
+      exec: "INSERT INTO events (at, kind, subject, data_json) VALUES (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'op-settle-ruled', '${b}', json_object('decision', 'discard', 'cmdId', 'k-bench'))"
   - name: a live task's worktree, which gc keeps
     sql:
       db: ledger

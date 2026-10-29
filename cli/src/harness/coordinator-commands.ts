@@ -10,7 +10,7 @@ import { inTransaction, now } from "./ledger.js"
 import { isOwnerRequestId } from "./owner-requests.js"
 import { assertRoute, isRouted, withRoutes } from "./routes.js"
 import { assertNeedAnswer } from "./need-answer.js"
-import { assertHold, holdSchema, isHold } from "./holds.js"
+import { assertHold, decidedTasks, holdSchema, isHold } from "./holds.js"
 import { recordEvent } from "./tasks.js"
 import { getWorkflow } from "./workflow.js"
 import type { WorkflowRow } from "./workflow.js"
@@ -36,6 +36,16 @@ export const KERNEL_UNDECIDED = "kernel-undecided"
 
 /** Who submits a command: the Kernel of a workflow, or the Supervisor of its project. */
 export type CommandScope = "kernel" | "supervisor"
+
+/**
+ * The settle decisions a Kernel names on a command that answers a decision on a task (owner decision
+ * `op-settle-merge-or-discard`, harness/prior.ts): `discard`, the default, keeps nothing of the ended attempt; `repair` keeps its
+ * one patch for exactly one repair attempt of its key. MERGE is the third, and a green verify's alone: it lands the work.
+ */
+export const KERNEL_SETTLES = ["discard", "repair"] as const
+
+/** A settle decision a Kernel names. */
+export type KernelSettle = (typeof KERNEL_SETTLES)[number]
 
 /** The kinds an escalation names (wave principle 5). */
 export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harness"] as const
@@ -110,6 +120,8 @@ const commandSchema = z.strictObject({
     // What releases a workflow-change that answers a decision on a task without moving it (harness/holds.ts): one ticket, harness
     // commit, need or time.
     hold: holdSchema.optional(),
+    // How the ended attempts of the tasks whose decisions it answers settle (harness/prior.ts); discard when it names none.
+    settle: z.enum(KERNEL_SETTLES).optional(),
 })
 
 /** A command file as parsed: what it asks, plus the sha256 of its bytes (stored with it). */
@@ -199,6 +211,17 @@ export const goalVersionOf = (db: DatabaseSync, workflowId: string): number => g
  */
 export const ledgerAnswers = (command: Command, scope: CommandScope): string[] => (command.answers ?? []).filter((id) => scope === "kernel" || !isOwnerRequestId(id))
 
+/**
+ * Refuses a `settle` that settles nothing (COMMAND_INVALID): it belongs to a workflow-change or an escalation that answers a
+ * decision on a task (red, question, check-premise, conflict) and is no hold, since a hold keeps its task where it stands.
+ */
+const assertSettle = (db: DatabaseSync, command: Command): void => {
+    if (command.settle === undefined) return
+    if ((command.kind !== "workflow-change" && command.kind !== "escalation") || isHold(command) || decidedTasks(db, command.answers ?? []).length === 0) {
+        throw new Refusal("COMMAND_INVALID", `settle: ${command.settle} belongs to a workflow-change or escalation that answers a decision on a task (red, question, check-premise, conflict) without holding it; ${command.cmdId} settles no task`)
+    }
+}
+
 /** The admission of a command: `new` (an intent row is written, apply it), or `replay` of a command already applied. */
 export type Admission = { readonly kind: "new" } | { readonly kind: "replay"; readonly row: CommandRow }
 
@@ -235,12 +258,14 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
             if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
         }
         if (scope === "kernel") {
+            assertSettle(db, command)
             assertHold(db, command)
             if (!isHold(command)) assertRoute(db, command, file.dir)
             assertNeedAnswer(db, scope, command, file.dir)
         } else if (isRuling(command)) {
             assertRuling(db, command)
             const ruled = rulingAsKernel(db, command)
+            assertSettle(db, ruled)
             assertHold(db, ruled)
             if (!isHold(ruled)) assertRoute(db, ruled, file.dir)
             assertNeedAnswer(db, "kernel", ruled, file.dir)

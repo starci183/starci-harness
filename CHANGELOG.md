@@ -6,6 +6,23 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- **An Op's attempt is settled before anything of it goes, and a key keeps at most one patch (owner ruling
+  `op-settle-merge-or-discard`).** Each ended attempt settles once: MERGE (its green verify landed it), DISCARD, REPAIR (its
+  Kernel's `settle: repair`, a new field of a command answering a red, question, check-premise or conflict decision; discard
+  is the default) or KEEP (a stop the harness caused, custody, a verify the host held, a waiter parked on a shared need). Its
+  Op worktree, branch (landed or not) and preserve folders go only after that settle; KEEP and REPAIR store one patch, which
+  the next attempt applies and its own settle deletes. The store no longer collects every preserve and settle commit
+  (`storeCommitted`, `collectPriorWork` are gone), and `worktree gc` drops every older or unkept patch with a
+  `prior-dropped` event (`harness/prior.ts`, `harness/land.ts`, `core/kernel/driver.ts`). Bench: `op-settle-*`.
+
+### Fixed
+
+- **A cancel of an attempt whose worktree was removed out of band settles it at once.** It has nothing to preserve, so it ends
+  cancelled with a `task-discarded` event (worktree gone) and its redo spends no try, instead of every step refusing
+  `TASK_WORKTREE_GONE` (ticket tk-cb03efd533f1: `auth-sign-in`'s superseded t-2184122d). Bench: `op-settle-worktree-gone-discards`.
+
 ## [1.1.0-alpha.13] - 2026-10-29
 
 ### Fixed
