@@ -5,7 +5,7 @@ import { Test } from "@nestjs/testing"
 import type { Request } from "express"
 import { @@Provider@@InboxService } from "@modules/domain/@@provider@@-inbox"
 import { Secret } from "@modules/platform/config"
-import { HttpSecurityModule, WebhookSignatureService } from "@modules/platform/http-security"
+import { HttpSecurityModule, ReadinessService, WebhookSignatureService } from "@modules/platform/http-security"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
 import type { CorrelationRequest } from "@modules/platform/logging"
 import { @@Event@@Request } from "./dto/@@event@@.request"
@@ -46,6 +46,9 @@ const build = async (deliveries: @@Provider@@InboxService) => {
     })
         .overrideProvider(WebhookSignatureService)
         .useValue(new WebhookSignatureService(OPTIONS, new FakeClock(AT)))
+        // The module also provides the readiness probe, which needs the database and retry timer this door never reaches.
+        .overrideProvider(ReadinessService)
+        .useValue(mock<ReadinessService>())
         .compile()
     return moduleRef.get(@@Provider@@Webhook)
 }

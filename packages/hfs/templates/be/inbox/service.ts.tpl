@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { InjectPrimaryEntityManager, recordWebhookDelivery } from "@modules/platform/database"
+import { InjectPrimaryEntityManager } from "@modules/platform/database"
 import { @@Provider@@DeliveryRecordedEvent } from "@modules/events/@@provider@@"
 import { InjectEventBus } from "@modules/platform/event-bus"
 import type { EventBus } from "@modules/platform/event-bus"
-import { InjectInbox } from "@modules/platform/inbox"
-import type { Inbox } from "@modules/platform/inbox"
+import { InjectEntityInbox } from "@modules/platform/inbox"
+import type { EntityInbox, InboxEntityReceipt } from "@modules/platform/inbox"
+import { @@Provider@@InboxEntity } from "./persistence/entities/@@provider@@-inbox.entity"
 
 interface @@Provider@@Delivery {
     readonly id: string
@@ -23,21 +24,20 @@ interface @@Provider@@DeliveryRequest {
 export class @@Provider@@InboxService {
     constructor(
         @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
-        @InjectInbox() private readonly inbox: Inbox,
+        @InjectEntityInbox() private readonly inbox: EntityInbox,
         @InjectEventBus() private readonly eventBus: EventBus,
     ) {}
 
-    /** A duplicate is acknowledged without creating another pending row; this intake never dispatches a command. */
+    /**
+     * The claim and the pending receipt row commit together: the winning claim inserts the row keyed by the delivery id the
+     * claim normalized; a duplicate is acknowledged without another pending row, and this intake never dispatches a command.
+     */
     record@@Provider@@Delivery(request: @@Provider@@DeliveryRequest): Promise<void> {
         return this.entityManager.transaction(async (manager) => {
-            if (!(await this.inbox.claim("webhook.@@provider@@", request.eventId, manager))) return
-            const receiptId = await recordWebhookDelivery({
-                manager,
-                table: "@@table@@",
-                provider: "@@provider@@",
-                deliveryId: request.eventId,
-                payload: request.delivery,
-            })
+            const receiptId = await this.inbox.claimRow("webhook.@@provider@@", request.eventId, manager, {
+                entity: @@Provider@@InboxEntity,
+                row: (deliveryId) => ({ provider: "@@provider@@", deliveryId, payload: request.delivery }),
+            } satisfies InboxEntityReceipt<@@Provider@@InboxEntity>)
             if (receiptId === undefined) return
             await this.eventBus.publish(@@Provider@@DeliveryRecordedEvent.create({ receiptId }), manager, request.correlationId)
         })

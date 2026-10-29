@@ -13,7 +13,7 @@ const SERVICE = at("src/modules/domain/intake/delivery.service.ts")
 const DOOR_IMPORT = `import "@features/webhooks/intake/transport/http/intake.webhook"\n\n`
 // A plain domain service: no webhook door anywhere calls it.
 const PLAIN = at("src/modules/domain/accounting/accounting-book.service.ts")
-const head = `import type { Inbox } from "@modules/platform/inbox/inbox.port"
+const head = `import type { EntityInbox, Inbox } from "@modules/platform/inbox/inbox.port"
 import type { Inbox as Lookalike } from "@modules/domain/order/lookalike.service"
 import type { EntityManager } from "typeorm"
 import type { EventBus } from "@modules/platform/event-bus/event-bus.port"
@@ -28,6 +28,11 @@ export class ${className} {
 }`
 const claim = 'if (!(await this.seen.claim("provider", eventId))) return; await this.work()'
 const transaction = (body: string) => `return this.database.transaction(async (tx) => { ${body} })`
+/** claimRow on the EntityInbox port: claims, inserts the receipt row for the winning claim only, answers its id or undefined. */
+const claimRow = (key = "eventId", manager = "tx") => `await this.seen.claimRow("provider", ${key}, ${manager}, { entity: Receipt, row: { deliveryId: ${key} } })`
+const RECEIPT_CLASS = "\nclass Receipt { id!: string; deliveryId!: string }"
+const entityService = (body: string, options: { parameter?: string; inbox?: string } = {}) => service(body, { inbox: "EntityInbox", ...options }) + RECEIPT_CLASS
+const rowIntake = (key = "eventId") => transaction(`const receiptId = ${claimRow(key)}; if (receiptId === undefined) return; await this.events.publish({ eventId: receiptId }, tx)`)
 
 test("R263 inbox rule is exported and enabled through the webhook law", () => {
     assert.equal(rules["webhook-inbox-key"], webhookInboxKey)
@@ -51,6 +56,12 @@ for (const edition of ["lite", "full"]) {
                 { filename: SERVICE, code: service(transaction('if (!(await this.seen.claim("provider", eventId, tx))) return; await tx.save({ eventId }); await this.events.publish({ eventId }, tx)')) },
                 { filename: SERVICE, code: service('return this.database.transaction("SERIALIZABLE", async (tx) => { if (!(await this.seen.claim("provider", eventId, tx))) return; await tx.save({ eventId }) })') },
                 { filename: SERVICE, code: service(claim.replaceAll("eventId", "delivery.deliveryId"), { parameter: "delivery: { deliveryId: string }" }) },
+                // claimRow on the EntityInbox port, keyed and refused the same way.
+                { filename: SERVICE, code: entityService(rowIntake()) },
+                { filename: SERVICE, code: entityService(rowIntake("request.eventId"), { parameter: "request: { eventId: string; correlationId: string }" }) },
+                { filename: SERVICE, code: entityService(transaction(`const receiptId = ${claimRow()}; if (!receiptId) { return }; await tx.save({ receiptId })`)) },
+                { filename: SERVICE, code: entityService(transaction(`if ((${claimRow()}) === undefined) return; await tx.save({ eventId })`)) },
+                { filename: SERVICE, code: entityService(transaction('if (!(await this.seen.claim("provider", eventId, tx))) return; await tx.save({ eventId })')) },
                 { filename: SERVICE, code: service(claim.replaceAll("eventId", "messageId"), { parameter: "{ messageId }: { messageId: string }" }) },
                 { filename: SERVICE, code: service(claim.replaceAll("eventId", "deliveryId"), { parameter: "rawBody: string, signature: string, deliveryId: string" }) },
                 { filename: SERVICE, code: service('const deliveryId = this.decode(rawBody); ' + claim.replaceAll("eventId", "deliveryId"), { parameter: "rawBody: string, signature: string" }).replace('private async work()', 'private decode(body: string): string { return body }; private async work()') },
@@ -79,6 +90,15 @@ for (const edition of ["lite", "full"]) {
                 { filename: SERVICE, code: service("await this.work()", { parameter: "rawBody: string, signature: string" }), errors: error },
                 { filename: SERVICE, code: service("await this.work()", { parameter: "input: { rawBody: string; signature: string }" }), errors: error },
                 { filename: SERVICE, code: service(claim, { inbox: "Lookalike" }), errors: error },
+                // claimRow keeps R263's guarantees: the real port, the delivery key, the callback's manager, first, and a return on undefined.
+                { filename: SERVICE, code: entityService(`const receiptId = ${claimRow("eventId", "this.database")}; if (receiptId === undefined) return; await this.work()`, { inbox: "Lookalike" }), errors: error },
+                { filename: SERVICE, code: entityService(transaction(`await tx.save({ eventId }); const receiptId = ${claimRow()}; if (receiptId === undefined) return`)), errors: error },
+                { filename: SERVICE, code: entityService(transaction(`const receiptId = ${claimRow('"constant"')}; if (receiptId === undefined) return`)), errors: error },
+                { filename: SERVICE, code: entityService(transaction(`const receiptId = ${claimRow("eventId", "this.database")}; if (receiptId === undefined) return`)), errors: error },
+                { filename: SERVICE, code: entityService(transaction(`const receiptId = ${claimRow()}; await tx.save({ receiptId })`)), errors: error },
+                { filename: SERVICE, code: entityService(transaction(`const receiptId = ${claimRow()}; if (receiptId === false) return`)), errors: error },
+                { filename: SERVICE, code: entityService(`const receiptId = ${claimRow("eventId", "this.database")}; if (receiptId === undefined) return this.work()`), errors: error },
+                { filename: SERVICE, code: entityService(transaction('const receiptId = await this.seen.claimRow("provider", eventId, tx); if (receiptId === undefined) return')), errors: error },
                 { filename: SERVICE, code: service('await this.work(); ' + claim), errors: error },
                 { filename: SERVICE, code: service('this.work(); ' + claim), errors: error },
                 { filename: SERVICE, code: service('this.processor.acceptNotification({ eventId }); ' + claim), errors: error },

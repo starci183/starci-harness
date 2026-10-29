@@ -22,6 +22,9 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   write(root, 'be/src/modules/platform/database/errors/database.error.ts', fs.readFileSync(path.join(
     TEMPLATES_DIR, 'be/skeleton-lite/src/modules/platform/database/errors/database.error.ts',
   ), 'utf8'));
+  write(root, 'be/src/modules/platform/database/entities.ts', fs.readFileSync(path.join(
+    TEMPLATES_DIR, 'be/skeleton-lite/src/modules/platform/database/entities.ts',
+  ), 'utf8'));
 
   const created = addLiteWebhookInbox({
     root, repo: { edition: 'lite' }, noun: 'webhook', provider: 'calendar',
@@ -46,6 +49,22 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   assert.match(barrel, /export type \{ EntityInbox, Inbox, InboxEntityReceipt, InboxEventId \} from "\.\/inbox\.port"/);
   assert.match(fs.readFileSync(path.join(inboxRoot, 'inbox.service.ts'), 'utf8'), /export class PostgresInbox implements Inbox, EntityInbox \{/);
   assert.equal(fs.existsSync(path.join(inboxRoot, 'effectful.decorators.ts')), false, 'a delivery-only inbox does not adopt the client command pattern');
+  // The provider intake claims through claimRow: its receipt is an entity row of the provider inbox table, listed in PRIMARY_ENTITIES.
+  const domain = path.join(root, 'be/src/modules/domain/calendar-inbox');
+  const service = fs.readFileSync(path.join(domain, 'calendar-inbox.service.ts'), 'utf8');
+  assert.match(service, /@InjectEntityInbox\(\) private readonly inbox: EntityInbox/);
+  assert.match(service, /const receiptId = await this\.inbox\.claimRow\("webhook\.calendar", request\.eventId, manager, \{\n\s+entity: CalendarInboxEntity,/);
+  assert.match(service, /if \(receiptId === undefined\) return/);
+  assert.match(fs.readFileSync(path.join(domain, 'persistence/entities/calendar-inbox.entity.ts'), 'utf8'),
+    /@Entity\(\{ schema: "public", name: "calendar_inbox" \}\)\n\/\*\* [^\n]+ \*\/\nexport class CalendarInboxEntity \{/);
+  assert.match(fs.readFileSync(path.join(domain, 'persistence/entities/index.ts'), 'utf8'), /export const calendarInboxEntities = \[CalendarInboxEntity\]/);
+  assert.match(fs.readFileSync(path.join(domain, 'index.ts'), 'utf8'), /export \{ calendarInboxEntities \} from "\.\/persistence\/entities\/index"/);
+  const entities = fs.readFileSync(path.join(root, 'be/src/modules/platform/database/entities.ts'), 'utf8');
+  assert.match(entities, /import \{ calendarInboxEntities \} from "@modules\/domain\/calendar-inbox"/);
+  assert.match(entities, /PRIMARY_ENTITIES: ReadonlyArray<EntityClass> = \[\.\.\.httpSecurityEntities, \.\.\.calendarInboxEntities\]/);
+  // No raw receipt insert remains: the claim writes the receipt.
+  assert.equal(fs.existsSync(path.join(root, 'be/src/modules/platform/database/webhook-inbox.client.ts')), false);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'be/src/modules/platform/database/index.ts'), 'utf8'), /recordWebhookDelivery/);
   const migration = created.find((relative) => relative.startsWith('db/migrations/'));
   const parsed = await parseSql(fs.readFileSync(path.join(root, migration), 'utf8'));
   const statements = parsed.stmts.map((statement) => statement.stmt);
@@ -56,4 +75,19 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   assert.deepEqual(extension.cmds.map((command) => command.AlterTableCmd.def.ColumnDef.colname), ['request_fingerprint', 'outcome']);
   const policies = statements.map((statement) => statement.CreatePolicyStmt).filter((statement) => statement?.table?.relname === 'inbox');
   assert.deepEqual(policies.map((policy) => policy.cmd_name).sort(), ['delete', 'insert', 'select', 'update']);
+});
+
+test('a second lite provider is refused while the shared inbox predates the EntityInbox port it claims through', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-entity-inbox-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  write(root, 'hfs.json', JSON.stringify({ kind: 'app', edition: 'lite', sides: { be: { patterns: [] } } }));
+  write(root, 'be/src/modules/domain/calendars/calendars.service.ts', 'export class CalendarsService {}\n');
+  write(root, 'be/src/modules/platform/inbox/index.ts', 'export { INBOX, InjectInbox } from "./inbox.decorators"\n');
+
+  assert.throws(() => addLiteWebhookInbox({
+    root, repo: { edition: 'lite' }, noun: 'webhook', provider: 'calendar',
+    values: { service: 'CalendarsService', serviceModule: '@modules/domain/calendars' },
+    now: () => Date.UTC(2026, 9, 24, 11),
+  }), (error) => error.code === 'HFS_ADD_INBOX_ENTITY_PORT');
+  assert.equal(fs.existsSync(path.join(root, 'be/src/modules/domain/calendar-inbox')), false);
 });

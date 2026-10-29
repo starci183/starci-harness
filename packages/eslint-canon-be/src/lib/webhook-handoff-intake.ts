@@ -54,7 +54,7 @@ const isBusinessOrigin = (hfs: HfsView, origin: TypeOrigin): boolean => {
 
 /**
  * A domain receipt port records a delivery and processes nothing: a class with no base class whose constructor takes only platform
- * ports (and TypeORM), at least one of them the platform `Inbox`. It cannot reach another domain service or the CQRS buses, so a call
+ * ports (and TypeORM), at least one of them the platform `Inbox` (or its `EntityInbox` extension). It cannot reach another domain service or the CQRS buses, so a call
  * on it inside the receipt transaction is the inbox record itself (owner ruling 2026-10-17 "Theo y tro": the owner delegated the decision to main).
  */
 const isReceiptPort = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type): boolean => {
@@ -63,7 +63,7 @@ const isReceiptPort = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type): bo
     if (!constructor || constructor.parameters.length === 0) return false
     const dependencies = constructor.parameters.map((parameter) => originsOfType(checker, checker.getTypeAtLocation(parameter)))
     const isPort = (origin: TypeOrigin): boolean => origin.module === "typeorm" || (origin.module === null && hfs.tierOf(origin.file) === "platform")
-    const isInbox = (origin: TypeOrigin): boolean => origin.module === null && origin.name === "Inbox" && hfs.tierOf(origin.file) === "platform" && ownerNameOf(hfs, origin.file) === "inbox"
+    const isInbox = (origin: TypeOrigin): boolean => origin.module === null && ["Inbox", "EntityInbox"].includes(origin.name) && hfs.tierOf(origin.file) === "platform" && ownerNameOf(hfs, origin.file) === "inbox"
     return dependencies.every((origins) => origins.length > 0 && origins.every(isPort)) && dependencies.some((origins) => origins.some(isInbox))
 }
 

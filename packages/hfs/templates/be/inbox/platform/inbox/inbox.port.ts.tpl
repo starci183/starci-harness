@@ -32,8 +32,11 @@ export interface Inbox {
 export interface InboxEntityReceipt<Row extends ObjectLiteral> {
     /** The provider's receipt entity. */
     readonly entity: EntityTarget<Row>
-    /** The row the receipt holds; the deferred consumer reads it, so it carries no credential. */
-    readonly row: QueryDeepPartialEntity<Row>
+    /**
+     * The row the receipt holds, built from the delivery id the claim normalized (trimmed, never missing), so the receipt keys
+     * exactly what was claimed; the deferred consumer reads it, so it carries no credential.
+     */
+    readonly row: (deliveryId: string) => QueryDeepPartialEntity<Row>
 }
 
 /** The id of the receipt row a winning claim inserted; undefined when the delivery was a repeat or its receipt already existed. */

@@ -528,6 +528,20 @@ test('fakeTransaction: a throwing callback is rolled back, its writes are report
   await assert.rejects(Reflect.apply(tx.em.transaction, tx.em, []), /needs a callback/);
 });
 
+test('fakeTransaction: a call of a migration database function is a write, a pg_catalog built-in or a plain select is a read', async () => {
+  const claim = 'SELECT * FROM "public"."inbox_claim_event"($1, $2)';
+  const builtin = 'SELECT * FROM "pg_catalog"."pg_notify"($1, $2)';
+  const tx = fakeTransaction(mockEntityManager({ query: [[claim, [{ event_id: 'delivery-1' }]], [builtin, []], ['select 1', []]] }));
+  await assert.rejects(tx.em.transaction(async (manager) => {
+    await manager.query(claim, ['webhook:spec', 'delivery-1']);
+    await manager.query(builtin, ['channel', 'payload']);
+    await manager.query('select 1');
+    throw new Error('later work failed');
+  }), /later work failed/);
+  assert.deepEqual(tx.rolledBackWrites, [{ method: 'query', args: [claim, ['webhook:spec', 'delivery-1']] }]);
+  assert.deepEqual(tx.committedWrites, []);
+});
+
 test('fakeTransaction: a nested transaction reuses the same scoped view', async () => {
   const tx = fakeTransaction();
   const nested = await tx.em.transaction(async (outer) => outer.transaction(async (inner) => inner === outer));

@@ -13,6 +13,10 @@ const PLACEHOLDER = /@@([A-Za-z][A-Za-z0-9]*)@@/g;
 const timestampOf = (now) =>
   new Date(now()).toISOString().replace(/\D/g, "").slice(0, 14);
 const upperOf = (name) => name.replaceAll("-", "_").toUpperCase();
+const camelOf = (name) => {
+  const pascal = pascalOf(name);
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+};
 const snakeOf = (name) => name.replaceAll("-", "_");
 
 const template = (relative, values) => {
@@ -72,8 +76,6 @@ const databasePatches = (root) => {
       "lite add webhook needs the scaffolded platform/database capability",
     );
   let index = fs.readFileSync(indexFile, "utf8").replace(/\r\n/g, "\n");
-  if (!index.includes('export { recordWebhookDelivery, webhookReceiptInsert } from "./webhook-inbox.client"'))
-    index = `${index.trimEnd()}\nexport { recordWebhookDelivery, webhookReceiptInsert } from "./webhook-inbox.client"\n`;
   if (!index.split("\n").some((line) => line.startsWith("export { ") && line.includes("DatabaseErrorCode") && line.endsWith(' } from "./errors/database.error"')))
     index = `${index.trimEnd()}\nexport { DatabaseError, DatabaseErrorCode } from "./errors/database.error"\n`;
   let error = withSqlIdentifierError(fs.readFileSync(errorFile, "utf8").replace(/\r\n/g, "\n"));
@@ -107,7 +109,15 @@ const handoffPlatformFiles = (root, values) => {
   const planned = [];
   for (const capability of ["inbox", "idempotency", "event-bus"]) {
     const base = `be/src/modules/platform/${capability}`;
-    if (fs.existsSync(path.join(root, base, "index.ts"))) continue;
+    if (fs.existsSync(path.join(root, base, "index.ts"))) {
+      // The provider intake claims through the EntityInbox port; an inbox written before it cannot serve a new provider.
+      if (capability === "inbox" && !fs.readFileSync(path.join(root, base, "index.ts"), "utf8").includes("InjectEntityInbox"))
+        throw new ScaffoldError(
+          "HFS_ADD_INBOX_ENTITY_PORT",
+          `${base} predates the EntityInbox port (InjectEntityInbox, claimRow) the ${values.provider} intake claims through; bring it to the inbox of this hfs first`,
+        );
+      continue;
+    }
     const folder = path.join(TEMPLATES_DIR, "be", "inbox", "platform", capability);
     for (const file of filesBelow(folder)) {
       const relative = path.relative(folder, file).replaceAll("\\", "/");
@@ -147,6 +157,28 @@ const eventFiles = (root, provider, values) => {
     }
   }
   return { planned, patches };
+};
+
+/** The lite entity list (BE-PERSISTENCE-3), where the provider inbox's `<provider>InboxEntities` is spread once. */
+const PRIMARY_ENTITIES_FILE = ["be", "src", "modules", "platform", "database", "entities.ts"];
+const PRIMARY_ENTITIES = /(export const PRIMARY_ENTITIES[^=]*=\s*\[)([\s\S]*?)(\])/;
+
+/** entities.ts with the receipt entity list imported from the provider inbox barrel and spread into PRIMARY_ENTITIES. */
+const primaryEntitiesPatch = (root, provider, list) => {
+  const file = path.join(root, ...PRIMARY_ENTITIES_FILE);
+  const relative = PRIMARY_ENTITIES_FILE.join("/");
+  if (!fs.existsSync(file))
+    throw new ScaffoldError("HFS_ADD_INBOX_DATABASE", `lite add webhook names ${list} in PRIMARY_ENTITIES of ${relative}, which is missing`);
+  const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  if (!PRIMARY_ENTITIES.test(text))
+    throw new ScaffoldError("HFS_ADD_INBOX_DATABASE", `lite add webhook names ${list} in PRIMARY_ENTITIES of ${relative}, which declares no PRIMARY_ENTITIES array`);
+  if (new RegExp(String.raw`\.\.\.${list}\b`).test(text)) return { file, text };
+  const withList = text.replace(PRIMARY_ENTITIES, (all, head, items, tail) =>
+    `${head}${[...items.split(",").map((item) => item.trim()).filter(Boolean), `...${list}`].join(", ")}${tail}`);
+  const lines = withList.split("\n");
+  const lastImport = lines.reduce((at, line, index) => (line.startsWith("import ") ? index : at), -1);
+  lines.splice(lastImport + 1, 0, `import { ${list} } from "@modules/domain/${provider}-inbox"`);
+  return { file, text: lines.join("\n") };
 };
 
 const eventPatternPatch = (root) => {
@@ -190,6 +222,7 @@ export function addLiteWebhookInbox({
     ...values,
     provider,
     Provider,
+    providerCamel: camelOf(provider),
     providerUpper: upperOf(provider),
     table,
   };
@@ -222,6 +255,14 @@ export function addLiteWebhookInbox({
       text: template("service.spec.ts.tpl", renderValues),
     },
     {
+      relative: `${base}/persistence/entities/${provider}-inbox.entity.ts`,
+      text: template("entity.ts.tpl", renderValues),
+    },
+    {
+      relative: `${base}/persistence/entities/index.ts`,
+      text: template("entities.index.ts.tpl", renderValues),
+    },
+    {
       relative: `be/src/modules/events/${provider}/${provider}-delivery-recorded.event.ts`,
       text: template("delivery-recorded.event.ts.tpl", renderValues),
     },
@@ -242,26 +283,6 @@ export function addLiteWebhookInbox({
       text: render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", "skeleton-lite", "src", "modules", "platform", "database", file), "utf8"), {}),
     });
   }
-  const databaseClient = path.join(
-    root,
-    "be",
-    "src",
-    "modules",
-    "platform",
-    "database",
-    "webhook-inbox.client.ts",
-  );
-  if (!fs.existsSync(databaseClient))
-    planned.push(
-      {
-        relative: "be/src/modules/platform/database/webhook-inbox.client.ts",
-        text: template("database-client.ts.tpl", renderValues),
-      },
-      {
-        relative: "be/src/modules/platform/database/webhook-inbox.client.spec.ts",
-        text: template("database-client.spec.ts.tpl", renderValues),
-      },
-    );
   const clashes = planned
     .filter((entry) => fs.existsSync(path.join(root, ...entry.relative.split("/"))))
     .map((entry) => entry.relative);
@@ -272,6 +293,7 @@ export function addLiteWebhookInbox({
     );
   const patches = [
     ...databasePatches(root),
+    primaryEntitiesPatch(root, provider, `${renderValues.providerCamel}InboxEntities`),
     ...events.patches,
     eventPatternPatch(root),
   ];

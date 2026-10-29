@@ -103,7 +103,9 @@ expect(tx.committedWrites).toHaveLength(1)        // after a throwing body: tx.r
 The stubbable methods are `findOne`, `findOneBy`, `findOneOrFail`, `findOneByOrFail`, `find`, `findBy`, `findAndCount`,
 `findAndCountBy`, `count`, `countBy`, `exists`, `existsBy`, `save`, `remove`, `softRemove`, `recover`, `insert`, `update`, `upsert`,
 `delete`, `softDelete`, `restore`, `increment`, `decrement` and `query`. `fakeTransaction(em)` returns `{ em, outcomes, commits,
-rollbacks, committedWrites, rolledBackWrites }`.
+rollbacks, committedWrites, rolledBackWrites }`. A write is a write method, a `query` of a DML statement, or a `query` that calls a
+migration's database function the way `callDbFunction` does (`SELECT * FROM "public"."inbox_claim_event"($1, $2)`, any schema but
+`pg_catalog`); any other `SELECT` is a read.
 
 ## `fakeQueryBuilder` and `queueQueryBuilders`
 
@@ -156,6 +158,10 @@ await inbox.claim("sepay", "e-1")        // true the first time, false for the s
 await inbox.release("sepay", "e-1")      // gives the claim back: the next claim answers true
 inbox.seen("sepay", "e-2")               // a redelivery: the next claim of the pair answers false
 inbox.claims; inbox.claimed; inbox.released; inbox.failNext("claim", new Error("db down")); inbox.clear()
+// claimRow: the EntityInbox claim that inserts the receipt row only for the winning claim and answers its id
+await inbox.claimRow("webhook.sepay", "e-3", tx, { entity: SepayInboxEntity, row: (deliveryId) => ({ deliveryId }) })  // "receipt-1"
+inbox.receipts                           // every inserted receipt: id, source, eventId, entity, row, tx, inTransaction
+inbox.receiptExists("webhook.sepay", "e-4") // the receipt row is already there: the winning claim inserts nothing, answers undefined
 
 const clientInbox = fakeInbox(clock)     // the driven clock stamps client claims for retention tests
 await clientInbox.runClient({ principalId: "p-1", operation: "checkout.place", idempotencyKey: "key-1", request: { quantity: 2 } }, tx, async () => ({ kind: "ok", value: { orderId: "o-1" } }))

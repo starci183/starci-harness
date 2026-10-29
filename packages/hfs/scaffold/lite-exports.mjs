@@ -108,6 +108,19 @@ const REGISTRATIONS = Object.freeze({
       source: "./webhook-signature.service",
       names: ["WebhookSignatureService"],
     },
+    {
+      // The webhook door types its request with the correlation the logging middleware stamps on it.
+      file: "be/src/modules/platform/logging/index.ts",
+      source: "./correlation.contracts",
+      names: ["CorrelationRequest"],
+      type: true,
+    },
+    {
+      // The lite event bus refuses an envelope whose correlation id is not one the logging capability issues.
+      file: "be/src/modules/platform/logging/index.ts",
+      source: "./correlation.policy",
+      names: ["isCorrelationId"],
+    },
   ],
   "webhook-full": [
     {

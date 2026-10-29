@@ -370,8 +370,9 @@ sourceMaintenance: >-
   verifies first and calls the supplied domain service's record<Provider>Delivery once. Implement that method as the
   transactional inbox receipt/outbox recording intake above, then add its reactor or job separately.
   In lite, the generated POST verifies first and calls <Provider>InboxService.record<Provider>Delivery. This record-only
-  domain intake uses recordWebhookDelivery to insert a pending provider inbox row atomically in the app's Postgres, unique on
-  (provider, delivery_id), without processing it or marking it complete. Add a reactor or job separately to consume the
+  domain intake injects the EntityInbox (InjectEntityInbox) and awaits claimRow first: it claims the delivery id and, for the
+  winning claim only, inserts the pending provider inbox row through its <Provider>InboxEntity in the same transaction, unique
+  on (provider, delivery_id), without processing it or marking it complete. Add a reactor or job separately to consume the
   committed pending row and dispatch the processing command (reactors.yaml, jobs.yaml). The --service option validates the
   future domain processing owner; the webhook writer does not import or call that owner synchronously and does not
   synthesize a consumer.

@@ -2,7 +2,8 @@
 
 ## 3.8.14 - 2026-10-29
 
-- Changed: the bundled canon pins name hfs 4.11.15, eslint-canon-be 3.8.14, eslint-canon-fe 9.5.16 and the Grammar family 0.15.27. No rule changed.
+- Changed: `inbox-dedupe-required` (R80) and `webhook-inbox-key` (R263) accept `claimRow(source, eventId, tx, receipt)` on the `EntityInbox` port of `platform/inbox` (and `claim` on an `EntityInbox`-typed receiver) as a delivery method's first await, with the same guarantees as `claim`: the real port by its owner (a lookalike is refused), the first await (R263: the first statement, keyed by the delivery id, with the transaction callback's own manager), and the return on a repeat, which for `claimRow` is the receipt id answering `undefined` (`!receiptId` or `receiptId === undefined`, inline or stored and tested straight after). A stored answer is compared by binding in either operand. The R263 receipt-port check also admits an `EntityInbox` constructor parameter. Shared in `lib/ports.ts` (`isInboxPortType`, `inboxClaimOf`, `refusesRepeat`); the typed fixture's inbox port declares `EntityInbox`. Specs: `r80-inbox-dedupe-required.spec.ts` and `webhook-handoff-inbox.spec.ts` (valid claimRow intakes; claimRow not first, on a lookalike, keyed by a constant, with another manager, with too few arguments, without the return, or returning on `false`, refused). The bundled `rules.yaml` states both laws with `claimRow`.
+- Changed: the bundled canon pins name hfs 4.11.15, eslint-canon-be 3.8.14, eslint-canon-fe 9.5.16, the Grammar family 0.15.27 and jest-preset 2.5.1.
 
 ## 3.8.13 - 2026-10-29
 

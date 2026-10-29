@@ -7,7 +7,10 @@ import { ScaffoldError } from './service.mjs';
 export function addModuleImport(lines, { importLine, entry, relative, noun }) {
   const active = compositionCode(lines.join('\n')).split('\n');
   const imported = active.some(line => line.replace(/;\s*$/, '') === importLine);
+  // An area group spread once is registered whatever its argument (the lite root passes `tokens.verify` to domainModules).
+  const group = /^\.\.\.(\w+Modules)\(/.exec(entry)?.[1];
   const registered = active.some(line => line.trim() === `${entry},` ||
+    (group !== undefined && line.includes(`...${group}(`)) ||
     (/\bimports:\s*\[/.test(line) && !line.trim().startsWith('//') && line.replace(/\s+/g, '').includes(entry.replace(/\s+/g, ''))));
   const lastImport = active.reduce((last, line, index) => line.startsWith('import ') ? index : last, -1);
   const importsLine = line => /\bimports:\s*\[/.test(line) && !line.trim().startsWith('//');

@@ -20,6 +20,10 @@
  *   if ((await this.inbox.claim(source, id)) === false) { return }
  *   const fresh = await this.inbox.claim(source, id)
  *   if (!fresh) return
+ * The `EntityInbox` extension of the port claims the same way with `claimRow(source, id, tx, receipt)`, which inserts the
+ * receipt row only for the winning claim and answers its id; a repeat answers undefined, so the return is on that:
+ *   const receiptId = await this.inbox.claimRow(source, id, tx, { entity: ReceiptEntity, row })
+ *   if (receiptId === undefined) return
  * A transaction delivery returns or awaits one `.transaction(...)` as its sole statement, on a receiver typed as typeorm's
  * `EntityManager` or as a port the `platform/database` owner declares; the callback's one parameter is typed `EntityManager`.
  * Either the actual selected inline async callback claims with that manager in its first statement, then returns on false,
@@ -41,7 +45,7 @@
 import ts from "typescript"
 import { hfsOf } from "./lib/hfs.ts"
 import { keyName, walk } from "./lib/ast.ts"
-import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
+import { baseName, inboxClaimOf, ownerNameOf, refusesRepeat } from "./lib/ports.ts"
 import { resolveVariable } from "./lib/transactions.ts"
 import { childNode, typeOrigins, typed } from "./lib/types.ts"
 import { mutationIdempotent } from "./lib/client-idempotency.ts"
@@ -81,24 +85,13 @@ interface InheritedDelivery {
     readonly managers: Set<number>
 }
 
-/** The `Inbox` port of `platform/inbox`. */
-const isInboxType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "Inbox", capability: "inbox", tier: "platform" })
-
 /** A `return` statement, or a block that ends in one. */
 const returns = (statement: Node | null | undefined): boolean =>
     statement?.type === "ReturnStatement"
     || (statement?.type === "BlockStatement" && statement.body.at(-1)?.type === "ReturnStatement")
 
-/** Whether `test` is `!<expression>` or `<expression> === false` around `target` (the awaited claim, or the identifier holding it). */
-const refusesOn = (test: Node, target: Node): boolean => {
-    if (test.type === "UnaryExpression" && test.operator === "!") return test.argument === target || (test.argument.type === "Identifier" && target.type === "Identifier" && test.argument.name === target.name)
-    if (test.type === "BinaryExpression" && (test.operator === "===" || test.operator === "==")) {
-        const [left, right] = [test.left, test.right]
-        const isFalse = (node: Node): boolean => node.type === "Literal" && node.value === false
-        return (left === target && isFalse(right)) || (right === target && isFalse(left))
-    }
-    return false
-}
+/** The same identifier spelled twice: the stored claim answer read back by its test. */
+const sameName = (left: Node, right: Node): boolean => left.type === "Identifier" && right.type === "Identifier" && left.name === right.name
 
 /** Where the awaited claim sits: the statement that tests it, or the declaration that stores it followed by that test. */
 /** The statements of the block or program a node holds as its `body` list, else null. */
@@ -108,9 +101,11 @@ const statementsOf = (node: Node | undefined): readonly Node[] | null => {
     return Array.isArray(body) ? body : null
 }
 
-const returnsOnFalse = (awaited: TSESTree.AwaitExpression): boolean => {
+/** Whether the claim's repeat answer returns at once: `false` from `claim`, `undefined` (no receipt id) from `claimRow`. */
+const returnsOnRepeat = (awaited: TSESTree.AwaitExpression, method: "claim" | "claimRow"): boolean => {
     const node = awaited
     const parent = node.parent
+    const refusesOn = (test: Node, target: Node): boolean => refusesRepeat(test, target, method, { same: sameName, loose: true })
     if (parent.type === "UnaryExpression" || parent.type === "BinaryExpression") {
         const statement = parent.parent
         return statement.type === "IfStatement" && statement.test === parent && refusesOn(parent, node) && returns(statement.consequent)
@@ -337,7 +332,7 @@ const claimedManagerPosition = (checker: ts.TypeChecker, signature: ts.Signature
     if (body) visit(body)
     const claim = found.awaited?.expression
     if (!claim || !ts.isCallExpression(claim) || !ts.isPropertyAccessExpression(claim.expression)
-        || claim.expression.name.text !== "claim") return -1
+        || !["claim", "claimRow"].includes(claim.expression.name.text)) return -1
     const managerArgument = claim.arguments[2]
     if (!managerArgument) return -1
     const manager = checker.getSymbolAtLocation(managerArgument)
@@ -386,11 +381,11 @@ const inheritedDelivery = (context: Context, method: Member): InheritedDelivery 
 export const inboxDedupeRequired: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "A public service method whose first parameter carries an `eventId` claims `(source, eventId)` on the `Inbox` port first and returns early when it answers `false`." },
+        docs: { description: "A public service method whose first parameter carries an `eventId` claims `(source, eventId)` on the `Inbox` port first (`claim`, or `claimRow` on its `EntityInbox`) and returns early on a repeat: `false`, or no receipt id." },
         schema: [],
         messages: {
-            noClaim: "This delivery method's first awaited expression is not `claim(source, eventId)` on the `Inbox` port of `platform/inbox` (`@InjectInbox() private readonly inbox: Inbox`). A sender that gets no timely reply resends the same event: claim it before anything else so a repeat delivery is a no-op.",
-            noEarlyReturn: "This delivery method claims the event but does not return when the claim answers `false`. Write `if (!(await this.inbox.claim(source, eventId))) return` (or store the answer and return on `!fresh` straight after), so a repeat does none of the work again.",
+            noClaim: "This delivery method's first awaited expression is not `claim(source, eventId)` on the `Inbox` port of `platform/inbox` (`@InjectInbox() private readonly inbox: Inbox`), nor `claimRow(source, eventId, tx, receipt)` on its `EntityInbox` (`@InjectEntityInbox()`). A sender that gets no timely reply resends the same event: claim it before anything else so a repeat delivery is a no-op.",
+            noEarlyReturn: "This delivery method claims the event but does not return on a repeat. Write `if (!(await this.inbox.claim(source, eventId))) return` (or store the answer and return on `!fresh` straight after); with `claimRow`, store the receipt id and return on `receiptId === undefined` straight after, so a repeat does none of the work again.",
         },
     },
     create(context) {
@@ -408,16 +403,9 @@ export const inboxDedupeRequired: RuleModule = {
                 const params = fnParams ? runtimeParams(fnParams) : []
                 if (![...inherited.managers].every((position) => helperClaim(context, node, params[position]) === awaited)) awaited = null
             }
-            const call = awaited?.argument
-            const claims = call?.type === "CallExpression"
-                && call.callee.type === "MemberExpression"
-                && !call.callee.computed
-                && call.callee.property.type === "Identifier"
-                && call.callee.property.name === "claim"
-                && call.arguments.length >= 2
-                && isInboxType(context, call.callee.object)
-            if (!claims) context.report({ node: node.key, messageId: "noClaim" })
-            else if (!awaited || !returnsOnFalse(awaited)) context.report({ node: node.key, messageId: "noEarlyReturn" })
+            const method = inboxClaimOf(context, awaited?.argument)
+            if (!awaited || !method) context.report({ node: node.key, messageId: "noClaim" })
+            else if (!returnsOnRepeat(awaited, method)) context.report({ node: node.key, messageId: "noEarlyReturn" })
         }
         return {
             MethodDefinition(node) {

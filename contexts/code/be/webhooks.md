@@ -54,7 +54,8 @@ Enforced by: `webhook-shape`, `webhook-verify-first`, `webhook-scope` (R182, R18
 ## BE-WEBHOOK-3 The intake records the receipt; a job processes it after commit
 
 The domain intake parses the raw body through its owner's guard, then in one transaction claims `(source, deliveryId)`
-with the provider's stable delivery id and the receipt insert (`inbox.claim(source, id, manager, { insert, payload })`),
+with the provider's stable delivery id and the receipt insert (`inbox.claim(source, id, manager, { insert, payload })`; in
+lite `inbox.claimRow(source, id, manager, { entity, row })` of the `EntityInbox`, which answers the receipt id),
 returns on a duplicate, and enqueues the processing job with the same manager (`outbox.write(manager, QUEUE, { deliveryId },
 { dedupeKey })`). No processing, provider call or bus dispatch runs in the receipt transaction; the job's service reads
 the committed receipt and does the work.

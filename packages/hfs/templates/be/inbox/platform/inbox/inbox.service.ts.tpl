@@ -54,6 +54,13 @@ interface InboxSweepRow {
 /** The row a receipt insert returns to the transaction that won it. */
 const isReceiptRow = rowShape({ id: "string" })
 
+/** The provider's delivery id, trimmed; a missing or blank one is refused before anything is claimed or written. */
+const deliveryIdOf = (eventId: InboxEventId): string => {
+    const deliveryId = eventId?.trim()
+    if (!deliveryId) throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
+    return deliveryId
+}
+
 @Injectable()
 /** Claims a delivery with the receipt transaction, so a failure can be retried without losing the delivery. */
 export class PostgresInbox implements Inbox, EntityInbox {
@@ -61,12 +68,7 @@ export class PostgresInbox implements Inbox, EntityInbox {
 
     /** The first claim wins; the same source and delivery id becomes a no-op on redelivery. */
     async claim(source: string, eventId: InboxEventId, tx: EntityManager): Promise<boolean> {
-        const normalizedEventId = eventId?.trim()
-        if (!normalizedEventId) {
-            throw new DatabaseError({ code: DatabaseErrorCode.WebhookDeliveryIdRequired })
-        }
-        const rows = await callDbFunction<InboxEventRow>(tx, "public.inbox_claim_event", [source, normalizedEventId])
-        return rows.length > 0
+        return this.claimDelivery(source, deliveryIdOf(eventId), tx)
     }
 
     /** The claim first; only its winner inserts the receipt row, and a row that already exists is left as it is. */
@@ -76,11 +78,12 @@ export class PostgresInbox implements Inbox, EntityInbox {
         tx: EntityManager,
         receipt: InboxEntityReceipt<Row>,
     ): Promise<InboxReceiptId> {
-        if (!(await this.claim(source, eventId, tx))) return undefined
+        const deliveryId = deliveryIdOf(eventId)
+        if (!(await this.claimDelivery(source, deliveryId, tx))) return undefined
         const inserted = await tx
             .createQueryBuilder(receipt.entity, "receipt")
             .insert()
-            .values(receipt.row)
+            .values(receipt.row(deliveryId))
             .orIgnore()
             .returning("id")
             .execute()
@@ -127,5 +130,11 @@ export class PostgresInbox implements Inbox, EntityInbox {
     async sweepClients(cutoff: Date, tx: EntityManager): Promise<number> {
         const rows = await callDbFunction<InboxSweepRow>(tx, "public.inbox_sweep_clients", [cutoff, BATCH_ROWS])
         return rows[0]?.deleted_count ?? 0
+    }
+
+    /** Claims a normalized delivery id; an answered row means this transaction holds the first claim. */
+    private async claimDelivery(source: string, deliveryId: string, tx: EntityManager): Promise<boolean> {
+        const rows = await callDbFunction<InboxEventRow>(tx, "public.inbox_claim_event", [source, deliveryId])
+        return rows.length > 0
     }
 }

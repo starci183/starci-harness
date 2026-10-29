@@ -770,7 +770,7 @@ rules:
       - {kind: eslint-be, id: no-ambient-clock}
   - id: R80
     code: BE_INBOX_DEDUPE_MISSING
-    law: Every service method that takes a delivery first claims its `eventId` on the `Inbox` port and returns early on a duplicate; consumers stay thin doors.
+    law: Every service method that takes a delivery first claims its `eventId` on the `Inbox` port (`claim`, or `claimRow` on its `EntityInbox` extension, which inserts the receipt row only for the winning claim) and returns early on a duplicate (`false`, or no receipt id); consumers stay thin doors.
     failureCodes:
       - BE_INBOX_DEDUPE_MISSING
     enforcers:
@@ -1722,7 +1722,7 @@ rules:
       - {kind: hfs, id: docker-health-reachability}
   - id: R263
     code: BE_WEBHOOK_SCOPE
-    law: Signed-webhook public metadata belongs only to webhook doors and declared verifiers, and a webhook receipt transaction only records the inbox delivery and its outbox event.
+    law: Signed-webhook public metadata belongs only to webhook doors and declared verifiers; a delivery intake first claims its stable delivery key on the `Inbox` port (`claim`, or `claimRow` on its `EntityInbox`) and returns on a duplicate, and a webhook receipt transaction only records the inbox delivery and its outbox event.
     failureCodes:
       - BE_WEBHOOK_SCOPE
       - BE_WEBHOOK_INBOX_KEY
