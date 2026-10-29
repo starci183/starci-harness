@@ -5,7 +5,7 @@ floor: hard
 hostTools: [git, node, docker]
 context:
   base:
-    - harness:contexts/project/stacks.md
+    - harness:contexts/project/stacks-sections.md
 input:
   base:
     target: the one target to publish, deploy or migrate (a package, an environment or a database)

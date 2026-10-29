@@ -7,7 +7,8 @@ import type { VerbResult } from "../../shared/verb.js"
 import { judgeAnatomy } from "./anatomy-gate.js"
 import type { Gap, GateVerdict } from "./anatomy-gate.js"
 import { BEGIN_MARKER, END_MARKER, SLICE_EDITIONS, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
-import { INDEX_FILE, SECTIONS_FILE, renderIndex } from "./index-render.js"
+import { INDEX_FILE, renderIndex } from "./index-render.js"
+import { SECTIONED_DOCS } from "./sectioned-docs.js"
 import { renderSections } from "./sections-render.js"
 
 /** One generated file and how it compares with the generator. */
@@ -64,13 +65,15 @@ const firstDifference = (actual: string, expected: string): number | null => {
     return (index < 0 ? left.length : index) + 1
 }
 
-/** The whole-file outputs of the generator besides anatomy.md: one slice per edition and side, the contexts index, and the CLI section index where cli/README.md is beside contexts/. */
+/** The whole-file outputs of the generator besides anatomy.md: one slice per edition and side, the contexts index, and the section index of each SECTIONED_DOCS source the tree holds. */
 const wholeFiles = (knowledge: string): { readonly file: string; readonly text: string }[] => {
-    const sections = renderSections(knowledge)
     return [
         ...SLICE_EDITIONS.flatMap((edition) => SLICE_SIDES.map((side) => ({ file: join(knowledge, "project", sliceFile(edition, side)), text: renderSlice(knowledge, edition, side) }))),
         { file: join(knowledge, INDEX_FILE), text: renderIndex(knowledge) },
-        ...(sections === undefined ? [] : [{ file: join(knowledge, SECTIONS_FILE), text: sections }]),
+        ...SECTIONED_DOCS.flatMap((doc) => {
+            const text = renderSections(knowledge, doc)
+            return text === undefined ? [] : [{ file: join(knowledge, doc.index), text }]
+        }),
     ]
 }
 
@@ -97,7 +100,7 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
         ]
         return { data: data("drift"), message: `${lines.join("\n")}\nrun \`starci contexts anatomy --write\`${note}`, exitCode: 1 }
     }
-    const matched = `${file} and its ${String(files.length)} generated file(s) (slices, the contexts index, the CLI section index) match the generator`
+    const matched = `${file} and its ${String(files.length)} generated file(s) (slices, the contexts index, the section indexes) match the generator`
     if (gate.red.length > 0) return { data: data("gap"), message: `red: ${matched}; ${String(gate.red.length)} completeness gap(s)${note}`, exitCode: 1 }
     return { data: data("green"), message: `green: ${matched}${note}`, exitCode: 0 }
 }
@@ -105,22 +108,22 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
 /**
  * `starci contexts anatomy`: renders contexts/project/anatomy.md's generated block from hfs/slots.yaml, rules.yaml and the
  * pattern front matter, its slices (`anatomy-<edition>-<side>.md`, the app root and one side, which op files read instead of
- * the whole anatomy), the contexts index (`project/index.md`, the file a Kernel reads instead of the whole tree) and the CLI
- * section index (`harness/cli-sections.md`, the sections of cli/README.md a harness task reads instead of the whole file). `--check`
+ * the whole anatomy), the contexts index (`project/index.md`, every file of the tree, which a Kernel opens instead of the
+ * whole tree) and the section indexes of SECTIONED_DOCS (index-render.ts: each large document a seat loads by its index). `--check`
  * exits 1 when any of them differs from the generator, or when a slot names a rule code no rule carries or a rule names no
  * enforcer or only planned ones (anatomy-gate.ts), unless a dated pending entry citing a live owner ruling holds that gap;
  * `--write` rewrites them; `--slice` prints one slice. Runtime only (no edition): an app tree never sees it.
  */
 export const contextsAnatomyVerb = defineVerb({
     path: ["contexts", "anatomy"],
-    summary: "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml, its per-side slices, the contexts index and the CLI section index; --check fails on drift, --write regenerates, --slice prints one slice",
+    summary: "render the project anatomy (slot tree per edition and side) from hfs/slots.yaml, its per-side slices, the contexts index and the section indexes; --check fails on drift, --write regenerates, --slice prints one slice",
     editions: [],
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/contexts-anatomy@1",
     flags: {
-        check: { kind: "boolean", summary: "exit 1 when anatomy.md, a slice, the contexts index or the CLI section index differs from what the generator writes, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending" },
-        write: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices, the contexts index and the CLI section index" },
+        check: { kind: "boolean", summary: "exit 1 when anatomy.md, a slice, the contexts index or a section index differs from what the generator writes, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending" },
+        write: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes" },
         slice: { kind: "boolean", summary: "print the slice of one edition and side (the app root plus that side), as a task reads it" },
         side: { kind: "string", summary: "the side of --slice: be or fe" },
         edition: { kind: "string", summary: "the edition of --slice: lite or full" },

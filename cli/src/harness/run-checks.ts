@@ -2,6 +2,7 @@ import { existsSync, globSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, posix } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
+import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
 import { captureCommand, captureTool } from "../shared/exec.js"
 import type { ToolRun } from "../shared/exec.js"
@@ -273,12 +274,17 @@ const idsAt = (traced: Traced): Set<string> => {
     return new Set(globSync("**/*.yaml", { cwd: traced.folder }).flatMap((file) => [...ruleIdsIn(readFileSync(join(traced.folder, file), "utf8"))]))
 }
 
-/** The ids each traced file or folder names, read once per check, keyed by the name a found id is reported under. */
+/**
+ * The ids each traced file or folder names, read once per check, keyed by the name a found id is reported under; a section
+ * index names the ids of its source too, whose every section the task may open (sectioned-docs.ts sectionedSource).
+ */
 const idsOfFiles = (files: readonly string[], source: TraceSource): Map<string, Set<string>> =>
     new Map(
         files.map((file) => {
             const traced = readTraced(source, file)
-            return [traced !== undefined && "name" in traced ? traced.name : file, idsAt(traced)]
+            const of = sectionedSource(file)
+            const ids = of === undefined ? idsAt(traced) : new Set([...idsAt(traced), ...idsAt(readTraced(source, of))])
+            return [traced !== undefined && "name" in traced ? traced.name : file, ids]
         }),
     )
 

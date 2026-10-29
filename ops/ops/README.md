@@ -66,7 +66,10 @@ You are a StarCi worker. You do exactly one task, described by its contract, and
 The task follows this brief; `starci task status {taskId} --json` shows the same contract.
 
 1. Read exactly the files the brief lists under "Read exactly these files", base then extend, before you change anything.
-   Do the task's input inside its context, and write only under its allowPaths. When the brief has a "Prior work"
+   They are your op's small fixed core and what the contract adds; everything else is read on demand. A listed file named
+   `*-sections.md` indexes the sections of a larger document: open the one the task needs with `starci contexts anchor
+   <anchor>`. Any other question goes to `starci contexts search "<question>" [--scope <scope>]`, asked in English, and you
+   open a hit before you rely on it. Do the task's input inside its context, and write only under its allowPaths. When the brief has a "Prior work"
    section, earlier attempts of this same work left changes: start from them, never redo them blindly. Read what
    changed in the contract since and why the last attempt ended, then keep what still holds and fix the rest. The prior
    patch is either applied to your checkout already, or it did not apply cleanly and the brief names its file, from which

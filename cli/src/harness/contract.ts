@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
+import { sectionedSource } from "../core/contexts/sectioned-docs.js"
 import { Refusal } from "../shared/errors.js"
 import { contractCiteProblems, fillCiteCheck } from "./cite.js"
 import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShared, keyNameSchema, outputSpecSchema, placeholdersOf, primitiveCheckSchema, trustTier } from "./ops.js"
@@ -503,9 +504,11 @@ const traceProblems = (resolved: ResolvedContract, ops: Ops): string[] => {
         // A repository file may be written by an earlier task, so only an all-harness context can be judged before the work.
         const citable = citableContext(resolved)
         if (citable.some((file) => !file.harness)) continue
+        // A section index stands for its source, whose every section the task may open (sectioned-docs.ts sectionedSource).
+        const names = (path: string): boolean => existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
         const named = citable.some((file) => {
-            const path = join(ops.root, file.path)
-            return existsSync(path) && ruleIdsIn(readFileSync(path, "utf8")).size > 0
+            const source = sectionedSource(file.path)
+            return names(join(ops.root, file.path)) || (source !== undefined && names(join(ops.root, source)))
         })
         if (!named) problems.push(`output key ${item.key} must cite at least ${String(minItemsOf(item.spec))} rule id(s), but no context file it may cite (shared files excluded) names one; extend context with the rules the task applies`)
     }
