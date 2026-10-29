@@ -40,6 +40,7 @@ import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { LIST } from '../runtime/scripts/lib/loosening-config.mjs';
 import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
+import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
 const NODE_MAJOR = 22;
@@ -58,9 +59,10 @@ export class SyncError extends Error {
 }
 
 // mode: file = whole file, block = the marked block inside a file the app also writes to, scripts = the `scripts` block of
-// package.json. A template that can hold a comment opens with {{header}}; a file whose exact content is specified (JSON, the
-// eslint one-liner) has no header.
-const MODE_OF_GROUP = Object.freeze({ 'package-scripts': 'scripts', 'package-scripts-lite': 'scripts' });
+// package.json, section = the whole file but the one marked section a database verb owns (db/bootstrap.sql, whose squash section
+// `starci app db baseline --squash` writes). A template that can hold a comment opens with {{header}}; a file whose exact content is
+// specified (JSON, the eslint one-liner) has no header.
+const MODE_OF_GROUP = Object.freeze({ 'package-scripts': 'scripts', 'package-scripts-lite': 'scripts', 'db-bootstrap': 'section' });
 const GLOB_CHARACTERS = new Set('*?<>{}[]');
 const literalFile = file => file.length >= 2 && !file.endsWith('/') && ![...file].some(character => GLOB_CHARACTERS.has(character));
 
@@ -472,9 +474,10 @@ export function renderTargets(hfs, presets, { sonarKey, readTemplate = readBundl
   });
 }
 
-// The part of a file sync manages: all of it, the marked block, or the scripts block as text.
+// The part of a file sync manages: all of it, all of it but the verb's section, the marked block, or the scripts block as text.
 function managedPart(mode, text, markers = { begin: BLOCK_BEGIN, end: BLOCK_END }) {
   if (mode === 'file') return text;
+  if (mode === 'section') return bootstrapSection(text).head;
   if (mode === 'scripts') {
     const scripts = parseScripts(text);
     return scripts ? scriptsText(scripts) : null;
@@ -524,6 +527,7 @@ export function writtenContent(target, existing) {
     }
     return `${JSON.stringify({ ...pkg, scripts: target.scripts }, null, 2)}\n`;
   }
+  if (target.mode === 'section') return `${target.content}${bootstrapSection(existing ?? '').section ?? ''}`;
   if (target.mode === 'block' && existing) {
     const current = managedPart('block', existing, target.markers);
     if (current !== null) return existing.replace(current, () => target.content);

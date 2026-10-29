@@ -92,6 +92,25 @@ and 2 is no verdict: a host without Docker or without the app's packages gets `D
 green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
 build job.
 
+`starci app db baseline --squash --url-env <NAME> --stamp <ts14> [--drop-extension a,b] [--drop-pgmq-queue q1,job_*] [--seed-tables t1,t2]
+[--image <ref>] [--apply]` retires the whole active chain into one baseline read from a database it is applied to, for a cutover whose
+production starts on an empty database (`runtime/scripts/hfs/db-squash.mjs`). The source must record exactly the active chain in its
+history, and it is only read. The verb dumps the source with its privileges (`pg_dump --schema-only --no-owner`, no `-x`) and keeps the
+app's schemas: it leaves out the extensions `--drop-extension` names (default `pg_net,pg_cron`; pgmq stays, the lite event bus), the
+pgmq queues `--drop-pgmq-queue` names (a name or a `*` pattern; no match drops nothing), every function or view whose body reaches a
+dropped extension's schema, an empty publication, an event trigger on a platform function, the platform's schemas and roles and the
+grants naming them, and grants to the migrating role that owns every replayed object; each is listed, and a kept object naming a left-out
+one is refused with both names. Object references and function bodies stay byte-identical. It writes `db/migrations/<stamp>_baseline.sql`
+(the `-- starci:baseline <last archived stamp>` header, the kept extensions created where the source has them, the schema and grants, then
+the kept pgmq queues and the grants on objects outside the app schemas), a marked section of `db/bootstrap.sql` (the source's app roles
+with their attributes and no password, their memberships, their allowed role settings such as `search_path`, the grants on schemas the
+bootstrap creates and the database-wide default privileges, none of which a per-database dump keeps; `starci app sync` judges and keeps
+the rest of the file), `db/seed.sql` (the rows of `--seed-tables`, `insert ... on conflict do nothing` in foreign-key order with their
+sequences set; a table without a primary key or unique constraint is refused) and moves the chain to `db/migrations/archive/`. Before
+writing, a scratch container of the app's db image (built from `db/Dockerfile`, or `--image`) replays bootstrap, baseline and seed (the
+seed twice); the same projection read from the replay must equal the source's, or the verb refuses with the differences. Docker runs every
+PostgreSQL client, so the host needs none. Without `--apply` it writes nothing.
+
 Input bounds stay with the backend DTO: `MaxLength`, `ArrayMaxSize`, `Min` and `Max` become GraphQL `@inputBounds`
 input-field directives or JSON Schema constraints on the REST operation table's DTO properties. Codegen derives
 `INPUT_BOUNDS` beside GraphQL wire types and `REST_INPUT_BOUNDS` under the REST API owner's `__generated__/` directory.

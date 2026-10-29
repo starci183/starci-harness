@@ -17,8 +17,10 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 - PostgreSQL is self-hosted: the `db` service in Docker in dev and on the Swarm stack in production, migrated by
   `starci app db migrate --url-env <NAME>`. Its image is the managed `db/Dockerfile`: the Docker Official `postgres` image
   pinned by digest plus pgvector from PGDG, so its extensions are pgvector and the image's contrib set (pgcrypto, pg_trgm,
-  unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net, pgmq or supabase_vault; the local container (`npm run
-  db:create`), the drift scratch database and the release image all build that file. Identity is the app's own Passport
+  unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net or supabase_vault; the local container (`npm run
+  db:create`), the drift scratch database and the release image all build that file. An allowed extension is created
+  `with schema extensions`, the schema the managed `db/bootstrap.sql` creates with USAGE for its roles, and the app role's
+  search_path is `public, extensions`, so a migration may name `extensions.vector` or set its function's search_path to `''`. Identity is the app's own Passport
   integration and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
   [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio` and
   `lite-official-postgres-image`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
@@ -97,8 +99,17 @@ component and service take the app's own `db` image (`deploy.images.db: {app: db
 migration that needs what the Supabase image carried is rewritten in a new forward migration: a `pg_net` call becomes an
 outbound call of the back end through its integration (BE-INFRA-2), a `pgmq` queue becomes a BullMQ queue of
 `platform/queue` (an event-bus topic stays open, above), a `pg_cron` job becomes a `platform/jobs` tick (BE-JOBS-6),
-and a reference to the `extensions` schema or the `supabase_realtime` publication
-is dropped. Owners: R332; rulings `lite-self-hosted-postgres-passport-minio` and `lite-official-postgres-image`.
+and the `supabase_realtime` publication is dropped; the `extensions` schema stays. Owners: R332; rulings
+`lite-self-hosted-postgres-passport-minio` and `lite-official-postgres-image`.
+
+An app whose production starts on an EMPTY database (no hosted data to restore) need not rewrite its chain: it squashes it.
+Apply the whole active chain to a rehearsal database with `starci app db migrate`, so its history records it, then run
+`starci app db baseline --squash --url-env <NAME> --stamp <ts14> --seed-tables <reference tables>` (add `--drop-extension`
+for each extension the db image lacks beyond the default `pg_net,pg_cron`, and `--drop-pgmq-queue` for queues whose work
+moved to BullMQ), read its report, and repeat with `--apply`. The verb writes the one baseline, the marked role section of
+`db/bootstrap.sql` and `db/seed.sql`, archives the chain, and refuses unless the replay on the app's db image equals the
+rehearsal minus what it drops; nobody writes a migration after it by hand. Production then takes `starci app db migrate` on
+its empty database and the seed. The verb's flags and outputs are the hfs README's `db baseline --squash`.
 
 ## Read with
 

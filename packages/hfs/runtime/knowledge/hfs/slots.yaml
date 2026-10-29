@@ -998,9 +998,11 @@ slots:
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]
-    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the auth and storage schemas, auth.users with the GoTrue column
-    # set, auth.uid/role/jwt stubs and the NOLOGIN browser roles, so migrations written for a hosted Supabase apply to the db service's
-    # official postgres image (nothing else of Supabase: no supabase_admin, extensions schema or realtime publication). `starci app db migrate` applies it before the first migration of an empty database.
+    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the extensions schema every allowed extension is created in, the
+    # auth and storage schemas, auth.users with the GoTrue column set, auth.uid/role/jwt stubs and the NOLOGIN browser roles, so migrations
+    # written for a hosted Supabase apply to the db service's official postgres image (nothing else of Supabase: no supabase_admin or
+    # realtime publication). `starci app db migrate` applies it before the first migration of an empty database; sync renders all of it
+    # but the one marked section `starci app db baseline --squash` writes (the source's app roles and the grants a per-database dump loses).
     path: "db/bootstrap.sql"
     presence: required
     tracked: tracked
